@@ -1,0 +1,440 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch3",
+  "versionDifferences": [
+   "zero_friends.py",
+   "zero_mod.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): zero_friends.py, zero_mod.py."
+ },
+ "programs": {
+  "age_broken.py": {
+   "src": "age = input(\"How old are you? \")\nprint(age + 1)\n",
+   "stdout": "How old are you? ",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/age_broken.py\", line 2, in <module>\n    print(age + 1)\n          ~~~~^~~\nTypeError: can only concatenate str (not \"int\") to str\n",
+   "exit": 1,
+   "stdin": "11\n",
+   "screen": "How old are you? 11\nTraceback (most recent call last):\n  File \"/home/you/python-ch3/age_broken.py\", line 2, in <module>\n    print(age + 1)\n          ~~~~^~~\nTypeError: can only concatenate str (not \"int\") to str\n"
+  },
+  "age_fixed.py": {
+   "src": "text = input(\"How old are you? \")\nage = int(text)\nprint(age + 1)\n",
+   "stdout": "How old are you? 12\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "11\n",
+   "screen": "How old are you? 11\n12\n"
+  },
+  "bigint.py": {
+   "src": "print(2 ** 64)\nprint(2 ** 100)\nprint(2 ** 100 + 1)\n",
+   "stdout": "18446744073709551616\n1267650600228229401496703205376\n1267650600228229401496703205377\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bool_is_int.py": {
+   "src": "print(True + True)\nprint(True * 10)\nprint(isinstance(True, int))\n",
+   "stdout": "2\n10\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bool_typo.py": {
+   "src": "is_raining = true\nprint(is_raining)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/bool_typo.py\", line 1, in <module>\n    is_raining = true\n                 ^^^^\nNameError: name 'true' is not defined. Did you mean: 'True'?\n",
+   "exit": 1
+  },
+  "bools.py": {
+   "src": "is_raining = True\nlights_on = False\nprint(is_raining)\nprint(lights_on)\nprint(type(lights_on))\n",
+   "stdout": "True\nFalse\n<class 'bool'>\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_digits.py": {
+   "src": "print(472, 472 // 10, 472 % 10)\nprint(47, 47 // 10, 47 % 10)\nprint(4, 4 // 10, 4 % 10)\nprint(1905, 1905 // 10, 1905 % 10)\n",
+   "stdout": "472 47 2\n47 4 7\n4 0 4\n1905 190 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_fill.py": {
+   "src": "km = float(input(\"Kilometres? \"))\nmiles = km / 1.609\nprint(f\"{km} km is {miles:.1f} miles\")\n",
+   "stdout": "Kilometres? 10.0 km is 6.2 miles\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "10\n",
+   "screen": "Kilometres? 10\n10.0 km is 6.2 miles\n"
+  },
+  "boss_ghost.py": {
+   "src": "score = None\nprint(score + 1)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/boss_ghost.py\", line 2, in <module>\n    print(score + 1)\n          ~~~~~~^~~\nTypeError: unsupported operand type(s) for +: 'NoneType' and 'int'\n",
+   "exit": 1
+  },
+  "boss_mix.py": {
+   "src": "a = 7\nb = 2\nprint(a / b)\nprint(a // b * b + a % b)\nprint(str(a) * b)\nprint(f\"{a / b:.1f}\")\n",
+   "stdout": "3.5\n7\n77\n3.5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "price = float(input(\"Price? \"))\nqty = input(\"How many? \")\ntotal = price * qty\nprint(f\"Total: {total:.2f}\")\n",
+   "stdout": "Price? How many? ",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/boss_spot.py\", line 3, in <module>\n    total = price * qty\n            ~~~~~~^~~~~\nTypeError: can't multiply sequence by non-int of type 'float'\n",
+   "exit": 1,
+   "stdin": "2.5\n4\n",
+   "screen": "Price? 2.5\nHow many? 4\nTraceback (most recent call last):\n  File \"/home/you/python-ch3/boss_spot.py\", line 3, in <module>\n    total = price * qty\n            ~~~~~~^~~~~\nTypeError: can't multiply sequence by non-int of type 'float'\n"
+  },
+  "boss_tacos.py": {
+   "src": "text = input(\"How many tacos? \")\nqty = int(text)\ntotal = qty * 2.25\nprint(f\"{qty} tacos: ${total:.2f}\")\n",
+   "stdout": "How many tacos? 3 tacos: $6.75\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "3\n",
+   "screen": "How many tacos? 3\n3 tacos: $6.75\n"
+  },
+  "commas.py": {
+   "src": "print(1,000,000)\n",
+   "stdout": "1 0 0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "conv_bool.py": {
+   "src": "print(\"bool(0) =\", bool(0))\nprint(\"bool(7) =\", bool(7))\nprint(\"bool(-1) =\", bool(-1))\nprint(\"bool(0.0) =\", bool(0.0))\nprint('bool(\"\") =', bool(\"\"))\nprint('bool(\"0\") =', bool(\"0\"))\nprint('bool(\" \") =', bool(\" \"))\nprint(\"bool(None) =\", bool(None))\n",
+   "stdout": "bool(0) = False\nbool(7) = True\nbool(-1) = True\nbool(0.0) = False\nbool(\"\") = False\nbool(\"0\") = True\nbool(\" \") = True\nbool(None) = False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "conv_float.py": {
+   "src": "print(float(\"2.5\"))\nprint(float(7))\nprint(float(\"  3 \"))\nprint(float(\"1e3\"))\n",
+   "stdout": "2.5\n7.0\n3.0\n1000.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "conv_int.py": {
+   "src": "print(int(\"42\"))\nprint(int(3.9))\nprint(int(-3.9))\nprint(int(\" 7 \"))\nprint(int(True))\n",
+   "stdout": "42\n3\n-3\n7\n1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "conv_quiz.py": {
+   "src": "print(int(7.99))\nprint(float(3))\nprint(str(5) + str(5))\nprint(int(\"5\") + int(\"5\"))\nprint(bool(\"False\"))\n",
+   "stdout": "7\n3.0\n55\n10\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "conv_str.py": {
+   "src": "print(str(42) + \"!\")\nprint(str(3.5) + \"!\")\nprint(str(True) + \"!\")\nprint(str(None) + \"!\")\n",
+   "stdout": "42!\n3.5!\nTrue!\nNone!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_format.py": {
+   "src": "distance = 42195\npace = 5.3333333\nprint(f\"Marathon: {distance:,} metres\")\nprint(f\"Pace: {pace:.2f} min/km\")\n",
+   "stdout": "Marathon: 42,195 metres\nPace: 5.33 min/km\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_input.py": {
+   "src": "cats = int(input(\"How many cats? \"))\npaws = cats * 4\nprint(f\"{cats} cats have {paws} paws.\")\n",
+   "stdout": "How many cats? 4 cats have 16 paws.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "4\n",
+   "screen": "How many cats? 4\n4 cats have 16 paws.\n"
+  },
+  "fill_ops.py": {
+   "src": "pizza = 23\npeople = 4\nprint(\"Slices each:\", pizza // people)\nprint(\"Left over:\", pizza % people)\n",
+   "stdout": "Slices each: 5\nLeft over: 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "float_inside.py": {
+   "src": "print(f\"{0.1:.20f}\")\nprint(f\"{0.25:.20f}\")\nprint((0.1).as_integer_ratio())\nprint(round(2.675, 2))\n",
+   "stdout": "0.10000000000000000555\n0.25000000000000000000\n(3602879701896397, 36028797018963968)\n2.67\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "float_wobble.py": {
+   "src": "print(0.1 + 0.2)\nprint(0.1 * 3)\nprint(1.1 + 2.2)\nprint(0.5 + 0.25)\n",
+   "stdout": "0.30000000000000004\n0.30000000000000004\n3.3000000000000003\n0.75\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "formats.py": {
+   "src": "total = 13.5\nprint(total)\nprint(f\"{total:.2f}\")\nprint(f\"{0.1 + 0.2:.2f}\")\nprint(f\"{2 / 3:.3f}\")\nbig = 8100000000\nprint(f\"{big:,}\")\nprint(f\"{1234567.891:,.2f}\")\n",
+   "stdout": "13.5\n13.50\n0.30\n0.667\n8,100,000,000\n1,234,567.89\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ghost.py": {
+   "src": "nothing = None\nprint(nothing)\nprint(type(nothing))\nanswer = print(\"hi\")\nprint(answer)\n",
+   "stdout": "None\n<class 'NoneType'>\nhi\nNone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "int_limit.py": {
+   "src": "print(len(str(2 ** 1000)))\nhuge = 10 ** 5000\nprint(str(huge))\n",
+   "stdout": "302\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/int_limit.py\", line 3, in <module>\n    print(str(huge))\n          ~~~^^^^^^\nValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit\n",
+   "exit": 1
+  },
+  "jam_float_comma.py": {
+   "src": "print(float(\"1,5\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_float_comma.py\", line 1, in <module>\n    print(float(\"1,5\"))\n          ~~~~~^^^^^^^\nValueError: could not convert string to float: '1,5'\n",
+   "exit": 1
+  },
+  "jam_float_word.py": {
+   "src": "print(float(\"two\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_float_word.py\", line 1, in <module>\n    print(float(\"two\"))\n          ~~~~~^^^^^^^\nValueError: could not convert string to float: 'two'\n",
+   "exit": 1
+  },
+  "jam_int_decimal.py": {
+   "src": "print(int(\"3.9\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_int_decimal.py\", line 1, in <module>\n    print(int(\"3.9\"))\n          ~~~^^^^^^^\nValueError: invalid literal for int() with base 10: '3.9'\n",
+   "exit": 1
+  },
+  "jam_int_word.py": {
+   "src": "print(int(\"seven\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_int_word.py\", line 1, in <module>\n    print(int(\"seven\"))\n          ~~~^^^^^^^^^\nValueError: invalid literal for int() with base 10: 'seven'\n",
+   "exit": 1
+  },
+  "jam_len.py": {
+   "src": "print(len(42))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_len.py\", line 1, in <module>\n    print(len(42))\n          ~~~^^^^\nTypeError: object of type 'int' has no len()\n",
+   "exit": 1
+  },
+  "jam_quiz.py": {
+   "src": "score = \"12.5\"\nprint(int(score) + 1)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/jam_quiz.py\", line 2, in <module>\n    print(int(score) + 1)\n          ~~~^^^^^^^\nValueError: invalid literal for int() with base 10: '12.5'\n",
+   "exit": 1
+  },
+  "laugh.py": {
+   "src": "word = \"ha\"\nlaugh = word * 3\nshout = laugh + \"!\"\nprint(shout)\nprint(len(shout))\n",
+   "stdout": "hahaha!\n7\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mix.py": {
+   "src": "age = 30\nprint(\"Age: \" + age)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/mix.py\", line 2, in <module>\n    print(\"Age: \" + age)\n          ~~~~~~~~^~~~~\nTypeError: can only concatenate str (not \"int\") to str\n",
+   "exit": 1
+  },
+  "mix_fixed.py": {
+   "src": "age = 30\nprint(\"Age: \" + str(age))\nprint(f\"Age: {age}\")\nprint(\"Age:\", age)\n",
+   "stdout": "Age: 30\nAge: 30\nAge: 30\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "money_real.py": {
+   "src": "from decimal import Decimal\nprint(Decimal(\"0.1\") + Decimal(\"0.2\"))\ncents = 1999\nprint(f\"${cents // 100}.{cents % 100:02d}\")\nseconds = 125\nprint(seconds // 60, \"min\", seconds % 60, \"s\")\n",
+   "stdout": "0.3\n$19.99\n2 min 5 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "neg_share.py": {
+   "src": "print(17 // 5, 17 % 5)\nprint(-17 // 5, -17 % 5)\nprint(17 // -5, 17 % -5)\nprint(-17 // 5 * 5 + -17 % 5)\nprint(int(-17 / 5))\n",
+   "stdout": "3 2\n-4 3\n-4 -3\n-17\n-3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "next_year.py": {
+   "src": "age = int(input(\"How old are you? \"))\nprint(f\"Next year you'll be {age + 1}.\")\n",
+   "stdout": "How old are you? Next year you'll be 12.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "11\n",
+   "screen": "How old are you? 11\nNext year you'll be 12.\n"
+  },
+  "next_year_jam.py": {
+   "src": "age = int(input(\"How old are you? \"))\nprint(f\"Next year you'll be {age + 1}.\")\n",
+   "stdout": "How old are you? ",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/next_year_jam.py\", line 1, in <module>\n    age = int(input(\"How old are you? \"))\nValueError: invalid literal for int() with base 10: 'eleven'\n",
+   "exit": 1,
+   "stdin": "eleven\n",
+   "screen": "How old are you? eleven\nTraceback (most recent call last):\n  File \"/home/you/python-ch3/next_year_jam.py\", line 1, in <module>\n    age = int(input(\"How old are you? \"))\nValueError: invalid literal for int() with base 10: 'eleven'\n"
+  },
+  "numbers_vs_text.py": {
+   "src": "print(\"2\" + \"2\")\nprint(2 + 2)\nprint(\"7\" * 3)\nprint(7 * 3)\n",
+   "stdout": "22\n4\n777\n21\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ops.py": {
+   "src": "print(7 + 2)\nprint(7 - 2)\nprint(7 * 2)\nprint(7 / 2)\nprint(7 // 2)\nprint(7 % 2)\nprint(7 ** 2)\n",
+   "stdout": "9\n5\n14\n3.5\n3\n1\n49\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ops_quiz.py": {
+   "src": "print(9 / 3)\nprint(9 // 2)\nprint(9 % 2)\nprint(2 ** 4)\n",
+   "stdout": "3.0\n4\n1\n16\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "prec_quiz.py": {
+   "src": "print(1 + 2 * 3)\nprint((1 + 2) * 3)\nprint(20 - 10 // 3)\nprint(2 * 3 ** 2)\n",
+   "stdout": "7\n9\n17\n18\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "precedence.py": {
+   "src": "print(2 + 3 * 4)\nprint((2 + 3) * 4)\nprint(2 + 3 * 4 ** 2)\nprint(10 - 4 - 3)\nprint(2 ** 3 ** 2)\nprint(-3 ** 2)\n",
+   "stdout": "14\n20\n50\n3\n512\n-9\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "predict_input.py": {
+   "src": "n = input(\"Pick a number: \")\nprint(n * 3)\nprint(int(n) * 3)\n",
+   "stdout": "Pick a number: 333\n9\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "3\n",
+   "screen": "Pick a number: 3\n333\n9\n"
+  },
+  "receipt.py": {
+   "src": "item = \"Comic book\"\nprice = 4.5\nqty = 3\ntotal = price * qty\nprint(f\"{item} x{qty}\")\nprint(f\"Total: ${total:.2f}\")\n",
+   "stdout": "Comic book x3\nTotal: $13.50\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "repr_vs_print.py": {
+   "src": "word = \"42\"\nprint(word)\nprint(repr(word))\nprint(repr(42))\n",
+   "stdout": "42\n'42'\n42\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "round_it.py": {
+   "src": "print(round(0.1 + 0.2, 2))\nprint(round(3.14159, 2))\nprint(round(7.6))\nprint(round(2.5))\nprint(round(3.5))\n",
+   "stdout": "0.3\n3.14\n8\n2\n4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "round_quiz.py": {
+   "src": "print(round(4.5))\nprint(round(5.5))\nprint(round(9.87, 1))\nprint(round(12.3456, 2))\n",
+   "stdout": "4\n6\n9.9\n12.35\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "slash.py": {
+   "src": "print(6 / 2)\nprint(type(6 / 2))\nprint(6 // 2)\nprint(2 * 3.0)\nprint(1 + 1.0)\n",
+   "stdout": "3.0\n<class 'float'>\n3\n6.0\n2.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_apples.py": {
+   "src": "apples = 12\nlabel = \" apples\"\nprint(apples + label)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/spot_apples.py\", line 3, in <module>\n    print(apples + label)\n          ~~~~~~~^~~~~~~\nTypeError: unsupported operand type(s) for +: 'int' and 'str'\n",
+   "exit": 1
+  },
+  "spot_bool.py": {
+   "src": "is_open = True\nis_full = false\nprint(is_open)\nprint(is_full)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/spot_bool.py\", line 2, in <module>\n    is_full = false\n              ^^^^^\nNameError: name 'false' is not defined. Did you mean: 'False'?\n",
+   "exit": 1
+  },
+  "string_quiz.py": {
+   "src": "print(\"na\" * 4 + \" Pip!\")\nprint(len(\"na\" * 4))\nprint(\"3\" + \"4\" * 2)\n",
+   "stdout": "nananana Pip!\n8\n344\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "strings.py": {
+   "src": "print(\"ice\" + \"cream\")\nprint(\"ha\" * 3)\nprint(\"=\" * 12)\nprint(len(\"Pip!\"))\nprint(len(\"hi there\"))\nprint(len(\"\"))\n",
+   "stdout": "icecream\nhahaha\n============\n4\n8\n0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sweets.py": {
+   "src": "sweets = 17\nfriends = 5\nprint(sweets // friends)\nprint(sweets % friends)\n",
+   "stdout": "3\n2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sweets_trace.py": {
+   "src": "print(10, 10 // 4, 10 % 4)\nprint(11, 11 // 4, 11 % 4)\nprint(12, 12 // 4, 12 % 4)\nprint(13, 13 // 4, 13 % 4)\nprint(3, 3 // 4, 3 % 4)\n",
+   "stdout": "10 2 2\n11 2 3\n12 3 0\n13 3 1\n3 0 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "two_plus_two.py": {
+   "src": "print(\"2\" + \"2\")\nprint(2 + 2)\n",
+   "stdout": "22\n4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "type_machine.py": {
+   "src": "print(type(7))\nprint(type(7.0))\nprint(type(\"7\"))\nprint(type(False))\nprint(type(None))\n",
+   "stdout": "<class 'int'>\n<class 'float'>\n<class 'str'>\n<class 'bool'>\n<class 'NoneType'>\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "types_quiz.py": {
+   "src": "print(type(10))\nprint(type(\"10\"))\nprint(type(10.0))\nprint(type(\"True\"))\n",
+   "stdout": "<class 'int'>\n<class 'str'>\n<class 'float'>\n<class 'str'>\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "types_tour.py": {
+   "src": "print(type(42))\nprint(type(3.14))\nprint(type(\"Pip!\"))\nprint(type(True))\nprint(type(None))\n",
+   "stdout": "<class 'int'>\n<class 'float'>\n<class 'str'>\n<class 'bool'>\n<class 'NoneType'>\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "underscores.py": {
+   "src": "population = 8_100_000_000\nprint(population)\nprint(population + 1)\n",
+   "stdout": "8100000000\n8100000001\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "zero_friends.py": {
+   "src": "sweets = 17\nfriends = 0\nprint(sweets // friends)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/zero_friends.py\", line 3, in <module>\n    print(sweets // friends)\n          ~~~~~~~^^~~~~~~~~\nZeroDivisionError: division by zero\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/zero_friends.py\", line 3, in <module>\n    print(sweets // friends)\n          ~~~~~~~^^~~~~~~~~\nZeroDivisionError: integer division or modulo by zero\n",
+    "exit": 1
+   }
+  },
+  "zero_mod.py": {
+   "src": "sweets = 17\nfriends = 0\nprint(sweets % friends)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/zero_mod.py\", line 3, in <module>\n    print(sweets % friends)\n          ~~~~~~~^~~~~~~~~\nZeroDivisionError: division by zero\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/zero_mod.py\", line 3, in <module>\n    print(sweets % friends)\n          ~~~~~~~^~~~~~~~~\nZeroDivisionError: integer modulo by zero\n",
+    "exit": 1
+   }
+  },
+  "zero_slash.py": {
+   "src": "print(1 / 0)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch3/zero_slash.py\", line 1, in <module>\n    print(1 / 0)\n          ~~^~~\nZeroDivisionError: division by zero\n",
+   "exit": 1
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
