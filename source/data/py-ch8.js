@@ -1,0 +1,371 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch8",
+  "versionDifferences": [
+   "bad_key.py",
+   "ex_grid.py",
+   "set_list_item.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bad_key.py, ex_grid.py, set_list_item.py."
+ },
+ "programs": {
+  "bad_key.py": {
+   "src": "spots = {}\nplace = [3, 5]\nspots[place] = \"treasure\"\nprint(spots)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/bad_key.py\", line 3, in <module>\n    spots[place] = \"treasure\"\n    ~~~~~^^^^^^^\nTypeError: cannot use 'list' as a dict key (unhashable type: 'list')\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/bad_key.py\", line 3, in <module>\n    spots[place] = \"treasure\"\n    ~~~~~^^^^^^^\nTypeError: unhashable type: 'list'\n",
+    "exit": 1
+   }
+  },
+  "boss_fill.py": {
+   "src": "votes = [\"fig\", \"kiwi\", \"fig\"]\ntally = {}\nfor v in votes:\n    tally[v] = tally.get(v, 0) + 1\nprint(tally)\nprint(tally.get(\"pear\", 0))\n",
+   "stdout": "{'fig': 2, 'kiwi': 1}\n0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_inventory.py": {
+   "src": "pack = {\"coin\": 3, \"key\": 1}\npack[\"gem\"] = 2\npack[\"coin\"] = pack[\"coin\"] + 4\npack.pop(\"key\")\npack[\"key\"] = 5\nfor thing, n in pack.items():\n    print(thing, n)\nprint(pack.get(\"map\", \"none\"))\n",
+   "stdout": "coin 7\ngem 2\nkey 5\nnone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "text = \"go pip go\"\ncounts = {}\nfor word in text.split():\n    counts[word] = counts.get(word, 0) + 1\nfor word in sorted(counts):\n    print(word, counts[word])\n",
+   "stdout": "go 2\npip 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons_alt.py": {
+   "src": "counts = {}\ntext = \"go pip go\"\nfor word in text.split():\n    counts[word] = counts.get(word, 0) + 1\nfor word in sorted(counts):\n    print(word, counts[word])\n",
+   "stdout": "go 2\npip 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_seen_bug.py": {
+   "src": "numbers = [4, 7, 4, 1, 7]\nseen = {}\nfor n in numbers:\n    seen.add(n)\nprint(sorted(seen))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/boss_seen_bug.py\", line 4, in <module>\n    seen.add(n)\n    ^^^^^^^^\nAttributeError: 'dict' object has no attribute 'add'\n",
+   "exit": 1
+  },
+  "boss_trace.py": {
+   "src": "scores = {\"Ada\": [9, 7], \"Bo\": [6], \"Cy\": [8, 8, 5]}\nfor name, marks in scores.items():\n    print(name, len(marks), sum(marks))\n",
+   "stdout": "Ada 2 16\nBo 1 6\nCy 3 21\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "by_position.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(\"The first price is...\")\nprint(prices[0])\n",
+   "stdout": "The first price is...\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/by_position.py\", line 3, in <module>\n    print(prices[0])\n          ~~~~~~^^^\nKeyError: 0\n",
+   "exit": 1
+  },
+  "cabinet.py": {
+   "src": "shop = {\"tea\": 2}\nshop[\"cake\"] = 5\nshop[\"tea\"] = 3\nshop[\"milk\"] = 4\ndel shop[\"cake\"]\nprice = shop.pop(\"milk\")\nprint(shop)\nprint(price)\n",
+   "stdout": "{'tea': 3}\n4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "capital_key.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\norder = \"tea\"\nprint(\"One\", order, \"please\")\nprint(\"That costs\", prices[\"Tea\"])\n",
+   "stdout": "One tea please\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/capital_key.py\", line 4, in <module>\n    print(\"That costs\", prices[\"Tea\"])\n                        ~~~~~~^^^^^^^\nKeyError: 'Tea'\n",
+   "exit": 1
+  },
+  "change.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2}\nprices[\"milk\"] = 4\nprint(prices)\nprices[\"tea\"] = 3\nprint(prices)\nprint(len(prices))\n",
+   "stdout": "{'apple': 3, 'tea': 2, 'milk': 4}\n{'apple': 3, 'tea': 3, 'milk': 4}\n3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "count_bug.py": {
+   "src": "word = \"hello\"\ncounts = {}\nfor letter in word:\n    counts[letter] = counts[letter] + 1\nprint(counts)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/count_bug.py\", line 4, in <module>\n    counts[letter] = counts[letter] + 1\n                     ~~~~~~^^^^^^^^\nKeyError: 'h'\n",
+   "exit": 1
+  },
+  "count_if.py": {
+   "src": "votes = [\"pear\", \"fig\", \"pear\", \"kiwi\", \"pear\", \"fig\"]\ncounts = {}\nfor fruit in votes:\n    if fruit in counts:\n        counts[fruit] = counts[fruit] + 1\n    else:\n        counts[fruit] = 1\nprint(counts)\n",
+   "stdout": "{'pear': 3, 'fig': 2, 'kiwi': 1}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "count_letters.py": {
+   "src": "word = \"banana\"\ncounts = {}\nfor letter in word:\n    counts[letter] = counts.get(letter, 0) + 1\nprint(counts)\n",
+   "stdout": "{'b': 1, 'a': 3, 'n': 2}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "count_words.py": {
+   "src": "text = \"the cat saw the dog and the dog saw the cat\"\ncounts = {}\nfor word in text.split():\n    counts[word] = counts.get(word, 0) + 1\nfor word, n in counts.items():\n    print(word, n)\n",
+   "stdout": "the 4\ncat 2\nsaw 2\ndog 2\nand 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "del_missing.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2}\ndel prices[\"pizza\"]\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/del_missing.py\", line 2, in <module>\n    del prices[\"pizza\"]\n        ~~~~~~^^^^^^^^^\nKeyError: 'pizza'\n",
+   "exit": 1
+  },
+  "empty_set.py": {
+   "src": "a = {}\nb = set()\nprint(type(a))\nprint(type(b))\nprint(b)\n",
+   "stdout": "<class 'dict'>\n<class 'set'>\nset()\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_fill_change.py": {
+   "src": "pets = {\"cat\": 2, \"dog\": 1}\npets[\"fish\"] = 6\npets[\"dog\"] = 2\ndel pets[\"cat\"]\nprint(pets)\n",
+   "stdout": "{'dog': 2, 'fish': 6}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_grid.py": {
+   "src": "grid = {}\ngrid[(0, 0)] = \"start\"\nprint(grid)\ngrid[[1, 1]] = \"end\"\nprint(grid)\n",
+   "stdout": "{(0, 0): 'start'}\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/ex_grid.py\", line 4, in <module>\n    grid[[1, 1]] = \"end\"\n    ~~~~^^^^^^^^\nTypeError: cannot use 'list' as a dict key (unhashable type: 'list')\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "{(0, 0): 'start'}\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/ex_grid.py\", line 4, in <module>\n    grid[[1, 1]] = \"end\"\n    ~~~~^^^^^^^^\nTypeError: unhashable type: 'list'\n",
+    "exit": 1
+   }
+  },
+  "ex_lookup.py": {
+   "src": "ages = {\"Pip\": 3, \"Ada\": 36, \"Bo\": 9}\nprint(ages[\"Ada\"])\nboth = ages[\"Pip\"] + ages[\"Bo\"]\nprint(both)\nprint(len(ages))\n",
+   "stdout": "36\n12\n3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_nested.py": {
+   "src": "team = {\"red\": [\"Ada\", \"Bo\"], \"blue\": [\"Cy\"]}\nteam[\"blue\"].append(\"Di\")\nprint(team[\"blue\"])\nprint(team[\"red\"][0])\nprint(len(team[\"red\"]) + len(team[\"blue\"]))\n",
+   "stdout": "['Cy', 'Di']\nAda\n4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_order.py": {
+   "src": "scores = {\"Bo\": 7}\nscores[\"Ada\"] = 9\nscores[\"Bo\"] = 8\nscores[\"Cy\"] = 5\nfor name in scores:\n    print(name, scores[name])\n",
+   "stdout": "Bo 8\nAda 9\nCy 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_parsons_stock.py": {
+   "src": "stock = {\"pens\": 5}\nstock[\"cups\"] = 2\nprint(stock)\nremoved = stock.pop(\"cups\")\nstock[\"pens\"] = stock[\"pens\"] - removed\nprint(stock, removed)\n",
+   "stdout": "{'pens': 5, 'cups': 2}\n{'pens': 3} 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_set_fill.py": {
+   "src": "cats = {\"Ada\", \"Bo\", \"Cy\"}\ndogs = {\"Cy\", \"Di\"}\nprint(sorted(cats & dogs))\nprint(sorted(cats | dogs))\nprint(sorted(cats - dogs))\n",
+   "stdout": "['Cy']\n['Ada', 'Bo', 'Cy', 'Di']\n['Ada', 'Bo']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_set_predict.py": {
+   "src": "codes = [4, 2, 4, 4, 9, 2]\nunique = set(codes)\nprint(len(unique))\nunique.add(2)\nunique.add(7)\nprint(len(unique))\nprint(9 in unique)\n",
+   "stdout": "3\n4\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_trace_count.py": {
+   "src": "word = \"kayak\"\ncounts = {}\nfor letter in word:\n    counts[letter] = counts.get(letter, 0) + 1\n    print(letter, counts[letter], len(counts))\n",
+   "stdout": "k 1 1\na 1 2\ny 1 3\na 2 3\nk 2 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_trace_total.py": {
+   "src": "cart = {\"tea\": 2, \"cake\": 5, \"milk\": 4}\ntotal = 0\nfor item, price in cart.items():\n    total = total + price\n    print(item, price, total)\n",
+   "stdout": "tea 2 2\ncake 5 7\nmilk 4 11\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "get_demo.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(prices.get(\"tea\"))\nprint(prices.get(\"pizza\"))\nprint(prices.get(\"pizza\", 0))\nprint(prices.get(\"tea\", 0))\n",
+   "stdout": "2\nNone\n0\n2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "in_demo.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(\"tea\" in prices)\nprint(\"pizza\" in prices)\nprint(2 in prices)\nprint(2 in prices.values())\nprint(\"pizza\" not in prices)\n",
+   "stdout": "True\nFalse\nFalse\nTrue\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "lookup_found.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(prices[\"tea\"])\n",
+   "stdout": "2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "lookup_get.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(prices.get(\"pizza\", 0))\n",
+   "stdout": "0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "loop_items.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nfor price in prices.values():\n    print(price)\nfor item, price in prices.items():\n    print(item, \"costs\", price)\nprint(sum(prices.values()))\n",
+   "stdout": "3\n2\n5\napple costs 3\ntea costs 2\ncake costs 5\n10\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "loop_keys.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nfor item in prices:\n    print(item)\n",
+   "stdout": "apple\ntea\ncake\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "menu.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(prices)\nprint(prices[\"tea\"])\nprint(len(prices))\n",
+   "stdout": "{'apple': 3, 'tea': 2, 'cake': 5}\n2\n3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "menu_missing.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5}\nprint(\"Looking for pizza...\")\nprint(prices[\"pizza\"])\nprint(\"This line never runs\")\n",
+   "stdout": "Looking for pizza...\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/menu_missing.py\", line 3, in <module>\n    print(prices[\"pizza\"])\n          ~~~~~~^^^^^^^^^\nKeyError: 'pizza'\n",
+   "exit": 1
+  },
+  "nb_alias.py": {
+   "src": "a = {\"tea\": 2}\nb = a\nc = a.copy()\nb[\"cake\"] = 5\nprint(a)\nprint(c)\nprint(b is a, c is a)\n",
+   "stdout": "{'tea': 2, 'cake': 5}\n{'tea': 2}\nTrue False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_comprehension.py": {
+   "src": "squares = {n: n * n for n in range(1, 5)}\nprint(squares)\nwords = [\"tea\", \"cake\", \"pie\"]\nlengths = {w: len(w) for w in words}\nprint(lengths)\nmenu = {\"tea\": 2, \"cake\": 5, \"pie\": 3}\ncheap = {item: p for item, p in menu.items() if p < 4}\nprint(cheap)\n",
+   "stdout": "{1: 1, 2: 4, 3: 9, 4: 16}\n{'tea': 3, 'cake': 4, 'pie': 3}\n{'tea': 2, 'pie': 3}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_counter.py": {
+   "src": "from collections import Counter, defaultdict\nprint(Counter(\"banana\"))\nprint(Counter(\"banana\").most_common(1))\ngroups = defaultdict(list)\nfor word in [\"ant\", \"bee\", \"ape\", \"bat\"]:\n    groups[word[0]].append(word)\nprint(dict(groups))\n",
+   "stdout": "Counter({'a': 3, 'n': 2, 'b': 1})\n[('a', 3)]\n{'a': ['ant', 'ape'], 'b': ['bee', 'bat']}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_hash.py": {
+   "src": "print(hash(42))\nprint(hash(42) == hash(42))\nprint(hash((1, 2)) == hash((1, 2)))\nprint(hash(True), hash(1))\n",
+   "stdout": "42\nTrue\nTrue\n1 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_hash_list.py": {
+   "src": "print(hash([1, 2]))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/nb_hash_list.py\", line 1, in <module>\n    print(hash([1, 2]))\n          ~~~~^^^^^^^^\nTypeError: unhashable type: 'list'\n",
+   "exit": 1
+  },
+  "nb_hash_str.py": {
+   "src": "print(hash(\"tea\"))\n",
+   "stdout": "-4185463102460635350\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "nb_loop_change.py": {
+   "src": "prices = {\"tea\": 2, \"cake\": 5, \"pie\": 3}\nfor item in prices:\n    if prices[item] > 4:\n        del prices[item]\nprint(prices)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/nb_loop_change.py\", line 2, in <module>\n    for item in prices:\n                ^^^^^^\nRuntimeError: dictionary changed size during iteration\n",
+   "exit": 1
+  },
+  "nb_loop_fix.py": {
+   "src": "prices = {\"tea\": 2, \"cake\": 5, \"pie\": 3}\nfor item in list(prices):\n    if prices[item] > 4:\n        del prices[item]\nprint(prices)\n",
+   "stdout": "{'tea': 2, 'pie': 3}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_view.py": {
+   "src": "prices = {\"tea\": 2}\nkeys = prices.keys()\nprices[\"cake\"] = 5\nprint(keys)\nprint(list(keys))\n",
+   "stdout": "dict_keys(['tea', 'cake'])\n['tea', 'cake']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nested.py": {
+   "src": "groups = {\"fruit\": [\"apple\", \"pear\"], \"drink\": [\"tea\"]}\ngroups[\"drink\"].append(\"milk\")\ngroups[\"snack\"] = []\nprint(groups[\"fruit\"][1])\nprint(groups[\"drink\"])\nprint(groups)\nprint(len(groups[\"snack\"]))\n",
+   "stdout": "pear\n['tea', 'milk']\n{'fruit': ['apple', 'pear'], 'drink': ['tea', 'milk'], 'snack': []}\n0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "order.py": {
+   "src": "shop = {}\nshop[\"tea\"] = 2\nshop[\"apple\"] = 3\nshop[\"cake\"] = 5\nprint(shop)\nshop[\"tea\"] = 9\nprint(shop)\ndel shop[\"apple\"]\nshop[\"apple\"] = 3\nprint(shop)\nprint(sorted(shop))\nprint(shop == {\"cake\": 5, \"apple\": 3, \"tea\": 9})\n",
+   "stdout": "{'tea': 2, 'apple': 3, 'cake': 5}\n{'tea': 9, 'apple': 3, 'cake': 5}\n{'tea': 9, 'cake': 5, 'apple': 3}\n['apple', 'cake', 'tea']\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "remove.py": {
+   "src": "prices = {\"apple\": 3, \"tea\": 2, \"cake\": 5, \"milk\": 4}\ndel prices[\"cake\"]\nprint(prices)\nsold = prices.pop(\"apple\")\nprint(\"Sold apple for\", sold)\nprint(prices)\nprint(prices.pop(\"pizza\", \"not on the menu\"))\n",
+   "stdout": "{'apple': 3, 'tea': 2, 'milk': 4}\nSold apple for 3\n{'tea': 2, 'milk': 4}\nnot on the menu\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "set_dedup.py": {
+   "src": "visits = [3, 1, 3, 2, 1, 3]\ndays = set(visits)\nprint(days)\nprint(len(visits), len(days))\ndays.add(5)\ndays.add(3)\nprint(days)\nprint(2 in days, 4 in days)\n",
+   "stdout": "{1, 2, 3}\n6 3\n{1, 2, 3, 5}\nTrue False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "set_list_item.py": {
+   "src": "print(set([[1], [2]]))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/set_list_item.py\", line 1, in <module>\n    print(set([[1], [2]]))\n          ~~~^^^^^^^^^^^^\nTypeError: cannot use 'list' as a set element (unhashable type: 'list')\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch8/set_list_item.py\", line 1, in <module>\n    print(set([[1], [2]]))\n          ~~~^^^^^^^^^^^^\nTypeError: unhashable type: 'list'\n",
+    "exit": 1
+   }
+  },
+  "set_machine.py": {
+   "src": "print(set([3, 1, 3, 2, 1]))\nprint(set([5, 5, 5]))\nprint(set([]))\nprint(set(\"aaa\"))\n",
+   "stdout": "{1, 2, 3}\n{5}\nset()\n{'a'}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "set_order.py": {
+   "src": "guests = {\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"}\nprint(guests)\n",
+   "stdout": "{'Eve', 'Cy', 'Ada', 'Di', 'Bo'}\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "set_sorted.py": {
+   "src": "guests = {\"Di\", \"Ada\", \"Cy\", \"Bo\", \"Ada\", \"Eve\"}\nprint(sorted(guests))\nprint(len(guests))\n",
+   "stdout": "['Ada', 'Bo', 'Cy', 'Di', 'Eve']\n5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tuple_key.py": {
+   "src": "spots = {}\nplace = (3, 5)\nspots[place] = \"treasure\"\nprint(spots)\nprint(spots[(3, 5)])\n",
+   "stdout": "{(3, 5): 'treasure'}\ntreasure\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "venn.py": {
+   "src": "chess = {\"Ada\", \"Bo\", \"Cy\"}\nart = {\"Bo\", \"Cy\", \"Di\", \"Eve\"}\nprint(\"either:\", sorted(chess | art))\nprint(\"both:\", sorted(chess & art))\nprint(\"chess only:\", sorted(chess - art))\nprint(\"art only:\", sorted(art - chess))\nprint(\"just one:\", sorted(chess ^ art))\n",
+   "stdout": "either: ['Ada', 'Bo', 'Cy', 'Di', 'Eve']\nboth: ['Bo', 'Cy']\nchess only: ['Ada']\nart only: ['Di', 'Eve']\njust one: ['Ada', 'Di', 'Eve']\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
