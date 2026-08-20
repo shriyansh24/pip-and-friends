@@ -1,0 +1,166 @@
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: notebooks are dicts, methods are bound, properties are objects, and how the MRO is built</summary>
+    <div class="page-body">
+      <svg class="char sm" data-char="professor"></svg>
+      <h3>The notebook really is a dict</h3>
+      <p>Most objects keep their own attributes in a dict called <code>__dict__</code>, and <code>vars(obj)</code> shows it. The class has one too. Shadowing is just a key appearing in the object's dict, and <code>del</code> removes it so the whiteboard shows through again:</p>
+      <div class="pair"><pre class="code" data-src="nb_vars.py"></pre><pre class="term" data-run="nb_vars.py"></pre></div>
+      <h3>Where <code>self</code> comes from</h3>
+      <p>A method is a plain function stored on the class. Reading it through an object, <code>rex.speak</code>, gives a <b>bound method</b>: the function with <code>rex</code> already clipped into the first slot. That's all <code>self</code> is. So <code>rex.speak()</code> and <code>Pet.speak(rex)</code> do the same thing:</p>
+      <div class="pair"><pre class="code" data-src="nb_class_access.py"></pre><pre class="term" data-run="nb_class_access.py"></pre></div>
+      <p><code>@classmethod</code> clips in the class instead, and <code>@staticmethod</code> clips in nothing.</p>
+      <h3>A property is an object on the class</h3>
+      <p><code>@property</code> builds a <code>property</code> object and stores it on the class under the method's name. Because properties sit on the class and have a "set" handler, Python checks them <em>before</em> the object's notebook. That's why <code>oven.celsius = …</code> reaches the setter instead of simply writing the notebook. Written without the <code>@</code>:</p>
+      <div class="pair"><pre class="code" data-src="nb_property_obj.py"></pre><pre class="term" data-run="nb_property_obj.py"></pre></div>
+      <h3>How the MRO is worked out</h3>
+      <p>Python builds every class's climbing order with an algorithm called <b>C3 linearization</b>. Its promises: a class comes before its parents, parents keep the left-to-right order you wrote, and each class appears once. In a diamond (two parents sharing a grandparent), the grandparent waits until both parents are done. <code>super()</code> means "the next class <em>in this object's MRO</em>", not "my parent", which is why every <code>hello</code> below runs exactly once:</p>
+      <div class="pair"><pre class="code" data-src="nb_diamond.py"></pre><pre class="term" data-run="nb_diamond.py"></pre></div>
+      <p>If no order can keep all the promises, Python refuses to create the class at all:</p>
+      <div class="pair"><pre class="code" data-src="nb_mro_error.py"></pre><pre class="term" data-run="nb_mro_error.py" data-exit></pre></div>
+      <h3>What mangling is really for</h3>
+      <p>Two leading underscores protect a class's internals from <em>its own subclasses</em>. Each class's <code>__n</code> gets that class's name glued on, so a child can use the same name without overwriting the parent's:</p>
+      <div class="pair"><pre class="code" data-src="nb_mangle_sub.py"></pre><pre class="term" data-run="nb_mangle_sub.py"></pre></div>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where these tools show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Alternative constructors</b> are everywhere in the standard library: <code>dict.fromkeys(…)</code>, <code>int.from_bytes(…)</code>, <code>datetime.fromisoformat("2026-11-07")</code> and <code>datetime.now()</code> are all class methods.</li>
+        <li><b>Properties</b> let a library start with a plain attribute and add checks later without changing a single caller. That's why Python programmers rarely write <code>get_x()</code> and <code>set_x()</code> methods.</li>
+        <li><b>Inheritance from framework classes</b>: test frameworks (<code>unittest.TestCase</code>, Chapter 26), web frameworks and GUI toolkits give you a base class; you subclass it and override a few methods. The framework calls them.</li>
+        <li><b>Abstract base classes</b> define plug-in points: "every storage backend must have <code>save</code> and <code>load</code>". Exceptions form a family tree too; Chapter 22 builds your own.</li>
+        <li><b>Composition</b> is the default in most well-designed code: a game holds a board and players, a web app holds a database connection, a car holds an engine. Design books summarise this as "favour composition over inheritance".</li>
+        <li><b>Duck typing</b>: <code>print</code> and <code>json.dump</code> accept anything with a <code>write</code> method, not only real files.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>self.count += 1</code> updates the class counter."</b> It reads the class attribute but writes a new instance attribute (the boss-level bug). Write <code>ClassName.count += 1</code>.</li>
+        <li><b>"Class attributes are like defaults that get copied into each object."</b> Nothing is copied. Objects without their own entry keep looking at the one shared value, which is exactly why a shared list leaks between them.</li>
+        <li><b>"Inside a setter I store the value with <code>self.age = value</code>."</b> That calls the setter again, and again… Store it under a different name, <code>self._age</code>. The same mistake in a getter:</li>
+      </ul>
+      <span class="file-tab">nb_recursion.py</span><pre class="code" data-src="nb_recursion.py"></pre>
+      <div class="ch19-duo">
+        <div class="ch19-stack"><span class="ch19-ver">CPython 3.15.2</span><pre class="term" data-run="nb_recursion.py" data-exit></pre></div>
+        <div class="ch19-stack"><span class="ch19-ver">CPython 3.13.18</span><pre class="term" data-run="nb_recursion.py" data-alt data-exit></pre></div>
+      </div>
+      <p>Same error on both versions; only the "Previous line repeated" count differs, because the two versions measure the depth limit slightly differently. Never rely on the exact number.</p>
+      <ul>
+        <li><b>"One underscore makes it private."</b> Nothing is enforced; it's a convention. Two underscores rename the attribute, which is still not a lock.</li>
+        <li><b>"<code>super()</code> means my parent class."</b> It means the next class in the object's MRO. With one parent that <em>is</em> the parent; with several, it may be a sibling (see the diamond).</li>
+        <li><b>"A subclass's <code>__init__</code> runs the parent's automatically."</b> Only if the child doesn't define one. Once it does, it must call <code>super().__init__(…)</code> itself (Panel 28).</li>
+        <li><b>"Check types with <code>type(x) == Pet</code>."</b> That rejects every subclass. Use <code>isinstance(x, Pet)</code>, or better, duck typing: just call the method.</li>
+        <li><b>"Every shared method calls for a parent class."</b> Inheritance glues two classes together for good. Prefer composition unless it's a true is-a.</li>
+        <li><b>"A static method is just a worse class method."</b> They do different jobs: a classmethod needs the class (to build objects), a staticmethod needs nothing. If a staticmethod never mentions the class's idea, it may belong outside the class as a plain function.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: what is new, and since when</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The abstract-class message</b> "Can't instantiate abstract class Shape without an implementation for abstract method 'area'" has this wording since <b>Python 3.12</b>. Older versions said "…with abstract method area".</li>
+        <li><b>The read-only property message</b> "property 'fahrenheit' of 'Oven' object has no setter" names the property and class since <b>3.11</b>; older versions said only "can't set attribute".</li>
+        <li><b>The <code>__slots__</code> message</b> "…and no __dict__ for setting new attributes" is recent; 3.15.2 and 3.13.18 both print it.</li>
+        <li><b><code>super()</code> with no arguments</b> works since Python 3.0. Very old code writes <code>super(Dog, self).__init__(name)</code>, which means the same.</li>
+        <li><b><code>abc.ABC</code></b> exists since 3.4; before that you wrote <code>metaclass=ABCMeta</code>.</li>
+      </ul>
+      <p>All 63 programs in this chapter were run with both Python 3.15.2 and 3.13.18. Only <code>nb_recursion.py</code> differs, in the repeat count of its RecursionError traceback (1016 versus 996). Every error message shown on the main path was word-for-word the same on both.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself</summary>
+    <div class="page-body">
+      <ol>
+        <li>Open a terminal and start Python: <code>python3</code> on macOS and Linux, <code>py</code> on Windows.</li>
+        <li>Type a two-line class: <code>class Member:</code>, then (indented) <code>club = "Robot Club"</code>, then an empty line. Make <code>a = Member()</code>, set <code>a.club = "Chess"</code>, then compare <code>vars(a)</code> with <code>Member.club</code>.</li>
+        <li>Save <code>prop_setter.py</code> from Panel 11 and run it: <code>python3 prop_setter.py</code> (Windows: <code>py prop_setter.py</code>). Change the range to 50–250 and try <code>Oven(20)</code>.</li>
+        <li>Remove line 9 (<code>super().__init__(name)</code>) from <code>super_init.py</code> and read the error like a detective. Then put it back.</li>
+        <li>At the prompt, try <code>help(property)</code> and <code>import abc; help(abc.ABC)</code> (press <code>q</code> to leave). Then <code>bool.__mro__</code>: where does <code>int</code> appear?</li>
+        <li>Paste <code>lookup.py</code> into Python Tutor (link below) and step through it. It draws class and instance boxes just like Panel 4.</li>
+      </ol>
+      <p>On Windows, if <code>py</code> is missing, install Python from python.org (the Python install manager) or the Microsoft Store. On macOS, the python.org installer or Homebrew (<code>brew install python</code>) both work. On Linux, use your package manager, or <code>uv python install 3.15</code> to get the newest version beside the system one.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>class attribute</dt><dd>A value stored on the class (written in the class body), shared by all its objects. The whiteboard.</dd>
+        <dt>instance attribute</dt><dd>A value stored on one object, usually set with <code>self.x = …</code>. The notebook.</dd>
+        <dt>shadowing</dt><dd>An instance attribute with the same name as a class attribute hides it for that object.</dd>
+        <dt><code>__dict__</code> / <code>vars()</code></dt><dd>The dict where an object (or class) keeps its own attributes.</dd>
+        <dt>property</dt><dd>A method read and written like an attribute, made with <code>@property</code>.</dd>
+        <dt>getter / setter</dt><dd>The methods a property runs when it is read / assigned.</dd>
+        <dt>read-only</dt><dd>A property with a getter but no setter: assigning it is an AttributeError.</dd>
+        <dt>validation</dt><dd>Checking a value before accepting it, and raising an error if it's wrong.</dd>
+        <dt>encapsulation</dt><dd>Keeping an object's inner details behind its methods and properties.</dd>
+        <dt>name mangling</dt><dd>Python renaming <code>__name</code> inside a class to <code>_ClassName__name</code>.</dd>
+        <dt>class method</dt><dd>A method that receives the class (<code>cls</code>), made with <code>@classmethod</code>.</dd>
+        <dt>alternative constructor</dt><dd>A class method that builds an object another way, such as <code>from_string</code>.</dd>
+        <dt>static method</dt><dd>A plain function kept in a class, made with <code>@staticmethod</code>; gets no <code>self</code> or <code>cls</code>.</dd>
+        <dt><code>__slots__</code></dt><dd>A fixed list of allowed attributes; the object gets no <code>__dict__</code>.</dd>
+        <dt>inheritance</dt><dd>Making a class from another one, so it gets all the parent's attributes and methods.</dd>
+        <dt>subclass / base class</dt><dd>The child / the parent in <code>class Child(Parent)</code>.</dd>
+        <dt>override</dt><dd>Defining a method in the child with the same name as one in the parent; the child's wins.</dd>
+        <dt><code>super()</code></dt><dd>Reaches the next class up the MRO, usually to call the parent's version of a method.</dd>
+        <dt>MRO</dt><dd>Method resolution order: the order Python climbs the classes when looking up a name. <code>C.__mro__</code> shows it.</dd>
+        <dt><code>object</code></dt><dd>The root class that every class inherits from.</dd>
+        <dt>multiple inheritance</dt><dd>A class with more than one parent.</dd>
+        <dt>polymorphism</dt><dd>One call, such as <code>s.speak()</code>, doing the right thing for many kinds of object.</dd>
+        <dt>duck typing</dt><dd>Using an object for what it can do, not what class it is.</dd>
+        <dt>abstract base class</dt><dd>A class that only promises methods (<code>@abstractmethod</code>) and can't be built itself.</dd>
+        <dt>composition</dt><dd>Building an object out of parts kept as attributes: "has-a".</dd>
+        <dt>delegation</dt><dd>An object passing a job on to one of its parts.</dd>
+        <dt>mixin</dt><dd>A small class that adds one skill when mixed in as an extra parent.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://docs.python.org/3/tutorial/classes.html">The Python Tutorial, chapter 9: class and instance variables (9.3.5, including the shared-list warning), inheritance and multiple inheritance (9.5), private variables (9.6)</a></li>
+        <li><a href="https://docs.python.org/3/library/functions.html#property">Built-in functions: property, classmethod, staticmethod, super, isinstance, issubclass</a></li>
+        <li><a href="https://docs.python.org/3/howto/descriptor.html">Descriptor HowTo Guide: how properties and methods really work</a></li>
+        <li><a href="https://docs.python.org/3/library/abc.html">The abc module: ABC and abstractmethod</a></li>
+        <li><a href="https://docs.python.org/3/library/collections.abc.html">collections.abc: the abstract classes behind Python's containers</a></li>
+        <li><a href="https://docs.python.org/3/howto/mro.html">The Python 2.3 Method Resolution Order: the C3 algorithm, explained with examples</a></li>
+        <li><a href="https://docs.python.org/3/reference/datamodel.html#slots">Data model reference: __slots__</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://pythontutor.com/">Python Tutor</a>: step through <code>lookup.py</code> and <code>tricks_trap.py</code> and watch the class and instance boxes.</li>
+        <li><a href="https://programming-25.mooc.fi/">University of Helsinki Python Programming MOOC</a>, parts 9 and 10: class attributes, properties, class hierarchies and access modifiers, with graded exercises.</li>
+        <li><a href="https://allendowney.github.io/ThinkPython/">Think Python, 3rd edition</a> (free online), chapter 17: inheritance.</li>
+        <li><a href="https://exercism.org/tracks/python">Exercism's Python track</a>: practice exercises on classes, with mentor feedback.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: 63 programs, run with CPython 3.15.2 and CPython 3.13.18 on 2026-11-07, in <code>/home/you/python-ch19</code>. 62 printed identical output in both. One differs: <code>nb_recursion.py</code>, whose RecursionError traceback repeats 1016 lines on 3.15 and 996 on 3.13. The notebook shows both runs; everywhere else the page shows the 3.15 run.</p>
+  <p>The memory tracers, the oven-gate machine, the <code>super()</code> walk-through, the lookup map and the exercises are teaching models. Each one checks its claims against those runs and shows a badge. The whiteboard, gatekeeper, three-methods and toolbelt drawings are new for this chapter; the cookie cutter and cookies come from Chapter 15; Pip, the Professor, Sneak, Taster, Pockets, Jigsaw, the duck and the creatures are the book's original cast, drawn in code.</p>
+  <p>Sources consulted for scope, order and common pitfalls (no text or exercises copied): the official Python Tutorial chapter 9 (sections 9.3.5, 9.4, 9.5, 9.5.1 and 9.6, including its shared mutable class attribute example and the name-mangling rules), the built-in functions reference (property, classmethod, staticmethod, super, isinstance, issubclass), the Descriptor HowTo Guide, the abc and collections.abc references, the data model reference on <code>__slots__</code>, the Python 2.3 MRO document; the University of Helsinki MOOC part outlines (parts 9 and 10); the course's own research map (which cross-references boot.dev Learn OOP, MIT 6.100L, PCC, Think Python, Fluent Python and Effective Python for these modules); Python Tutor's drawing conventions.</p>
+</footer>
+</body>
+</html>
