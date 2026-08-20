@@ -1,0 +1,545 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch24",
+  "versionDifferences": [
+   "join_vs_plus.py",
+   "memory.py",
+   "noise.py",
+   "profile_slow.py",
+   "profile_warn.py",
+   "queue_timing.py",
+   "timeit_cli.py",
+   "timeit_demo.py",
+   "tracing_slow.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): join_vs_plus.py, memory.py, noise.py, profile_slow.py, profile_warn.py, queue_timing.py, timeit_cli.py, timeit_demo.py, tracing_slow.py."
+ },
+ "programs": {
+  "binary_search.py": {
+   "src": "def search(items, target, lo, hi):\n    if lo > hi:\n        return -1\n    mid = (lo + hi) // 2\n    print(f\"  look at position {mid}: {items[mid]}\")\n    if items[mid] == target:\n        return mid\n    if items[mid] < target:\n        return search(items, target, mid + 1, hi)\n    return search(items, target, lo, mid - 1)\n\nshelf = [3, 8, 15, 21, 34, 42, 57, 63, 77, 90]\nprint(\"find 57:\")\nprint(\"found at\", search(shelf, 57, 0, len(shelf) - 1))\nprint(\"find 5:\")\nprint(\"found at\", search(shelf, 5, 0, len(shelf) - 1))\n",
+   "stdout": "find 57:\n  look at position 4: 34\n  look at position 7: 63\n  look at position 5: 42\n  look at position 6: 57\nfound at 6\nfind 5:\n  look at position 4: 34\n  look at position 1: 8\n  look at position 0: 3\nfound at -1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_error.py": {
+   "src": "def digit_sum(n):\n    if n < 10:\n        return n\n    digit_sum(n // 10) + n % 10\n\nprint(digit_sum(7))\nprint(digit_sum(472))\n",
+   "stdout": "7\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/boss_error.py\", line 7, in <module>\n    print(digit_sum(472))\n          ~~~~~~~~~^^^^^\n  File \"/home/you/python-ch24/boss_error.py\", line 4, in digit_sum\n    digit_sum(n // 10) + n % 10\n    ~~~~~~~~~~~~~~~~~~~^~~~~~~~\nTypeError: unsupported operand type(s) for +: 'NoneType' and 'int'\n",
+   "exit": 1
+  },
+  "boss_fill.py": {
+   "src": "def count_files(tree):\n    total = 0\n    for value in tree.values():\n        if isinstance(value, dict):\n            total += count_files(value)\n        else:\n            total += 1\n    return total\n\nhome = {\"a.txt\": 1, \"pics\": {\"b.jpg\": 2, \"old\": {\"c.jpg\": 3}}, \"d.txt\": 4}\nprint(count_files(home))\n",
+   "stdout": "4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "def power(base, exp):\n    if exp == 0:\n        return 1\n    half = power(base, exp // 2)\n    if exp % 2 == 0:\n        return half * half\n    return half * half * base\n\nprint(power(2, 10), power(3, 5))\n",
+   "stdout": "1024 243\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_predict.py": {
+   "src": "def show(items):\n    parts = []\n    for item in items:\n        if isinstance(item, list):\n            parts.append(\"(\" + show(item) + \")\")\n        else:\n            parts.append(str(item))\n    return \" \".join(parts)\n\nprint(show([1, [2, 3], 4]))\nprint(show([[1, [2]], [], 5]))\n",
+   "stdout": "1 (2 3) 4\n(1 (2)) () 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "def flatten(items):\n    result = []\n    for item in items:\n        if isinstance(item, list):\n            result.append(flatten(item))\n        else:\n            result.append(item)\n    return result\n\nprint(flatten([1, [2, 3], [4, [5]]]))\n",
+   "stdout": "[1, [2, 3], [4, [5]]]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_trace.py": {
+   "src": "left, right = [1, 4, 9], [2, 3, 10]\nresult = []\ni = j = 0\nwhile i < len(left) and j < len(right):\n    if left[i] <= right[j]:\n        result.append(left[i])\n        i += 1\n    else:\n        result.append(right[j])\n        j += 1\n    print(i, j, result[-1])\n",
+   "stdout": "1 0 1\n1 1 2\n1 2 3\n2 2 4\n3 2 9\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "cache_list.py": {
+   "src": "from functools import cache\n\n@cache\ndef total(items):\n    return sum(items)\n\nprint(total((1, 2, 3)))\nprint(total([1, 2, 3]))\n",
+   "stdout": "6\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/cache_list.py\", line 8, in <module>\n    print(total([1, 2, 3]))\n          ~~~~~^^^^^^^^^^^\nTypeError: unhashable type: 'list'\n",
+   "exit": 1
+  },
+  "countdown.py": {
+   "src": "def countdown(n):\n    if n == 0:\n        print(\"Liftoff!\")\n        return\n    print(n)\n    countdown(n - 1)\n\ncountdown(3)\n",
+   "stdout": "3\n2\n1\nLiftoff!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "deep_rec.py": {
+   "src": "def fact_rec(n):\n    if n <= 1:\n        return 1\n    return n * fact_rec(n - 1)\n\nprint(len(str(fact_rec(900))), \"digits\")\nprint(len(str(fact_rec(1000))), \"digits\")\n",
+   "stdout": "2270 digits\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/deep_rec.py\", line 7, in <module>\n    print(len(str(fact_rec(1000))), \"digits\")\n                  ~~~~~~~~^^^^^^\n  File \"/home/you/python-ch24/deep_rec.py\", line 4, in fact_rec\n    return n * fact_rec(n - 1)\n               ~~~~~~~~^^^^^^^\n  File \"/home/you/python-ch24/deep_rec.py\", line 4, in fact_rec\n    return n * fact_rec(n - 1)\n               ~~~~~~~~^^^^^^^\n  File \"/home/you/python-ch24/deep_rec.py\", line 4, in fact_rec\n    return n * fact_rec(n - 1)\n               ~~~~~~~~^^^^^^^\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "echo_down.py": {
+   "src": "def down(n):\n    if n == 0:\n        return\n    print(\"going down\", n)\n    down(n - 1)\n\ndown(3)\n",
+   "stdout": "going down 3\ngoing down 2\ngoing down 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "echo_up.py": {
+   "src": "def up(n):\n    if n == 0:\n        return\n    up(n - 1)\n    print(\"coming up\", n)\n\nup(3)\n",
+   "stdout": "coming up 1\ncoming up 2\ncoming up 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact.py": {
+   "src": "def fact(n):\n    if n == 1:\n        return 1\n    return n * fact(n - 1)\n\nprint(fact(4))\n",
+   "stdout": "24\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact_dolls.py": {
+   "src": "def fact(n, depth=0):\n    pad = \"  \" * depth\n    print(pad + f\"open fact({n})\")\n    if n == 1:\n        print(pad + \"solid doll: return 1\")\n        return 1\n    smaller = fact(n - 1, depth + 1)\n    answer = n * smaller\n    print(pad + f\"close fact({n}): {n} * {smaller} = {answer}\")\n    return answer\n\nprint(fact(4))\n",
+   "stdout": "open fact(4)\n  open fact(3)\n    open fact(2)\n      open fact(1)\n      solid doll: return 1\n    close fact(2): 2 * 1 = 2\n  close fact(3): 3 * 2 = 6\nclose fact(4): 4 * 6 = 24\n24\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact_fixed.py": {
+   "src": "def fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n\nfor n in [0, 1, 5]:\n    print(fact(n))\n",
+   "stdout": "1\n1\n120\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact_loop.py": {
+   "src": "def fact_loop(n):\n    result = 1\n    for k in range(2, n + 1):\n        result *= k\n    return result\n\ndef fact_rec(n):\n    if n <= 1:\n        return 1\n    return n * fact_rec(n - 1)\n\nprint(fact_loop(10), fact_rec(10))\nprint(len(str(fact_loop(1000))), \"digits\")\n",
+   "stdout": "3628800 3628800\n2568 digits\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact_machine.py": {
+   "src": "def fact(n):\n    if n == 1:\n        return 1\n    return n * fact(n - 1)\n\nfor n in [1, 3, 5, 10]:\n    print(fact(n))\n",
+   "stdout": "1\n6\n120\n3628800\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fact_zero.py": {
+   "src": "def fact(n):\n    if n == 1:\n        return 1\n    return n * fact(n - 1)\n\nprint(fact(0))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/fact_zero.py\", line 6, in <module>\n    print(fact(0))\n          ~~~~^^^\n  File \"/home/you/python-ch24/fact_zero.py\", line 4, in fact\n    return n * fact(n - 1)\n               ~~~~^^^^^^^\n  File \"/home/you/python-ch24/fact_zero.py\", line 4, in fact\n    return n * fact(n - 1)\n               ~~~~^^^^^^^\n  File \"/home/you/python-ch24/fact_zero.py\", line 4, in fact\n    return n * fact(n - 1)\n               ~~~~^^^^^^^\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "fib_cache.py": {
+   "src": "from functools import cache\n\n@cache\ndef fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\nprint(fib(25))\nprint(fib.cache_info())\nprint(fib(100))\n",
+   "stdout": "75025\nCacheInfo(hits=23, misses=26, maxsize=None, currsize=26)\n354224848179261915075\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fib_calls.py": {
+   "src": "calls = 0\n\ndef fib(n, depth=0):\n    global calls\n    calls += 1\n    print(\"  \" * depth + f\"fib({n})\")\n    if n < 2:\n        return n\n    return fib(n - 1, depth + 1) + fib(n - 2, depth + 1)\n\nanswer = fib(4)\nprint(\"answer:\", answer)\nprint(\"calls:\", calls)\n",
+   "stdout": "fib(4)\n  fib(3)\n    fib(2)\n      fib(1)\n      fib(0)\n    fib(1)\n  fib(2)\n    fib(1)\n    fib(0)\nanswer: 3\ncalls: 9\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fib_count.py": {
+   "src": "calls = 0\n\ndef fib(n):\n    global calls\n    calls += 1\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\nfor n in [5, 10, 20, 25]:\n    calls = 0\n    answer = fib(n)\n    print(f\"fib({n}) = {answer} took {calls} calls\")\n",
+   "stdout": "fib(5) = 5 took 15 calls\nfib(10) = 55 took 177 calls\nfib(20) = 6765 took 21891 calls\nfib(25) = 75025 took 242785 calls\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fib_memo_calls.py": {
+   "src": "memo = {}\n\ndef fib(n, depth=0):\n    pad = \"  \" * depth\n    if n in memo:\n        print(pad + f\"fib({n}) remembered\")\n        return memo[n]\n    print(pad + f\"fib({n})\")\n    if n < 2:\n        result = n\n    else:\n        result = fib(n - 1, depth + 1) + fib(n - 2, depth + 1)\n    memo[n] = result\n    return result\n\nanswer = fib(4)\nprint(\"answer:\", answer)\nprint(\"memo:\", memo)\n",
+   "stdout": "fib(4)\n  fib(3)\n    fib(2)\n      fib(1)\n      fib(0)\n    fib(1) remembered\n  fib(2) remembered\nanswer: 3\nmemo: {1: 1, 0: 0, 2: 1, 3: 2, 4: 3}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_base.py": {
+   "src": "def stars(n):\n    if n == 0:\n        return \"\"\n    return \"*\" + stars(n - 1)\n\nprint(stars(3))\nprint(stars(5))\nprint(repr(stars(0)))\n",
+   "stdout": "***\n*****\n''\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_cache.py": {
+   "src": "from functools import cache\n\n@cache\ndef ways(steps):\n    if steps <= 1:\n        return 1\n    return ways(steps - 1) + ways(steps - 2)\n\nprint(ways(4))\nprint(ways(50))\nprint(ways.cache_info().misses)\n",
+   "stdout": "5\n20365011074\n51\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_timeit.py": {
+   "src": "import timeit\n\ndef make_line():\n    return \"-\".join([\"ha\"] * 100)\n\nseconds = timeit.timeit(make_line, number=1_000)\nprint(type(seconds).__name__)\nprint(seconds > 0)\n",
+   "stdout": "float\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "flatten_fixed.py": {
+   "src": "def flatten(items):\n    result = []\n    for item in items:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result\n\nprint(flatten([1, [2, 3], [4, [5]]]))\n",
+   "stdout": "[1, 2, 3, 4, 5]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "handshakes.py": {
+   "src": "for guests in range(1, 6):\n    shakes = 0\n    for a in range(guests):\n        for b in range(a + 1, guests):\n            shakes += 1\n    stickers = guests\n    print(guests, stickers, shakes)\n",
+   "stdout": "1 1 0\n2 2 1\n3 3 3\n4 4 6\n5 5 10\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "join_vs_plus.py": {
+   "src": "import timeit\n\npieces = [\"word\"] * 10_000\n\ndef with_plus():\n    text = \"\"\n    for piece in pieces:\n        text += piece + \" \"\n    return text\n\ndef with_join():\n    return \" \".join(pieces) + \" \"\n\nprint(with_plus() == with_join())\nprint(f\"+=   {timeit.timeit(with_plus, number=200):.4f} s\")\nprint(f\"join {timeit.timeit(with_join, number=200):.4f} s\")\n",
+   "stdout": "True\n+=   0.3098 s\njoin 0.0329 s\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "True\n+=   0.3342 s\njoin 0.0395 s\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "limit.py": {
+   "src": "import sys\n\nprint(\"limit:\", sys.getrecursionlimit())\n\ndepth = 0\n\ndef dive():\n    global depth\n    depth += 1\n    dive()\n\ntry:\n    dive()\nexcept RecursionError as error:\n    print(\"stopped after\", depth, \"dolls:\", error)\n",
+   "stdout": "limit: 1000\nstopped after 999 dolls: maximum recursion depth exceeded\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "list_sum.py": {
+   "src": "def add_all(numbers):\n    if not numbers:\n        return 0\n    first, rest = numbers[0], numbers[1:]\n    return first + add_all(rest)\n\nprint(add_all([3, 5, 2]))\nprint(add_all([]))\n",
+   "stdout": "10\n0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "membership.py": {
+   "src": "class Guest:\n    comparisons = 0\n\n    def __init__(self, name):\n        self.name = name\n\n    def __eq__(self, other):\n        Guest.comparisons += 1\n        return self.name == other.name\n\n    def __hash__(self):\n        return hash(self.name)\n\nparty = [Guest(f\"guest{k}\") for k in range(10_000)]\nvip = set(party)\nlate = Guest(\"guest9999\")\n\nGuest.comparisons = 0\nprint(late in party, Guest.comparisons, \"comparisons in the list\")\nGuest.comparisons = 0\nprint(late in vip, Guest.comparisons, \"comparison in the set\")\n",
+   "stdout": "True 10000 comparisons in the list\nTrue 1 comparison in the set\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "memory.py": {
+   "src": "import sys\nimport tracemalloc\n\nnumbers_list = [n * n for n in range(1_000_000)]\nnumbers_gen = (n * n for n in range(1_000_000))\nprint(\"list object:\", sys.getsizeof(numbers_list), \"bytes\")\nprint(\"generator:  \", sys.getsizeof(numbers_gen), \"bytes\")\nprint(sum(numbers_list) == sum(numbers_gen))\ndel numbers_list\n\ntracemalloc.start()\ntotal = sum([n * n for n in range(100_000)])\npeak_list = tracemalloc.get_traced_memory()[1]\ntracemalloc.reset_peak()\ntotal = sum(n * n for n in range(100_000))\npeak_gen = tracemalloc.get_traced_memory()[1]\ntracemalloc.stop()\nprint(\"peak with a list:\", peak_list > 1_000_000)\nprint(\"peak with a generator:\", peak_gen < 10_000)\n",
+   "stdout": "list object: 8448728 bytes\ngenerator:   216 bytes\nTrue\npeak with a list: True\npeak with a generator: True\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "list object: 8448728 bytes\ngenerator:   200 bytes\nTrue\npeak with a list: True\npeak with a generator: True\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "merge_sort.py": {
+   "src": "def merge(left, right):\n    result = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            result.append(left[i])\n            i += 1\n        else:\n            result.append(right[j])\n            j += 1\n    return result + left[i:] + right[j:]\n\ndef merge_sort(items, depth=0):\n    pad = \"  \" * depth\n    if len(items) <= 1:\n        print(pad + \"solid:\", items)\n        return items\n    middle = len(items) // 2\n    print(pad + \"split:\", items[:middle], items[middle:])\n    left = merge_sort(items[:middle], depth + 1)\n    right = merge_sort(items[middle:], depth + 1)\n    merged = merge(left, right)\n    print(pad + \"merge:\", merged)\n    return merged\n\nprint(merge_sort([5, 2, 8, 1]))\n",
+   "stdout": "split: [5, 2] [8, 1]\n  split: [5] [2]\n    solid: [5]\n    solid: [2]\n  merge: [2, 5]\n  split: [8] [1]\n    solid: [8]\n    solid: [1]\n  merge: [1, 8]\nmerge: [1, 2, 5, 8]\n[1, 2, 5, 8]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_frames.py": {
+   "src": "import inspect\n\ndef dive(n):\n    print(\"dive\", n, \"- frames on the stack:\", len(inspect.stack()))\n    if n > 0:\n        dive(n - 1)\n\ndive(3)\n",
+   "stdout": "dive 3 - frames on the stack: 2\ndive 2 - frames on the stack: 3\ndive 1 - frames on the stack: 4\ndive 0 - frames on the stack: 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_setlimit.py": {
+   "src": "import sys\n\ndef fact_rec(n):\n    if n <= 1:\n        return 1\n    return n * fact_rec(n - 1)\n\nsys.setrecursionlimit(3000)\nprint(\"new limit:\", sys.getrecursionlimit())\nprint(\"fact_rec(2000) has\", fact_rec(2000).bit_length(), \"binary digits\")\n",
+   "stdout": "new limit: 3000\nfact_rec(2000) has 19053 binary digits\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_tail.py": {
+   "src": "def count_up(n, total=0):\n    if n == 0:\n        return total\n    return count_up(n - 1, total + n)\n\nprint(count_up(100))\nprint(count_up(5000))\n",
+   "stdout": "5050\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/nb_tail.py\", line 7, in <module>\n    print(count_up(5000))\n          ~~~~~~~~^^^^^^\n  File \"/home/you/python-ch24/nb_tail.py\", line 4, in count_up\n    return count_up(n - 1, total + n)\n  File \"/home/you/python-ch24/nb_tail.py\", line 4, in count_up\n    return count_up(n - 1, total + n)\n  File \"/home/you/python-ch24/nb_tail.py\", line 4, in count_up\n    return count_up(n - 1, total + n)\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "nested_sum.py": {
+   "src": "def deep_sum(items):\n    total = 0\n    for item in items:\n        if isinstance(item, list):\n            total += deep_sum(item)\n        else:\n            total += item\n    return total\n\nbox = [1, [2, 3], [4, [5, [6]]]]\nprint(deep_sum(box))\n",
+   "stdout": "21\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "no_base.py": {
+   "src": "def total(n):\n    return n + total(n - 1)\n\nprint(total(4))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/no_base.py\", line 4, in <module>\n    print(total(4))\n          ~~~~~^^^\n  File \"/home/you/python-ch24/no_base.py\", line 2, in total\n    return n + total(n - 1)\n               ~~~~~^^^^^^^\n  File \"/home/you/python-ch24/no_base.py\", line 2, in total\n    return n + total(n - 1)\n               ~~~~~^^^^^^^\n  File \"/home/you/python-ch24/no_base.py\", line 2, in total\n    return n + total(n - 1)\n               ~~~~~^^^^^^^\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "no_return.py": {
+   "src": "def find_solid(n):\n    if n == 1:\n        return \"solid doll\"\n    find_solid(n - 1)\n\nprint(find_solid(1))\nprint(find_solid(3))\n",
+   "stdout": "solid doll\nNone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "no_return_math.py": {
+   "src": "def total(n):\n    if n == 0:\n        return 0\n    n + total(n - 1)\n\nprint(total(3))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/no_return_math.py\", line 6, in <module>\n    print(total(3))\n          ~~~~~^^^\n  File \"/home/you/python-ch24/no_return_math.py\", line 4, in total\n    n + total(n - 1)\n        ~~~~~^^^^^^^\n  File \"/home/you/python-ch24/no_return_math.py\", line 4, in total\n    n + total(n - 1)\n    ~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'int' and 'NoneType'\n",
+   "exit": 1
+  },
+  "noise.py": {
+   "src": "import timeit\n\ntimes = timeit.repeat(\"sorted(range(5_000, 0, -1))\", number=200, repeat=5)\nfor k, t in enumerate(times, start=1):\n    print(f\"try {k}: {t:.4f} s\")\nprint(f\"best: {min(times):.4f} s\")\n",
+   "stdout": "try 1: 0.0184 s\ntry 2: 0.0166 s\ntry 3: 0.0186 s\ntry 4: 0.0171 s\ntry 5: 0.0177 s\nbest: 0.0166 s\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "try 1: 0.0193 s\ntry 2: 0.0573 s\ntry 3: 0.1438 s\ntry 4: 0.0207 s\ntry 5: 0.0227 s\nbest: 0.0193 s\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "ops_count.py": {
+   "src": "class Guest:\n    comparisons = 0\n\n    def __init__(self, number):\n        self.number = number\n\n    def __eq__(self, other):\n        Guest.comparisons += 1\n        return self.number == other.number\n\n    def __hash__(self):\n        return hash(self.number)\n\ndef linear_steps(numbers, target):\n    steps = 0\n    for item in numbers:\n        steps += 1\n        if item == target:\n            break\n    return steps\n\ndef binary_steps(numbers, target):\n    steps, lo, hi = 0, 0, len(numbers) - 1\n    while lo <= hi:\n        steps += 1\n        mid = (lo + hi) // 2\n        if numbers[mid] == target:\n            break\n        if numbers[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return steps\n\ndef set_steps(n, target):\n    vip = {Guest(k) for k in range(n)}\n    Guest.comparisons = 0\n    Guest(target) in vip\n    return Guest.comparisons\n\nprint(\"guests linear binary set\")\nfor n in [1000, 2000, 4000, 8000]:\n    numbers = list(range(n))\n    last = n - 1\n    print(n, linear_steps(numbers, last), binary_steps(numbers, last), set_steps(n, last))\n",
+   "stdout": "guests linear binary set\n1000 1000 10 1\n2000 2000 11 1\n4000 4000 12 1\n8000 8000 13 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parsons_len.py": {
+   "src": "def length(items):\n    if items == []:\n        return 0\n    return 1 + length(items[1:])\n\nprint(length([\"a\", \"b\", \"c\"]))\nprint(length([]))\n",
+   "stdout": "3\n0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parsons_merge.py": {
+   "src": "def merge(left, right):\n    result = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            result.append(left[i])\n            i += 1\n        else:\n            result.append(right[j])\n            j += 1\n    return result + left[i:] + right[j:]\n\ndef merge_sort(items):\n    if len(items) <= 1:\n        return items\n    middle = len(items) // 2\n    return merge(merge_sort(items[:middle]), merge_sort(items[middle:]))\n\nprint(merge_sort([9, 4, 7, 1, 3]))\n",
+   "stdout": "[1, 3, 4, 7, 9]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_calls.py": {
+   "src": "from functools import cache\n\ncalls = 0\n\n@cache\ndef tri(n):\n    global calls\n    calls += 1\n    if n == 0:\n        return 0\n    return n + tri(n - 1)\n\nprint(tri(5), calls)\nprint(tri(7), calls)\nprint(tri(3), calls)\n",
+   "stdout": "15 6\n28 8\n6 8\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_compare.py": {
+   "src": "class Guest:\n    comparisons = 0\n\n    def __init__(self, name):\n        self.name = name\n\n    def __eq__(self, other):\n        Guest.comparisons += 1\n        return self.name == other.name\n\n    def __hash__(self):\n        return hash(self.name)\n\nnames = [\"ann\", \"bo\", \"ann\", \"cy\", \"bo\"]\n\nseen = []\nfor name in names:\n    guest = Guest(name)\n    if guest not in seen:\n        seen.append(guest)\nprint(len(seen), Guest.comparisons)\n\nGuest.comparisons = 0\nseen_set = set()\nfor name in names:\n    seen_set.add(Guest(name))\nprint(len(seen_set), Guest.comparisons)\n",
+   "stdout": "3 6\n3 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_depth.py": {
+   "src": "def depth(items):\n    deepest = 0\n    for item in items:\n        if isinstance(item, list):\n            deepest = max(deepest, depth(item))\n    return deepest + 1\n\nprint(depth([1, 2]))\nprint(depth([1, [2]]))\nprint(depth([[1, [2, [3]]], 4]))\n",
+   "stdout": "1\n2\n4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_error.py": {
+   "src": "def halvings(n):\n    if n == 1:\n        return 0\n    return 1 + halvings(n // 2)\n\nprint(halvings(8))\nprint(halvings(0))\n",
+   "stdout": "3\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/pred_error.py\", line 7, in <module>\n    print(halvings(0))\n          ~~~~~~~~^^^\n  File \"/home/you/python-ch24/pred_error.py\", line 4, in halvings\n    return 1 + halvings(n // 2)\n               ~~~~~~~~^^^^^^^^\n  File \"/home/you/python-ch24/pred_error.py\", line 4, in halvings\n    return 1 + halvings(n // 2)\n               ~~~~~~~~^^^^^^^^\n  File \"/home/you/python-ch24/pred_error.py\", line 4, in halvings\n    return 1 + halvings(n // 2)\n               ~~~~~~~~^^^^^^^^\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "pred_order.py": {
+   "src": "def doll(n):\n    if n == 0:\n        print(\"solid\")\n        return\n    print(\"open\", n)\n    doll(n - 1)\n    print(\"close\", n)\n\ndoll(2)\n",
+   "stdout": "open 2\nopen 1\nsolid\nclose 1\nclose 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_palindrome.py": {
+   "src": "def is_palindrome(word):\n    if len(word) <= 1:\n        return True\n    if word[0] != word[-1]:\n        return False\n    return is_palindrome(word[1:-1])\n\nfor word in [\"level\", \"robot\", \"noon\", \"a\"]:\n    print(word, is_palindrome(word))\n",
+   "stdout": "level True\nrobot False\nnoon True\na True\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_sum.py": {
+   "src": "def total(n):\n    if n == 0:\n        return 0\n    return n + total(n - 1)\n\nprint(total(4))\nprint(total(1))\n",
+   "stdout": "10\n1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "profile_slow.py": {
+   "src": "# Run by profile_slow.cmd: cProfile watches slow.py and counts every call.\nimport slow\n",
+   "stdout": "28656\n         92741 function calls (51 primitive calls) in 0.065 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.065    0.000    0.065    0.003 slow.py:1(fib)\n       23    0.000    0.000    0.065    0.003 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.065    0.065 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.065    0.065 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.065    0.065 slow.py:6(report)\n        1    0.000    0.000    0.065    0.065 slow.py:1(<module>)\n\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 -m cProfile -s ncalls slow.py",
+     "out": "28656\n         92741 function calls (51 primitive calls) in 0.065 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.065    0.000    0.065    0.003 slow.py:1(fib)\n       23    0.000    0.000    0.065    0.003 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.065    0.065 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.065    0.065 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.065    0.065 slow.py:6(report)\n        1    0.000    0.000    0.065    0.065 slow.py:1(<module>)\n\n\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "28656\n         92741 function calls (51 primitive calls) in 0.028 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.028    0.000    0.028    0.001 slow.py:1(fib)\n       23    0.000    0.000    0.028    0.001 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.028    0.028 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.028    0.028 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.028    0.028 slow.py:6(report)\n        1    0.000    0.000    0.028    0.028 slow.py:1(<module>)\n\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "python3 -m cProfile -s ncalls slow.py",
+      "out": "28656\n         92741 function calls (51 primitive calls) in 0.028 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.028    0.000    0.028    0.001 slow.py:1(fib)\n       23    0.000    0.000    0.028    0.001 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.028    0.028 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.028    0.028 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.028    0.028 slow.py:6(report)\n        1    0.000    0.000    0.028    0.028 slow.py:1(<module>)\n\n\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "slow.py": {
+   "src": "def fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\ndef report(n):\n    return sum(fib(k) for k in range(n))\n\nprint(report(22))\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "profile_warn.py": {
+   "src": "import profile\n\nprint(\"profile still works, for now\")\n",
+   "stdout": "profile still works, for now\n",
+   "stderr": "/home/you/python-ch24/profile_warn.py:1: DeprecationWarning: The profile module is deprecated and will be removed in Python 3.17. Use profiling.tracing (or cProfile) for tracing profilers instead.\n  import profile\n",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "profile still works, for now\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "queue_demo.py": {
+   "src": "from collections import deque\n\nline = deque([\"ann\", \"bo\", \"cy\"])\nline.append(\"dee\")\nprint(line.popleft(), \"is served\")\nprint(line.popleft(), \"is served\")\nprint(\"still waiting:\", list(line))\n",
+   "stdout": "ann is served\nbo is served\nstill waiting: ['cy', 'dee']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "queue_timing.py": {
+   "src": "import timeit\nfrom collections import deque\n\ndef serve_list():\n    line = list(range(50_000))\n    while line:\n        line.pop(0)\n\ndef serve_deque():\n    line = deque(range(50_000))\n    while line:\n        line.popleft()\n\nprint(f\"list.pop(0):     {timeit.timeit(serve_list, number=3):.3f} s\")\nprint(f\"deque.popleft(): {timeit.timeit(serve_deque, number=3):.3f} s\")\n",
+   "stdout": "list.pop(0):     0.718 s\ndeque.popleft(): 0.017 s\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "list.pop(0):     0.764 s\ndeque.popleft(): 0.010 s\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "reverse.py": {
+   "src": "def reverse(text):\n    if len(text) <= 1:\n        return text\n    return reverse(text[1:]) + text[0]\n\nprint(reverse(\"Pip\"))\nprint(reverse(\"stressed\"))\n",
+   "stdout": "piP\ndesserts\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "skip_base.py": {
+   "src": "def countdown_by_two(n):\n    if n == 0:\n        return \"liftoff\"\n    return countdown_by_two(n - 2)\n\nprint(countdown_by_two(4))\nprint(countdown_by_two(5))\n",
+   "stdout": "liftoff\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/skip_base.py\", line 7, in <module>\n    print(countdown_by_two(5))\n          ~~~~~~~~~~~~~~~~^^^\n  File \"/home/you/python-ch24/skip_base.py\", line 4, in countdown_by_two\n    return countdown_by_two(n - 2)\n  File \"/home/you/python-ch24/skip_base.py\", line 4, in countdown_by_two\n    return countdown_by_two(n - 2)\n  File \"/home/you/python-ch24/skip_base.py\", line 4, in countdown_by_two\n    return countdown_by_two(n - 2)\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1
+  },
+  "spot_binary.py": {
+   "src": "def search(items, target, lo, hi):\n    if lo > hi:\n        return -1\n    mid = (lo + hi) // 2\n    if items[mid] == target:\n        return mid\n    if items[mid] < target:\n        return search(items, target, mid + 1, hi)\n    return search(items, target, lo, mid - 1)\n\nshelf = [3, 8, 15, 21, 34, 42, 57, 63, 77, 90]\nlast = len(shelf)\nprint(search(shelf, 42, 0, last))\nprint(search(shelf, 99, 0, last))\n",
+   "stdout": "5\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/spot_binary.py\", line 14, in <module>\n    print(search(shelf, 99, 0, last))\n          ~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"/home/you/python-ch24/spot_binary.py\", line 8, in search\n    return search(items, target, mid + 1, hi)\n  File \"/home/you/python-ch24/spot_binary.py\", line 8, in search\n    return search(items, target, mid + 1, hi)\n  File \"/home/you/python-ch24/spot_binary.py\", line 8, in search\n    return search(items, target, mid + 1, hi)\n  File \"/home/you/python-ch24/spot_binary.py\", line 5, in search\n    if items[mid] == target:\n       ~~~~~^^^^^\nIndexError: list index out of range\n",
+   "exit": 1
+  },
+  "spot_nested.py": {
+   "src": "def deep_sum(items):\n    total = 0\n    for item in items:\n        if isinstance(item, list):\n            deep_sum(item)\n        else:\n            total += item\n    return total\n\nprint(deep_sum([1, [2, 3], [4, [5]]]))\n",
+   "stdout": "1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_return.py": {
+   "src": "def count_vowels(word):\n    if word == \"\":\n        return 0\n    rest = count_vowels(word[1:])\n    if word[0] in \"aeiou\":\n        return rest + 1\n    rest\n\nprint(count_vowels(\"banana\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch24/spot_return.py\", line 9, in <module>\n    print(count_vowels(\"banana\"))\n          ~~~~~~~~~~~~^^^^^^^^^^\n  File \"/home/you/python-ch24/spot_return.py\", line 4, in count_vowels\n    rest = count_vowels(word[1:])\n  File \"/home/you/python-ch24/spot_return.py\", line 4, in count_vowels\n    rest = count_vowels(word[1:])\n  File \"/home/you/python-ch24/spot_return.py\", line 4, in count_vowels\n    rest = count_vowels(word[1:])\n  File \"/home/you/python-ch24/spot_return.py\", line 6, in count_vowels\n    return rest + 1\n           ~~~~~^~~\nTypeError: unsupported operand type(s) for +: 'NoneType' and 'int'\n",
+   "exit": 1
+  },
+  "timeit_cli.py": {
+   "src": "# This file is run through timeit_cli.cmd: python3 -m timeit times a one-line snippet.\nguests = list(range(10_000))\nprint(9_999 in guests)\n",
+   "stdout": "2000 loops, best of 5: 76.4 usec per loop\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 -m timeit -s \"guests = list(range(10_000))\" \"9_999 in guests\"",
+     "out": "2000 loops, best of 5: 76.4 usec per loop\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "5000 loops, best of 5: 50.1 usec per loop\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "python3 -m timeit -s \"guests = list(range(10_000))\" \"9_999 in guests\"",
+      "out": "5000 loops, best of 5: 50.1 usec per loop\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "timeit_demo.py": {
+   "src": "import timeit\n\nsetup = \"guests = list(range(10_000)); vip = set(guests)\"\nin_list = timeit.timeit(\"9_999 in guests\", setup=setup, number=1_000)\nin_set = timeit.timeit(\"9_999 in vip\", setup=setup, number=1_000)\nprint(f\"list: {in_list:.5f} seconds for 1000 checks\")\nprint(f\"set:  {in_set:.5f} seconds for 1000 checks\")\nprint(f\"the set was about {in_list / in_set:.0f} times faster\")\n",
+   "stdout": "list: 0.10405 seconds for 1000 checks\nset:  0.00004 seconds for 1000 checks\nthe set was about 2540 times faster\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "list: 0.07395 seconds for 1000 checks\nset:  0.00004 seconds for 1000 checks\nthe set was about 1885 times faster\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "trace_bsearch.py": {
+   "src": "def search(items, target, lo, hi):\n    if lo > hi:\n        return -1\n    mid = (lo + hi) // 2\n    print(lo, hi, mid, items[mid])\n    if items[mid] == target:\n        return mid\n    if items[mid] < target:\n        return search(items, target, mid + 1, hi)\n    return search(items, target, lo, mid - 1)\n\nfives = list(range(0, 100, 5))\nsearch(fives, 10, 0, len(fives) - 1)\n",
+   "stdout": "0 19 9 45\n0 8 4 20\n0 3 1 5\n2 3 2 10\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_fib.py": {
+   "src": "count = 0\n\ndef fib(n, depth):\n    global count\n    count += 1\n    print(count, depth, n)\n    if n < 2:\n        return n\n    return fib(n - 1, depth + 1) + fib(n - 2, depth + 1)\n\nfib(4, 0)\n",
+   "stdout": "1 0 4\n2 1 3\n3 2 2\n4 3 1\n5 3 0\n6 2 1\n7 1 2\n8 2 1\n9 2 0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tracing_slow.py": {
+   "src": "# Run by tracing_slow.cmd: the same job with Python 3.15's new profiling.tracing.\nimport slow\n",
+   "stdout": "28656\n         92741 function calls (51 primitive calls) in 0.027 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.027    0.000    0.027    0.001 slow.py:1(fib)\n       23    0.000    0.000    0.027    0.001 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.027    0.027 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.027    0.027 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.027    0.027 slow.py:6(report)\n        1    0.000    0.000    0.027    0.027 slow.py:1(<module>)\n\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 -m profiling.tracing -s ncalls slow.py",
+     "out": "28656\n         92741 function calls (51 primitive calls) in 0.027 seconds\n\n   Ordered by: call count\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n 92712/22    0.027    0.000    0.027    0.001 slow.py:1(fib)\n       23    0.000    0.000    0.027    0.001 slow.py:7(<genexpr>)\n        1    0.000    0.000    0.027    0.027 {built-in method builtins.exec}\n        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}\n        1    0.000    0.000    0.027    0.027 {built-in method builtins.sum}\n        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}\n        1    0.000    0.000    0.027    0.027 slow.py:6(report)\n        1    0.000    0.000    0.027    0.027 slow.py:1(<module>)\n\n\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "/usr/local/bin/python3: Error while finding module specification for 'profiling.tracing' (ModuleNotFoundError: No module named 'profiling')\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "python3 -m profiling.tracing -s ncalls slow.py",
+      "out": "",
+      "err": "/usr/local/bin/python3: Error while finding module specification for 'profiling.tracing' (ModuleNotFoundError: No module named 'profiling')\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "tree_walk.py": {
+   "src": "folders = {\n    \"home\": {\n        \"photos\": {\"cat.jpg\": 120, \"dog.jpg\": 90},\n        \"notes.txt\": 4,\n        \"music\": {\"rock\": {\"song.mp3\": 300}},\n    }\n}\n\ndef show(tree, depth=0):\n    for name, value in tree.items():\n        if isinstance(value, dict):\n            print(\"  \" * depth + name + \"/\")\n            show(value, depth + 1)\n        else:\n            print(\"  \" * depth + f\"{name} ({value} KB)\")\n\ndef size(tree):\n    total = 0\n    for value in tree.values():\n        if isinstance(value, dict):\n            total += size(value)\n        else:\n            total += value\n    return total\n\nshow(folders)\nprint(\"total:\", size(folders), \"KB\")\n",
+   "stdout": "home/\n  photos/\n    cat.jpg (120 KB)\n    dog.jpg (90 KB)\n  notes.txt (4 KB)\n  music/\n    rock/\n      song.mp3 (300 KB)\ntotal: 514 KB\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

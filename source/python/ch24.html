@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="en" data-book="python">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dolls and Stopwatches</title>
+<meta name="description" content="Chapter 24 of Pip & Python, a comic course: recursion as nesting dolls (base case and recursive case, the call stack frame by frame, prints before and after the call, a call tree for fib(4), recursion on strings, lists, nested data and trees, recursion versus loops, RecursionError and the 1000 limit, the missing return, memoization with functools.cache, binary search and merge sort), then performance with a stopwatch: measure first with timeit, profile with cProfile and 3.15's profiling package, Big-O as a growing party queue, list versus set membership, join, deque, generators for memory, and when to reach for NumPy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/py-ch24.css">
+<script defer src="../data/py-ch24.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/py-ch24.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Python book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch23.html">&larr; Ch 23</a><span aria-current="page">Ch 24 of 27</span><a href="ch25.html">Ch 25 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 24</p>
+    <h1 id="cover-h">DOLLS AND STOPWATCHES</h1>
+    <div class="ch24-cover">
+      <svg class="char d1" data-char="doll" data-state="open" data-tone="0"></svg>
+      <svg class="char d2" data-char="doll" data-state="open" data-tone="1"></svg>
+      <svg class="char d3" data-char="doll" data-state="open" data-tone="2"></svg>
+      <svg class="char d4" data-char="doll" data-state="solid" data-tone="3"></svg>
+      <svg class="char sw" data-char="stopwatch" data-label="0.03 s"></svg>
+    </div>
+    <p class="sr-only">Picture: four nesting dolls in a row, from big to small. The three bigger ones are open, their tops lifted. The smallest one is solid and has a star above it. Beside them, a smiling stopwatch whose display reads 0.03 s.</p>
+    <p class="caption blurb">A function that calls itself sounds like a magic trick. It's really a set of nesting dolls: open each one until you reach the solid one in the middle, then close them back up. Then Pip picks up a stopwatch and learns why some programs crawl while others fly. About 90 minutes, with 29 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter"><ol>
+    <li><a href="#part-1">The nesting dolls: a function that calls itself</a></li>
+    <li><a href="#part-2">Down and back up: tracing the calls</a></li>
+    <li><a href="#part-3">Dolls of every shape: strings, lists, nested data, trees</a></li>
+    <li><a href="#part-4">When the dolls never end: recursion errors</a></li>
+    <li><a href="#part-5">Remember and divide: memoization, binary search, merge sort</a></li>
+    <li><a href="#part-6">The stopwatch: measure first</a></li>
+    <li><a href="#part-7">How the party queue grows: Big-O and faster choices</a></li>
+    <li><a href="#boss">Boss level and recap</a></li>
+  </ol></nav>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- ===================================================== PART 1 ===================================================== -->
+  <h2 class="part-h" id="part-1">Part 1 · The nesting dolls<small>a function that calls itself, a base case, and the frames in between</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Pip opens a nesting doll">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">The Professor puts a round wooden doll on Pip's desk. "There's a note for you inside," she says. Pip opens it. Inside is a smaller doll. And inside that one…</p>
+    <div class="ch24-row" aria-hidden="true">
+      <svg class="char" data-char="doll" data-state="open" data-tone="0"></svg>
+      <svg class="char sm2" data-char="doll" data-state="shut" data-tone="1"></svg>
+    </div>
+    <p class="sr-only">Picture: a big red nesting doll with its top lifted off, and a smaller blue doll, still shut, waiting inside it.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Another doll! How do I even describe what I'm doing? "Open the doll. If there's a doll inside, <em>do the same thing</em> to that one."</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>You just described <b>recursion</b>: solving a problem by doing the same job on a smaller piece of it. In code, it's a function that <b>calls itself</b>. That's a <b>recursive function</b>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: what you already know">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Recursion needs no new syntax at all. It's built from three things you already have. If one feels shaky, its chapter has the full story.</p>
+    <ol class="checklist">
+      <li><span><b>Every call gets its own frame</b> (Chapter 6). A frame is the little workspace a call gets for its parameters and local names. When the call returns, the frame is thrown away.</span></li>
+      <li><span><b>A traceback lists the frames</b> (Chapter 9), outermost first. Read it from the bottom: the last line names the error, the line above says where.</span></li>
+      <li><span><b><code>@cache</code> remembers answers</b> (Chapter 18). You'll see why it matters so much here.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>So when a function calls itself, Python just opens <b>another frame</b> for the same function? Each with its own copy of the names?</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: open on the way down, close on the way up">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Exactly. Here's the whole idea in one picture. Every recursive call is a doll you <b>open</b>. You keep opening until you reach the <b>solid</b> doll, the one that doesn't open. Then you <b>close</b> them back up, from the inside out, and each one carries its answer outward.</p>
+    <div class="ch24-row">
+      <figure><svg class="char" data-char="doll" data-state="open" data-tone="0"></svg><figcaption>1. open… waiting</figcaption></figure>
+      <span class="ch24-arrow" aria-hidden="true">→</span>
+      <figure><svg class="char sm2" data-char="doll" data-state="open" data-tone="1"></svg><figcaption>2. open… waiting</figcaption></figure>
+      <span class="ch24-arrow" aria-hidden="true">→</span>
+      <figure><svg class="char xs" data-char="doll" data-state="solid" data-tone="2"></svg><figcaption>3. solid! answer known</figcaption></figure>
+    </div>
+    <p class="caption">Then back out: doll 3 hands its answer to doll 2, doll 2 finishes and hands its answer to doll 1, and doll 1 gives the final answer.</p>
+    <p class="sr-only">Picture: three dolls getting smaller from left to right, with arrows between them. The first two are open and labelled "open, waiting". The third, smallest, is solid with a star and labelled "solid, answer known".</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>The solid doll is called the <b>base case</b>: the small problem you can answer straight away, without calling again. Every other doll is the <b>recursive case</b>: it calls the function on something smaller.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: a first recursive function, countdown">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">A first recursive function. To count down from 3: say 3, then count down from 2. To count down from 0: just shout "Liftoff!".</p>
+    <div class="ch24-stack">
+      <span class="file-tab">countdown.py</span><pre class="code" data-src="countdown.py"></pre>
+      <pre class="term" data-run="countdown.py" data-type></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Lines 2 to 4: the base case.</b> When <code>n</code> is 0 there's nothing smaller to do. Print, then <code>return</code> to stop.</span></li>
+      <li><span><b>Lines 5 and 6: the recursive case.</b> Do one small piece of work (print <code>n</code>), then hand the rest of the job to a call with a <b>smaller</b> number.</span></li>
+      <li><span><b>Line 8</b> starts it all with 3. That call makes a call with 2, which makes one with 1, which makes one with 0.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 5: the two parts every recursive function needs">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">Every recursive function you'll ever write has these two parts. Learn to spot them first, every time.</p>
+    <div class="ch24-anatomy">
+      <div>
+        <h3>Base case</h3>
+        <svg class="char" data-char="doll" data-state="solid" data-tone="3"></svg>
+        <p>A small input you can answer <b>directly</b>. No calls. Usually an <code>if</code> near the top with a <code>return</code>.</p>
+        <p><code>if n == 0:</code> … <code>return</code></p>
+      </div>
+      <div class="dashed">
+        <h3>Recursive case</h3>
+        <svg class="char" data-char="doll" data-state="open" data-tone="1"></svg>
+        <p>Does a little work, then calls the <b>same function</b> on a <b>smaller</b> input, one step closer to the base case.</p>
+        <p><code>countdown(n - 1)</code></p>
+      </div>
+    </div>
+    <p class="sr-only">Two cards. Base case, with a solid doll: a small input answered directly, usually an if with a return. Recursive case, with an open doll: does a little work, then calls the same function on a smaller input.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My rule: <b>EVERY DOLL SET HAS A SOLID ONE IN THE MIDDLE.</b> And every call must get <b>closer</b> to it. Smaller number, shorter string, shorter list.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e1m" id="e1"></div>
+  <script type="application/json" id="e1m">{"program": "fill_base.py", "prompt": "<code>stars(n)</code> builds a string of <code>n</code> stars. Fill in the base case (when there are no stars left to make) and the recursive call.", "blanks": [{"line": 2, "text": "n == 0", "accept": ["n==0", "n <= 0", "n<=0", "not n"]}, {"line": 3, "text": "return \"\"", "accept": ["return ''"]}, {"line": 4, "text": "stars(n - 1)", "accept": ["stars(n-1)"]}], "explain": "Zero stars is the solid doll: the answer is the empty string <code>\"\"</code>, with no calls. Any other <code>n</code> makes one star and asks <code>stars(n - 1)</code> for the rest. 3 stars = <code>\"*\"</code> + 2 stars = <code>\"*\"</code> + <code>\"*\"</code> + 1 star, and so on down to 0."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: a recursive function that returns a value, factorial">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Countdown only printed. Most recursive functions <b>return</b> an answer, and that's where the "close the dolls back up" part really matters. The classic is <b>factorial</b>: 4 factorial means 4 × 3 × 2 × 1. Notice that 4 factorial is just 4 × (3 factorial).</p>
+    <div class="ch24-stack">
+      <span class="file-tab">fact.py</span><pre class="code" data-src="fact.py"></pre>
+      <pre class="term" data-run="fact.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Line 4 can't multiply until <code>fact(n - 1)</code> gives it a number. So <code>fact(4)</code> has to <b>wait</b> in the middle of line 4? Show me the dolls!</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: the nesting-doll stepper for fact(4)" data-dolls="dolls-fact" id="dolls-fact-box">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">This version of <code>fact</code> prints what each doll is doing. The extra <code>depth</code> parameter only counts how deep we are, so each line can be indented two spaces per level. Step through: open on the way down, close on the way up.</p>
+    <span class="file-tab">fact_dolls.py</span><pre class="code" data-src="fact_dolls.py"></pre>
+    <div class="ch24-dollwrap">
+      <div class="dl-row" aria-hidden="true" data-reserve data-now></div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>What happens</th><th>Dolls</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="dolls-fact">{"program": "fact_dolls.py", "steps": [{"dolls": [{"label": "fact(4)", "state": "shut"}, {"label": "fact(3)", "state": "shut"}, {"label": "fact(2)", "state": "shut"}, {"label": "fact(1)", "state": "shut"}], "output": [], "note": "Four dolls, all shut. Line 12, <code>print(fact(4))</code>, needs an answer from the biggest doll before it can print anything."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "shut"}, {"label": "fact(2)", "state": "shut"}, {"label": "fact(1)", "state": "shut"}], "output": ["open fact(4)"], "note": "<code>fact(4)</code> opens and prints <samp>open fact(4)</samp>. 4 isn't 1, so it can't answer yet: line 7 asks <code>fact(3)</code> and <b>waits</b> for the reply."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "open"}, {"label": "fact(2)", "state": "shut"}, {"label": "fact(1)", "state": "shut"}], "output": ["open fact(4)", "  open fact(3)"], "note": "<code>fact(3)</code> opens, one level deeper (two spaces of indentation). Not 1 either, so it asks <code>fact(2)</code> and waits."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "open"}, {"label": "fact(2)", "state": "open"}, {"label": "fact(1)", "state": "shut"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)"], "note": "<code>fact(2)</code> opens and asks <code>fact(1)</code>. Three dolls are now open, all waiting on line 7."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "open"}, {"label": "fact(2)", "state": "open"}, {"label": "fact(1)", "state": "solid"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)"], "note": "<code>fact(1)</code> opens… and <code>n == 1</code>: this is the <b>solid doll</b>, the base case. No more calls."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "open"}, {"label": "fact(2)", "state": "open"}, {"label": "fact(1)", "state": "solid", "ret": "1"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)", "      solid doll: return 1"], "note": "The base case returns 1 straight away. Now the trip back up begins."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "open"}, {"label": "fact(2)", "state": "done", "ret": "2"}, {"label": "fact(1)", "state": "solid", "ret": "1"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)", "      solid doll: return 1", "    close fact(2): 2 * 1 = 2"], "note": "Back in <code>fact(2)</code>, line 7 finally gets its reply: <code>smaller</code> is 1. It works out 2 × 1 = 2, prints, and closes, handing back 2."}, {"dolls": [{"label": "fact(4)", "state": "open"}, {"label": "fact(3)", "state": "done", "ret": "6"}, {"label": "fact(2)", "state": "done", "ret": "2"}, {"label": "fact(1)", "state": "solid", "ret": "1"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)", "      solid doll: return 1", "    close fact(2): 2 * 1 = 2", "  close fact(3): 3 * 2 = 6"], "note": "<code>fact(3)</code> gets 2 from the doll inside it: 3 × 2 = 6. Closed, handing back 6."}, {"dolls": [{"label": "fact(4)", "state": "done", "ret": "24"}, {"label": "fact(3)", "state": "done", "ret": "6"}, {"label": "fact(2)", "state": "done", "ret": "2"}, {"label": "fact(1)", "state": "solid", "ret": "1"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)", "      solid doll: return 1", "    close fact(2): 2 * 1 = 2", "  close fact(3): 3 * 2 = 6", "close fact(4): 4 * 6 = 24"], "note": "<code>fact(4)</code> gets 6: 4 × 6 = 24. The biggest doll closes, last of all."}, {"dolls": [{"label": "fact(4)", "state": "done", "ret": "24"}, {"label": "fact(3)", "state": "done", "ret": "6"}, {"label": "fact(2)", "state": "done", "ret": "2"}, {"label": "fact(1)", "state": "solid", "ret": "1"}], "output": ["open fact(4)", "  open fact(3)", "    open fact(2)", "      open fact(1)", "      solid doll: return 1", "    close fact(2): 2 * 1 = 2", "  close fact(3): 3 * 2 = 6", "close fact(4): 4 * 6 = 24", "24"], "note": "The answer reaches line 12 and <code>print</code> shows <samp>24</samp>. Opened in the order 4, 3, 2, 1; closed in the order 1, 2, 3, 4."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="e2m" id="e2"></div>
+  <script type="application/json" id="e2m">{"program": "pred_sum.py", "hint": "Open the dolls: <code>total(4)</code> is 4 + <code>total(3)</code>, which is 3 + <code>total(2)</code>… down to the solid doll <code>total(0)</code>. Then add on the way back up.", "explain": "<code>total(4)</code> = 4 + 3 + 2 + 1 + 0 = 10: the 0 comes from the base case, and each doll adds its own <code>n</code> as it closes. <code>total(1)</code> = 1 + <code>total(0)</code> = 1 + 0 = 1."}</script>
+
+  <section class="panel clean tracer" aria-label="Panel 8: the frames of fact(4) growing and shrinking" data-tracer="tr-fact" id="tr-fact-box">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">The same run as Python sees it: <b>frames</b>, the Chapter 6 workspaces. Each call of <code>fact</code> gets its own frame with its <b>own</b> <code>n</code>. They pile up like a stack of plates, and that pile is called the <b>call stack</b>. Watch it grow to four frames, then shrink as each one hands back its <b>return value</b>.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-fact-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-fact">{"program": "fact.py", "steps": [{"line": 1, "note": "Nothing exists yet. Line 1 starts defining <code>fact</code>.", "output": [], "frames": [{"name": "global", "vars": []}], "objects": {}, "changed": []}, {"line": 6, "note": "<code>def</code> builds a function object and tags it <code>fact</code>. Its body hasn't run.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}}, "changed": ["fact"]}, {"line": 2, "note": "<code>print</code> needs <code>fact(4)</code>. A fresh frame opens with its own <code>n</code>, 4.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}}, "changed": ["n"]}, {"line": 4, "note": "<code>4 == 1</code> is False, so line 3 is skipped. Line 4 can't multiply until it has <code>fact(3)</code>, so this frame <b>pauses</b> halfway through line 4.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}}, "changed": []}, {"line": 2, "note": "A second frame for the same function, with a <b>different</b> <code>n</code>: 3. The first frame is still there, waiting.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}}, "changed": ["n"]}, {"line": 2, "note": "3 isn't 1 either, so <code>fact(3)</code> pauses at line 4 too, and a third frame opens with <code>n</code> = 2.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}, {"name": "fact(2)", "vars": [{"n": "n", "ref": "a2"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a2": {"kind": "int", "value": "2"}}, "changed": ["n"]}, {"line": 2, "note": "And a fourth, <code>n</code> = 1. Four frames of <code>fact</code> exist at once: that pile is the <b>call stack</b>.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}, {"name": "fact(2)", "vars": [{"n": "n", "ref": "a2"}]}, {"name": "fact(1)", "vars": [{"n": "n", "ref": "a1"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a2": {"kind": "int", "value": "2"}, "a1": {"kind": "int", "value": "1"}}, "changed": ["n"]}, {"line": 3, "note": "<code>1 == 1</code> is True: the base case. Line 3 runs, and no new frame is needed.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}, {"name": "fact(2)", "vars": [{"n": "n", "ref": "a2"}]}, {"name": "fact(1)", "vars": [{"n": "n", "ref": "a1"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a2": {"kind": "int", "value": "2"}, "a1": {"kind": "int", "value": "1"}}, "changed": []}, {"line": 4, "note": "<code>fact(1)</code>'s <b>return value</b> is 1. Its frame is about to close, and the answer goes back to the frame that's waiting: <code>fact(2)</code>, in the middle of line 4.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}, {"name": "fact(2)", "vars": [{"n": "n", "ref": "a2"}]}, {"name": "fact(1)", "vars": [{"n": "n", "ref": "a1"}, {"n": "return value", "ref": "a1"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a2": {"kind": "int", "value": "2"}, "a1": {"kind": "int", "value": "1"}}, "changed": ["return value"]}, {"line": 4, "note": "<code>fact(1)</code>'s frame is gone. <code>fact(2)</code> finishes line 4: 2 × 1 = 2, so its return value is 2. (Python reuses one object for small numbers, so the arrow joins the box that <code>n</code> already uses.)", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}]}, {"name": "fact(2)", "vars": [{"n": "n", "ref": "a2"}, {"n": "return value", "ref": "a2"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a2": {"kind": "int", "value": "2"}}, "changed": ["return value"]}, {"line": 4, "note": "<code>fact(2)</code>'s frame is gone. <code>fact(3)</code> finishes line 4: 3 × 2 = 6.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}]}, {"name": "fact(3)", "vars": [{"n": "n", "ref": "a3"}, {"n": "return value", "ref": "a6"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a3": {"kind": "int", "value": "3"}, "a6": {"kind": "int", "value": "6"}}, "changed": ["return value"]}, {"line": 6, "note": "<code>fact(3)</code>'s frame is gone. <code>fact(4)</code> finishes line 4: 4 × 6 = 24. The answer is on its way back to line 6.", "output": [], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}, {"name": "fact(4)", "vars": [{"n": "n", "ref": "a4"}, {"n": "return value", "ref": "a24"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}, "a4": {"kind": "int", "value": "4"}, "a24": {"kind": "int", "value": "24"}}, "changed": ["return value"]}, {"line": null, "note": "Every <code>fact</code> frame has closed, newest first. Only the global frame is left, and <code>print</code> shows <samp>24</samp>.", "output": ["24"], "frames": [{"name": "global", "vars": [{"n": "fact", "ref": "F1"}]}], "objects": {"F1": {"kind": "function", "value": "fact(n)"}}, "changed": []}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="e3m" id="e3"></div>
+  <script type="application/json" id="e3m">{"q": "In <code>print(fact(4))</code>, at the moment the base case <code>return 1</code> runs, how many <code>fact</code> frames are open at the same time?", "keepOrder": true, "options": [
+    {"t": "1", "why": "Only if each call finished before the next one started. But <code>fact(4)</code> is still waiting in the middle of line 4 when <code>fact(3)</code> starts."},
+    {"t": "3", "why": "Close, but count <code>fact(1)</code> too: it's the frame running the base case."},
+    {"t": "4", "why": "Right: <code>fact(4)</code>, <code>fact(3)</code> and <code>fact(2)</code> are all waiting at line 4, and <code>fact(1)</code> is running line 3. Four frames, each with its own <code>n</code>.", "correct": true},
+    {"t": "24", "why": "24 is the final answer, not the number of frames. There is one frame per call."}]}</script>
+
+  <section class="panel clean machine" aria-label="Panel 9: the fact() machine and its jam" data-machine="m-fact">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Here's <code>fact</code> as a machine. Feed it a number. Try them all, including the last one. (Each example is a line from a real run; the jam comes from its own run.)</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-fact">{"label": "fact()", "program": "fact_machine.py", "examples": [
+      {"in": "1", "out": "1", "outKind": "int", "note": "The solid doll straight away: <code>1 == 1</code>, so it returns 1 with no further calls."},
+      {"in": "3", "out": "6", "outKind": "int", "note": "3 × <code>fact(2)</code> = 3 × 2 × <code>fact(1)</code> = 3 × 2 × 1 = 6. Three calls."},
+      {"in": "5", "out": "120", "outKind": "int", "note": "5 × 4 × 3 × 2 × 1 = 120, using five calls."},
+      {"in": "10", "out": "3628800", "outKind": "int", "note": "Ten calls deep. Factorials grow fast: 10 factorial is already over three million."},
+      {"in": "0", "error": "RecursionError: maximum recursion depth exceeded", "program": "fact_zero.py", "note": "Jam! <code>0 == 1</code> is False, so it calls <code>fact(-1)</code>, then <code>fact(-2)</code>… The numbers move <b>away</b> from 1, so the solid doll is never reached. Python stops after about a thousand frames (Part 4)."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: a base case that catches every small input">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Mathematicians define 0 factorial as 1. One character fixes the machine: <code>n &lt;= 1</code> instead of <code>n == 1</code>, so the base case catches 0 too.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">fact_fixed.py</span><pre class="code" data-src="fact_fixed.py"></pre>
+      <pre class="term" data-run="fact_fixed.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Ask yourself: <b>which inputs could reach this function?</b> Then check that every one of them walks downhill into the base case. A base case written as <code>&lt;=</code> instead of <code>==</code> is a cheap safety net.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <!-- ===================================================== PART 2 ===================================================== -->
+  <h2 class="part-h" id="part-2">Part 2 · Down and back up<small>prints before and after the call, and the call tree of fib(4)</small></h2>
+
+  <section class="panel pop" aria-label="Panel 11: a print before the call versus a print after it">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Two functions, almost twins. The only difference: is the <code>print</code> <b>before</b> the recursive call, or <b>after</b> it?</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>Before the call<small>echo_down.py</small></h3>
+        <pre class="code" data-src="echo_down.py"></pre>
+        <pre class="term" data-run="echo_down.py"></pre>
+        <p>Each doll prints as it <b>opens</b>, on the way down: 3, 2, 1.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>After the call<small>echo_up.py</small></h3>
+        <pre class="code" data-src="echo_up.py"></pre>
+        <pre class="term" data-run="echo_up.py"></pre>
+        <p>Each doll waits for the dolls inside it, and prints as it <b>closes</b>, on the way up: 1, 2, 3.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Same numbers, opposite order! <b>WORK BEFORE THE CALL HAPPENS ON THE WAY DOWN. WORK AFTER IT HAPPENS ON THE WAY UP.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e4m" id="e4"></div>
+  <script type="application/json" id="e4m">{"program": "pred_order.py", "hint": "This doll prints <b>both</b> before and after its call. Open all the dolls first (the before-prints), reach the solid one, then close them in reverse.", "explain": "<code>doll(2)</code> prints <samp>open 2</samp> and calls <code>doll(1)</code>, which prints <samp>open 1</samp> and calls <code>doll(0)</code>: the base case prints <samp>solid</samp>. Now the dolls close from the inside out: <code>doll(1)</code> finishes with <samp>close 1</samp>, then <code>doll(2)</code> with <samp>close 2</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: a function that calls itself twice, fib">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">So far each doll had <b>one</b> doll inside. Now a function that calls itself <b>twice</b>. The <b>Fibonacci numbers</b> start 0, 1, and each next one is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8… So <code>fib(n)</code> is <code>fib(n - 1) + fib(n - 2)</code>, and the base cases are <code>fib(0)</code> = 0 and <code>fib(1)</code> = 1.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">fib_calls.py</span><pre class="code" data-src="fib_calls.py"></pre>
+      <pre class="term" data-run="fib_calls.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Each line of output is one call, indented by how deep it is. Line 9 asks for <code>fib(n - 1)</code> <b>first</b>, and only when that whole branch is finished does it ask for <code>fib(n - 2)</code>. Nine calls to work out the number 3! Let's draw them as a tree.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: the call tree of fib(4)" data-calltree="ct-plain" id="ct-plain-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The <b>call tree</b>: every box is one call, and the lines join each call to the calls it made. This tree is built straight from the real output above. Step through it in the order Python really runs it: down the left branch first.</p>
+    <div class="ct-split">
+      <div class="ct-stage"><svg class="ct-svg" role="img" aria-label="Call tree of fib(4); the text version below lists every call in order."></svg></div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <ul class="ct-key" aria-label="Key">
+      <li><span class="k now">fib(n)</span> the call running now (thick border)</li>
+      <li><span class="k again">fib(n)</span> <span><b>again</b>: a question already answered (dashed)</span></li>
+      <li><span class="k later">fib(n)</span> not called yet (thin dotted border)</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next call <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every call</summary><table class="transcript"><thead><tr><th>Step</th><th>What happens</th><th>Last screen line</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="ct-plain">{"program": "fib_calls.py", "mode": "plain"}</script>
+  </section>
+
+  <div data-ex="trace" data-model="e5m" id="e5"></div>
+  <script type="application/json" id="e5m">{"program": "trace_fib.py", "columns": ["call", "depth", "n"], "given": [0, 1], "prompt": "Each call prints its number, its depth and its <code>n</code>. The call numbers and depths are filled in. Which <code>n</code> does each call get? (Remember: <code>n - 1</code> first, and its whole branch, before <code>n - 2</code>.)", "explain": "Down the left edge: 4, 3, 2, 1 (depths 0 to 3). Then <code>fib(2)</code>'s second half, 0. Back up to <code>fib(3)</code>'s second half: 1, at depth 2. Then <code>fib(4)</code>'s second half: a whole new <code>fib(2)</code> at depth 1, with its own 1 and 0. The same tree as Panel 13."}</script>
+
+  <div data-ex="parsons" data-model="e6m" id="e6"></div>
+  <script type="application/json" id="e6m">{"program": "parsons_len.py", "seed": 4, "prompt": "Build a recursive <code>length()</code> that counts the items in a list without using <code>len()</code>.", "explain": "The empty list is the solid doll: 0 items. Any other list is 1 (its first item) plus the length of the rest, <code>items[1:]</code>, which is one item shorter, so each call gets closer to the empty list."}</script>
+
+  <!-- ===================================================== PART 3 ===================================================== -->
+  <h2 class="part-h" id="part-3">Part 3 · Dolls of every shape<small>recursion on strings, lists, nested data and trees, and when a loop is better</small></h2>
+
+  <section class="panel clean" aria-label="Panel 14: recursion on a string, reverse">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Numbers aren't the only thing that can get smaller. A string gets smaller when you slice off its first letter (Chapter 7's slices). To reverse a word: reverse <b>the rest</b>, then stick the first letter on the end.</p>
+    <div class="ch24-row" aria-hidden="true">
+      <svg class="char wide" data-char="train" data-text="Pip"></svg>
+    </div>
+    <p class="sr-only">Picture: the string train with three carriages, P, i, p.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">reverse.py</span><pre class="code" data-src="reverse.py"></pre>
+      <pre class="term" data-run="reverse.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span><code>reverse("Pip")</code> = <code>reverse("ip")</code> + <code>"P"</code> = (<code>reverse("p")</code> + <code>"i"</code>) + <code>"P"</code>. And a one-letter word is its own reverse: that's the solid doll. <code>&lt;= 1</code> catches the empty string too.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e7m" id="e7"></div>
+  <script type="application/json" id="e7m">{"program": "pred_palindrome.py", "hint": "A <b>palindrome</b> reads the same backwards. This function compares the first and last letters, then checks the middle, <code>word[1:-1]</code>, which is two letters shorter. It has <b>two</b> base cases.", "explain": "<samp>level</samp>: l = l, then <samp>eve</samp>: e = e, then <samp>v</samp>, one letter: True. <samp>robot</samp>: r ≠ t, so False at once, without looking further. <samp>noon</samp>: n = n, then <samp>oo</samp>, then the empty string: True. <samp>a</samp> is one letter: True."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: recursion on a list, first plus rest">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">A list works the same way. Split it into its <b>first</b> item and <b>the rest</b> (the list minus its first item). The sum of a list is the first item plus the sum of the rest. The empty list adds up to 0.</p>
+    <div class="ch24-row" aria-hidden="true">
+      <svg class="char wide" data-char="crate" data-items="3,5,2"></svg>
+    </div>
+    <p class="sr-only">Picture: the list crate with three boxes holding 3, 5 and 2.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">list_sum.py</span><pre class="code" data-src="list_sum.py"></pre>
+      <pre class="term" data-run="list_sum.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span><code>not numbers</code> is True for an empty list (Chapter 4's truthiness). In real code you'd just call <code>sum()</code>, of course. This shape, <b>first + rest</b>, is the point: it works for any job on a list.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: recursion on nested lists">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Now the real reason recursion exists. Chapter 12's boxes inside boxes: a list whose items may themselves be lists, nested to <b>any</b> depth. A loop alone can't handle it, because you don't know how many loops to write. Recursion can: "if this item is a box, add up <b>that</b> box the same way."</p>
+    <div class="ch24-stack">
+      <span class="file-tab">nested_sum.py</span><pre class="code" data-src="nested_sum.py"></pre>
+      <pre class="term" data-run="nested_sum.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Line 4</b> asks Chapter 3's question (what kind of thing is this item?) with Chapter 19's <code>isinstance</code>: <code>isinstance(item, list)</code> is True for a box.</span></li>
+      <li><span><b>Line 5</b> opens that box with a recursive call, and <b>adds its answer</b> to the total.</span></li>
+      <li><span><b>Line 7</b> is the base case, hidden in the <code>else</code>: a plain number is just added. There's no explicit <code>if ... return</code> at the top here: a list with no boxes inside makes no recursive calls.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="e9m" id="e9"></div>
+  <script type="application/json" id="e9m">{"program": "pred_depth.py", "hint": "<code>depth()</code> counts how many levels of boxes there are. A flat list has depth 1. Each box adds one level to the deepest box inside it.", "explain": "<code>[1, 2]</code> has no inner boxes: 0 + 1 = 1. <code>[1, [2]]</code>: the inner <code>[2]</code> has depth 1, so 1 + 1 = 2. For <code>[[1, [2, [3]]], 4]</code>: <code>[3]</code> is 1, <code>[2, [3]]</code> is 2, <code>[1, [2, [3]]]</code> is 3, and the whole list is 4."}</script>
+
+  <section class="panel sketch" aria-label="Panel 17: a folder tree, walked recursively">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption soft">The same shape is everywhere: folders inside folders, a family tree, the menus in an app, a web page's tags. Computer people call it a <b>tree</b> (drawn upside down: the <b>root</b> at the top, the <b>leaves</b> at the ends). Here's a folder tree stored as dicts inside dicts.</p>
+    <div class="ch24-tree" role="img" aria-label="Folder tree: home contains the folder photos, with cat.jpg and dog.jpg; the file notes.txt; and the folder music, which contains the folder rock, with song.mp3.">
+      <ul><li><span class="f">home/</span>
+        <ul>
+          <li><span class="f">photos/</span><ul><li><span class="l">cat.jpg</span></li><li><span class="l">dog.jpg</span></li></ul></li>
+          <li><span class="l">notes.txt</span></li>
+          <li><span class="f">music/</span><ul><li><span class="f">rock/</span><ul><li><span class="l">song.mp3</span></li></ul></li></ul></li>
+        </ul></li></ul>
+    </div>
+    <p class="caption">Folders are dashed boxes (they contain more); files are solid boxes (leaves: the base case). <code>show()</code> prints the tree with its indentation, and <code>size()</code> adds up every file, however deep:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">tree_walk.py</span><pre class="code" data-src="tree_walk.py"></pre>
+      <pre class="term" data-run="tree_walk.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span><code>show</code> prints the folder's name <b>before</b> its call, so a folder appears above its contents. That's Panel 11's rule at work! <b>WHEN THE DATA NESTS, THE CODE RECURSES.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: recursion versus a loop">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Anything a loop can do, recursion can do, and the other way round. So which one? For a <b>straight line</b> of steps, like factorial, a loop is usually simpler, and it has no depth limit:</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>Loop and recursion agree<small>fact_loop.py</small></h3>
+        <pre class="code" data-src="fact_loop.py"></pre>
+        <pre class="term" data-run="fact_loop.py"></pre>
+        <p>The loop handles 1000 happily: a thousand steps is nothing for a loop.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>Recursion runs out of dolls<small>deep_rec.py</small></h3>
+        <pre class="code" data-src="deep_rec.py"></pre>
+        <pre class="term" data-run="deep_rec.py" data-exit></pre>
+        <p>900 calls deep works; 1000 is too deep. Part 4 explains.</p>
+      </div>
+    </div>
+    <div class="ch24-tablewrap"><table class="ch24-table">
+      <thead><tr><th>Reach for a loop when…</th><th>Reach for recursion when…</th></tr></thead>
+      <tbody>
+        <tr><td>the steps form a straight line (count, add up, repeat)</td><td>the data nests: trees, folders, nested lists, JSON</td></tr>
+        <tr><td>the input could be long (thousands of steps)</td><td>the problem splits into smaller copies of itself (Part 5)</td></tr>
+        <tr><td>you want the plainest code for the next reader</td><td>the recursive version reads like the definition</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div data-ex="choice" data-model="e10m" id="e10"></div>
+  <script type="application/json" id="e10m">{"q": "You need to add up the 50,000 prices in a <b>flat</b> list. Which approach fits best?", "options": [
+    {"t": "A <code>for</code> loop (or simply <code>sum(prices)</code>)", "why": "Yes. A flat list is a straight line of steps. A loop has no depth limit and is the plainest code.", "correct": true},
+    {"t": "A recursive <b>first + rest</b> function, like Panel 15", "why": "It would need about 50,000 nested calls. Python stops at about 1000 frames, so it would crash with RecursionError."},
+    {"t": "Recursion, but raise the limit to 100,000 first", "why": "Raising the limit far up can crash Python itself (the notebook explains). There's no reason to: the data doesn't nest."},
+    {"t": "It doesn't matter: both work the same for any size", "why": "They give the same answer for small lists, but only the loop survives 50,000 items."}]}</script>
+
+  <!-- ===================================================== PART 4 ===================================================== -->
+  <h2 class="part-h" id="part-4">Part 4 · When the dolls never end<small>RecursionError, the 1000-frame limit, and the missing return</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 19: no base case gives a RecursionError">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="DOLLS!" data-seed="19"></svg>
+    <p class="caption">Pip forgets the solid doll. <code>total(n)</code> always calls <code>total(n - 1)</code>, and nothing ever stops it: 4, 3, 2, 1, 0, −1, −2…</p>
+    <div class="ch24-stack">
+      <span class="file-tab">no_base.py</span><pre class="code" data-src="no_base.py"></pre>
+      <pre class="term" data-run="no_base.py" data-exit></pre>
+    </div>
+    <p class="caption soft">Read it like a detective, bottom line first:</p>
+    <ol class="readlist">
+      <li><span><code>RecursionError: maximum recursion depth exceeded</code><br>Too many frames piled up. Python has a safety limit, and this run hit it.</span></li>
+      <li><span><code>[Previous line repeated 996 more times]</code><br>Instead of printing the same two lines a thousand times, Python squashes them into one line with a count. The same line, over and over, is the fingerprint of runaway recursion.</span></li>
+      <li><span><code>line 2, in total</code><br>The call that keeps happening. That's where a base case is missing, or never reached.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Dolls all the way down, forever. A doll set with no solid doll isn't a puzzle, it's a trap. The exact count ("996") can differ between Python versions and programs, so don't learn it by heart.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: the recursion limit is 1000">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Why does Python stop at all? Every frame takes memory, and an endless pile would eventually crash the whole program. So Python counts the frames, and gives up at the <b>recursion limit</b>. You can ask for it, and catch the error like any other (Chapter 9):</p>
+    <div class="ch24-stack">
+      <span class="file-tab">limit.py</span><pre class="code" data-src="limit.py"></pre>
+      <pre class="term wrap" data-run="limit.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>The limit counts <b>every</b> frame, including the main program's, which is why <code>dive</code> got one less than the limit. <code>sys.setrecursionlimit()</code> can raise it, but that's rarely the right fix. If your data is so deep that a thousand frames isn't enough, use a loop. The notebook has the details.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 21: a base case that is jumped over">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">A sneakier version: the base case <b>exists</b>, but the calls jump right over it. Counting down by two from 5 goes 5, 3, 1, −1… and never lands on 0.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">skip_base.py</span><pre class="code" data-src="skip_base.py"></pre>
+      <pre class="term" data-run="skip_base.py" data-exit></pre>
+    </div>
+    <div class="ch24-row" aria-hidden="true"><svg class="char sm2" data-char="sneak"></svg></div>
+    <p class="sr-only">Picture: Sneak, the logic-bug critter from Chapter 9, tiptoeing past.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>4 worked, so I'd never have noticed! The fix is Panel 10's trick: <code>if n &lt;= 0:</code>. A <b>wall</b> you can't step over, not a single spot you might miss.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e11m" id="e11"></div>
+  <script type="application/json" id="e11m">{"program": "pred_error.py", "expect": "error", "hint": "<code>halvings(8)</code>: 8, 4, 2, 1. Now try the same with 0. What is <code>0 // 2</code>?", "explain": "<code>halvings(8)</code> halves 8 → 4 → 2 → 1 in three calls, so it prints 3. But <code>0 // 2</code> is 0 again: the input never gets smaller, never reaches 1, and the frames pile up until Python raises <b>RecursionError</b>."}</script>
+
+  <section class="panel pop alarm" data-play aria-label="Panel 22: forgetting to return the recursive call">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The most common recursion bug of all, and it makes no error at first. Pip calls the smaller doll but forgets to <b>hand its answer back</b>:</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>The ghost comes back<small>no_return.py</small></h3>
+        <pre class="code" data-src="no_return.py"></pre>
+        <pre class="term" data-run="no_return.py"></pre>
+        <div class="pic"><svg class="char" data-char="ghost"></svg></div>
+        <p><code>find_solid(1)</code> works. But <code>find_solid(3)</code> calls <code>find_solid(2)</code>, ignores the answer, and falls off the end of the function, which returns <code>None</code> (Chapter 6).</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>…and Jigsaw jams<small>no_return_math.py</small></h3>
+        <pre class="code" data-src="no_return_math.py"></pre>
+        <pre class="term" data-run="no_return_math.py" data-exit></pre>
+        <div class="pic"><svg class="char" data-char="jigsaw"></svg></div>
+        <p>Line 4 works out <code>n + total(n - 1)</code>, then throws it away. One doll up, the next one tries <code>2 + None</code>, and Jigsaw, the TypeError, refuses.</p>
+      </div>
+    </div>
+    <p class="sr-only">Pictures: the ghost, which means None, and Jigsaw, the TypeError critter whose pieces don't fit.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The recursive call is a question. If you don't <code>return</code> the answer, it's lost. <b>ASK THE SMALLER DOLL, THEN PASS ITS ANSWER ON.</b> When a recursive function says <code>None</code> or <code>'NoneType'</code>, look for a missing <code>return</code> first.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e12m" id="e12"></div>
+  <script type="application/json" id="e12m">{"program": "spot_return.py", "bug": 7, "prompt": "\"banana\" has three vowels, but the program crashes. The traceback points at line 6. Is that the line to fix? Click the line with the real bug.", "explain": "Line 7 works out <code>rest</code> and does nothing with it, so for a consonant the function returns <code>None</code>. The next doll up then tries <code>None + 1</code> on line 6, and that's where the crash is reported. The error appears one doll <b>above</b> the bug. Fix line 7: <code>return rest</code>."}</script>
+
+  <div data-ex="spot" data-model="e8m" id="e8"></div>
+  <script type="application/json" id="e8m">{"program": "spot_nested.py", "bug": 5, "prompt": "The numbers add up to 15, but the program prints 1, and there's no error. Click the line with the bug.", "explain": "Line 5 calls <code>deep_sum(item)</code> and the inner box is added up correctly… then the answer is <b>thrown away</b>. A recursive call is an ordinary function call: you must use what it returns. Fix: <code>total += deep_sum(item)</code>."}</script>
+
+  <!-- ===================================================== PART 5 ===================================================== -->
+  <h2 class="part-h" id="part-5">Part 5 · Remember and divide<small>memoization, functools.cache, binary search and merge sort</small></h2>
+
+  <section class="panel pop" aria-label="Panel 23: fib gets slow, fast">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Panel 13's tree asked for <code>fib(2)</code> twice and <code>fib(1)</code> three times. For <code>fib(4)</code>, who cares? But the tree <b>doubles</b>, roughly, every time <code>n</code> goes up. Pip counts the calls:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">fib_count.py</span><pre class="code" data-src="fib_count.py"></pre>
+      <pre class="term" data-run="fib_count.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Nearly a quarter of a million calls for <code>fib(25)</code>! And almost all of them answer questions that were already answered. If only the dolls could <b>remember</b>…</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: the call tree with a memo" data-calltree="ct-memo" id="ct-memo-box">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">They can. Keep a dict, the <b>memo</b>, of answers already worked out. Before doing any work, look in the memo; after working something out, write it down. Remembering answers like this is called <b>memoization</b> (from "memo", a note to yourself).</p>
+    <span class="file-tab">fib_memo_calls.py</span><pre class="code" data-src="fib_memo_calls.py"></pre>
+    <div class="ct-split">
+      <div class="ct-stage"><svg class="ct-svg" role="img" aria-label="Call tree of fib(4) with a memo; the text version below lists every call in order."></svg></div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <ul class="ct-key" aria-label="Key">
+      <li><span class="k now">fib(n)</span> the call running now (thick border)</li>
+      <li><span class="k memo">fib(n)</span> <span><b>memo</b>: answered from the dict, no calls (double border, round)</span></li>
+      <li><span class="k later">fib(n)</span> not called yet (thin dotted border)</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next call <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every call</summary><table class="transcript"><thead><tr><th>Step</th><th>What happens</th><th>Last screen line</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="ct-memo">{"program": "fib_memo_calls.py", "mode": "memo"}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: functools.cache does the memo for you">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Writing the memo by hand is a good way to understand it. Chapter 18's <code>@cache</code> decorator does exactly the same job for you, with no extra code in the function:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">fib_cache.py</span><pre class="code" data-src="fib_cache.py"></pre>
+      <pre class="term wrap" data-run="fib_cache.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>misses=26</code><br>The body really ran 26 times, once for each <code>n</code> from 0 to 25. Compare that with Panel 23's quarter of a million.</span></li>
+      <li><span><code>hits=23</code><br>23 times, an answer came straight from the cache.</span></li>
+      <li><span><b>The last line</b> is <code>fib(100)</code>, a 21-digit number. Without the cache, that call tree would be far too big to ever finish.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span><b>DON'T OPEN THE SAME DOLL TWICE: WRITE THE ANSWER DOWN.</b> Same rule as Chapter 18: only cache <b>pure</b> functions, whose answer depends only on their arguments.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e13m" id="e13"></div>
+  <script type="application/json" id="e13m">{"program": "fill_cache.py", "prompt": "<code>ways(steps)</code> counts the ways to climb a staircase taking 1 or 2 steps at a time. It has the same tree shape as <code>fib</code>, so <code>ways(50)</code> would take ages. Add the cache, and fill in the base case.", "blanks": [{"line": 1, "text": "cache"}, {"line": 3, "text": "@cache"}, {"line": 5, "text": "steps <= 1", "accept": ["steps<=1", "steps < 2", "steps<2"]}], "explain": "Import <code>cache</code> from <code>functools</code> and put <code>@cache</code> right above the <code>def</code>. With 0 or 1 steps there's exactly one way to climb (do nothing, or one step). Every <code>steps</code> from 0 to 50 is worked out once: 51 misses."}</script>
+
+  <div data-ex="predict" data-model="e14m" id="e14"></div>
+  <script type="application/json" id="e14m">{"program": "pred_calls.py", "hint": "<code>calls</code> only goes up when the body of <code>tri</code> really runs, which is only for an <code>n</code> the cache hasn't seen yet. <code>tri(5)</code> needs <code>tri(4)</code>… down to <code>tri(0)</code>.", "explain": "<code>tri(5)</code> runs the body for 5, 4, 3, 2, 1 and 0: six calls, answer 15. <code>tri(7)</code> only needs new bodies for 7 and 6; <code>tri(5)</code> comes from the cache. 8 calls, answer 28. <code>tri(3)</code> is already cached: answer 6, and still 8 calls."}</script>
+
+  <section class="panel pop alarm" data-play aria-label="Panel 26: cache needs hashable arguments">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">One catch. The cache is a dict behind the scenes, and its keys are the arguments. Dict keys must be <b>hashable</b>, things that can't change (Chapter 8). A tuple is fine; a list isn't:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">cache_list.py</span><pre class="code" data-src="cache_list.py"></pre>
+      <pre class="term" data-run="cache_list.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="jigsaw"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Jigsaw says: </span>A list can't be a key, so I can't file it in the cache. Pass a <code>tuple</code> instead, for example <code>total(tuple(my_list))</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: divide and conquer, binary search">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Recursion has a second superpower: <b>divide and conquer</b>. Split the problem into halves, solve a half (or both) the same way, combine. The famous one is <b>binary search</b>: finding a name in a <b>sorted</b> guest book. Open it in the middle. Too early in the alphabet? Throw away the front half. Too late? The back half. Each look halves what's left.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">binary_search.py</span><pre class="code" data-src="binary_search.py"></pre>
+      <pre class="term" data-run="binary_search.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>lo</code> and <code>hi</code> are the first and last positions still in play. <code>mid</code> is halfway between (<code>//</code> rounds down).</span></li>
+      <li><span><b>Two base cases:</b> found it (line 6), or <code>lo &gt; hi</code>, nothing left to search (line 2): return −1 for "not here".</span></li>
+      <li><span>Each search on this ten-number shelf took at most four looks. A million sorted items would take at most twenty.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>It only works because the list is <b>sorted</b>. On a jumbled list, throwing half away could throw away the answer.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="e15m" id="e15"></div>
+  <script type="application/json" id="e15m">{"program": "trace_bsearch.py", "columns": ["lo", "hi", "mid", "items[mid]"], "given": [0], "prompt": "The list is 0, 5, 10, … 95 (20 numbers, positions 0 to 19). We look for 10. Each call prints <code>lo hi mid items[mid]</code>. Fill in each row.", "explain": "Start 0 to 19: mid 9 holds 45, too big, so hi becomes 8. 0 to 8: mid 4 holds 20, too big, hi = 3. 0 to 3: mid 1 holds 5, too small, lo = 2. 2 to 3: mid 2 holds 10. Found in four looks."}</script>
+
+  <section class="panel pop" aria-label="Panel 28: Tumble and the off-by-one">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Binary search is famous for one more thing: it's easy to get <b>one off</b> at the edges. Should <code>hi</code> start at the last position, or one past it? Tumble, the IndexError critter from Chapter 9, loves this mistake.</p>
+    <div class="ch24-row" aria-hidden="true"><svg class="char" data-char="tumble"></svg></div>
+    <p class="sr-only">Picture: Tumble, the IndexError critter, toppling off the end of a row of boxes.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The next program finds 42 just fine. It only falls over when it searches for something bigger than everything on the shelf. Find the bug before Tumble does!</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e16m" id="e16"></div>
+  <script type="application/json" id="e16m">{"program": "spot_binary.py", "bug": 12, "prompt": "Searching for 99 crashes with an IndexError. Click the line that causes it.", "explain": "The shelf has 10 numbers at positions 0 to 9, but line 12 makes <code>last</code> 10. Looking for 99, the search keeps moving right until <code>lo</code> and <code>hi</code> are both 10, and <code>items[10]</code> doesn't exist. The traceback points at line 5, where Tumble fell, but the bad value was made on line 12: <code>last = len(shelf) - 1</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: merge sort, split then merge">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Divide and conquer can <b>sort</b>, too. <b>Merge sort</b>: split the list in half, sort each half (the same way!), then <b>merge</b> the two sorted halves by repeatedly taking the smaller front card. A list of 0 or 1 items is already sorted: the solid doll.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">merge_sort.py</span><pre class="code" data-src="merge_sort.py"></pre>
+      <pre class="term" data-run="merge_sort.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>The indentation shows the dolls: splits on the way down, merges on the way up. <code>merge</code> itself is an ordinary loop with two fingers, <code>i</code> and <code>j</code>, one in each half. Python's own <code>sorted()</code> is a much smarter relative of merge sort (the notebook says more), so in real code, just call <code>sorted()</code>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="e17m" id="e17"></div>
+  <script type="application/json" id="e17m">{"program": "parsons_merge.py", "seed": 7, "pin": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "prompt": "The <code>merge</code> helper is pinned in place. Put the lines of <code>merge_sort</code> and the final <code>print</code> in order.", "explain": "First the base case (a list of 0 or 1 items is returned as it is), then find the middle, then merge the two halves, each sorted by a recursive call. The <code>print</code> comes last, outside the function."}</script>
+
+  <!-- ===================================================== PART 6 ===================================================== -->
+  <h2 class="part-h" id="part-6">Part 6 · The stopwatch<small>measure first: timeit, noise, and profilers</small></h2>
+
+  <section class="panel pop" aria-label="Panel 30: Pip's party app is slow">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Pip's party app checks every arriving guest against the guest list. With 20 guests it was instant. With 10,000 it crawls. Pip is ready to rewrite everything.</p>
+    <div class="ch24-row" aria-hidden="true"><svg class="char" data-char="stopwatch" data-label="tick..."></svg></div>
+    <p class="sr-only">Picture: the stopwatch character, its display reading "tick...".</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="worried" data-mouth="shout" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>I'll make everything faster! The printing, the loops, the names, all of it!</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Stop. Programmers are famously bad at guessing which part is slow. Usually one small spot takes almost all the time. <b>MEASURE FIRST, THEN FIX.</b> Fix the slow spot, measure again, and leave the rest alone.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: timeit times a small piece of code">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The stopwatch for small pieces of code is the <code>timeit</code> module. You give it a snippet, some <b>setup</b> to run first, and a <code>number</code> of repeats; it returns the total time in seconds, as a float. Here it races "is 9,999 on the guest list?" in a list and in a set:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">timeit_demo.py</span><pre class="code" data-src="timeit_demo.py"></pre>
+      <p class="ch24-once">One possible run: times change on every run and every computer.</p>
+      <pre class="term" data-run="timeit_demo.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>In this run the set won by a mile, for the same question! Your numbers will be different, but the set wins on any computer. Part 7 explains why.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: one run is noise">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Why does <code>timeit</code> repeat the code so many times? Because a computer is busy with other things: other programs, the operating system, warming up. One measurement is <b>noise</b>. Here the same sort is timed five times:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">noise.py</span><pre class="code" data-src="noise.py"></pre>
+      <p class="ch24-once">One possible run.</p>
+      <pre class="term" data-run="noise.py"></pre>
+    </div>
+    <p class="caption">The <b>best</b> (smallest) time is the most honest: it's the run with the fewest interruptions. <code>timeit</code> also works straight from the terminal, picking a good number of loops by itself:</p>
+    <div class="ch24-stack">
+      <p class="ch24-once">One possible run.</p>
+      <pre class="term wrap" data-run="timeit_cli.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span><samp>usec</samp> means microseconds, millionths of a second. Never trust one run, and never compare times taken on two different computers. That's why this book never asks you to predict a time.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e18m" id="e18"></div>
+  <script type="application/json" id="e18m">{"program": "fill_timeit.py", "prompt": "Time <code>make_line</code> by calling it 1000 times. The program then checks what kind of thing came back (the time itself changes every run, so it isn't printed).", "blanks": [{"line": 1, "text": "timeit"}, {"line": 6, "text": "number"}], "explain": "<code>import timeit</code> brings in the module. <code>timeit.timeit(make_line, number=1_000)</code> calls the function 1000 times and returns the <b>total</b> seconds as a float. You can pass a function itself (no brackets) or a string of code."}</script>
+
+  <section class="panel clean" aria-label="Panel 33: cProfile finds the slow spot">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption"><code>timeit</code> times one small piece. When a whole program is slow and you don't know <b>where</b>, use a <b>profiler</b>: it watches the program run and reports how many times each function was called and how long it took. Python ships <code>cProfile</code>. Here's a small "report" program that sums Fibonacci numbers, run under it:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">slow.py</span><pre class="code" data-src="slow.py"></pre>
+      <p class="ch24-once">One possible run: the call counts are the same every time; the times are not.</p>
+      <pre class="term" data-run="profile_slow.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>ncalls</code><br>How many times each function was called. In this run the <code>fib</code> row reads <code>92712/22</code>: 92,712 calls in total, but only 22 came from outside <code>fib</code>; the rest were <code>fib</code> calling itself. The slash is a recursion fingerprint. (Call counts come out the same on every run; only the times change.)</span></li>
+      <li><span><code>tottime</code> and <code>cumtime</code><br>Time spent in the function's own code, and time including everything it called.</span></li>
+      <li><span><code>-s ncalls</code><br>Sorts the table by call count. <code>-s tottime</code> sorts by time instead.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The culprit is obvious: <code>fib</code>, called tens of thousands of times. And I know the fix from Part 5: <code>@cache</code>. Measure, fix the one slow spot, measure again.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: Python 3.15's profiling package">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Python 3.15 tidies the profilers into one package called <code>profiling</code>. <code>profiling.tracing</code> is the new name for the tracing profiler <code>cProfile</code> (a <b>tracing</b> profiler records every single call), so the table looks the same:</p>
+    <div class="ch24-stack">
+      <p class="ch24-ver">CPython 3.15.2 · one possible run</p>
+      <pre class="term wrap" data-run="tracing_slow.py"></pre>
+      <p class="ch24-ver">The same command on CPython 3.13.18</p>
+      <pre class="term wrap" data-run="tracing_slow.py" data-alt data-exit></pre>
+    </div>
+    <p class="caption">There's also <code>profiling.sampling</code>, nicknamed <b>Tachyon</b>. A <b>sampling</b> profiler doesn't record every call. It peeks at the program thousands of times a second and counts what it sees, which makes it almost free to run, even on a live server. You start it with <code>python -m profiling.sampling run script.py</code>. It needs permission to look inside another process, which the sandbox used to capture this book doesn't give, so there's no run of it here.</p>
+    <p class="caption">And the old pure-Python <code>profile</code> module is now <b>deprecated</b> (on its way out): importing it prints a warning in 3.15, and it's due to be removed in 3.17.</p>
+    <div class="ch24-stack">
+      <span class="file-tab">profile_warn.py</span><pre class="code" data-src="profile_warn.py"></pre>
+      <p class="ch24-ver">CPython 3.15.2</p>
+      <pre class="term wrap" data-run="profile_warn.py"></pre>
+      <p class="ch24-ver">CPython 3.13.18: no warning yet</p>
+      <pre class="term wrap" data-run="profile_warn.py" data-alt></pre>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e19m" id="e19"></div>
+  <script type="application/json" id="e19m">{"q": "Your report program takes 40 seconds and you have no idea which part is slow. What should you do <b>first</b>?", "options": [
+    {"t": "Run it under a profiler, such as <code>python3 -m cProfile -s tottime report.py</code>", "why": "Yes. The profiler tells you which functions take the time, so you fix the right spot.", "correct": true},
+    {"t": "Rewrite every loop as a list comprehension", "why": "That's guessing. Most of those loops probably aren't the slow part, and you'd risk new bugs for no gain."},
+    {"t": "Time the whole program once with a stopwatch, then change things until it's faster", "why": "One run is noise, and the total time doesn't tell you <b>where</b> the time goes."},
+    {"t": "Use <code>timeit</code> on the first function in the file", "why": "<code>timeit</code> is great once you know which small piece to compare. First find the slow spot."}]}</script>
+
+  <!-- ===================================================== PART 7 ===================================================== -->
+  <h2 class="part-h" id="part-7">Part 7 · How the party queue grows<small>Big-O, list versus set, join, deque and memory</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 35: four ways a party queue can grow">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">Times change from computer to computer. What doesn't change is <b>how the work grows</b> when the input grows. Picture a party: when twice as many guests arrive, what happens to the host's work? Computer scientists write the answer in <b>Big-O</b> notation, where <i>n</i> is the number of guests.</p>
+    <div class="duo ch24-queue">
+      <div class="duo-card"><h3>Constant<small>O(1)</small></h3><p class="tag">same work, any size</p><p>Ringing the doorbell. One ring whether 10 or 10,000 guests are coming. Looking something up in a <b>set</b> or <b>dict</b> is like this.</p></div>
+      <div class="duo-card"><h3>Logarithmic<small>O(log n)</small></h3><p class="tag">double the guests: one more step</p><p>Finding a name in the sorted guest book by halving (binary search). A thousand names take about 10 looks, a million about 20.</p></div>
+      <div class="duo-card dashed"><h3>Linear<small>O(n)</small></h3><p class="tag">double the guests: double the work</p><p>Greeting every guest once. Checking <code>x in a_list</code> walks the list like this, guest by guest.</p></div>
+      <div class="duo-card dashed"><h3>Quadratic<small>O(n²)</small></h3><p class="tag">double the guests: four times the work</p><p>Everyone shakes hands with everyone. A loop inside a loop over the same guests. Fine for 10, painful for 10,000.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>So Big-O isn't seconds. It's the <b>shape</b> of the growth. <b>DOUBLE THE GUESTS, THEN ASK: HOW MUCH MORE WORK?</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="e20m" id="e20"></div>
+  <script type="application/json" id="e20m">{"program": "handshakes.py", "columns": ["guests", "stickers", "handshakes"], "given": [0, 1], "prompt": "Each guest gets one sticker (linear). Every pair of guests shakes hands once (the loop inside a loop). Count the handshakes for 1 to 5 guests.", "explain": "1 guest: nobody to shake hands with. 2 guests: 1. 3 guests: 3 (AB, AC, BC). 4 guests: 6. 5 guests: 10. Stickers grow by one each time; handshakes grow faster and faster. That's the quadratic shape."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: counting steps instead of seconds" data-opschart="oc-search" id="oc-search-box">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">To see the shapes without any stopwatch noise, count <b>steps</b> instead of seconds. This program searches for the <b>last</b> guest, the worst case, three ways, and counts how many guests each way looks at. For the set, it counts how many times Python compared two guests, using Chapter 20's <code>__eq__</code> socket.</p>
+    <details><summary>See the counting program, ops_count.py</summary><pre class="code" data-src="ops_count.py"></pre></details>
+    <pre class="term" data-run="ops_count.py"></pre>
+    <div class="oc-wrap">
+      <p class="oc-title">Steps to find the last guest</p>
+      <ul class="oc-legend" aria-label="Legend"></ul>
+      <svg class="oc-svg" role="img" aria-label="Line chart of the step counts in the table below: linear search climbs steeply, binary search and set lookup stay near zero."></svg>
+      <div class="oc-tablewrap"><table class="oc-table"><caption class="sr-only">Steps to find the last guest</caption></table></div>
+      <span class="parity"></span>
+    </div>
+    <script type="application/json" id="oc-search">{"program": "ops_count.py", "series": [{"col": "linear", "name": "linear search in a list", "label": "linear"}, {"col": "binary", "name": "binary search in a sorted list", "label": "binary"}, {"col": "set", "name": "lookup in a set", "label": "set"}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Linear search doubles every time the guests double. Binary search adds just one step. And the set? One comparison, at every size. The bottom two lines are so flat they hug the floor.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 37: x in a list versus x in a set">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Here's why. <code>x in a_list</code> has to compare <code>x</code> with the items one by one. A set (like a dict's keys, Chapter 8) works out <b>where</b> <code>x</code> would be stored from its <b>hash</b> and looks only there. Same counting trick, 10,000 guests:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">membership.py</span><pre class="code" data-src="membership.py"></pre>
+      <pre class="term" data-run="membership.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>One <code>in</code> on a list is fine. The trap is <code>x in big_list</code> <b>inside a loop</b>: a loop of <i>n</i> times a search of <i>n</i> is quadratic. No error, no warning. Just slow. That was Pip's party app: turn the guest list into a set once, and the crawl becomes a sprint.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e21m" id="e21"></div>
+  <script type="application/json" id="e21m">{"program": "pred_compare.py", "hint": "In the list version, <code>guest not in seen</code> compares with the guests already in <code>seen</code>, one by one, and stops at the first match. In the set version, two guests are only compared when their hashes are equal, which here means same name.", "explain": "List: ann (empty list, 0), bo (vs ann: 1), ann (matches the first: 1), cy (vs ann and bo: 2), bo (ann, then bo matches: 2). 3 guests kept, 6 comparisons. Set: only the two repeats, ann and bo, need one comparison each: 2. On 5 names that's small; on 50,000 the list version does over a billion comparisons."}</script>
+
+  <div data-ex="choice" data-model="e22m" id="e22"></div>
+  <script type="application/json" id="e22m">{"q": "A program checks 100,000 incoming email addresses against a list of 50,000 banned addresses, using <code>if address in banned:</code>. It's very slow. What's the best fix?", "options": [
+    {"t": "Make it once with <code>banned = set(banned)</code> before the loop", "why": "Yes. Each <code>in</code> becomes a hash lookup, so the whole job goes from quadratic (about 100,000 × 50,000 comparisons in the worst case) to linear.", "correct": true},
+    {"t": "Sort the banned list before each check", "why": "Sorting 50,000 items, 100,000 times, is much slower still. (Sorting once and binary-searching would help, but a set is simpler and faster.)"},
+    {"t": "Use a <code>while</code> loop instead of <code>in</code>", "why": "A hand-written loop does the same one-by-one search as <code>in</code>, only slower."},
+    {"t": "Add <code>@cache</code> to the function that checks", "why": "The cache helps only when the same address is checked again. Every new address still walks the whole list."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 38: building strings with join, and queues with deque">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Two more everyday shapes. <b>Building a long string</b> with <code>text += piece</code> in a loop can make Python copy the growing string again and again. <code>"".join(pieces)</code> works out the total size once and copies each piece once:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">join_vs_plus.py</span><pre class="code" data-src="join_vs_plus.py"></pre>
+      <p class="ch24-once">One possible run.</p>
+      <pre class="term" data-run="join_vs_plus.py"></pre>
+    </div>
+    <p class="caption"><b>A queue</b> serves people from the front. <code>list.pop(0)</code> removes the front item, then shuffles every other item one place forward: linear, every time. Chapter 23's <code>deque</code> ("deck", a double-ended queue) removes from either end in constant time:</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>A queue that's fair<small>queue_demo.py</small></h3>
+        <pre class="code" data-src="queue_demo.py"></pre>
+        <pre class="term" data-run="queue_demo.py"></pre>
+      </div>
+      <div class="duo-card dashed">
+        <h3>Serving 50,000 guests, 3 times<small>queue_timing.py</small></h3>
+        <pre class="code" data-src="queue_timing.py"></pre>
+        <p class="ch24-once">One possible run.</p>
+        <pre class="term" data-run="queue_timing.py"></pre>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Same answers; in these runs, very different times. CPython sometimes manages to make <code>+=</code> fast, but not always and not in every Python, so <code>join</code> is the habit to keep.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: generators save memory">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Speed isn't the only cost: there's <b>memory</b>, too. Chapter 16's generators make one item at a time instead of storing them all. <code>sys.getsizeof()</code> gives an object's own size in bytes, and the <code>tracemalloc</code> module measures the <b>peak</b> memory a piece of code used:</p>
+    <div class="ch24-stack">
+      <span class="file-tab">memory.py</span><pre class="code" data-src="memory.py"></pre>
+      <pre class="term" data-run="memory.py"></pre>
+      <p class="ch24-ver">The same file on CPython 3.13.18: a generator object is a little smaller there</p>
+      <pre class="term" data-run="memory.py" data-alt></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>A million squares in a list: megabytes. The generator: a couple of hundred bytes, whatever the length, because it only remembers where it is. Byte counts vary between Python versions and computers, which is why the last two lines only ask yes-or-no questions.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: the cost of common operations, and a performance checklist">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">A cheat sheet of what common operations cost in CPython, with <i>n</i> items. "Average" means: almost always, unless something unusual happens with the hashes.</p>
+    <table class="ref-table">
+      <thead><tr><th>Operation</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><code>a_list[i]</code>, <code>a_list.append(x)</code>, <code>a_list.pop()</code></td><td>O(1): constant</td></tr>
+        <tr><td><code>x in a_set</code>, <code>a_dict[key]</code>, <code>key in a_dict</code></td><td>O(1) on average</td></tr>
+        <tr><td><code>x in a_list</code>, <code>a_list.index(x)</code>, <code>a_list.pop(0)</code>, <code>a_list.insert(0, x)</code></td><td>O(n): linear</td></tr>
+        <tr><td><code>a_deque.popleft()</code>, <code>a_deque.appendleft(x)</code></td><td>O(1): constant</td></tr>
+        <tr><td>binary search in a sorted list (the <code>bisect</code> module, Chapter 23)</td><td>O(log n)</td></tr>
+        <tr><td><code>sorted(a_list)</code>, <code>a_list.sort()</code></td><td>O(n log n)</td></tr>
+        <tr><td><code>x in a_list</code> inside a loop over <i>n</i> items</td><td>O(n²): quadratic</td></tr>
+      </tbody>
+    </table>
+    <ol class="checklist">
+      <li><span><b>Is it actually too slow?</b> If it finishes before you can blink, stop here.</span></li>
+      <li><span><b>Measure.</b> Profile the program, then <code>timeit</code> the slow spot.</span></li>
+      <li><span><b>Pick a better shape</b> before polishing lines: a set instead of a list, a cache, a deque, <code>join</code>, binary search.</span></li>
+      <li><span><b>Measure again</b>, and keep the change only if it helped.</span></li>
+      <li><span><b>Heavy number-crunching?</b> Big tables of numbers (images, science, statistics) are what <b>NumPy</b> is for. It's a third-party package (<code>pip install numpy</code>, Chapter 13) that stores numbers in compact arrays and does whole-array maths in fast compiled code. It's beyond this book, but now you know when to look for it.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="e23m" id="e23"></div>
+  <script type="application/json" id="e23m">{"q": "A help-desk program keeps waiting customers in a list, adds new ones with <code>append</code>, and serves the next one with <code>waiting.pop(0)</code>. With 200,000 customers it gets slow. What's the simplest good fix?", "options": [
+    {"t": "Use <code>collections.deque</code>, with <code>append</code> and <code>popleft()</code>", "why": "Yes. A deque removes from the front in constant time, and the rest of the code barely changes.", "correct": true},
+    {"t": "Use a set of customers", "why": "A set has no order, so you couldn't tell who came first. Sets are for fast membership, not queues."},
+    {"t": "Call <code>sorted()</code> on the list before each <code>pop(0)</code>", "why": "Sorting adds work every time and doesn't stop <code>pop(0)</code> from shifting every item."},
+    {"t": "Use <code>\"\".join()</code>", "why": "<code>join</code> is for building strings, not for queues."}]}</script>
+
+  <!-- ===================================================== BOSS ===================================================== -->
+  <section class="panel pop" data-play aria-label="Panel 41: boss level" id="boss">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="41"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <p class="caption">Every check mixes ideas from this chapter.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="pip" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>For every recursive function, ask three questions. Where's the solid doll? Does every call get closer to it? Is every answer passed back up with <code>return</code>?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="b1m" id="b1"></div>
+  <script type="application/json" id="b1m">{"program": "boss_predict.py", "hint": "<code>show</code> turns a nested list into text. Every inner list is shown by a recursive call and wrapped in brackets. The pieces are joined with single spaces.", "explain": "<code>[1, [2, 3], 4]</code>: 1, then the inner list becomes <samp>(2 3)</samp>, then 4: <samp>1 (2 3) 4</samp>. Second: the first item <code>[1, [2]]</code> becomes <samp>(1 (2))</samp>, the empty list becomes <samp>()</samp> (joining nothing gives the empty string), then 5."}</script>
+
+  <div data-ex="trace" data-model="b2m" id="b2"></div>
+  <script type="application/json" id="b2m">{"program": "boss_trace.py", "columns": ["i", "j", "taken"], "given": [], "prompt": "The merge step of merge sort, on its own. Each pass takes the smaller front card. Fill in <code>i</code>, <code>j</code> and the card just taken after each pass.", "explain": "1 ≤ 2: take 1, i = 1. 4 &gt; 2: take 2, j = 1. 4 &gt; 3: take 3, j = 2. 4 ≤ 10: take 4, i = 2. 9 ≤ 10: take 9, i = 3. Now <code>left</code> is used up, so the loop stops; merge sort would then add the leftover 10."}</script>
+
+  <div data-ex="parsons" data-model="b3m" id="b3"></div>
+  <script type="application/json" id="b3m">{"program": "boss_parsons.py", "seed": 11, "prompt": "Divide and conquer for powers: 2<sup>10</sup> is 2<sup>5</sup> × 2<sup>5</sup>, so work out the half once and square it. Put the lines in order.", "explain": "The base case (any number to the power 0 is 1) comes first. Then one recursive call for half the exponent. Even exponents square the half; odd ones need one extra <code>base</code>. 10 → 5 → 2 → 1 → 0: five calls instead of ten multiplications."}</script>
+
+  <div data-ex="spot" data-model="b4m" id="b4"></div>
+  <script type="application/json" id="b4m">{"program": "boss_spot.py", "bug": 5, "prompt": "<code>flatten</code> should turn the nested list into one flat list, <samp>[1, 2, 3, 4, 5]</samp>. It gives back the same nesting it was given. Click the line with the bug.", "explain": "The recursive call on line 5 returns a flat list, such as <samp>[2, 3]</samp>, and <code>append</code> puts that whole list in as <b>one</b> item, recreating the box. <code>result.extend(flatten(item))</code> adds its items one by one instead."}</script>
+
+  <div data-ex="fill" data-model="b5m" id="b5"></div>
+  <script type="application/json" id="b5m">{"program": "boss_fill.py", "prompt": "Count the files in a folder tree of dicts, however deeply the folders nest.", "blanks": [{"line": 4, "text": "dict"}, {"line": 5, "text": "count_files(value)"}, {"line": 8, "text": "return total"}], "explain": "A value that is itself a <code>dict</code> is a folder: count its files with a recursive call and add them. Anything else is one file. And the function must <code>return</code> its total, or the folder above gets <code>None</code>. a.txt, b.jpg, c.jpg and d.txt: 4 files."}</script>
+
+  <div data-ex="predict" data-model="b6m" id="b6"></div>
+  <script type="application/json" id="b6m">{"program": "boss_error.py", "expect": "error", "hint": "<code>digit_sum(7)</code> is a base case. For 472, follow the dolls: 472 asks 47, 47 asks 4. What does <code>digit_sum(47)</code> hand back?", "explain": "<samp>7</samp> prints first. Then <code>digit_sum(4)</code> returns 4, and <code>digit_sum(47)</code> works out 4 + 7… and returns nothing, because line 4 has no <code>return</code>. So <code>digit_sum(472)</code> tries <code>None + 2</code>: a <b>TypeError</b>."}</script>
+
+  <section class="panel pop" aria-label="Panel 42: what you learned">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">What you learned in Chapter 24</p>
+    <ul class="recap">
+      <li><b>EVERY DOLL SET HAS A SOLID ONE IN THE MIDDLE.</b>A recursive function has a base case, answered directly, and a recursive case that calls itself on something smaller. Each call gets its own frame on the call stack.</li>
+      <li><b>WORK BEFORE THE CALL HAPPENS ON THE WAY DOWN. WORK AFTER IT HAPPENS ON THE WAY UP.</b>A call tree shows every call, in order; <code>fib</code> asks the same questions again and again.</li>
+      <li><b>WHEN THE DATA NESTS, THE CODE RECURSES.</b>Strings, lists, nested lists, folder trees. For a straight line of steps, a loop is simpler and has no depth limit.</li>
+      <li><b>ASK THE SMALLER DOLL, THEN PASS ITS ANSWER ON.</b>A missing base case, or one the calls jump over, gives <code>RecursionError</code> after about 1000 frames. A missing <code>return</code> gives <code>None</code>.</li>
+      <li><b>DON'T OPEN THE SAME DOLL TWICE: WRITE THE ANSWER DOWN.</b>Memoization and <code>@cache</code>; divide and conquer with binary search and merge sort.</li>
+      <li><b>MEASURE FIRST, THEN FIX. DOUBLE THE GUESTS, THEN ASK: HOW MUCH MORE WORK?</b><code>timeit</code> (best of many runs), <code>cProfile</code> and <code>profiling</code>; O(1), O(log n), O(n), O(n²); sets for lookups, <code>join</code> for strings, <code>deque</code> for queues, generators for memory.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>And the Professor's note, in the very smallest doll? It said: "Now write a function that opens the rest of them for you." Done!</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 43: next time, stencils and codebooks">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption soft">Coming up in Chapter 25…</p>
+    <div class="teaser">
+      <div class="ch24-row">
+        <figure><svg class="char wide" data-char="train" data-text="2026-11"></svg><figcaption>A string full of dates, phone numbers and codes…</figcaption></figure>
+        <span class="ch24-arrow" aria-hidden="true">→</span>
+        <figure><svg class="char wide sm2" data-char="sealed" data-items="50,48,50"></svg><figcaption>…and underneath every string, raw bytes.</figcaption></figure>
+      </div>
+      <p class="sr-only">Teaser picture: the string train reading 2026-11, an arrow, then a sealed, padlocked crate of numbered boxes holding 50, 48 and 50, standing for bytes, which can't be changed once made.</p>
+      <div class="scene">
+        <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Pip thinks: </span>How do I find every date in a page of text without writing a hundred <code>if</code>s? Slide a <b>stencil</b> along it, maybe. And what's this "codebook" that turns letters into bytes on the wire?</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 25 · STENCILS AND CODEBOOKS<br><small style="font: 700 1rem var(--f-bubble)">Regular expressions as a stencil slid along the text, and text versus bytes, with the encoding as the codebook.</small></p>
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch23.html">← Ch 23 · The Hardware Store</a><a class="next" href="ch25.html">Ch 25 · Stencils and Codebooks →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: frames, the limit, and why Python has no tail calls</summary>
+    <div class="page-body">
+      <svg class="char sm" data-char="professor"></svg>
+      <h3>You can count the frames yourself</h3>
+      <p>The <code>inspect</code> module can list the frames on the call stack. Each recursive call adds one; the first one is the main program's frame:</p>
+      <div class="pair"><pre class="code" data-src="nb_frames.py"></pre><pre class="term" data-run="nb_frames.py"></pre></div>
+      <h3>What the recursion limit really protects</h3>
+      <p>CPython checks how deep the Python calls are nested and raises <code>RecursionError</code> when the depth goes past <code>sys.getrecursionlimit()</code> (1000 by default). The check exists to stop runaway recursion with a clean, catchable error instead of crashing the whole process. You may raise the limit with <code>sys.setrecursionlimit()</code>:</p>
+      <div class="pair"><pre class="code" data-src="nb_setlimit.py"></pre><pre class="term" data-run="nb_setlimit.py"></pre></div>
+      <p>The official documentation warns that setting it too high can crash Python, because the real stack the operating system gives a program is limited too. Treat a higher limit as a quick experiment, not a fix. For truly deep data, rewrite the function with a loop and your own list used as a stack.</p>
+      <h3>No tail-call optimisation</h3>
+      <p>Some languages notice when the recursive call is the very <b>last</b> thing a function does (a <b>tail call</b>) and reuse the frame instead of adding a new one. CPython deliberately doesn't, so tracebacks always show every call. Writing the function in "tail" form gains nothing in Python:</p>
+      <div class="pair"><pre class="code" data-src="nb_tail.py"></pre><pre class="term" data-run="nb_tail.py" data-exit></pre></div>
+      <h3>How a set finds things in one step</h3>
+      <p>A set or dict keeps a table of slots. To store or find <code>x</code>, Python computes <code>hash(x)</code>, a number, and uses it to pick a slot directly. Only if two different objects land on the same slot does it need to compare more than once. That's why lookups are O(1) on average, why the items must be <b>hashable</b> (their hash must never change), and why Panel 37's set needed a <code>__hash__</code> method.</p>
+      <h3>Why log n is so small</h3>
+      <p>log₂ n asks: how many times can you halve <i>n</i> before you get to 1? 1,000 halves to 1 in about 10 steps, 1,000,000 in about 20, and 1,000,000,000 in about 30. Every doubling adds only one step, which is why the binary line in Panel 36 is nearly flat.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where recursion and performance show up</summary>
+    <div class="page-body">
+      <h3>Recursion you already use</h3>
+      <ul>
+        <li><b>Walking folders.</b> <code>os.walk()</code> and <code>pathlib.Path.rglob()</code> visit every folder inside a folder, at any depth.</li>
+        <li><b>JSON and nested data.</b> <code>json.loads()</code> turns nested text into nested lists and dicts, and <code>copy.deepcopy()</code> copies a structure all the way down. Both follow the data's nesting.</li>
+        <li><b>Python reading Python.</b> The <code>ast</code> module turns code into a tree, and tools such as linters walk it recursively.</li>
+        <li><b>Sorting.</b> Python's <code>sorted()</code> uses a hybrid merge sort known as Timsort (since Python 3.11 its merge rules follow the "powersort" strategy). Like Panel 29, it merges sorted runs; unlike Panel 29, it first finds runs that are already in order, so nearly sorted data is very fast.</li>
+        <li><b>Web pages.</b> An HTML page is a tree of tags inside tags, and every browser walks it.</li>
+      </ul>
+      <h3>Performance habits of real projects</h3>
+      <ul>
+        <li><b>Profile in production-like conditions.</b> A sampling profiler such as <code>profiling.sampling</code> (3.15) can attach to a running program and draw a <b>flame graph</b>: a picture where the widest bars are the functions that took the most time.</li>
+        <li><b>Benchmarks in the test suite.</b> Projects keep small timing tests (for example with <code>timeit</code> or the third-party <code>pytest-benchmark</code>) so a slowdown is noticed when it's introduced.</li>
+        <li><b>Caches everywhere.</b> <code>functools.cache</code> and <code>lru_cache</code> for pure functions; web apps cache whole pages.</li>
+        <li><b>The right container.</b> Most real speed-ups are Panel 37's kind: a set or dict instead of a list scan, not clever tricks.</li>
+        <li><b>NumPy and friends.</b> Data science code hands big arrays of numbers to NumPy, pandas or similar libraries, whose inner loops run as compiled code.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A recursive function shares one <code>n</code> between all its calls."</b> Every call has its own frame with its own local names (Panel 8). Changing <code>n</code> in one call doesn't touch the others.</li>
+        <li><b>"The recursive call finishes the function."</b> The caller pauses, waits for the answer, then carries on with the rest of its own line and the lines after it (Panel 11).</li>
+        <li><b>"If I call the function, its answer is returned automatically."</b> Only <code>return</code> passes an answer back. Without it, the caller gets <code>None</code> (Panel 22).</li>
+        <li><b>"Having a base case is enough."</b> Every call must also move <b>towards</b> it (Panels 9 and 21).</li>
+        <li><b>"Recursion is faster than a loop."</b> In CPython it's usually a little slower, because each call costs a new frame. Choose it because it fits the problem.</li>
+        <li><b>"RecursionError means my computer ran out of memory."</b> It means the depth counter passed the limit, a deliberate safety stop.</li>
+        <li><b>"One timing tells me which version is faster."</b> One run is noise. Repeat, take the best, and compare on the same computer (Panel 32).</li>
+        <li><b>"Big-O tells me how many seconds it takes."</b> It tells you how the work grows. An O(n²) method can beat an O(n) one on tiny inputs.</li>
+        <li><b>"Optimise everything."</b> Measure first. Usually one spot is slow and the rest doesn't matter.</li>
+        <li><b>"<code>x in my_list</code> is as fast as <code>x in my_set</code>; it's the same keyword."</b> Same keyword, different machinery: a walk versus a jump (Panel 37).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: what is new, and since when</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The <code>profiling</code> package</b>, with <code>profiling.tracing</code> (the tracing profiler also known as <code>cProfile</code>) and <code>profiling.sampling</code> (Tachyon): new in <b>Python 3.15</b>. On 3.13.18, <code>python3 -m profiling.tracing</code> fails with "No module named profiling" (Panel 34). <code>cProfile</code> still works in both.</li>
+        <li><b>The <code>profile</code> module</b> (the slow pure-Python profiler) is deprecated in <b>3.15</b> and scheduled for removal in <b>3.17</b>. Importing it prints a <code>DeprecationWarning</code> on 3.15.2 and nothing on 3.13.18 (Panel 34).</li>
+        <li><b><code>sys.getsizeof</code></b> of a generator: 216 bytes on 3.15.2, 200 on 3.13.18 (Panel 39). Object sizes are implementation details and change between versions.</li>
+        <li><b>The recursion limit</b> is 1000 on both versions here, and both stopped Panel 20's dive at the same depth. Since CPython 3.12 the limit counts only Python code; built-in functions are protected by a separate mechanism (What's New in Python 3.12), so older tutorials may describe slightly different behaviour.</li>
+        <li><b><code>functools.cache</code></b> exists since <b>3.9</b>; before that, people wrote <code>@lru_cache(maxsize=None)</code>.</li>
+        <li><b>Timing programs</b> (<code>timeit_demo.py</code>, <code>noise.py</code>, <code>timeit_cli.py</code>, <code>join_vs_plus.py</code>, <code>queue_timing.py</code>, <code>profile_slow.py</code>, <code>tracing_slow.py</code>) print different numbers on every run and on both versions. That's not a version difference, just the stopwatch.</li>
+      </ul>
+      <p>All 67 programs in this chapter were run with both Python 3.15.2 and 3.13.18, and 9 of them printed differently. Seven are the timing programs listed above, whose numbers change on every run anyway; one of those, <code>tracing_slow.py</code>, also differs for a real reason (no <code>profiling</code> package on 3.13). The other two are <code>profile_warn.py</code> and <code>memory.py</code>, as described above. Every RecursionError on the page, including its "Previous line repeated 996 more times" count, was the same on both versions.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself</summary>
+    <div class="page-body">
+      <ol>
+        <li>Check your version: <code>python3 --version</code> on macOS and Linux, <code>py --version</code> on Windows. Everything except Panel 34 works on 3.9 or newer; Panel 34's <code>profiling</code> package needs 3.15.</li>
+        <li>Save <code>fact_dolls.py</code> (Panel 7) and run it: <code>python3 fact_dolls.py</code> (Windows: <code>py fact_dolls.py</code>). Change line 12 to <code>fact(6)</code> and predict the output before running it.</li>
+        <li>Save <code>no_base.py</code> (Panel 19), run it, and read the traceback bottom-up. Then add <code>import sys</code> and <code>print(sys.getrecursionlimit())</code> at the top.</li>
+        <li>Save <code>fib_count.py</code> (Panel 23). Add <code>from functools import cache</code> and <code>@cache</code> above <code>def fib</code>, run it again, and compare the call counts.</li>
+        <li>Time something from the terminal: <code>python3 -m timeit "sum(range(1000))"</code> (Windows: <code>py -m timeit "sum(range(1000))"</code>). Run it three times and notice the numbers wobble.</li>
+        <li>Profile a script: <code>python3 -m cProfile -s tottime slow.py</code>. On Python 3.15 also try <code>python3 -m profiling.tracing -s tottime slow.py</code>.</li>
+        <li>On Python 3.15, try the sampling profiler: <code>python3 -m profiling.sampling run slow.py</code>. On Linux it may need extra permission to read another process's memory (running it with <code>sudo</code>, or a system setting called <code>ptrace_scope</code>); on macOS it may ask for administrator rights. Add <code>--flamegraph</code> to get an HTML flame graph.</li>
+        <li>Paste <code>fact.py</code> into Python Tutor (link below) and step through it to see the frames pile up and disappear, like Panel 8.</li>
+      </ol>
+      <p>On Windows, if <code>py</code> is missing, install Python from python.org (the Python install manager) or the Microsoft Store; <code>py install 3.15</code> adds the newest version. On macOS, the python.org installer or Homebrew (<code>brew install python</code>) both work. On Linux, use your package manager, or <code>uv python install 3.15</code> to get 3.15 beside the system Python. Timing numbers on your computer will differ from the ones on this page; the shapes won't.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>recursion</dt><dd>Solving a problem by solving smaller copies of the same problem. In code: a function that calls itself.</dd>
+        <dt>recursive function</dt><dd>A function that calls itself, directly or through another function.</dd>
+        <dt>base case</dt><dd>An input small enough to answer directly, without another recursive call. The solid doll.</dd>
+        <dt>recursive case</dt><dd>The part of the function that calls itself on a smaller input.</dd>
+        <dt>frame</dt><dd>The workspace a single call gets for its parameters and local names (Chapter 6).</dd>
+        <dt>call stack</dt><dd>The pile of frames for calls that have started but not finished. The newest is on top.</dd>
+        <dt>return value</dt><dd>The value a call hands back to whoever called it.</dd>
+        <dt>call tree</dt><dd>A drawing of every call a program makes, joined to the calls each one made.</dd>
+        <dt>tree (data)</dt><dd>Nested data shaped like an upside-down tree: a root, branches, and leaves at the ends. Folders are one.</dd>
+        <dt>RecursionError</dt><dd>The error raised when the call stack gets deeper than the recursion limit.</dd>
+        <dt>recursion limit</dt><dd>The maximum depth Python allows, 1000 by default. <code>sys.getrecursionlimit()</code> reads it.</dd>
+        <dt>memoization</dt><dd>Remembering the answers of a function so the same question is never worked out twice.</dd>
+        <dt>memo</dt><dd>The dict (or cache) where those answers are kept.</dd>
+        <dt>divide and conquer</dt><dd>Splitting a problem into halves, solving them the same way, and combining the results.</dd>
+        <dt>binary search</dt><dd>Finding an item in a sorted list by looking in the middle and throwing away half each time.</dd>
+        <dt>merge sort</dt><dd>Sorting by splitting the list in half, sorting each half, and merging the sorted halves.</dd>
+        <dt>off-by-one error</dt><dd>A bug where a count or a position is one too big or one too small.</dd>
+        <dt>timeit</dt><dd>The standard-library module for timing small pieces of code over many repeats.</dd>
+        <dt>noise (timing)</dt><dd>Random differences between measurements caused by everything else the computer is doing.</dd>
+        <dt>profiler</dt><dd>A tool that watches a program run and reports where the time goes. A <b>tracing</b> profiler records every call; a <b>sampling</b> profiler takes frequent snapshots.</dd>
+        <dt>deprecated</dt><dd>Still available, but on its way out: a future version will remove it.</dd>
+        <dt>Big-O notation</dt><dd>A way to describe how the work grows with the input size <i>n</i>: O(1), O(log n), O(n), O(n log n), O(n²).</dd>
+        <dt>worst case</dt><dd>The input that makes an algorithm do the most work, such as searching for the last item.</dd>
+        <dt>hash</dt><dd>A number worked out from a value, used by sets and dicts to find its slot in one step.</dd>
+        <dt>NumPy</dt><dd>A popular third-party package for fast maths on large arrays of numbers.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://docs.python.org/3/library/sys.html#sys.setrecursionlimit">sys.getrecursionlimit and sys.setrecursionlimit</a>, and the <a href="https://docs.python.org/3/library/exceptions.html#RecursionError">RecursionError</a> entry</li>
+        <li><a href="https://docs.python.org/3/library/functools.html#functools.cache">functools.cache and lru_cache</a></li>
+        <li><a href="https://docs.python.org/3/library/timeit.html">The timeit module</a></li>
+        <li><a href="https://docs.python.org/3/library/profile.html">The Python profilers</a>, <a href="https://docs.python.org/3/library/profiling.sampling.html">profiling.sampling</a> and <a href="https://docs.python.org/3/library/tracemalloc.html">tracemalloc</a></li>
+        <li><a href="https://docs.python.org/3/whatsnew/3.15.html">What's New in Python 3.15</a></li>
+        <li><a href="https://docs.python.org/3/tutorial/stdlib2.html">The Python Tutorial, chapter 11: deque, bisect and other tools for working with lists</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://pythontutor.com/">Python Tutor</a>: step through <code>fact.py</code> and <code>fib_calls.py</code> to watch the frames.</li>
+        <li><a href="https://allendowney.github.io/ThinkPython/">Think Python, 3rd edition</a>: chapters 5 and 6 cover recursion with stack diagrams, free online.</li>
+        <li><a href="https://ocw.mit.edu/courses/6-100l-introduction-to-cs-and-programming-using-python-fall-2022/">MIT 6.100L</a>: free lectures on recursion, memoization and program efficiency.</li>
+        <li><a href="https://roadmap.sh/python">roadmap.sh Python roadmap</a>: recursion, sorting and Big-O among the topics.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: 67 programs, run with CPython 3.15.2 and CPython 3.13.18 on 2026-11-08, in <code>/home/you/python-ch24</code>. Seven timing programs print different numbers on every run; they are marked "one possible run" and are never used as answers. Nine programs printed differently on the two versions: those seven, plus <code>profile_warn.py</code> and <code>memory.py</code> (listed in the notebook's version notes), and the page shows the 3.13.18 run beside the 3.15.2 one where it matters. Tracebacks show the real file paths.</p>
+  <p>The nesting-doll stepper, the memory tracer, the <code>fact()</code> machine, the two call trees, the step-count chart and the exercises are teaching models. Each one checks its claims against those runs and shows a badge; the call trees are built from the programs' own output. The nesting dolls and the stopwatch are new drawings for this chapter; Pip, the Professor, the ghost, Jigsaw, Sneak, Tumble and the creatures are the book's original cast, drawn in code.</p>
+  <p>Sources consulted for scope, order and common pitfalls (no text or exercises copied): the Python documentation for sys (recursion limit), RecursionError, functools.cache, timeit, the Python profilers, profiling.sampling (Tachyon) and tracemalloc, What's New in Python 3.15 (the profiling package and the profile deprecation), and the Python Tutorial's chapter 11 on deque and bisect; Think Python (2nd and 3rd editions) on stack diagrams and infinite recursion; the course's research map, which cross-references MIT 6.100L lectures 15, 16 and 21 to 26, the University of Helsinki MOOC parts 11.3 and 11.4, boot.dev's functional programming and data structures courses, freeCodeCamp's recursion and algorithms material, Exercism's recursion concept, Effective Python (3rd ed.) on profiling and data structures, and roadmap.sh/python; and Python Tutor's drawing conventions for frames.</p>
+</footer>
+</body>
+</html>
