@@ -1,0 +1,723 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch27",
+  "versionDifferences": [
+   "boss_error.py",
+   "ex_sub_spot.py",
+   "forgot_await_repr.py",
+   "nb_start_method.py",
+   "nested_run.py",
+   "no_guard.py",
+   "sub_string.py",
+   "taskgroup_fail.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_error.py, ex_sub_spot.py, forgot_await_repr.py, nb_start_method.py, nested_run.py, no_guard.py, sub_string.py, taskgroup_fail.py."
+ },
+ "programs": {
+  "async_first.py": {
+   "src": "import asyncio\nimport time\n\nasync def cook(dish, seconds):\n    print(f\"{dish}: order in\")\n    await asyncio.sleep(seconds)   # \"call me when it's ready\"\n    print(f\"{dish}: ready\")\n    return dish\n\nasync def main():\n    start = time.perf_counter()\n    await cook(\"soup\", 2)          # wait for the soup...\n    await cook(\"toast\", 1)         # ...only then order the toast\n    print(f\"took about {round(time.perf_counter() - start)} s\")\n\nasyncio.run(main())\n",
+   "stdout": "soup: order in\nsoup: ready\ntoast: order in\ntoast: ready\ntook about 3 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "async_gather.py": {
+   "src": "import asyncio\nimport time\n\nasync def cook(dish, seconds):\n    print(f\"{dish}: order in\")\n    await asyncio.sleep(seconds)   # the waiter goes off to work\n    print(f\"{dish}: ready\")\n    return dish\n\nasync def main():\n    start = time.perf_counter()\n    dishes = await asyncio.gather(cook(\"soup\", 2), cook(\"toast\", 1))\n    print(dishes)\n    print(f\"took about {round(time.perf_counter() - start)} s\")\n\nasyncio.run(main())\n",
+   "stdout": "soup: order in\ntoast: order in\ntoast: ready\nsoup: ready\n['soup', 'toast']\ntook about 2 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "blocking.py": {
+   "src": "import asyncio\nimport time\n\nasync def cook(dish, seconds):\n    print(f\"{dish}: order in\")\n    time.sleep(seconds)            # not await asyncio.sleep!\n    print(f\"{dish}: ready\")\n    return dish\n\nasync def main():\n    start = time.perf_counter()\n    dishes = await asyncio.gather(cook(\"soup\", 2), cook(\"toast\", 1))\n    print(dishes)\n    print(f\"took about {round(time.perf_counter() - start)} s\")\n\nasyncio.run(main())\n",
+   "stdout": "soup: order in\nsoup: ready\ntoast: order in\ntoast: ready\n['soup', 'toast']\ntook about 3 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_async.py": {
+   "src": "import asyncio\n\nasync def waiter(name, trips, seconds):\n    for trip in range(1, trips + 1):\n        await asyncio.sleep(seconds)\n        print(f\"{name} trip {trip}\")\n    return name\n\nasync def main():\n    ana = waiter(\"Ana\", 2, 0.35)\n    ben = waiter(\"Ben\", 3, 0.2)\n    print(await asyncio.gather(ana, ben))\n\nasyncio.run(main())\n",
+   "stdout": "Ben trip 1\nAna trip 1\nBen trip 2\nBen trip 3\nAna trip 2\n['Ana', 'Ben']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_error.py": {
+   "src": "import os\n\ndef db_path():\n    return os.environ[\"PIPSHOP_DB\"]\n\nprint(\"opening the shop's database...\")\nprint(\"found it at\", db_path())\n",
+   "stdout": "opening the shop's database...\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/boss_error.py\", line 7, in <module>\n    print(\"found it at\", db_path())\n                         ~~~~~~~^^\n  File \"/home/you/python-ch27/boss_error.py\", line 4, in db_path\n    return os.environ[\"PIPSHOP_DB\"]\n           ~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"<frozen os>\", line 729, in __getitem__\nKeyError: 'PIPSHOP_DB'\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "opening the shop's database...\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/boss_error.py\", line 7, in <module>\n    print(\"found it at\", db_path())\n                         ~~~~~~~^^\n  File \"/home/you/python-ch27/boss_error.py\", line 4, in db_path\n    return os.environ[\"PIPSHOP_DB\"]\n           ~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"<frozen os>\", line 717, in __getitem__\nKeyError: 'PIPSHOP_DB'\n",
+    "exit": 1
+   }
+  },
+  "boss_fill.py": {
+   "src": "import subprocess\nimport sys\n\nresult = subprocess.run([\"wc\", \"-l\", \"orders.csv\"],\n                        capture_output=True, text=True)\nif result.returncode != 0:\n    print(result.stderr, file=sys.stderr)\n    sys.exit(1)\nlines = int(result.stdout.split()[0])\nprint(\"orders in the file:\", lines - 1)\n",
+   "stdout": "orders in the file: 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "import argparse\nimport sys\n\nparser = argparse.ArgumentParser()\nparser.add_argument(\"dish\")\nargs = parser.parse_args()\nif args.dish not in {\"soup\", \"tea\"}:\n    sys.exit(f\"no {args.dish} today\")\nprint(f\"one {args.dish}, coming up\")\n",
+   "stdout": "one tea, coming up\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 boss_parsons.py tea",
+     "out": "one tea, coming up\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.py": {
+   "src": "from concurrent.futures import ThreadPoolExecutor\n\nprices = {\"soup\": 4.5, \"tea\": 1.5}\ntotals = []\n\ndef bill(dish, qty):\n    totals.append(prices[dish] * qty)\n\nwith ThreadPoolExecutor() as pool:\n    for dish, qty in [(\"soup\", 2), (\"toast\", 1), (\"tea\", 2)]:\n        pool.submit(bill, dish, qty)\nprint(\"takings:\", sum(totals))\n",
+   "stdout": "takings: 12.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_trace.py": {
+   "src": "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE sales (dish TEXT, qty INTEGER)\")\norders = [(\"soup\", 2), (\"tea\", 1), (\"soup\", 3), (\"toast\", 2)]\nfor dish, qty in orders:\n    conn.execute(\"INSERT INTO sales VALUES (?, ?)\", (dish, qty))\n    sql = \"SELECT SUM(qty) FROM sales WHERE dish = ?\"\n    sold = conn.execute(sql, (dish,)).fetchone()[0]\n    print(dish, qty, sold)\n",
+   "stdout": "soup 2 2\ntea 1 1\nsoup 3 5\ntoast 2 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "counter.py": {
+   "src": "import sys\n\nMENU = {\"soup\": 4.50, \"toast\": 2.00, \"tea\": 1.50}\n\nproblems = 0\nfor line in sys.stdin:                # the front counter\n    dish = line.strip()\n    if dish in MENU:\n        print(f\"{dish:<6}{MENU[dish]:5.2f}\")      # receipt printer\n    else:                             # the complaints desk\n        print(f\"sorry, no {dish!r} today\", file=sys.stderr)\n        problems += 1\nsys.exit(1 if problems else 0)        # the bell: 0 means \"all fine\"\n",
+   "stdout": "sorry, no 'pizza' today\n",
+   "stderr": "sorry, no 'pizza' today\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cat orders.txt",
+     "out": "soup\npizza\ntea\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 counter.py < orders.txt > receipt.txt",
+     "out": "",
+     "err": "sorry, no 'pizza' today\n",
+     "exit": 1,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "cat receipt.txt",
+     "out": "soup   4.50\ntea    1.50\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 counter.py < orders.txt 2> complaints.txt",
+     "out": "soup   4.50\ntea    1.50\n",
+     "err": "",
+     "exit": 1,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "cat complaints.txt",
+     "out": "sorry, no 'pizza' today\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    }
+   ]
+  },
+  "counter_luck.py": {
+   "src": "import threading\n\ncount = 0\n\ndef add_many():\n    global count\n    for _ in range(100_000):\n        count += 1          # read, add, write: no lock!\n\nworkers = [threading.Thread(target=add_many) for _ in range(4)]\nfor w in workers:\n    w.start()\nfor w in workers:\n    w.join()\nprint(\"expected 400000, got\", count)\n",
+   "stdout": "expected 400000, got 400000\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "env_demo.py": {
+   "src": "import os\n\ngreeting = os.environ.get(\"PIP_GREETING\", \"hello\")   # or a default\nprint(f\"{greeting}, customer!\")\nprint(\"PIP_SHOP is set:\", \"PIP_SHOP\" in os.environ)\n",
+   "stdout": "hello, customer!\nPIP_SHOP is set: True\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 env_demo.py",
+     "out": "hello, customer!\nPIP_SHOP is set: False\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "PIP_GREETING=howdy python3 env_demo.py",
+     "out": "howdy, customer!\nPIP_SHOP is set: False\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "export PIP_SHOP=bakery",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 env_demo.py",
+     "out": "hello, customer!\nPIP_SHOP is set: True\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    }
+   ]
+  },
+  "ex_argparse_fill.py": {
+   "src": "import argparse\n\nparser = argparse.ArgumentParser()\nparser.add_argument(\"name\")\nparser.add_argument(\"--times\", type=int, default=1)\nargs = parser.parse_args()\nfor _ in range(args.times):\n    print(f\"Hello, {args.name}!\")\n",
+   "stdout": "Hello, Ada!\nHello, Ada!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 ex_argparse_fill.py Ada --times 2",
+     "out": "Hello, Ada!\nHello, Ada!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ex_await_outside.py": {
+   "src": "import asyncio\n\nasync def toast():\n    await asyncio.sleep(0.1)\n    return \"toast\"\n\nprint(\"making breakfast\")\nbreakfast = await toast()\nprint(breakfast)\n",
+   "stdout": "",
+   "stderr": "  File \"/home/you/python-ch27/ex_await_outside.py\", line 8\n    breakfast = await toast()\n                ^^^^^^^^^^^^^\nSyntaxError: 'await' outside function\n",
+   "exit": 1
+  },
+  "ex_block_spot.py": {
+   "src": "import asyncio\nimport time\n\nasync def fetch(supplier):\n    print(f\"asking {supplier}\")\n    time.sleep(1)\n    return f\"{supplier}: ok\"\n\nasync def main():\n    start = time.perf_counter()\n    answers = await asyncio.gather(fetch(\"mill\"), fetch(\"dairy\"))\n    seconds = round(time.perf_counter() - start)\n    print(answers, f\"after about {seconds} s\")\n\nasyncio.run(main())\n",
+   "stdout": "asking mill\nasking dairy\n['mill: ok', 'dairy: ok'] after about 2 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_csv_trace.py": {
+   "src": "import csv\n\ntotal = 0\nwith open(\"tally.csv\", newline=\"\", encoding=\"utf-8\") as f:\n    for row in csv.DictReader(f):\n        total += int(row[\"qty\"])\n        print(row[\"dish\"], row[\"qty\"], total)\n",
+   "stdout": "soup 2 2\ntea 3 5\nsoup 1 6\ntoast 4 10\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_exit_predict.py": {
+   "src": "import subprocess\nimport sys\n\ncode = \"import sys; print('checking the oven'); sys.exit(3)\"\nresult = subprocess.run([sys.executable, \"-c\", code])\nprint(\"the child said goodbye with\", result.returncode)\n",
+   "stdout": "checking the oven\nthe child said goodbye with 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_forgot_predict.py": {
+   "src": "import asyncio\n\nasync def add(a, b):\n    return a + b\n\nx = add(2, 3)\nprint(type(x).__name__)\nprint(asyncio.run(add(2, 3)))\n",
+   "stdout": "coroutine\n5\n",
+   "stderr": "<sys>:0: RuntimeWarning: coroutine 'add' was never awaited\n",
+   "exit": 0
+  },
+  "ex_gather_fill.py": {
+   "src": "import asyncio\n\nasync def boil(item, minutes):\n    await asyncio.sleep(minutes / 10)\n    return f\"{item} after {minutes} min\"\n\nasync def main():\n    results = await asyncio.gather(boil(\"eggs\", 3), boil(\"rice\", 2))\n    for line in results:\n        print(line)\n\nasyncio.run(main())\n",
+   "stdout": "eggs after 3 min\nrice after 2 min\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_inject_spot.py": {
+   "src": "import sqlite3\n\ndef orders_for(conn, dish):\n    sql = f\"SELECT customer FROM orders WHERE dish = '{dish}'\"\n    return [row[0] for row in conn.execute(sql)]\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE orders (customer TEXT, dish TEXT)\")\nconn.executemany(\"INSERT INTO orders VALUES (?, ?)\",\n                 [(\"ana\", \"soup\"), (\"ben\", \"tea\")])\nprint(orders_for(conn, \"soup\"))\nprint(orders_for(conn, \"x' OR 'a'='a\"))\n",
+   "stdout": "['ana']\n['ana', 'ben']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_lock_fill.py": {
+   "src": "import threading\nimport time\n\njar = 0\nlock = threading.Lock()\n\ndef add_tips(count):\n    global jar\n    for _ in range(count):\n        with lock:\n            seen = jar\n            time.sleep(0.001)\n            jar = seen + 1\n\nwaiters = [threading.Thread(target=add_tips, args=(5,))\n           for _ in range(3)]\nfor w in waiters:\n    w.start()\nfor w in waiters:\n    w.join()\nprint(\"jar says:\", jar)\n",
+   "stdout": "jar says: 15\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_project_fill.py": {
+   "src": "import sqlite3\n\ndef save_tips(conn, tips):\n    conn.execute(\"CREATE TABLE tips (waiter TEXT, amount REAL)\")\n    conn.executemany(\"INSERT INTO tips VALUES (?, ?)\", tips)\n    conn.commit()\n\nconn = sqlite3.connect(\":memory:\")\nsave_tips(conn, [(\"Ana\", 2.5), (\"Ben\", 1.0)])\nsql = \"SELECT COUNT(*), SUM(amount) FROM tips\"\nprint(conn.execute(sql).fetchone())\n",
+   "stdout": "(2, 3.5)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_rail_trace.py": {
+   "src": "import queue\nimport threading\n\nrail = queue.Queue()\nfor dish in [\"soup\", \"tea\", \"toast\", \"tea\"]:\n    rail.put(dish)\nrail.put(None)\ncooked = {}\n\ndef cook():\n    while True:\n        dish = rail.get()\n        if dish is None:\n            break\n        cooked[dish] = cooked.get(dish, 0) + 1\n        print(dish, cooked[dish], rail.qsize())\n\nt = threading.Thread(target=cook)\nt.start()\nt.join()\n",
+   "stdout": "soup 1 4\ntea 1 3\ntoast 1 2\ntea 2 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_sql_parsons.py": {
+   "src": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE tips (waiter TEXT, amount REAL)\")\nconn.execute(\"INSERT INTO tips VALUES (?, ?)\", (\"Ana\", 2.5))\nprint(\"waiting to be saved?\", conn.in_transaction)\nconn.commit()\nprint(\"still waiting?\", conn.in_transaction)\nconn.close()\n",
+   "stdout": "waiting to be saved? True\nstill waiting? False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_sub_spot.py": {
+   "src": "import subprocess\n\nfiles = [\"orders.csv\", \"broken.csv\"]\nfor name in files:\n    result = subprocess.run(f\"wc -l {name}\", capture_output=True,\n                            text=True)\n    print(result.stdout.strip())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/ex_sub_spot.py\", line 5, in <module>\n    result = subprocess.run(f\"wc -l {name}\", capture_output=True,\n                            text=True)\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 669, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 1213, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 2156, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'wc -l orders.csv'\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/ex_sub_spot.py\", line 5, in <module>\n    result = subprocess.run(f\"wc -l {name}\", capture_output=True,\n                            text=True)\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 555, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 1040, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 1992, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'wc -l orders.csv'\n",
+    "exit": 1
+   }
+  },
+  "forgot_await.py": {
+   "src": "import asyncio\n\nasync def brew(drink):\n    await asyncio.sleep(0.1)\n    return f\"{drink} is ready\"\n\ncup = brew(\"tea\")                 # oops: no await, no asyncio.run\nprint(\"cup holds a\", type(cup).__name__)\nprint(\"done\")\n",
+   "stdout": "cup holds a coroutine\ndone\n",
+   "stderr": "<sys>:0: RuntimeWarning: coroutine 'brew' was never awaited\n",
+   "exit": 0
+  },
+  "forgot_await_repr.py": {
+   "src": "import asyncio\n\nasync def brew(drink):\n    await asyncio.sleep(0.1)\n    return f\"{drink} is ready\"\n\ncup = brew(\"tea\")\nprint(cup)\n",
+   "stdout": "<coroutine object brew at 0x7fb6131a6810>\n",
+   "stderr": "<sys>:0: RuntimeWarning: coroutine 'brew' was never awaited\n",
+   "exit": 0,
+   "nondeterministic": true,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "<coroutine object brew at 0x7f185ec91fc0>\n",
+    "stderr": "<sys>:0: RuntimeWarning: coroutine 'brew' was never awaited\n",
+    "exit": 0
+   }
+  },
+  "forgot_commit.py": {
+   "src": "import sqlite3\nfrom pathlib import Path\n\nPath(\"cafe.db\").unlink(missing_ok=True)    # fresh on every run\n\nconn = sqlite3.connect(\"cafe.db\")\nconn.execute(\"CREATE TABLE orders (dish TEXT)\")\nconn.execute(\"INSERT INTO orders VALUES (?)\", (\"soup\",))\nconn.commit()                              # soup: saved for good\nconn.execute(\"INSERT INTO orders VALUES (?)\", (\"toast\",))\nconn.close()                               # oops: toast never saved\n\nconn = sqlite3.connect(\"cafe.db\")\nprint(conn.execute(\"SELECT dish FROM orders\").fetchall())\nconn.close()\n",
+   "stdout": "[('soup',)]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "formats.py": {
+   "src": "import csv\nimport json\nimport sys\nimport xml.etree.ElementTree as ET\n\nroot = ET.parse(\"menu.xml\").getroot()             # XML in...\nprint(root.tag, \"from\", root.get(\"shop\"))\ndishes = []\nfor d in root.iter(\"dish\"):\n    dishes.append({\"name\": d.get(\"name\"),\n                   \"price\": float(d.get(\"price\")),\n                   \"vegan\": d.get(\"vegan\", \"no\")})\n\nprint(json.dumps(dishes[2]))                      # ...JSON out...\nfields = [\"name\", \"price\", \"vegan\"]\nwriter = csv.DictWriter(sys.stdout, fields, lineterminator=\"\\n\")\nwriter.writeheader()                              # ...and CSV out\nwriter.writerows(dishes)\n",
+   "stdout": "menu from Pip's Bakery\n{\"name\": \"tea\", \"price\": 1.5, \"vegan\": \"yes\"}\nname,price,vegan\nsoup,4.5,no\ntoast,2.0,no\ntea,1.5,yes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 formats.py",
+     "out": "menu from Pip's Bakery\n{\"name\": \"tea\", \"price\": 1.5, \"vegan\": \"yes\"}\nname,price,vegan\nsoup,4.5,no\ntoast,2.0,no\ntea,1.5,yes\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "menu.xml": {
+   "src": "<menu shop=\"Pip's Bakery\">\n  <dish name=\"soup\" price=\"4.50\">Tomato soup</dish>\n  <dish name=\"toast\" price=\"2.00\">Toast and butter</dish>\n  <dish name=\"tea\" price=\"1.50\" vegan=\"yes\">Mint tea</dish>\n</menu>\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "gil_check.py": {
+   "src": "import sys\nimport sysconfig\n\nfree = bool(sysconfig.get_config_var(\"Py_GIL_DISABLED\"))\nprint(\"free-threaded build:\", free)\nprint(\"GIL switched on right now:\", sys._is_gil_enabled())\n",
+   "stdout": "free-threaded build: False\nGIL switched on right now: True\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "injection.py": {
+   "src": "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE orders (customer TEXT, dish TEXT)\")\nconn.executemany(\"INSERT INTO orders VALUES (?, ?)\",\n                 [(\"ana\", \"soup\"), (\"ben\", \"toast\"), (\"cy\", \"tea\")])\n\nname = \"nobody' OR '1'='1\"     # typed in by a sneaky visitor\n\nquery = f\"SELECT * FROM orders WHERE customer = '{name}'\"\nprint(\"f-string:   \", conn.execute(query).fetchall())\n\nquery = \"SELECT * FROM orders WHERE customer = ?\"\nprint(\"placeholder:\", conn.execute(query, (name,)).fetchall())\n",
+   "stdout": "f-string:    [('ana', 'soup'), ('ben', 'toast'), ('cy', 'tea')]\nplaceholder: []\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "kitchens.py": {
+   "src": "from concurrent.futures import ProcessPoolExecutor\n\ndef count_primes(limit):\n    count = 0\n    for n in range(2, limit):\n        if all(n % d for d in range(2, int(n ** 0.5) + 1)):\n            count += 1\n    return count\n\nif __name__ == \"__main__\":\n    limits = [10_000, 20_000, 30_000, 40_000]\n    with ProcessPoolExecutor() as pool:\n        counts = pool.map(count_primes, limits)\n        for limit, count in zip(limits, counts):\n            print(f\"primes below {limit}: {count}\")\n",
+   "stdout": "primes below 10000: 1229\nprimes below 20000: 2262\nprimes below 30000: 3245\nprimes below 40000: 4203\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_check.py": {
+   "src": "import subprocess\n\ntry:\n    subprocess.run([\"ls\", \"no_such_file\"], capture_output=True,\n                   text=True, check=True)\nexcept subprocess.CalledProcessError as e:\n    print(\"ls failed with exit code\", e.returncode)\n    print(\"its complaint:\", e.stderr.strip())\n",
+   "stdout": "ls failed with exit code 2\nits complaint: ls: cannot access 'no_such_file': No such file or directory\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_start_method.py": {
+   "src": "import multiprocessing\nimport sys\n\nmethod = multiprocessing.get_start_method()\nprint(\"new processes start with:\", method)\nprint(\"threads may swap every\", sys.getswitchinterval(), \"seconds\")\n",
+   "stdout": "new processes start with: forkserver\nthreads may swap every 0.005 seconds\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "new processes start with: fork\nthreads may swap every 0.005 seconds\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "nb_timeout.py": {
+   "src": "import asyncio\n\nasync def slow_supplier():\n    await asyncio.sleep(5)\n    return \"prices\"\n\nasync def main():\n    try:\n        async with asyncio.timeout(0.5):\n            print(await slow_supplier())\n    except TimeoutError:\n        print(\"gave up after half a second\")\n\nasyncio.run(main())\n",
+   "stdout": "gave up after half a second\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nested_run.py": {
+   "src": "import asyncio\n\nasync def toast():\n    await asyncio.sleep(0.1)\n    return \"toast\"\n\nasync def main():\n    breakfast = asyncio.run(toast())   # already inside one!\n    print(breakfast)\n\nasyncio.run(main())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/nested_run.py\", line 11, in <module>\n    asyncio.run(main())\n    ~~~~~~~~~~~^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py\", line 205, in run\n    return runner.run(main)\n           ~~~~~~~~~~^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py\", line 128, in run\n    return self._loop.run_until_complete(task)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py\", line 724, in run_until_complete\n    return future.result()\n           ~~~~~~~~~~~~~^^\n  File \"/home/you/python-ch27/nested_run.py\", line 8, in main\n    breakfast = asyncio.run(toast())   # already inside one!\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py\", line 201, in run\n    raise RuntimeError(\n        \"asyncio.run() cannot be called from a running event loop\")\nRuntimeError: asyncio.run() cannot be called from a running event loop\n<sys>:0: RuntimeWarning: coroutine 'toast' was never awaited\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/nested_run.py\", line 11, in <module>\n    asyncio.run(main())\n    ~~~~~~~~~~~^^^^^^^^\n  File \"/usr/local/lib/python3.13/asyncio/runners.py\", line 196, in run\n    return runner.run(main)\n           ~~~~~~~~~~^^^^^^\n  File \"/usr/local/lib/python3.13/asyncio/runners.py\", line 119, in run\n    return self._loop.run_until_complete(task)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/usr/local/lib/python3.13/asyncio/base_events.py\", line 726, in run_until_complete\n    return future.result()\n           ~~~~~~~~~~~~~^^\n  File \"/home/you/python-ch27/nested_run.py\", line 8, in main\n    breakfast = asyncio.run(toast())   # already inside one!\n  File \"/usr/local/lib/python3.13/asyncio/runners.py\", line 192, in run\n    raise RuntimeError(\n        \"asyncio.run() cannot be called from a running event loop\")\nRuntimeError: asyncio.run() cannot be called from a running event loop\n<sys>:0: RuntimeWarning: coroutine 'toast' was never awaited\n",
+    "exit": 1
+   }
+  },
+  "no_guard.py": {
+   "src": "from concurrent.futures import ProcessPoolExecutor\n\ndef square(n):\n    return n * n\n\nwith ProcessPoolExecutor(max_workers=1) as pool:   # no guard!\n    print(list(pool.map(square, [1, 2, 3])))\n",
+   "stdout": "        An attempt has been made to start a new process before the\n        current process has finished its bootstrapping phase.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 no_guard.py 2>&1 | grep -m 2 -E 'An attempt|bootstrapping|^\\['",
+     "out": "        An attempt has been made to start a new process before the\n        current process has finished its bootstrapping phase.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "[1, 4, 9]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "python3 no_guard.py 2>&1 | grep -m 2 -E 'An attempt|bootstrapping|^\\['",
+      "out": "[1, 4, 9]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "no_join.py": {
+   "src": "import threading\nimport time\n\nprices = {}\n\ndef call_supplier(name):\n    time.sleep(0.5)\n    prices[name] = \"received\"\n\nt = threading.Thread(target=call_supplier, args=(\"flour\",))\nt.start()\nprint(\"prices so far:\", prices)\nt.join()\n",
+   "stdout": "prices so far: {}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "orders.py": {
+   "src": "import argparse\nimport csv\nimport sys\n\nparser = argparse.ArgumentParser(description=\"Add up orders.\")\nparser.add_argument(\"file\", help=\"a CSV file of dish,qty,price\")\nargs = parser.parse_args()\n\ntry:\n    with open(args.file, newline=\"\", encoding=\"utf-8\") as f:\n        rows = list(csv.DictReader(f))\nexcept FileNotFoundError:\n    sys.exit(f\"orders.py: no such file: {args.file}\")\n\ntotal = 0\nfor row in rows:\n    total += int(row[\"qty\"]) * float(row[\"price\"])\nprint(f\"{len(rows)} orders, total {total:.2f}\")\n",
+   "stdout": "",
+   "stderr": "usage: orders.py [-h] file\norders.py: error: the following arguments are required: file\n",
+   "exit": 2
+  },
+  "parse_bad.py": {
+   "src": "import argparse\n\nparser = argparse.ArgumentParser(prog=\"tip.py\")\nparser.add_argument(\"bill\", type=float)\nparser.add_argument(\"--percent\", type=int, default=15)\nparser.add_argument(\"--split\", type=int, default=1)\n\nprint(parser.parse_args(\"forty\".split()))\n",
+   "stdout": "",
+   "stderr": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: argument bill: invalid float value: 'forty'\n",
+   "exit": 2
+  },
+  "parse_demo.py": {
+   "src": "import argparse\n\nparser = argparse.ArgumentParser(prog=\"tip.py\")\nparser.add_argument(\"bill\", type=float)\nparser.add_argument(\"--percent\", type=int, default=15)\nparser.add_argument(\"--split\", type=int, default=1)\n\ntries = [\"40\", \"40 --percent 20\", \"--split 3 12.5\",\n         \"9.99 --percent=10\"]\nfor line in tries:\n    print(parser.parse_args(line.split()))\n",
+   "stdout": "Namespace(bill=40.0, percent=15, split=1)\nNamespace(bill=40.0, percent=20, split=1)\nNamespace(bill=12.5, percent=15, split=3)\nNamespace(bill=9.99, percent=10, split=1)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parse_typo.py": {
+   "src": "import argparse\n\nparser = argparse.ArgumentParser(prog=\"tip.py\")\nparser.add_argument(\"bill\", type=float)\nparser.add_argument(\"--percent\", type=int, default=15)\nparser.add_argument(\"--split\", type=int, default=1)\n\nprint(parser.parse_args(\"40 --split two\".split()))\n",
+   "stdout": "",
+   "stderr": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: argument --split: invalid int value: 'two'\n",
+   "exit": 2
+  },
+  "pickle_danger.py": {
+   "src": "import pickle\n\norder = {\"dish\": \"soup\", \"qty\": 2}\nblob = pickle.dumps(order)                # objects -> bytes\nprint(type(blob).__name__, \"of length\", len(blob))\nprint(pickle.loads(blob))                 # bytes -> objects\n\nclass Trap:\n    def __reduce__(self):                 # \"to rebuild me, call...\"\n        return (print, (\"!!! loading this ran its maker's code\",))\n\nevil = pickle.dumps(Trap())\npickle.loads(evil)                        # just LOADING runs it\n",
+   "stdout": "bytes of length 38\n{'dish': 'soup', 'qty': 2}\n!!! loading this ran its maker's code\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pipshop.py": {
+   "src": "\"\"\"pipshop: add up every orders file in a folder, using SQLite.\"\"\"\nimport argparse\nimport csv\nimport sqlite3\nimport sys\nfrom pathlib import Path\n\n\ndef find_files(folder):\n    return sorted(Path(folder).rglob(\"*.csv\"))\n\n\ndef read_rows(path):\n    with open(path, newline=\"\", encoding=\"utf-8\") as f:\n        return [(r[\"dish\"], int(r[\"qty\"]), float(r[\"price\"]))\n                for r in csv.DictReader(f)]\n\n\ndef store(conn, rows):\n    conn.execute(\"CREATE TABLE IF NOT EXISTS orders\"\n                 \" (dish TEXT, qty INTEGER, price REAL)\")\n    conn.executemany(\"INSERT INTO orders VALUES (?, ?, ?)\", rows)\n    conn.commit()\n\n\ndef report(conn):\n    sql = (\"SELECT dish, SUM(qty), SUM(qty * price) FROM orders\"\n           \" GROUP BY dish ORDER BY dish\")\n    return [f\"{dish:<6}{qty:>3} sold {money:7.2f}\"\n            for dish, qty, money in conn.execute(sql)]\n\n\ndef main(argv=None):\n    parser = argparse.ArgumentParser(\n        description=\"Report on a folder of orders files.\")\n    parser.add_argument(\"folder\", help=\"a folder of .csv files\")\n    parser.add_argument(\"--db\", default=\":memory:\",\n                        help=\"SQLite file (default: memory)\")\n    args = parser.parse_args(argv)\n    files = find_files(args.folder)\n    if not files:\n        print(f\"pipshop: no .csv files in {args.folder}\",\n              file=sys.stderr)\n        return 1\n    conn = sqlite3.connect(args.db)\n    for path in files:\n        rows = read_rows(path)\n        store(conn, rows)\n        noun = \"row\" if len(rows) == 1 else \"rows\"\n        print(f\"read {len(rows)} {noun} from {path}\")\n    print(\"\\n\".join(report(conn)))\n    conn.close()\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n",
+   "stdout": "1\n",
+   "stderr": "pipshop: no .csv files in nowhere\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 pipshop.py shop/orders",
+     "out": "read 2 rows from shop/orders/monday.csv\nread 1 row from shop/orders/old/2025.csv\nread 2 rows from shop/orders/tuesday.csv\nsoup    3 sold   13.50\ntea    13 sold   16.50\ntoast   4 sold    8.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 pipshop.py nowhere",
+     "out": "",
+     "err": "pipshop: no .csv files in nowhere\n",
+     "exit": 1,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    }
+   ]
+  },
+  "pool_done.py": {
+   "src": "import time\nfrom concurrent.futures import ThreadPoolExecutor, as_completed\n\ndef cook(dish, seconds):\n    time.sleep(seconds)\n    return f\"{dish} is ready\"\n\norders = {\"soup\": 0.3, \"toast\": 0.1, \"tea\": 0.2}\nwith ThreadPoolExecutor() as pool:\n    futures = [pool.submit(cook, dish, secs)\n               for dish, secs in orders.items()]\n    for future in as_completed(futures):   # first done, first out\n        print(future.result())\n",
+   "stdout": "toast is ready\ntea is ready\nsoup is ready\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "pool_map.py": {
+   "src": "import time\nfrom concurrent.futures import ThreadPoolExecutor\n\ndef fetch_price(item):\n    time.sleep(1)                # the supplier takes a second\n    return {\"flour\": 2.5, \"milk\": 1.2, \"eggs\": 3.0}[item]\n\nitems = [\"flour\", \"milk\", \"eggs\"]\nstart = time.perf_counter()\nwith ThreadPoolExecutor(max_workers=3) as pool:\n    prices = list(pool.map(fetch_price, items))\nfor item, price in zip(items, prices):\n    print(item, price)\nprint(f\"took about {round(time.perf_counter() - start)} s\")\n",
+   "stdout": "flour 2.5\nmilk 1.2\neggs 3.0\ntook about 1 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "race_model.py": {
+   "src": "# Teaching model: no real threads. It acts\n# out ONE unlucky order, so every run loses a tip.\njar = 0\na_seen = jar      # Ana reads the jar\nb_seen = jar      # Ben reads it before Ana writes\njar = a_seen + 1  # Ana writes what she saw, + 1\njar = b_seen + 1  # Ben writes what he saw, + 1\nprint(\"tips dropped in: 2\")\nprint(\"jar says:\", jar)\n",
+   "stdout": "tips dropped in: 2\njar says: 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "road_bad.py": {
+   "src": "# No code here: this file names one road of the map.\n# road_bad.cmd runs: python3 orders.py broken.csv\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/orders.py\", line 17, in <module>\n    total += int(row[\"qty\"]) * float(row[\"price\"])\n             ~~~^^^^^^^^^^^^\nValueError: invalid literal for int() with base 10: 'two'\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "python3 orders.py broken.csv",
+     "out": "",
+     "err": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/orders.py\", line 17, in <module>\n    total += int(row[\"qty\"]) * float(row[\"price\"])\n             ~~~^^^^^^^^^^^^\nValueError: invalid literal for int() with base 10: 'two'\n",
+     "exit": 1
+    }
+   ]
+  },
+  "road_missing.py": {
+   "src": "# No code here: this file names one road of the map.\n# road_missing.cmd runs: python3 orders.py nope.csv\n",
+   "stdout": "",
+   "stderr": "orders.py: no such file: nope.csv\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "python3 orders.py nope.csv",
+     "out": "",
+     "err": "orders.py: no such file: nope.csv\n",
+     "exit": 1
+    }
+   ]
+  },
+  "road_ok.py": {
+   "src": "# No code here: this file names one road of the map.\n# road_ok.cmd runs: python3 orders.py orders.csv\n",
+   "stdout": "3 orders, total 21.00\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 orders.py orders.csv",
+     "out": "3 orders, total 21.00\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slow_calls.py": {
+   "src": "import time\n\ndef call_supplier(name):\n    time.sleep(1)                # on hold: nothing to do but wait\n    return f\"{name}: price list received\"\n\nstart = time.perf_counter()\nfor name in [\"flour\", \"milk\", \"eggs\"]:\n    print(call_supplier(name))\nprint(f\"took about {round(time.perf_counter() - start)} s\")\n",
+   "stdout": "flour: price list received\nmilk: price list received\neggs: price list received\ntook about 3 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sqlite_basics.py": {
+   "src": "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")     # lives only in memory\nconn.execute(\"CREATE TABLE orders (dish TEXT, qty INT, price REAL)\")\nrows = [(\"soup\", 2, 4.50), (\"toast\", 3, 2.00),\n        (\"tea\", 4, 1.50), (\"soup\", 1, 4.50)]\nconn.executemany(\"INSERT INTO orders VALUES (?, ?, ?)\", rows)\nconn.commit()\n\nsql = \"SELECT dish, qty FROM orders WHERE dish = ?\"\nfor dish, qty in conn.execute(sql, (\"soup\",)):\n    print(dish, qty)\nsql = \"SELECT SUM(qty * price) FROM orders\"\nprint(\"takings:\", conn.execute(sql).fetchone()[0])\nsql = (\"SELECT dish, SUM(qty) FROM orders\"\n       \" GROUP BY dish ORDER BY dish\")\nfor dish, sold in conn.execute(sql):\n    print(f\"{dish}: {sold} sold\")\nconn.close()\n",
+   "stdout": "soup 2\nsoup 1\ntakings: 25.5\nsoup: 3 sold\ntea: 4 sold\ntoast: 3 sold\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sub_run.py": {
+   "src": "import subprocess\n\nresult = subprocess.run([\"wc\", \"-l\", \"orders.csv\"],\n                        capture_output=True, text=True)\nprint(\"exit code:\", result.returncode)\nprint(\"it printed:\", result.stdout.strip())\n\nresult = subprocess.run([\"ls\", \"no_such_file\"],\n                        capture_output=True, text=True)\nprint(\"exit code:\", result.returncode)\nprint(\"it complained:\", result.stderr.strip())\n",
+   "stdout": "exit code: 0\nit printed: 4 orders.csv\nexit code: 2\nit complained: ls: cannot access 'no_such_file': No such file or directory\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sub_string.py": {
+   "src": "import subprocess\n\nsubprocess.run(\"ls -l\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/sub_string.py\", line 3, in <module>\n    subprocess.run(\"ls -l\")\n    ~~~~~~~~~~~~~~^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 669, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 1213, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/subprocess.py\", line 2156, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'ls -l'\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch27/sub_string.py\", line 3, in <module>\n    subprocess.run(\"ls -l\")\n    ~~~~~~~~~~~~~~^^^^^^^^^\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 555, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 1040, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/subprocess.py\", line 1992, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'ls -l'\n",
+    "exit": 1
+   }
+  },
+  "tally_lock.py": {
+   "src": "import threading\nimport time\n\njar = 0\nlock = threading.Lock()   # one key card for the jar\n\ndef add_tip():\n    global jar\n    with lock:            # take the card; the others wait here\n        seen = jar\n        time.sleep(0.01)\n        jar = seen + 1    # the card goes back when the block ends\n\nwaiters = [threading.Thread(target=add_tip) for _ in range(4)]\nfor w in waiters:\n    w.start()\nfor w in waiters:\n    w.join()\nprint(\"tips dropped in: 4\")\nprint(\"jar says:\", jar)\n",
+   "stdout": "tips dropped in: 4\njar says: 4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tally_race.py": {
+   "src": "import threading\nimport time\n\njar = 0\n\ndef add_tip():\n    global jar\n    seen = jar          # 1. read the jar\n    time.sleep(0.01)    #    (a customer chats; others get a turn)\n    jar = seen + 1      # 2. write back\n\nwaiters = [threading.Thread(target=add_tip) for _ in range(4)]\nfor w in waiters:\n    w.start()\nfor w in waiters:\n    w.join()\nprint(\"tips dropped in: 4\")\nprint(\"jar says:\", jar)\n",
+   "stdout": "tips dropped in: 4\njar says: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "taskgroup.py": {
+   "src": "import asyncio\n\nasync def cook(dish, seconds):\n    await asyncio.sleep(seconds)\n    print(f\"{dish}: ready\")\n    return dish\n\nasync def main():\n    async with asyncio.TaskGroup() as tg:    # waits for them all\n        soup = tg.create_task(cook(\"soup\", 0.2))\n        toast = tg.create_task(cook(\"toast\", 0.1))\n    print(\"both done:\", soup.result(), toast.result())\n\nasyncio.run(main())\n",
+   "stdout": "toast: ready\nsoup: ready\nboth done: soup toast\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "taskgroup_fail.py": {
+   "src": "import asyncio\n\nasync def cook(dish, seconds):\n    try:\n        await asyncio.sleep(seconds)\n        print(f\"{dish}: ready\")\n    except asyncio.CancelledError:\n        print(f\"{dish}: cancelled\")\n        raise\n\nasync def burn():\n    await asyncio.sleep(0.1)\n    raise ValueError(\"the toast is on fire\")\n\nasync def main():\n    async with asyncio.TaskGroup() as tg:\n        tg.create_task(cook(\"soup\", 0.5))\n        tg.create_task(burn())\n    print(\"never printed\")\n\nasyncio.run(main())\n",
+   "stdout": "soup: cancelled\n",
+   "stderr": "  + Exception Group Traceback (most recent call last):\n  |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 21, in <module>\n  |     asyncio.run(main())\n  |     ~~~~~~~~~~~^^^^^^^^\n  |   File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py\", line 205, in run\n  |     return runner.run(main)\n  |            ~~~~~~~~~~^^^^^^\n  |   File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py\", line 128, in run\n  |     return self._loop.run_until_complete(task)\n  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  |   File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py\", line 724, in run_until_complete\n  |     return future.result()\n  |            ~~~~~~~~~~~~~^^\n  |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 16, in main\n  |     async with asyncio.TaskGroup() as tg:\n  |                ~~~~~~~~~~~~~~~~~^^\n  |   File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/taskgroups.py\", line 75, in __aexit__\n  |     return await self._aexit(et, exc)\n  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/asyncio/taskgroups.py\", line 195, in _aexit\n  |     raise BaseExceptionGroup(\n  |     ...<2 lines>...\n  |     ) from None\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Traceback (most recent call last):\n    |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 13, in burn\n    |     raise ValueError(\"the toast is on fire\")\n    | ValueError: the toast is on fire\n    +------------------------------------\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "soup: cancelled\n",
+    "stderr": "  + Exception Group Traceback (most recent call last):\n  |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 21, in <module>\n  |     asyncio.run(main())\n  |     ~~~~~~~~~~~^^^^^^^^\n  |   File \"/usr/local/lib/python3.13/asyncio/runners.py\", line 196, in run\n  |     return runner.run(main)\n  |            ~~~~~~~~~~^^^^^^\n  |   File \"/usr/local/lib/python3.13/asyncio/runners.py\", line 119, in run\n  |     return self._loop.run_until_complete(task)\n  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  |   File \"/usr/local/lib/python3.13/asyncio/base_events.py\", line 726, in run_until_complete\n  |     return future.result()\n  |            ~~~~~~~~~~~~~^^\n  |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 16, in main\n  |     async with asyncio.TaskGroup() as tg:\n  |                ~~~~~~~~~~~~~~~~~^^\n  |   File \"/usr/local/lib/python3.13/asyncio/taskgroups.py\", line 71, in __aexit__\n  |     return await self._aexit(et, exc)\n  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"/usr/local/lib/python3.13/asyncio/taskgroups.py\", line 173, in _aexit\n  |     raise BaseExceptionGroup(\n  |     ...<2 lines>...\n  |     ) from None\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Traceback (most recent call last):\n    |   File \"/home/you/python-ch27/taskgroup_fail.py\", line 13, in burn\n    |     raise ValueError(\"the toast is on fire\")\n    | ValueError: the toast is on fire\n    +------------------------------------\n",
+    "exit": 1
+   }
+  },
+  "test_pipshop.py": {
+   "src": "from pipshop import find_files, main, read_rows\n\n\ndef write(path, text):\n    path.write_text(text, encoding=\"utf-8\")\n\n\ndef test_read_rows_turns_text_into_numbers(tmp_path):\n    f = tmp_path / \"mon.csv\"\n    write(f, \"dish,qty,price\\nsoup,2,4.50\\n\")\n    assert read_rows(f) == [(\"soup\", 2, 4.5)]\n\n\ndef test_find_files_looks_in_subfolders(tmp_path):\n    (tmp_path / \"old\").mkdir()\n    write(tmp_path / \"a.csv\", \"dish,qty,price\\n\")\n    write(tmp_path / \"old\" / \"b.csv\", \"dish,qty,price\\n\")\n    write(tmp_path / \"notes.txt\", \"not orders\")\n    names = [p.name for p in find_files(tmp_path)]\n    assert names == [\"a.csv\", \"b.csv\"]\n\n\ndef test_report_adds_up_every_file(tmp_path, capsys):\n    write(tmp_path / \"a.csv\", \"dish,qty,price\\nsoup,2,4.50\\n\")\n    write(tmp_path / \"b.csv\",\n          \"dish,qty,price\\nsoup,1,4.50\\ntea,3,1.50\\n\")\n    assert main([str(tmp_path)]) == 0\n    out = capsys.readouterr().out\n    assert \"soup    3 sold   13.50\" in out\n    assert \"tea     3 sold    4.50\" in out\n\n\ndef test_empty_folder_says_so_and_returns_1(tmp_path, capsys):\n    assert main([str(tmp_path)]) == 1\n    assert \"no .csv files\" in capsys.readouterr().err\n",
+   "stdout": "....                                                                     [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED test_pipshop.py::test_read_rows_turns_text_into_numbers\nPASSED test_pipshop.py::test_find_files_looks_in_subfolders\nPASSED test_pipshop.py::test_report_adds_up_every_file\nPASSED test_pipshop.py::test_empty_folder_says_so_and_returns_1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 -m pytest -qq -rA test_pipshop.py",
+     "out": "....                                                                     [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED test_pipshop.py::test_read_rows_turns_text_into_numbers\nPASSED test_pipshop.py::test_find_files_looks_in_subfolders\nPASSED test_pipshop.py::test_report_adds_up_every_file\nPASSED test_pipshop.py::test_empty_folder_says_so_and_returns_1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "threads_calls.py": {
+   "src": "import threading\nimport time\n\nprices = {}\n\ndef call_supplier(name):\n    time.sleep(1)                # each waiter waits on a phone\n    prices[name] = \"price list received\"\n\nstart = time.perf_counter()\nwaiters = []\nfor name in [\"flour\", \"milk\", \"eggs\"]:\n    t = threading.Thread(target=call_supplier, args=(name,))\n    t.start()                    # off you go!\n    waiters.append(t)\nfor t in waiters:\n    t.join()                     # wait until that waiter is back\nfor name in sorted(prices):\n    print(f\"{name}: {prices[name]}\")\nprint(f\"took about {round(time.perf_counter() - start)} s\")\n",
+   "stdout": "eggs: price list received\nflour: price list received\nmilk: price list received\ntook about 1 s\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "threads_chatty.py": {
+   "src": "import threading\nimport time\n\ndef call_supplier(name):\n    print(f\"{name}: dialling\")\n    time.sleep(0.5)\n    print(f\"{name}: got the price list\")\n\nwaiters = [threading.Thread(target=call_supplier, args=(n,))\n           for n in [\"flour\", \"milk\", \"eggs\"]]\nfor t in waiters:\n    t.start()\nfor t in waiters:\n    t.join()\nprint(\"everyone is back\")\n",
+   "stdout": "flour: dialling\nmilk: dialling\neggs: dialling\nflour: got the price list\nmilk: got the price list\neggs: got the price list\neveryone is back\n",
+   "stderr": "",
+   "exit": 0,
+   "nondeterministic": true
+  },
+  "ticket_rail.py": {
+   "src": "import queue\nimport threading\n\nrail = queue.Queue()             # the ticket rail: safe to share\n\ndef cook():\n    while True:\n        ticket = rail.get()      # waits until a ticket arrives\n        if ticket is None:       # the \"kitchen closed\" ticket\n            break\n        number, dish = ticket\n        print(f\"cook: ticket {number}, {dish}\")\n\nkitchen = threading.Thread(target=cook)\nkitchen.start()\nfor number, dish in enumerate([\"soup\", \"toast\", \"tea\"], start=1):\n    rail.put((number, dish))\nrail.put(None)\nkitchen.join()\nprint(\"all tickets cooked\")\n",
+   "stdout": "cook: ticket 1, soup\ncook: ticket 2, toast\ncook: ticket 3, tea\nall tickets cooked\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tip.py": {
+   "src": "import argparse\n\nparser = argparse.ArgumentParser(description=\"Tip and split.\")\nparser.add_argument(\"bill\", type=float, help=\"the bill's total\")\nparser.add_argument(\"--percent\", type=int, default=15,\n                    help=\"tip percent (default 15)\")\nparser.add_argument(\"--split\", type=int, default=1,\n                    help=\"number of people\")\nargs = parser.parse_args()\n\ntotal = args.bill * (1 + args.percent / 100)\nprint(f\"each pays {total / args.split:.2f}\")\n",
+   "stdout": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\n\nTip and split.\n\npositional arguments:\n  bill               the bill's total\n\noptions:\n  -h, --help         show this help message and exit\n  --percent PERCENT  tip percent (default 15)\n  --split SPLIT      number of people\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 tip.py 40",
+     "out": "each pays 46.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 tip.py 40 --percent 20 --split 2",
+     "out": "each pays 24.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 tip.py --help",
+     "out": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\n\nTip and split.\n\npositional arguments:\n  bill               the bill's total\n\noptions:\n  -h, --help         show this help message and exit\n  --percent PERCENT  tip percent (default 15)\n  --split SPLIT      number of people\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    }
+   ]
+  },
+  "tip_oops.py": {
+   "src": "# No code here: this file names a terminal session.\n# tip_oops.cmd types the commands shown, which all run tip.py.\n",
+   "stdout": "2\n",
+   "stderr": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: the following arguments are required: bill\nusage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: argument bill: invalid float value: 'forty'\nusage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: unrecognized arguments: --percnt 20\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 tip.py",
+     "out": "",
+     "err": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: the following arguments are required: bill\n",
+     "exit": 2,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 tip.py forty",
+     "out": "",
+     "err": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: argument bill: invalid float value: 'forty'\n",
+     "exit": 2,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "python3 tip.py 40 --percnt 20",
+     "out": "",
+     "err": "usage: tip.py [-h] [--percent PERCENT] [--split SPLIT] bill\ntip.py: error: unrecognized arguments: --percnt 20\n",
+     "exit": 2,
+     "dir": "~/python-ch27"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch27"
+    }
+   ]
+  },
+  "walk_folder.py": {
+   "src": "import os\nfrom pathlib import Path\n\nshop = Path(\"shop\")\nfor path in sorted(shop.rglob(\"*.csv\")):    # at any depth\n    print(path)\n\nprint(\"---\")\nfor folder, subfolders, files in sorted(os.walk(shop)):\n    print(folder, sorted(files))\n",
+   "stdout": "shop/orders/monday.csv\nshop/orders/old/2025.csv\nshop/orders/tuesday.csv\n---\nshop ['hours.json', 'notes.txt']\nshop/orders ['monday.csv', 'tuesday.csv']\nshop/orders/old ['2025.csv']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "web_menu.py": {
+   "src": "import json\nimport threading\nimport urllib.request\nfrom http.server import BaseHTTPRequestHandler, HTTPServer\n\nMENU = {\"soup\": 4.5, \"toast\": 2.0, \"tea\": 1.5}\n\n# The \"other shop\": a tiny web server on this same computer,\n# running in the background, so this works without the internet.\nclass MenuShop(BaseHTTPRequestHandler):\n    def do_GET(self):\n        body = json.dumps(MENU).encode(\"utf-8\")\n        self.send_response(200)\n        self.send_header(\"Content-Type\", \"application/json\")\n        self.end_headers()\n        self.wfile.write(body)\n\n    def log_message(self, *args):      # keep the server quiet\n        pass\n\nserver = HTTPServer((\"127.0.0.1\", 0), MenuShop)   # any free port\nthreading.Thread(target=server.serve_forever, daemon=True).start()\nurl = f\"http://127.0.0.1:{server.server_port}/menu\"\n\n# Our side: knock on the back door and read the JSON answer.\nwith urllib.request.urlopen(url, timeout=5) as response:\n    print(\"status:\", response.status)\n    print(\"type:\", response.headers[\"Content-Type\"])\n    menu = json.load(response)\nprint(menu)\nprint(\"cheapest:\", min(menu, key=menu.get))\nserver.shutdown()\n",
+   "stdout": "status: 200\ntype: application/json\n{'soup': 4.5, 'toast': 2.0, 'tea': 1.5}\ncheapest: tea\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "web_requests.py": {
+   "src": "import json\nimport threading\nfrom http.server import BaseHTTPRequestHandler, HTTPServer\n\nimport requests          # third-party: pip install requests\n\nMENU = {\"soup\": 4.5, \"toast\": 2.0, \"tea\": 1.5}\n\nclass MenuShop(BaseHTTPRequestHandler):\n    def do_GET(self):\n        body = json.dumps(MENU).encode(\"utf-8\")\n        self.send_response(200)\n        self.send_header(\"Content-Type\", \"application/json\")\n        self.end_headers()\n        self.wfile.write(body)\n\n    def log_message(self, *args):      # keep the server quiet\n        pass\n\nserver = HTTPServer((\"127.0.0.1\", 0), MenuShop)   # any free port\nthreading.Thread(target=server.serve_forever, daemon=True).start()\nurl = f\"http://127.0.0.1:{server.server_port}/menu\"\n\nresponse = requests.get(url, timeout=5)\nresponse.raise_for_status()        # 404 or 500 -> an exception\nprint(response.status_code, response.json())\nserver.shutdown()\n",
+   "stdout": "200 {'soup': 4.5, 'toast': 2.0, 'tea': 1.5}\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

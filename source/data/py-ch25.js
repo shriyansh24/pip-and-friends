@@ -1,0 +1,599 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch25",
+  "versionDifferences": [
+   "bad_pattern.py",
+   "no_raw_warning.py",
+   "pred_prefix.py",
+   "prefix_surprise.py",
+   "stencil_walk.py",
+   "utf8_default.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bad_pattern.py, no_raw_warning.py, pred_prefix.py, prefix_surprise.py, stencil_walk.py, utf8_default.py."
+ },
+ "programs": {
+  "alternation.py": {
+   "src": "import re\n\ntext = \"grey cat, gray dog, green cat\"\nprint(re.findall(r\"cat|dog\", text))\nprint(re.findall(r\"gr(a|e)y\", text))\nprint(re.findall(r\"gr(?:a|e)y\", text))\n",
+   "stdout": "['cat', 'dog', 'cat']\n['e', 'a']\n['grey', 'gray']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "anatomy.py": {
+   "src": "import re\n\nm = re.search(r\"(?P<year>\\d{4})-(\\d{2})\", \"Due: 2026-11, paid\")\nprint(m.group(0))\nprint(m.group(\"year\"))\nprint(m.group(2))\nprint(m.groupdict())\n",
+   "stdout": "2026-11\n2026\n11\n{'year': '2026'}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "anchors.py": {
+   "src": "import re\n\nfor s in [\"cat\", \"cat food\", \"a cat\", \"concat\"]:\n    start = bool(re.search(r\"^cat\", s))\n    end = bool(re.search(r\"cat$\", s))\n    word = bool(re.search(r\"\\bcat\\b\", s))\n    print(f\"{s!r:11} ^:{start!s:6} $:{end!s:6} \\\\b:{word}\")\n",
+   "stdout": "'cat'       ^:True   $:True   \\b:True\n'cat food'  ^:True   $:False  \\b:True\n'a cat'     ^:False  $:True   \\b:True\n'concat'    ^:False  $:True   \\b:False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bad_pattern.py": {
+   "src": "import re\n\nprice = re.compile(r\"(\\d+\\.\\d\\d\")\nprint(price.findall(\"cost 3.50\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/bad_pattern.py\", line 3, in <module>\n    price = re.compile(r\"(\\d+\\.\\d\\d\")\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/__init__.py\", line 291, in compile\n    return _compile(pattern, flags)\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/__init__.py\", line 352, in _compile\n    p = _compiler.compile(pattern, flags)\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/_compiler.py\", line 762, in compile\n    p = _parser.parse(p, flags)\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/_parser.py\", line 972, in parse\n    p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/_parser.py\", line 459, in _parse_sub\n    itemsappend(_parse(source, state, verbose, nested + 1,\n                ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                       not nested and not items))\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/re/_parser.py\", line 857, in _parse\n    raise source.error(\"missing ), unterminated subpattern\",\n                       source.tell() - start)\nre.PatternError: missing ), unterminated subpattern at position 0\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/bad_pattern.py\", line 3, in <module>\n    price = re.compile(r\"(\\d+\\.\\d\\d\")\n  File \"/usr/local/lib/python3.13/re/__init__.py\", line 289, in compile\n    return _compile(pattern, flags)\n  File \"/usr/local/lib/python3.13/re/__init__.py\", line 350, in _compile\n    p = _compiler.compile(pattern, flags)\n  File \"/usr/local/lib/python3.13/re/_compiler.py\", line 1102, in compile\n    p = _parser.parse(p, flags)\n  File \"/usr/local/lib/python3.13/re/_parser.py\", line 980, in parse\n    p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)\n  File \"/usr/local/lib/python3.13/re/_parser.py\", line 459, in _parse_sub\n    itemsappend(_parse(source, state, verbose, nested + 1,\n                ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                       not nested and not items))\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/re/_parser.py\", line 865, in _parse\n    raise source.error(\"missing ), unterminated subpattern\",\n                       source.tell() - start)\nre.PatternError: missing ), unterminated subpattern at position 0\n",
+    "exit": 1
+   }
+  },
+  "binary_files.py": {
+   "src": "data = \"Pip 🐍\".encode(\"utf-8\")\nwith open(\"snake.bin\", \"wb\") as f:\n    print(f.write(data), \"bytes written\")\n\nwith open(\"snake.bin\", \"rb\") as f:\n    raw = f.read()\nprint(raw)\n\nwith open(\"snake.bin\", \"r\", encoding=\"utf-8\") as f:\n    print(f.read())\n",
+   "stdout": "8 bytes written\nb'Pip \\xf0\\x9f\\x90\\x8d'\nPip 🐍\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_error.py": {
+   "src": "import re\n\nnames = [\"Zoë\", \"Ada\", \"Max\"]\nfor name in names:\n    if re.fullmatch(r\"[A-Z]\\w+\", name):\n        print(name, name.encode(\"ascii\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/boss_error.py\", line 6, in <module>\n    print(name, name.encode(\"ascii\"))\n                ~~~~~~~~~~~^^^^^^^^^\nUnicodeEncodeError: 'ascii' codec can't encode character '\\xeb' in position 2: ordinal not in range(128)\n",
+   "exit": 1
+  },
+  "boss_fill.py": {
+   "src": "note = \"Grüße, Pip 🐍\"\nwith open(\"note.bin\", \"wb\") as f:\n    f.write(note.encode(\"utf-8\"))\nwith open(\"note.bin\", \"rb\") as f:\n    raw = f.read()\nprint(len(note), len(raw))\nprint(raw.decode(\"utf-8\") == note)\n",
+   "stdout": "12 17\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "import re\n\ndef hashtags(post):\n    tags = re.findall(r\"#(\\w+)\", post)\n    return [tag.casefold() for tag in tags]\n\nprint(hashtags(\"Loving #Python and #REGEX! #python\"))\n",
+   "stdout": "['python', 'regex', 'python']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_predict.py": {
+   "src": "import re\n\nlog = \"09:15 Pip=3 Max=12 Ada=7\"\nscores = re.findall(r\"(\\w+)=(\\d+)\", log)\nprint(scores)\nprint(sum(int(n) for _, n in scores))\nprint(re.sub(r\"=\\d+\", \"\", log))\n",
+   "stdout": "[('Pip', '3'), ('Max', '12'), ('Ada', '7')]\n22\n09:15 Pip Max Ada\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "import re\n\ndef prices(text):\n    return re.findall(r\"\\$\\d+.\\d\\d\", text)\n\nprint(prices(\"Tea $3.50, cake $4.25\"))\nprint(prices(\"Total $12345 paid\"))\n",
+   "stdout": "['$3.50', '$4.25']\n['$12345']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_trace.py": {
+   "src": "for word in [\"cat\", \"café\", \"naïve\", \"日本\"]:\n    data = word.encode(\"utf-8\")\n    print(word, len(word), len(data))\n",
+   "stdout": "cat 3 3\ncafé 4 5\nnaïve 5 6\n日本 2 6\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "braces.py": {
+   "src": "import re\n\nprint(re.findall(r\"\\d{3}\", \"7 42 123 98765\"))\nprint(re.findall(r\"\\d{2,4}\", \"7 42 123 98765\"))\nprint(re.findall(r\"\\d{2,}\", \"7 42 123 98765\"))\n",
+   "stdout": "['123', '987']\n['42', '123', '9876']\n['42', '123', '98765']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bytearray_demo.py": {
+   "src": "ba = bytearray(b\"cat\")\nalias = ba\nba[0] = ord(\"b\")\nba.append(33)\nprint(alias)\nprint(bytes(ba))\n",
+   "stdout": "bytearray(b'bat!')\nb'bat!'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bytes_eq.py": {
+   "src": "reply = b\"yes\"\nif reply == \"yes\":\n    print(\"Confirmed!\")\nelse:\n    print(\"Not confirmed?\")\nprint(reply == \"yes\".encode(\"utf-8\"))\n",
+   "stdout": "Not confirmed?\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bytes_immutable.py": {
+   "src": "data = b\"cat\"\ndata[0] = ord(\"b\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/bytes_immutable.py\", line 2, in <module>\n    data[0] = ord(\"b\")\n    ~~~~^^^\nTypeError: 'bytes' object does not support item assignment\n",
+   "exit": 1
+  },
+  "bytes_literal.py": {
+   "src": "data = b\"Pip\"\nprint(data)\nprint(data[0], data[1], data[2])\nprint(data[0:2])\nprint(list(data))\nprint(bytes([72, 105, 33]))\n",
+   "stdout": "b'Pip'\n80 105 112\nb'Pi'\n[80, 105, 112]\nb'Hi!'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bytes_nonascii.py": {
+   "src": "data = b\"café\"\nprint(data)\n",
+   "stdout": "",
+   "stderr": "  File \"/home/you/python-ch25/bytes_nonascii.py\", line 1\n    data = b\"café\"\n           ^^^^^^^\nSyntaxError: bytes can only contain ASCII literal characters\n",
+   "exit": 1
+  },
+  "casefold_norm.py": {
+   "src": "import unicodedata\n\ndef same_text(a, b):\n    a = unicodedata.normalize(\"NFC\", a).casefold()\n    b = unicodedata.normalize(\"NFC\", b).casefold()\n    return a == b\n\nprint(\"STRASSE\".lower() == \"straße\".lower())\nprint(\"STRASSE\".casefold() == \"straße\".casefold())\nprint(\"Cafe\\u0301\".casefold() == \"CAFÉ\".casefold())\nprint(same_text(\"Cafe\\u0301\", \"CAFÉ\"))\n",
+   "stdout": "False\nTrue\nFalse\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "char_names.py": {
+   "src": "import unicodedata\n\nfor c in \"é\" + \"e\\u0301\":\n    print(f\"U+{ord(c):04X}\", unicodedata.name(c))\n",
+   "stdout": "U+00E9 LATIN SMALL LETTER E WITH ACUTE\nU+0065 LATIN SMALL LETTER E\nU+0301 COMBINING ACUTE ACCENT\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "classes.py": {
+   "src": "import re\n\ntext = \"Pip_2 ate 3 pies at 9:45!\"\nprint(re.findall(r\"\\d\", text))\nprint(re.findall(r\"\\w+\", text))\nprint(re.findall(r\"[aeiou]\", text))\nprint(re.findall(r\"[^a-z ]\", text))\nprint(re.findall(r\"p.e\", text))\n",
+   "stdout": "['2', '3', '9', '4', '5']\n['Pip_2', 'ate', '3', 'pies', 'at', '9', '45']\n['i', 'a', 'e', 'i', 'e', 'a']\n['P', '_', '2', '3', '9', ':', '4', '5', '!']\n['pie']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "codebook.py": {
+   "src": "text = \"Aé€🐍\"\nfor ch in text:\n    raw = ch.encode(\"utf-8\")\n    print(f\"{ch} U+{ord(ch):04X} {raw.hex(' ')}\")\nprint(text.encode(\"utf-8\"))\n",
+   "stdout": "A U+0041 41\né U+00E9 c3 a9\n€ U+20AC e2 82 ac\n🐍 U+1F40D f0 9f 90 8d\nb'A\\xc3\\xa9\\xe2\\x82\\xac\\xf0\\x9f\\x90\\x8d'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "compiled.py": {
+   "src": "import re\n\nphone = re.compile(r\"\\d{3}-\\d{4}\")\nprint(phone)\nfor line in [\"call 555-1234\", \"no phone\", \"555-0000 or 555-1111\"]:\n    print(phone.findall(line))\n",
+   "stdout": "re.compile('\\\\d{3}-\\\\d{4}')\n['555-1234']\n[]\n['555-0000', '555-1111']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "concat_error.py": {
+   "src": "header = b\"ID:\"\nprint(header + \"42\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/concat_error.py\", line 2, in <module>\n    print(header + \"42\")\n          ~~~~~~~^~~~~~\nTypeError: can't concat str to bytes\n",
+   "exit": 1
+  },
+  "concat_fixed.py": {
+   "src": "header = b\"ID:\"\nprint(header + \"42\".encode(\"utf-8\"))\nprint(header.decode(\"utf-8\") + \"42\")\n",
+   "stdout": "b'ID:42'\nID:42\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "decode_error.py": {
+   "src": "data = \"café\".encode(\"latin-1\")\nprint(data)\nprint(data.decode(\"utf-8\"))\n",
+   "stdout": "b'caf\\xe9'\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/decode_error.py\", line 3, in <module>\n    print(data.decode(\"utf-8\"))\n          ~~~~~~~~~~~^^^^^^^^^\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9 in position 3: unexpected end of data\n",
+   "exit": 1
+  },
+  "decode_machine.py": {
+   "src": "print(b\"Hi\".decode(\"utf-8\"))\nprint(b\"caf\\xc3\\xa9\".decode(\"utf-8\"))\nprint(b\"\\xe2\\x82\\xac5\".decode(\"utf-8\"))\nprint(b\"\\xf0\\x9f\\x90\\x8d\".decode(\"utf-8\"))\n",
+   "stdout": "Hi\ncafé\n€5\n🐍\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "emoji_len.py": {
+   "src": "for s in [\"🐍\", \"👍🏽\", \"🇫🇷\", \"👨\\u200d👩\\u200d👧\"]:\n    points = \" \".join(f\"U+{ord(c):04X}\" for c in s)\n    print(s, len(s), len(s.encode(\"utf-8\")), points)\n",
+   "stdout": "🐍 1 4 U+1F40D\n👍🏽 2 8 U+1F44D U+1F3FD\n🇫🇷 2 8 U+1F1EB U+1F1F7\n👨‍👩‍👧 5 18 U+1F468 U+200D U+1F469 U+200D U+1F467\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "emoji_names.py": {
+   "src": "import unicodedata\n\nfor c in \"🐍👍🏽🇫🇷👨\\u200d👩\\u200d👧\":\n    print(f\"U+{ord(c):04X}\", unicodedata.name(c))\n",
+   "stdout": "U+1F40D SNAKE\nU+1F44D THUMBS UP SIGN\nU+1F3FD EMOJI MODIFIER FITZPATRICK TYPE-4\nU+1F1EB REGIONAL INDICATOR SYMBOL LETTER F\nU+1F1F7 REGIONAL INDICATOR SYMBOL LETTER R\nU+1F468 MAN\nU+200D ZERO WIDTH JOINER\nU+1F469 WOMAN\nU+200D ZERO WIDTH JOINER\nU+1F467 GIRL\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "encode_error.py": {
+   "src": "name = \"Zoë\"\nprint(name.encode(\"utf-8\"))\nprint(name.encode(\"ascii\"))\n",
+   "stdout": "b'Zo\\xc3\\xab'\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/encode_error.py\", line 3, in <module>\n    print(name.encode(\"ascii\"))\n          ~~~~~~~~~~~^^^^^^^^^\nUnicodeEncodeError: 'ascii' codec can't encode character '\\xeb' in position 2: ordinal not in range(128)\n",
+   "exit": 1
+  },
+  "error_handlers.py": {
+   "src": "bad = b\"caf\\xe9 ok\"\nprint(bad.decode(\"utf-8\", errors=\"replace\"))\nprint(bad.decode(\"utf-8\", errors=\"ignore\"))\nprint(bad.decode(\"utf-8\", errors=\"backslashreplace\"))\nprint(\"Zoë\".encode(\"ascii\", errors=\"replace\"))\nprint(\"Zoë\".encode(\"ascii\", errors=\"xmlcharrefreplace\"))\n",
+   "stdout": "caf� ok\ncaf ok\ncaf\\xe9 ok\nb'Zo?'\nb'Zo&#235;'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "escape_dot.py": {
+   "src": "import re\n\ntext = \"3.50 and 3x50 and 3450\"\nprint(re.findall(r\"\\d.\\d\\d\", text))\nprint(re.findall(r\"\\d\\.\\d\\d\", text))\nprint(re.escape(\"3.50$\"))\n",
+   "stdout": "['3.50', '3x50', '3450']\n['3.50']\n3\\.50\\$\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_codec.py": {
+   "src": "message = \"Grüße\"\nwire = message.encode(\"utf-8\")\nprint(wire)\nback = wire.decode(\"utf-8\")\nprint(back == message)\n",
+   "stdout": "b'Gr\\xc3\\xbc\\xc3\\x9fe'\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_named.py": {
+   "src": "import re\n\nm = re.search(r\"(?P<name>\\w+) scored (?P<points>\\d+)\", \"Ada scored 42 today\")\nprint(m[\"name\"])\nprint(int(m[\"points\"]) + 1)\n",
+   "stdout": "Ada\n43\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_postcode.py": {
+   "src": "import re\n\nfor code in [\"AB12 3CD\", \"ab12 3cd\", \"AB1 3CD\", \"XY99 9ZZ\"]:\n    ok = re.fullmatch(r\"[A-Z]{2}\\d{2} \\d[A-Z]{2}\", code)\n    print(code, \"valid\" if ok else \"invalid\")\n",
+   "stdout": "AB12 3CD valid\nab12 3cd invalid\nAB1 3CD invalid\nXY99 9ZZ valid\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_raw.py": {
+   "src": "import re\n\nwords = re.findall(r\"\\bpie\\b\", \"pie pies apple pie\")\nprint(words)\n",
+   "stdout": "['pie', 'pie']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_same.py": {
+   "src": "import unicodedata\n\ndef tidy(s):\n    return unicodedata.normalize(\"NFC\", s).casefold()\n\nprint(tidy(\"Ame\\u0301lie\") == tidy(\"AMÉLIE\"))\n",
+   "stdout": "True\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "findall_groups.py": {
+   "src": "import re\n\ntext = \"pip@mail.com, max@post.org\"\nprint(re.findall(r\"\\w+@\\w+\\.\\w+\", text))\nprint(re.findall(r\"(\\w+)@\\w+\\.\\w+\", text))\nprint(re.findall(r\"(\\w+)@(\\w+)\\.\\w+\", text))\n",
+   "stdout": "['pip@mail.com', 'max@post.org']\n['pip', 'max']\n[('pip', 'mail'), ('max', 'post')]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "finditer_demo.py": {
+   "src": "import re\n\ntext = \"Pip owes 3 coins, Max owes 15.\"\nprint(re.findall(r\"\\d+\", text))\nfor m in re.finditer(r\"\\d+\", text):\n    print(m.group(), \"at\", m.span())\n",
+   "stdout": "['3', '15']\n3 at (9, 10)\n15 at (27, 29)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "first_regex.py": {
+   "src": "import re\n\ntext = \"Shipped 2026-11-08, arrives 2026-11-12.\"\nprint(re.findall(r\"\\d{4}-\\d{2}-\\d{2}\", text))\n",
+   "stdout": "['2026-11-08', '2026-11-12']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "flags.py": {
+   "src": "import re\n\nprint(re.findall(r\"pip\", \"Pip pip PIP\"))\nprint(re.findall(r\"pip\", \"Pip pip PIP\", re.IGNORECASE))\n\ndate = re.compile(r\"\"\"\n    (?P<year>\\d{4})    # four-digit year\n    -\n    (?P<month>\\d{2})   # two-digit month\n\"\"\", re.VERBOSE)\nprint(date.search(\"Since 2026-11\").groupdict())\n",
+   "stdout": "['pip']\n['Pip', 'pip', 'PIP']\n{'year': '2026', 'month': '11'}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "greedy.py": {
+   "src": "import re\n\nhtml = \"<b>bold</b> and <i>italic</i>\"\nprint(re.findall(r\"<.*>\", html))\nprint(re.findall(r\"<.*?>\", html))\n",
+   "stdout": "['<b>bold</b> and <i>italic</i>']\n['<b>', '</b>', '<i>', '</i>']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "groups.py": {
+   "src": "import re\n\nm = re.search(r\"(\\d{4})-(\\d{2})-(\\d{2})\", \"Party on 2026-12-31!\")\nprint(m.group(0))\nprint(m.group(1))\nprint(m.group(3))\nprint(m.groups())\n",
+   "stdout": "2026-12-31\n2026\n31\n('2026', '12', '31')\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "methods_first.py": {
+   "src": "text = \"Shipped 2026-11-08, arrives 2026-11-12.\"\nprint(text.find(\"2026-11-08\"))\nprint(\"2026\" in text)\nfor i in range(len(text) - 9):\n    piece = text[i:i + 10]\n    if (piece[:4].isdigit() and piece[4] == \"-\" and piece[5:7].isdigit()\n            and piece[7] == \"-\" and piece[8:].isdigit()):\n        print(\"date at\", i, piece)\n",
+   "stdout": "8\nTrue\ndate at 8 2026-11-08\ndate at 28 2026-11-12\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "named_groups.py": {
+   "src": "import re\n\nlog = \"2026-11-08 ERROR disk full\"\nm = re.search(r\"(?P<date>\\S+) (?P<level>[A-Z]+) (?P<msg>.*)\", log)\nprint(m[\"level\"])\nprint(m[\"msg\"])\nprint(m.groupdict())\n",
+   "stdout": "ERROR\ndisk full\n{'date': '2026-11-08', 'level': 'ERROR', 'msg': 'disk full'}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_bom.py": {
+   "src": "data = \"hi\".encode(\"utf-8-sig\")\nprint(data)\nprint(data.decode(\"utf-8\"))\nprint(repr(data.decode(\"utf-8\")))\nprint(repr(data.decode(\"utf-8-sig\")))\n",
+   "stdout": "b'\\xef\\xbb\\xbfhi'\n﻿hi\n'\\ufeffhi'\n'hi'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_bytes_tools.py": {
+   "src": "data = \"€\".encode(\"utf-8\")\nprint(data.hex())\nprint(data.hex(\" \"))\nprint(bytes.fromhex(\"e2 82 ac\").decode(\"utf-8\"))\nprint(int.from_bytes(b\"\\x01\\x00\", \"big\"), int.from_bytes(b\"\\x01\\x00\", \"little\"))\nprint(\"A\".encode(\"utf-16\"), \"A\".encode(\"utf-16-le\"))\n",
+   "stdout": "e282ac\ne2 82 ac\n€\n256 1\nb'\\xff\\xfeA\\x00' b'A\\x00'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_regex_engine.py": {
+   "src": "import re\n\nprint(re.findall(r\"a*\", \"baaa\"))\nprint(re.sub(r\"x*\", \"-\", \"abc\"))\n",
+   "stdout": "['', 'aaa', '']\n-a-b-c-\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_unicode_regex.py": {
+   "src": "import re\n\ntext = \"Zoë paid 5€, José paid ٣\"\nprint(re.findall(r\"\\w+\", text))\nprint(re.findall(r\"\\w+\", text, re.ASCII))\nprint(re.findall(r\"\\d\", text))\n",
+   "stdout": "['Zoë', 'paid', '5', 'José', 'paid', '٣']\n['Zo', 'paid', '5', 'Jos', 'paid']\n['5', '٣']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nfc_nfd.py": {
+   "src": "import unicodedata\n\nnfc = \"é\"\nnfd = \"e\\u0301\"  # e + combining accent\nprint(nfc, nfd)\nprint(len(nfc), len(nfd))\nprint(nfc == nfd)\nfor label, s in [(\"NFC\", nfc), (\"NFD\", nfd)]:\n    print(label, \" \".join(f\"U+{ord(c):04X}\" for c in s))\nprint(unicodedata.normalize(\"NFC\", nfd) == nfc)\n",
+   "stdout": "é é\n1 2\nFalse\nNFC U+00E9\nNFD U+0065 U+0301\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "no_raw_warning.py": {
+   "src": "import re\n\nprint(re.findall(\"\\d+\", \"a1 b22\"))\n",
+   "stdout": "['1', '22']\n",
+   "stderr": "/home/you/python-ch25/no_raw_warning.py:3: SyntaxWarning: \"\\d\" is an invalid escape sequence. Such sequences will not work in the future. Did you mean \"\\\\d\"? A raw string is also an option.\n  print(re.findall(\"\\d+\", \"a1 b22\"))\n",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "['1', '22']\n",
+    "stderr": "/home/you/python-ch25/no_raw_warning.py:3: SyntaxWarning: invalid escape sequence '\\d'\n  print(re.findall(\"\\d+\", \"a1 b22\"))\n",
+    "exit": 0
+   }
+  },
+  "no_regex_needed.py": {
+   "src": "filename = \"holiday_2026.JPG\"\nprint(filename.lower().endswith(\".jpg\"))\nprint(\"2026\" in filename)\nprint(filename.split(\"_\"))\nprint(filename.replace(\"_\", \" \"))\n",
+   "stdout": "True\nTrue\n['holiday', '2026.JPG']\nholiday 2026.JPG\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "none_group.py": {
+   "src": "import re\n\nm = re.search(r\"\\d+\", \"Pip: no cookies\")\nprint(m.group())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/none_group.py\", line 4, in <module>\n    print(m.group())\n          ^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'group'\n",
+   "exit": 1
+  },
+  "old_match.py": {
+   "src": "import re\n\nprint(re.match(r\"\\d+\", \"Order 4471\"))\nprint(re.match(r\"\\d+\", \"4471 orders\"))\n",
+   "stdout": "None\n<re.Match object; span=(0, 4), match='4471'>\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "opt_out.py": {
+   "src": "import sys\n\nprint(\"UTF-8 mode:\", sys.flags.utf8_mode)\nwith open(\"menu.txt\", \"w\") as f:\n    print(\"open() picked:\", f.encoding)\n    f.write(\"crème brûlée\")\n",
+   "stdout": "UTF-8 mode: 0\nopen() picked: ANSI_X3.4-1968\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/opt_out.py\", line 6, in <module>\n    f.write(\"cr\\xe8me br\\xfbl\\xe9e\")\n    ~~~~~~~^^^^^^^^^^^^^^^^\nUnicodeEncodeError: 'ascii' codec can't encode character '\\xe8' in position 2: ordinal not in range(128)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "LC_ALL=C PYTHONUTF8=0 python3 opt_out.py",
+     "out": "UTF-8 mode: 0\nopen() picked: ANSI_X3.4-1968\n",
+     "err": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/opt_out.py\", line 6, in <module>\n    f.write(\"cr\\xe8me br\\xfbl\\xe9e\")\n    ~~~~~~~^^^^^^^^^^^^^^^^\nUnicodeEncodeError: 'ascii' codec can't encode character '\\xe8' in position 2: ordinal not in range(128)\n",
+     "exit": 1,
+     "merged": "UTF-8 mode: 0\nopen() picked: ANSI_X3.4-1968\nTraceback (most recent call last):\n  File \"/home/you/python-ch25/opt_out.py\", line 6, in <module>\n    f.write(\"cr\\xe8me br\\xfbl\\xe9e\")\n    ~~~~~~~^^^^^^^^^^^^^^^^\nUnicodeEncodeError: 'ascii' codec can't encode character '\\xe8' in position 2: ordinal not in range(128)\n"
+    }
+   ]
+  },
+  "opt_out_fixed.py": {
+   "src": "import sys\n\nprint(\"UTF-8 mode:\", sys.flags.utf8_mode)\nwith open(\"menu.txt\", \"w\", encoding=\"utf-8\") as f:\n    print(\"open() picked:\", f.encoding)\n    f.write(\"crème brûlée\")\nwith open(\"menu.txt\", encoding=\"utf-8\") as f:\n    print(f.read() == \"crème brûlée\")\n",
+   "stdout": "UTF-8 mode: 0\nopen() picked: utf-8\nTrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "LC_ALL=C PYTHONUTF8=0 python3 opt_out_fixed.py",
+     "out": "UTF-8 mode: 0\nopen() picked: utf-8\nTrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_sub.py": {
+   "src": "import re\n\ndef us_to_iso(text):\n    pattern = r\"(\\d{2})/(\\d{2})/(\\d{4})\"\n    return re.sub(pattern, r\"\\3-\\1-\\2\", text)\n\nprint(us_to_iso(\"Due 12/31/2026\"))\n",
+   "stdout": "Due 2026-12-31\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_braces.py": {
+   "src": "import re\n\nprint(re.findall(r\"\\d{2}\", \"1 22 333 4444\"))\n",
+   "stdout": "['22', '33', '44', '44']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_bytes.py": {
+   "src": "word = \"naïve\"\ndata = word.encode(\"utf-8\")\nprint(len(word), len(data))\nprint(data[0])\nprint(data[:2])\n",
+   "stdout": "5 6\n110\nb'na'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_classes.py": {
+   "src": "import re\n\ncode = \"Gate B12, seat 7C\"\nprint(re.findall(r\"\\d+\", code))\nprint(re.findall(r\"[A-Z]\", code))\nprint(re.findall(r\"\\w+\", code))\n",
+   "stdout": "['12', '7']\n['G', 'B', 'C']\n['Gate', 'B12', 'seat', '7C']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_concat.py": {
+   "src": "size = b\"12\"\nprint(size + \" kB\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/pred_concat.py\", line 2, in <module>\n    print(size + \" kB\")\n          ~~~~~^~~~~~~\nTypeError: can't concat str to bytes\n",
+   "exit": 1
+  },
+  "pred_groups.py": {
+   "src": "import re\n\ntext = \"x=3, y=10, z=7\"\nprint(re.findall(r\"(\\w)=(\\d+)\", text))\nprint(re.findall(r\"\\w=(\\d+)\", text))\n",
+   "stdout": "[('x', '3'), ('y', '10'), ('z', '7')]\n['3', '10', '7']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_nfc.py": {
+   "src": "import unicodedata\n\nword = \"Zoe\\u0308\"\nprint(len(word))\nshort = unicodedata.normalize(\"NFC\", word)\nprint(len(short))\nprint(word == \"Zoë\", short == \"Zoë\")\n",
+   "stdout": "4\n3\nFalse True\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_prefix.py": {
+   "src": "import re\n\ntext = \"42 is the answer, not 7\"\nprint(re.search(r\"\\d+\", text).group())\nprint(re.prefixmatch(r\"\\d+\", text).group())\nprint(re.findall(r\"\\d+\", text))\nprint(re.fullmatch(r\"\\d+\", text))\n",
+   "stdout": "42\n42\n['42', '7']\nNone\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "42\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/pred_prefix.py\", line 5, in <module>\n    print(re.prefixmatch(r\"\\d+\", text).group())\n          ^^^^^^^^^^^^^^\nAttributeError: module 're' has no attribute 'prefixmatch'\n",
+    "exit": 1
+   }
+  },
+  "pred_replace.py": {
+   "src": "raw = b\"Ol\\xe1!\"\nprint(raw.decode(\"latin-1\"))\nprint(raw.decode(\"utf-8\", errors=\"replace\"))\nprint(len(raw.decode(\"utf-8\", errors=\"ignore\")))\n",
+   "stdout": "Olá!\nOl�!\n3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_search.py": {
+   "src": "import re\n\nm = re.search(r\"\\d+\", \"Room 101, floor 3\")\nprint(m.group())\nprint(m.span())\nprint(re.search(r\"\\d+\", \"Room B\"))\n",
+   "stdout": "101\n(5, 8)\nNone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_split.py": {
+   "src": "import re\n\nprint(re.split(r\"\\d+\", \"a1b22c333d\"))\nprint(re.split(r\"-\", \"2026-11-08\"))\n",
+   "stdout": "['a', 'b', 'c', 'd']\n['2026', '11', '08']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "prefix_surprise.py": {
+   "src": "import re\n\nprint(re.search(r\"\\d+\", \"Order 4471\"))\nprint(re.prefixmatch(r\"\\d+\", \"Order 4471\"))\nprint(re.prefixmatch(r\"\\d+\", \"4471 orders\"))\nprint(re.fullmatch(r\"\\d+\", \"4471 orders\"))\nprint(re.fullmatch(r\"\\d+\", \"4471\"))\n",
+   "stdout": "<re.Match object; span=(6, 10), match='4471'>\nNone\n<re.Match object; span=(0, 4), match='4471'>\nNone\n<re.Match object; span=(0, 4), match='4471'>\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "<re.Match object; span=(6, 10), match='4471'>\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/prefix_surprise.py\", line 4, in <module>\n    print(re.prefixmatch(r\"\\d+\", \"Order 4471\"))\n          ^^^^^^^^^^^^^^\nAttributeError: module 're' has no attribute 'prefixmatch'\n",
+    "exit": 1
+   }
+  },
+  "quantifiers.py": {
+   "src": "import re\n\nfor word in [\"colr\", \"color\", \"colour\", \"colouur\"]:\n    q = bool(re.fullmatch(r\"colou?r\", word))\n    star = bool(re.fullmatch(r\"colou*r\", word))\n    plus = bool(re.fullmatch(r\"colou+r\", word))\n    print(f\"{word:8} ?:{q!s:6} *:{star!s:6} +:{plus}\")\n",
+   "stdout": "colr     ?:False  *:False  +:False\ncolor    ?:True   *:True   +:False\ncolour   ?:True   *:True   +:True\ncolouur  ?:False  *:True   +:True\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "raw_trap.py": {
+   "src": "import re\n\nprint(len(\"\\b\"), len(r\"\\b\"))\nprint(re.findall(\"\\bcat\\b\", \"cat catalog cat\"))\nprint(re.findall(r\"\\bcat\\b\", \"cat catalog cat\"))\n",
+   "stdout": "1 2\n[]\n['cat', 'cat']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "search_basic.py": {
+   "src": "import re\n\nm = re.search(r\"\\d+\", \"Table 12, seat 7\")\nprint(m)\nprint(m.group())\nprint(m.start(), m.end())\nprint(re.search(r\"\\d+\", \"no numbers here\"))\n",
+   "stdout": "<re.Match object; span=(6, 8), match='12'>\n12\n6 8\nNone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "search_if.py": {
+   "src": "import re\n\nline = \"Pip: 3 cookies\"\nm = re.search(r\"\\d+\", line)\nif m:\n    print(\"found\", m.group())\nmiss = re.search(r\"\\d+\", \"Pip: no cookies\")\nprint(miss)\n",
+   "stdout": "found 3\nNone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "split_demo.py": {
+   "src": "import re\n\nshopping = \"eggs, milk;flour ,  jam\"\nprint(shopping.split(\",\"))\nprint(re.split(r\"\\s*[,;]\\s*\", shopping))\n",
+   "stdout": "['eggs', ' milk;flour ', '  jam']\n['eggs', 'milk', 'flour', 'jam']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_dot.py": {
+   "src": "import re\n\nfiles = [\"photo.jpg\", \"notes.txt\", \"logo_jpg\", \"cat.jpg\"]\nfor name in files:\n    if re.search(r\".jpg$\", name):\n        print(\"picture:\", name)\n",
+   "stdout": "picture: photo.jpg\npicture: logo_jpg\npicture: cat.jpg\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_greedy.py": {
+   "src": "import re\n\nline = 'She said \"hi\" and then \"bye\".'\nquotes = re.findall(r'\"(.*)\"', line)\nprint(quotes)\n",
+   "stdout": "['hi\" and then \"bye']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_mix.py": {
+   "src": "packet = b\"PING\"\ncommand = packet.decode(\"ascii\")\nif packet == \"PING\":\n    print(\"pong\")\nelse:\n    print(\"unknown command\")\n",
+   "stdout": "unknown command\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_pin.py": {
+   "src": "import re\n\ndef is_year(text):\n    return bool(re.search(r\"\\d{4}\", text))\n\nprint(is_year(\"2026\"))\nprint(is_year(\"20260\"))\nprint(is_year(\"year 1999!\"))\n",
+   "stdout": "True\nTrue\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "stencil_walk.py": {
+   "src": "import re\n\ntext = \"a1 b22 c333\"\nstencil = re.compile(r\"\\d+\")\npos = 0\nwhile pos < len(text):\n    m = stencil.prefixmatch(text, pos)\n    if m:\n        print(f\"try {pos}: fits {m.group()!r}\")\n        pos = m.end()\n    else:\n        print(f\"try {pos}: no\")\n        pos += 1\nprint(stencil.findall(text))\n",
+   "stdout": "try 0: no\ntry 1: fits '1'\ntry 2: no\ntry 3: no\ntry 4: fits '22'\ntry 6: no\ntry 7: no\ntry 8: fits '333'\n['1', '22', '333']\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/stencil_walk.py\", line 7, in <module>\n    m = stencil.prefixmatch(text, pos)\n        ^^^^^^^^^^^^^^^^^^^\nAttributeError: 're.Pattern' object has no attribute 'prefixmatch'\n",
+    "exit": 1
+   }
+  },
+  "str_vs_bytes.py": {
+   "src": "word = \"café\"\ndata = word.encode(\"utf-8\")\nprint(word, len(word), type(word).__name__)\nprint(data, len(data), type(data).__name__)\nprint(list(data))\nprint(data.decode(\"utf-8\"))\n",
+   "stdout": "café 4 str\nb'caf\\xc3\\xa9' 5 bytes\n[99, 97, 102, 195, 169]\ncafé\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "sub_demo.py": {
+   "src": "import re\n\nnote = \"Call 555-1234 or 555-9876.\"\nprint(re.sub(r\"\\d\", \"#\", note))\nprint(re.sub(r\"\\d{3}-\\d{4}\", \"[hidden]\", note))\ndates = \"from 2026-11-08 to 2026-12-24\"\nprint(re.sub(r\"(\\d{4})-(\\d{2})-(\\d{2})\", r\"\\3/\\2/\\1\", dates))\n",
+   "stdout": "Call ###-#### or ###-####.\nCall [hidden] or [hidden].\nfrom 08/11/2026 to 24/12/2026\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_bytes.py": {
+   "src": "for ch in \"Hé€!\":\n    raw = ch.encode(\"utf-8\")\n    print(ch, ord(ch), len(raw))\n",
+   "stdout": "H 72 1\né 233 2\n€ 8364 3\n! 33 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_match.py": {
+   "src": "import re\n\nfor word in [\"hat\", \"heat\", \"ht\", \"hoot\", \"hit!\"]:\n    fits = bool(re.fullmatch(r\"h\\w?t\", word))\n    print(word, len(word), fits)\n",
+   "stdout": "hat 3 True\nheat 4 False\nht 2 True\nhoot 4 False\nhit! 4 False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "unicode_family.py": {
+   "src": "print(issubclass(UnicodeDecodeError, ValueError))\nprint(issubclass(UnicodeEncodeError, ValueError))\ntry:\n    b\"\\xff\".decode(\"utf-8\")\nexcept ValueError as err:\n    print(type(err).__name__, \"caught as a ValueError\")\n",
+   "stdout": "True\nTrue\nUnicodeDecodeError caught as a ValueError\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "utf8_default.py": {
+   "src": "import locale\nimport sys\n\nprint(\"UTF-8 mode:\", sys.flags.utf8_mode)\nprint(\"default encoding:\", locale.getpreferredencoding(False))\nwith open(\"plain.txt\", \"w\") as f:\n    print(\"open() picked:\", f.encoding)\n",
+   "stdout": "UTF-8 mode: 1\ndefault encoding: utf-8\nopen() picked: utf-8\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "UTF-8 mode: 0\ndefault encoding: UTF-8\nopen() picked: UTF-8\n",
+    "stderr": "",
+    "exit": 0
+   }
+  },
+  "validate_pin.py": {
+   "src": "import re\n\nfor pin in [\"1234\", \"12345\", \"x1234\"]:\n    loose = bool(re.search(r\"\\d{4}\", pin))\n    strict = bool(re.fullmatch(r\"\\d{4}\", pin))\n    print(pin, \"search:\", loose, \"fullmatch:\", strict)\n",
+   "stdout": "1234 search: True fullmatch: True\n12345 search: True fullmatch: False\nx1234 search: True fullmatch: False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "wb_wrong.py": {
+   "src": "with open(\"note.bin\", \"w\", encoding=\"utf-8\") as f:\n    f.write(b\"\\x00\\x01\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch25/wb_wrong.py\", line 2, in <module>\n    f.write(b\"\\x00\\x01\")\n    ~~~~~~~^^^^^^^^^^^^^\nTypeError: write() argument must be str, not bytes\n",
+   "exit": 1
+  },
+  "wrong_codebook.py": {
+   "src": "data = \"café\".encode(\"utf-8\")\nprint(data)\nprint(data.decode(\"utf-8\"))\nprint(data.decode(\"latin-1\"))\nprint(data.decode(\"cp1252\"))\n",
+   "stdout": "b'caf\\xc3\\xa9'\ncafé\ncafÃ©\ncafÃ©\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

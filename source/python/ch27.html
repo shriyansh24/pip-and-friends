@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en" data-book="python">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waiters and Open Doors</title>
+<meta name="description" content="Chapter 27 of Pip & Python, a comic course, and the last chapter of the book: concurrency as a café (threads as waiters sharing one kitchen door, the GIL, race conditions and locks, queues, thread and process pools, asyncio as one waiter who never stands idle), then programs that talk to the world (sys.argv and argparse, stdin, stdout, stderr and exit codes, environment variables, subprocess, walking folders, CSV, JSON and XML, sqlite3, a JSON web API, the dangers of pickle), and a final project: a command-line tool with SQLite and tests. Ends with a recap of the whole book.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/py-ch27.css">
+<script defer src="../data/py-ch27.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/py-ch27.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Python book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch26.html">&larr; Ch 26</a><span aria-current="page">Ch 27 of 27</span>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 27 · THE LAST ONE</p>
+    <h1 id="cover-h">WAITERS AND OPEN DOORS</h1>
+    <div class="ch27-cover">
+      <svg class="char" data-char="waiter" data-variant="a" data-pose="tray"></svg>
+      <svg class="char pipc" data-char="pip" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char" data-char="waiter" data-variant="b" data-pose="run"></svg>
+      <svg class="char" data-char="station" data-kind="door"></svg>
+    </div>
+    <p class="sr-only">Picture: Ana the waiter carrying a covered dish on a tray, Pip waving, Ben the waiter hurrying past with a plate, and a back door with an arrow pointing out of it.</p>
+    <p class="caption blurb">Pip's bakery has turned into a busy café. Orders pile up while Pip waits on the phone, the suppliers' price lists live on the internet, and the owner wants a real command-line tool for the takings. Today Pip learns to do <b>several things at once</b>, and to open the doors between a program and the <b>world outside</b>. Then we celebrate: this is the last chapter of the book. About 120 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter"><ol>
+    <li><a href="#part-1">The busy café: waiting versus working</a></li>
+    <li><a href="#part-2">More waiters: threads, the kitchen door, and the tally jar</a></li>
+    <li><a href="#part-3">Ticket rails and hired help: queues, pools and separate kitchens</a></li>
+    <li><a href="#part-4">One waiter who never waits: asyncio</a></li>
+    <li><a href="#part-5">The shop counter: arguments, streams and exit codes</a></li>
+    <li><a href="#part-6">The back door: other programs, folders, data, databases and the web</a></li>
+    <li><a href="#part-7">The last project: pipshop</a></li>
+    <li><a href="#boss">Boss level, recap, and the end of the book</a></li>
+  </ol></nav>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- ===================================================== PART 1 ===================================================== -->
+  <h2 class="part-h" id="part-1">Part 1 · The busy café<small>most programs spend their time waiting, and waiting can be shared</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Pip on hold">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Every morning Pip phones three suppliers for today's prices: flour, milk and eggs. Each call means a second on hold. Meanwhile the café fills up.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>I call the mill and wait. Then I call the dairy and wait. Then the farm, and wait. I'm not <b>doing</b> anything while I wait! Couldn't somebody else make the next call?</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>That's the question of this chapter's first half: how a program can deal with <b>several jobs at once</b>. Think of a restaurant. One waiter who stands at each table until the food comes is slow. A good restaurant hires waiters, opens more kitchens, or trains one waiter never to stand still.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: what you already know">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">This last chapter leans on a lot of earlier ones. If one feels shaky, its chapter has the full story.</p>
+    <ol class="checklist">
+      <li><span><b>Functions are values</b> (Chapter 17): you can hand a function to another function without calling it. That's how you give a waiter a job.</span></li>
+      <li><span><b>Key cards</b> (Chapter 22): a <code>with</code> block takes something and always gives it back. A lock works exactly like that. Chapter 22 also showed <b>exception groups</b>, which come back in Part 4.</span></li>
+      <li><span><b>The <code>__name__</code> guard</b> and a first look at <b><code>sys.argv</code></b> (Chapter 13).</span></li>
+      <li><span><b>Files, CSV and JSON</b> (Chapters 10 and 12), <b>paths</b> with <code>pathlib</code>, and <b>exceptions</b> (Chapters 9 and 22).</span></li>
+      <li><span><b>Tests</b> with pytest (Chapters 14 and 26), and <b>timing</b> with <code>time.perf_counter()</code> (Chapter 18; Chapter 24 measured with <code>timeit</code>).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: the restaurant">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Three ways to run a busy restaurant, and the Python tool for each. Keep this picture: the whole first half of the chapter hangs on it.</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <div class="ch27-pics"><svg class="char" data-char="waiter" data-variant="a" data-pose="tray"></svg><svg class="char" data-char="waiter" data-variant="b" data-pose="run"></svg><svg class="char" data-char="door"></svg></div>
+        <h3>MORE WAITERS<small>threads</small></h3>
+        <p>Several waiters share <b>one kitchen</b> (the program's memory). The kitchen door lets <b>one waiter through at a time</b>: that door is the <b>GIL</b>.</p>
+        <p class="ch27-maps">threading, ThreadPoolExecutor</p>
+      </div>
+      <div class="duo-card">
+        <div class="ch27-pics"><svg class="char big" data-char="chef"></svg><svg class="char big" data-char="chef"></svg></div>
+        <h3>MORE KITCHENS<small>processes</small></h3>
+        <p><b>Separate kitchens</b>, each with its own cook, its own food and its own door. They really cook at the same moment, but sending food between them takes effort.</p>
+        <p class="ch27-maps">ProcessPoolExecutor, multiprocessing</p>
+      </div>
+      <div class="duo-card dashed">
+        <div class="ch27-pics"><svg class="char big" data-char="waiter" data-variant="c" data-pose="run"></svg></div>
+        <h3>ONE TIRELESS WAITER<small>asyncio</small></h3>
+        <p><b>One waiter</b> who never stands at a table waiting. Order placed? Off to the next table, back when the dish is ready.</p>
+        <p class="ch27-maps">async def, await, asyncio.run</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: first card, two waiters, Ana with a tray and Ben hurrying, next to a kitchen door with a sign saying one at a time. Second card, two chefs, one in each kitchen. Third card, Cy the waiter hurrying with a plate.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 4: concurrency versus parallelism">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">Two big words. <b>Concurrency</b> means having several jobs <b>in progress</b> at once, taking turns. <b>Parallelism</b> means several jobs running <b>at the very same instant</b>, which needs several CPU <b>cores</b> (the parts of a processor that actually run instructions; most laptops have between 4 and 16). Here are three calls, each a little work and a lot of waiting.</p>
+    <div class="ch27-lanes">
+      <div class="ch27-lane">
+        <p>One after another <small>(Panel 5's program)</small></p>
+        <div class="ch27-track">
+          <div class="ch27-bar"><span class="who">Pip</span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span></div>
+        </div>
+      </div>
+      <div class="ch27-lane">
+        <p>Concurrent: three waiters take turns <small>(threads or asyncio)</small></p>
+        <div class="ch27-track">
+          <div class="ch27-bar"><span class="who">Ana</span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span><span class="gap" style="flex:16"></span></div>
+          <div class="ch27-bar"><span class="who">Ben</span><span class="gap" style="flex:3"></span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span><span class="gap" style="flex:13"></span></div>
+          <div class="ch27-bar"><span class="who">Cy</span><span class="gap" style="flex:6"></span><span class="work" style="flex:3">dial</span><span class="wait" style="flex:5">on hold</span><span class="gap" style="flex:10"></span></div>
+        </div>
+      </div>
+      <div class="ch27-lane">
+        <p>Parallel: three kitchens, three cores <small>(processes)</small></p>
+        <div class="ch27-track">
+          <div class="ch27-bar"><span class="who">core 1</span><span class="work" style="flex:8">cook</span><span class="gap" style="flex:16"></span></div>
+          <div class="ch27-bar"><span class="who">core 2</span><span class="work" style="flex:8">cook</span><span class="gap" style="flex:16"></span></div>
+          <div class="ch27-bar"><span class="who">core 3</span><span class="work" style="flex:8">cook</span><span class="gap" style="flex:16"></span></div>
+        </div>
+      </div>
+      <ul class="ch27-key" aria-label="Key"><li><span class="sw work" aria-hidden="true"></span>working (solid box)</li><li><span class="sw wait" aria-hidden="true"></span>waiting (dashed box)</li></ul>
+    </div>
+    <p class="sr-only">Drawing: in the first lane Pip dials, waits on hold, dials, waits, dials and waits, one after another, filling the whole width. In the second lane three waiters each dial a moment after the other and wait on hold at the same time, finishing after about a third of the width. In the third lane three cores each cook at exactly the same time.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>So the question to ask about any slow job: is it <b>waiting</b> or <b>working</b>? A job that mostly waits (for the network, a disk, a person) is <b>I/O-bound</b>: <b>I/O</b> means input and output. A job that mostly calculates is <b>CPU-bound</b>. My rule: <b>WAITING CAN BE SHARED. WORKING NEEDS MORE HANDS.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e1m" id="e1"></div>
+  <script type="application/json" id="e1m">{"q": "Which of these jobs is <b>CPU-bound<\/b>: slow because of calculating, not waiting?", "options": [{"t": "Working out a million prime numbers", "correct": true, "why": "Right. The processor is busy every moment. Nothing outside the program is being waited for, so only more cores (processes) can make it faster."}, {"t": "Downloading 50 web pages", "why": "Almost all of that time is spent waiting for servers far away to answer: I/O-bound."}, {"t": "Waiting for the user to type their name", "why": "The program does nothing at all until a key is pressed. That's the purest kind of waiting."}, {"t": "Copying a large file to a USB stick", "why": "The disk and the stick are the slow parts; the processor mostly waits for them. I/O-bound."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 5: three calls, one after another">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Here's Pip's morning as a program. <code>time.sleep(1)</code> stands in for a second on hold: the program does nothing for one second. The last line measures the whole run with <code>perf_counter</code> (Chapter 18) and rounds it to whole seconds, so the run prints the same thing every time.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">slow_calls.py</span><pre class="code" data-src="slow_calls.py"></pre>
+      <pre class="term" data-run="slow_calls.py" data-type></pre>
+    </div>
+    <p class="caption soft">Three seconds, and the computer spent almost all of them doing nothing. Downloads, database queries and web requests behave just like this <code>sleep</code>: the answer is somewhere else, and the program waits.</p>
+  </section>
+
+  <!-- ===================================================== PART 2 ===================================================== -->
+  <h2 class="part-h" id="part-2">Part 2 · More waiters<small>threads share one kitchen: fast for waiting, and full of surprises</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 6: hiring waiters">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tl" data-sfx="HIRED!" data-seed="6"></svg>
+    <div class="ch27-row">
+      <figure><svg class="char" data-char="waiter" data-variant="a" data-pose="phone"></svg><figcaption>Ana calls the mill</figcaption></figure>
+      <figure><svg class="char" data-char="waiter" data-variant="b" data-pose="phone" data-label="BEN"></svg><figcaption>Ben calls the dairy</figcaption></figure>
+      <figure><svg class="char" data-char="waiter" data-variant="c" data-pose="phone"></svg><figcaption>Cy calls the farm</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: three waiters, Ana, Ben and Cy, each holding a phone to their ear, on hold at the same time.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Three waiters, three phones, all on hold <b>at the same time</b>. In Python each waiter is a <b>thread</b>: a separate line of work running inside the same program, sharing the same variables. The <code>threading</code> module hires them.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: three threads">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The same three calls, one thread each.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">threads_calls.py</span><pre class="code" data-src="threads_calls.py"></pre>
+      <pre class="term" data-run="threads_calls.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>threading.Thread(target=call_supplier, args=(name,))</code> describes a waiter and their job. <code>target</code> is the function itself, with <b>no brackets</b> (Chapter 17): the thread will call it. <code>args</code> is a <b>tuple</b> of arguments, so a single one needs that trailing comma.</span></li>
+      <li><span><code>t.start()</code> sends the waiter off. It returns at once, so the loop hires the next waiter straight away.</span></li>
+      <li><span><code>t.join()</code> means "wait here until this thread has finished". Joining every waiter makes the program wait for <b>all</b> the calls before printing.</span></li>
+      <li><span>All three threads write into the <b>same</b> dict, <code>prices</code>: threads share the kitchen. The program prints <code>sorted(prices)</code> because waiters can come back in any order.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>One second instead of three: the waiting <b>overlapped</b>. My rule: <b>START THEM ALL, THEN JOIN THEM ALL.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: who speaks first">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">What if the waiters print while they work? This is <b>one possible run</b>: when several threads print, the order depends on exact timing, which the operating system decides. On another day, or another computer, the lines can come out in a different order.</p>
+    <div class="ch27-stack">
+      <div class="ch27-stack"><span class="file-tab">threads_chatty.py</span><pre class="code" data-src="threads_chatty.py"></pre></div>
+      <div class="ch27-stack"><p class="ch27-ver dashed">one possible run</p><pre class="term" data-run="threads_chatty.py"></pre></div>
+    </div>
+    <p class="caption soft">The operating system's <b>scheduler</b> decides which thread runs next, and it can switch at almost any moment. So programs that use threads should never rely on the order things happen in, unless they arrange that order themselves: by joining before printing, as Panel 7 did.</p>
+  </section>
+
+  <div data-ex="spot" data-model="e2m" id="e2"></div>
+  <script type="application/json" id="e2m">{"program": "no_join.py", "bug": 12, "prompt": "Pip expected to see the flour price, but the dict is empty. Click the line that's in the wrong place.", "explain": "<code>t.start()<\/code> returns at once, while the waiter is still on hold. The <code>print<\/code> runs half a second before the waiter writes into <code>prices<\/code>. Move the print below <code>t.join()<\/code>: first wait for the thread, then look at its results."}</script>
+
+  <section class="panel sketch" aria-label="Panel 9: the kitchen door">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <div class="ch27-row">
+      <figure><svg class="char lg2" data-char="door"></svg><figcaption>the kitchen door: the GIL</figcaption></figure>
+      <figure><svg class="char" data-char="waiter" data-variant="b" data-pose="tray" data-label="BEN"></svg><figcaption>one waiter inside running Python code; the others wait at the door</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a kitchen door with a turnstile and a sign saying one at a time, and Ben carrying a tray through it.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Here is the catch. In the standard Python build, only <b>one</b> thread at a time may run Python code. The rule is called the <b>GIL</b>, the Global Interpreter Lock: the kitchen door. A waiter on hold steps <b>out</b> of the kitchen, so waiting threads overlap beautifully. But two waiters who both want to <b>chop</b> (calculate) just take turns at the door, and threads make CPU-bound work no faster.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <div class="ch27-stack">
+      <span class="file-tab">gil_check.py</span><pre class="code" data-src="gil_check.py"></pre>
+      <pre class="term" data-run="gil_check.py"></pre>
+    </div>
+    <p class="caption soft">Since Python 3.14 there is also an officially supported <b>free-threaded build</b> with no GIL, installed as a separate program, <code>python3.15t</code> (the <b>t</b> is for threads). There, threads can calculate in parallel on several cores. It is optional, the standard build keeps its GIL, and the races in the next panels become much <b>more</b> likely without one. (No free-threaded Python was installed where this page's programs ran, so the page describes it rather than running it.)</p>
+  </section>
+
+  <div data-ex="choice" data-model="e3m" id="e3"></div>
+  <script type="application/json" id="e3m">{"q": "On the standard Python build, Pip runs a CPU-bound job (counting primes) in four threads instead of one. What should Pip expect?", "options": [{"t": "About the same time: the threads take turns at the GIL", "correct": true, "why": "Right. Only one thread runs Python code at a time, so four calculating threads share one door. (On the free-threaded build, or with processes, it could get faster.)"}, {"t": "About four times faster", "why": "That would need the four threads to calculate at the same instant on four cores. The GIL lets only one through at a time on the standard build."}, {"t": "An error: threads can't calculate", "why": "Threads can run any code. They just don't speed up calculating on the standard build."}, {"t": "Much faster, but only if the computer has four cores", "why": "Cores don't help while the GIL lets one thread in at a time. Processes (Part 3) are the way to use several cores."}]}</script>
+
+  <section class="panel pop" data-play aria-label="Panel 10: the tally jar">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <svg class="sfx tr" data-sfx="CLINK?" data-seed="10"></svg>
+    <p class="caption">Sharing one kitchen has a dark side. At closing time Ana and Ben each drop a tip into the <b>tally jar</b> and update the count on its label. Two tips went in. The label says 1.</p>
+    <div class="ch27-row">
+      <figure><svg class="char" data-char="waiter" data-variant="a" data-pose="cheer"></svg><figcaption>Ana adds a tip</figcaption></figure>
+      <figure><svg class="char" data-char="jar" data-label="1"></svg><figcaption>the label: 1?!</figcaption></figure>
+      <figure><svg class="char sm2" data-char="sneak"></svg><figcaption>Sneak, the quiet bug</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: Ana cheering as she adds a tip, a tally jar whose label says 1, and Sneak the logic bug hiding beside it.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>How? Updating the count is <b>three steps</b>: read the label, add one, write the new number. Ana read 0. Before she wrote, Ben <b>also</b> read 0. Both wrote 1. That's a <b>race condition</b>: the result depends on who gets there first. No error, no crash. Sneak's favourite kind of bug.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 11: a race, step by step (teaching model)" data-tracer="tr-race" id="tr-race-box">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">A <b>teaching model</b>: real threads switch at unpredictable moments, so this program has <b>no threads</b>. It acts out one unlucky order of steps by hand, which means it shows the lost tip on every run. <code>a_seen</code> is what Ana read; <code>b_seen</code> is what Ben read.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-race-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-race">{"program": "race_model.py", "steps": [
+      {"line": 3, "output": [], "frames": [{"name": "global", "vars": []}], "objects": {}, "note": "Closing time. The jar is about to be counted."},
+      {"line": 4, "output": [], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}}, "changed": ["jar"], "note": "The label says 0."},
+      {"line": 5, "output": [], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i0"}, {"n": "a_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}}, "changed": ["a_seen"], "note": "<b>Ana reads<\/b> the label: 0. Step 1 of her three."},
+      {"line": 6, "output": [], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i0"}, {"n": "a_seen", "ref": "i0"}, {"n": "b_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}}, "changed": ["b_seen"], "note": "Here's the unlucky moment: the scheduler switches to Ben <b>before Ana writes<\/b>. Ben reads the label too. It still says 0."},
+      {"line": 7, "output": [], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i1"}, {"n": "a_seen", "ref": "i0"}, {"n": "b_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}, "i1": {"kind": "int", "value": "1"}}, "changed": ["jar"], "note": "Ana adds one to what <b>she<\/b> saw and writes it: the jar tag now points at 1. So far so good."},
+      {"line": 8, "output": [], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i1"}, {"n": "a_seen", "ref": "i0"}, {"n": "b_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}, "i1": {"kind": "int", "value": "1"}}, "changed": ["jar"], "note": "Ben adds one to what <b>he<\/b> saw, 0, and writes 1. The jar already said 1, so it still says 1. (CPython reuses one object for each small number, so the tag lands on the same 1.) Ana's tip has vanished from the count."},
+      {"line": 9, "output": ["tips dropped in: 2"], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i1"}, {"n": "a_seen", "ref": "i0"}, {"n": "b_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}, "i1": {"kind": "int", "value": "1"}}, "note": "Two tips really went in..."},
+      {"line": null, "output": ["tips dropped in: 2", "jar says: 1"], "frames": [{"name": "global", "vars": [{"n": "jar", "ref": "i1"}, {"n": "a_seen", "ref": "i0"}, {"n": "b_seen", "ref": "i0"}]}], "objects": {"i0": {"kind": "int", "value": "0"}, "i1": {"kind": "int", "value": "1"}}, "note": "...and the jar says 1. A <b>lost update<\/b>. If the scheduler had let Ana finish all three steps before Ben started, the answer would have been 2. That's what makes races so nasty: most runs can be fine."}
+    ]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: the race, with real threads">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Now with real threads. To make the unlucky order likely, each waiter chats with a customer (a short sleep) between reading and writing, just as a real program might wait for a database between the two steps.</p>
+    <div class="ch27-stack">
+      <div class="ch27-stack"><span class="file-tab">tally_race.py</span><pre class="code" data-src="tally_race.py"></pre></div>
+      <div class="ch27-stack"><p class="ch27-ver dashed">one possible run (almost every run)</p><pre class="term" data-run="tally_race.py"></pre></div>
+    </div>
+    <p class="caption soft">Whenever a waiter reads the jar while another is still chatting, both write the same number and a tip is lost; how many go missing depends on the timing of each run. <code>global jar</code> (Chapter 6) lets the function change the module's <code>jar</code>. Even a plain <code>count += 1</code> is read, add, write under the hood: the notebook's "Under the hood" page shows a four-thread counter that printed the right total, by luck.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: one key card for the jar">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The fix: a <b>lock</b>, a key card for the jar (Chapter 22 promised it). Only the waiter holding the card may touch the jar. Everyone else who reaches <code>with lock:</code> waits there until the card comes back.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">tally_lock.py</span><pre class="code" data-src="tally_lock.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>threading.Lock()</code> makes one lock, shared by every thread, because it is created <b>once</b>, outside the function.</span></li>
+      <li><span><code>with lock:</code> takes the card on the way in and always returns it on the way out, even if the block raises an exception. The read, the chat and the write now happen as one unbroken step.</span></li>
+      <li><span>The price: while one waiter holds the card, the others queue. Keep locked blocks short.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My rule: <b>SHARED AND CHANGING? ONE KEY CARD.</b> If several threads change the same thing, guard every change with the same lock.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e4m" id="e4"></div>
+  <script type="application/json" id="e4m">{"program": "tally_lock.py", "hint": "With the lock, can two waiters ever be between their read and their write at the same time?", "explain": "No. Each waiter reads, chats and writes while holding the one lock, so each sees the number the previous waiter wrote: 1, 2, 3, 4. The lock makes the answer the same on every run, which is why this program can be an answer key and Panel 12's can't."}</script>
+
+  <div data-ex="fill" data-model="e5m" id="e5"></div>
+  <script type="application/json" id="e5m">{"program": "ex_lock_fill.py", "prompt": "Three waiters each add 5 tips. Make the jar come out right every time: create the lock, and use it around the read and write.", "blanks": [{"line": 5, "text": "threading.Lock()"}, {"line": 10, "text": "with lock", "accept": ["with  lock"]}], "explain": "One lock, created once at the top, shared by all three threads. <code>with lock:<\/code> wraps the read, the pause and the write, so no other waiter can sneak in between them. 3 waiters × 5 tips = 15, every run."}</script>
+
+  <!-- ===================================================== PART 3 ===================================================== -->
+  <h2 class="part-h" id="part-3">Part 3 · Ticket rails and hired help<small>queues, pools of workers, and kitchens of their own</small></h2>
+
+  <section class="panel clean" aria-label="Panel 14: the ticket rail">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <div class="ch27-row">
+      <figure><svg class="char" data-char="waiter" data-variant="a" data-pose="tray"></svg><figcaption>waiters clip tickets on: <code>put()</code></figcaption></figure>
+      <span class="ch27-arrow" aria-hidden="true">→</span>
+      <figure><svg class="char" data-char="chef"></svg><figcaption>the cook takes the oldest: <code>get()</code></figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: Ana clips order tickets onto a rail; the chef takes them off the other end, oldest first.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Locks are fiddly. Often it's simpler <b>not to share</b> at all, and to pass work along instead. A <code>queue.Queue</code> is a ticket rail: a first-in, first-out line that any number of threads can use safely, because it does its own locking inside. <code>get()</code> even waits politely until a ticket arrives.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <p class="caption">The main program is the waiter, clipping tickets. A cook thread takes them off and cooks, until it meets the special <code>None</code> ticket that means "kitchen closed". This pattern has a name: <b>producer and consumer</b>.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">ticket_rail.py</span><pre class="code" data-src="ticket_rail.py"></pre>
+      <pre class="term" data-run="ticket_rail.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>The only thread that prints while cooking is the cook, and the main program prints only after <code>join()</code>. So the output order is fixed, even with two threads.</span></li>
+      <li><span>A stop marker like <code>None</code> is called a <b>sentinel</b>. Without it, the cook would wait at <code>get()</code> forever and <code>join()</code> would never return.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="e6m" id="e6"></div>
+  <script type="application/json" id="e6m">{"program": "ex_rail_trace.py", "columns": ["dish", "made so far", "left on the rail"], "given": [0], "prompt": "Five tickets go on the rail before the cook starts: four dishes, then <code>None<\/code>. For each dish the cook takes, how many of that dish have been made, and how many tickets are still waiting? (<code>qsize()<\/code> counts the tickets on the rail.)", "explain": "The rail starts with 5 tickets, counting the <code>None<\/code>. Each <code>get()<\/code> removes one, so after the soup 4 are left, then 3, 2 and 1. The second tea makes <code>cooked[\"tea\"]<\/code> 2. The last ticket left is the <code>None<\/code>, which ends the loop through <code>break<\/code>, just as in <code>ticket_rail.py<\/code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: a pool of waiters">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Hiring, starting and joining waiters by hand gets repetitive. <code>concurrent.futures</code> has an agency: a <b>pool</b> of ready waiters. <code>pool.map(f, items)</code> works like the built-in <code>map</code> (Chapter 17), but hands the calls out to the pool's threads.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">pool_map.py</span><pre class="code" data-src="pool_map.py"></pre>
+      <pre class="term" data-run="pool_map.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>ThreadPoolExecutor(max_workers=3)</code> keeps up to three threads busy. The <code>with</code> block waits for every job to finish before it ends, then lets the threads go: no <code>join</code> to forget.</span></li>
+      <li><span><code>pool.map</code> gives the results back <b>in the order of the inputs</b>, whichever thread finished first. That makes it easy to <code>zip</code> them with the items (Chapter 12).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: first come, first served">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Sometimes you'd rather hear about each job the moment it's done. <code>pool.submit(f, args...)</code> hands in one job and gives back a <b>future</b>: a claim ticket for a result that isn't ready yet. <code>as_completed</code> hands the tickets back in the order the jobs <b>finish</b>.</p>
+    <div class="ch27-stack">
+      <div class="ch27-stack"><span class="file-tab">pool_done.py</span><pre class="code" data-src="pool_done.py"></pre></div>
+      <div class="ch27-stack"><p class="ch27-ver dashed">one possible run</p><pre class="term" data-run="pool_done.py"></pre></div>
+    </div>
+    <p class="caption soft"><code>future.result()</code> gives the job's return value. If the job raised an exception, <code>result()</code> raises it again, right here. So a future you never ask for its result can hide an error completely: the boss level has one.</p>
+  </section>
+
+  <div data-ex="choice" data-model="e7m" id="e7"></div>
+  <script type="application/json" id="e7m">{"q": "Pip needs a list of three prices <b>in the same order as the list of items<\/b>, fetched with a thread pool. Which fits best?", "options": [{"t": "<code>list(pool.map(fetch_price, items))<\/code>", "correct": true, "why": "Right. <code>map<\/code> returns results in input order, however the jobs finish."}, {"t": "Submit each job and collect results with <code>as_completed<\/code>", "why": "That gives results in finishing order, which can differ from run to run. You'd have to put them back in order yourself."}, {"t": "Start three threads that each <code>print<\/code> their price", "why": "Printing from threads gives whatever order the scheduler chooses (Panel 8)."}, {"t": "<code>[fetch_price(i) for i in items]<\/code> inside the <code>with<\/code> block", "why": "Right order, but the calls happen one after another in the main thread: the pool does nothing."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 17: separate kitchens">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <div class="ch27-row">
+      <figure><svg class="char" data-char="chef"></svg><figcaption>kitchen 1: its own cook, food and door</figcaption></figure>
+      <figure><svg class="char" data-char="chef"></svg><figcaption>kitchen 2: cooking at the same moment</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: two chefs, each in a separate kitchen.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>For CPU-bound work, open more <b>kitchens</b>. A <b>process</b> is a whole separate running program, with its own memory and its own GIL. Processes really do calculate in parallel on different cores. The costs: starting one is slower than starting a thread, and everything sent to it or back must be packed up and copied, using <b>pickle</b> (Part 6), since kitchens share nothing.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <p class="caption"><code>ProcessPoolExecutor</code> has the same buttons as the thread pool. Here four kitchens count prime numbers, which is pure calculation.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">kitchens.py</span><pre class="code" data-src="kitchens.py"></pre>
+      <pre class="term" data-run="kitchens.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>Without <code>max_workers</code>, the pool opens one kitchen per CPU core (or fewer, if there are fewer jobs).</span></li>
+      <li><span><code>count_primes</code> is defined at the top level of the file, so each new kitchen can find it by name. The jobs and the counts travel between processes packed by pickle.</span></li>
+      <li><span>And the <b>guard</b>, <code>if __name__ == "__main__":</code> from Chapter 13. For processes it isn't optional. Next panel.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 18: the missing guard">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="HALT!" data-seed="20"></svg>
+    <p class="caption">Pip forgets the guard. A new kitchen starts by <b>loading your file</b> to find <code>square</code>. Unguarded, that would run the pool code again, which would open another kitchen, which would load the file again… Python stops it at the first step. The real error output is about a hundred lines long, so the command below keeps only the two lines that matter, using <code>grep</code>, a standard tool on macOS and Linux that prints matching lines (<code>2&gt;&amp;1</code> sends the error stream into it as well; Part 5 explains streams).</p>
+    <div class="ch27-stack">
+      <span class="file-tab">no_guard.py</span><pre class="code" data-src="no_guard.py"></pre>
+      <p class="ch27-ver">CPython 3.15.2</p>
+      <pre class="term" data-run="no_guard.py"></pre>
+      <p class="ch27-ver dashed">CPython 3.13.18, same command, same Linux computer</p>
+      <pre class="term" data-run="no_guard.py" data-alt></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Why did 3.13 get away with it? Kitchens can be opened in different ways. Linux used to <b>fork</b>: copy the running program, which needs no reload. Python 3.14 changed the default on Linux to a safer way, <b>forkserver</b>, and Windows and macOS have long used <b>spawn</b>: both start fresh and load your file. So unguarded pool code breaks on most computers today. Guard it, everywhere, always.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e8m" id="e8"></div>
+  <script type="application/json" id="e8m">{"q": "Pip has to shrink 2,000 photos. Each one takes a lot of pure calculation and no waiting. Which tool fits best on a standard Python?", "options": [{"t": "<code>ProcessPoolExecutor<\/code>, with the <code>__main__<\/code> guard", "correct": true, "why": "Right. CPU-bound work needs more hands: separate processes calculate in parallel on several cores, each with its own GIL."}, {"t": "<code>ThreadPoolExecutor<\/code>, with one thread per photo", "why": "Threads share one GIL on the standard build, so calculating threads take turns. They'd be about as slow as one."}, {"t": "<code>asyncio.gather<\/code> over one coroutine per photo", "why": "asyncio overlaps <b>waiting<\/b>. Shrinking photos never waits, so one waiter would just do them one by one."}, {"t": "A <code>queue.Queue<\/code> feeding the photos to one cook thread", "why": "One cook means one photo at a time. The queue organises the work but adds no hands."}]}</script>
+
+  <!-- ===================================================== PART 4 ===================================================== -->
+  <h2 class="part-h" id="part-4">Part 4 · One waiter who never waits<small>asyncio: one thread, many jobs, and a promise to come back</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 19: Cy, the tireless waiter">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="ZOOM!" data-seed="21"></svg>
+    <div class="scene">
+      <svg class="char" data-char="waiter" data-variant="c" data-pose="run"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cy says: </span>Soup for table one? Order's in, I'll be back when it's ready. Toast for table two? In. Tea? In. Oh, the toast is up! Never stand still, never stand in line.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>That's <b>asyncio</b>: one thread, and one waiter called the <b>event loop</b>, who juggles many jobs. A job marks each place where it would wait with <code>await</code>, which means "I'll wait for this; go and serve someone else meanwhile". Nobody is interrupted at a random moment, so there are far fewer races. The jobs take turns politely.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: async def and await">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Three new words. <code>async def</code> makes a <b>coroutine function</b>: a function that can pause. <code>await</code> pauses it until something is ready. <code>asyncio.run(main())</code> hires the waiter, runs <code>main()</code> to the end, and sends the waiter home.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">async_first.py</span><pre class="code" data-src="async_first.py"></pre>
+      <pre class="term" data-run="async_first.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>await asyncio.sleep(seconds)</code> is the polite version of <code>time.sleep</code>: it tells the waiter "wake me in this many seconds", and frees the waiter meanwhile.</span></li>
+      <li><span>But this <code>main</code> waits for the soup to finish <b>before</b> ordering the toast. Polite pausing only helps when there's another job to switch to. Three seconds, the same as before.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: the event-loop timeline" data-timeline="tl-gather" id="tl-gather-box">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption"><code>asyncio.gather(...)</code> hands the waiter several jobs at once and waits until <b>all</b> are done. Its result is a list of their return values, in the order you passed them. Step through the run and watch who is moving. (The clock is a <b>teaching model</b> worked out from the sleep lengths; the printed lines are the real run.)</p>
+    <span class="file-tab">async_gather.py</span><pre class="code" data-src="async_gather.py"></pre>
+    <div class="tl-stage" aria-hidden="true"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Clock</th><th>What happens</th><th>Waiter and tasks</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tl-gather">{"program": "async_gather.py", "quote": ["cook(\"soup\", 2)", "cook(\"toast\", 1)", "await asyncio.sleep(seconds)"], "tasks": [{"id": "soup", "label": "soup task"}, {"id": "toast", "label": "toast task"}],
+      "steps": [
+        {"t": 0, "loop": "runs main(): gather turns both cook() calls into tasks", "states": {"soup": "todo", "toast": "todo"}, "note": "<code>gather<\/code> wraps each coroutine in a <b>task<\/b>: a job on the waiter's list. Nothing has printed yet."},
+        {"t": 0, "loop": "serves the soup task", "states": {"soup": "run", "toast": "todo"}, "print": "soup: order in", "note": "The waiter starts the soup task. It prints, then reaches <code>await asyncio.sleep(2)<\/code>."},
+        {"t": 0, "loop": "serves the toast task", "states": {"soup": "wait:2 s", "toast": "run"}, "print": "toast: order in", "note": "The soup task is asleep until second 2, so the waiter moves on <b>at once<\/b> to the toast task, which prints and reaches <code>await asyncio.sleep(1)<\/code>."},
+        {"t": 0, "loop": "nothing is ready: waits for the next alarm", "states": {"soup": "wait:2 s", "toast": "wait:1 s"}, "note": "Both tasks are asleep. The waiter has nothing to do, so the whole program idles until the first alarm."},
+        {"t": 1, "loop": "serves the toast task", "states": {"soup": "wait:2 s", "toast": "run"}, "print": "toast: ready", "note": "Second 1: the toast's alarm rings. Its task wakes up after the <code>await<\/code>, prints and returns <code>\"toast\"<\/code>."},
+        {"t": 1, "loop": "nothing is ready: waits for the next alarm", "states": {"soup": "wait:2 s", "toast": "done"}, "note": "The toast task is finished. The soup still has a second to go."},
+        {"t": 2, "loop": "serves the soup task", "states": {"soup": "run", "toast": "done"}, "print": "soup: ready", "note": "Second 2: the soup wakes up, prints and returns <code>\"soup\"<\/code>."},
+        {"t": 2, "loop": "back in main(): gather has both results", "states": {"soup": "done", "toast": "done"}, "print": ["['soup', 'toast']", "took about 2 s"], "note": "Both tasks are done, so <code>await asyncio.gather(...)<\/code> finishes. The list follows the order the jobs were <b>passed in<\/b> (soup first), not the order they finished. Two seconds: the waits overlapped."}
+      ]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="e9m" id="e9"></div>
+  <script type="application/json" id="e9m">{"program": "ex_gather_fill.py", "prompt": "Boil the eggs and the rice at the same time, then print both results. Fill in the pause, the \"all of these at once\" call, and the line that starts the waiter.", "blanks": [{"line": 4, "text": "await"}, {"line": 8, "text": "asyncio.gather"}, {"line": 12, "text": "asyncio.run"}], "explain": "Inside a coroutine, <code>await asyncio.sleep(...)<\/code> pauses politely. <code>asyncio.gather<\/code> runs both boils together, and <code>asyncio.run(main())<\/code> starts it all. The rice finishes first, but <code>gather<\/code> lists results in the order the jobs were passed: eggs, then rice."}</script>
+
+  <section class="panel pop" aria-label="Panel 22: the forgotten await">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The classic asyncio mistake: calling a coroutine function like a normal one. Calling it does <b>not</b> run it. It only makes a <b>coroutine object</b>, a job description, and nothing happens until someone awaits it.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">forgot_await.py</span><pre class="code" data-src="forgot_await.py"></pre>
+      <pre class="term" data-run="forgot_await.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>Read it like a detective, last line first: <samp>RuntimeWarning: coroutine 'brew' was never awaited</samp>. A <b>warning</b> isn't an error: the program carried on and ended normally. Python noticed the forgotten job only when it was thrown away at the end, which is why the place is the odd <samp>&lt;sys&gt;:0</samp> and not your line 7.</span></li>
+      <li><span>The tea was never brewed: no <samp>tea is ready</samp> anywhere.</span></li>
+    </ol>
+    <p class="caption soft">Printing the coroutine itself shows its type and a memory address that changes on every run (Chapter 15), so this run is just one possibility:</p>
+    <div class="ch27-stack">
+      <div class="ch27-stack"><span class="file-tab">forgot_await_repr.py</span><pre class="code" data-src="forgot_await_repr.py"></pre></div>
+      <div class="ch27-stack"><p class="ch27-ver dashed">one possible run</p><pre class="term" data-run="forgot_await_repr.py"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>If I ever see <samp>&lt;coroutine object ...&gt;</samp> or "was never awaited", I go looking for a missing <code>await</code>. My rule: <b>CALLING A COROUTINE ONLY WRITES THE ORDER. AWAIT SERVES IT.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e10m" id="e10"></div>
+  <script type="application/json" id="e10m">{"program": "ex_forgot_predict.py", "prompt": "What does this print? (Only the normal output: any warning goes to the error stream.)", "hint": "What does calling <code>add(2, 3)<\/code> give back without <code>await<\/code>? What does <code>asyncio.run<\/code> give back?", "explain": "<code>add(2, 3)<\/code> only builds a coroutine object, so its type's name is <samp>coroutine<\/samp>. <code>asyncio.run(add(2, 3))<\/code> really runs a second one and returns its result, <samp>5<\/samp>. The first coroutine is never awaited, so Python adds the RuntimeWarning on the error stream at the end."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: one waiter is enough">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Second mistake: calling <code>asyncio.run()</code> from inside a coroutine, to "just run this one quickly". There's already a waiter working, and <code>asyncio.run</code> refuses to hire a second one.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">nested_run.py</span><pre class="code" data-src="nested_run.py"></pre>
+      <pre class="term wrap" data-run="nested_run.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Last line first:</b> <samp>RuntimeError: asyncio.run() cannot be called from a running event loop</samp>. The message says exactly what's wrong.</span></li>
+      <li><span><b>Then the trail:</b> your line 11 started the loop; inside <code>main</code>, your line 8 called <code>asyncio.run</code> again. The frames in <code>runners.py</code> and <code>base_events.py</code> are inside Python's own library: you can skip them on a first read.</span></li>
+      <li><span>The extra warning says the <code>toast()</code> coroutine was never awaited: it was built for the second <code>asyncio.run</code>, which refused before starting it.</span></li>
+      <li><span><b>The fix:</b> inside a coroutine, just write <code>breakfast = await toast()</code>. Use <code>asyncio.run</code> once, at the very top of the program.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="e11m" id="e11"></div>
+  <script type="application/json" id="e11m">{"program": "ex_await_outside.py", "expect": "error", "hint": "<code>await<\/code> is only allowed in one place. Is line 8 inside an <code>async def<\/code>? And who checks the rules before anything runs?", "explain": "<code>await<\/code> may only appear inside an <code>async def<\/code>. The Proofreader reads the whole file before running it and stops at line 8: <b>SyntaxError: 'await' outside function<\/b>. Not even <samp>making breakfast<\/samp> is printed, because nothing runs."}</script>
+
+  <section class="panel clean" aria-label="Panel 24: a TaskGroup">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Since Python 3.11, the tidier way to start several jobs is a <b>TaskGroup</b>, a <code>with</code> block for tasks (an <code>async with</code>, because entering and leaving it can involve waiting). The block doesn't end until every task started in it has finished.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">taskgroup.py</span><pre class="code" data-src="taskgroup.py"></pre>
+      <pre class="term" data-run="taskgroup.py"></pre>
+    </div>
+    <p class="caption soft"><code>tg.create_task(...)</code> puts a job on the waiter's list straight away and returns the <b>task</b>, whose <code>.result()</code> you can read once the block has ended.</p>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 25: when one task fails">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <svg class="sfx tr" data-sfx="FIRE!" data-seed="27"></svg>
+    <p class="caption">What if the toast catches fire? A TaskGroup <b>cancels</b> the other tasks, waits for them to stop, then raises every failure together in an <b>ExceptionGroup</b>: the boxed traceback from Chapter 22.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">taskgroup_fail.py</span><pre class="code" data-src="taskgroup_fail.py"></pre>
+      <pre class="term wrap" data-run="taskgroup_fail.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>The soup was told to stop: inside its <code>await</code>, it received <code>asyncio.CancelledError</code>, printed <samp>soup: cancelled</samp> and re-raised it, as a cancelled task should.</span></li>
+      <li><span>The bottom box is the real problem: <samp>ValueError: the toast is on fire</samp>, in <code>burn</code>, line 13. The <samp>1 sub-exception</samp> line says how many boxes to look through.</span></li>
+      <li><span>To handle it, wrap the <code>async with</code> in <code>try:</code> and catch it with <code>except* ValueError:</code> (Chapter 22). <code>asyncio.gather</code> works differently: by default it passes on the first exception and leaves the other tasks running.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: never block the waiter" data-timeline="tl-block" id="tl-block-box">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">The third mistake hides in plain sight. This is Panel 21's program with one change: <code>time.sleep</code> instead of <code>await asyncio.sleep</code>. <code>time.sleep</code> knows nothing about the waiter. It freezes the whole thread, and the waiter <b>is</b> that thread. (Clock: teaching model. Printed lines: the real run.)</p>
+    <span class="file-tab">blocking.py</span><pre class="code" data-src="blocking.py"></pre>
+    <div class="tl-stage" aria-hidden="true"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Clock</th><th>What happens</th><th>Waiter and tasks</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tl-block">{"program": "blocking.py", "quote": ["time.sleep(seconds)", "cook(\"soup\", 2)", "cook(\"toast\", 1)"], "tasks": [{"id": "soup", "label": "soup task"}, {"id": "toast", "label": "toast task"}],
+      "steps": [
+        {"t": 0, "loop": "runs main(): gather turns both cook() calls into tasks", "states": {"soup": "todo", "toast": "todo"}, "note": "Same start as Panel 21."},
+        {"t": 0, "loop": "serves the soup task", "states": {"soup": "run", "toast": "blocked"}, "print": "soup: order in", "note": "The soup task prints, then calls <code>time.sleep(2)<\/code>. There's no <code>await<\/code>, so it never hands the waiter back."},
+        {"t": 2, "loop": "frozen inside time.sleep(2) for two seconds", "states": {"soup": "run", "toast": "blocked"}, "print": "soup: ready", "note": "For two whole seconds the waiter stands frozen next to the soup. The toast task can't even start. Then the soup prints and finishes."},
+        {"t": 2, "loop": "serves the toast task, at last", "states": {"soup": "done", "toast": "run"}, "print": "toast: order in", "note": "Only now does the toast task get its first turn."},
+        {"t": 3, "loop": "frozen inside time.sleep(1)", "states": {"soup": "done", "toast": "run"}, "print": "toast: ready", "note": "Another frozen second."},
+        {"t": 3, "loop": "back in main()", "states": {"soup": "done", "toast": "done"}, "print": ["['soup', 'toast']", "took about 3 s"], "note": "Three seconds, as slow as doing it all one by one. And no error or warning says why: only the timing gives it away."}
+      ]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="e12m" id="e12"></div>
+  <script type="application/json" id="e12m">{"program": "ex_block_spot.py", "bug": 6, "prompt": "Asking two suppliers \"at the same time\" should take about 1 second. It takes 2. Click the line that freezes the waiter.", "explain": "<code>time.sleep(1)<\/code> blocks the whole thread, and the event loop with it, so the two fetches run one after the other. Inside <code>async def<\/code>, write <code>await asyncio.sleep(1)<\/code>; in real code, use a library made for asyncio, or hand blocking calls to a thread with <code>await asyncio.to_thread(...)<\/code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 27: which tool when">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Choosing a tool. Start with the first question: is the slow part <b>waiting</b> or <b>working</b>?</p>
+    <table class="ref-table ch27-table">
+      <thead><tr><th>The job</th><th>Reach for</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>A few slow calls in an ordinary program (downloads, files, a database)</td><td><code>ThreadPoolExecutor</code></td><td>Waiting overlaps, and the code stays almost unchanged.</td></tr>
+        <tr><td>Hundreds or thousands of network connections at once</td><td><code>asyncio</code></td><td>One thread juggles them cheaply, with fewer races. Needs libraries written for asyncio.</td></tr>
+        <tr><td>Heavy calculation (images, numbers, simulations)</td><td><code>ProcessPoolExecutor</code></td><td>Real parallel work on several cores, each process with its own GIL.</td></tr>
+        <tr><td>One thread producing work, another consuming it</td><td><code>queue.Queue</code></td><td>Pass work along instead of sharing variables.</td></tr>
+        <tr><td>Fast enough already</td><td>Nothing!</td><td>Every one of these tools adds complexity. Measure first (Chapter 24).</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div data-ex="choice" data-model="e13m" id="e13"></div>
+  <script type="application/json" id="e13m">{"q": "Inside an <code>async def<\/code>, which line lets <b>other tasks<\/b> run while this one waits half a second?", "options": [{"t": "<code>await asyncio.sleep(0.5)<\/code>", "correct": true, "why": "Right. <code>await<\/code> hands the waiter back to the event loop until the alarm rings."}, {"t": "<code>time.sleep(0.5)<\/code>", "why": "That freezes the whole thread, event loop included (Panel 26)."}, {"t": "<code>asyncio.sleep(0.5)<\/code>", "why": "Without <code>await<\/code> this only builds a coroutine object and throws it away: no pause at all, plus a \"never awaited\" warning (Panel 22)."}, {"t": "<code>asyncio.run(asyncio.sleep(0.5))<\/code>", "why": "Inside a running loop that raises RuntimeError (Panel 23)."}]}</script>
+
+  <!-- ===================================================== PART 5 ===================================================== -->
+  <h2 class="part-h" id="part-5">Part 5 · The shop counter<small>how a program takes orders, hands out receipts, complains, and says how it went</small></h2>
+
+  <section class="panel pop" aria-label="Panel 28: a program is a shop">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Second half of the chapter: programs that talk to the world. Picture every program as a little shop with five places where things go in and out.</p>
+    <div class="ch27-shop">
+      <figure><svg class="char" data-char="station" data-kind="counter"></svg><figcaption><span class="t">FRONT COUNTER</span>orders come in: command-line <b>arguments</b> and <b>stdin</b> (standard input)</figcaption></figure>
+      <figure><svg class="char" data-char="station" data-kind="printer"></svg><figcaption><span class="t">RECEIPT PRINTER</span><b>stdout</b> (standard output): the results. <code>print()</code> writes here.</figcaption></figure>
+      <figure><svg class="char" data-char="station" data-kind="desk"></svg><figcaption><span class="t">COMPLAINTS DESK</span><b>stderr</b> (standard error): problems and tracebacks go here</figcaption></figure>
+      <figure><svg class="char" data-char="station" data-kind="bell"></svg><figcaption><span class="t">THE BELL</span>the <b>exit code</b> rung at closing: 0 means "all fine", anything else "something went wrong"</figcaption></figure>
+      <figure class="dashed"><svg class="char" data-char="station" data-kind="door"></svg><figcaption><span class="t">THE BACK DOOR</span>to other shops: other programs, files and folders, databases, the web (Part 6)</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: five stations. A front counter marked IN; a receipt printer marked stdout; a complaints desk with an exclamation mark, marked stderr; a bell marked 0; and a back door with an arrow pointing out.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Why two printers? So results and complaints can go to <b>different places</b>. Watch.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: three streams and a bell">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption"><code>counter.py</code> reads orders from <code>sys.stdin</code>, line by line, prints receipts, sends complaints to <code>sys.stderr</code>, and rings the bell with <code>sys.exit()</code>.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">counter.py</span><pre class="code" data-src="counter.py"></pre>
+      <pre class="term" data-run="counter.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>&lt; orders.txt</code> tells the shell (the program that reads your commands) to feed the file to the program's <b>stdin</b>. Without it, stdin is your keyboard.</span></li>
+      <li><span><code>&gt; receipt.txt</code> sends <b>stdout</b> into a file. The complaint still reached the screen, because it went to <b>stderr</b>. That's the point of the complaints desk: problems are never hidden in the results.</span></li>
+      <li><span><code>echo $?</code> shows the exit code of the last command: <samp>1</samp>, because one order failed. <code>2&gt; complaints.txt</code> sends stderr to a file instead. (These are macOS and Linux shell commands; the notebook's lab has Windows versions.)</span></li>
+      <li><span><code>print(..., file=sys.stderr)</code> writes to the complaints desk. <code>sys.exit(1)</code> ends the program with exit code 1. The six commands in this terminal ran one after another in the same shell, so <code>$?</code> sees the command just before it.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="e14m" id="e14"></div>
+  <script type="application/json" id="e14m">{"q": "Pip's script prints a report, but sometimes a file is missing. Where should the \"file missing\" message go, and what exit code should the script end with?", "options": [{"t": "To stderr, then exit with a non-zero code such as 1", "correct": true, "why": "Right. Then a user who saves the report with <code>&gt; report.txt<\/code> still sees the problem on screen, and any script or scheduler that runs Pip's program can tell from the code that it failed."}, {"t": "To stdout with the report, exit code 0", "why": "The message gets mixed into the saved report, and 0 tells everyone that all went well."}, {"t": "To stderr, exit code 0", "why": "The message is in the right place, but the bell lies: 0 means success."}, {"t": "Nowhere: just stop with <code>sys.exit()<\/code>", "why": "<code>sys.exit()<\/code> with nothing inside exits with 0, and the user never learns what went wrong."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 30: argparse">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Chapter 13 showed <code>sys.argv</code>: the words after the file name, as a list of strings. For real tools, the standard library's <code>argparse</code> does the hard parts: it turns the words into the right types, fills in defaults, writes a help page, and complains properly.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">tip.py</span><pre class="code" data-src="tip.py"></pre>
+      <pre class="term" data-run="tip.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>add_argument("bill", type=float)</code> is a <b>positional</b> argument: required, recognised by its position, and converted with <code>float()</code>.</span></li>
+      <li><span><code>"--percent"</code> starts with two dashes, so it's an <b>optional</b> argument (an <b>option</b>): it may be left out, and then <code>default=15</code> is used. Options can come in any order.</span></li>
+      <li><span><code>parse_args()</code> reads <code>sys.argv</code> and returns a <b>namespace</b>, an object whose attributes are named after the arguments: <code>args.bill</code>, <code>args.percent</code>, <code>args.split</code>.</span></li>
+      <li><span><code>--help</code> (or <code>-h</code>) was never written by Pip: argparse built the whole help page from the <code>help=</code> texts.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 31: the argparse machine" data-machine="m-argparse">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The <code>parse_args()</code> machine. Feed it a command line and get a namespace, or watch it jam. <code>parse_demo.py</code> hands each command line to <code>parser.parse_args(line.split())</code>, which accepts a list of words instead of reading <code>sys.argv</code>: a handy trick for trying a parser out.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <details><summary>The programs behind the machine</summary><div class="ch27-stack" style="margin-top:10px">
+      <span class="file-tab">parse_demo.py</span><pre class="code" data-src="parse_demo.py"></pre><pre class="term" data-run="parse_demo.py"></pre>
+      <p><code>parse_bad.py</code> and <code>parse_typo.py</code> build the same parser and try one bad command line each:</p>
+      <pre class="term" data-run="parse_bad.py" data-exit></pre><pre class="term" data-run="parse_typo.py" data-exit></pre>
+    </div></details>
+    <script type="application/json" id="m-argparse">{"label": "parse_args()", "program": "parse_demo.py", "examples": [
+      {"in": "40", "out": "Namespace(bill=40.0, percent=15, split=1)", "outKind": "Namespace", "note": "One word, so it's the bill. <code>type=float<\/code> turned the text \"40\" into 40.0, and both options got their defaults."},
+      {"in": "40 --percent 20", "out": "Namespace(bill=40.0, percent=20, split=1)", "outKind": "Namespace", "note": "The word after <code>--percent<\/code> is its value, converted with <code>int()<\/code>."},
+      {"in": "--split 3 12.5", "out": "Namespace(bill=12.5, percent=15, split=3)", "outKind": "Namespace", "note": "Options may come before the positional argument. argparse sorts it out."},
+      {"in": "9.99 --percent=10", "out": "Namespace(bill=9.99, percent=10, split=1)", "outKind": "Namespace", "note": "<code>--percent=10<\/code>, with an equals sign, means the same as <code>--percent 10<\/code>."},
+      {"in": "forty", "error": "tip.py: error: argument bill: invalid float value: 'forty'", "program": "parse_bad.py", "note": "<code>float(\"forty\")<\/code> fails, so argparse jams: it prints the usage line and the reason to stderr, then exits with code 2. Your code after <code>parse_args()<\/code> never runs."},
+      {"in": "40 --split two", "error": "tip.py: error: argument --split: invalid int value: 'two'", "program": "parse_typo.py", "note": "Same for an option: the message names the argument and the bad value."}
+    ]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="e15m" id="e15"></div>
+  <script type="application/json" id="e15m">{"program": "ex_argparse_fill.py", "prompt": "Build the parser for this usage line: <code>usage: ex_argparse_fill.py [-h] [--times TIMES] name<\/code>. The run is <code>python3 ex_argparse_fill.py Ada --times 2<\/code>.", "blanks": [{"line": 4, "text": "\"name\"", "accept": ["'name'"]}, {"line": 5, "text": "type=int"}, {"line": 7, "text": "args.times"}], "explain": "<code>name<\/code> has no dashes in the usage line, so it's positional: <code>add_argument(\"name\")<\/code>. <code>--times<\/code> must become a number for <code>range()<\/code>, so it needs <code>type=int<\/code>; without it, <code>range(\"2\")<\/code> would raise a TypeError. The loop reads the value as <code>args.times<\/code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: argparse complains for you">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Three ways to get the command line wrong. argparse catches each one before Pip's code runs, and rings the bell with <b>exit code 2</b>, the usual code for "you used this command wrongly".</p>
+    <div class="ch27-stack">
+      <pre class="term" data-run="tip_oops.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>Every complaint starts with the <b>usage line</b>, a one-line summary: square brackets mean optional, a bare word means required.</span></li>
+      <li><span>Then the file name and the reason: a missing required argument, a value of the wrong type, or an option that doesn't exist. <samp>--percnt</samp> is a typo, so argparse has never heard of it: <samp>unrecognized arguments</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My rule: <b>RESULTS TO THE PRINTER, PROBLEMS TO THE DESK, AND RING THE RIGHT BELL.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 33: the roads of a command-line tool" data-map="map-orders">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">The map of <code>orders.py</code>, a tiny tool that adds up an orders file. Every run takes one of four roads, and each road ends with its own bell. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mo-t mo-d"><title id="mo-t">Map of orders.py</title><desc id="mo-d">From parse_args, a missing file name leads to a usage error with exit code 2; otherwise to opening the file. A missing file leads to sys.exit with a message and exit code 1; otherwise to adding up the rows. A bad row leads to a crash with a traceback and exit code 1; otherwise to printing the total with exit code 0.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Pip is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The program and the four real runs</summary><div class="ch27-stack" style="margin-top:10px">
+      <span class="file-tab">orders.py</span><pre class="code" data-src="orders.py"></pre>
+      <pre class="term" data-run="road_ok.py" data-exit></pre>
+      <pre class="term" data-run="orders.py" data-exit></pre>
+      <pre class="term" data-run="road_missing.py" data-exit></pre>
+      <pre class="term" data-run="road_bad.py" data-exit></pre>
+    </div></details>
+    <script type="application/json" id="map-orders">{"seed": 27, "size": [690, 540], "start": [[215, 6], [215, 34]],
+      "states": [
+        {"id": "A", "x": 100, "y": 40, "w": 230, "h": 66, "label": "parse_args()", "sub": "read the command line"},
+        {"id": "U", "x": 460, "y": 40, "w": 220, "h": 66, "label": "usage error", "sub": "argparse: exit 2", "kind": "error"},
+        {"id": "B", "x": 100, "y": 180, "w": 230, "h": 66, "label": "open(args.file)", "sub": "inside try / except"},
+        {"id": "M", "x": 460, "y": 180, "w": 220, "h": 66, "label": "sys.exit(message)", "sub": "complaint, exit 1", "kind": "error"},
+        {"id": "C", "x": 100, "y": 320, "w": 230, "h": 66, "label": "add up the rows", "sub": "int(), float()"},
+        {"id": "X", "x": 460, "y": 320, "w": 220, "h": 66, "label": "crash", "sub": "traceback, exit 1", "kind": "error"},
+        {"id": "D", "x": 100, "y": 460, "w": 230, "h": 66, "label": "print the total", "sub": "exit 0", "kind": "end"}
+      ],
+      "transitions": [
+        {"id": "tAU", "from": "A", "to": "U", "pts": [[332, 73], [454, 73]], "label": ["no file", "name"], "lx": 346, "ly": 98, "bug": true},
+        {"id": "tAB", "from": "A", "to": "B", "pts": [[215, 108], [215, 174]], "label": "a name", "lx": 227, "ly": 146},
+        {"id": "tBM", "from": "B", "to": "M", "pts": [[332, 213], [454, 213]], "label": ["no such", "file"], "lx": 346, "ly": 238, "bug": true},
+        {"id": "tBC", "from": "B", "to": "C", "pts": [[215, 248], [215, 314]], "label": "opened", "lx": 227, "ly": 286},
+        {"id": "tCX", "from": "C", "to": "X", "pts": [[332, 353], [454, 353]], "label": ["a bad", "row"], "lx": 346, "ly": 378, "bug": true},
+        {"id": "tCD", "from": "C", "to": "D", "pts": [[215, 388], [215, 454]], "label": "all rows fine", "lx": 227, "ly": 426}
+      ],
+      "paths": [
+        {"id": "ok", "label": "orders.csv", "program": "road_ok.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["A"], "via": ["start"], "output": [], "note": "<code>python3 orders.py orders.csv<\/code>. argparse finds one word for <code>file<\/code>."},
+          {"on": ["B"], "via": ["tAB"], "output": [], "note": "The file exists, so <code>open<\/code> works and <code>csv.DictReader<\/code> (Chapter 12) reads three rows."},
+          {"on": ["C"], "via": ["tBC"], "output": [], "note": "Every quantity and price converts cleanly: 2 × 4.50 + 3 × 2.00 + 4 × 1.50."},
+          {"on": ["D"], "via": ["tCD"], "output": ["3 orders, total 21.00"], "note": "The receipt goes to stdout, and the program ends normally: exit code 0."}]},
+        {"id": "noarg", "label": "(nothing)", "bug": true, "program": "orders.py", "expect": {"exit": 2, "stdoutExact": true, "stderrContains": "the following arguments are required: file"}, "steps": [
+          {"on": ["A"], "via": ["start"], "output": [], "note": "<code>python3 orders.py<\/code>, with no file name."},
+          {"on": ["U"], "via": ["tAU"], "output": [], "error": "orders.py: error: the following arguments are required: file", "note": "argparse prints the usage line and the reason to stderr and exits with code 2. Not one line of Pip's own code ran."}]},
+        {"id": "missing", "label": "nope.csv", "bug": true, "program": "road_missing.py", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "orders.py: no such file: nope.csv"}, "steps": [
+          {"on": ["A"], "via": ["start"], "output": [], "note": "<code>python3 orders.py nope.csv<\/code>. The arguments are fine."},
+          {"on": ["B"], "via": ["tAB"], "output": [], "note": "<code>open<\/code> raises FileNotFoundError (Digger, Chapter 9), and the <code>except<\/code> catches it."},
+          {"on": ["M"], "via": ["tBM"], "output": [], "error": "orders.py: no such file: nope.csv", "note": "<code>sys.exit(\"...\")<\/code> with a <b>string<\/b> prints it to stderr and exits with code 1. A short, polite complaint instead of a traceback."}]},
+        {"id": "bad", "label": "broken.csv", "bug": true, "program": "road_bad.py", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "ValueError: invalid literal for int() with base 10: 'two'"}, "steps": [
+          {"on": ["A"], "via": ["start"], "output": [], "note": "<code>python3 orders.py broken.csv<\/code>."},
+          {"on": ["B"], "via": ["tAB"], "output": [], "note": "The file opens fine."},
+          {"on": ["C"], "via": ["tBC"], "output": [], "note": "The second row's quantity is the word <samp>two<\/samp>. <code>int(\"two\")<\/code> raises a ValueError (the Taster), and nothing catches it."},
+          {"on": ["X"], "via": ["tCX"], "output": [], "error": "ValueError: invalid literal for int() with base 10: 'two'", "note": "An uncaught exception: a traceback on stderr and exit code 1. Same bell as the missing file, but a far less friendly message. A finished tool would catch this too."}]}
+      ]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: environment variables">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">One more way in: <b>environment variables</b>, named settings that every program inherits from the shell that started it. They're how you hand a program a setting (a database location, a secret key) without typing it on every command line. Python sees them in <code>os.environ</code>, a dict-like cabinet of strings.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">env_demo.py</span><pre class="code" data-src="env_demo.py"></pre>
+      <pre class="term" data-run="env_demo.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>NAME=value python3 ...</code> sets a variable for that one command only. <code>export NAME=value</code> sets it for every later command in this shell.</span></li>
+      <li><span>Use <code>os.environ.get("NAME", default)</code>, the polite way to ask (Chapter 8). <code>os.environ["NAME"]</code> raises a KeyError when the variable isn't set: the boss level has one.</span></li>
+      <li><span>Values are always <b>strings</b>. Convert them yourself: <code>int(os.environ.get("PORT", "8000"))</code>.</span></li>
+    </ol>
+  </section>
+
+  <!-- ===================================================== PART 6 ===================================================== -->
+  <h2 class="part-h" id="part-6">Part 6 · The back door<small>other programs, folders, data files, databases and the web</small></h2>
+
+  <section class="panel clean" aria-label="Panel 35: running another program">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Through the back door, your program can run other programs. <code>subprocess.run</code> starts one, waits for it to finish, and hands back a result with its exit code and, if you ask, everything it printed. Here Pip borrows two standard tools: <code>wc -l</code> counts the lines in a file, and <code>ls</code> lists files.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">sub_run.py</span><pre class="code" data-src="sub_run.py"></pre>
+      <pre class="term" data-run="sub_run.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>The command is a <b>list</b>: the program's name, then each argument as its own string.</span></li>
+      <li><span><code>capture_output=True</code> keeps the other program's stdout and stderr instead of letting them print, and <code>text=True</code> gives them as strings rather than bytes (Chapter 25).</span></li>
+      <li><span><code>ls</code> failed and said so on its own complaints desk, with its own bell: exit code 2. <code>subprocess.run</code> doesn't raise for that unless you pass <code>check=True</code> (the notebook shows it).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 36: a program called ls -l">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <svg class="sfx tr" data-sfx="DIG?" data-seed="38"></svg>
+    <p class="caption">Pip writes the command as one string, the way it would be typed in a terminal.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">sub_string.py</span><pre class="code" data-src="sub_string.py"></pre>
+      <pre class="term wrap" data-run="sub_string.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="digger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Digger says: </span>I dug everywhere for a program literally named <b>"ls -l"</b>, space and all. There isn't one! Last line first: <samp>FileNotFoundError: [Errno 2] No such file or directory: 'ls -l'</samp>. The quote marks show the exact name I looked for.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span>The trail goes deep into <code>subprocess.py</code>, Python's own library. Your line is near the top: line 3.</span></li>
+      <li><span><b>The fix:</b> split it into a list, <code>["ls", "-l"]</code>. (There's also <code>shell=True</code>, which hands a string to the shell. Avoid it with anything a user typed: the shell obeys special characters such as <code>;</code>, so a crafted file name could run a second command.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="e16m" id="e16"></div>
+  <script type="application/json" id="e16m">{"program": "ex_sub_spot.py", "bug": 5, "prompt": "Pip wants the line count of each file. The program crashes on the first one. Click the line with the bug.", "explain": "<code>f\"wc -l {name}\"<\/code> builds one string, so Python looks for a program called <samp>wc -l orders.csv<\/samp>. Pass a list instead: <code>subprocess.run([\"wc\", \"-l\", name], ...)<\/code>. As a bonus, a list keeps a file name with spaces in one piece."}</script>
+
+  <div data-ex="predict" data-model="e17m" id="e17"></div>
+  <script type="application/json" id="e17m">{"program": "ex_exit_predict.py", "hint": "<code>sys.executable<\/code> is the Python that's running this file, so the child is another Python. Without <code>capture_output<\/code>, where does the child's <code>print<\/code> go? And which bell does it ring?", "explain": "The child prints <samp>checking the oven<\/samp> straight to the same screen, because nothing captured its output, then ends with <code>sys.exit(3)<\/code>. <code>run<\/code> waits for it, so the parent's line comes second, with <code>returncode<\/code> 3."}</script>
+
+  <section class="panel clean" aria-label="Panel 37: walking through folders">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Many back-door jobs start with "every file in this folder, and in the folders inside it". Two ways to <b>walk</b> a folder tree: <code>Path.rglob</code> (the <b>r</b> is for <b>recursive</b>, Chapter 24's word) and the older <code>os.walk</code>.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">walk_folder.py</span><pre class="code" data-src="walk_folder.py"></pre>
+      <pre class="term" data-run="walk_folder.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>shop.rglob("*.csv")</code> finds every path ending in <code>.csv</code> at any depth. <code>*</code> is a <b>wildcard</b>: any characters.</span></li>
+      <li><span><code>os.walk(shop)</code> visits each folder once and gives a tuple: the folder, the names of its subfolders, and the names of its files.</span></li>
+      <li><span><b>Both come out in whatever order the file system keeps</b>, which differs between computers. That's why every list here goes through <code>sorted()</code>: sort before you print or compare.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 38: CSV, JSON and XML">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Shops swap data in a few standard formats. You know CSV and JSON from Chapter 12. The third classic is <b>XML</b>: text with tags in angle brackets, like a web page. Here a menu comes in as XML and goes out as JSON and as CSV.</p>
+    <div class="ch27-stack">
+      <div class="ch27-stack"><span class="file-tab">menu.xml</span><pre class="code" data-src="menu.xml"></pre></div>
+      <div class="ch27-stack"><span class="file-tab">formats.py</span><pre class="code" data-src="formats.py"></pre></div>
+    </div>
+    <pre class="term" data-run="formats.py"></pre>
+    <ol class="readlist">
+      <li><span><code>ET.parse(...).getroot()</code> gives the outer element, <code>&lt;menu&gt;</code>. <code>root.iter("dish")</code> walks every <code>&lt;dish&gt;</code> inside it. <code>.get("name")</code> reads an <b>attribute</b>, the <code>name="..."</code> part, and returns <code>None</code>, or the default you give, when it's missing. <code>.text</code> would give the words between the tags.</span></li>
+      <li><span>Attributes are always text, so the price needs <code>float()</code>. JSON keeps the number a number.</span></li>
+      <li><span><code>csv.DictWriter</code> writes rows of dicts. Writing to <code>sys.stdout</code> instead of a file is perfectly allowed: stdout behaves like an open file. <code>lineterminator="\n"</code> ends lines the Unix way; the default ends each line with <code>\r\n</code>, as the CSV standard asks.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="e18m" id="e18"></div>
+  <script type="application/json" id="e18m">{"program": "ex_csv_trace.py", "columns": ["dish", "qty", "total"], "given": [0], "prompt": "<code>tally.csv<\/code> holds a header line, <code>dish,qty<\/code>, then the rows <code>soup,2<\/code>, <code>tea,3<\/code>, <code>soup,1<\/code> and <code>toast,4<\/code>. Fill in each printed row.", "explain": "<code>DictReader<\/code> uses the header as the keys, so the header itself is never a row. Every value arrives as a string: <code>row[\"qty\"]<\/code> prints as it was in the file, and <code>int()<\/code> turns it into a number for the running total: 2, 5, 6, 10."}</script>
+
+  <section class="panel clean" aria-label="Panel 39: a database">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">When the data grows, files of rows get clumsy. A <b>database</b> stores <b>tables</b>, grids of rows and columns, and answers questions about them. Python comes with <code>sqlite3</code>: a complete database in a single file, with nothing else to install. You talk to it in <b>SQL</b> (Structured Query Language): <code>CREATE TABLE</code> makes a table, <code>INSERT</code> adds rows, <code>SELECT</code> asks questions.</p>
+    <ol class="checklist">
+      <li><span><b>Open:</b> <code>conn = sqlite3.connect("file.db")</code> gives a <b>connection</b>. <code>":memory:"</code> makes a database that vanishes when the program ends.</span></li>
+      <li><span><b>Execute:</b> <code>conn.execute(sql, values)</code> runs one SQL statement. Values go in as <code>?</code> placeholders, never pasted into the text.</span></li>
+      <li><span><b>Commit:</b> <code>conn.commit()</code> saves your changes for good. Changes are held in a <b>transaction</b>, a batch that is saved all at once or not at all.</span></li>
+      <li><span><b>Close:</b> <code>conn.close()</code> lets the file go.</span></li>
+    </ol>
+    <div class="ch27-stack">
+      <span class="file-tab">sqlite_basics.py</span><pre class="code" data-src="sqlite_basics.py"></pre>
+      <pre class="term" data-run="sqlite_basics.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>executemany</code> runs the same <code>INSERT</code> once per tuple. Each <code>?</code> is filled from the tuple, in order.</span></li>
+      <li><span>A <code>SELECT</code> gives back rows as tuples, and you can loop over them directly. <code>WHERE dish = ?</code> keeps matching rows; the value goes in as a one-item tuple, <code>("soup",)</code>.</span></li>
+      <li><span>SQL can calculate: <code>SUM(qty * price)</code> adds up the takings, and <code>GROUP BY dish</code> makes one result row per dish, which <code>ORDER BY</code> sorts. <code>fetchone()</code> takes a single row.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="e19m" id="e19"></div>
+  <script type="application/json" id="e19m">{"program": "ex_sql_parsons.py", "seed": 27, "prompt": "Put the database lines in order: open, create, insert, check, commit, check again, close. <code>conn.in_transaction<\/code> is True while there are changes waiting to be committed.", "explain": "Open first, then create the table before inserting into it. The INSERT starts a transaction, so <code>in_transaction<\/code> is True until <code>commit()<\/code> saves it, and False afterwards. <code>close()<\/code> comes last: after it, the connection can't be asked anything, not even <code>in_transaction<\/code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 40: the toast that was never saved">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">Sneak strikes again. Pip saves two orders to a real database file, closes it, and opens it again to check.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">forgot_commit.py</span><pre class="code" data-src="forgot_commit.py"></pre>
+      <pre class="term" data-run="forgot_commit.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak says: </span>Hee hee. The toast was inserted, but never committed. <code>close()</code> doesn't save for you, so the toast simply vanished. No error, no warning. I love a quiet bug.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Pip says: </span>My rule: <b>NO COMMIT, NO SAVE.</b> (<code>with conn:</code> commits for me when the block succeeds, and undoes the changes if it fails. It does <b>not</b> close the connection, though.)</p></div>
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 41: placeholders, not f-strings">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <svg class="sfx tr" data-sfx="SNEAKY!" data-seed="44"></svg>
+    <p class="caption">The most famous database bug. Pip's search box builds the SQL with an f-string. A visitor types something clever.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">injection.py</span><pre class="code" data-src="injection.py"></pre>
+      <pre class="term" data-run="injection.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>Pasted into the f-string, the visitor's quote mark <b>closes</b> Pip's quote, and the rest becomes SQL: <code>WHERE customer = 'nobody' OR '1'='1'</code>. Since <code>'1'='1'</code> is always true, every row comes back. This is <b>SQL injection</b>. On a real site it can leak or destroy everyone's data.</span></li>
+      <li><span>With a <code>?</code> placeholder, sqlite3 sends the value <b>separately</b> from the SQL. The whole text is treated as one odd customer name, and nobody has that name: <samp>[]</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My rule: <b>VALUES GO IN THE QUESTION MARKS, NEVER IN THE STRING.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e20m" id="e20"></div>
+  <script type="application/json" id="e20m">{"program": "ex_inject_spot.py", "bug": 4, "prompt": "Asking for orders of the dish <code>x' OR 'a'='a<\/code> returned everybody. Click the line that lets that happen.", "explain": "Line 4 pastes <code>dish<\/code> into the SQL text, so a quote mark in it ends the string and the rest runs as SQL. Write <code>conn.execute(\"SELECT customer FROM orders WHERE dish = ?\", (dish,))<\/code> instead: the value can never become SQL."}</script>
+
+  <section class="panel clean" aria-label="Panel 42: asking a web server">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">The widest back door: the web. A <b>web API</b> is a web address that answers programs, usually with JSON. You send an <b>HTTP request</b> (HTTP is the web's language), and the answer comes with a <b>status code</b> (200 means OK; 404 means "not found") and a body. The capture computer for this page had no internet, so the program starts a tiny server of its own on <code>127.0.0.1</code>, which always means "this same computer". The part after the comment "Our side" is what you'd write for a real web API.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">web_menu.py</span><pre class="code" data-src="web_menu.py"></pre>
+      <pre class="term" data-run="web_menu.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>urllib.request.urlopen(url, timeout=5)</code> sends the request and gives back a response that works like an open file of <b>bytes</b>. Always set a <code>timeout</code>, or a silent server can make your program wait forever.</span></li>
+      <li><span><code>json.load(response)</code> reads the body and turns the JSON into a dict (Chapter 12). From there it's ordinary Python: <code>min(menu, key=menu.get)</code> finds the cheapest dish (Chapter 17).</span></li>
+      <li><span>Most real projects use <b>requests</b>, a popular third-party package (install it with <code>python3 -m pip install requests</code>, Chapter 13). It's shorter to write, and the notebook shows the same call with it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 43: the pickle trap">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <svg class="sfx tr" data-sfx="TRAP!" data-seed="46"></svg>
+    <p class="caption"><b>pickle</b> turns almost any Python object into bytes and back. It's how processes pass jobs to each other (Panel 17). It's also a trap: a pickle file isn't just data, it can contain instructions for rebuilding objects, and loading it follows them.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">pickle_danger.py</span><pre class="code" data-src="pickle_danger.py"></pre>
+      <pre class="term" data-run="pickle_danger.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>pickle.dumps</code> and <code>pickle.loads</code> work like JSON's <code>dumps</code> and <code>loads</code>, but with bytes, and for nearly any object.</span></li>
+      <li><span><code>__reduce__</code> is a dunder (Chapter 20) that tells pickle how to rebuild an object: "call this function with these arguments". This one says "call <code>print</code>". <b>Just loading</b> the bytes ran that call. A file from a stranger could name any function at all, including ones that delete files.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My rule: <b>NEVER UNPICKLE A STRANGER'S FILE.</b> For data from outside, use JSON: loading JSON can only ever give back dicts, lists, strings, numbers, booleans and None.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e21m" id="e21"></div>
+  <script type="application/json" id="e21m">{"q": "Pip's café app downloads each customer's saved settings from the internet. Which format should Pip load them with?", "options": [{"t": "JSON, with <code>json.loads<\/code>", "correct": true, "why": "Right. JSON can only describe plain data, so a hostile file can at worst give Pip strange values, which Pip can check. It can't run code."}, {"t": "pickle, because it can store any object", "why": "That's exactly the danger: a crafted pickle runs code chosen by its maker the moment it's loaded (Panel 43)."}, {"t": "Either is fine if the download uses a secure web address", "why": "A secure connection protects the bytes on the way, not what's in them. A hostile customer can still upload a crafted pickle."}, {"t": "pickle, but wrapped in <code>try<\/code>/<code>except<\/code>", "why": "The harmful call runs during loading, before any exception could be caught. <code>except<\/code> can't undo it."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 44: every morning at seven">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption soft">A tool that adds up yesterday's orders should run by itself every morning. Don't write a Python loop that sleeps for 24 hours: it stops when the computer restarts, and it can't tell you that it died. Hand the job to the operating system's <b>scheduler</b>:</p>
+    <ul class="checklist">
+      <li><span><b>Linux and macOS: cron.</b> Run <code>crontab -e</code> and add a line such as <code>0 7 * * * /usr/bin/python3 /home/pip/pipshop.py /home/pip/orders</code>: minute 0, hour 7, every day, every month, every weekday. Use full paths, because cron starts with almost no settings.</span></li>
+      <li><span><b>Windows: Task Scheduler.</b> "Create Basic Task", a daily trigger at 7:00, and the action "Start a program" with <code>py</code> as the program and the script's full path as the argument.</span></li>
+      <li><span><b>Then the shop counter pays off:</b> the scheduler records the <b>exit code</b> and can save <b>stderr</b> to a log, which is exactly where your complaints and your bell end up.</span></li>
+    </ul>
+  </section>
+
+  <!-- ===================================================== PART 7 ===================================================== -->
+  <h2 class="part-h" id="part-7">Part 7 · The last project: pipshop<small>a real command-line tool: folders in, SQLite inside, a report out, and tests</small></h2>
+
+  <section class="panel clean" aria-label="Panel 45: pipshop">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption">The café owner's wish: one command that finds every orders file in a folder (old ones in subfolders too), loads them all into SQLite, and prints sales per dish. Small pieces, each one a chapter you know: <code>pathlib</code> to walk (Panel 37), <code>csv</code> to read (Chapter 12), <code>sqlite3</code> with placeholders and a commit (Panels 39 to 41), <code>argparse</code> and the shop counter (Part 5), and functions small enough to test (Chapter 14).</p>
+    <div class="ch27-stack">
+      <span class="file-tab">pipshop.py</span><pre class="code" data-src="pipshop.py"></pre>
+      <pre class="term" data-run="pipshop.py"></pre>
+    </div>
+    <ol class="readlist">
+      <li><span>The first line is a <b>docstring</b> for the whole module (Chapter 6). Each job has its own small function: find, read, store, report. None of them prints, so each is easy to test.</span></li>
+      <li><span><code>main(argv=None)</code> takes the words to parse. From the command line it gets <code>None</code>, and <code>parse_args(None)</code> reads <code>sys.argv</code>. A test can pass its own list instead.</span></li>
+      <li><span><code>main</code> <b>returns</b> the exit code instead of exiting, and <code>sys.exit(main())</code> rings the bell, only when the file is run as a program: the guard from Chapter 13.</span></li>
+      <li><span>An empty or missing folder gives a complaint on stderr and exit code 1, not a traceback. <code>--db week.db</code> would keep the database in a file; by default it lives in memory.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 46: pipshop's preflight checklist">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption">And the tests, run with pytest as in Chapters 14 and 26. Each test builds its own little folder of files in <code>tmp_path</code>, a fresh temporary folder pytest provides, and <code>capsys</code> catches what the program prints, so a test can check the receipt and the complaints.</p>
+    <div class="ch27-stack">
+      <span class="file-tab">test_pipshop.py</span><pre class="code" data-src="test_pipshop.py"></pre>
+      <pre class="term" data-run="test_pipshop.py"></pre>
+    </div>
+    <p class="caption soft"><code>-qq</code> makes pytest extra quiet and <code>-rA</code> lists every test that passed. (A small <code>pytest.ini</code> file beside the tests also turns off pytest's cache folder.) Four green ticks: Pip's tool is ready for its first morning.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Twenty-seven chapters ago I printed one line. Now I've written a tool that walks folders, keeps a database, talks properly to the shell, and has tests. My rule for every project: <b>SMALL PIECES, CLEAR DOORS, AND A TEST FOR EACH.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e22m" id="e22"></div>
+  <script type="application/json" id="e22m">{"program": "ex_project_fill.py", "prompt": "A <code>save_tips<\/code> function in pipshop's style. Fill in the placeholders and the line that makes the save permanent.", "blanks": [{"line": 5, "text": "?, ?"}, {"line": 6, "text": "conn.commit()"}], "explain": "Two columns, so two <code>?<\/code> placeholders, filled from each tuple in turn by <code>executemany<\/code>. <code>conn.commit()<\/code> saves the batch: without it the rows would vanish when the connection closes (Panel 40). The SELECT counts 2 tips adding up to 3.5."}</script>
+
+  <!-- ===================================================== BOSS ===================================================== -->
+  <section class="panel pop" data-play aria-label="Panel 47: boss level" id="boss">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="27"></svg>
+    <p class="boss-h">THE FINAL BOSS LEVEL</p>
+    <p class="caption">The last boss of the book. Every check mixes ideas from this chapter, and a few from earlier ones.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="pip" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>For waiters, ask: who is waiting, who is working, and who touches shared things? For doors, ask: which way does this go in, which way does it come out, and which bell rings?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="b1m" id="b1"></div>
+  <script type="application/json" id="b1m">{"program": "boss_async.py", "hint": "Ana wakes at 0.35 s and 0.7 s. Ben wakes at 0.2, 0.4 and 0.6 s. Sort all the wake-ups by time. And in what order does <code>gather<\/code> list its results?", "explain": "Each <code>await asyncio.sleep<\/code> frees the waiter, so the two waiters' trips interleave by time: Ben 0.2, Ana 0.35, Ben 0.4, Ben 0.6, Ana 0.7. Then <code>gather<\/code> returns its results in the order the jobs were <b>passed<\/b>, Ana first, even though Ben finished first."}</script>
+
+  <div data-ex="trace" data-model="b2m" id="b2"></div>
+  <script type="application/json" id="b2m">{"program": "boss_trace.py", "columns": ["dish", "qty", "sold so far"], "given": [0, 1], "prompt": "After each INSERT, the program asks SQLite how many of <b>that<\/b> dish have been sold in total.", "explain": "The SELECT adds up only the rows <code>WHERE dish = ?<\/code>: soup 2, tea 1, soup 2 + 3 = 5, toast 2. Inside one connection, a SELECT sees that connection's own uncommitted inserts."}</script>
+
+  <div data-ex="parsons" data-model="b3m" id="b3"></div>
+  <script type="application/json" id="b3m">{"program": "boss_parsons.py", "seed": 8, "pin": [1, 2], "prompt": "A tiny order tool, run as <code>python3 boss_parsons.py tea<\/code>. It refuses dishes that aren't on today's menu with a complaint and exit code 1. Put the lines in order (the imports are pinned).", "explain": "Build the parser, declare the argument, then parse. Only after <code>parse_args()<\/code> is there an <code>args.dish<\/code> to check. <code>sys.exit(\"...\")<\/code> belongs inside the <code>if<\/code>: it sends the message to stderr and exits with code 1. The happy path prints last."}</script>
+
+  <div data-ex="spot" data-model="b4m" id="b4"></div>
+  <script type="application/json" id="b4m">{"program": "boss_spot.py", "bug": 11, "prompt": "Three orders went in, but the takings only count two, and no error appeared anywhere. Toast isn't on the price list, yet nothing complained. Click the line that lets the error vanish.", "explain": "<code>bill(\"toast\", 1)<\/code> raises a KeyError inside the pool, and the pool stores it in that job's future. Line 11 throws every future away, so nobody ever calls <code>.result()<\/code>, and the error is never raised. Keep the futures and call <code>.result()<\/code> on each (or use <code>pool.map<\/code>): the KeyError then appears in the main program."}</script>
+
+  <div data-ex="fill" data-model="b5m" id="b5"></div>
+  <script type="application/json" id="b5m">{"program": "boss_fill.py", "prompt": "Ask <code>wc -l<\/code> how many lines <code>orders.csv<\/code> has. If <code>wc<\/code> fails, pass its complaint on to our own complaints desk and ring the failure bell.", "blanks": [{"line": 5, "text": "capture_output=True"}, {"line": 7, "text": "file=sys.stderr"}, {"line": 8, "text": "sys.exit(1)"}], "explain": "<code>capture_output=True<\/code> keeps <code>wc<\/code>'s output so the program can read <code>result.stdout<\/code>. On failure, the complaint goes to <code>sys.stderr<\/code> and <code>sys.exit(1)<\/code> rings a non-zero bell. The file has 4 lines, the header plus 3 orders."}</script>
+
+  <div data-ex="predict" data-model="b6m" id="b6"></div>
+  <script type="application/json" id="b6m">{"program": "boss_error.py", "expect": "error", "hint": "Nobody set <code>PIPSHOP_DB<\/code> before this run. How does <code>os.environ<\/code> behave when you demand a name it doesn't have?", "explain": "<code>os.environ<\/code> acts like a dict, and square brackets demand the key: <b>KeyError<\/b>: 'PIPSHOP_DB' (Jangles, Chapter 9; dicts' demand-or-ask in Chapter 8). The first <code>print<\/code> runs, then the second one crashes while working out its arguments. <code>os.environ.get(\"PIPSHOP_DB\", \"shop.db\")<\/code> would ask politely and fall back to a default."}</script>
+
+  <section class="panel pop" aria-label="Panel 48: what you learned in Chapter 27">
+    <span class="panel-no" aria-hidden="true">48</span>
+    <p class="caption">What you learned in Chapter 27</p>
+    <ul class="recap">
+      <li><b>WAITING CAN BE SHARED. WORKING NEEDS MORE HANDS.</b>Concurrency versus parallelism; I/O-bound versus CPU-bound. Threads and asyncio overlap waiting; processes add cores for calculating.</li>
+      <li><b>START THEM ALL, THEN JOIN THEM ALL. SHARED AND CHANGING? ONE KEY CARD.</b><code>threading.Thread</code>, <code>start</code>, <code>join</code>; the GIL and the free-threaded build; race conditions and <code>Lock</code>; <code>queue.Queue</code> and sentinels; thread and process pools, <code>map</code>, <code>submit</code>, futures and <code>as_completed</code>; the <code>__main__</code> guard for processes.</li>
+      <li><b>CALLING A COROUTINE ONLY WRITES THE ORDER. AWAIT SERVES IT.</b><code>async def</code>, <code>await</code>, <code>asyncio.run</code> once at the top, <code>gather</code>, <code>TaskGroup</code> and its ExceptionGroup; never block the waiter with <code>time.sleep</code>.</li>
+      <li><b>RESULTS TO THE PRINTER, PROBLEMS TO THE DESK, AND RING THE RIGHT BELL.</b><code>sys.argv</code> and <code>argparse</code>; stdin, stdout, stderr and redirection; exit codes 0, 1 and 2 and <code>sys.exit</code>; environment variables.</li>
+      <li><b>A LIST FOR SUBPROCESS. SORT WHAT YOU WALK.</b><code>subprocess.run</code> with a list of arguments; <code>rglob</code> and <code>os.walk</code>; CSV, JSON and XML; JSON web APIs with <code>urllib.request</code> (or requests), always with a timeout.</li>
+      <li><b>VALUES GO IN THE QUESTION MARKS. NO COMMIT, NO SAVE. NEVER UNPICKLE A STRANGER'S FILE.</b><code>sqlite3</code>: connect, execute, commit, close; SQL injection; why pickle is only for data you made yourself.</li>
+    </ul>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 49: the whole book on one page">
+    <span class="panel-no" aria-hidden="true">49</span>
+    <p class="caption soft">And now the whole book, on one page. Twenty-seven chapters, one catchphrase each. Tap any chapter to go back and visit.</p>
+    <p class="ch27-book-part">Beginner: from one line to a recipe book</p>
+    <ol class="ch27-book">
+      <li><a href="ch1.html">1 · Pip Reads a Recipe</a><span>A program is a recipe, read <b>top to bottom</b>.</span></li>
+      <li><a href="ch2.html">2 · Name Tags</a><span>A variable is <b>a tag, not a box</b>.</span></li>
+      <li><a href="ch3.html">3 · What Kind of Thing?</a><span>Bricks, jellies, trains, lamps and the ghost: every value has a <b>kind</b>.</span></li>
+      <li><a href="ch4.html">4 · Forks in the Road</a><span><b>Every question is a lamp</b>: <code>if</code> follows the first True.</span></li>
+      <li><a href="ch5.html">5 · Round and Round</a><span>Loops: <b>start, check, change</b>.</span></li>
+      <li><a href="ch6.html">6 · Pip's Machines</a><span>Functions: <b>write it once, press it often</b>.</span></li>
+      <li><a href="ch7.html">7 · Crates in a Row</a><span>Lists <b>count from zero</b>, and <b>= never copies</b>.</span></li>
+      <li><a href="ch8.html">8 · The Filing Cabinet</a><span>Dicts find things <b>by name</b>.</span></li>
+      <li><a href="ch9.html">9 · When Things Go Wrong</a><span>Read a traceback <b>bottom line first</b>.</span></li>
+      <li><a href="ch10.html">10 · Pip's Recipe Book</a><span><b>Memory forgets. Files remember.</b></span></li>
+      <li><a href="ch11.html">11 · The Text Workshop</a><span>Strings never change: methods hand back new ones.</span></li>
+      <li><a href="ch12.html">12 · Boxes Inside Boxes</a><span>Nested data: always ask <b>"what am I holding?"</b></span></li>
+      <li><a href="ch13.html">13 · Borrowing Toolboxes</a><span>Modules: <b>bring the box, or take a tool</b>, and guard your demo.</span></li>
+      <li><a href="ch14.html">14 · Smoke Alarms and Blueprints</a><span><b>A test is a smoke alarm.</b></span></li>
+      <li><a href="ch15.html">15 · Cookie Cutters</a><span>A class is a cutter; each object is a cookie.</span></li>
+    </ol>
+    <p class="ch27-book-part">Intermediate: the tools of real programs</p>
+    <ol class="ch27-book" start="16">
+      <li><a href="ch16.html">16 · Lazy Conveyor Belts</a><span><b>Belt, gate, stamp</b>, and <b>return leaves, yield pauses</b>.</span></li>
+      <li><a href="ch17.html">17 · Machines as Parcels</a><span><b>No brackets hands it over, brackets run it.</b></span></li>
+      <li><a href="ch18.html">18 · Backpacks and Gift Wrap</a><span>Closures carry a backpack; decorators gift-wrap a function.</span></li>
+      <li><a href="ch19.html">19 · Family Trees and Toolbelts</a><span><b>Reading falls through. Writing stays home.</b></span></li>
+      <li><a href="ch20.html">20 · Sockets and Stamped Forms</a><span><b>Syntax is a cable, a dunder is a socket.</b></span></li>
+      <li><a href="ch21.html">21 · Labels and Sorting Chutes</a><span><b>Labels are for readers and inspectors.</b></span></li>
+      <li><a href="ch22.html">22 · Alarms and Key Cards</a><span><b>Catch the alarm you expect. Let the rest ring.</b></span></li>
+      <li><a href="ch23.html">23 · The Hardware Store</a><span><b>Folders are floors, files are rooms, dots are the address.</b></span></li>
+      <li><a href="ch24.html">24 · Dolls and Stopwatches</a><span><b>Every doll set has a solid one in the middle.</b> And measure first.</span></li>
+      <li><a href="ch25.html">25 · Stencils and Codebooks</a><span><b>String methods for one exact piece, a stencil for a kind of text.</b></span></li>
+      <li><a href="ch26.html">26 · Preflight Checklist</a><span><b>Every flight, every line of the checklist.</b></span></li>
+      <li class="this"><span><b>27 · Waiters and Open Doors</b></span><span>Share the waiting, guard what's shared, and open the right doors.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" data-play aria-label="Panel 50: the end of the book">
+    <span class="panel-no" aria-hidden="true">50</span>
+    <svg class="sfx tr" data-sfx="HOORAY!" data-seed="53"></svg>
+    <svg class="sfx tl" data-sfx="YOU DID IT!" data-seed="7"></svg>
+    <p class="ch27-the-end">THE END</p>
+    <p class="caption">…of the book. Not of Python. Everybody came to say well done.</p>
+    <div class="ch27-parade">
+      <svg class="char" data-char="pip" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+      <svg class="char" data-char="professor"></svg>
+      <svg class="char" data-char="chef"></svg>
+      <svg class="char" data-char="proofreader"></svg>
+      <svg class="char" data-char="bouncer"></svg>
+      <svg class="char" data-char="waiter" data-variant="a" data-pose="cheer"></svg>
+      <svg class="char" data-char="waiter" data-variant="b" data-pose="cheer"></svg>
+      <svg class="char" data-char="waiter" data-variant="c" data-pose="cheer"></svg>
+      <svg class="char" data-char="brick" data-label="27"></svg>
+      <svg class="char" data-char="jelly" data-label="3.15"></svg>
+      <svg class="char wide" data-char="train" data-text="THE END"></svg>
+      <svg class="char" data-char="lamp" data-on="true"></svg>
+      <svg class="char" data-char="ghost"></svg>
+      <svg class="char wide" data-char="crate" data-items="1,2,'go!'"></svg>
+      <svg class="char" data-char="cabinet" data-keys="you,did,it"></svg>
+      <svg class="char" data-char="machine" data-label="you()"></svg>
+      <svg class="char" data-char="duck"></svg>
+      <svg class="char" data-char="sneak"></svg>
+    </div>
+    <p class="sr-only">Picture: the whole cast cheering. Pip shouting with both arms up, the Professor, the chef, the Proofreader, the Bouncer, the three waiters Ana, Ben and Cy, the brick creature labelled 27, the jelly labelled 3.15, the string train spelling THE END, a lit lamp, the ghost, a crate holding 1, 2 and 'go!', a cabinet with drawers labelled you, did and it, a machine labelled you(), the rubber duck, and even Sneak.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="wave"></svg>
+      <div class="talk"><p class="bubble shout"><span class="sr-only">Pip says: </span>You did it! You started with <code>print("Hello")</code> and finished with threads, databases and a tested command-line tool. And every error along the way was just me telling you exactly where to look.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Where next? Pick something you'd enjoy building, and learn what it needs. My notebook's last page lists free places to go deeper.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <ul class="ch27-next">
+      <li><b>Websites and web APIs</b>Flask, Django or FastAPI build on Parts 5 and 6, and FastAPI on asyncio too.</li>
+      <li><b>Data and science</b>pandas, NumPy and Jupyter notebooks start where CSV, SQL and comprehensions end.</li>
+      <li><b>Games and apps</b>pygame for games; Tkinter, which comes with Python, for windows and buttons.</li>
+      <li><b>Automation</b>Scripts that tidy folders, fill in spreadsheets and run every morning by themselves.</li>
+    </ul>
+    <div class="ch27-row ch27-guides">
+      <figure><svg class="char sm2" data-char="librarian" data-mood="happy" data-arms="wave"></svg><figcaption>Mabel</figcaption></figure>
+      <figure><svg class="char sm2" data-char="courier" data-mood="happy" data-arms="wave"></svg><figcaption>Scoot</figcaption></figure>
+      <figure><svg class="char sm2" data-char="mechanic" data-mood="happy" data-arms="wave"></svg><figcaption>Wren</figcaption></figure>
+      <figure><svg class="char sm2" data-char="stagehand" data-mood="happy" data-arms="wave"></svg><figcaption>Kit</figcaption></figure>
+    </div>
+    <p class="caption soft">And Pip's friends from the other books in this series wave hello: Mabel teaches Rust, Scoot teaches Go, Wren teaches C++, and Kit teaches JavaScript. Everything you learned here, variables, loops, functions, tests and reading errors like a detective, travels with you to every one of them.</p>
+    <p class="sr-only">Picture: four friends waving: Mabel the librarian, Scoot the courier, Wren the mechanic and Kit the stage manager.</p>
+  </section>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+</main>
+
+<p class="next-chapter">THAT'S THE WHOLE BOOK!<br><small style="font: 700 1rem var(--f-bubble)">Back to the contents to revisit any chapter, or open the Professor's notebook below for the deep dives.</small></p>
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch26.html">← Ch 26 · Preflight Checklist</a><a class="next" href="index.html">Book contents →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">The last notebook of the book. These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: switching threads, starting processes, and what the event loop really does</summary>
+    <div class="page-body">
+      <svg class="char sm" data-char="professor"></svg>
+      <h3>When does a thread get its turn?</h3>
+      <p>On the standard build, a thread holding the GIL is asked to let go every <b>switch interval</b>, 5 milliseconds by default, and it always lets go while it waits for input or output (a sleep, a download, a file). Between those moments it can be stopped after almost any bytecode instruction: the small steps Python compiles your code into. <code>count += 1</code> is several such steps (load the value, add one, store it), so another thread can slip in between them. Whether it actually does is a matter of timing. This four-thread counter printed the right total on the run captured for this page, which proves nothing. It is <b>one possible run</b>:</p>
+      <div class="pair"><pre class="code" data-src="counter_luck.py"></pre><pre class="term" data-run="counter_luck.py"></pre></div>
+      <p>A program that is right only when the timing is lucky is wrong. On the free-threaded build, threads really run at once, and races like this one show up far more often. The fix is the same everywhere: a lock, a queue, or not sharing.</p>
+      <h3>Three ways to open a kitchen</h3>
+      <div class="pair"><pre class="code" data-src="nb_start_method.py"></pre><pre class="term" data-run="nb_start_method.py"></pre></div>
+      <p class="ch27-ver dashed">CPython 3.13.18, same Linux computer:</p>
+      <pre class="term" data-run="nb_start_method.py" data-alt></pre>
+      <ul>
+        <li><b>fork</b> (the Linux default up to 3.13): copy the running process. Fast, needs no reload, but copying a program that has threads running can copy a lock while another thread holds it, which can freeze the new process. That's why the default changed.</li>
+        <li><b>spawn</b> (the default on Windows, and on macOS since 3.8): start a fresh Python, which imports your main file to find your functions. Hence the guard.</li>
+        <li><b>forkserver</b> (the Linux default since 3.14): a clean helper process is started early and forks the workers, so they start from a known, thread-free state. It also imports your main file.</li>
+      </ul>
+      <h3>What the event loop does</h3>
+      <p>The event loop keeps two lists: tasks that are <b>ready</b> to run, and <b>timers</b> and network sockets it's waiting on. Its round is: run each ready task until it reaches an <code>await</code> on something not ready; then ask the operating system "wake me when one of these sockets has data, or when the next timer is due"; then put whatever woke up back on the ready list. A coroutine is a function that can pause in the middle and be resumed later, keeping its local variables, much like the generators of Chapter 16, which is how they began. That's all "one waiter who never waits" means.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>More tools: check=True, timeouts, and requests</summary>
+    <div class="page-body">
+      <h3>Make a failing command raise</h3>
+      <p>With <code>check=True</code>, <code>subprocess.run</code> raises <code>CalledProcessError</code> when the other program's exit code isn't 0, so a failure can't slip past unnoticed:</p>
+      <div class="pair"><pre class="code" data-src="nb_check.py"></pre><pre class="term" data-run="nb_check.py"></pre></div>
+      <h3>Give up on slow jobs</h3>
+      <p><code>asyncio.timeout(seconds)</code> (Python 3.11+) cancels whatever is inside the block if it takes too long, and raises <code>TimeoutError</code>. Every program that waits on the outside world needs a limit somewhere.</p>
+      <div class="pair"><pre class="code" data-src="nb_timeout.py"></pre><pre class="term" data-run="nb_timeout.py"></pre></div>
+      <h3>The same web request with requests</h3>
+      <p><b>requests</b> isn't part of Python: install it with <code>python3 -m pip install requests</code>, ideally inside a virtual environment (Chapter 13). <code>response.json()</code> decodes the body, and <code>raise_for_status()</code> turns error codes such as 404 into exceptions.</p>
+      <div class="pair"><pre class="code" data-src="web_requests.py"></pre><pre class="term" data-run="web_requests.py"></pre></div>
+      <h3>Other things in the toolbox</h3>
+      <ul>
+        <li><code>threading.Event</code> (one thread signals another), <code>threading.Semaphore</code> (at most N at a time), and <code>threading.local</code> (a separate value per thread).</li>
+        <li><code>asyncio.Queue</code>, the ticket rail for asyncio tasks; <code>asyncio.to_thread(f)</code> runs a blocking function in a thread without freezing the waiter.</li>
+        <li><code>multiprocessing.Pool</code>, the older cousin of <code>ProcessPoolExecutor</code>.</li>
+        <li><code>shlex.split("ls -l")</code> turns a command string into the right list for <code>subprocess.run</code>.</li>
+        <li><code>shutil</code> copies and moves files and whole folders; <code>tempfile</code> makes scratch files (Chapter 22).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where waiters and doors show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Web servers.</b> A server handles many visitors at once. Frameworks such as FastAPI run on asyncio; others use a pool of threads or processes. Each request is one table in the restaurant.</li>
+        <li><b>Downloaders and scrapers.</b> Fetching hundreds of pages is pure waiting: a thread pool or asyncio makes it many times faster. Be polite: limit how many requests you make at once and how often.</li>
+        <li><b>Data crunching.</b> Big calculations are split into chunks for a process pool, or handed to libraries such as NumPy, whose C code releases the GIL while it works.</li>
+        <li><b>Graphical apps and games.</b> A window must keep responding while a file downloads, so slow work goes to a background thread, or the app runs an event loop of its own.</li>
+        <li><b>Command-line tools.</b> <code>git</code>, <code>pip</code> and <code>pytest</code> are all programs with arguments, streams and exit codes, exactly like <code>tip.py</code>. Continuous-integration services decide pass or fail from nothing but the exit code.</li>
+        <li><b>Glue scripts.</b> A huge amount of real Python reads a folder of exports, calls another program or a web API, stores results in SQLite or another database, and runs every night from a scheduler.</li>
+        <li><b>SQLite everywhere.</b> SQLite is built into phones, web browsers and countless apps. Python's <code>sqlite3</code> is the same engine. Bigger systems use database servers such as PostgreSQL, but the SQL, the placeholders and the commits work the same way.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Threads make everything faster."</b> They speed up waiting. On the standard build they don't speed up calculating at all, and they always add complexity (Panel 9).</li>
+        <li><b>"My threaded program printed the right answer, so it has no race."</b> Races depend on timing. One good run proves nothing (the counter in "Under the hood").</li>
+        <li><b>"<code>count += 1</code> is one step."</b> It's a read, an add and a write, and another thread can get in between.</li>
+        <li><b>"asyncio runs things in parallel."</b> One thread, one waiter. It overlaps waiting, never calculating. A CPU-heavy coroutine freezes everything else (Panel 26).</li>
+        <li><b>"Calling an <code>async def</code> function runs it."</b> It builds a coroutine object. Nothing happens until it's awaited (Panel 22).</li>
+        <li><b>"The GIL makes my code thread-safe."</b> It only protects Python's own insides. Your three-step updates still need a lock (Panels 10 to 13).</li>
+        <li><b>"<code>print()</code> is for messages, so errors go there too."</b> Errors go to stderr, so they reach the screen even when the output is saved to a file (Panel 29).</li>
+        <li><b>"Exit codes don't matter."</b> Schedulers, scripts and test services read nothing else. Ring the right bell.</li>
+        <li><b>"An f-string is fine for SQL if I'm careful."</b> Placeholders are the only safe way. Being careful is how injection bugs get written (Panel 41).</li>
+        <li><b>"Closing the connection saves my changes."</b> Only <code>commit()</code> saves them (Panel 40).</li>
+        <li><b>"pickle is just a faster JSON."</b> Loading a pickle can run code. Use it only for data your own program wrote and nobody else could touch (Panel 43).</li>
+        <li><b>"A program found the files in alphabetical order, so they always come that way."</b> File-system order isn't guaranteed. Sort (Panel 37).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: what is new, and since when</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Default start method on Linux</b>: <b>forkserver</b> since <b>3.14</b>, fork before. That's why <code>no_guard.py</code> fails on 3.15.2 and runs on 3.13.18 here (Panel 18), and why <code>nb_start_method.py</code> prints different words. Windows and macOS have used spawn for years, so unguarded pool code always failed there.</li>
+        <li><b>Free-threaded build</b>: experimental in 3.13, <b>officially supported</b> since 3.14 (PEP 779), still optional and separate (<code>python3.15t</code>). <code>sys._is_gil_enabled()</code> exists since 3.13.</li>
+        <li><b><code>asyncio.TaskGroup</code></b>, <b><code>asyncio.timeout</code></b> and <code>except*</code>: since <b>3.11</b>. <code>asyncio.run</code> since 3.7.</li>
+        <li><b>sqlite3's <code>autocommit</code></b> setting arrived in 3.12. Its default still keeps the old behaviour this chapter shows (an INSERT opens a transaction that waits for <code>commit()</code>); the documentation says the default will change to <code>False</code> in a future version, which also makes <code>close()</code> roll back uncommitted changes.</li>
+        <li><b>Traceback paths</b>: every program was run with both Python 3.15.2 and 3.13.18. Eight printed something different. Five differ only in the line numbers and folder names <b>inside Python's own library</b>, which change between versions: <code>nested_run.py</code>, <code>taskgroup_fail.py</code>, <code>sub_string.py</code>, <code>ex_sub_spot.py</code> and <code>boss_error.py</code> (whose <samp>&lt;frozen os&gt;</samp> line is 729 on 3.15.2 and 717 on 3.13.18). <code>no_guard.py</code> and <code>nb_start_method.py</code> differ because of the start method. <code>forgot_await_repr.py</code> prints a memory address, which differs on every run of any version. Every other output on this page is identical on both.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself</summary>
+    <div class="page-body">
+      <ol>
+        <li>Check your version: <code>python3 --version</code> on macOS and Linux, <code>py --version</code> on Windows. Everything here works on Python 3.11 or newer, except <code>gil_check.py</code> (3.13 or newer); 3.14 or newer matches this page's start-method behaviour.</li>
+        <li>Save <code>threads_calls.py</code> and <code>async_gather.py</code> and run them: <code>python3 threads_calls.py</code> (Windows: <code>py threads_calls.py</code>). Change the sleep lengths and predict the new "took about" line before running.</li>
+        <li>Run <code>tally_race.py</code> five times. Then delete the <code>time.sleep(0.01)</code> line and run it five more times: the race becomes rare, which is <b>worse</b>, because now it hides.</li>
+        <li><b>Redirection and exit codes.</b> macOS and Linux: exactly as Panel 29. Windows PowerShell: <code>Get-Content orders.txt | py counter.py</code> (PowerShell has no <code>&lt;</code>), <code>py counter.py 2&gt; complaints.txt</code> works as shown, and the exit code is in <code>$LASTEXITCODE</code>. Windows Command Prompt: <code>py counter.py &lt; orders.txt &gt; receipt.txt</code> works, and the exit code is <code>echo %ERRORLEVEL%</code>.</li>
+        <li><b>Environment variables.</b> macOS and Linux: <code>PIP_GREETING=howdy python3 env_demo.py</code>. PowerShell: <code>$env:PIP_GREETING="howdy"; py env_demo.py</code>. Command Prompt: <code>set PIP_GREETING=howdy</code>, then <code>py env_demo.py</code>.</li>
+        <li><b>subprocess on Windows.</b> <code>ls</code> and <code>wc</code> are macOS and Linux tools. On Windows, try <code>subprocess.run([sys.executable, "--version"], capture_output=True, text=True)</code>, which asks your own Python its version and works on every system. Built-in shell commands such as <code>dir</code> aren't programs, so they need <code>["cmd", "/c", "dir"]</code>.</li>
+        <li><b>A real web API.</b> On your own computer, with internet, <code>urllib.request.urlopen("https://api.github.com", timeout=5)</code> returns JSON describing GitHub's API. Install requests with <code>python3 -m pip install requests</code> (Windows: <code>py -m pip install requests</code>).</li>
+        <li><b>pipshop.</b> Save <code>pipshop.py</code>, <code>test_pipshop.py</code> and a folder of CSV files. Run <code>python3 pipshop.py yourfolder</code>, then <code>python3 pipshop.py yourfolder --db week.db</code>: the database file stays after the program ends. Run it twice with <code>--db</code> and the totals double. Fix that as an exercise: delete the old rows first, or skip files you've already loaded. Run the tests with <code>python3 -m pytest -q</code>.</li>
+        <li><b>The free-threaded build</b> (optional). The python.org installers for Windows and macOS offer it as an extra; with uv, <code>uv python install 3.15t</code>. Run <code>counter_luck.py</code> with it and watch the races appear.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>concurrency</dt><dd>Several jobs in progress at once, taking turns.</dd>
+        <dt>parallelism</dt><dd>Several jobs running at the same instant, on different CPU cores.</dd>
+        <dt>CPU core</dt><dd>The part of a processor that actually runs instructions. Most computers have several.</dd>
+        <dt>I/O-bound / CPU-bound</dt><dd>Slow because of waiting for input and output / slow because of calculating.</dd>
+        <dt>thread</dt><dd>A separate line of work inside one program, sharing its memory. A waiter.</dd>
+        <dt>start / join</dt><dd>Send a thread off / wait until it has finished.</dd>
+        <dt>scheduler</dt><dd>The part of the operating system that decides which thread runs next (also: a tool that runs programs at set times).</dd>
+        <dt>GIL</dt><dd>The Global Interpreter Lock: on the standard build, only one thread runs Python code at a time. The kitchen door.</dd>
+        <dt>free-threaded build</dt><dd>An optional Python build without the GIL, such as <code>python3.15t</code>.</dd>
+        <dt>race condition</dt><dd>A bug where the result depends on which thread gets somewhere first. A lost update is one kind.</dd>
+        <dt>lock</dt><dd>An object only one thread can hold at a time: <code>threading.Lock()</code>, used with <code>with</code>. The key card.</dd>
+        <dt>queue</dt><dd>A thread-safe first-in, first-out line: <code>queue.Queue</code>. The ticket rail.</dd>
+        <dt>producer / consumer</dt><dd>One part of a program makes work, another takes it, with a queue between them.</dd>
+        <dt>sentinel</dt><dd>A special value that means "stop", such as <code>None</code> on the rail.</dd>
+        <dt>pool / executor</dt><dd>A group of ready workers that runs jobs you hand in: <code>ThreadPoolExecutor</code>, <code>ProcessPoolExecutor</code>.</dd>
+        <dt>future</dt><dd>A claim ticket for a result that isn't ready yet; <code>.result()</code> waits for it, and re-raises the job's exception.</dd>
+        <dt>process</dt><dd>A whole running program with its own memory. A separate kitchen.</dd>
+        <dt>start method</dt><dd>How a new process begins: fork, spawn or forkserver.</dd>
+        <dt>asyncio</dt><dd>Python's library for running many waiting jobs in one thread.</dd>
+        <dt>coroutine</dt><dd>What calling an <code>async def</code> function gives you: a job that can pause at each <code>await</code>.</dd>
+        <dt>await</dt><dd>Pause here until this is ready, and let other tasks run meanwhile.</dd>
+        <dt>event loop</dt><dd>The waiter: runs whichever task is ready, and sleeps when none is.</dd>
+        <dt>task</dt><dd>A coroutine handed to the event loop to run alongside others.</dd>
+        <dt>TaskGroup</dt><dd>An <code>async with</code> block that waits for all its tasks and cancels the rest if one fails.</dd>
+        <dt>blocking</dt><dd>A call that freezes its whole thread while it waits, such as <code>time.sleep</code>.</dd>
+        <dt>command-line argument</dt><dd>A word typed after the program's name. Positional ones are required by position; options start with <code>--</code>.</dd>
+        <dt>argparse / namespace</dt><dd>The standard library's argument parser / the object it returns, with one attribute per argument.</dd>
+        <dt>stdin, stdout, stderr</dt><dd>Standard input, output and error: the front counter, the receipt printer and the complaints desk.</dd>
+        <dt>redirection</dt><dd>Sending a stream to or from a file in the shell: <code>&lt;</code>, <code>&gt;</code>, <code>2&gt;</code>.</dd>
+        <dt>shell</dt><dd>The program that reads the commands you type in a terminal.</dd>
+        <dt>exit code</dt><dd>The number a program ends with: 0 for success, anything else for a problem. The bell.</dd>
+        <dt>environment variable</dt><dd>A named setting a program inherits from the shell: <code>os.environ</code>.</dd>
+        <dt>subprocess</dt><dd>Another program started by yours.</dd>
+        <dt>wildcard</dt><dd><code>*</code> in a pattern such as <code>*.csv</code>: any characters.</dd>
+        <dt>XML / element / attribute</dt><dd>Text with tags in angle brackets / one tagged piece / a <code>name="value"</code> setting inside a tag.</dd>
+        <dt>database / table / SQL</dt><dd>Organised stored data / a grid of rows and columns / the language for asking a database questions.</dd>
+        <dt>connection, transaction, commit</dt><dd>Your line to the database / a batch of changes saved all at once / saving that batch.</dd>
+        <dt>placeholder</dt><dd>A <code>?</code> in SQL, filled in separately with a value.</dd>
+        <dt>SQL injection</dt><dd>An attack where text pasted into SQL becomes part of the command.</dd>
+        <dt>web API, HTTP, status code</dt><dd>A web address that answers programs / the web's language / the number saying how a request went (200 OK, 404 not found).</dd>
+        <dt>pickle</dt><dd>Python's format for turning objects into bytes. Never load one from a stranger.</dd>
+        <dt>cron / Task Scheduler</dt><dd>The tools that run programs at set times on macOS and Linux / on Windows.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://docs.python.org/3/library/threading.html">threading</a>, <a href="https://docs.python.org/3/library/queue.html">queue</a>, <a href="https://docs.python.org/3/library/concurrent.futures.html">concurrent.futures</a> and <a href="https://docs.python.org/3/library/multiprocessing.html">multiprocessing</a> (see "Contexts and start methods")</li>
+        <li><a href="https://docs.python.org/3/library/asyncio.html">asyncio</a>, especially <a href="https://docs.python.org/3/library/asyncio-task.html">Coroutines and Tasks</a>, and the <a href="https://docs.python.org/3/howto/free-threading-python.html">free-threading HOWTO</a></li>
+        <li><a href="https://docs.python.org/3/howto/argparse.html">The argparse tutorial</a>, <a href="https://docs.python.org/3/library/subprocess.html">subprocess</a> and <a href="https://docs.python.org/3/library/sys.html#sys.exit">sys.exit</a></li>
+        <li><a href="https://docs.python.org/3/library/sqlite3.html">sqlite3</a> (its tutorial and its "How to use placeholders" section), <a href="https://docs.python.org/3/library/xml.etree.elementtree.html">xml.etree.ElementTree</a>, <a href="https://docs.python.org/3/library/urllib.request.html">urllib.request</a> and <a href="https://docs.python.org/3/library/pickle.html">pickle</a> (read the red warning box)</li>
+        <li><a href="https://peps.python.org/pep-0779/">PEP 779: supported status for free-threaded Python</a> and <a href="https://docs.python.org/3/whatsnew/3.14.html">What's New in Python 3.14</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://cs50.harvard.edu/python/">CS50's Introduction to Programming with Python</a>: its last week, "Et Cetera", includes argparse, and the final project is a good next step after pipshop.</li>
+        <li><a href="https://www.py4e.com/lessons">Python for Everybody</a>: free lessons on networks, web services (XML and JSON) and SQL databases.</li>
+        <li><a href="https://automatetheboringstuff.com/">Automate the Boring Stuff with Python</a>: chapters on command-line programs, files and folders, SQLite, CSV and JSON, and scheduling.</li>
+        <li><a href="https://realpython.com/learning-paths/">Real Python learning paths</a>: free articles on threading, asyncio and multiprocessing among many others.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: 68 programs, run with CPython 3.15.2 and CPython 3.13.18 on 2026-11-08, in <code>/home/you/python-ch27</code>. Eight printed something different on the two versions (listed in the notebook's version notes); the page shows the 3.13.18 run after the 3.15.2 one where it matters. Five programs vary from run to run by nature (thread timing, finishing order, memory addresses) and are labelled "one possible run"; they are never used as answer keys. The <code>.py</code> files that hold "no code" only name a terminal session: the commands shown are the real ones that ran. The web examples talk to a small server started inside the same program, because the capture computer had no internet connection. Tracebacks show the real file paths.</p>
+  <p>The race tracer, the event-loop timelines, the argparse machine, the map of <code>orders.py</code> and the exercises are teaching models. Each one checks its claims against those runs and shows a badge. The race tracer steps through a program with no threads that acts out one unlucky order, and the timelines' clocks are worked out from the programs' sleep lengths; both are labelled as models where they appear. The waiters, the kitchen door, the tally jar and the shop-counter stations are new drawings for this chapter; Pip, the Professor, the chef, the Proofreader, the Bouncer, Sneak, Digger, the duck and the creatures are the book's original cast, and Mabel, Scoot, Wren and Kit are the guides of this series' other books, all drawn in code.</p>
+  <p>Sources consulted for scope, order and common pitfalls (no text or exercises copied): the Python documentation for threading, queue, concurrent.futures, multiprocessing (contexts and start methods), asyncio (coroutines and tasks, TaskGroup, timeouts), argparse and its tutorial, sys, os, subprocess, pathlib, csv, json, xml.etree.ElementTree, sqlite3 (transaction control, placeholders), urllib.request and pickle; What's New in Python 3.14 (the forkserver default); PEP 779 and a summary of it on pydevtools.com; CS50P week 9 (Et Cetera); and the course's research map, which cross-references roadmap.sh/python (concurrency: GIL, threading, multiprocessing, asynchrony), Effective Python (3rd ed.) items 67 to 79, Fluent Python (2nd ed.) chapters 19 to 21, the official tutorial sections 10 and 11.4, Automate the Boring Stuff (3rd ed.) chapters 12, 16, 18 and 19, Python for Everybody's network, web-services and database lessons, CS50P weeks 4 and 9, and Hyperskill's JSON, XML and SQL topics.</p>
+</footer>
+</body>
+</html>
