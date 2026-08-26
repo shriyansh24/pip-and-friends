@@ -1,0 +1,415 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch19",
+  "versionDifferences": [
+   "nb_recursion.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): nb_recursion.py."
+ },
+ "programs": {
+  "abc_containers.py": {
+   "src": "from collections.abc import Iterable, Sequence, Mapping\n\nprint(\"type   Iterable Sequence Mapping\")\nfor thing in [[1, 2], (1, 2), \"hi\", {\"a\": 1}, {1, 2}, 42]:\n    name = type(thing).__name__\n    row = [isinstance(thing, kind) for kind in (Iterable, Sequence, Mapping)]\n    print(f\"{name:6}\", *row)\n",
+   "stdout": "type   Iterable Sequence Mapping\nlist   True True False\ntuple  True True False\nstr    True True False\ndict   True False True\nset    True False False\nint    False False False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "abc_forgot.py": {
+   "src": "from abc import ABC, abstractmethod\n\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        ...\n\nclass Circle(Shape):\n    def __init__(self, r):\n        self.r = r\n\n    def aera(self):\n        return 3 * self.r * self.r\n\nc = Circle(2)\nprint(c.aera())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/abc_forgot.py\", line 15, in <module>\n    c = Circle(2)\nTypeError: Can't instantiate abstract class Circle without an implementation for abstract method 'area'\n",
+   "exit": 1
+  },
+  "abc_shape.py": {
+   "src": "from abc import ABC, abstractmethod\n\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        ...\n\n    def describe(self):\n        return f\"{type(self).__name__} with area {self.area()}\"\n\nclass Square(Shape):\n    def __init__(self, side):\n        self.side = side\n\n    def area(self):\n        return self.side ** 2\n\nprint(Square(3).describe())\ns = Shape()\n",
+   "stdout": "Square with area 9\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/abc_shape.py\", line 19, in <module>\n    s = Shape()\nTypeError: Can't instantiate abstract class Shape without an implementation for abstract method 'area'\n",
+   "exit": 1
+  },
+  "bad_tree.py": {
+   "src": "class Battery:\n    def __init__(self):\n        self.charge = 100\n\n    def use(self, amount):\n        self.charge -= amount\n\nclass Robot(Battery):   # \"a Robot IS a Battery\"?!\n    def __init__(self, name):\n        super().__init__()\n        self.name = name\n\nzap = Robot(\"Zap\")\nzap.use(10)\nprint(zap.charge)\nprint(isinstance(zap, Battery))\nprint([c.__name__ for c in Robot.__mro__])\n",
+   "stdout": "90\nTrue\n['Robot', 'Battery', 'object']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_error.py": {
+   "src": "class Circle:\n    def __init__(self, r):\n        self.r = r\n\n    @property\n    def diameter(self):\n        return 2 * self.r\n\nclass Wheel(Circle):\n    def __init__(self, r, spokes):\n        super().__init__(r)\n        self.spokes = spokes\n        self.diameter = 2 * r\n\nw = Wheel(30, 12)\nprint(w.diameter)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/boss_error.py\", line 15, in <module>\n    w = Wheel(30, 12)\n  File \"/home/you/python-ch19/boss_error.py\", line 13, in __init__\n    self.diameter = 2 * r\n    ^^^^^^^^^^^^^\nAttributeError: property 'diameter' of 'Wheel' object has no setter\n",
+   "exit": 1
+  },
+  "boss_fill.py": {
+   "src": "from abc import ABC, abstractmethod\n\nclass Shape(ABC):\n    @abstractmethod\n    def area(self):\n        ...\n\nclass Square(Shape):\n    def __init__(self, side):\n        self.side = side\n\n    def area(self):\n        return self.side ** 2\n\nclass Cube(Square):\n    def area(self):\n        return 6 * super().area()\n\nprint(Square(2).area(), Cube(2).area())\n",
+   "stdout": "4 24\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\nclass Dog(Pet):\n    def speak(self):\n        return self.name.title() + \" says woof\"\nrex = Dog(\"rex\")\nprint(rex.speak())\n",
+   "stdout": "Rex says woof\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons_alt.py": {
+   "src": "class Pet:\n    def speak(self):\n        return self.name.title() + \" says woof\"\nclass Dog(Pet):\n    def __init__(self, name):\n        self.name = name\nrex = Dog(\"rex\")\nprint(rex.speak())\n",
+   "stdout": "Rex says woof\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_predict.py": {
+   "src": "class Account:\n    opened = 0\n\n    def __init__(self, owner):\n        self.owner = owner\n        self._balance = 0\n        Account.opened += 1\n\n    @property\n    def balance(self):\n        return self._balance\n\n    def deposit(self, amount):\n        self._balance += amount\n        return self\n\nclass Savings(Account):\n    rate = 0.1\n\n    def add_interest(self):\n        self.deposit(self.balance * self.rate)\n\na = Account(\"Ada\")\ns = Savings(\"Bo\")\na.deposit(50)\ns.deposit(100).deposit(20)\ns.add_interest()\nprint(Account.opened, a.balance, s.balance)\n",
+   "stdout": "2 50 132.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "class Ticket:\n    sold = 0\n\n    def __init__(self, show):\n        self.show = show\n        self.sold += 1\n        self.number = self.sold\n\na = Ticket(\"Pip Live\")\nb = Ticket(\"Pip Live\")\nc = Ticket(\"Pip Live\")\nprint(a.number, b.number, c.number)\nprint(\"tickets sold:\", Ticket.sold)\n",
+   "stdout": "1 1 1\ntickets sold: 0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_trace.py": {
+   "src": "class Stamp:\n    count = 0\n\n    def __init__(self, label):\n        Stamp.count += 1\n        self.label = label\n\nclass Gold(Stamp):\n    def __init__(self, label):\n        super().__init__(label.upper())\n\nfor word in [\"ant\", \"bee\", \"cat\"]:\n    s = Stamp(word) if word == \"bee\" else Gold(word)\n    print(s.label, type(s).__name__, Stamp.count)\n",
+   "stdout": "ANT Gold 1\nbee Stamp 2\nCAT Gold 3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "chorus.py": {
+   "src": "class Dog:\n    def speak(self):\n        return \"Woof!\"\n\nclass Robot:   # not a pet at all\n    def speak(self):\n        return \"Beep boop.\"\n\nclass Parrot:\n    def __init__(self, word):\n        self.word = word\n\n    def speak(self):\n        return f\"{self.word}! {self.word}!\"\n\ndef chorus(singers):\n    for s in singers:\n        print(type(s).__name__, \"->\", s.speak())\n\nchorus([Dog(), Robot(), Parrot(\"Hi\")])\n",
+   "stdout": "Dog -> Woof!\nRobot -> Beep boop.\nParrot -> Hi! Hi!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "chorus_rock.py": {
+   "src": "class Dog:\n    def speak(self):\n        return \"Woof!\"\n\nclass Rock:\n    pass\n\ndef chorus(singers):\n    for s in singers:\n        print(type(s).__name__, \"->\", s.speak())\n\nchorus([Dog(), Rock(), Dog()])\n",
+   "stdout": "Dog -> Woof!\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/chorus_rock.py\", line 12, in <module>\n    chorus([Dog(), Rock(), Dog()])\n    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/you/python-ch19/chorus_rock.py\", line 10, in chorus\n    print(type(s).__name__, \"->\", s.speak())\n                                  ^^^^^^^\nAttributeError: 'Rock' object has no attribute 'speak'\n",
+   "exit": 1
+  },
+  "club_board.py": {
+   "src": "class Member:\n    club = \"Robot Club\"        # whiteboard: shared\n\n    def __init__(self, name):\n        self.name = name       # own notebook\n\nada = Member(\"Ada\")\nbo = Member(\"Bo\")\nprint(ada.name, \"|\", ada.club)\nprint(bo.name, \"|\", bo.club)\nprint(Member.club)\nMember.club = \"Robo Club\"      # rewrite the whiteboard\nprint(ada.club, \"|\", bo.club)\n",
+   "stdout": "Ada | Robot Club\nBo | Robot Club\nRobot Club\nRobo Club | Robo Club\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "compose.py": {
+   "src": "class Battery:\n    def __init__(self, charge):\n        self.charge = charge\n\n    def use(self, amount):\n        self.charge -= amount\n        return self.charge\n\nclass Arm:\n    def wave(self):\n        return \"*waves*\"\n\nclass Robot:\n    def __init__(self, name):\n        self.name = name\n        self.battery = Battery(100)    # a Robot HAS a battery\n        self.arm = Arm()               # ...and HAS an arm\n\n    def greet(self):\n        left = self.battery.use(10)    # hand the job to a part\n        return f\"{self.name} {self.arm.wave()} ({left}% left)\"\n\nzap = Robot(\"Zap\")\nprint(zap.greet())\nprint(zap.greet())\nzap.battery = Battery(50)              # swap in a different part\nprint(zap.greet())\n",
+   "stdout": "Zap *waves* (90% left)\nZap *waves* (80% left)\nZap *waves* (40% left)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_fill_compose.py": {
+   "src": "class Engine:\n    def start(self):\n        return \"vroom\"\n\nclass Car:\n    def __init__(self, name):\n        self.name = name\n        self.engine = Engine()\n\n    def drive(self):\n        return f\"{self.name}: {self.engine.start()}!\"\n\nprint(Car(\"Bluey\").drive())\n",
+   "stdout": "Bluey: vroom!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_fill_prop.py": {
+   "src": "class Pet:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age\n\n    @property\n    def age(self):\n        return self._age\n\n    @age.setter\n    def age(self, value):\n        if value < 0:\n            raise ValueError(\"age can't be negative\")\n        self._age = value\n\nrex = Pet(\"Rex\", 3)\nrex.age = 4\nprint(rex.name, rex.age)\ntry:\n    rex.age = -1\nexcept ValueError as e:\n    print(\"Refused:\", e)\nprint(rex.name, rex.age)\n",
+   "stdout": "Rex 4\nRefused: age can't be negative\nRex 4\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_fill_super.py": {
+   "src": "class Toy:\n    def __init__(self, name):\n        self.name = name\n\n    def label(self):\n        return f\"[{self.name}]\"\n\nclass Robot(Toy):\n    def __init__(self, name, battery):\n        super().__init__(name)\n        self.battery = battery\n\n    def label(self):\n        return super().label() + f\" {self.battery}%\"\n\nr = Robot(\"Zap\", 80)\nprint(r.label())\n",
+   "stdout": "[Zap] 80%\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_isinstance.py": {
+   "src": "class Shape:\n    pass\n\nclass Square(Shape):\n    pass\n\ns = Square()\nprint(isinstance(s, Shape))\nprint(type(s) is Shape)\nprint(issubclass(Shape, Square))\nprint(isinstance(True, int))\n",
+   "stdout": "True\nFalse\nFalse\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_parsons_cm.py": {
+   "src": "class Pet:\n    def __init__(self, name, kind):\n        self.label = name + \" the \" + kind\n    @classmethod\n    def from_string(cls, text):\n        name, kind = text.split(\",\")\n        return cls(name, kind)\ntom = Pet.from_string(\"Tom,cat\")\nprint(tom.label)\n",
+   "stdout": "Tom the cat\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_poly.py": {
+   "src": "class Shape:\n    def area(self):\n        return 0\n\nclass Square(Shape):\n    def __init__(self, side):\n        self.side = side\n\n    def area(self):\n        return self.side ** 2\n\nclass Rect(Shape):\n    def __init__(self, w, h):\n        self.w = w\n        self.h = h\n\n    def area(self):\n        return self.w * self.h\n\nshapes = [Square(3), Rect(2, 5), Shape()]\nprint([s.area() for s in shapes])\nprint(sum(s.area() for s in shapes))\n",
+   "stdout": "[9, 10, 0]\n19\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_prop.py": {
+   "src": "class Box:\n    def __init__(self, w, h):\n        self.w = w\n        self.h = h\n\n    @property\n    def area(self):\n        return self.w * self.h\n\nb = Box(2, 3)\nprint(b.area)\nb.w = 5\nprint(b.area)\n",
+   "stdout": "6\n15\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_repr.py": {
+   "src": "class Coin:\n    def __init__(self, value):\n        self.value = value\n\n    def __repr__(self):\n        return f\"Coin({self.value})\"\n\npurse = [Coin(1), Coin(5)]\nprint(purse)\nprint(purse[1])\nprint(f\"I found {purse[0]}!\")\n",
+   "stdout": "[Coin(1), Coin(5)]\nCoin(5)\nI found Coin(1)!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_shadow.py": {
+   "src": "class Lamp:\n    color = \"white\"\n\na = Lamp()\nb = Lamp()\na.color = \"red\"\nLamp.color = \"blue\"\nprint(a.color, b.color, Lamp.color)\n",
+   "stdout": "red blue blue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_spot_shared.py": {
+   "src": "class Team:\n    players = []\n\n    def __init__(self, name):\n        self.name = name\n\n    def add(self, player):\n        self.players.append(player)\n\nred = Team(\"Red\")\nblue = Team(\"Blue\")\nred.add(\"Ada\")\nblue.add(\"Bo\")\nprint(red.name, red.players)\nprint(blue.name, blue.players)\n",
+   "stdout": "Red ['Ada', 'Bo']\nBlue ['Ada', 'Bo']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_spot_super.py": {
+   "src": "class Vehicle:\n    def __init__(self, wheels):\n        self.wheels = wheels\n\nclass Bike(Vehicle):\n    def __init__(self, owner):\n        super().__init__()\n        self.owner = owner\n\nb = Bike(\"Pip\")\nprint(b.owner, \"has\", b.wheels, \"wheels\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/ex_spot_super.py\", line 10, in <module>\n    b = Bike(\"Pip\")\n  File \"/home/you/python-ch19/ex_spot_super.py\", line 7, in __init__\n    super().__init__()\n    ~~~~~~~~~~~~~~~~^^\nTypeError: Vehicle.__init__() missing 1 required positional argument: 'wheels'\n",
+   "exit": 1
+  },
+  "ex_trace_cart.py": {
+   "src": "class Item:\n    def __init__(self, name, price):\n        self.name = name\n        self.price = price\n\nclass Cart:\n    def __init__(self):\n        self.items = []\n        self.total = 0\n\n    def add(self, item):\n        self.items.append(item)\n        self.total += item.price\n        print(item.name, len(self.items), self.total)\n\ncart = Cart()\ncart.add(Item(\"jam\", 4))\ncart.add(Item(\"tea\", 3))\ncart.add(Item(\"figs\", 5))\n",
+   "stdout": "jam 1 4\ntea 2 7\nfigs 3 12\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_trace_poly.py": {
+   "src": "class Pet:\n    sound = \".\"\n\n    def speak(self, times):\n        return self.sound * times\n\nclass Dog(Pet):\n    sound = \"woof\"\n\nclass Cat(Pet):\n    sound = \"mew\"\n\nfor pet, n in [(Dog(), 2), (Cat(), 1), (Pet(), 3)]:\n    print(type(pet).__name__, n, pet.speak(n))\n",
+   "stdout": "Dog 2 woofwoof\nCat 1 mew\nPet 3 ...\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_virtual.py": {
+   "src": "class Robot:\n    def hello(self):\n        return \"Beep, I am \" + self.kind()\n\n    def kind(self):\n        return \"a robot\"\n\nclass Toaster(Robot):\n    def kind(self):\n        return \"a toaster\"\n\nprint(Robot().hello())\nprint(Toaster().hello())\n",
+   "stdout": "Beep, I am a robot\nBeep, I am a toaster\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "family_check.py": {
+   "src": "class Pet:\n    pass\n\nclass Dog(Pet):\n    pass\n\nclass Cat(Pet):\n    pass\n\nrex = Dog()\nprint(isinstance(rex, Dog), isinstance(rex, Pet), isinstance(rex, Cat))\nprint(isinstance(rex, object))\nprint(issubclass(Dog, Pet), issubclass(Pet, Dog))\nprint(type(rex) == Pet)\nprint([c.__name__ for c in Dog.__mro__])\n",
+   "stdout": "True True False\nTrue\nTrue False\nFalse\n['Dog', 'Pet', 'object']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "forgot_super.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet\"\n\nclass Dog(Pet):\n    def __init__(self, name, tricks):\n        self.tricks = tricks\n\nrex = Dog(\"Rex\", [\"sit\"])\nprint(rex.tricks)\nprint(rex.describe())\n",
+   "stdout": "['sit']\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/forgot_super.py\", line 14, in <module>\n    print(rex.describe())\n          ~~~~~~~~~~~~^^\n  File \"/home/you/python-ch19/forgot_super.py\", line 6, in describe\n    return f\"{self.name} is a pet\"\n              ^^^^^^^^^\nAttributeError: 'Dog' object has no attribute 'name'\n",
+   "exit": 1
+  },
+  "from_string.py": {
+   "src": "class Pet:\n    count = 0          # whiteboard: pets so far\n\n    def __init__(self, name, kind):\n        self.name = name\n        self.kind = kind\n        Pet.count += 1     # by name: the whiteboard\n\n    @classmethod\n    def from_string(cls, text):\n        name, kind = text.split(\",\")\n        return cls(name.strip(), kind.strip())\n\nrex = Pet(\"Rex\", \"dog\")\ntom = Pet.from_string(\"Tom, cat\")\nprint(tom.name, \"is a\", tom.kind)\nprint(\"pets made:\", Pet.count)\n",
+   "stdout": "Tom is a cat\npets made: 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "inherit.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def speak(self):\n        return \"...\"\n\n    def describe(self):\n        return f\"{self.name} says {self.speak()}\"\n\nclass Dog(Pet):\n    def speak(self):\n        return \"Woof!\"\n\nclass Cat(Pet):\n    def speak(self):\n        return \"Meow.\"\n\nclass Fish(Pet):\n    pass\n\nfor pet in [Dog(\"Rex\"), Cat(\"Tom\"), Fish(\"Bo\")]:\n    print(pet.describe())\n",
+   "stdout": "Rex says Woof!\nTom says Meow.\nBo says ...\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "inherit_free.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet\"\n\nclass Dog(Pet):\n    pass\n\nrex = Dog(\"Rex\")\nprint(rex.describe())\nprint(type(rex).__name__)\nprint(isinstance(rex, Pet))\n",
+   "stdout": "Rex is a pet\nDog\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "lookup.py": {
+   "src": "class Member:\n    club = \"Robot Club\"\n    def __init__(self, name):\n        self.name = name\n\nada = Member(\"Ada\")\nbo = Member(\"Bo\")\nprint(ada.club, bo.club)\nbo.club = \"Chess Club\"\nprint(ada.club, bo.club)\nprint(Member.club)\n",
+   "stdout": "Robot Club Robot Club\nRobot Club Chess Club\nRobot Club\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "machine_oven.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if not 0 <= value <= 300:\n            raise ValueError(f\"an oven can't be {value} degrees\")\n        self._celsius = value\n\n    @property\n    def fahrenheit(self):\n        return self.celsius * 9 / 5 + 32\n\noven = Oven(180)\nfor value in [220, 300, 0]:\n    oven.celsius = value\n    print(oven.celsius)\nprint(oven.fahrenheit)\n",
+   "stdout": "220\n300\n0\n32.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mangled.py": {
+   "src": "class Vault:\n    def __init__(self, owner, pin):\n        self.owner = owner\n        self.__pin = pin\n\nv = Vault(\"Pip\", 1234)\nprint(v.owner)\nprint(v.__pin)\n",
+   "stdout": "Pip\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/mangled.py\", line 8, in <module>\n    print(v.__pin)\n          ^^^^^^^\nAttributeError: 'Vault' object has no attribute '__pin'\n",
+   "exit": 1
+  },
+  "mixin.py": {
+   "src": "import json\n\nclass JsonMixin:   # a small tool, not a parent\n    def to_json(self):\n        return json.dumps(vars(self))\n\nclass Pet:\n    def __init__(self, name):\n        self.name = name\n\nclass Dog(JsonMixin, Pet):\n    def __init__(self, name, tricks):\n        super().__init__(name)\n        self.tricks = tricks\n\nprint(Dog(\"Rex\", [\"sit\"]).to_json())\nprint([c.__name__ for c in Dog.__mro__])\n",
+   "stdout": "{\"name\": \"Rex\", \"tricks\": [\"sit\"]}\n['Dog', 'JsonMixin', 'Pet', 'object']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mro_describe.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet (from Pet)\"\n\n    def speak(self):\n        return \"... (from Pet)\"\n\nclass Dog(Pet):\n    def speak(self):\n        return \"Woof! (from Dog)\"\n\nrex = Dog(\"Rex\")\nprint(rex.describe())\n",
+   "stdout": "Rex is a pet (from Pet)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mro_fly.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet (from Pet)\"\n\n    def speak(self):\n        return \"... (from Pet)\"\n\nclass Dog(Pet):\n    def speak(self):\n        return \"Woof! (from Dog)\"\n\nrex = Dog(\"Rex\")\nprint(rex.fly())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/mro_fly.py\", line 16, in <module>\n    print(rex.fly())\n          ^^^^^^^\nAttributeError: 'Dog' object has no attribute 'fly'\n",
+   "exit": 1
+  },
+  "mro_multi.py": {
+   "src": "class Swimmer:\n    def move(self):\n        return \"swims\"\n\nclass Flyer:\n    def move(self):\n        return \"flies\"\n\nclass Duck(Swimmer, Flyer):\n    pass\n\nclass Gull(Flyer, Swimmer):\n    pass\n\nprint(\"Duck\", Duck().move())\nprint(\"Gull\", Gull().move())\nprint([c.__name__ for c in Duck.__mro__])\nprint([c.__name__ for c in Gull.__mro__])\n",
+   "stdout": "Duck swims\nGull flies\n['Duck', 'Swimmer', 'Flyer', 'object']\n['Gull', 'Flyer', 'Swimmer', 'object']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mro_name.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet (from Pet)\"\n\n    def speak(self):\n        return \"... (from Pet)\"\n\nclass Dog(Pet):\n    def speak(self):\n        return \"Woof! (from Dog)\"\n\nrex = Dog(\"Rex\")\nprint(rex.name)\n",
+   "stdout": "Rex\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "mro_speak.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        self.name = name\n\n    def describe(self):\n        return f\"{self.name} is a pet (from Pet)\"\n\n    def speak(self):\n        return \"... (from Pet)\"\n\nclass Dog(Pet):\n    def speak(self):\n        return \"Woof! (from Dog)\"\n\nrex = Dog(\"Rex\")\nprint(rex.speak())\n",
+   "stdout": "Woof! (from Dog)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "names.py": {
+   "src": "class Vault:\n    def __init__(self, owner, pin):\n        self.owner = owner     # public: use freely\n        self._log = []         # one underscore: hands off, please\n        self.__pin = pin       # two underscores: renamed\n\n    def check(self, guess):\n        self._log.append(guess)\n        return guess == self.__pin\n\nv = Vault(\"Pip\", 1234)\nprint(v.check(1111), v.check(1234))\nprint(v._log)\nprint(sorted(vars(v)))\n",
+   "stdout": "False True\n[1111, 1234]\n['_Vault__pin', '_log', 'owner']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_class_access.py": {
+   "src": "class Pet:\n    legs = 4\n\n    def speak(self):\n        return \"...\"\n\nrex = Pet()\nprint(rex.speak())\nprint(Pet.speak(rex))\nprint(type(Pet.speak).__name__, type(rex.speak).__name__)\nprint(Pet.legs, rex.legs, rex.__class__.__name__)\n",
+   "stdout": "...\n...\nfunction method\n4 4 Pet\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_diamond.py": {
+   "src": "class Base:\n    def hello(self):\n        return [\"Base\"]\n\nclass Left(Base):\n    def hello(self):\n        return [\"Left\"] + super().hello()\n\nclass Right(Base):\n    def hello(self):\n        return [\"Right\"] + super().hello()\n\nclass Both(Left, Right):\n    def hello(self):\n        return [\"Both\"] + super().hello()\n\nprint(Both().hello())\nprint([c.__name__ for c in Both.__mro__])\n",
+   "stdout": "['Both', 'Left', 'Right', 'Base']\n['Both', 'Left', 'Right', 'Base', 'object']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_mangle_sub.py": {
+   "src": "class Counter:\n    def __init__(self):\n        self.__n = 0          # really stored as _Counter__n\n\n    def tick(self):\n        self.__n += 1\n        return self.__n\n\nclass LoudCounter(Counter):\n    def __init__(self):\n        super().__init__()\n        self.__n = \"LOUD\"     # really stored as _LoudCounter__n: no clash\n\nc = LoudCounter()\nprint(c.tick(), c.tick())\nprint(sorted(vars(c)))\n",
+   "stdout": "1 2\n['_Counter__n', '_LoudCounter__n']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_mro_error.py": {
+   "src": "class Pet:\n    pass\n\nclass Dog(Pet):\n    pass\n\nclass Puppy(Pet, Dog):\n    pass\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/nb_mro_error.py\", line 7, in <module>\n    class Puppy(Pet, Dog):\n        pass\nTypeError: Cannot create a consistent method resolution order (MRO) for bases Pet, Dog\n",
+   "exit": 1
+  },
+  "nb_property_obj.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self._celsius = celsius\n\n    def _get(self):\n        return self._celsius\n\n    celsius = property(_get)   # what @property does, written out\n\noven = Oven(180)\nprint(oven.celsius)\nprint(type(Oven.celsius).__name__)\nprint(vars(oven))\n",
+   "stdout": "180\nproperty\n{'_celsius': 180}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_recursion.py": {
+   "src": "class Pet:\n    def __init__(self, age):\n        self._age = age\n\n    @property\n    def age(self):\n        return self.age          # oops: should be self._age\n\nrex = Pet(3)\nprint(rex.age)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/nb_recursion.py\", line 10, in <module>\n    print(rex.age)\n          ^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  [Previous line repeated 1016 more times]\nRecursionError: maximum recursion depth exceeded\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/nb_recursion.py\", line 10, in <module>\n    print(rex.age)\n          ^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  File \"/home/you/python-ch19/nb_recursion.py\", line 7, in age\n    return self.age          # oops: should be self._age\n           ^^^^^^^^\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded\n",
+    "exit": 1
+   }
+  },
+  "nb_vars.py": {
+   "src": "class Member:\n    club = \"Robot Club\"\n    def __init__(self, name):\n        self.name = name\n\nada = Member(\"Ada\")\nbo = Member(\"Bo\")\nbo.club = \"Chess Club\"\nprint(vars(ada))\nprint(vars(bo))\nprint(\"club\" in vars(Member), \"name\" in vars(Member))\ndel bo.club\nprint(bo.club)\n",
+   "stdout": "{'name': 'Ada'}\n{'name': 'Bo', 'club': 'Chess Club'}\nTrue False\nRobot Club\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "no_guard.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\noven = Oven(180)\noven.celsius = -500\nprint(\"The oven is at\", oven.celsius, \"degrees\")\n",
+   "stdout": "The oven is at -500 degrees\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "oven_cold.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if not 0 <= value <= 300:\n            raise ValueError(f\"an oven can't be {value} degrees\")\n        self._celsius = value\n\noven = Oven(180)\noven.celsius = -500\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/oven_cold.py\", line 16, in <module>\n    oven.celsius = -500\n    ^^^^^^^^^^^^\n  File \"/home/you/python-ch19/oven_cold.py\", line 12, in celsius\n    raise ValueError(f\"an oven can't be {value} degrees\")\nValueError: an oven can't be -500 degrees\n",
+   "exit": 1
+  },
+  "oven_word.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if not 0 <= value <= 300:\n            raise ValueError(f\"an oven can't be {value} degrees\")\n        self._celsius = value\n\noven = Oven(180)\noven.celsius = \"hot\"\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/oven_word.py\", line 16, in <module>\n    oven.celsius = \"hot\"\n    ^^^^^^^^^^^^\n  File \"/home/you/python-ch19/oven_word.py\", line 11, in celsius\n    if not 0 <= value <= 300:\n           ^^^^^^^^^^^^^^^^^\nTypeError: '<=' not supported between instances of 'int' and 'str'\n",
+   "exit": 1
+  },
+  "prop_getter.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def fahrenheit(self):\n        return self.celsius * 9 / 5 + 32\n\noven = Oven(180)\nprint(oven.fahrenheit)\noven.celsius = 200\nprint(oven.fahrenheit)\n",
+   "stdout": "356.0\n392.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "prop_setter.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius   # uses the setter too\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if not 0 <= value <= 300:\n            raise ValueError(f\"an oven can't be {value} degrees\")\n        self._celsius = value\n\noven = Oven(180)\noven.celsius = 220\nprint(\"Now:\", oven.celsius)\noven.celsius = -500\nprint(\"This line never runs\")\n",
+   "stdout": "Now: 220\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/prop_setter.py\", line 18, in <module>\n    oven.celsius = -500\n    ^^^^^^^^^^^^\n  File \"/home/you/python-ch19/prop_setter.py\", line 12, in celsius\n    raise ValueError(f\"an oven can't be {value} degrees\")\nValueError: an oven can't be -500 degrees\n",
+   "exit": 1
+  },
+  "readonly.py": {
+   "src": "class Oven:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def fahrenheit(self):\n        return self.celsius * 9 / 5 + 32\n\noven = Oven(180)\nprint(oven.fahrenheit)\noven.fahrenheit = 400\n",
+   "stdout": "356.0\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/readonly.py\", line 11, in <module>\n    oven.fahrenheit = 400\n    ^^^^^^^^^^^^^^^\nAttributeError: property 'fahrenheit' of 'Oven' object has no setter\n",
+   "exit": 1
+  },
+  "repr_str.py": {
+   "src": "class Pet:\n    def __init__(self, name, kind):\n        self.name = name\n        self.kind = kind\n\n    def __repr__(self):\n        return f\"Pet({self.name!r}, {self.kind!r})\"\n\n    def __str__(self):\n        return f\"{self.name} the {self.kind}\"\n\nrex = Pet(\"Rex\", \"dog\")\nprint(rex)\nprint([rex])\nprint(f\"{rex} / {rex!r}\")\nprint(str(rex), repr(rex))\n",
+   "stdout": "Rex the dog\n[Pet('Rex', 'dog')]\nRex the dog / Pet('Rex', 'dog')\nRex the dog Pet('Rex', 'dog')\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "shelter.py": {
+   "src": "class Pet:\n    def __init__(self, name, kind):\n        self.name = name\n        self.kind = kind\n\n    def __str__(self):\n        return f\"{self.name} the {self.kind}\"\n\nclass Shelter:\n    def __init__(self, town):\n        self.town = town\n        self.pets = []          # HAS pets\n\n    def admit(self, pet):\n        self.pets.append(pet)\n\n    def count(self, kind):\n        return sum(1 for p in self.pets if p.kind == kind)\n\n    def report(self):\n        print(f\"{self.town} shelter:\")\n        for pet in self.pets:\n            print(\" -\", pet)    # Pet.__str__\n        print(\"dogs:\", self.count(\"dog\"))  # method -> method\n\nhome = Shelter(\"Elmwood\")\nhome.admit(Pet(\"Rex\", \"dog\"))\nhome.admit(Pet(\"Tom\", \"cat\"))\nhome.admit(Pet(\"Bo\", \"dog\"))\nhome.report()\n",
+   "stdout": "Elmwood shelter:\n - Rex the dog\n - Tom the cat\n - Bo the dog\ndogs: 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "slots.py": {
+   "src": "class Point:\n    __slots__ = (\"x\", \"y\")\n\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n\np = Point(1, 2)\np.x = 10\nprint(p.x, p.y)\np.z = 3\n",
+   "stdout": "10 2\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch19/slots.py\", line 11, in <module>\n    p.z = 3\n    ^^^\nAttributeError: 'Point' object has no attribute 'z' and no __dict__ for setting new attributes\n",
+   "exit": 1
+  },
+  "static_helper.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        if not Pet.is_good_name(name):\n            raise ValueError(f\"bad pet name: {name!r}\")\n        self.name = name\n\n    @staticmethod\n    def is_good_name(name):\n        return name.isalpha() and name[0].isupper()\n\nprint(Pet.is_good_name(\"Bo\"))\nprint(Pet.is_good_name(\"bo\"), Pet.is_good_name(\"R2\"))\nprint(Pet(\"Bo\").name)\n",
+   "stdout": "True\nFalse False\nBo\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "super_init.py": {
+   "src": "class Pet:\n    def __init__(self, name):\n        print(\"Pet.__init__ runs\")\n        self.name = name\n\nclass Dog(Pet):\n    def __init__(self, name, tricks):\n        print(\"Dog.__init__ starts\")\n        super().__init__(name)\n        self.tricks = tricks\n        print(\"Dog.__init__ ends\")\n\nprint(\"making Rex:\")\nrex = Dog(\"Rex\", [\"sit\"])\nprint(rex.name, rex.tricks)\n",
+   "stdout": "making Rex:\nDog.__init__ starts\nPet.__init__ runs\nDog.__init__ ends\nRex ['sit']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tricks_fixed.py": {
+   "src": "class Dog:\n    def __init__(self, name):\n        self.name = name\n        self.tricks = []     # a NEW list per dog\n\n    def learn(self, trick):\n        self.tricks.append(trick)\n\nrex = Dog(\"Rex\")\nbo = Dog(\"Bo\")\nrex.learn(\"sit\")\nbo.learn(\"roll over\")\nprint(\"Rex knows:\", rex.tricks)\nprint(\"Bo knows:\", bo.tricks)\nprint(rex.tricks is bo.tricks)\n",
+   "stdout": "Rex knows: ['sit']\nBo knows: ['roll over']\nFalse\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "tricks_trap.py": {
+   "src": "class Dog:\n    tricks = []          # ONE shared list\n\n    def __init__(self, name):\n        self.name = name\n\n    def learn(self, trick):\n        self.tricks.append(trick)\n\nrex = Dog(\"Rex\")\nbo = Dog(\"Bo\")\nrex.learn(\"sit\")\nbo.learn(\"roll over\")\nprint(\"Rex knows:\", rex.tricks)\nprint(\"Bo knows:\", bo.tricks)\nprint(rex.tricks is bo.tricks)\n",
+   "stdout": "Rex knows: ['sit', 'roll over']\nBo knows: ['sit', 'roll over']\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

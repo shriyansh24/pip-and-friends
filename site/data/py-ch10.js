@@ -1,0 +1,511 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch10",
+  "versionDifferences": [
+   "boss_spot.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_spot.py."
+ },
+ "programs": {
+  "append_demo.py": {
+   "src": "with open(\"diary.txt\", \"w\") as f:\n    f.write(\"Monday: pancakes\\n\")\nwith open(\"diary.txt\", \"a\") as f:\n    f.write(\"Tuesday: soup\\n\")\nwith open(\"diary.txt\") as f:\n    for line in f:\n        print(line.strip())\n",
+   "stdout": "Monday: pancakes\nTuesday: soup\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v1.py": {
+   "src": "# Recipe Book, version 1: store the recipes\nbook = {\n    \"pancakes\": {\"flour (g)\": 200, \"milk (ml)\": 300,\n                 \"eggs\": 2, \"honey (tbsp)\": 2},\n    \"tomato soup\": {\"tomatoes\": 6, \"onion\": 1, \"milk (ml)\": 100},\n    \"fruit salad\": {\"apples\": 2, \"bananas\": 2, \"honey (tbsp)\": 1},\n}\n\nprint(\"PIP'S RECIPE BOOK\")\nfor name in book:\n    print(\"*\", name, \"-\", len(book[name]), \"ingredients\")\nprint()\nprint(\"--- pancakes ---\")\nfor item, amount in book[\"pancakes\"].items():\n    print(f\"  {item}: {amount}\")\n",
+   "stdout": "PIP'S RECIPE BOOK\n* pancakes - 4 ingredients\n* tomato soup - 3 ingredients\n* fruit salad - 3 ingredients\n\n--- pancakes ---\n  flour (g): 200\n  milk (ml): 300\n  eggs: 2\n  honey (tbsp): 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v2.py": {
+   "src": "# Recipe Book, version 2: scale for any number of guests\nSERVES = 2  # every card in the book feeds 2 people\nbook = {\n    \"pancakes\": {\"flour (g)\": 200, \"milk (ml)\": 300,\n                 \"eggs\": 2, \"honey (tbsp)\": 2},\n    \"tomato soup\": {\"tomatoes\": 6, \"onion\": 1, \"milk (ml)\": 100},\n    \"fruit salad\": {\"apples\": 2, \"bananas\": 2, \"honey (tbsp)\": 1},\n}\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\nprint(\"PIP'S RECIPE BOOK\")\nfor name in book:\n    print(\"*\", name, \"-\", len(book[name]), \"ingredients\")\nprint()\nshow_recipe(book, \"pancakes\", 3)\nshow_recipe(book, \"tomato soup\", 3)\n",
+   "stdout": "PIP'S RECIPE BOOK\n* pancakes - 4 ingredients\n* tomato soup - 3 ingredients\n* fruit salad - 3 ingredients\n\n--- pancakes for 3 ---\n  flour (g): 300\n  milk (ml): 450\n  eggs: 3\n  honey (tbsp): 3\n--- tomato soup for 3 ---\n  tomatoes: 9\n  onion: 1.5\n  milk (ml): 150\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v3.py": {
+   "src": "# Recipe Book, version 3: one shopping list for many recipes\nSERVES = 2  # every card in the book feeds 2 people\nbook = {\n    \"pancakes\": {\"flour (g)\": 200, \"milk (ml)\": 300,\n                 \"eggs\": 2, \"honey (tbsp)\": 2},\n    \"tomato soup\": {\"tomatoes\": 6, \"onion\": 1, \"milk (ml)\": 100},\n    \"fruit salad\": {\"apples\": 2, \"bananas\": 2, \"honey (tbsp)\": 1},\n}\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\nprint(\"PIP'S RECIPE BOOK\")\nfor name in book:\n    print(\"*\", name, \"-\", len(book[name]), \"ingredients\")\nprint()\nshow_recipe(book, \"pancakes\", 3)\nprint()\nprint(\"SHOPPING LIST: pancakes + tomato soup, 3 guests\")\ntotals = shopping_list(book, [\"pancakes\", \"tomato soup\"], 3)\nfor item in sorted(totals):\n    print(f\"  [ ] {item}: {nice(totals[item])}\")\n",
+   "stdout": "PIP'S RECIPE BOOK\n* pancakes - 4 ingredients\n* tomato soup - 3 ingredients\n* fruit salad - 3 ingredients\n\n--- pancakes for 3 ---\n  flour (g): 300\n  milk (ml): 450\n  eggs: 3\n  honey (tbsp): 3\n\nSHOPPING LIST: pancakes + tomato soup, 3 guests\n  [ ] eggs: 3\n  [ ] flour (g): 300\n  [ ] honey (tbsp): 3\n  [ ] milk (ml): 600\n  [ ] onion: 1.5\n  [ ] tomatoes: 9\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v4.py": {
+   "src": "# Recipe Book, version 4: save the book to a file\nSERVES = 2  # every card in the book feeds 2 people\nbook = {\n    \"pancakes\": {\"flour (g)\": 200, \"milk (ml)\": 300,\n                 \"eggs\": 2, \"honey (tbsp)\": 2},\n    \"tomato soup\": {\"tomatoes\": 6, \"onion\": 1, \"milk (ml)\": 100},\n    \"fruit salad\": {\"apples\": 2, \"bananas\": 2, \"honey (tbsp)\": 1},\n}\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\nsave_book(book, \"saved_book.txt\")\nprint(\"Saved the book to saved_book.txt. Inside the file:\")\nwith open(\"saved_book.txt\") as f:\n    for line in f:\n        print(\"  |\", line.strip())\n",
+   "stdout": "Saved the book to saved_book.txt. Inside the file:\n  | pancakes,flour (g),200\n  | pancakes,milk (ml),300\n  | pancakes,eggs,2\n  | pancakes,honey (tbsp),2\n  | tomato soup,tomatoes,6\n  | tomato soup,onion,1\n  | tomato soup,milk (ml),100\n  | fruit salad,apples,2\n  | fruit salad,bananas,2\n  | fruit salad,honey (tbsp),1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v5.py": {
+   "src": "# Recipe Book, version 5: load the book from a file\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nshow_recipe(book, \"tomato soup\", 2)\nold = load_book(\"old_recipes.txt\")\nprint(\"The old book has\", len(old), \"recipes\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\n--- tomato soup for 2 ---\n  tomatoes: 6\n  onion: 1\n  milk (ml): 100\nNo file called old_recipes.txt - starting an empty book.\nThe old book has 0 recipes\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "book_v6.py": {
+   "src": "# Recipe Book, version 6: ask the chef, and check the answers\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nname = ask_recipe(book)\nguests = ask_guests()\nshow_recipe(book, name, guests)\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nWhich recipe? Not in the book. Try: pancakes, tomato soup, fruit salad\nWhich recipe? How many guests (1-12)? Please type a whole number, like 4.\nHow many guests (1-12)? Between 1 and 12, please.\nHow many guests (1-12)? --- tomato soup for 4 ---\n  tomatoes: 12\n  onion: 2\n  milk (ml): 200\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "pizza\n  Tomato Soup \nthree\n0\n4\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nWhich recipe? pizza\nNot in the book. Try: pancakes, tomato soup, fruit salad\nWhich recipe?   Tomato Soup \nHow many guests (1-12)? three\nPlease type a whole number, like 4.\nHow many guests (1-12)? 0\nBetween 1 and 12, please.\nHow many guests (1-12)? 4\n--- tomato soup for 4 ---\n  tomatoes: 12\n  onion: 2\n  milk (ml): 200\n"
+  },
+  "book_v7.py": {
+   "src": "# Recipe Book, version 7: the whole program, with a menu\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\ndef ask_many(book):\n    names = []\n    while True:\n        name = input(\"Add a recipe (Enter = done): \").strip().lower()\n        if name == \"\":\n            return names\n        if name in book:\n            names.append(name)\n        else:\n            print(\"Not in the book.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nwhile True:\n    print(\"Menu: 1 list  2 cook  3 shop  4 save  5 quit\")\n    choice = input(\"Choose 1-5: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        name = ask_recipe(book)\n        show_recipe(book, name, ask_guests())\n    elif choice == \"3\":\n        names = ask_many(book)\n        totals = shopping_list(book, names, ask_guests())\n        for item in sorted(totals):\n            print(f\"  [ ] {item}: {nice(totals[item])}\")\n    elif choice == \"4\":\n        save_book(book, \"backup.txt\")\n        print(\"Saved\", len(book), \"recipes to backup.txt\")\n    elif choice == \"5\":\n        print(\"Bye! Happy cooking.\")\n        break\n    else:\n        print(\"Please pick 1 to 5.\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5:  * pancakes\n * tomato soup\n * fruit salad\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Add a recipe (Enter = done): Add a recipe (Enter = done): Add a recipe (Enter = done): How many guests (1-12)?   [ ] apples: 4\n  [ ] bananas: 4\n  [ ] eggs: 4\n  [ ] flour (g): 400\n  [ ] honey (tbsp): 6\n  [ ] milk (ml): 600\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Saved 3 recipes to backup.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Please pick 1 to 5.\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Bye! Happy cooking.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "1\n3\npancakes\nfruit salad\n\n4\n4\nx\n5\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 1\n * pancakes\n * tomato soup\n * fruit salad\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 3\nAdd a recipe (Enter = done): pancakes\nAdd a recipe (Enter = done): fruit salad\nAdd a recipe (Enter = done): \nHow many guests (1-12)? 4\n  [ ] apples: 4\n  [ ] bananas: 4\n  [ ] eggs: 4\n  [ ] flour (g): 400\n  [ ] honey (tbsp): 6\n  [ ] milk (ml): 600\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 4\nSaved 3 recipes to backup.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: x\nPlease pick 1 to 5.\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 5\nBye! Happy cooking.\n"
+  },
+  "boss_fill.py": {
+   "src": "totals = {\"onion\": 1.5, \"eggs\": 3, \"milk (ml)\": 600}\nwith open(\"shopping.txt\", \"w\") as f:\n    for item in sorted(totals):\n        f.write(f\"[ ] {item}: {totals[item]}\\n\")\ncount = 0\nwith open(\"shopping.txt\") as f:\n    for line in f:\n        count += 1\n        print(line.strip())\nprint(count, \"lines saved\")\n",
+   "stdout": "[ ] eggs: 3\n[ ] milk (ml): 600\n[ ] onion: 1.5\n3 lines saved\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "names = set()\nwith open(\"recipes.txt\") as f:\n    for line in f:\n        name = line.split(\",\")[0].strip()\n        if name != \"\":\n            names.add(name)\nprint(len(names))\n",
+   "stdout": "3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "book = {\"tea\": {\"honey (tbsp)\": 1}, \"toast\": {\"honey (tbsp)\": 2}}\nnames = [\"tea\", \"toast\"]\ntotals = {}\nfor name in names:\n    for item, amount in book[names].items():\n        if item not in totals:\n            totals[item] = 0\n        totals[item] += amount\nprint(totals)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/boss_spot.py\", line 5, in <module>\n    for item, amount in book[names].items():\n                        ~~~~^^^^^^^\nTypeError: cannot use 'list' as a dict key (unhashable type: 'list')\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/boss_spot.py\", line 5, in <module>\n    for item, amount in book[names].items():\n                        ~~~~^^^^^^^\nTypeError: unhashable type: 'list'\n",
+    "exit": 1
+   }
+  },
+  "boss_trace.py": {
+   "src": "with open(\"costs.txt\", \"w\") as f:\n    f.write(\"flour,2\\n\")\n    f.write(\"milk,1\\n\")\n    f.write(\"eggs,3\\n\")\ntotal = 0\nwith open(\"costs.txt\") as f:\n    for line in f:\n        item, price = line.strip().split(\",\")\n        total += int(price)\n        print(item, price, total)\n",
+   "stdout": "flour 2 2\nmilk 1 3\neggs 3 6\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bug_v1_items.py": {
+   "src": "book = {\"pancakes\": {\"flour (g)\": 200, \"eggs\": 2}}\nprint(\"Pancakes need:\")\nfor item, amount in book[\"pancakes\"]:\n    print(item, amount)\n",
+   "stdout": "Pancakes need:\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/bug_v1_items.py\", line 3, in <module>\n    for item, amount in book[\"pancakes\"]:\n        ^^^^^^^^^^^^\nValueError: too many values to unpack (expected 2)\n",
+   "exit": 1
+  },
+  "bug_v1_key.py": {
+   "src": "book = {\n    \"pancakes\": {\"flour (g)\": 200, \"eggs\": 2},\n    \"tomato soup\": {\"tomatoes\": 6, \"onion\": 1},\n}\nprint(\"Eggs needed:\", book[\"pancakes\"][\"eggs\"])\nprint(\"Onions needed:\", book[\"Tomato soup\"][\"onion\"])\n",
+   "stdout": "Eggs needed: 2\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/bug_v1_key.py\", line 6, in <module>\n    print(\"Onions needed:\", book[\"Tomato soup\"][\"onion\"])\n                            ~~~~^^^^^^^^^^^^^^^\nKeyError: 'Tomato soup'\n",
+   "exit": 1
+  },
+  "bug_v2_floordiv.py": {
+   "src": "SERVES = 2\n\ndef scale(amount, guests):\n    return amount * guests // SERVES\n\nsoup = {\"tomatoes\": 6, \"onion\": 1, \"milk (ml)\": 100}\nfor item, amount in soup.items():\n    print(item, scale(amount, 3))\n",
+   "stdout": "tomatoes 9\nonion 1\nmilk (ml) 150\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bug_v3_overwrite.py": {
+   "src": "pancakes = {\"milk (ml)\": 300, \"eggs\": 2}\nsoup = {\"milk (ml)\": 100, \"onion\": 1}\ntotals = {}\nfor card in [pancakes, soup]:\n    for item, amount in card.items():\n        totals[item] = amount\nfor item in sorted(totals):\n    print(item, totals[item])\n",
+   "stdout": "eggs 2\nmilk (ml) 100\nonion 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "bug_v4_mode.py": {
+   "src": "book = {\"tea\": {\"leaves (tsp)\": 2}}\nwith open(\"recipes.txt\") as f:\n    for name in book:\n        for item, amount in book[name].items():\n            f.write(f\"{name},{item},{amount}\\n\")\nprint(\"Saved!\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/bug_v4_mode.py\", line 5, in <module>\n    f.write(f\"{name},{item},{amount}\\n\")\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nio.UnsupportedOperation: not writable\n",
+   "exit": 1
+  },
+  "bug_v5_split.py": {
+   "src": "book = {}\nwith open(\"mini.txt\") as f:\n    for line in f:\n        name, item, amount = line.strip().split()\n        if name not in book:\n            book[name] = {}\n        book[name][item] = float(amount)\nprint(book)\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/bug_v5_split.py\", line 4, in <module>\n    name, item, amount = line.strip().split()\n    ^^^^^^^^^^^^^^^^^^\nValueError: not enough values to unpack (expected 3, got 2)\n",
+   "exit": 1
+  },
+  "bug_v6_lower.py": {
+   "src": "book = {\"pancakes\": {\"eggs\": 2}, \"tomato soup\": {\"onion\": 1}}\nname = input(\"Which recipe? \").strip()\nif name in book:\n    print(\"Found it!\")\nelse:\n    print(\"Not in the book.\")\n",
+   "stdout": "Which recipe? Not in the book.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "Pancakes\n",
+   "screen": "Which recipe? Pancakes\nNot in the book.\n"
+  },
+  "bug_v7_str.py": {
+   "src": "book = {\"tea\": {\"leaves (tsp)\": 2}}\nwhile True:\n    choice = input(\"Choose 1-3: \").strip()\n    if choice == \"1\":\n        print(\"Recipes:\", \", \".join(book))\n    elif choice == 2:\n        print(\"Cooking tea!\")\n    elif choice == \"3\":\n        print(\"Bye!\")\n        break\n    else:\n        print(\"Please pick 1 to 3.\")\n",
+   "stdout": "Choose 1-3: Please pick 1 to 3.\nChoose 1-3: Bye!\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "2\n3\n",
+   "screen": "Choose 1-3: 2\nPlease pick 1 to 3.\nChoose 1-3: 3\nBye!\n"
+  },
+  "count_trace.py": {
+   "src": "totals = {}\nfor item, amount in [(\"milk\", 300), (\"eggs\", 2), (\"milk\", 100)]:\n    if item not in totals:\n        totals[item] = 0\n    totals[item] += amount\nprint(totals)\n",
+   "stdout": "{'milk': 400, 'eggs': 2}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "csv_demo.py": {
+   "src": "import csv\nrows = [[\"mac, cheese\", \"pasta (g)\", \"250\"], [\"toast\", \"bread\", \"2\"]]\nwith open(\"tricky.csv\", \"w\", newline=\"\") as f:\n    writer = csv.writer(f, lineterminator=\"\\n\")\n    writer.writerows(rows)\nwith open(\"tricky.csv\") as f:\n    for line in f:\n        print(line.strip())\nwith open(\"tricky.csv\", newline=\"\") as f:\n    for row in csv.reader(f):\n        print(row)\n",
+   "stdout": "\"mac, cheese\",pasta (g),250\ntoast,bread,2\n['mac, cheese', 'pasta (g)', '250']\n['toast', 'bread', '2']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "double_space.py": {
+   "src": "with open(\"shop.txt\", \"w\") as f:\n    f.write(\"flour\\n\")\n    f.write(\"milk\\n\")\n    f.write(\"eggs\\n\")\nwith open(\"shop.txt\") as f:\n    for line in f:\n        print(line)\n",
+   "stdout": "flour\n\nmilk\n\neggs\n\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_files_err.py": {
+   "src": "filename = \"recipe.txt\"\nwith open(filename) as f:\n    for line in f:\n        print(line.strip())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/ex_files_err.py\", line 2, in <module>\n    with open(filename) as f:\n         ~~~~^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'recipe.txt'\n",
+   "exit": 1
+  },
+  "ex_v1_predict.py": {
+   "src": "pantry = {\n    \"cake\": {\"eggs\": 3, \"sugar (g)\": 150, \"butter (g)\": 100},\n    \"tea\": {\"leaves (tsp)\": 2},\n}\nprint(len(pantry))\nprint(len(pantry[\"cake\"]))\nprint(pantry[\"tea\"][\"leaves (tsp)\"])\nfor item in pantry[\"cake\"]:\n    print(item)\n",
+   "stdout": "2\n3\n2\neggs\nsugar (g)\nbutter (g)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_v2_predict.py": {
+   "src": "SERVES = 2\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\nprint(scale(6, 4))\nprint(scale(1, 3))\nprint(scale(300, 1))\n",
+   "stdout": "12.0\n1.5\n150.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_v3_predict.py": {
+   "src": "totals = {\"onion\": 1.5, \"eggs\": 3, \"flour (g)\": 300}\nfor item in sorted(totals):\n    print(item, totals[item])\n",
+   "stdout": "eggs 3\nflour (g) 300\nonion 1.5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_v4_predict.py": {
+   "src": "amounts = {\"flour (g)\": 300.0, \"onion\": 1.5}\nwith open(\"check.txt\", \"w\") as f:\n    for item, amount in amounts.items():\n        f.write(f\"{item}={amount}\\n\")\nwith open(\"check.txt\") as f:\n    for line in f:\n        print(line.strip())\n",
+   "stdout": "flour (g)=300.0\nonion=1.5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_v5_predict.py": {
+   "src": "def load_names(filename):\n    names = []\n    try:\n        with open(filename) as f:\n            for line in f:\n                names.append(line.strip().split(\",\")[0])\n    except FileNotFoundError:\n        print(\"Missing:\", filename)\n    return names\n\nprint(load_names(\"mini.txt\"))\nprint(load_names(\"nope.txt\"))\n",
+   "stdout": "['tea', 'tea']\nMissing: nope.txt\n[]\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ex_v7_predict.py": {
+   "src": "book = {\"tea\": {\"leaves (tsp)\": 2}}\nwhile True:\n    choice = input(\"Choose 1-3: \").strip()\n    if choice == \"1\":\n        print(\"Recipes:\", \", \".join(book))\n    elif choice == \"2\":\n        print(\"Cooking tea!\")\n    elif choice == \"3\":\n        print(\"Bye!\")\n        break\n    else:\n        print(\"Please pick 1 to 3.\")\n",
+   "stdout": "Choose 1-3: Recipes: tea\nChoose 1-3: Please pick 1 to 3.\nChoose 1-3: Bye!\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "1\n9\n3\n",
+   "screen": "Choose 1-3: 1\nRecipes: tea\nChoose 1-3: 9\nPlease pick 1 to 3.\nChoose 1-3: 3\nBye!\n"
+  },
+  "fill_read.py": {
+   "src": "with open(\"stock.txt\", \"w\") as f:\n    f.write(\"rice,2\\n\")\n    f.write(\"beans,3\\n\")\ntotal = 0\nwith open(\"stock.txt\") as f:\n    for line in f:\n        name, count = line.strip().split(\",\")\n        total += int(count)\nprint(\"Cans in stock:\", total)\n",
+   "stdout": "Cans in stock: 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v1.py": {
+   "src": "# A tiny breakfast book, built like version 1\nbook = {\n    \"toast\": {\"bread (slices)\": 2, \"butter (g)\": 10},\n    \"tea\": {\"tea bags\": 1, \"milk (ml)\": 30, \"honey (tsp)\": 1},\n}\n\nprint(\"BREAKFAST BOOK\")\nfor name in book:\n    print(\"*\", name, \"-\", len(book[name]), \"ingredients\")\nprint()\nprint(\"--- tea ---\")\nfor item, amount in book[\"tea\"].items():\n    print(f\"  {item}: {amount}\")\n",
+   "stdout": "BREAKFAST BOOK\n* toast - 2 ingredients\n* tea - 3 ingredients\n\n--- tea ---\n  tea bags: 1\n  milk (ml): 30\n  honey (tsp): 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v2.py": {
+   "src": "SERVES = 4  # this card feeds 4 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\nporridge = {\"oats (g)\": 160, \"milk (ml)\": 500, \"banana\": 1}\nprint(\"--- porridge for 6 ---\")\nfor item, amount in porridge.items():\n    print(f\"  {item}: {nice(scale(amount, 6))}\")\n",
+   "stdout": "--- porridge for 6 ---\n  oats (g): 240\n  milk (ml): 750\n  banana: 1.5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v3.py": {
+   "src": "SERVES = 2\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\nbook = {\"tea\": {\"honey (tbsp)\": 1}, \"toast\": {\"honey (tbsp)\": 2, \"butter (g)\": 10}}\ntotals = shopping_list(book, [\"tea\", \"toast\"], 4)\nfor item in sorted(totals):\n    print(item, totals[item])\n",
+   "stdout": "butter (g) 20.0\nhoney (tbsp) 6.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v4.py": {
+   "src": "def save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{amount}\\n\")\n\nsave_book({\"tea\": {\"leaves (tsp)\": 2, \"honey (tbsp)\": 1}}, \"tea_book.txt\")\nwith open(\"tea_book.txt\") as f:\n    for line in f:\n        print(\"|\", line.strip())\n",
+   "stdout": "| tea,leaves (tsp),2\n| tea,honey (tbsp),1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v5.py": {
+   "src": "def load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\nbook = load_book(\"recipes.txt\")\nprint(len(book), \"recipes\")\nprint(book[\"tomato soup\"])\nprint(load_book(\"nope.txt\"))\n",
+   "stdout": "3 recipes\n{'tomatoes': 6.0, 'onion': 1.0, 'milk (ml)': 100.0}\nNo file called nope.txt - starting an empty book.\n{}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_v6.py": {
+   "src": "def ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\nprint(\"Cooking for\", ask_guests())\n",
+   "stdout": "How many guests (1-12)? Please type a whole number, like 4.\nHow many guests (1-12)? Please type a whole number, like 4.\nHow many guests (1-12)? Between 1 and 12, please.\nHow many guests (1-12)? Cooking for 5\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "lots\n2.5\n30\n5\n",
+   "screen": "How many guests (1-12)? lots\nPlease type a whole number, like 4.\nHow many guests (1-12)? 2.5\nPlease type a whole number, like 4.\nHow many guests (1-12)? 30\nBetween 1 and 12, please.\nHow many guests (1-12)? 5\nCooking for 5\n"
+  },
+  "fill_v7.py": {
+   "src": "book = {\"tea\": {\"leaves (tsp)\": 2}, \"toast\": {\"bread\": 2}}\nwhile True:\n    print(\"Menu: 1 list  2 quit\")\n    choice = input(\"Choose 1-2: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        print(\"Bye!\")\n        break\n    else:\n        print(\"Please pick 1 or 2.\")\n",
+   "stdout": "Menu: 1 list  2 quit\nChoose 1-2:  * tea\n * toast\nMenu: 1 list  2 quit\nChoose 1-2: Please pick 1 or 2.\nMenu: 1 list  2 quit\nChoose 1-2: Bye!\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "1\nx\n2\n",
+   "screen": "Menu: 1 list  2 quit\nChoose 1-2: 1\n * tea\n * toast\nMenu: 1 list  2 quit\nChoose 1-2: x\nPlease pick 1 or 2.\nMenu: 1 list  2 quit\nChoose 1-2: 2\nBye!\n"
+  },
+  "first_file.py": {
+   "src": "with open(\"note.txt\", \"w\") as f:\n    f.write(\"Buy milk\\n\")\n    f.write(\"Buy eggs\\n\")\nwith open(\"note.txt\") as f:\n    text = f.read()\nprint(text)\nprint(\"--- end of note ---\")\n",
+   "stdout": "Buy milk\nBuy eggs\n\n--- end of note ---\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "float_wobble.py": {
+   "src": "print(0.1 + 0.2)\nprint(0.1 + 0.2 == 0.3)\nprint(f\"{0.1 + 0.2:.1f}\")\nprint(300.0 == 300)\n",
+   "stdout": "0.30000000000000004\nFalse\n0.3\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "forgot_newline.py": {
+   "src": "with open(\"pantry.txt\", \"w\") as f:\n    f.write(\"flour\\n\")\n    f.write(\"milk\")\n    f.write(\"eggs\\n\")\nwith open(\"pantry.txt\") as f:\n    for line in f:\n        print(\"Line:\", line.strip())\n",
+   "stdout": "Line: flour\nLine: milkeggs\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "guests_loop.py": {
+   "src": "while True:\n    answer = input(\"Guests? \")\n    try:\n        guests = int(answer)\n    except ValueError:\n        print(\"Not a number\")\n        continue\n    if 1 <= guests <= 12:\n        break\n    print(\"Too many or too few\")\nprint(\"Cooking for\", guests)\n",
+   "stdout": "Guests? Not a number\nGuests? Too many or too few\nGuests? Cooking for 6\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "lots\n20\n6\n",
+   "screen": "Guests? lots\nNot a number\nGuests? 20\nToo many or too few\nGuests? 6\nCooking for 6\n"
+  },
+  "guests_loop2.py": {
+   "src": "while True:\n    answer = input(\"Guests? \")\n    try:\n        guests = int(answer)\n    except ValueError:\n        print(\"Not a number\")\n        continue\n    if 1 <= guests <= 12:\n        break\n    print(\"Too many or too few\")\nprint(\"Cooking for\", guests)\n",
+   "stdout": "Guests? Too many or too few\nGuests? Not a number\nGuests? Cooking for 12\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "0\n2.5\n12\n",
+   "screen": "Guests? 0\nToo many or too few\nGuests? 2.5\nNot a number\nGuests? 12\nCooking for 12\n"
+  },
+  "guests_ok.py": {
+   "src": "while True:\n    answer = input(\"Guests? \")\n    try:\n        guests = int(answer)\n    except ValueError:\n        print(\"Not a number\")\n        continue\n    if 1 <= guests <= 12:\n        break\n    print(\"Too many or too few\")\nprint(\"Cooking for\", guests)\n",
+   "stdout": "Guests? Cooking for 6\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "6\n",
+   "screen": "Guests? 6\nCooking for 6\n"
+  },
+  "int_bad.py": {
+   "src": "print(int(\"three\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/int_bad.py\", line 1, in <module>\n    print(int(\"three\"))\n          ~~~^^^^^^^^^\nValueError: invalid literal for int() with base 10: 'three'\n",
+   "exit": 1
+  },
+  "int_bad2.py": {
+   "src": "print(int(\"2.5\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/int_bad2.py\", line 1, in <module>\n    print(int(\"2.5\"))\n          ~~~^^^^^^^\nValueError: invalid literal for int() with base 10: '2.5'\n",
+   "exit": 1
+  },
+  "int_machine.py": {
+   "src": "print(int(\"4\"))\nprint(int(\" 12 \"))\nprint(int(\"-3\"))\n",
+   "stdout": "4\n12\n-3\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "json_demo.py": {
+   "src": "import json\nbook = {\"tea\": {\"leaves (tsp)\": 2, \"honey (tbsp)\": 1}}\nwith open(\"book.json\", \"w\") as f:\n    json.dump(book, f)\nwith open(\"book.json\") as f:\n    print(f.read())\nwith open(\"book.json\") as f:\n    loaded = json.load(f)\nprint(loaded == book, loaded[\"tea\"][\"leaves (tsp)\"])\n",
+   "stdout": "{\"tea\": {\"leaves (tsp)\": 2, \"honey (tbsp)\": 1}}\nTrue 2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "load_trace.py": {
+   "src": "book = {}\nwith open(\"mini.txt\") as f:\n    for line in f:\n        line = line.strip()\n        name, item, amount = line.split(\",\")\n        if name not in book:\n            book[name] = {}\n        book[name][item] = float(amount)\nprint(book)\n",
+   "stdout": "{'tea': {'leaves (tsp)': 2.0, 'honey (tbsp)': 1.0}}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "missing_file.py": {
+   "src": "with open(\"old_recipes.txt\") as f:\n    print(f.read())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/missing_file.py\", line 1, in <module>\n    with open(\"old_recipes.txt\") as f:\n         ~~~~^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'old_recipes.txt'\n",
+   "exit": 1
+  },
+  "missing_handled.py": {
+   "src": "try:\n    with open(\"old_recipes.txt\") as f:\n        print(f.read())\nexcept FileNotFoundError:\n    print(\"No old_recipes.txt here. No problem!\")\nprint(\"The program keeps going.\")\n",
+   "stdout": "No old_recipes.txt here. No problem!\nThe program keeps going.\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nest_demo.py": {
+   "src": "book = {}\nbook[\"pancakes\"] = {\"eggs\": 2, \"milk (ml)\": 300}\nbook[\"soup\"] = {\"onion\": 1}\nprint(book[\"pancakes\"][\"milk (ml)\"])\nprint(len(book))\n",
+   "stdout": "300\n2\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nice_machine.py": {
+   "src": "def nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\nprint(nice(300.0))\nprint(nice(1.5))\nprint(nice(0.1 + 0.2))\nprint(nice(2 / 3))\n",
+   "stdout": "300\n1.5\n0.3\n0.7\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parsons_read.py": {
+   "src": "with open(\"cans.txt\", \"w\") as f:\n    f.write(\"rice,2\\n\")\n    f.write(\"beans,3\\n\")\nwith open(\"cans.txt\") as f:\n    for line in f:\n        name, count = line.strip().split(\",\")\n        print(count, \"x\", name)\n",
+   "stdout": "2 x rice\n3 x beans\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parsons_v3.py": {
+   "src": "totals = {}\nfor item in [\"egg\", \"milk\", \"egg\", \"egg\"]:\n    if item not in totals:\n        totals[item] = 0\n    totals[item] += 1\nprint(totals)\n",
+   "stdout": "{'egg': 3, 'milk': 1}\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "peek_lines.py": {
+   "src": "with open(\"recipes.txt\") as f:\n    for line in f:\n        print(repr(line))\n",
+   "stdout": "'pancakes,flour (g),200\\n'\n'pancakes,milk (ml),300\\n'\n'pancakes,eggs,2\\n'\n'pancakes,honey (tbsp),2\\n'\n'\\n'\n'tomato soup,tomatoes,6\\n'\n'tomato soup,onion,1   \\n'\n'tomato soup,milk (ml),100\\n'\n'\\n'\n'fruit salad,apples,2\\n'\n'fruit salad,bananas,2\\n'\n'fruit salad,honey (tbsp),1\\n'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "read_twice.py": {
+   "src": "with open(\"recipes.txt\") as f:\n    first = f.read()\n    second = f.read()\nprint(len(first), \"characters the first time\")\nprint(len(second), \"characters the second time\")\n",
+   "stdout": "230 characters the first time\n0 characters the second time\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "ribbon.py": {
+   "src": "with open(\"ribbon.txt\", \"w\") as f:\n    f.write(\"eggs,2\\n\")\n    f.write(\"milk,300\\n\")\nwith open(\"ribbon.txt\") as f:\n    print(repr(f.read()))\n",
+   "stdout": "'eggs,2\\nmilk,300\\n'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "road_cook.py": {
+   "src": "# Recipe Book, version 7: the whole program, with a menu\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\ndef ask_many(book):\n    names = []\n    while True:\n        name = input(\"Add a recipe (Enter = done): \").strip().lower()\n        if name == \"\":\n            return names\n        if name in book:\n            names.append(name)\n        else:\n            print(\"Not in the book.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nwhile True:\n    print(\"Menu: 1 list  2 cook  3 shop  4 save  5 quit\")\n    choice = input(\"Choose 1-5: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        name = ask_recipe(book)\n        show_recipe(book, name, ask_guests())\n    elif choice == \"3\":\n        names = ask_many(book)\n        totals = shopping_list(book, names, ask_guests())\n        for item in sorted(totals):\n            print(f\"  [ ] {item}: {nice(totals[item])}\")\n    elif choice == \"4\":\n        save_book(book, \"backup.txt\")\n        print(\"Saved\", len(book), \"recipes to backup.txt\")\n    elif choice == \"5\":\n        print(\"Bye! Happy cooking.\")\n        break\n    else:\n        print(\"Please pick 1 to 5.\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Which recipe? How many guests (1-12)? --- tomato soup for 4 ---\n  tomatoes: 12\n  onion: 2\n  milk (ml): 200\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Bye! Happy cooking.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "2\ntomato soup\n4\n5\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 2\nWhich recipe? tomato soup\nHow many guests (1-12)? 4\n--- tomato soup for 4 ---\n  tomatoes: 12\n  onion: 2\n  milk (ml): 200\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 5\nBye! Happy cooking.\n"
+  },
+  "road_save.py": {
+   "src": "# Recipe Book, version 7: the whole program, with a menu\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\ndef ask_many(book):\n    names = []\n    while True:\n        name = input(\"Add a recipe (Enter = done): \").strip().lower()\n        if name == \"\":\n            return names\n        if name in book:\n            names.append(name)\n        else:\n            print(\"Not in the book.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nwhile True:\n    print(\"Menu: 1 list  2 cook  3 shop  4 save  5 quit\")\n    choice = input(\"Choose 1-5: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        name = ask_recipe(book)\n        show_recipe(book, name, ask_guests())\n    elif choice == \"3\":\n        names = ask_many(book)\n        totals = shopping_list(book, names, ask_guests())\n        for item in sorted(totals):\n            print(f\"  [ ] {item}: {nice(totals[item])}\")\n    elif choice == \"4\":\n        save_book(book, \"backup.txt\")\n        print(\"Saved\", len(book), \"recipes to backup.txt\")\n    elif choice == \"5\":\n        print(\"Bye! Happy cooking.\")\n        break\n    else:\n        print(\"Please pick 1 to 5.\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Saved 3 recipes to backup.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Bye! Happy cooking.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "4\n5\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 4\nSaved 3 recipes to backup.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 5\nBye! Happy cooking.\n"
+  },
+  "road_shop.py": {
+   "src": "# Recipe Book, version 7: the whole program, with a menu\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\ndef ask_many(book):\n    names = []\n    while True:\n        name = input(\"Add a recipe (Enter = done): \").strip().lower()\n        if name == \"\":\n            return names\n        if name in book:\n            names.append(name)\n        else:\n            print(\"Not in the book.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nwhile True:\n    print(\"Menu: 1 list  2 cook  3 shop  4 save  5 quit\")\n    choice = input(\"Choose 1-5: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        name = ask_recipe(book)\n        show_recipe(book, name, ask_guests())\n    elif choice == \"3\":\n        names = ask_many(book)\n        totals = shopping_list(book, names, ask_guests())\n        for item in sorted(totals):\n            print(f\"  [ ] {item}: {nice(totals[item])}\")\n    elif choice == \"4\":\n        save_book(book, \"backup.txt\")\n        print(\"Saved\", len(book), \"recipes to backup.txt\")\n    elif choice == \"5\":\n        print(\"Bye! Happy cooking.\")\n        break\n    else:\n        print(\"Please pick 1 to 5.\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Add a recipe (Enter = done): Add a recipe (Enter = done): Add a recipe (Enter = done): How many guests (1-12)?   [ ] apples: 2\n  [ ] bananas: 2\n  [ ] eggs: 2\n  [ ] flour (g): 200\n  [ ] honey (tbsp): 3\n  [ ] milk (ml): 300\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Bye! Happy cooking.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "3\npancakes\nfruit salad\n\n2\n5\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 3\nAdd a recipe (Enter = done): pancakes\nAdd a recipe (Enter = done): fruit salad\nAdd a recipe (Enter = done): \nHow many guests (1-12)? 2\n  [ ] apples: 2\n  [ ] bananas: 2\n  [ ] eggs: 2\n  [ ] flour (g): 200\n  [ ] honey (tbsp): 3\n  [ ] milk (ml): 300\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 5\nBye! Happy cooking.\n"
+  },
+  "road_typo.py": {
+   "src": "# Recipe Book, version 7: the whole program, with a menu\nSERVES = 2  # every card in the book feeds 2 people\n\ndef nice(x):\n    if x == int(x):\n        return str(int(x))\n    return f\"{x:.1f}\"\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\ndef show_recipe(book, name, guests):\n    print(f\"--- {name} for {guests} ---\")\n    for item, amount in book[name].items():\n        print(f\"  {item}: {nice(scale(amount, guests))}\")\n\ndef shopping_list(book, names, guests):\n    totals = {}\n    for name in names:\n        for item, amount in book[name].items():\n            if item not in totals:\n                totals[item] = 0\n            totals[item] += scale(amount, guests)\n    return totals\n\ndef save_book(book, filename):\n    with open(filename, \"w\") as f:\n        for name in book:\n            for item, amount in book[name].items():\n                f.write(f\"{name},{item},{nice(amount)}\\n\")\n\ndef load_book(filename):\n    book = {}\n    try:\n        with open(filename) as f:\n            for line in f:\n                line = line.strip()\n                if line == \"\":\n                    continue\n                name, item, amount = line.split(\",\")\n                if name not in book:\n                    book[name] = {}\n                book[name][item] = float(amount)\n    except FileNotFoundError:\n        print(\"No file called\", filename, \"- starting an empty book.\")\n    return book\n\ndef ask_recipe(book):\n    while True:\n        name = input(\"Which recipe? \").strip().lower()\n        if name in book:\n            return name\n        print(\"Not in the book. Try:\", \", \".join(book))\n\ndef ask_guests():\n    while True:\n        answer = input(\"How many guests (1-12)? \")\n        try:\n            guests = int(answer)\n        except ValueError:\n            print(\"Please type a whole number, like 4.\")\n            continue\n        if 1 <= guests <= 12:\n            return guests\n        print(\"Between 1 and 12, please.\")\n\ndef ask_many(book):\n    names = []\n    while True:\n        name = input(\"Add a recipe (Enter = done): \").strip().lower()\n        if name == \"\":\n            return names\n        if name in book:\n            names.append(name)\n        else:\n            print(\"Not in the book.\")\n\nbook = load_book(\"recipes.txt\")\nprint(\"Loaded\", len(book), \"recipes from recipes.txt\")\nwhile True:\n    print(\"Menu: 1 list  2 cook  3 shop  4 save  5 quit\")\n    choice = input(\"Choose 1-5: \").strip()\n    if choice == \"1\":\n        for name in book:\n            print(\" *\", name)\n    elif choice == \"2\":\n        name = ask_recipe(book)\n        show_recipe(book, name, ask_guests())\n    elif choice == \"3\":\n        names = ask_many(book)\n        totals = shopping_list(book, names, ask_guests())\n        for item in sorted(totals):\n            print(f\"  [ ] {item}: {nice(totals[item])}\")\n    elif choice == \"4\":\n        save_book(book, \"backup.txt\")\n        print(\"Saved\", len(book), \"recipes to backup.txt\")\n    elif choice == \"5\":\n        print(\"Bye! Happy cooking.\")\n        break\n    else:\n        print(\"Please pick 1 to 5.\")\n",
+   "stdout": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Please pick 1 to 5.\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5:  * pancakes\n * tomato soup\n * fruit salad\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: Bye! Happy cooking.\n",
+   "stderr": "",
+   "exit": 0,
+   "stdin": "x\n1\n5\n",
+   "screen": "Loaded 3 recipes from recipes.txt\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: x\nPlease pick 1 to 5.\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 1\n * pancakes\n * tomato soup\n * fruit salad\nMenu: 1 list  2 cook  3 shop  4 save  5 quit\nChoose 1-5: 5\nBye! Happy cooking.\n"
+  },
+  "round_trip.py": {
+   "src": "book = {\"tea\": {\"leaves (tsp)\": 2, \"honey (tbsp)\": 1}}\nwith open(\"trip.txt\", \"w\") as f:\n    for name in book:\n        for item, amount in book[name].items():\n            f.write(f\"{name},{item},{amount}\\n\")\nloaded = {}\nwith open(\"trip.txt\") as f:\n    for line in f:\n        name, item, amount = line.strip().split(\",\")\n        if name not in loaded:\n            loaded[name] = {}\n        loaded[name][item] = float(amount)\nprint(loaded)\nprint(loaded == book)\n",
+   "stdout": "{'tea': {'leaves (tsp)': 2.0, 'honey (tbsp)': 1.0}}\nTrue\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "scale_machine.py": {
+   "src": "SERVES = 2\n\ndef scale(amount, guests):\n    return amount * guests / SERVES\n\nprint(scale(200, 3))\nprint(scale(1, 3))\nprint(scale(2, 5))\nprint(scale(300, 1))\n",
+   "stdout": "300.0\n1.5\n5.0\n150.0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "split_machine.py": {
+   "src": "print(\"pancakes,eggs,2\".split(\",\"))\nprint(\"tomato soup,onion,1\".split(\",\"))\nprint(\"eggs\".split(\",\"))\nprint(\"a,,b\".split(\",\"))\n",
+   "stdout": "['pancakes', 'eggs', '2']\n['tomato soup', 'onion', '1']\n['eggs']\n['a', '', 'b']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "strip_fix.py": {
+   "src": "with open(\"shop2.txt\", \"w\") as f:\n    f.write(\"flour\\n\")\n    f.write(\"milk\\n\")\n    f.write(\"eggs\\n\")\nwith open(\"shop2.txt\") as f:\n    for line in f:\n        print(line.strip())\n",
+   "stdout": "flour\nmilk\neggs\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "strip_machine.py": {
+   "src": "print(repr(\"  eggs \\n\".strip()))\nprint(repr(\"\\n\".strip()))\nprint(repr(\"tomato soup   \".strip()))\n",
+   "stdout": "'eggs'\n''\n'tomato soup'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_v2.py": {
+   "src": "SERVES = 2\ncard = {\"flour\": 200, \"eggs\": 2, \"onion\": 1}\nfor item, amount in card.items():\n    new = amount * 3 / SERVES\n    print(item, amount, new)\n",
+   "stdout": "flour 200 300.0\neggs 2 3.0\nonion 1 1.5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_v3.py": {
+   "src": "totals = {}\nbag = [(\"eggs\", 2), (\"milk\", 300), (\"eggs\", 3), (\"milk\", 50)]\nfor item, amount in bag:\n    if item not in totals:\n        totals[item] = 0\n    totals[item] += amount\n    print(item, amount, totals[item])\n",
+   "stdout": "eggs 2 2\nmilk 300 300\neggs 3 5\nmilk 50 350\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "unflushed.py": {
+   "src": "f = open(\"draft.txt\", \"w\")\nf.write(\"pancakes,eggs,2\\n\")\nwith open(\"draft.txt\") as g:\n    print(repr(g.read()))\nf.close()\nwith open(\"draft.txt\") as g:\n    print(repr(g.read()))\n",
+   "stdout": "''\n'pancakes,eggs,2\\n'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "unguarded.py": {
+   "src": "guests = int(input(\"How many guests? \"))\nprint(\"Cooking for\", guests)\n",
+   "stdout": "How many guests? ",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/unguarded.py\", line 1, in <module>\n    guests = int(input(\"How many guests? \"))\nValueError: invalid literal for int() with base 10: 'three'\n",
+   "exit": 1,
+   "stdin": "three\n",
+   "screen": "How many guests? three\nTraceback (most recent call last):\n  File \"/home/you/python-ch10/unguarded.py\", line 1, in <module>\n    guests = int(input(\"How many guests? \"))\nValueError: invalid literal for int() with base 10: 'three'\n"
+  },
+  "unpack_error.py": {
+   "src": "with open(\"broken.txt\") as f:\n    for line in f:\n        name, item, amount = line.strip().split(\",\")\n        print(name, \"needs\", amount, item)\n",
+   "stdout": "pancakes needs 200 flour (g)\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch10/unpack_error.py\", line 3, in <module>\n    name, item, amount = line.strip().split(\",\")\n    ^^^^^^^^^^^^^^^^^^\nValueError: not enough values to unpack (expected 3, got 1)\n",
+   "exit": 1
+  },
+  "utf8_demo.py": {
+   "src": "with open(\"menu.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"crème brûlée,sugar (g),80\\n\")\nwith open(\"menu.txt\", encoding=\"utf-8\") as f:\n    for line in f:\n        print(line.strip().split(\",\"))\n",
+   "stdout": "['crème brûlée', 'sugar (g)', '80']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "w_wipes.py": {
+   "src": "with open(\"list.txt\", \"w\") as f:\n    f.write(\"flour\\n\")\n    f.write(\"milk\\n\")\nwith open(\"list.txt\", \"w\") as f:\n    f.write(\"eggs\\n\")\nwith open(\"list.txt\") as f:\n    for line in f:\n        print(line.strip())\n",
+   "stdout": "eggs\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "where_am_i.py": {
+   "src": "import os\nprint(\"Python is working in:\", os.getcwd())\nwith open(\"here.txt\", \"w\") as f:\n    f.write(\"hello\\n\")\nprint(\"here.txt exists:\", os.path.exists(\"here.txt\"))\n",
+   "stdout": "Python is working in: /home/you/python-ch10\nhere.txt exists: True\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

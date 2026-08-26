@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="en" data-book="python">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alarms and Key Cards</title>
+<meta name="description" content="Chapter 22 of Pip & Python, a comic course: designing errors and cleanup. The exception family tree, why except Exception swallows bugs, custom exceptions with one root per package, raise from and chained tracebacks, add_note, the traceback module, ExceptionGroup and except*, the PEP 765 finally warning; then context managers as hotel key cards: __enter__ and __exit__, suppressing, @contextmanager with yield and try/finally, suppress, closing, redirect_stdout, ExitStack and the parenthesised with.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/py-ch22.css">
+<script defer src="../data/py-ch22.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/py-ch22.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Python book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch21.html">&larr; Ch 21</a><span aria-current="page">Ch 22 of 27</span><a href="ch23.html">Ch 23 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 22</p>
+    <h1 id="cover-h">ALARMS AND KEY CARDS</h1>
+    <div class="ch22-cover">
+      <svg class="char" data-char="alarmbell" data-label="ConfigError" data-ring="true"></svg>
+      <svg class="char kc" data-char="keycard" data-room="204" data-state="in"></svg>
+    </div>
+    <p class="sr-only">Picture: a red fire-alarm bell with a name plate reading ConfigError, ringing, with its little hammer swinging. Beside it, a hotel wall with a key-card slot. Card 204 is in the slot and the room light above says ON.</p>
+    <p class="caption blurb">Chapter 9 taught you to catch errors. Now you design them: which alarm rings, who answers it, and how the incident log stays complete. Then a hotel key card that switches the lights off however you leave the room. About 80 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter"><ol>
+    <li><a href="#part-1">The alarm board: the exception family tree</a></li>
+    <li><a href="#part-2">Your own alarms: custom exceptions</a></li>
+    <li><a href="#part-3">The incident log: chaining, notes and tracebacks</a></li>
+    <li><a href="#part-4">Many alarms at once: ExceptionGroup and except*</a></li>
+    <li><a href="#part-5">The hotel key card: with, __enter__ and __exit__</a></li>
+    <li><a href="#part-6">Key-card shortcuts: contextlib</a></li>
+    <li><a href="#boss">Boss level and recap</a></li>
+  </ol></nav>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- ===================================================== PART 1 ===================================================== -->
+  <h2 class="part-h" id="part-1">Part 1 · The alarm board<small>every error belongs to a family, and families decide who answers</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Pip is put in charge of the alarms">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Pip's little shop program has grown. It reads settings, sells tea, takes coupons, writes files. Today the Professor hands Pip a new job title.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Congratulations, you're the <b>safety officer</b>. In Chapter 9 you learned to <em>catch</em> alarms. A safety officer <em>designs</em> them: which alarms exist, who answers each one, and what goes in the incident log.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>A badge! And a whistle? No whistle. OK. Where do I start?</p></div>
+    </div>
+    <p class="caption soft">An <b>exception</b> is Python's word for an error object that is <b>raised</b> (the alarm starts ringing) and travels up until something <b>catches</b> it (someone answers it). If nobody does, the program stops with a traceback.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: what you already know from Chapter 9">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">First, the safety drill you already know. If any line feels shaky, Chapter 9 has the full story.</p>
+    <ol class="checklist">
+      <li><span><b>try / except / else / finally.</b> <code>except</code> runs if the try failed, <code>else</code> if it didn't, <code>finally</code> on every road.</span></li>
+      <li><span><b>Catch what you expect.</b> Name the error: <code>except ValueError:</code>. A bare <code>except:</code> catches everything, including your own typos.</span></li>
+      <li><span><b>Keep the try small.</b> Put only the risky line inside, so you know which line the net is for.</span></li>
+      <li><span><b>EAFP or LBYL?</b> "Easier to ask forgiveness than permission" (try it, catch the error) versus "look before you leap" (check first with <code>if</code>). Python code often prefers the first.</span></li>
+      <li><span><b>raise and assert.</b> <code>raise</code> rings an alarm on purpose. <code>assert</code> is a note-to-self check that can be switched off (the notebook shows how), so never use it to check user input.</span></li>
+    </ol>
+    <p class="caption">One new spelling. Since Python 3.14 you may list several errors <b>without</b> brackets:</p>
+    <div class="ch22-stack">
+      <span class="file-tab">recap_comma.py</span><pre class="code" data-src="recap_comma.py"></pre>
+      <pre class="term" data-run="recap_comma.py"></pre>
+      <p class="ch22-ver">The same file on CPython 3.13.18:</p>
+      <pre class="term wrap" data-run="recap_comma.py" data-alt data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="proofreader"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Proofreader says: </span>Before 3.14, I insist on brackets: <code>except (ValueError, TypeError):</code>. The bracket form works on every version, so it's the safe habit.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: the alarm board, a family tree of exceptions">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Every exception is a <b>class</b>, and the classes form a family tree (Chapter 19's inheritance). Think of a building's <b>alarm board</b>: a smoke alarm in room 12 is also a "floor 1 alarm" and also a "building alarm". Whoever answers a whole floor answers every room on it.</p>
+    <div class="ch22-tree" role="img" aria-label="Family tree. BaseException is at the top. Its children are SystemExit, KeyboardInterrupt, GeneratorExit and Exception. Under Exception: ArithmeticError with child ZeroDivisionError; LookupError with children IndexError and KeyError; OSError with child FileNotFoundError; ValueError; TypeError; NameError; and your own errors.">
+      <ul>
+        <li><span class="n top">BaseException</span><span class="why">the whole building</span>
+          <ul>
+            <li><span class="n out">SystemExit</span><span class="why">sys.exit() was called</span></li>
+            <li><span class="n out">KeyboardInterrupt</span><span class="why">you pressed Ctrl+C</span></li>
+            <li><span class="n out">GeneratorExit</span><span class="why">a generator is being closed</span></li>
+            <li><span class="n exc">Exception</span><span class="why">ordinary errors live here</span>
+              <ul>
+                <li><span class="n">ArithmeticError</span>
+                  <ul><li><span class="n">ZeroDivisionError</span></li></ul></li>
+                <li><span class="n">LookupError</span>
+                  <ul><li><span class="n">IndexError</span></li><li><span class="n">KeyError</span></li></ul></li>
+                <li><span class="n">OSError</span>
+                  <ul><li><span class="n">FileNotFoundError</span></li></ul></li>
+                <li><span class="n">ValueError</span>, <span class="n">TypeError</span>, <span class="n">NameError</span> …</li>
+                <li><span class="n">ShopError</span><span class="why">your own (Part 2)</span></li>
+              </ul></li>
+          </ul></li>
+      </ul>
+    </div>
+    <ul class="ch22-key" aria-hidden="true"><li><span class="n exc">double border</span> catch-all for ordinary errors</li><li><span class="n out">dashed</span> "leave the building" signals, not errors</li></ul>
+    <p class="caption">You don't have to memorise it. Python can show you any alarm's chain of parents with <code>__mro__</code> (Chapter 19's method resolution order):</p>
+    <div class="ch22-stack">
+      <span class="file-tab">family.py</span><pre class="code" data-src="family.py"></pre>
+      <pre class="term wrap" data-run="family.py"></pre>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: catching a parent catches all its children">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">So one net can be sized for a whole branch. <code>LookupError</code> is the parent of both <code>IndexError</code> (a list position that isn't there) and <code>KeyError</code> (a dict key that isn't there).</p>
+    <div class="ch22-stack">
+      <span class="file-tab">lookup_parent.py</span><pre class="code" data-src="lookup_parent.py"></pre>
+      <pre class="term" data-run="lookup_parent.py"></pre>
+    </div>
+    <div class="ch22-row" aria-hidden="true">
+      <figure><svg class="char" data-char="tumble"></svg><figcaption>Tumble: IndexError</figcaption></figure>
+      <figure><svg class="char" data-char="jangles"></svg><figcaption>Jangles: KeyError</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: Tumble, the IndexError critter, and Jangles, the KeyError critter, side by side. Both are children of LookupError.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>One <code>except LookupError</code> answered Tumble <b>and</b> Jangles. And <code>type(e).__name__</code> still tells me which one rang.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e1m" id="e1"></div>
+  <script type="application/json" id="e1m">{"q": "You want <b>one</b> <code>except</code> that catches <code>IndexError</code> and <code>KeyError</code>, but lets a <code>ZeroDivisionError</code> or a <code>ValueError</code> keep ringing. Which class do you name?", "options": [
+    {"t": "<code>LookupError</code>", "why": "Right: it's the closest shared parent of IndexError and KeyError, and neither ZeroDivisionError nor ValueError is under it.", "correct": true},
+    {"t": "<code>Exception</code>", "why": "That catches the two you want, but also ZeroDivisionError, ValueError and almost everything else."},
+    {"t": "<code>ArithmeticError</code>", "why": "That's the maths branch: ZeroDivisionError lives there, not IndexError or KeyError."},
+    {"t": "<code>BaseException</code>", "why": "The very top of the tree catches everything, even Ctrl+C."}]}</script>
+
+  <div data-ex="predict" data-model="e2m" id="e2"></div>
+  <script type="application/json" id="e2m">{"program": "pred_family.py", "hint": "Python tries the <code>except</code> lines from top to bottom and uses the <b>first</b> one whose class is the error's class or one of its parents. Look at the family tree in Panel 3.", "explain": "n = 0 raises nothing. n = 1 is a ZeroDivisionError, a child of ArithmeticError. n = 2 is an IndexError, a child of LookupError. n = 3 is a ValueError, which is in neither branch, so it reaches the general <code>except Exception</code>."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: except Exception hides a typo">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="SHHH..." data-seed="5"></svg>
+    <p class="caption">Now the trap. Pip wants a safe default volume if the settings are broken, so Pip catches <b>everything</b> that could go wrong.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">swallow.py</span><pre class="code" data-src="swallow.py"></pre>
+      <pre class="term" data-run="swallow.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Volume 5? The settings say <code>"7"</code>! And no error at all… Wait. Line 5 says <code>setings</code>. One <b>t</b>.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak says: </span>Hee hee. The typo raised a NameError, and <code>except Exception</code> caught it as if it were a broken setting. I'm a quiet bug now. Exit code 0!</p></div>
+    </div>
+    <p class="sr-only">Picture: Sneak, the silent logic-bug critter, sniggering.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: a narrow except lets the real bug ring">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Same program, one change on line 6: catch only the two problems a broken setting can really cause. A missing key is a <code>KeyError</code>; text like <code>"loud"</code> makes <code>int()</code> raise a <code>ValueError</code>.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">swallow_fixed.py</span><pre class="code" data-src="swallow_fixed.py"></pre>
+      <pre class="term" data-run="swallow_fixed.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>NameError: name 'setings' is not defined. Did you mean: 'settings'?</code><br>What: the real bug, with a spelling hint.</span></li>
+      <li><span><code>line 5</code>, carets under <code>setings</code><br>Where: exactly the typo. The narrow net let the alarm we didn't expect keep ringing, and that's what we wanted.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="bouncer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Bouncer says: </span>Name's not on my list. Nobody hid me this time, so you can fix me in five seconds.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: BaseException versus Exception">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Why does the tree have <b>two</b> tops? <code>sys.exit()</code> and Ctrl+C are not errors. They are "please leave the building" signals, so they hang above <code>Exception</code>, where <code>except Exception</code> can't reach them. A bare <code>except:</code> catches them too.</p>
+    <div class="duo ch22-onecol">
+      <div class="duo-card">
+        <h3>except Exception<small>exit_escape.py</small></h3>
+        <pre class="code" data-src="exit_escape.py"></pre>
+        <pre class="term" data-run="exit_escape.py" data-exit></pre>
+        <p>The exit signal flies past. The program really ends with code 3.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>bare except:<small>exit_bare.py</small></h3>
+        <pre class="code" data-src="exit_bare.py"></pre>
+        <pre class="term" data-run="exit_bare.py" data-exit></pre>
+        <p>The net grabs the exit signal. The program refuses to stop, and says "success".</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Imagine pressing Ctrl+C on a stuck loop that has a bare <code>except:</code> inside. Each press gets caught and the loop carries on. That's why the bare form is a trap, and why your own error classes should inherit from <code>Exception</code>, never <code>BaseException</code>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 8: return inside finally now gets a warning">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">A third way to silence an alarm by accident: <code>return</code> inside <code>finally</code>. The disk is full, but the function happily says "saved!".</p>
+    <div class="ch22-stack">
+      <span class="file-tab">finally_return.py</span><pre class="code" data-src="finally_return.py"></pre>
+      <pre class="term wrap" data-run="finally_return.py"></pre>
+      <p class="ch22-ver">CPython 3.13.18 says nothing at all:</p>
+      <pre class="term wrap" data-run="finally_return.py" data-alt></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="proofreader"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Proofreader says: </span>Since Python 3.14 I warn you while reading the file, before anything runs: <code>SyntaxWarning: 'return' in a 'finally' block</code>. A warning, not an error, so the program still runs, and the OSError still vanishes. <code>break</code> and <code>continue</code> in <code>finally</code> get the same warning.</p></div>
+    </div>
+    <p class="caption soft">The rule behind it: when <code>finally</code> ends with <code>return</code>, <code>break</code> or <code>continue</code>, any alarm still ringing is thrown away. Let <code>finally</code> tidy up, and return from somewhere else.</p>
+  </section>
+
+  <section class="panel sketch ch22-three" aria-label="Panel 9: three ways to silence an alarm by accident">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">The three silencers, side by side. Each one turns a loud, easy bug into a quiet, hard one.</p>
+    <div class="duo three">
+      <div class="duo-card dashed"><h3>Too broad<small>except Exception:</small></h3><div class="pic"><svg class="char" data-char="alarmbell" data-label="SILENCED"></svg></div><p>Catches every ordinary error, typos included.</p></div>
+      <div class="duo-card dashed"><h3>Bare<small>except:</small></h3><div class="pic"><svg class="char" data-char="alarmbell" data-label="SILENCED"></svg></div><p>Catches even exit signals and Ctrl+C.</p></div>
+      <div class="duo-card dashed"><h3>Return in finally<small>finally: return ...</small></h3><div class="pic"><svg class="char" data-char="alarmbell" data-label="SILENCED"></svg></div><p>Throws away whatever was ringing.</p></div>
+    </div>
+    <p class="sr-only">Picture: three quiet, smiling alarm bells, each with a plate reading SILENCED, in dashed cards titled Too broad (except Exception), Bare (except colon) and Return in finally.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My first rule as safety officer: <b>CATCH THE ALARM YOU EXPECT. LET THE REST RING.</b> A broad catch is fine at the very top of a program, to log the problem before it stops, but not around one small job.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e3m" id="e3"></div>
+  <script type="application/json" id="e3m">{"program": "spot_broad.py", "bug": 7, "prompt": "Tea costs 3 and jam costs 4, but the total is 0 and no error appears. Click the line with the real bug.", "explain": "Line 7 says <code>itme</code>, a typo for <code>item</code>. That raises a NameError on the very first loop, and the <code>except Exception</code> on line 9 quietly turns it into <code>return 0</code>. Fix the typo, and narrow line 9 to <code>except KeyError:</code> so the next typo rings loudly."}</script>
+
+  <!-- ===================================================== PART 2 ===================================================== -->
+  <h2 class="part-h" id="part-2">Part 2 · Your own alarms<small>custom exception classes, one root per package, raise instead of None</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 10: a new alarm bell with your own label">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption soft">Python's built-in alarms describe Python's problems: a bad value, a missing key. Your shop has its own problems: no tea left, a coupon that doesn't exist. Give each one its <b>own bell with its own label</b>, so the right person comes running.</p>
+    <div class="ch22-row">
+      <figure><svg class="char" data-char="taster"></svg><figcaption>ValueError: "something's off"</figcaption></figure>
+      <span class="ch22-arrow" aria-hidden="true">→</span>
+      <figure><svg class="char" data-char="alarmbell" data-label="OutOfStock" data-ring="true"></svg><figcaption>OutOfStock: says exactly what happened</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: the Taster, Python's general ValueError critter, next to a new red alarm bell labelled OutOfStock, ringing.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>A custom exception is just a class that inherits from <code>Exception</code>. It needs no methods at all. A docstring or <code>pass</code> is enough: the <b>name</b> is the whole point.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: defining, raising and catching OutOfStock">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Lines 1 and 2 make the bell. Line 8 rings it with a message. Line 15 answers it once; line 17 rings it with nobody listening.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">custom_basic.py</span><pre class="code" data-src="custom_basic.py"></pre>
+      <pre class="term" data-run="custom_basic.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>OutOfStock: only 1 tea left</code><br>The last line names <b>your</b> class and your message. Anyone reading it knows what happened without opening the code.</span></li>
+      <li><span><code>line 8, in buy</code><br>Where the bell was rung. <code>line 17</code> above it is who asked for 5 teas.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="e4m" id="e4"></div>
+  <script type="application/json" id="e4m">{"program": "fill_custom.py", "prompt": "Make a TooCold alarm, ring it below 80 degrees, and answer it in the loop.", "blanks": [{"line": 1, "text": "Exception"}, {"line": 6, "text": "raise"}, {"line": 12, "text": "TooCold"}], "explain": "A custom exception inherits from <code>Exception</code> (line 1). <code>raise</code> rings it (line 6). The <code>except</code> on line 12 names the class to answer only that alarm."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: one root exception for the whole package">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">A real shop has several alarms. Give them <b>one shared parent</b>, here <code>ShopError</code>. People using your code can then answer "anything the shop complains about" with one <code>except</code>, without catching Python's own errors by mistake.</p>
+    <div class="ch22-tree" role="img" aria-label="A small family tree: Exception, then ShopError under it, then OutOfStock and BadCoupon under ShopError.">
+      <ul><li><span class="n exc">Exception</span>
+        <ul><li><span class="n top">ShopError</span><span class="why">the shop's master switch</span>
+          <ul><li><span class="n">OutOfStock</span></li><li><span class="n">BadCoupon</span></li></ul></li></ul></li></ul>
+    </div>
+    <div class="ch22-stack">
+      <span class="file-tab">shop_root.py</span><pre class="code" data-src="shop_root.py"></pre>
+      <pre class="term" data-run="shop_root.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Big libraries do exactly this. Catch the root, and every shop alarm, today's and next year's, lands in the same net. Name them after the problem, and end the name in <code>Error</code> when it is one: <code>ShopError</code>, <code>ConfigError</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e5m" id="e5"></div>
+  <script type="application/json" id="e5m">{"program": "pred_root.py", "hint": "OutOfStock is a child of ShopError. Python uses the <b>first</b> <code>except</code> that matches, reading from the top.", "explain": "For n = 0, an OutOfStock is raised. The first net, <code>except ShopError</code>, matches it, because a child counts as its parent. So the <code>except OutOfStock</code> below can never run. Put the most specific class <b>first</b>."}</script>
+
+  <section class="panel clean" aria-label="Panel 13: an alarm that carries details">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">An exception is an object, so it can carry <b>attributes</b> (Chapter 15). Here the alarm brings the item name and how many are left, so whoever answers can do something smarter than print a message.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">custom_attrs.py</span><pre class="code" data-src="custom_attrs.py"></pre>
+      <pre class="term" data-run="custom_attrs.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Line 3 is the important one. <code>super().__init__(message)</code> hands the message to <code>Exception</code>, which is what <code>print(e)</code> and the traceback's last line show. Forget it, and the message comes out wrong.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 14: the buy machine and its alarms" data-machine="m-buy">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Here is the shop's <code>buy()</code> function as a machine, with three kinds of alarm. Feed it an order: either a receipt comes out, or it jams with the real alarm. (The stock starts as 2 teas and 5 jams; each jam comes from its own run.)</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <details><summary>The code behind the machine</summary><span class="file-tab">m_buy.py</span><pre class="code" data-src="m_buy.py"></pre></details>
+    <script type="application/json" id="m-buy">{"label": "buy()", "program": "m_buy.py", "examples": [
+      {"in": "\"tea\", 1", "out": "bought 1 tea", "outKind": "str", "note": "Enough tea in stock: the stock drops and a receipt string comes out."},
+      {"in": "\"jam\", 5", "out": "bought 5 jam", "outKind": "str", "note": "Exactly 5 jams: allowed. The check on line 17 is <code>&lt;</code>, not <code>&lt;=</code>."},
+      {"in": "\"tea\", 9", "error": "OutOfStock: only 2 tea left", "program": "m_buy_stock.py", "note": "The shop's own alarm, with the number left in its message."},
+      {"in": "\"cake\", 1", "error": "UnknownItem: we don't sell 'cake'", "program": "m_buy_unknown.py", "note": "Another shop alarm. Both are children of ShopError, so one <code>except ShopError</code> answers either."},
+      {"in": "\"tea\", 0", "error": "ValueError: quantity must be 1 or more, not 0", "program": "m_buy_zero.py", "note": "A bad <b>argument</b> is the caller's mistake, not a shop problem, so the built-in ValueError fits. Reuse built-ins when they say exactly what's wrong."}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 15: returning None makes the crash happen far away">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="BOO!" data-seed="15"></svg>
+    <p class="caption">What should a function do when it can't do its job? A common first idea: return <code>None</code> to mean "not found".</p>
+    <div class="ch22-stack">
+      <span class="file-tab">none_return.py</span><pre class="code" data-src="none_return.py"></pre>
+      <pre class="term" data-run="none_return.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'</code><br>What: something multiplied <code>None</code> by a number. That's the symptom, not the cause.</span></li>
+      <li><span><code>line 10, in bill</code><br>Where it broke. But where it went wrong is line 6, which quietly handed back nothing. The traceback never even mentions <code>find_price</code>.</span></li>
+    </ol>
+    <div class="ch22-row" aria-hidden="true">
+      <figure><svg class="char" data-char="ghost" data-label="None"></svg><figcaption>the None travels…</figcaption></figure>
+      <span class="ch22-arrow">→</span>
+      <figure><svg class="char" data-char="jigsaw"></svg><figcaption>…and Jigsaw trips over it</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: the None ghost floating out of find_price, then Jigsaw, the TypeError critter, tripping over it two functions later.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: raise at the source instead">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Ring the alarm <b>where the problem is</b>. Only line 9 changed (plus the new class).</p>
+    <div class="ch22-stack">
+      <span class="file-tab">raise_instead.py</span><pre class="code" data-src="raise_instead.py"></pre>
+      <pre class="term" data-run="raise_instead.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Now the last line says what's wrong, in shop words, and the trail ends at <code>find_price</code>, line 9. Catchphrase: <b>DON'T HAND BACK A GHOST. RING THE ALARM WHERE IT HAPPENS.</b></p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Returning <code>None</code> is fine when "nothing" is a normal, expected answer that callers check, like <code>dict.get()</code>. When it means "I failed", raise. The caller can't forget to check an exception.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e6m" id="e6"></div>
+  <script type="application/json" id="e6m">{"q": "<code>load_profile(name)</code> reads a user's saved profile. Sometimes the file is corrupt and can't be read. What should the function do then?", "options": [
+    {"t": "Raise a custom exception, such as <code>ProfileError</code>, saying what broke", "why": "Yes. For example <code>raise ProfileError(\"profile for ana is corrupt\")</code>. The problem is reported where it happens, in words that explain it, and a caller who forgets to handle it gets a loud traceback instead of a mystery later.", "correct": true},
+    {"t": "Return <code>None</code>, so each caller can check whether it worked", "why": "Every caller must remember to check for None. The one who forgets crashes somewhere else with a confusing TypeError or AttributeError."},
+    {"t": "Return an empty profile, <code>{}</code>, so the program can carry on", "why": "The program carries on as if the user had no settings, and nobody ever learns the file is broken. That's Sneak's favourite kind of bug."},
+    {"t": "Print an error message, then return <code>0</code> to mean failure", "why": "The caller can't tell 0 from a real answer, and printing isn't handling."}]}</script>
+
+  <!-- ===================================================== PART 3 ===================================================== -->
+  <h2 class="part-h" id="part-3">Part 3 · The incident log<small>raise from, implicit chaining, add_note, traceback and logging</small></h2>
+
+  <section class="panel pop" aria-label="Panel 17: translating an alarm without losing the log">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The settings file says <code>port = eighty</code>. Deep inside, <code>int("eighty")</code> raises a ValueError. But "invalid literal for int()" means nothing to someone setting up the shop.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>I'll catch the ValueError and raise my own <code>ConfigError</code> that says "the port must be a number". Then the user understands it.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Good. But a real fire report keeps the whole story: "smoke detector in the kitchen, <em>which caused</em> the building alarm". Don't throw away the first alarm. Attach it with <code>from</code>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: raise from prints both tracebacks">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption"><code>raise NewError(...) from e</code> rings the new alarm and records <code>e</code> as its <b>cause</b>. The traceback then tells the story in time order: the first alarm on top, yours at the bottom.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">chain_from.py</span><pre class="code" data-src="chain_from.py"></pre>
+      <pre class="term wrap" data-run="chain_from.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Top half: the cause.</b> <code>ValueError: invalid literal for int() with base 10: 'eighty'</code> from <code>line 6</code>, inside <code>read_port</code>. The first alarm, kept in the log.</span></li>
+      <li><span><b>The joining sentence.</b> <code>The above exception was the direct cause of the following exception:</code> This exact wording means somebody wrote <code>from</code> on purpose.</span></li>
+      <li><span><b>Bottom half: your alarm.</b> <code>ConfigError: port must be a number, not 'eighty'</code> from <code>line 9</code>. Read like a detective, as always: the very last line first. It's the one in plain shop words.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 19: the incident log picture">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">The incident log, drawn. Each new alarm keeps a pointer to the one that set it off. Python stores it on the new exception as <code>__cause__</code>.</p>
+    <div class="ch22-row">
+      <figure><svg class="char" data-char="alarmbell" data-label="ValueError"></svg><figcaption>1 · the kitchen smoke detector</figcaption></figure>
+      <span class="ch22-arrow" aria-hidden="true">→</span>
+      <figure><svg class="char" data-char="alarmbell" data-label="ConfigError" data-ring="true"></svg><figcaption>2 · the building alarm, <code>__cause__</code> → 1</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a quiet bell labelled ValueError, an arrow, then a ringing bell labelled ConfigError. The caption says the ConfigError's __cause__ points back to the ValueError.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Catchphrase: <b>TRANSLATE THE ALARM, KEEP THE LOG.</b> The user reads my message; whoever debugs it still sees the ValueError underneath.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 20: an except block that fails chains automatically">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="UH-OH!" data-seed="20"></svg>
+    <p class="caption">Chaining also happens <b>without</b> <code>from</code>: when the code that answers an alarm sets off a second one. Here the <code>except</code> block itself has a typo.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">chain_implicit.py</span><pre class="code" data-src="chain_implicit.py"></pre>
+      <pre class="term wrap" data-run="chain_implicit.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>KeyError: 'ben'</code> (top half)<br>The expected alarm: Ben isn't in the dict yet. The <code>except KeyError</code> was meant to handle exactly this.</span></li>
+      <li><span><code>During handling of the above exception, another exception occurred:</code><br>A <b>different</b> sentence. It means "nobody planned this: the handler broke".</span></li>
+      <li><span><code>NameError: name 'nmae' is not defined</code> (bottom half)<br>The real bug, on <code>line 7</code>, inside the handler.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="bouncer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Bouncer says: </span>I turned up while the first alarm was still being answered. Python stores that first one on me as <code>__context__</code>, so you see both.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: from None hides the cause">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Sometimes the first alarm is pure noise for the reader. <code>from None</code> rings your alarm and leaves the old one out of the printout.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">chain_none.py</span><pre class="code" data-src="chain_none.py"></pre>
+      <pre class="term wrap" data-run="chain_none.py" data-exit></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>One traceback, one message. Use <code>from None</code> when your message already says everything, and plain <code>from e</code> when the original details could help someone debug. When unsure, keep the log.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e7m" id="e7"></div>
+  <script type="application/json" id="e7m">{"program": "pred_chain.py", "expect": "error", "hint": "The <code>except</code> on line 12 is waiting for a ValueError. Which alarm actually comes out of <code>parse()</code>?", "explain": "Inside <code>parse</code>, the ValueError is caught and a <b>ParseError</b> is raised from it. The ValueError is now only the cause, stored inside. <code>except ValueError</code> doesn't match a ParseError, so nothing answers it and the program crashes with a chained traceback ending in <code>ParseError: no number in 'ten'</code>."}</script>
+
+  <div data-ex="choice" data-model="e8m" id="e8"></div>
+  <script type="application/json" id="e8m">{"q": "A traceback has two halves joined by <samp>During handling of the above exception, another exception occurred:</samp>. What does that tell you?", "options": [
+    {"t": "The code that was handling the first error raised a second, unplanned one.", "why": "Right. That's implicit chaining, and it often means a bug inside the <code>except</code> block. A deliberate <code>raise ... from e</code> prints \"The above exception was the direct cause of the following exception\" instead.", "correct": true},
+    {"t": "Someone wrote <code>raise ... from e</code> on purpose to link the two.", "why": "That prints the other sentence, about a \"direct cause\"."},
+    {"t": "The same error happened twice, once in each half of the printout.", "why": "The two halves are usually two different errors, like KeyError then NameError in Panel 20."},
+    {"t": "Python retried the program after the first error, and it failed again.", "why": "Python never retries by itself. The program has stopped; this is the log."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 22: add_note adds a line to the alarm">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Sometimes you don't want a new alarm, just a <b>sticky note</b> on the old one: "this happened on row 3". <code>e.add_note(text)</code> (Python 3.11+) does that, and a bare <code>raise</code> sends the same alarm on its way.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">note.py</span><pre class="code" data-src="note.py"></pre>
+      <pre class="term" data-run="note.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>ValueError: invalid literal for int() with base 10: 'abc'</code><br>The original alarm, unchanged.</span></li>
+      <li><span><code>while reading row 3</code><br>The note, printed on its own line <b>under</b> the message. Now you know which row to fix in a file of thousands.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Notes pile up in a list called <code>e.__notes__</code>, so each layer of the program can add its own: "row 3", then "in file prices.csv".</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="e9m" id="e9"></div>
+  <script type="application/json" id="e9m">{"program": "parsons_note.py", "seed": 5, "prompt": "Put the lines in order so a note is added to the error, then shown.", "explain": "The risky line goes inside <code>try</code>. The note must be added <b>before</b> it is printed, or the list would still be empty."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: the traceback module formats a caught error">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Sometimes the right answer is "write it down and keep going": skip the bad row, finish the rest. The <code>traceback</code> module turns a caught exception into the same text Python would print.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">keep_going.py</span><pre class="code" data-src="keep_going.py"></pre>
+      <pre class="term wrap" data-run="keep_going.py"></pre>
+    </div>
+    <p class="caption">And <code>traceback.print_exc()</code> prints the <b>whole</b> traceback of the error being handled, then lets the program carry on:</p>
+    <div class="ch22-stack">
+      <span class="file-tab">print_exc.py</span><pre class="code" data-src="print_exc.py"></pre>
+      <pre class="term" data-run="print_exc.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>A full traceback, and then exit code 0! It looks like a crash, but the program was answering the alarm the whole time.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: a one-line preview of logging">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Real programs don't <code>print</code> their problems; they <b>log</b> them, so the messages can go to a file, get a time stamp, or be switched off. A one-line preview (Chapter 26 sets logging up properly):</p>
+    <div class="ch22-stack">
+      <span class="file-tab">log_preview.py</span><pre class="code" data-src="log_preview.py"></pre>
+      <pre class="term" data-run="log_preview.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span><samp>ERROR</samp> is the level, <samp>root</samp> is the logger's name. It goes to the error stream, not the normal output. Inside an <code>except</code> block, <code>logging.exception("...")</code> also adds the full traceback; the notebook shows it.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="e10m" id="e10"></div>
+  <script type="application/json" id="e10m">{"program": "trace_rows.py", "columns": ["n", "row", "status", "total"], "given": [0, 1], "prompt": "Keep going after bad rows. Fill in the status and the running total each time the loop body ends.", "explain": "If <code>int(row)</code> fails, the line <code>status = \"added\"</code> is skipped, the <code>except</code> sets <code>\"skipped\"</code>, and <code>total</code> stays as it was. 4 makes 4, \"x\" is skipped, 6 makes 10, \"-\" is skipped."}</script>
+
+  <section class="panel sketch" aria-label="Panel 25: the map of a try with raise from" data-map="map-port">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">Chapter 9's try map, upgraded. <code>load_port()</code> has every part: an <code>except</code> that sometimes handles the problem and sometimes raises a new alarm <b>from</b> it, an <code>else</code>, and a <code>finally</code>. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mp-t mp-d"><title id="mp-t">Map of load_port</title><desc id="mp-d">From try, no error leads to else; a ValueError leads to except ValueError; any other error goes straight to finally. From except, empty text returns 8080 and goes to finally; any other text leads to raise ConfigError from e, then finally. Else goes to finally. From finally, if a value comes back the caller gets it; if an alarm is still ringing the program crashes.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Pip is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The four programs behind the roads</summary><div class="ch22-stack" style="margin-top:10px">
+      <span class="file-tab">road_ok.py</span><pre class="code" data-src="road_ok.py"></pre>
+      <p>The other three differ only in the last line: <code>road_empty.py</code> calls <code>load_port("")</code>, <code>road_bad.py</code> calls <code>load_port("eighty")</code> and <code>road_none.py</code> calls <code>load_port(None)</code>.</p>
+      <pre class="term" data-run="road_bad.py" data-exit></pre>
+    </div></details>
+    <script type="application/json" id="map-port">{"seed": 22, "size": [690, 570], "start": [[345, 12], [345, 44]],
+      "states": [
+        {"id": "T", "x": 230, "y": 50, "w": 230, "h": 66, "label": "try:", "sub": "`port = int(text)`"},
+        {"id": "X", "x": 10, "y": 180, "w": 240, "h": 66, "label": "except ValueError:", "sub": "empty, or bad?"},
+        {"id": "E", "x": 450, "y": 180, "w": 230, "h": 66, "label": "else:", "sub": "the port is good"},
+        {"id": "R", "x": 10, "y": 330, "w": 240, "h": 66, "label": "raise ... from e", "sub": "new alarm, log kept"},
+        {"id": "F", "x": 300, "y": 330, "w": 230, "h": 66, "label": "finally:", "sub": "runs on every road"},
+        {"id": "A", "x": 60, "y": 490, "w": 220, "h": 66, "label": "back to the caller", "sub": "a port comes back", "kind": "end"},
+        {"id": "C", "x": 410, "y": 490, "w": 220, "h": 66, "label": "crash", "sub": "traceback, exit 1", "kind": "error"}
+      ],
+      "transitions": [
+        {"id": "tTE", "from": "T", "to": "E", "pts": [[462, 83], [565, 83], [565, 174]], "label": "no error", "lx": 474, "ly": 72},
+        {"id": "tTX", "from": "T", "to": "X", "pts": [[228, 83], [130, 83], [130, 174]], "label": "ValueError", "lx": 216, "ly": 72, "anchor": "end", "bug": true},
+        {"id": "tTF", "from": "T", "to": "F", "pts": [[415, 118], [415, 324]], "label": ["other", "error"], "lx": 425, "ly": 270, "bug": true},
+        {"id": "tXF", "from": "X", "to": "F", "pts": [[252, 225], [330, 225], [330, 324]], "label": ["empty:", "return 8080"], "lx": 262, "ly": 262},
+        {"id": "tXR", "from": "X", "to": "R", "pts": [[130, 248], [130, 324]], "label": "bad text", "lx": 140, "ly": 290, "bug": true},
+        {"id": "tRF", "from": "R", "to": "F", "pts": [[252, 363], [294, 363]], "bug": true},
+        {"id": "tEF", "from": "E", "to": "F", "pts": [[565, 248], [565, 363], [536, 363]]},
+        {"id": "tFA", "from": "F", "to": "A", "pts": [[370, 398], [370, 450], [170, 450], [170, 484]], "label": "a value", "lx": 358, "ly": 428, "anchor": "end"},
+        {"id": "tFC", "from": "F", "to": "C", "pts": [[470, 398], [470, 450], [520, 450], [520, 484]], "label": ["alarm still", "ringing"], "lx": 482, "ly": 420, "bug": true}
+      ],
+      "paths": [
+        {"id": "ok", "label": "\"8000\"", "program": "road_ok.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["T"], "via": ["start"], "output": [], "note": "<code>text</code> is <code>\"8000\"</code>. Pip tries <code>int(text)</code>."},
+          {"on": ["E"], "via": ["tTE"], "output": ["else: port 8000"], "note": "No alarm, so <code>except</code> is skipped and <code>else</code> runs. It prints, then reaches <code>return port</code>."},
+          {"on": ["F"], "via": ["tEF"], "output": ["else: port 8000", "finally: settings file closed"], "note": "Even with a <code>return</code> waiting, <code>finally</code> runs first."},
+          {"on": ["A"], "via": ["tFA"], "output": ["else: port 8000", "finally: settings file closed", "got 8000"], "note": "Now the return finishes: the caller prints <samp>got 8000</samp>. Exit code 0."}]},
+        {"id": "empty", "label": "\"\"", "program": "road_empty.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["T"], "via": ["start"], "output": [], "note": "<code>text</code> is the empty string <code>\"\"</code>."},
+          {"on": ["X"], "via": ["tTX"], "output": [], "note": "<code>int(\"\")</code> raises a ValueError. The Taster lands in the <code>except ValueError</code> net."},
+          {"on": ["F"], "via": ["tXF"], "output": ["except: empty, use 8080", "finally: settings file closed"], "note": "Empty text has a sensible default, so this handler <b>handles</b> it: it prints and returns 8080. <code>finally</code> runs on the way out."},
+          {"on": ["A"], "via": ["tFA"], "output": ["except: empty, use 8080", "finally: settings file closed", "got 8080"], "note": "Nothing is ringing any more. The caller gets 8080."}]},
+        {"id": "bad", "label": "\"eighty\"", "bug": true, "program": "road_bad.py", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "The above exception was the direct cause of the following exception"}, "steps": [
+          {"on": ["T"], "via": ["start"], "output": [], "note": "<code>text</code> is <code>\"eighty\"</code>."},
+          {"on": ["X"], "via": ["tTX"], "output": [], "note": "ValueError, caught by the <code>except</code>."},
+          {"on": ["R"], "via": ["tXR"], "output": [], "note": "This text isn't empty, so there's no good default. The handler raises a <code>ConfigError</code> <b>from</b> the ValueError: a new alarm, with the old one as its cause."},
+          {"on": ["F"], "via": ["tRF"], "output": ["finally: settings file closed"], "note": "The new alarm is ringing, but <code>finally</code> still gets its turn."},
+          {"on": ["C"], "via": ["tFC"], "output": ["finally: settings file closed"], "error": "ConfigError: bad port 'eighty'", "note": "Nobody answers the ConfigError, so the program crashes with a two-part traceback: the ValueError, the \"direct cause\" sentence, then the ConfigError. <samp>got</samp> never prints."}]},
+        {"id": "none", "label": "None", "bug": true, "program": "road_none.py", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "TypeError: int() argument must be"}, "steps": [
+          {"on": ["T"], "via": ["start"], "output": [], "note": "<code>text</code> is <code>None</code>: not text at all."},
+          {"on": ["F"], "via": ["tTF"], "output": ["finally: settings file closed"], "note": "<code>int(None)</code> is a TypeError. The only net is for ValueError, so Jigsaw goes straight to <code>finally</code>."},
+          {"on": ["C"], "via": ["tFC"], "output": ["finally: settings file closed"], "error": "TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'", "note": "Still ringing after <code>finally</code>: a crash, with a one-part traceback, because nothing was chained."}]}
+      ]}</script>
+  </section>
+
+  <!-- ===================================================== PART 4 ===================================================== -->
+  <h2 class="part-h" id="part-4">Part 4 · Many alarms at once<small>ExceptionGroup bundles several errors; except* sends each to its desk</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 26: a form with three problems at once">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">A sign-up form comes in with three mistakes. If the checker stops at the first one, the user fixes it, submits again, gets the second, and so on. Annoying! Better: collect <b>every</b> problem and raise them together in one <code>ExceptionGroup</code> (Python 3.11+).</p>
+    <div class="ch22-stack">
+      <span class="file-tab">group_raise.py</span><pre class="code" data-src="group_raise.py"></pre>
+      <pre class="term" data-run="group_raise.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>A traceback in a <b>box</b>! With little numbered drawers, one per problem.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: the exception group as a tree">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">The same group, drawn as a tree. One parcel on top, three alarms inside. The boxed traceback is this tree printed sideways.</p>
+    <div class="ch22-group" role="img" aria-label="Tree: one ExceptionGroup named sign-up form has problems, with three children: a TypeError name must be text, drawn as Jigsaw; a ValueError age must be a number, drawn as the Taster; and a KeyError for email, drawn as Jangles.">
+      <div class="root"><code>ExceptionGroup(<wbr>"sign-up form has problems", <wbr>problems)</code></div>
+      <svg class="lines" viewBox="0 0 560 40" preserveAspectRatio="none" aria-hidden="true"><path d="M280 0 V16 M93 16 H467 M93 16 V40 M280 16 V40 M467 16 V40" fill="none" stroke="#111111" stroke-width="3"/></svg>
+      <div class="kids">
+        <div class="kid"><b>1</b><svg class="char" data-char="jigsaw"></svg><code>TypeError(<wbr>"name must be text")</code></div>
+        <div class="kid"><b>2</b><svg class="char" data-char="taster"></svg><code>ValueError(<wbr>"age must be a number")</code></div>
+        <div class="kid"><b>3</b><svg class="char" data-char="jangles"></svg><code>KeyError(<wbr>"email")</code></div>
+      </div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>The outer box</b>, the lines that start with <code>|</code>: the group's own traceback and its last line, <code>ExceptionGroup: sign-up form has problems (3 sub-exceptions)</code>.</span></li>
+      <li><span><b>The numbered drawers</b>, <code>---- 1 ----</code> to <code>---- 3 ----</code>: one per sub-exception, in the order they were added to the list. Each shows its own last line.</span></li>
+      <li><span>Groups can even hold groups. Each level adds another box inside the box.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: except star sends each alarm to its desk">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">To <b>answer</b> a group, use <code>except*</code> ("except star"). Picture a front office with one desk per kind of alarm. Each desk takes <b>its share</b> as a smaller group, named <code>eg</code> here; <code>eg.exceptions</code> holds the alarms inside it. <b>Every</b> desk that has something to take gets a turn.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">group_star.py</span><pre class="code" data-src="group_star.py"></pre>
+      <pre class="term wrap" data-run="group_star.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Compare with a plain <code>except</code>: there, at most <b>one</b> branch runs. Here both desks ran, one after the other. Two more rules: one <code>try</code> uses either <code>except</code> or <code>except*</code>, never both; and whatever no desk takes is raised again as a smaller group.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 29: the map of the except star desks" data-map="map-desks">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption soft">Follow a group through the office. Three forms, three roads. Watch which desks are visited and what's left at the end.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="md-t md-d"><title id="md-t">Map of the except star desks</title><desc id="md-d">A group arrives. If it holds a ValueError it visits the value desk, then the type desk; if not, it goes straight to the type desk. After the desks, if nothing is left over the program carries on after the try; if something is left over it is raised again and the program crashes.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Pip is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The leftover road's real run</summary><div class="ch22-stack" style="margin-top:10px">
+      <p><code>group_leftover.py</code> is Panel 28's program with a form that has no email, and <code>group_typeonly.py</code> sends a form whose only problem is the name.</p>
+      <pre class="term" data-run="group_leftover.py" data-exit></pre>
+    </div></details>
+    <script type="application/json" id="map-desks">{"seed": 29, "size": [690, 520], "start": [[345, 6], [345, 34]],
+      "states": [
+        {"id": "G", "x": 200, "y": 40, "w": 290, "h": 70, "label": "a group arrives", "sub": "from `check(form)`"},
+        {"id": "V", "x": 10, "y": 175, "w": 270, "h": 70, "label": "except* ValueError:", "sub": "value desk takes its share"},
+        {"id": "T", "x": 410, "y": 175, "w": 270, "h": 70, "label": "except* TypeError:", "sub": "type desk takes its share"},
+        {"id": "L", "x": 200, "y": 300, "w": 290, "h": 66, "label": "anything left over?"},
+        {"id": "A", "x": 30, "y": 440, "w": 260, "h": 66, "label": "after the try", "sub": "the next line runs", "kind": "end"},
+        {"id": "C", "x": 400, "y": 440, "w": 260, "h": 66, "label": "crash", "sub": "leftovers raised again", "kind": "error"}
+      ],
+      "transitions": [
+        {"id": "gv", "from": "G", "to": "V", "pts": [[198, 75], [145, 75], [145, 169]], "label": ["has a", "ValueError"], "lx": 186, "ly": 60, "anchor": "end"},
+        {"id": "gt", "from": "G", "to": "T", "pts": [[492, 75], [545, 75], [545, 169]], "label": ["no ValueError:", "skip a desk"], "lx": 504, "ly": 60},
+        {"id": "vt", "from": "V", "to": "T", "pts": [[282, 210], [404, 210]], "label": "next desk", "lx": 300, "ly": 200},
+        {"id": "tl", "from": "T", "to": "L", "pts": [[545, 247], [545, 333], [496, 333]]},
+        {"id": "la", "from": "L", "to": "A", "pts": [[290, 368], [290, 410], [160, 410], [160, 434]], "label": "nothing left", "lx": 278, "ly": 394, "anchor": "end"},
+        {"id": "lc", "from": "L", "to": "C", "pts": [[400, 368], [400, 410], [530, 410], [530, 434]], "label": "something left", "lx": 412, "ly": 394, "bug": true}
+      ],
+      "paths": [
+        {"id": "both", "label": "Name and age wrong", "program": "group_star.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["G"], "via": ["start"], "output": [], "note": "The form has a number for a name and <code>\"ten\"</code> for an age. <code>check()</code> raises a group holding a TypeError and a ValueError."},
+          {"on": ["V"], "via": ["gv"], "output": ["value desk got: (ValueError('age must be a number'),)"], "note": "The value desk takes the ValueError, as a smaller group of one."},
+          {"on": ["T"], "via": ["vt"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)"], "note": "Unlike plain <code>except</code>, Python moves on to the next desk with what's left. The type desk takes the TypeError."},
+          {"on": ["L"], "via": ["tl"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)"], "note": "Every alarm in the group has been taken."},
+          {"on": ["A"], "via": ["la"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)", "all problems handled"], "note": "Nothing left over, so the program carries on after the <code>try</code>. Exit code 0."}]},
+        {"id": "type", "label": "Only the name wrong", "program": "group_typeonly.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["G"], "via": ["start"], "output": [], "note": "This time the age is <code>\"10\"</code>. The group holds just one TypeError."},
+          {"on": ["T"], "via": ["gt"], "output": ["type desk got: (TypeError('name must be text'),)"], "note": "There's no ValueError inside, so the value desk is skipped without a word. The type desk takes the TypeError."},
+          {"on": ["L"], "via": ["tl"], "output": ["type desk got: (TypeError('name must be text'),)"], "note": "Nothing remains in the group."},
+          {"on": ["A"], "via": ["la"], "output": ["type desk got: (TypeError('name must be text'),)", "all problems handled"], "note": "The program carries on."}]},
+        {"id": "left", "label": "Email missing too", "bug": true, "program": "group_leftover.py", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "KeyError: 'email'"}, "steps": [
+          {"on": ["G"], "via": ["start"], "output": [], "note": "Name and age are wrong, and there's no email at all: three alarms in one group."},
+          {"on": ["V"], "via": ["gv"], "output": ["value desk got: (ValueError('age must be a number'),)"], "note": "The value desk takes the ValueError."},
+          {"on": ["T"], "via": ["vt"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)"], "note": "The type desk takes the TypeError."},
+          {"on": ["L"], "via": ["tl"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)"], "note": "Jangles, the KeyError, is still in the group. No desk wanted it."},
+          {"on": ["C"], "via": ["lc"], "output": ["value desk got: (ValueError('age must be a number'),)", "type desk got: (TypeError('name must be text'),)"], "error": "ExceptionGroup: form has problems (1 sub-exception)", "note": "The leftovers are raised again, still as a group, now with one drawer: <samp>KeyError: 'email'</samp>. <samp>all problems handled</samp> never prints."}]}
+      ]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="e11m" id="e11"></div>
+  <script type="application/json" id="e11m">{"program": "group_pred.py", "hint": "Each <code>except*</code> desk runs <b>at most once</b>, with all of its matching alarms together. A desk with nothing to take doesn't run.", "explain": "The value desk runs once and gets both ValueErrors, so <samp>values: 2</samp>. The zero desk gets the ZeroDivisionError. There is no KeyError, so the third desk stays silent. Nothing is left, so <samp>done</samp> prints."}</script>
+
+  <div data-ex="choice" data-model="e12m" id="e12"></div>
+  <script type="application/json" id="e12m">{"q": "A <code>try</code> raises an ExceptionGroup containing one ValueError and one TypeError. It is followed by <code>except* ValueError:</code> and then <code>except* TypeError:</code>. What happens?", "options": [
+    {"t": "Both branches run, one after the other, each with its own share of the group.", "why": "Right. That's the whole point of <code>except*</code>: every desk that matches part of the group gets a turn.", "correct": true},
+    {"t": "Only the first branch runs, like a plain <code>except</code>.", "why": "That's plain <code>except</code>. With <code>except*</code>, Python carries on to the next desk with whatever is left."},
+    {"t": "Neither runs, because the error is an ExceptionGroup, not a ValueError.", "why": "<code>except*</code> looks <b>inside</b> the group, so it does match."},
+    {"t": "The ValueError branch runs twice.", "why": "Each <code>except*</code> branch runs at most once, with all its matches together."}]}</script>
+
+  <!-- ===================================================== PART 5 ===================================================== -->
+  <h2 class="part-h" id="part-5">Part 5 · The hotel key card<small>with guarantees the cleanup: __enter__, __exit__, and what as receives</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 30: writing to a file after its with block">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="CLUNK!" data-seed="30"></svg>
+    <p class="caption">Chapter 10's <code>with open(...)</code> closes the file when the indented block ends. Pip forgets that and writes one more line afterwards.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">closed_after.py</span><pre class="code" data-src="closed_after.py"></pre>
+      <pre class="term" data-run="closed_after.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>ValueError: I/O operation on closed file.</code><br>What: the file object still exists (the name <code>f</code> still points to it), but it's closed. "I/O" means input/output: reading and writing.</span></li>
+      <li><span><code>line 6</code><br>Where: the first write after the block (reading <code>f.closed</code> on line 5 is fine). The fix is to move the line up, inside the <code>with</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="taster"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Taster says: </span>Right kind of thing, a file, but in the wrong state: closed. That's my department.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 31: the hotel key card picture">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption soft">How does <code>with</code> know when to close? Think of a <b>hotel key card</b>. Slot it in by the door and the lights come on. Take it out and everything switches off, however you leave: strolling out, or running from a fire alarm.</p>
+    <div class="ch22-steps">
+      <figure><svg class="char" data-char="keycard" data-room="204" data-state="in"></svg><figcaption>1 · Card in: <code>__enter__</code> sets things up.</figcaption></figure>
+      <figure><svg class="char ch22-pip" data-char="pip" data-mood="happy" data-arms="wave"></svg><figcaption>2 · Your stay: the indented <code>with</code> block.</figcaption></figure>
+      <figure class="alarm-step"><svg class="char" data-char="keycard" data-room="204" data-state="out"></svg><figcaption>3 · Card out: <code>__exit__</code> tidies up, even during an alarm.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture in three steps. One: card 204 goes into the slot and the light shows ON. Two: Pip waves, enjoying the room. Three, in a dashed frame: the card is lifted out of the slot and the light shows OFF with a dashed outline.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Anything that works with <code>with</code> is called a <b>context manager</b>. A file is one. You can write your own with two special methods (Chapter 20's sockets): <code>__enter__</code> and <code>__exit__</code>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: writing a KeyCard class">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Our own key card. <code>with KeyCard(204) as card:</code> makes the object, calls its <code>__enter__</code>, runs the block, then calls <code>__exit__</code>.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">keycard.py</span><pre class="code" data-src="keycard.py"></pre>
+      <pre class="term" data-run="keycard.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span><code>__exit__</code> takes three extra arguments. They describe the alarm, if one is ringing. Panel 34 opens them up.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: walk through a with block when an alarm goes off" data-walk="walk-card" id="walk-card-box">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">The important case: an alarm goes off <b>in the middle</b> of the stay. Walk it line by line and watch where Pip jumps.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">keycard_walk.py</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-card">{"program": "keycard_walk.py", "steps": [
+      {"line": 1, "output": [], "mood": "focus", "arms": "point", "note": "Line 1 builds the <code>KeyCard</code> class with its two sockets. Their bodies don't run yet."},
+      {"line": 9, "output": [], "mood": "focus", "arms": "point", "note": "The class is ready. Line 9 opens a <code>try</code>, so an alarm from inside can be answered."},
+      {"line": 10, "output": [], "mood": "focus", "arms": "point", "note": "Line 10: <code>with KeyCard():</code> makes a card and slots it in."},
+      {"line": 3, "output": [], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Slotting in means calling <code>__enter__</code>: Pip jumps up to line 2 and runs its body."},
+      {"line": 4, "output": ["enter: ON"], "mood": "happy", "arms": "point", "note": "Lights on."},
+      {"line": 11, "output": ["enter: ON"], "mood": "focus", "arms": "point", "note": "<code>__enter__</code> returns the card. There's no <code>as</code>, so nobody keeps it. Now the stay begins: the indented block."},
+      {"line": 12, "output": ["enter: ON", "body: unpack"], "mood": "happy", "arms": "point", "note": "Unpacking."},
+      {"line": 7, "output": ["enter: ON", "body: unpack"], "mood": "worried", "mouth": "shout", "arms": "shrug", "note": "<b>Fire alarm!</b> Line 12 raises a RuntimeError. Line 13 will never run. But before the alarm leaves the <code>with</code>, Python calls <code>__exit__</code> and hands it the alarm's details."},
+      {"line": 14, "output": ["enter: ON", "body: unpack", "exit: OFF, RuntimeError"], "mood": "focus", "arms": "point", "note": "Lights off, and <code>__exit__</code> even knows why we left: <code>exc_type</code> is the RuntimeError class. It returns nothing (None), which means \"keep ringing\"."},
+      {"line": 15, "output": ["enter: ON", "body: unpack", "exit: OFF, RuntimeError"], "mood": "happy", "arms": "point", "note": "The alarm leaves the <code>with</code> and reaches the <code>except RuntimeError</code> on line 14. Answered."},
+      {"line": null, "output": ["enter: ON", "body: unpack", "exit: OFF, RuntimeError", "caught: fire!"], "mood": "happy", "mouth": "shout", "arms": "cheer", "note": "The order to remember: <b>enter, body, exit, then whoever catches the alarm</b>. The lights were off before anyone outside heard about the fire."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="e13m" id="e13"></div>
+  <script type="application/json" id="e13m">{"program": "pred_order.py", "hint": "Each trip through the loop slots a card in (A) and takes it out (B). In the second trip, <code>int(\"seven\")</code> fails before C can print.", "explain": "\"7\": A, then C 7, then B with no alarm (<code>exc_type is None</code> is True). \"seven\": A, then <code>int()</code> raises, so C never prints; <code>__exit__</code> prints B False, and only <b>then</b> does the <code>except</code> outside print D."}</script>
+
+  <section class="panel clean" aria-label="Panel 34: the three arguments of __exit__">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption"><code>__exit__(self, exc_type, exc, tb)</code> receives the alarm's <b>class</b>, the alarm <b>object</b> itself, and its <b>traceback</b>. On a calm visit, all three are <code>None</code>.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">exit_args.py</span><pre class="code" data-src="exit_args.py"></pre>
+      <pre class="term" data-run="exit_args.py" data-exit></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>The names are up to you; the order isn't. You'll often see <code>exc_type, exc_value, traceback</code> or <code>exc_type, exc_val, exc_tb</code>. And after printing, this <code>__exit__</code> returned nothing, so the KeyError kept ringing and crashed the program.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e14m" id="e14"></div>
+  <script type="application/json" id="e14m">{"program": "fill_exit.py", "prompt": "Make <code>Lamp</code> a context manager. The block uses <code>as lamp</code>, so think about what <code>__enter__</code> must give back.", "blanks": [{"line": 2, "text": "__enter__"}, {"line": 4, "text": "return self"}, {"line": 6, "text": "exc_type, exc, tb", "accept": ["exc_type, exc_value, traceback", "exc_type, exc_val, exc_tb", "exc_type,exc,tb", "*args"]}], "explain": "<code>__enter__</code> runs when the block starts, and what it <b>returns</b> becomes <code>lamp</code>, so it returns <code>self</code>. <code>__exit__</code> always receives three values after <code>self</code>: the alarm's class, the alarm, and its traceback."}</script>
+
+  <section class="panel clean" aria-label="Panel 35: returning True from __exit__ silences the alarm">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">One more power: if <code>__exit__</code> returns <code>True</code>, the alarm is <b>silenced</b> and the program carries on after the <code>with</code>. Return anything false (or nothing) to let it keep ringing.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">exit_true.py</span><pre class="code" data-src="exit_true.py"></pre>
+      <pre class="term" data-run="exit_true.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>It checks <code>exc_type</code> first, like a narrow <code>except</code>. An <code>__exit__</code> that returns <code>True</code> for <b>everything</b> would be a fourth silencer from Panel 9!</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 36: as receives what __enter__ returns" data-tracer="tr-as" id="tr-as-box">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">A surprise hiding in <code>with card as what:</code>. The name after <code>as</code> is <b>not</b> the card. It's whatever <code>__enter__</code> returns. Step through and watch the tags.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-as-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-as">{"program": "as_value.py", "steps": [
+      {"line": 1, "note": "Nothing exists yet. Line 1 starts the class.", "output": [], "frames": [{"name": "global", "vars": []}], "objects": {}, "changed": []},
+      {"line": 11, "note": "The class is built and tagged <code>KeyCard</code>.", "output": [], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}}, "changed": ["KeyCard"]},
+      {"line": 12, "note": "<code>KeyCard(204)</code> makes a card object with <code>room</code> = 204, tagged <code>card</code>. Making a card isn't slotting it in: no <code>__enter__</code> yet.", "output": [], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}}, "changed": ["card"]},
+      {"line": 6, "note": "<code>with card</code> calls <code>card.__enter__()</code>. A new frame opens, and its <code>self</code> is the same card object.", "output": [], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}]}, {"name": "__enter__(self)", "vars": [{"n": "self", "ref": "O1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}}, "changed": ["self"]},
+      {"line": 13, "note": "<code>__enter__</code> returned a <b>string</b>. That string, not the card, is what <code>as what</code> tags. Two different objects!", "output": [], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}, {"n": "what", "ref": "S1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}, "S1": {"kind": "str", "value": "'room 204 is open'"}}, "changed": ["what"]},
+      {"line": 9, "note": "The block printed the string and ended calmly, so Python calls <code>card.__exit__(None, None, None)</code>: three Nones mean \"no alarm\".", "output": ["room 204 is open"], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}, {"n": "what", "ref": "S1"}]}, {"name": "__exit__(self, exc_type, exc, tb)", "vars": [{"n": "self", "ref": "O1"}, {"n": "exc_type", "ref": "N1"}, {"n": "exc", "ref": "N1"}, {"n": "tb", "ref": "N1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}, "S1": {"kind": "str", "value": "'room 204 is open'"}, "N1": {"kind": "NoneType", "value": "None"}}, "changed": ["exc_type", "exc", "tb"]},
+      {"line": 14, "note": "<code>__exit__</code> returned False: there was nothing to silence anyway. The block is over, but both tags survive: a <code>with</code> block doesn't delete names.", "output": ["room 204 is open"], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}, {"n": "what", "ref": "S1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}, "S1": {"kind": "str", "value": "'room 204 is open'"}}, "changed": []},
+      {"line": null, "note": "The proof: <code>card</code> is a KeyCard, <code>what</code> is a str. Files hide this because <code>open()</code>'s <code>__enter__</code> returns the file itself.", "output": ["room 204 is open", "KeyCard str"], "frames": [{"name": "global", "vars": [{"n": "KeyCard", "ref": "C1"}, {"n": "card", "ref": "O1"}, {"n": "what", "ref": "S1"}]}], "objects": {"C1": {"kind": "class", "value": "KeyCard"}, "O1": {"kind": "object", "label": "KeyCard object · O1", "pairs": [{"k": "room", "val": "204"}]}, "S1": {"kind": "str", "value": "'room 204 is open'"}}, "changed": []}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="e15m" id="e15"></div>
+  <script type="application/json" id="e15m">{"program": "spot_enter.py", "bug": 7, "prompt": "The locker unlocks and locks again, then the program crashes. Click the line that needs fixing.", "explain": "Line 7 returns <code>self.number</code>, the int 7, so <code>as box</code> tags an int, and <code>box.number</code> fails. <code>__enter__</code> should <code>return self</code>. Notice that <code>locker 7 locked</code> still printed: <code>__exit__</code> runs even on the way out of a crash."}</script>
+
+  <div data-ex="choice" data-model="e16m" id="e16"></div>
+  <script type="application/json" id="e16m">{"q": "An <code>__exit__</code> method ends with <code>return True</code> on every road. What happens when the <code>with</code> block raises a KeyError?", "options": [
+    {"t": "The KeyError is silenced, and the program carries on after the <code>with</code>.", "why": "Right. A true return value means \"handled\", so the program carries on as if nothing happened. For every error, that's as risky as <code>except Exception: pass</code>.", "correct": true},
+    {"t": "The KeyError keeps ringing once <code>__exit__</code> has finished running.", "why": "That's what happens when <code>__exit__</code> returns a false value or nothing at all."},
+    {"t": "<code>__exit__</code> is never called, because the block failed with an error.", "why": "<code>__exit__</code> is called on <b>every</b> road out of the block. That's the guarantee."},
+    {"t": "Python runs the whole <code>with</code> block again, from the top.", "why": "Python never retries a block by itself."}]}</script>
+
+  <!-- ===================================================== PART 6 ===================================================== -->
+  <h2 class="part-h" id="part-6">Part 6 · Key-card shortcuts<small>@contextmanager, try/finally around yield, and the contextlib toolbox</small></h2>
+
+  <section class="panel clean" aria-label="Panel 37: a context manager from a generator">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Writing a whole class for every key card is a lot of typing. <code>contextlib.contextmanager</code> builds one from a <b>generator</b> (Chapter 16), using a decorator (Chapter 18): code <b>before</b> <code>yield</code> is the card going in, the yielded value goes to <code>as</code>, and code <b>after</b> <code>yield</code> is the card coming out.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">cm_basic.py</span><pre class="code" data-src="cm_basic.py"></pre>
+      <pre class="term" data-run="cm_basic.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Same output as Panel 32's class, with no class at all! The <code>yield</code> is the moment I'm inside the room.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 38: an alarm skips the code after yield">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="DARK?!" data-seed="38"></svg>
+    <p class="caption">But try a fire alarm with the generator version…</p>
+    <div class="ch22-stack">
+      <span class="file-tab">cm_noclean.py</span><pre class="code" data-src="cm_noclean.py"></pre>
+      <pre class="term" data-run="cm_noclean.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Where's <samp>lights OFF</samp>? The room is still lit, with nobody in it!</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>When the block raises, Python re-raises that alarm <b>inside the generator, at the <code>yield</code></b>. It's just like a line that fails: everything after it is skipped. Unless something catches it there.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: try and finally around the yield">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">You know the tool that runs on every road: <code>finally</code>. Wrap the <code>yield</code> in it.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">cm_finally.py</span><pre class="code" data-src="cm_finally.py"></pre>
+      <pre class="term" data-run="cm_finally.py" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Lights off, <b>then</b> the alarm carries on to the traceback. Catchphrase: <b>TEARDOWN GOES IN FINALLY.</b> Every <code>@contextmanager</code> that sets something up needs it.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="e17m" id="e17"></div>
+  <script type="application/json" id="e17m">{"program": "parsons_cm.py", "seed": 11, "pin": [1], "prompt": "Build an oven that always switches off, even if the baking goes wrong. Put the lines in order.", "explain": "Import, then the decorator right above the <code>def</code>. Setup comes before <code>try</code>, the <code>yield</code> sits inside <code>try</code>, and the teardown goes under <code>finally</code>. The <code>with</code> block comes last and uses it."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 40: forgetting the yield">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="40"></svg>
+    <p class="caption">And if there's no <code>yield</code> at all?</p>
+    <div class="ch22-stack">
+      <span class="file-tab">cm_noyield.py</span><pre class="code" data-src="cm_noyield.py"></pre>
+      <pre class="term" data-run="cm_noyield.py" data-exit></pre>
+    </div>
+    <ol class="readlist">
+      <li><span><code>TypeError: 'NoneType' object is not an iterator</code><br>What: without <code>yield</code>, <code>key_card</code> is an ordinary function. It ran all the way through (both lines printed!) and returned <code>None</code>, and <code>contextmanager</code> tried to step <code>None</code> forward like a generator.</span></li>
+      <li><span>The second <code>File</code> line points inside Python's own <code>contextlib.py</code>, at <code>return next(self.gen)</code>. That path depends on where Python is installed: on CPython 3.13.18 it was <code>/usr/local/lib/python3.13/contextlib.py</code>, line 141. Yours will differ too. Read the line above it, <code>line 8</code>: your <code>with</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="jigsaw"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Jigsaw says: </span>Wrong shape! <code>@contextmanager</code> needs a generator, and only a <code>yield</code> makes one.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 41: the contextlib toolbox">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">The <code>contextlib</code> module has ready-made key cards for common jobs.</p>
+    <table class="ref-table">
+        <thead><tr><th>Tool</th><th>Card in</th><th>Card out</th></tr></thead>
+        <tbody>
+          <tr><td><code>suppress(Error)</code></td><td>nothing</td><td>silences that one error class</td></tr>
+          <tr><td><code>redirect_stdout(f)</code></td><td><code>print</code> now writes to <code>f</code></td><td>printing goes back to the screen</td></tr>
+          <tr><td><code>closing(thing)</code></td><td>nothing</td><td>calls <code>thing.close()</code></td></tr>
+          <tr><td><code>ExitStack()</code></td><td>you add cards as you go</td><td>takes them all out, last one first</td></tr>
+        </tbody>
+      </table>
+    <div class="duo ch22-onecol">
+      <div class="duo-card">
+        <h3>suppress<small>suppress_demo.py</small></h3>
+        <pre class="code" data-src="suppress_demo.py"></pre>
+        <pre class="term" data-run="suppress_demo.py"></pre>
+        <p>There was no old draft, so <code>os.remove</code> raised FileNotFoundError: silenced, and line 6 was skipped. A tidy <code>try / except FileNotFoundError: pass</code>.</p>
+      </div>
+      <div class="duo-card">
+        <h3>redirect_stdout<small>redirect_demo.py</small></h3>
+        <pre class="code" data-src="redirect_demo.py"></pre>
+        <pre class="term" data-run="redirect_demo.py"></pre>
+        <p>Inside the block, <code>print</code> wrote into a string buffer (<code>io.StringIO</code>) instead of the screen. Handy for testing what a function prints.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="digger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Digger says: </span>I dug for <code>old_draft.txt</code> and found nothing, and <code>suppress</code> told me to keep quiet about it. Fine by me.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 42: closing and ExitStack">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption"><code>closing()</code> turns anything with a <code>close()</code> method into a key card. <code>ExitStack</code> is a key-card <b>holder</b>: add as many as you like, even when you don't know how many in advance.</p>
+    <div class="duo ch22-onecol">
+      <div class="duo-card">
+        <h3>closing<small>closing_demo.py</small></h3>
+        <pre class="code" data-src="closing_demo.py"></pre>
+        <pre class="term" data-run="closing_demo.py"></pre>
+      </div>
+      <div class="duo-card">
+        <h3>ExitStack<small>exitstack_demo.py</small></h3>
+        <pre class="code" data-src="exitstack_demo.py"></pre>
+        <pre class="term" data-run="exitstack_demo.py"></pre>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>On 101, 102, 103… off 103, 102, 101. The <b>last</b> card in comes out <b>first</b>, like plates on a stack. That's where the name comes from.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 43: several managers in one with">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">For a fixed handful of managers, put them in one <code>with</code>, separated by commas. Round brackets let the list spread over several lines (official since Python 3.10), and a trailing comma is fine.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">multi_with.py</span><pre class="code" data-src="multi_with.py"></pre>
+      <pre class="term" data-run="multi_with.py"></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>It behaves exactly like one <code>with</code> nested inside another: enter left to right, exit right to left. The classic use is reading one file while writing another: <code>with (open("in.txt") as src, open("out.txt", "w") as dst):</code>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="e19m" id="e19"></div>
+  <script type="application/json" id="e19m">{"program": "trace_cards.py", "columns": ["event", "room"], "given": [1], "prompt": "Two cards, one <code>with</code> inside the other. Fill in each event word (<code>on</code>, <code>in</code> or <code>off</code>) in the order it prints.", "explain": "Card 1 goes in, then card 2. The inner block prints <samp>in 2</samp> and card 2 comes out <b>first</b>. Back in the outer block, <samp>in 1</samp>, then card 1 comes out. Nested managers always close in reverse order."}</script>
+
+  <section class="panel clean" aria-label="Panel 44: context managers you will meet">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">Two key cards from the standard library. <code>tempfile.TemporaryDirectory()</code> makes a scratch folder and deletes it, contents and all, on the way out. A <b>lock</b> from <code>threading</code> is held inside the block and released after; Chapter 27 shows why programs that do several things at once need one.</p>
+    <div class="ch22-stack">
+      <span class="file-tab">real_managers.py</span><pre class="code" data-src="real_managers.py"></pre>
+      <pre class="term" data-run="real_managers.py"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The program never prints the folder's name, because it's random: a different one on every run. Whenever something must be undone, closed, released or deleted, look for a <code>with</code>. Catchphrase: <b>IF YOU OPEN IT, LET WITH CLOSE IT.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="e18m" id="e18"></div>
+  <script type="application/json" id="e18m">{"program": "pred_noyield.py", "expect": "error", "hint": "Is there a <code>yield</code> anywhere in <code>timer</code>?", "explain": "No <code>yield</code>, so <code>timer()</code> is an ordinary function: it prints <samp>start</samp> and returns the string <code>\"done\"</code>. Then <code>contextmanager</code> calls <code>next()</code> on a string and gets <code>TypeError: 'str' object is not an iterator</code>. Same mistake as Panel 40, different type in the message."}</script>
+
+  <div data-ex="choice" data-model="e20m" id="e20"></div>
+  <script type="application/json" id="e20m">{"q": "At start-up your program deletes <code>cache.tmp</code> if it exists. If it doesn't exist, that's fine. Which is the neatest way?", "options": [
+    {"t": "<code>with suppress(FileNotFoundError): os.remove(\"cache.tmp\")</code>", "why": "Yes. Exactly one expected error is silenced, and anything else, such as a permission error, still rings.", "correct": true},
+    {"t": "<code>try: os.remove(\"cache.tmp\")</code> then <code>except Exception: pass</code>", "why": "It works, but it silences every error, including a typo in the code: Panel 9's first silencer."},
+    {"t": "<code>with redirect_stdout(None): os.remove(\"cache.tmp\")</code>", "why": "That redirects printing. It doesn't stop an error from being raised."},
+    {"t": "<code>with closing(\"cache.tmp\"): os.remove(\"cache.tmp\")</code>", "why": "<code>closing</code> calls <code>.close()</code> on its argument, and a string has no <code>close</code> method."}]}</script>
+
+  <!-- ===================================================== BOSS ===================================================== -->
+  <section class="panel pop" data-play aria-label="Panel 45: boss level" id="boss">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="45"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <p class="caption">Every check mixes ideas from this chapter.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="pip" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>For every alarm, ask: who answers it, and what's in the log? For every key card, ask: what runs on the way in, and does the way out run on <b>every</b> road?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="b1m" id="b1"></div>
+  <script type="application/json" id="b1m">{"program": "boss_predict.py", "hint": "This time the generator <b>catches</b> ShopError at the <code>yield</code>. An alarm that's caught inside the manager doesn't come out of the <code>with</code>.", "explain": "First visit: open, sell, closed. Second visit: the ShopError is raised inside the generator at <code>yield</code>, the <code>except ShopError</code> there catches it and prints the refund, and <code>finally</code> closes the till. Because it was caught, the alarm stops there and <samp>end of day</samp> prints."}</script>
+
+  <div data-ex="trace" data-model="b2m" id="b2"></div>
+  <script type="application/json" id="b2m">{"program": "boss_trace.py", "columns": ["order", "result", "stock"], "given": [0], "prompt": "Orders arrive one at a time. Fill in the result and the stock left after each one.", "explain": "1 ≤ 3: sold, 2 left. 5 &gt; 2: OutOfStock is raised before <code>stock -= order</code>, so the stock stays 2. 2 ≤ 2: sold, 0 left. 1 &gt; 0: short."}</script>
+
+  <div data-ex="parsons" data-model="b3m" id="b3"></div>
+  <script type="application/json" id="b3m">{"program": "boss_parsons.py", "seed": 3, "pin": [1, 2], "prompt": "The class is pinned first. Rebuild the rest: the function, then the code that calls it.", "explain": "The ValueError from <code>int()</code> is caught and translated into a ConfigError <b>from</b> it, so <code>err.__cause__</code> still holds the original ValueError."}</script>
+
+  <div data-ex="spot" data-model="b4m" id="b4"></div>
+  <script type="application/json" id="b4m">{"program": "boss_spot.py", "bug": 6, "prompt": "Dune was borrowed, coffee was spilled, and now Dune has vanished from the shelf. Click the line that needs fixing.", "explain": "The error from the block is re-raised at the <code>yield</code> on line 6, so line 7 never runs and the book is never put back. Wrap it: <code>try:</code> / <code>yield book</code> / <code>finally:</code> / <code>shelf.append(book)</code>."}</script>
+
+  <div data-ex="fill" data-model="b5m" id="b5"></div>
+  <script type="application/json" id="b5m">{"program": "boss_fill.py", "prompt": "A package with a root error, a translated error, a note and a kept cause. Fill the blanks.", "blanks": [{"line": 4, "text": "AppError"}, {"line": 12, "text": "add_note"}, {"line": 13, "text": "from"}, {"line": 17, "text": "AppError"}], "explain": "BadRow inherits from the root <code>AppError</code>, so <code>except AppError</code> on line 17 catches it. <code>add_note</code> attaches the extra line, and <code>raise ... from e</code> keeps the ValueError as <code>__cause__</code>."}</script>
+
+  <div data-ex="predict" data-model="b6m" id="b6"></div>
+  <script type="application/json" id="b6m">{"program": "boss_error.py", "expect": "error", "answer": "ExceptionGroup", "ask": "The front desk handles the key. Which kind of error is still loose at the end? (just its name)", "hint": "<code>except*</code> takes only its share. What happens to the part nobody takes?", "explain": "The KeyError desk takes its share and prints. The OSError is left over, so Python raises it again <b>wrapped in a smaller ExceptionGroup</b>, with one drawer: <samp>OSError: lift stuck</samp>. <samp>good morning</samp> never prints."}</script>
+
+  <section class="panel pop" aria-label="Panel 46: what you learned">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption">What you learned in Chapter 22</p>
+    <ul class="recap">
+      <li><b>CATCH THE ALARM YOU EXPECT. LET THE REST RING.</b>Exceptions form a family tree; a parent catches its children. <code>except Exception</code>, bare <code>except:</code> and <code>return</code> in <code>finally</code> all silence bugs. Exit signals hang above <code>Exception</code>.</li>
+      <li><b>DON'T HAND BACK A GHOST. RING THE ALARM WHERE IT HAPPENS.</b>Make your own exception classes with one root per package, and raise instead of returning <code>None</code> for failures.</li>
+      <li><b>TRANSLATE THE ALARM, KEEP THE LOG.</b><code>raise New(...) from e</code> keeps the cause ("direct cause"); a failing handler chains by itself ("during handling"); <code>add_note</code> adds a line; <code>traceback</code> and <code>logging</code> write it down.</li>
+      <li><b>ONE DESK PER KIND, EVERY DESK GETS ITS SHARE.</b><code>ExceptionGroup</code> bundles errors; each <code>except*</code> takes its matches; leftovers are raised again.</li>
+      <li><b>IF YOU OPEN IT, LET WITH CLOSE IT.</b> <code>__enter__</code> runs on the way in and its return value goes to <code>as</code>; <code>__exit__</code> runs on every way out, and returning True silences. With <code>@contextmanager</code>, <b>TEARDOWN GOES IN FINALLY.</b></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My alarms have names, my incident log is complete, and the lights go off whenever I leave. Safety officer, reporting for duty!</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 47: next time, the hardware store">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <p class="caption soft">Coming up in Chapter 23…</p>
+    <div class="teaser">
+      <div class="ch22-row">
+        <figure><svg class="ch22-sign" viewBox="0 0 200 176" aria-hidden="true" focusable="false">
+          <path class="roof" d="M14 62 L100 10 L186 62 Z"/>
+          <rect class="y" x="58" y="34" width="84" height="26" rx="5"/><text x="100" y="53" font-size="17" text-anchor="middle" class="c">store/</text>
+          <rect class="brick" x="22" y="62" width="156" height="110"/>
+          <path class="ln" d="M22 100 H178 M22 136 H178"/>
+          <rect class="p" x="34" y="70" width="90" height="24" rx="4"/><text x="79" y="88" font-size="16" text-anchor="middle" class="c">garden/</text>
+          <rect class="p" x="34" y="106" width="90" height="24" rx="4"/><text x="79" y="124" font-size="16" text-anchor="middle" class="c">tools/</text>
+          <rect class="p" x="136" y="140" width="30" height="32" rx="3"/>
+        </svg><figcaption>Pip's shop code has outgrown one file…</figcaption></figure>
+        <span class="ch22-arrow" aria-hidden="true">→</span>
+        <figure><svg class="ch22-sign" viewBox="0 0 200 176" aria-hidden="true" focusable="false">
+          <path class="ln" d="M60 4 V24 M140 4 V24"/>
+          <rect class="y" x="18" y="22" width="164" height="34" rx="6"/><text x="100" y="47" font-size="20" text-anchor="middle" class="t">AISLE 1</text>
+          <rect class="p" x="18" y="56" width="164" height="114" rx="6"/>
+          <text x="34" y="82" font-size="16" class="c">Counter</text>
+          <text x="34" y="106" font-size="16" class="c">deque</text>
+          <text x="34" y="130" font-size="16" class="c">datetime</text>
+          <text x="34" y="154" font-size="16" class="c">Decimal</text>
+        </svg><figcaption>…and the standard library is a whole hardware store of aisles.</figcaption></figure>
+      </div>
+      <p class="sr-only">Teaser picture: a small building with a sign reading store/ and two floors, garden/ and tools/; an arrow; then a hardware-store aisle sign, AISLE 1, listing Counter, deque, datetime and Decimal.</p>
+      <div class="scene">
+        <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Pip thinks: </span>My shop code has outgrown one file. Could it live in a folder of modules, with floors and rooms? And what else is on Python's shelves that I keep writing by hand?</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 23 · THE HARDWARE STORE<br><small style="font: 700 1rem var(--f-bubble)">Packages as a building with floors and rooms, and the standard library as a hardware store: collections, datetime, decimal, json, pathlib and more.</small></p>
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch21.html">← Ch 21 · Labels and Sorting Chutes</a><a class="next" href="ch23.html">Ch 23 · The Hardware Store →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what with really does, and where the log is kept</summary>
+    <div class="page-body">
+      <svg class="char sm" data-char="professor"></svg>
+      <h3>A with statement, written out by hand</h3>
+      <p>The language reference spells out what <code>with</code> means. Simplified: call <code>__enter__</code> and bind its result to the <code>as</code> name; run the block inside a <code>try</code>; if anything at all is raised (even <code>SystemExit</code>), pass its details to <code>__exit__</code> and re-raise unless it returns something true; if nothing is raised, call <code>__exit__(None, None, None)</code>. Python looks up both methods on the <b>class</b>, like every socket in Chapter 20.</p>
+      <div class="pair"><pre class="code" data-src="nb_with_by_hand.py"></pre><pre class="term" data-run="nb_with_by_hand.py"></pre></div>
+      <h3>Three attributes hold the incident log</h3>
+      <p>Every exception has <code>__cause__</code> (set by <code>from</code>), <code>__context__</code> (set automatically when it was raised while another was being handled) and <code>__suppress_context__</code> (set to True by <code>from</code>, so the "during handling" part is not printed). <code>from None</code> sets the cause to None and hides the context. The traceback itself lives in <code>__traceback__</code>.</p>
+      <div class="pair"><pre class="code" data-src="nb_cause_context.py"></pre><pre class="term wrap" data-run="nb_cause_context.py"></pre></div>
+      <h3>except* always hands you a group</h3>
+      <p>Even when a single, ordinary exception is raised, <code>except*</code> wraps it, so the name after <code>as</code> is always an <code>ExceptionGroup</code> and you read <code>eg.exceptions</code>:</p>
+      <div class="pair"><pre class="code" data-src="nb_star_wraps.py"></pre><pre class="term" data-run="nb_star_wraps.py"></pre></div>
+      <p>Behind the scenes, each <code>except*</code> calls the group's <code>split()</code> method, which divides it into the matching part and the rest, keeping the tree shape:</p>
+      <div class="pair"><pre class="code" data-src="nb_split.py"></pre><pre class="term" data-run="nb_split.py"></pre></div>
+      <h3>assert can be switched off</h3>
+      <p>Running Python with <code>-O</code> ("optimise") removes every <code>assert</code> statement before the program runs. That's why <code>assert</code> is for checking your own assumptions while developing, and <code>raise</code> is for problems that can really happen, such as bad input:</p>
+      <pre class="code" data-src="assert_demo.py"></pre>
+      <pre class="term wrap" data-run="assert_demo.py" data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: error hierarchies, logging and with everywhere</summary>
+    <div class="page-body">
+      <h3>Root exceptions in well-known libraries</h3>
+      <ul>
+        <li>The <code>requests</code> HTTP library raises everything from <code>requests.RequestException</code>, with children such as <code>ConnectionError</code> and <code>Timeout</code>.</li>
+        <li>The standard library's <code>json.JSONDecodeError</code> is a child of <code>ValueError</code>, so old code that catches ValueError still works. Inheriting from a matching built-in as well as your root is a common trick.</li>
+        <li><code>OSError</code> has children for each operating-system problem: <code>FileNotFoundError</code>, <code>PermissionError</code>, <code>IsADirectoryError</code>, <code>TimeoutError</code> and more.</li>
+      </ul>
+      <h3>Log the whole story at the top</h3>
+      <p>Inside an <code>except</code> block, <code>logging.exception()</code> logs your message <b>and</b> the full traceback. Many programs have exactly one broad <code>except Exception</code>, at the very top, that does this before stopping or moving on to the next request:</p>
+      <pre class="code" data-src="nb_log_exception.py"></pre>
+      <pre class="term" data-run="nb_log_exception.py"></pre>
+      <h3>Context managers you'll meet</h3>
+      <ul>
+        <li><b>Files</b> (<code>open</code>), <b>zip files</b> (<code>zipfile.ZipFile</code>), <b>network connections</b> (<code>socket</code>, <code>urllib.request.urlopen</code>).</li>
+        <li><b>Databases:</b> <code>with sqlite3.connect(...) as conn:</code> commits the changes if the block succeeds and rolls them back if it fails.</li>
+        <li><b>Locks</b> (<code>threading.Lock</code>) and <b>temporary files and folders</b> (<code>tempfile</code>).</li>
+        <li><b>Settings for a moment:</b> <code>decimal.localcontext()</code> changes the precision only inside the block; <code>warnings.catch_warnings()</code> changes warning filters only inside the block.</li>
+        <li><b>Tests:</b> <code>pytest.raises(ValueError)</code> passes only if the block raises that error (Chapter 14; Chapter 26 goes further with testing).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>except Exception</code> is the safe choice."</b> It hides your own bugs (Panel 5). Catch the specific errors you expect, close to where they happen.</li>
+        <li><b>"My errors should inherit from <code>BaseException</code>."</b> Inherit from <code>Exception</code>. <code>BaseException</code> is for exit signals that should pass through ordinary handlers.</li>
+        <li><b>"The <code>except</code> clauses are tried to find the best match."</b> They're tried top to bottom and the first match wins, so a parent class listed first steals its children's alarms (Exercise in Part 2).</li>
+        <li><b>"<code>raise ... from e</code> catches <code>e</code> again later."</b> It only records <code>e</code> as the cause. Callers must catch the <b>new</b> class (Part 3's NAME THAT ERROR).</li>
+        <li><b>"Two tracebacks means two separate crashes."</b> A chained traceback is one crash with its history, read bottom-up as usual.</li>
+        <li><b>"<code>add_note</code> changes the message."</b> The message is unchanged; the notes print on extra lines underneath.</li>
+        <li><b>"Only one <code>except*</code> branch can run."</b> Every branch that matches part of the group runs once.</li>
+        <li><b>"The name after <code>as</code> is the context manager."</b> It's whatever <code>__enter__</code> returns (Panel 36).</li>
+        <li><b>"<code>with</code> deletes the variable at the end."</b> The name still exists; for a file, it now refers to a closed file (Panel 30).</li>
+        <li><b>"Code after <code>yield</code> always runs."</b> Only if the block didn't raise, unless it's inside <code>finally</code> (Panel 38).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: what is new, and since when</summary>
+    <div class="page-body">
+      <ul>
+        <li><b><code>except A, B:</code> without brackets</b> (PEP 758): allowed since <b>Python 3.14</b>, when there's no <code>as</code>. 3.13.18 says <code>SyntaxError: multiple exception types must be parenthesized</code> (Panel 2).</li>
+        <li><b><code>return</code>, <code>break</code> or <code>continue</code> in <code>finally</code></b> (PEP 765): a <code>SyntaxWarning</code> since <b>3.14</b>. 3.13.18 prints nothing (Panel 8).</li>
+        <li><b>The <code>contextlib.py</code> line</b> in Panel 40's traceback is line 203 in 3.15.2 and line 141 in 3.13.18, and the path is wherever Python is installed. The error itself is the same.</li>
+        <li><b><code>ExceptionGroup</code>, <code>except*</code> and <code>add_note()</code></b> (PEPs 654 and 678): since <b>3.11</b>.</li>
+        <li><b>Brackets around several managers in one <code>with</code></b>: officially supported since <b>3.10</b>.</li>
+        <li><b><code>raise ... from</code></b> and the chained traceback: since 3.0. <b><code>contextlib.suppress</code></b> since 3.4, <b><code>redirect_stdout</code></b> since 3.4, <b><code>ExitStack</code></b> since 3.3.</li>
+        <li><b><code>traceback.format_exception_only(e)</code></b> with just the exception: since 3.10 (older versions need the type too).</li>
+      </ul>
+      <p>All 74 programs in this chapter were run with both Python 3.15.2 and 3.13.18. 70 printed identical output; the four differences are the first three items above (<code>recap_comma.py</code>, <code>finally_return.py</code>, and <code>cm_noyield.py</code> with <code>pred_noyield.py</code>).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself</summary>
+    <div class="page-body">
+      <ol>
+        <li>Check your version: <code>python3 --version</code> on macOS and Linux, <code>py --version</code> on Windows. Everything here needs 3.11 or newer; Panels 2 and 8 need 3.14 to look the same.</li>
+        <li>Start the prompt (<code>python3</code>, or <code>py</code> on Windows) and type <code>help(Exception)</code> or <code>KeyError.__mro__</code> to see a branch of the family tree. Press <code>q</code> to leave help.</li>
+        <li>Save <code>chain_from.py</code> (Panel 18) and run it: <code>python3 chain_from.py</code> (Windows: <code>py chain_from.py</code>). Change <code>from e</code> to <code>from None</code>, run again, then delete the <code>from</code> part completely and compare the joining sentence.</li>
+        <li>Save <code>keycard.py</code> (Panel 32), add a line <code>raise RuntimeError("fire!")</code> inside the <code>with</code> block, and predict the output before running it.</li>
+        <li>Save <code>cm_noclean.py</code> (Panel 38), run it, then fix it with <code>try</code>/<code>finally</code> as in Panel 39.</li>
+        <li>Press Ctrl+C during <code>while True: pass</code> at the prompt to raise <code>KeyboardInterrupt</code> for real. Then try <code>while True:</code> with <code>try: pass</code> / <code>except Exception: pass</code> inside: Ctrl+C still gets out. (Don't try it with a bare <code>except:</code> unless you know how to close the terminal window!)</li>
+        <li>Paste <code>as_value.py</code> into Python Tutor (link below) to see <code>card</code> and <code>what</code> point at different objects.</li>
+      </ol>
+      <p>On Windows, if <code>py</code> is missing, install Python from python.org (the Python install manager) or the Microsoft Store. On macOS, the python.org installer or Homebrew (<code>brew install python</code>) both work. On Linux, use your package manager, or <code>uv python install 3.15</code> to get the newest version beside the system one.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>exception</dt><dd>An error object that is raised and travels up through the calling functions until something catches it.</dd>
+        <dt>exception hierarchy</dt><dd>The family tree of exception classes. Catching a class also catches all its descendants.</dd>
+        <dt>BaseException</dt><dd>The very top of the tree. Its direct children include <code>Exception</code>, <code>SystemExit</code>, <code>KeyboardInterrupt</code> and <code>GeneratorExit</code>.</dd>
+        <dt>custom exception</dt><dd>Your own exception class, made by inheriting from <code>Exception</code> (or a child of it).</dd>
+        <dt>root exception</dt><dd>One base class that every error of a package inherits from, so callers can catch them all at once.</dd>
+        <dt>re-raise</dt><dd>A bare <code>raise</code> inside an <code>except</code> block sends the same exception on its way.</dd>
+        <dt>exception chaining</dt><dd>Linking a new exception to an earlier one. Explicit with <code>raise ... from e</code> (<code>__cause__</code>); implicit when a handler fails (<code>__context__</code>).</dd>
+        <dt>note</dt><dd>An extra line of text attached with <code>add_note()</code>, printed under the message.</dd>
+        <dt>traceback module</dt><dd>Standard-library tools for formatting and printing exceptions and tracebacks.</dd>
+        <dt>logging</dt><dd>Recording messages with a level (such as ERROR) to a configurable place, instead of printing them.</dd>
+        <dt>ExceptionGroup</dt><dd>An exception that bundles several exceptions together, printed as a boxed tree.</dd>
+        <dt>except*</dt><dd>A handler that takes the matching part of an exception group; several can run for one group.</dd>
+        <dt>SyntaxWarning</dt><dd>A warning printed while Python reads your file, about code that's legal but probably wrong.</dd>
+        <dt>context manager</dt><dd>An object that works with <code>with</code>: it has <code>__enter__</code> and <code>__exit__</code>.</dd>
+        <dt>__enter__ / __exit__</dt><dd>The methods <code>with</code> calls on the way in and on every way out. <code>__exit__</code> gets the exception's class, the exception and the traceback (or three Nones).</dd>
+        <dt>suppress (an exception)</dt><dd>Stop it from spreading. <code>__exit__</code> does this by returning True; <code>contextlib.suppress</code> does it for chosen classes.</dd>
+        <dt>@contextmanager</dt><dd>A decorator in <code>contextlib</code> that turns a generator with one <code>yield</code> into a context manager.</dd>
+        <dt>teardown</dt><dd>The cleanup step: closing, releasing, deleting, switching off.</dd>
+        <dt>ExitStack</dt><dd>A context manager that holds any number of others and exits them in reverse order.</dd>
+        <dt>EAFP / LBYL</dt><dd>"Easier to ask forgiveness than permission" (try, then catch) versus "look before you leap" (check first).</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://docs.python.org/3/tutorial/errors.html">The Python Tutorial, chapter 8: errors and exceptions (chaining, user-defined exceptions, clean-up actions, exception groups, notes)</a></li>
+        <li><a href="https://docs.python.org/3/library/exceptions.html#exception-hierarchy">Built-in exceptions, with the full hierarchy</a></li>
+        <li><a href="https://docs.python.org/3/reference/compound_stmts.html#the-with-statement">Language reference: the with statement</a> and <a href="https://docs.python.org/3/reference/datamodel.html#context-managers">with statement context managers</a></li>
+        <li><a href="https://docs.python.org/3/library/contextlib.html">The contextlib module</a> and <a href="https://docs.python.org/3/library/traceback.html">the traceback module</a></li>
+        <li><a href="https://docs.python.org/3/howto/logging.html">Logging HOWTO</a></li>
+        <li><a href="https://peps.python.org/pep-0654/">PEP 654: exception groups and except*</a>, <a href="https://peps.python.org/pep-0765/">PEP 765: control flow in finally</a>, <a href="https://peps.python.org/pep-0758/">PEP 758: except without brackets</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://pythontutor.com/">Python Tutor</a>: step through <code>as_value.py</code> and <code>keycard_walk.py</code>.</li>
+        <li><a href="https://roadmap.sh/python">roadmap.sh Python roadmap</a>: exceptions and context managers among the intermediate topics.</li>
+        <li><a href="https://exercism.org/tracks/python">Exercism's Python track</a>: free exercises on raising and handling exceptions, with mentor feedback.</li>
+        <li><a href="https://www.py4e.com/lessons">Python for Everybody</a>: friendly lessons on try/except with files.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: 74 programs, run with CPython 3.15.2 and CPython 3.13.18 on 2026-11-08, in <code>/home/you/python-ch22</code>. 70 printed identical output in both; the four differences are listed in the notebook's version notes, and the pages show the 3.13.18 run beside the 3.15.2 one where it matters. Tracebacks show the real file paths; the path into <code>contextlib.py</code> depends on where Python is installed.</p>
+  <p>The recipe walker, the <code>buy()</code> machine, the two maps, the memory tracer and the exercises are teaching models. Each one checks its claims against those runs and shows a badge. The alarm bells, the key card, the alarm board and the group tree are new drawings for this chapter; the critters are the shared cast from Chapter 9.</p>
+  <p>Sources consulted for scope, order and common pitfalls (no text or exercises copied): the Python Tutorial chapter 8 (sections 8.5 to 8.10: chaining, user-defined exceptions, clean-up actions, exception groups, notes), the built-in exceptions reference and hierarchy, the language reference for the try and with statements, the contextlib, traceback and logging documentation, PEPs 343, 654, 678, 758 and 765, the research map's notes from Effective Python (3rd ed.) and Fluent Python (2nd ed.) on exception design and context managers, Real Python's exceptions and logging learning path, roadmap.sh/python, Exercism's Python concepts, and Python Tutor for the memory picture.</p>
+</footer>
+</body>
+</html>

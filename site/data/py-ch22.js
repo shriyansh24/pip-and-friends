@@ -1,0 +1,556 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "python",
+  "capturedWith": [
+   "CPython 3.15.2",
+   "CPython 3.13.18"
+  ],
+  "primary": "CPython 3.15.2",
+  "date": "2026-11-08",
+  "workdir": "/home/you/python-ch22",
+  "versionDifferences": [
+   "cm_noyield.py",
+   "finally_return.py",
+   "pred_noyield.py",
+   "recap_comma.py"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): cm_noyield.py, finally_return.py, pred_noyield.py, recap_comma.py."
+ },
+ "programs": {
+  "as_value.py": {
+   "src": "class KeyCard:\n    def __init__(self, room):\n        self.room = room\n\n    def __enter__(self):\n        return f\"room {self.room} is open\"\n\n    def __exit__(self, exc_type, exc, tb):\n        return False\n\ncard = KeyCard(204)\nwith card as what:\n    print(what)\nprint(type(card).__name__, type(what).__name__)\n",
+   "stdout": "room 204 is open\nKeyCard str\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "assert_demo.py": {
+   "src": "def set_volume(level):\n    assert 0 <= level <= 10, \"volume out of range\"\n    print(\"volume set to\", level)\n\nset_volume(42)\n",
+   "stdout": "volume set to 42\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/assert_demo.py\", line 5, in <module>\n    set_volume(42)\n    ~~~~~~~~~~^^^^\n  File \"/home/you/python-ch22/assert_demo.py\", line 2, in set_volume\n    assert 0 <= level <= 10, \"volume out of range\"\n           ^^^^^^^^^^^^^^^^\nAssertionError: volume out of range\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 assert_demo.py",
+     "out": "",
+     "err": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/assert_demo.py\", line 5, in <module>\n    set_volume(42)\n    ~~~~~~~~~~^^^^\n  File \"/home/you/python-ch22/assert_demo.py\", line 2, in set_volume\n    assert 0 <= level <= 10, \"volume out of range\"\n           ^^^^^^^^^^^^^^^^\nAssertionError: volume out of range\n",
+     "exit": 1,
+     "dir": "~/python-ch22"
+    },
+    {
+     "cmd": "python3 -O assert_demo.py",
+     "out": "volume set to 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/python-ch22"
+    }
+   ]
+  },
+  "boss_error.py": {
+   "src": "night = [KeyError(\"room 9\"), OSError(\"lift stuck\")]\ntry:\n    raise ExceptionGroup(\"night shift\", night)\nexcept* KeyError:\n    print(\"front desk found the key\")\nprint(\"good morning\")\n",
+   "stdout": "front desk found the key\n",
+   "stderr": "  + Exception Group Traceback (most recent call last):\n  |   File \"/home/you/python-ch22/boss_error.py\", line 3, in <module>\n  |     raise ExceptionGroup(\"night shift\", night)\n  | ExceptionGroup: night shift (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | OSError: lift stuck\n    +------------------------------------\n",
+   "exit": 1
+  },
+  "boss_fill.py": {
+   "src": "class AppError(Exception):\n    pass\n\nclass BadRow(AppError):\n    pass\n\ndef parse(row, n):\n    try:\n        return int(row)\n    except ValueError as e:\n        err = BadRow(f\"row {n} is not a number\")\n        err.add_note(f\"the row said {row!r}\")\n        raise err from e\n\ntry:\n    parse(\"ten\", 4)\nexcept AppError as e:\n    print(e)\n    print(e.__notes__)\n    print(type(e.__cause__).__name__)\n",
+   "stdout": "row 4 is not a number\n[\"the row said 'ten'\"]\nValueError\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_parsons.py": {
+   "src": "class ConfigError(Exception):\n    pass\ndef read_size(text):\n    try:\n        return int(text)\n    except ValueError as e:\n        raise ConfigError(f\"bad size {text!r}\") from e\ntry:\n    read_size(\"big\")\nexcept ConfigError as err:\n    print(err, \"| cause:\", type(err.__cause__).__name__)\n",
+   "stdout": "bad size 'big' | cause: ValueError\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_predict.py": {
+   "src": "from contextlib import contextmanager\n\nclass ShopError(Exception):\n    pass\n\n@contextmanager\ndef till():\n    print(\"till open\")\n    try:\n        yield\n    except ShopError as e:\n        print(\"refund:\", e)\n    finally:\n        print(\"till closed\")\n\nwith till():\n    print(\"sell tea\")\nwith till():\n    raise ShopError(\"no milk\")\nprint(\"end of day\")\n",
+   "stdout": "till open\nsell tea\ntill closed\ntill open\nrefund: no milk\ntill closed\nend of day\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_spot.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef borrowed(book, shelf):\n    shelf.remove(book)\n    yield book\n    shelf.append(book)\n\nshelf = [\"Dune\", \"Emma\"]\ntry:\n    with borrowed(\"Dune\", shelf) as b:\n        raise ValueError(\"coffee spilled on \" + b)\nexcept ValueError as e:\n    print(e)\nprint(\"shelf:\", shelf)\n",
+   "stdout": "coffee spilled on Dune\nshelf: ['Emma']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "boss_trace.py": {
+   "src": "class OutOfStock(Exception):\n    pass\n\nstock = 3\nfor order in [1, 5, 2, 1]:\n    try:\n        if order > stock:\n            raise OutOfStock\n        stock -= order\n        result = \"sold\"\n    except OutOfStock:\n        result = \"short\"\n    print(order, result, stock)\n",
+   "stdout": "1 sold 2\n5 short 2\n2 sold 0\n1 short 0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "chain_from.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef read_port(text):\n    try:\n        return int(text)\n    except ValueError as e:\n        msg = f\"port must be a number, not {text!r}\"\n        raise ConfigError(msg) from e\n\nprint(read_port(\"8080\"))\nprint(read_port(\"eighty\"))\n",
+   "stdout": "8080\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/chain_from.py\", line 6, in read_port\n    return int(text)\nValueError: invalid literal for int() with base 10: 'eighty'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/chain_from.py\", line 12, in <module>\n    print(read_port(\"eighty\"))\n          ~~~~~~~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/chain_from.py\", line 9, in read_port\n    raise ConfigError(msg) from e\nConfigError: port must be a number, not 'eighty'\n",
+   "exit": 1
+  },
+  "chain_implicit.py": {
+   "src": "scores = {\"ana\": 3}\n\ndef add_point(name):\n    try:\n        scores[name] += 1\n    except KeyError:\n        print(\"new player:\", nmae)\n        scores[name] = 1\n\nadd_point(\"ana\")\nadd_point(\"ben\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/chain_implicit.py\", line 5, in add_point\n    scores[name] += 1\n    ~~~~~~^^^^^^\nKeyError: 'ben'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/chain_implicit.py\", line 11, in <module>\n    add_point(\"ben\")\n    ~~~~~~~~~^^^^^^^\n  File \"/home/you/python-ch22/chain_implicit.py\", line 7, in add_point\n    print(\"new player:\", nmae)\n                         ^^^^\nNameError: name 'nmae' is not defined\n",
+   "exit": 1
+  },
+  "chain_none.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef read_port(text):\n    try:\n        return int(text)\n    except ValueError:\n        msg = f\"port must be a number, not {text!r}\"\n        raise ConfigError(msg) from None\n\nprint(read_port(\"eighty\"))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/chain_none.py\", line 11, in <module>\n    print(read_port(\"eighty\"))\n          ~~~~~~~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/chain_none.py\", line 9, in read_port\n    raise ConfigError(msg) from None\nConfigError: port must be a number, not 'eighty'\n",
+   "exit": 1
+  },
+  "closed_after.py": {
+   "src": "with open(\"note.txt\", \"w\") as f:\n    f.write(\"Buy milk\\n\")\n    print(\"inside: closed?\", f.closed)\n\nprint(\"after: closed?\", f.closed)\nf.write(\"Buy eggs\\n\")\n",
+   "stdout": "inside: closed? False\nafter: closed? True\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/closed_after.py\", line 6, in <module>\n    f.write(\"Buy eggs\\n\")\n    ~~~~~~~^^^^^^^^^^^^^^\nValueError: I/O operation on closed file.\n",
+   "exit": 1
+  },
+  "closing_demo.py": {
+   "src": "from contextlib import closing\n\nclass Radio:\n    def play(self):\n        print(\"radio: music\")\n\n    def close(self):\n        print(\"radio: switched off\")\n\nwith closing(Radio()) as radio:\n    radio.play()\nprint(\"left the room\")\n",
+   "stdout": "radio: music\nradio: switched off\nleft the room\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "cm_basic.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef key_card(room):\n    print(f\"card in: room {room} lights ON\")\n    yield room\n    print(f\"card out: room {room} lights OFF\")\n\nwith key_card(204) as r:\n    print(\"unpacking in room\", r)\nprint(\"back in the corridor\")\n",
+   "stdout": "card in: room 204 lights ON\nunpacking in room 204\ncard out: room 204 lights OFF\nback in the corridor\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "cm_finally.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef key_card(room):\n    print(\"lights ON\")\n    try:\n        yield room\n    finally:\n        print(\"lights OFF\")\n\nwith key_card(204):\n    print(\"unpacking\")\n    raise RuntimeError(\"fire alarm!\")\n",
+   "stdout": "lights ON\nunpacking\nlights OFF\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/cm_finally.py\", line 13, in <module>\n    raise RuntimeError(\"fire alarm!\")\nRuntimeError: fire alarm!\n",
+   "exit": 1
+  },
+  "cm_noclean.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef key_card(room):\n    print(\"lights ON\")\n    yield room\n    print(\"lights OFF\")\n\nwith key_card(204):\n    print(\"unpacking\")\n    raise RuntimeError(\"fire alarm!\")\n",
+   "stdout": "lights ON\nunpacking\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/cm_noclean.py\", line 11, in <module>\n    raise RuntimeError(\"fire alarm!\")\nRuntimeError: fire alarm!\n",
+   "exit": 1
+  },
+  "cm_noyield.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef key_card(room):\n    print(\"lights ON\")\n    print(\"lights OFF\")\n\nwith key_card(204):\n    print(\"unpacking\")\n",
+   "stdout": "lights ON\nlights OFF\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/cm_noyield.py\", line 8, in <module>\n    with key_card(204):\n         ~~~~~~~~^^^^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/contextlib.py\", line 203, in __enter__\n    return next(self.gen)\nTypeError: 'NoneType' object is not an iterator\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "lights ON\nlights OFF\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/cm_noyield.py\", line 8, in <module>\n    with key_card(204):\n         ~~~~~~~~^^^^^\n  File \"/usr/local/lib/python3.13/contextlib.py\", line 141, in __enter__\n    return next(self.gen)\nTypeError: 'NoneType' object is not an iterator\n",
+    "exit": 1
+   }
+  },
+  "custom_attrs.py": {
+   "src": "class OutOfStock(Exception):\n    def __init__(self, item, left):\n        super().__init__(f\"only {left} {item} left\")\n        self.item = item\n        self.left = left\n\ntry:\n    raise OutOfStock(\"tea\", 1)\nexcept OutOfStock as e:\n    print(\"message:\", e)\n    print(\"item:\", e.item, \"| left:\", e.left)\n    if e.left > 0:\n        print(f\"offer: buy the last {e.left}?\")\n",
+   "stdout": "message: only 1 tea left\nitem: tea | left: 1\noffer: buy the last 1?\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "custom_basic.py": {
+   "src": "class OutOfStock(Exception):\n    \"\"\"The shop can't fill an order.\"\"\"\n\nstock = {\"tea\": 2}\n\ndef buy(item, qty):\n    if stock[item] < qty:\n        raise OutOfStock(f\"only {stock[item]} {item} left\")\n    stock[item] -= qty\n    return f\"bought {qty} {item}\"\n\nprint(buy(\"tea\", 1))\ntry:\n    print(buy(\"tea\", 5))\nexcept OutOfStock as e:\n    print(\"sorry:\", e)\nprint(buy(\"tea\", 5))\n",
+   "stdout": "bought 1 tea\nsorry: only 1 tea left\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/custom_basic.py\", line 17, in <module>\n    print(buy(\"tea\", 5))\n          ~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/custom_basic.py\", line 8, in buy\n    raise OutOfStock(f\"only {stock[item]} {item} left\")\nOutOfStock: only 1 tea left\n",
+   "exit": 1
+  },
+  "exit_args.py": {
+   "src": "class Peek:\n    def __enter__(self):\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"exc_type:\", exc_type)\n        print(\"exc:\", repr(exc))\n        print(\"tb is None?\", tb is None)\n\nwith Peek():\n    print(\"a calm visit\")\n\nwith Peek():\n    towels = {}\n    towels[\"blue\"]\n",
+   "stdout": "a calm visit\nexc_type: None\nexc: None\ntb is None? True\nexc_type: <class 'KeyError'>\nexc: KeyError('blue')\ntb is None? False\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/exit_args.py\", line 15, in <module>\n    towels[\"blue\"]\n    ~~~~~~^^^^^^^^\nKeyError: 'blue'\n",
+   "exit": 1
+  },
+  "exit_bare.py": {
+   "src": "import sys\n\ntry:\n    print(\"bye, exit code 3\")\n    sys.exit(3)\nexcept:\n    print(\"caught it! (oops)\")\nprint(\"still running\")\n",
+   "stdout": "bye, exit code 3\ncaught it! (oops)\nstill running\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "exit_escape.py": {
+   "src": "import sys\n\ntry:\n    print(\"bye, exit code 3\")\n    sys.exit(3)\nexcept Exception:\n    print(\"caught it!\")\nprint(\"still running\")\n",
+   "stdout": "bye, exit code 3\n",
+   "stderr": "",
+   "exit": 3
+  },
+  "exit_true.py": {
+   "src": "class Silencer:\n    def __enter__(self):\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        if exc_type is ZeroDivisionError:\n            print(\"silenced:\", exc)\n            return True     # handled: carry on\n        return False        # anything else keeps ringing\n\nwith Silencer():\n    print(1 / 0)\nprint(\"after the first with\")\n\nwith Silencer():\n    print(int(\"x\"))\nprint(\"never printed\")\n",
+   "stdout": "silenced: division by zero\nafter the first with\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/exit_true.py\", line 16, in <module>\n    print(int(\"x\"))\n          ~~~^^^^^\nValueError: invalid literal for int() with base 10: 'x'\n",
+   "exit": 1
+  },
+  "exitstack_demo.py": {
+   "src": "from contextlib import ExitStack, contextmanager\n\n@contextmanager\ndef card(room):\n    print(\"on\", room)\n    try:\n        yield\n    finally:\n        print(\"off\", room)\n\nrooms = [101, 102, 103]\nwith ExitStack() as stack:\n    for room in rooms:\n        stack.enter_context(card(room))\n    print(\"all\", len(rooms), \"rooms lit\")\n",
+   "stdout": "on 101\non 102\non 103\nall 3 rooms lit\noff 103\noff 102\noff 101\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "family.py": {
+   "src": "alarms = [KeyError, ZeroDivisionError,\n          FileNotFoundError, KeyboardInterrupt]\nfor alarm in alarms:\n    chain = [cls.__name__ for cls in alarm.__mro__]\n    print(\" -> \".join(chain))\n",
+   "stdout": "KeyError -> LookupError -> Exception -> BaseException -> object\nZeroDivisionError -> ArithmeticError -> Exception -> BaseException -> object\nFileNotFoundError -> OSError -> Exception -> BaseException -> object\nKeyboardInterrupt -> BaseException -> object\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_custom.py": {
+   "src": "class TooCold(Exception):\n    pass\n\ndef brew(temp):\n    if temp < 80:\n        raise TooCold(f\"{temp} degrees is too cold for tea\")\n    return \"tea is ready\"\n\nfor t in [95, 60]:\n    try:\n        print(brew(t))\n    except TooCold as e:\n        print(\"alarm:\", e)\n",
+   "stdout": "tea is ready\nalarm: 60 degrees is too cold for tea\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "fill_exit.py": {
+   "src": "class Lamp:\n    def __enter__(self):\n        print(\"lamp on\")\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"lamp off\")\n\nwith Lamp() as lamp:\n    print(\"reading by\", type(lamp).__name__)\n",
+   "stdout": "lamp on\nreading by Lamp\nlamp off\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "finally_return.py": {
+   "src": "def save(notes):\n    try:\n        raise OSError(\"disk full\")\n    finally:\n        return \"saved!\"\n\nprint(save(\"my notes\"))\n",
+   "stdout": "saved!\n",
+   "stderr": "/home/you/python-ch22/finally_return.py:5: SyntaxWarning: 'return' in a 'finally' block\n  return \"saved!\"\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 finally_return.py",
+     "out": "saved!\n",
+     "err": "/home/you/python-ch22/finally_return.py:5: SyntaxWarning: 'return' in a 'finally' block\n  return \"saved!\"\n",
+     "exit": 0,
+     "merged": "/home/you/python-ch22/finally_return.py:5: SyntaxWarning: 'return' in a 'finally' block\n  return \"saved!\"\nsaved!\n"
+    }
+   ],
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "saved!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "python3 finally_return.py",
+      "out": "saved!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "group_leftover.py": {
+   "src": "def check(form):\n    problems = []\n    if not isinstance(form[\"name\"], str):\n        problems.append(TypeError(\"name must be text\"))\n    if not form[\"age\"].isdigit():\n        problems.append(ValueError(\"age must be a number\"))\n    if \"email\" not in form:\n        problems.append(KeyError(\"email\"))\n    if problems:\n        raise ExceptionGroup(\"form has problems\", problems)\n\ntry:\n    check({\"name\": 42, \"age\": \"ten\"})\nexcept* ValueError as eg:\n    print(\"value desk got:\", eg.exceptions)\nexcept* TypeError as eg:\n    print(\"type desk got:\", eg.exceptions)\nprint(\"all problems handled\")\n",
+   "stdout": "value desk got: (ValueError('age must be a number'),)\ntype desk got: (TypeError('name must be text'),)\n",
+   "stderr": "  + Exception Group Traceback (most recent call last):\n  |   File \"/home/you/python-ch22/group_leftover.py\", line 13, in <module>\n  |     check({\"name\": 42, \"age\": \"ten\"})\n  |     ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"/home/you/python-ch22/group_leftover.py\", line 10, in check\n  |     raise ExceptionGroup(\"form has problems\", problems)\n  | ExceptionGroup: form has problems (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | KeyError: 'email'\n    +------------------------------------\n",
+   "exit": 1
+  },
+  "group_pred.py": {
+   "src": "batch = [ValueError(\"a\"), ValueError(\"b\"), ZeroDivisionError(\"c\")]\ntry:\n    raise ExceptionGroup(\"batch\", batch)\nexcept* ValueError as eg:\n    print(\"values:\", len(eg.exceptions))\nexcept* ZeroDivisionError as eg:\n    print(\"zero:\", len(eg.exceptions))\nexcept* KeyError:\n    print(\"keys\")\nprint(\"done\")\n",
+   "stdout": "values: 2\nzero: 1\ndone\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "group_raise.py": {
+   "src": "form = {\"name\": 42, \"age\": \"ten\"}\n\nproblems = []\nif not isinstance(form[\"name\"], str):\n    problems.append(TypeError(\"name must be text\"))\nif not form[\"age\"].isdigit():\n    problems.append(ValueError(\"age must be a number\"))\nif \"email\" not in form:\n    problems.append(KeyError(\"email\"))\n\nif problems:\n    raise ExceptionGroup(\"sign-up form has problems\", problems)\nprint(\"form accepted\")\n",
+   "stdout": "",
+   "stderr": "  + Exception Group Traceback (most recent call last):\n  |   File \"/home/you/python-ch22/group_raise.py\", line 12, in <module>\n  |     raise ExceptionGroup(\"sign-up form has problems\", problems)\n  | ExceptionGroup: sign-up form has problems (3 sub-exceptions)\n  +-+---------------- 1 ----------------\n    | TypeError: name must be text\n    +---------------- 2 ----------------\n    | ValueError: age must be a number\n    +---------------- 3 ----------------\n    | KeyError: 'email'\n    +------------------------------------\n",
+   "exit": 1
+  },
+  "group_star.py": {
+   "src": "def check(form):\n    problems = []\n    if not isinstance(form[\"name\"], str):\n        problems.append(TypeError(\"name must be text\"))\n    if not form[\"age\"].isdigit():\n        problems.append(ValueError(\"age must be a number\"))\n    if \"email\" not in form:\n        problems.append(KeyError(\"email\"))\n    if problems:\n        raise ExceptionGroup(\"form has problems\", problems)\n\ntry:\n    check({\"name\": 42, \"age\": \"ten\", \"email\": \"x@y.z\"})\nexcept* ValueError as eg:\n    print(\"value desk got:\", eg.exceptions)\nexcept* TypeError as eg:\n    print(\"type desk got:\", eg.exceptions)\nprint(\"all problems handled\")\n",
+   "stdout": "value desk got: (ValueError('age must be a number'),)\ntype desk got: (TypeError('name must be text'),)\nall problems handled\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "group_typeonly.py": {
+   "src": "def check(form):\n    problems = []\n    if not isinstance(form[\"name\"], str):\n        problems.append(TypeError(\"name must be text\"))\n    if not form[\"age\"].isdigit():\n        problems.append(ValueError(\"age must be a number\"))\n    if \"email\" not in form:\n        problems.append(KeyError(\"email\"))\n    if problems:\n        raise ExceptionGroup(\"form has problems\", problems)\n\ntry:\n    check({\"name\": 42, \"age\": \"10\", \"email\": \"x@y.z\"})\nexcept* ValueError as eg:\n    print(\"value desk got:\", eg.exceptions)\nexcept* TypeError as eg:\n    print(\"type desk got:\", eg.exceptions)\nprint(\"all problems handled\")\n",
+   "stdout": "type desk got: (TypeError('name must be text'),)\nall problems handled\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "keep_going.py": {
+   "src": "import traceback\n\nrows = [\"3\", \"abc\", \"8\", \"\"]\ntotal = 0\nfor number, row in enumerate(rows, start=1):\n    try:\n        total += int(row)\n    except ValueError as e:\n        line = traceback.format_exception_only(e)[-1].strip()\n        print(f\"row {number} skipped: {line}\")\nprint(\"total:\", total)\n",
+   "stdout": "row 2 skipped: ValueError: invalid literal for int() with base 10: 'abc'\nrow 4 skipped: ValueError: invalid literal for int() with base 10: ''\ntotal: 11\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "keycard.py": {
+   "src": "class KeyCard:\n    def __init__(self, room):\n        self.room = room\n\n    def __enter__(self):\n        print(f\"card in: room {self.room} lights ON\")\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(f\"card out: room {self.room} lights OFF\")\n\nwith KeyCard(204) as card:\n    print(\"unpacking in room\", card.room)\nprint(\"back in the corridor\")\n",
+   "stdout": "card in: room 204 lights ON\nunpacking in room 204\ncard out: room 204 lights OFF\nback in the corridor\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "keycard_walk.py": {
+   "src": "class KeyCard:\n    def __enter__(self):\n        print(\"enter: ON\")\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"exit: OFF,\", exc_type.__name__)\n\ntry:\n    with KeyCard():\n        print(\"body: unpack\")\n        raise RuntimeError(\"fire!\")\n        print(\"never printed\")\nexcept RuntimeError as e:\n    print(\"caught:\", e)\n",
+   "stdout": "enter: ON\nbody: unpack\nexit: OFF, RuntimeError\ncaught: fire!\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "log_preview.py": {
+   "src": "import logging\n\ndef load(name):\n    try:\n        with open(name) as f:\n            return f.read()\n    except FileNotFoundError:\n        logging.error(\"could not open %s\", name)\n        return \"\"\n\ntext = load(\"missing.txt\")\nprint(\"characters read:\", len(text))\n",
+   "stdout": "characters read: 0\n",
+   "stderr": "ERROR:root:could not open missing.txt\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 log_preview.py",
+     "out": "characters read: 0\n",
+     "err": "ERROR:root:could not open missing.txt\n",
+     "exit": 0,
+     "merged": "ERROR:root:could not open missing.txt\ncharacters read: 0\n"
+    }
+   ]
+  },
+  "lookup_parent.py": {
+   "src": "def fetch(where, key):\n    try:\n        return where[key]\n    except LookupError as e:\n        return f\"not found ({type(e).__name__})\"\n\nshelf = [\"tea\", \"jam\"]\nprices = {\"tea\": 3}\nprint(fetch(shelf, 0))\nprint(fetch(shelf, 5))\nprint(fetch(prices, \"tea\"))\nprint(fetch(prices, \"jam\"))\n",
+   "stdout": "tea\nnot found (IndexError)\n3\nnot found (KeyError)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "m_buy.py": {
+   "src": "class ShopError(Exception):\n    pass\n\nclass OutOfStock(ShopError):\n    pass\n\nclass UnknownItem(ShopError):\n    pass\n\nstock = {\"tea\": 2, \"jam\": 5}\n\ndef buy(item, qty):\n    if qty < 1:\n        raise ValueError(f\"quantity must be 1 or more, not {qty}\")\n    if item not in stock:\n        raise UnknownItem(f\"we don't sell {item!r}\")\n    if stock[item] < qty:\n        raise OutOfStock(f\"only {stock[item]} {item} left\")\n    stock[item] -= qty\n    return f\"bought {qty} {item}\"\n\nprint(buy(\"tea\", 1))\nprint(buy(\"jam\", 5))\n",
+   "stdout": "bought 1 tea\nbought 5 jam\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "m_buy_stock.py": {
+   "src": "class ShopError(Exception):\n    pass\n\nclass OutOfStock(ShopError):\n    pass\n\nclass UnknownItem(ShopError):\n    pass\n\nstock = {\"tea\": 2, \"jam\": 5}\n\ndef buy(item, qty):\n    if qty < 1:\n        raise ValueError(f\"quantity must be 1 or more, not {qty}\")\n    if item not in stock:\n        raise UnknownItem(f\"we don't sell {item!r}\")\n    if stock[item] < qty:\n        raise OutOfStock(f\"only {stock[item]} {item} left\")\n    stock[item] -= qty\n    return f\"bought {qty} {item}\"\n\nprint(buy(\"tea\", 9))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/m_buy_stock.py\", line 22, in <module>\n    print(buy(\"tea\", 9))\n          ~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/m_buy_stock.py\", line 18, in buy\n    raise OutOfStock(f\"only {stock[item]} {item} left\")\nOutOfStock: only 2 tea left\n",
+   "exit": 1
+  },
+  "m_buy_unknown.py": {
+   "src": "class ShopError(Exception):\n    pass\n\nclass OutOfStock(ShopError):\n    pass\n\nclass UnknownItem(ShopError):\n    pass\n\nstock = {\"tea\": 2, \"jam\": 5}\n\ndef buy(item, qty):\n    if qty < 1:\n        raise ValueError(f\"quantity must be 1 or more, not {qty}\")\n    if item not in stock:\n        raise UnknownItem(f\"we don't sell {item!r}\")\n    if stock[item] < qty:\n        raise OutOfStock(f\"only {stock[item]} {item} left\")\n    stock[item] -= qty\n    return f\"bought {qty} {item}\"\n\nprint(buy(\"cake\", 1))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/m_buy_unknown.py\", line 22, in <module>\n    print(buy(\"cake\", 1))\n          ~~~^^^^^^^^^^^\n  File \"/home/you/python-ch22/m_buy_unknown.py\", line 16, in buy\n    raise UnknownItem(f\"we don't sell {item!r}\")\nUnknownItem: we don't sell 'cake'\n",
+   "exit": 1
+  },
+  "m_buy_zero.py": {
+   "src": "class ShopError(Exception):\n    pass\n\nclass OutOfStock(ShopError):\n    pass\n\nclass UnknownItem(ShopError):\n    pass\n\nstock = {\"tea\": 2, \"jam\": 5}\n\ndef buy(item, qty):\n    if qty < 1:\n        raise ValueError(f\"quantity must be 1 or more, not {qty}\")\n    if item not in stock:\n        raise UnknownItem(f\"we don't sell {item!r}\")\n    if stock[item] < qty:\n        raise OutOfStock(f\"only {stock[item]} {item} left\")\n    stock[item] -= qty\n    return f\"bought {qty} {item}\"\n\nprint(buy(\"tea\", 0))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/m_buy_zero.py\", line 22, in <module>\n    print(buy(\"tea\", 0))\n          ~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/m_buy_zero.py\", line 14, in buy\n    raise ValueError(f\"quantity must be 1 or more, not {qty}\")\nValueError: quantity must be 1 or more, not 0\n",
+   "exit": 1
+  },
+  "multi_with.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef card(place):\n    print(\"in:\", place)\n    try:\n        yield place\n    finally:\n        print(\"out:\", place)\n\nwith (\n    card(\"room\") as room,\n    card(\"gym\") as gym,\n):\n    print(\"using\", room, \"and\", gym)\n",
+   "stdout": "in: room\nin: gym\nusing room and gym\nout: gym\nout: room\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_cause_context.py": {
+   "src": "def explicit():\n    try:\n        int(\"x\")\n    except ValueError as e:\n        raise RuntimeError(\"explicit\") from e\n\ndef implicit():\n    try:\n        int(\"x\")\n    except ValueError:\n        raise RuntimeError(\"implicit\")\n\nfor job in [explicit, implicit]:\n    try:\n        job()\n    except RuntimeError as err:\n        print(err, \"| cause:\", type(err.__cause__).__name__,\n              \"| context:\", type(err.__context__).__name__,\n              \"| hide context:\", err.__suppress_context__)\n",
+   "stdout": "explicit | cause: ValueError | context: ValueError | hide context: True\nimplicit | cause: NoneType | context: ValueError | hide context: False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_log_exception.py": {
+   "src": "import logging\n\ndef risky():\n    return {}[\"missing\"]\n\ntry:\n    risky()\nexcept KeyError:\n    logging.exception(\"lookup failed, using the default\")\nprint(\"still running\")\n",
+   "stdout": "still running\n",
+   "stderr": "ERROR:root:lookup failed, using the default\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 4, in risky\n    return {}[\"missing\"]\n           ~~^^^^^^^^^^^\nKeyError: 'missing'\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 nb_log_exception.py",
+     "out": "still running\n",
+     "err": "ERROR:root:lookup failed, using the default\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 4, in risky\n    return {}[\"missing\"]\n           ~~^^^^^^^^^^^\nKeyError: 'missing'\n",
+     "exit": 0,
+     "merged": "ERROR:root:lookup failed, using the default\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/nb_log_exception.py\", line 4, in risky\n    return {}[\"missing\"]\n           ~~^^^^^^^^^^^\nKeyError: 'missing'\nstill running\n"
+    }
+   ]
+  },
+  "nb_split.py": {
+   "src": "eg = ExceptionGroup(\"batch\", [ValueError(\"a\"), KeyError(\"b\"), ValueError(\"c\")])\nvalues, rest = eg.split(ValueError)\nprint(values.exceptions)\nprint(rest.exceptions)\n",
+   "stdout": "(ValueError('a'), ValueError('c'))\n(KeyError('b'),)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_star_wraps.py": {
+   "src": "try:\n    raise ValueError(\"just one\")\nexcept* ValueError as eg:\n    print(type(eg).__name__, eg.exceptions)\n",
+   "stdout": "ExceptionGroup (ValueError('just one'),)\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "nb_with_by_hand.py": {
+   "src": "class KeyCard:\n    def __enter__(self):\n        print(\"enter\")\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"exit with\", exc_type)\n        return False\n\n# What \"with KeyCard() as card: print('body')\" does:\nmanager = KeyCard()\ncard = manager.__enter__()\ntry:\n    print(\"body\")\nexcept BaseException as e:\n    if not manager.__exit__(type(e), e, e.__traceback__):\n        raise\nelse:\n    manager.__exit__(None, None, None)\n",
+   "stdout": "enter\nbody\nexit with None\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "none_return.py": {
+   "src": "prices = {\"tea\": 3, \"jam\": 4}\n\ndef find_price(item):\n    if item in prices:\n        return prices[item]\n    return None            # \"not found\"\n\ndef bill(item, qty):\n    price = find_price(item)\n    return price * qty\n\nprint(bill(\"tea\", 2))\nprint(bill(\"cake\", 2))\n",
+   "stdout": "6\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/none_return.py\", line 13, in <module>\n    print(bill(\"cake\", 2))\n          ~~~~^^^^^^^^^^^\n  File \"/home/you/python-ch22/none_return.py\", line 10, in bill\n    return price * qty\n           ~~~~~~^~~~~\nTypeError: unsupported operand type(s) for *: 'NoneType' and 'int'\n",
+   "exit": 1
+  },
+  "note.py": {
+   "src": "rows = [\"3\", \"5\", \"abc\", \"8\"]\n\ndef total(rows):\n    result = 0\n    for number, row in enumerate(rows, start=1):\n        try:\n            result += int(row)\n        except ValueError as e:\n            e.add_note(f\"while reading row {number}\")\n            raise\n    return result\n\nprint(total(rows))\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/note.py\", line 13, in <module>\n    print(total(rows))\n          ~~~~~^^^^^^\n  File \"/home/you/python-ch22/note.py\", line 7, in total\n    result += int(row)\n              ~~~^^^^^\nValueError: invalid literal for int() with base 10: 'abc'\nwhile reading row 3\n",
+   "exit": 1
+  },
+  "parsons_cm.py": {
+   "src": "from contextlib import contextmanager\n@contextmanager\ndef oven():\n    print(\"oven on\")\n    try:\n        yield\n    finally:\n        print(\"oven off\")\nwith oven():\n    print(\"baking\")\n",
+   "stdout": "oven on\nbaking\noven off\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "parsons_note.py": {
+   "src": "try:\n    age = int(\"forty\")\nexcept ValueError as e:\n    e.add_note(\"while reading the age box\")\n    print(\"notes:\", e.__notes__)\n",
+   "stdout": "notes: ['while reading the age box']\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_chain.py": {
+   "src": "class ParseError(Exception):\n    pass\n\ndef parse(text):\n    try:\n        return int(text)\n    except ValueError as e:\n        raise ParseError(f\"no number in {text!r}\") from e\n\ntry:\n    parse(\"ten\")\nexcept ValueError:\n    print(\"caught the ValueError\")\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/pred_chain.py\", line 6, in parse\n    return int(text)\nValueError: invalid literal for int() with base 10: 'ten'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/pred_chain.py\", line 11, in <module>\n    parse(\"ten\")\n    ~~~~~^^^^^^^\n  File \"/home/you/python-ch22/pred_chain.py\", line 8, in parse\n    raise ParseError(f\"no number in {text!r}\") from e\nParseError: no number in 'ten'\n",
+   "exit": 1
+  },
+  "pred_family.py": {
+   "src": "def risky(n):\n    if n == 1:\n        return 10 / 0\n    if n == 2:\n        return [1, 2][5]\n    if n == 3:\n        return int(\"x\")\n    return \"fine\"\n\nfor n in [0, 1, 2, 3]:\n    try:\n        print(n, risky(n))\n    except ArithmeticError:\n        print(n, \"maths alarm\")\n    except LookupError:\n        print(n, \"lookup alarm\")\n    except Exception:\n        print(n, \"other alarm\")\n",
+   "stdout": "0 fine\n1 maths alarm\n2 lookup alarm\n3 other alarm\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_noyield.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef timer():\n    print(\"start\")\n    return \"done\"\n\nwith timer():\n    print(\"working\")\n",
+   "stdout": "start\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/pred_noyield.py\", line 8, in <module>\n    with timer():\n         ~~~~~^^\n  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/contextlib.py\", line 203, in __enter__\n    return next(self.gen)\nTypeError: 'str' object is not an iterator\n",
+   "exit": 1,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "start\n",
+    "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/pred_noyield.py\", line 8, in <module>\n    with timer():\n         ~~~~~^^\n  File \"/usr/local/lib/python3.13/contextlib.py\", line 141, in __enter__\n    return next(self.gen)\nTypeError: 'str' object is not an iterator\n",
+    "exit": 1
+   }
+  },
+  "pred_order.py": {
+   "src": "class Door:\n    def __enter__(self):\n        print(\"A\")\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"B\", exc_type is None)\n\nfor word in [\"7\", \"seven\"]:\n    try:\n        with Door():\n            print(\"C\", int(word))\n    except ValueError:\n        print(\"D\")\n",
+   "stdout": "A\nC 7\nB True\nA\nB False\nD\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "pred_root.py": {
+   "src": "class ShopError(Exception):\n    pass\n\nclass OutOfStock(ShopError):\n    pass\n\ndef check(n):\n    if n == 0:\n        raise OutOfStock(\"empty shelf\")\n    if n < 0:\n        raise ShopError(\"negative count\")\n    return n\n\nfor n in [3, 0, -1]:\n    try:\n        print(\"ok\", check(n))\n    except ShopError as e:\n        print(\"shop:\", e)\n    except OutOfStock as e:\n        print(\"stock:\", e)\n",
+   "stdout": "ok 3\nshop: empty shelf\nshop: negative count\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "print_exc.py": {
+   "src": "import traceback\n\ndef risky():\n    return 1 / 0\n\ntry:\n    risky()\nexcept ZeroDivisionError:\n    traceback.print_exc()\nprint(\"the program carries on\")\n",
+   "stdout": "the program carries on\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/print_exc.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/print_exc.py\", line 4, in risky\n    return 1 / 0\n           ~~^~~\nZeroDivisionError: division by zero\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "python3 print_exc.py",
+     "out": "the program carries on\n",
+     "err": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/print_exc.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/print_exc.py\", line 4, in risky\n    return 1 / 0\n           ~~^~~\nZeroDivisionError: division by zero\n",
+     "exit": 0,
+     "merged": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/print_exc.py\", line 7, in <module>\n    risky()\n    ~~~~~^^\n  File \"/home/you/python-ch22/print_exc.py\", line 4, in risky\n    return 1 / 0\n           ~~^~~\nZeroDivisionError: division by zero\nthe program carries on\n"
+    }
+   ]
+  },
+  "raise_instead.py": {
+   "src": "class UnknownItem(Exception):\n    pass\n\nprices = {\"tea\": 3, \"jam\": 4}\n\ndef find_price(item):\n    if item in prices:\n        return prices[item]\n    raise UnknownItem(f\"we don't sell {item!r}\")\n\ndef bill(item, qty):\n    price = find_price(item)\n    return price * qty\n\nprint(bill(\"tea\", 2))\nprint(bill(\"cake\", 2))\n",
+   "stdout": "6\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/raise_instead.py\", line 16, in <module>\n    print(bill(\"cake\", 2))\n          ~~~~^^^^^^^^^^^\n  File \"/home/you/python-ch22/raise_instead.py\", line 12, in bill\n    price = find_price(item)\n  File \"/home/you/python-ch22/raise_instead.py\", line 9, in find_price\n    raise UnknownItem(f\"we don't sell {item!r}\")\nUnknownItem: we don't sell 'cake'\n",
+   "exit": 1
+  },
+  "real_managers.py": {
+   "src": "import tempfile\nimport threading\nfrom pathlib import Path\n\nwith tempfile.TemporaryDirectory() as folder:\n    draft = Path(folder) / \"draft.txt\"\n    draft.write_text(\"rough work\")\n    print(\"draft exists inside?\", draft.exists())\nprint(\"draft exists after?\", draft.exists())\n\nlock = threading.Lock()\nwith lock:\n    print(\"lock held?\", lock.locked())\nprint(\"lock held?\", lock.locked())\n",
+   "stdout": "draft exists inside? True\ndraft exists after? False\nlock held? True\nlock held? False\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "recap_comma.py": {
+   "src": "def to_number(text):\n    try:\n        return int(text)\n    except ValueError, TypeError:\n        return None\n\nprint(to_number(\"42\"))\nprint(to_number(\"pizza\"))\nprint(to_number(None))\n",
+   "stdout": "42\nNone\nNone\n",
+   "stderr": "",
+   "exit": 0,
+   "alt": {
+    "version": "CPython 3.13.18",
+    "stdout": "",
+    "stderr": "  File \"/home/you/python-ch22/recap_comma.py\", line 4\n    except ValueError, TypeError:\n           ^^^^^^^^^^^^^^^^^^^^^\nSyntaxError: multiple exception types must be parenthesized\n",
+    "exit": 1
+   }
+  },
+  "redirect_demo.py": {
+   "src": "import io\nfrom contextlib import redirect_stdout\n\ndef chatty():\n    print(\"hello from inside\")\n    print(\"still talking\")\n\ncatcher = io.StringIO()\nwith redirect_stdout(catcher):\n    chatty()\ntext = catcher.getvalue()\nprint(\"caught\", len(text.splitlines()), \"lines:\")\nprint(text.upper(), end=\"\")\n",
+   "stdout": "caught 2 lines:\nHELLO FROM INSIDE\nSTILL TALKING\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "road_bad.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef load_port(text):\n    try:\n        port = int(text)\n    except ValueError as e:\n        if text == \"\":\n            print(\"except: empty, use 8080\")\n            return 8080\n        raise ConfigError(f\"bad port {text!r}\") from e\n    else:\n        print(\"else: port\", port)\n        return port\n    finally:\n        print(\"finally: settings file closed\")\n\nprint(\"got\", load_port(\"eighty\"))\n",
+   "stdout": "finally: settings file closed\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/road_bad.py\", line 6, in load_port\n    port = int(text)\nValueError: invalid literal for int() with base 10: 'eighty'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/you/python-ch22/road_bad.py\", line 18, in <module>\n    print(\"got\", load_port(\"eighty\"))\n                 ~~~~~~~~~^^^^^^^^^^\n  File \"/home/you/python-ch22/road_bad.py\", line 11, in load_port\n    raise ConfigError(f\"bad port {text!r}\") from e\nConfigError: bad port 'eighty'\n",
+   "exit": 1
+  },
+  "road_empty.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef load_port(text):\n    try:\n        port = int(text)\n    except ValueError as e:\n        if text == \"\":\n            print(\"except: empty, use 8080\")\n            return 8080\n        raise ConfigError(f\"bad port {text!r}\") from e\n    else:\n        print(\"else: port\", port)\n        return port\n    finally:\n        print(\"finally: settings file closed\")\n\nprint(\"got\", load_port(\"\"))\n",
+   "stdout": "except: empty, use 8080\nfinally: settings file closed\ngot 8080\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "road_none.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef load_port(text):\n    try:\n        port = int(text)\n    except ValueError as e:\n        if text == \"\":\n            print(\"except: empty, use 8080\")\n            return 8080\n        raise ConfigError(f\"bad port {text!r}\") from e\n    else:\n        print(\"else: port\", port)\n        return port\n    finally:\n        print(\"finally: settings file closed\")\n\nprint(\"got\", load_port(None))\n",
+   "stdout": "finally: settings file closed\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/road_none.py\", line 18, in <module>\n    print(\"got\", load_port(None))\n                 ~~~~~~~~~^^^^^^\n  File \"/home/you/python-ch22/road_none.py\", line 6, in load_port\n    port = int(text)\nTypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'\n",
+   "exit": 1
+  },
+  "road_ok.py": {
+   "src": "class ConfigError(Exception):\n    pass\n\ndef load_port(text):\n    try:\n        port = int(text)\n    except ValueError as e:\n        if text == \"\":\n            print(\"except: empty, use 8080\")\n            return 8080\n        raise ConfigError(f\"bad port {text!r}\") from e\n    else:\n        print(\"else: port\", port)\n        return port\n    finally:\n        print(\"finally: settings file closed\")\n\nprint(\"got\", load_port(\"8000\"))\n",
+   "stdout": "else: port 8000\nfinally: settings file closed\ngot 8000\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "shop_root.py": {
+   "src": "class ShopError(Exception):\n    \"\"\"Root of every error the shop raises.\"\"\"\n\nclass OutOfStock(ShopError):\n    pass\n\nclass BadCoupon(ShopError):\n    pass\n\ndef checkout(item, coupon):\n    if item == \"kite\":\n        raise OutOfStock(\"no kites today\")\n    if coupon != \"PIP10\":\n        raise BadCoupon(f\"unknown coupon {coupon!r}\")\n    return \"paid\"\n\norders = [(\"tea\", \"PIP10\"), (\"kite\", \"PIP10\"), (\"tea\", \"FREE\")]\nfor item, coupon in orders:\n    try:\n        print(checkout(item, coupon))\n    except ShopError as e:\n        print(f\"{type(e).__name__}: {e}\")\n",
+   "stdout": "paid\nOutOfStock: no kites today\nBadCoupon: unknown coupon 'FREE'\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_broad.py": {
+   "src": "prices = {\"tea\": 3, \"jam\": 4}\n\ndef total(order):\n    try:\n        cost = 0\n        for item in order:\n            cost += prices[itme]\n        return cost\n    except Exception:\n        return 0\n\nprint(\"total:\", total([\"tea\", \"jam\"]))\n",
+   "stdout": "total: 0\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "spot_enter.py": {
+   "src": "class Locker:\n    def __init__(self, number):\n        self.number = number\n\n    def __enter__(self):\n        print(\"locker\", self.number, \"unlocked\")\n        return self.number\n\n    def __exit__(self, exc_type, exc, tb):\n        print(\"locker\", self.number, \"locked\")\n\nwith Locker(7) as box:\n    print(\"my bag is in locker\", box.number)\n",
+   "stdout": "locker 7 unlocked\nlocker 7 locked\n",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/spot_enter.py\", line 13, in <module>\n    print(\"my bag is in locker\", box.number)\n                                 ^^^^^^^^^^\nAttributeError: 'int' object has no attribute 'number'\n",
+   "exit": 1
+  },
+  "suppress_demo.py": {
+   "src": "import os\nfrom contextlib import suppress\n\nwith suppress(FileNotFoundError):\n    os.remove(\"old_draft.txt\")\n    print(\"deleted the old draft\")\nprint(\"carry on either way\")\n",
+   "stdout": "carry on either way\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "swallow.py": {
+   "src": "settings = {\"volume\": \"7\"}\n\ndef load_volume():\n    try:\n        return int(setings[\"volume\"])\n    except Exception:\n        return 5          # a sensible default\n\nprint(\"volume:\", load_volume())\n",
+   "stdout": "volume: 5\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "swallow_fixed.py": {
+   "src": "settings = {\"volume\": \"7\"}\n\ndef load_volume():\n    try:\n        return int(setings[\"volume\"])\n    except (KeyError, ValueError):\n        return 5          # only the problems we expect\n\nprint(\"volume:\", load_volume())\n",
+   "stdout": "",
+   "stderr": "Traceback (most recent call last):\n  File \"/home/you/python-ch22/swallow_fixed.py\", line 9, in <module>\n    print(\"volume:\", load_volume())\n                     ~~~~~~~~~~~^^\n  File \"/home/you/python-ch22/swallow_fixed.py\", line 5, in load_volume\n    return int(setings[\"volume\"])\n               ^^^^^^^\nNameError: name 'setings' is not defined. Did you mean: 'settings'?\n",
+   "exit": 1
+  },
+  "trace_cards.py": {
+   "src": "from contextlib import contextmanager\n\n@contextmanager\ndef card(room):\n    print(\"on\", room)\n    try:\n        yield\n    finally:\n        print(\"off\", room)\n\nwith card(1):\n    with card(2):\n        print(\"in\", 2)\n    print(\"in\", 1)\n",
+   "stdout": "on 1\non 2\nin 2\noff 2\nin 1\noff 1\n",
+   "stderr": "",
+   "exit": 0
+  },
+  "trace_rows.py": {
+   "src": "rows = [\"4\", \"x\", \"6\", \"-\"]\ntotal = 0\nfor n, row in enumerate(rows, start=1):\n    try:\n        total += int(row)\n        status = \"added\"\n    except ValueError:\n        status = \"skipped\"\n    print(n, row, status, total)\n",
+   "stdout": "1 4 added 4\n2 x skipped 4\n3 6 added 10\n4 - skipped 10\n",
+   "stderr": "",
+   "exit": 0
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en" data-book="python">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preflight Checklist</title>
+<meta name="description" content="Chapter 26 of Pip &amp; Python, a comic course: testing in depth as a pilot's preflight checklist (parametrize tables, fixtures with setup and teardown, tmp_path, capsys, caplog, monkeypatch and unittest.mock, patching where a name is looked up, test isolation, unittest.TestCase, unit and integration tests, coverage, doctest and property checks), then code-quality tools (ruff check and ruff format, docstrings), logging as a flight recorder with a level dial, the warnings module, post-mortem debugging with python -m pdb, tracebacks with exception groups, and a preflight script that runs every check before takeoff.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/py-ch26.css">
+<script defer src="../data/py-ch26.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/py-ch26.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Python book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch25.html">&larr; Ch 25</a><span aria-current="page">Ch 26 of 27</span><a href="ch27.html">Ch 27 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 26</p>
+    <h1 id="cover-h">PREFLIGHT CHECKLIST</h1>
+    <div class="ch26-cover">
+      <svg class="char side" data-char="checklist" data-marks="vvvvx" data-label="PREFLIGHT"></svg>
+      <svg class="char lead" data-char="pip" data-mood="focus" data-mouth="smile" data-arms="point"></svg>
+      <svg class="char side" data-char="blackbox" data-label="INFO"></svg>
+      <svg class="char mini" data-char="sneak"></svg>
+    </div>
+    <p class="sr-only">Picture: Pip points at a clipboard checklist with four ticks and one red cross. Beside Pip stands an orange flight recorder whose dial points at INFO. Sneak the quiet bug peeks in from the side, hoping nobody reads the list.</p>
+    <p class="caption blurb">Pilots never skip the checklist, however many times they've flown. Today Pip gets one for code: tests with tables and a ground crew, a flight simulator for the outside world, a walkaround checker that reads your code, a flight recorder you can turn up or down, and crash investigators who look at the wreck instead of guessing. About 100 minutes, with 32 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter"><ol>
+    <li><a href="#part-1">The checklist and its tables: parametrize</a></li>
+    <li><a href="#part-2">The ground crew: fixtures</a></li>
+    <li><a href="#part-3">The flight simulator: fakes, mocks and isolation</a></li>
+    <li><a href="#part-4">More checklists: unittest, integration, coverage, properties</a></li>
+    <li><a href="#part-5">The walkaround inspection: linters, formatters, docstrings</a></li>
+    <li><a href="#part-6">The flight recorder: logging and warnings</a></li>
+    <li><a href="#part-7">Crash investigators, then takeoff</a></li>
+    <li><a href="#boss">Boss level and recap</a></li>
+  </ol></nav>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- ===================================================== PART 1 ===================================================== -->
+  <h2 class="part-h" id="part-1">Part 1 · The checklist and its tables<small>tests as checklist lines, and one test that checks a whole table of cases</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: every pilot uses the checklist">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Pip is in the cockpit for the first time. Before the engines start, the Professor hands over a clipboard.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>A checklist? I know how to fly! Well. I know how to fly in my head.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Pilots with thirty years of flying still read it, line by line, before <b>every</b> takeoff. Not because they're forgetful: because the list never is. In code, your takeoff is every time you save a change for good: a <b>commit</b>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+    <p class="caption soft">Chapter 14 built the first checklist lines: pytest, <code>assert</code>, edge cases, <code>pytest.raises</code>, <code>approx</code>, red-green-refactor and <code>breakpoint()</code>. This chapter turns them into a full preflight routine, then adds the tools real teams run around it.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the stations of a preflight">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">A real preflight has stations. So does a well-run Python project. Each one is a part of this chapter.</p>
+    <ul class="stations">
+      <li><svg class="char" data-char="checklist" data-marks="vvxv"></svg><b>THE CHECKLIST</b>tests, and tables of test cases (Part 1)</li>
+      <li><svg class="char" data-char="pip" data-mood="happy" data-arms="wave"></svg><b>THE GROUND CREW</b>fixtures: set up before, clean up after (Part 2)</li>
+      <li><svg class="char" data-char="machine" data-label="fake"></svg><b>THE SIMULATOR</b>fakes for the weather, the network, the clock (Part 3)</li>
+      <li><svg class="char" data-char="specs"></svg><b>THE WALKAROUND CHECKER</b>a linter reads your code for likely bugs (Part 5)</li>
+      <li><svg class="char" data-char="tidy"></svg><b>THE TIDY CREW</b>a formatter puts every space in its place (Part 5)</li>
+      <li><svg class="char" data-char="blackbox" data-label="WARNING"></svg><b>THE FLIGHT RECORDER</b>logging, with a dial you can turn (Part 6)</li>
+      <li><svg class="char" data-char="professor"></svg><b>THE INVESTIGATORS</b>post-mortem debugging with pdb (Part 7)</li>
+    </ul>
+    <p class="sr-only">Seven stations, each with a picture: a clipboard checklist for tests; Pip waving, as the ground crew, for fixtures; a function machine labelled fake for the simulator; a proof-reading critter with big glasses for the linter; a little robot with a broom for the formatter; the orange flight recorder for logging; and the Professor for the debugger.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: one line per check">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">A checklist names every line. So can pytest. Two new flags: <code>-qq</code> (extra quiet: no header, no timing line) and <code>-rA</code> (<b>r</b>eport <b>A</b>ll: one summary line per test).</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_preflight.py</span><pre class="code" data-src="test_preflight.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_preflight.py" data-exit></pre>
+        <div class="ckb" data-checkboard="test_preflight.py"></div></div>
+    </div>
+    <p class="sr-only">The clipboard under the terminal is built from that real run: three checklist lines, test_short_hop, test_no_trip_still_has_reserve and test_long_haul, each ticked and marked passed.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The names read like a checklist: <code>test_no_trip_still_has_reserve</code>. When one fails, the name tells me what broke before I read a single line of code.</p></div>
+    </div>
+    <p class="caption soft">The empty <code>PASSES</code> heading is where pytest would show printed output of passing tests. This book uses <code>-qq</code> on most runs because pytest's usual last line, like <samp>3 passed in 0.01s</samp>, includes a time that changes on every run.</p>
+  </section>
+
+  <div data-ex="choice" data-model="e1m" id="e1"></div>
+  <script type="application/json" id="e1m">{"q": "You add <code>-rA</code> to a pytest command. What do you get?", "options": [
+    {"t": "A short summary line for every test, saying PASSED, FAILED or ERROR", "correct": true, "why": "<code>-r</code> picks which tests go in the short summary at the end; <code>A</code> means all of them. Without it, only failures and errors are listed."},
+    {"t": "pytest runs every test a second time, to check the result holds", "why": "Nothing runs twice. <code>-rA</code> only changes the report."},
+    {"t": "pytest stops at the first failure and skips the remaining tests", "why": "That's <code>-x</code> (exit on first failure). <code>-rA</code> changes what's reported, not what runs."},
+    {"t": "Tests run in a random order, so hidden dependencies show up", "why": "pytest runs tests in file order. Random order needs a plugin."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: copy-paste tests">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Boarding groups: rows 1 to 5 board first (A), rows 6 to 20 next (B), everyone else last (C). Pip writes one test per row, by copy and paste.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_board_copy.py</span><pre class="code" data-src="test_board_copy.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_board_copy.py" data-exit></pre>
+        <div class="scene">
+          <svg class="char sm" data-char="sneak"></svg>
+          <div class="talk"><p class="bubble"><span class="sr-only">Sneak whispers: </span>Four green dots. Nobody copied a test for row <b>5</b>, the very edge of group A. That's where I live: line 2 says <code style="white-space:nowrap">row &lt; 5</code>.</p></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption soft">Copy-paste tests get long, so people stop adding cases. And the border cases are exactly the ones that get skipped.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: a table of cases with parametrize">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">One test, one table. <code>@pytest.mark.parametrize</code> runs the same test once for every row of the table. Adding a case is adding one line.</p>
+    <span class="file-tab">test_board.py</span>
+    <pre class="code" data-src="test_board.py"></pre>
+    <pre class="term" data-run="test_board.py" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Read the decorator as a sentence: "parametrize <code>row</code> and <code>group</code> with these pairs". The first argument is one string of names, separated by commas. pytest fills the test's parameters with the same names, one row at a time.</p></div>
+    </div>
+    <p class="caption soft">The failure report starts with <samp>row = 5, group = 'A'</samp>: the values of this one case. Then the usual diff: the function said <code>'B'</code>, the table said <code>'A'</code>. A decorator (Chapter 18) is all <code>@pytest.mark.parametrize</code> is: it wraps the test with its table.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 6: the table as a checklist">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">Each row became its own test, with its own name: <code>test_boarding_group[5-A]</code>. The part in square brackets is the case's <b>id</b>, made from its values. Here is the same run drawn as a checklist grid.</p>
+    <div class="ckb" data-checkboard="test_board.py" data-cols="row,group"></div>
+    <p class="sr-only">A clipboard grid with five rows: row 1 group A passed, row 5 group A failed, row 6 group B passed, row 20 group B passed, row 21 group C passed.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>One cross, in the border row. The fix is one character: <code>row &lt;= 5</code>. And the table stays as a guard, so the bug can't creep back in.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e2m" id="e2"></div>
+  <script type="application/json" id="e2m">{"program": "test_ex_param.py", "prompt": "Rows 1 to 3 are first class. Fill the blanks so pytest runs the test once per row of the table. The goal output was printed with <code>-qq -rA</code>.", "blanks": [{"line": 10, "text": "parametrize"}, {"line": 15, "text": "row, expected", "accept": ["row,expected"]}], "explain": "The marker is <code>@pytest.mark.parametrize</code>. Its first argument names the columns, <code>\"row, expected\"</code>, and the test function must take parameters with exactly those names. The ids <code>[1-first]</code>, <code>[3-first]</code> and <code>[4-economy]</code> come from each row's values."}</script>
+
+  <div data-ex="choice" data-model="e3m" id="e3"></div>
+  <script type="application/json" id="e3m">{"q": "A parametrize table has 6 rows. One row's case fails. What does pytest report?", "options": [
+    {"t": "6 tests: 5 passed and 1 failed, and the failure names that row's id", "correct": true, "why": "Each row is a separate test with its own id in square brackets, so one bad case never hides the other five."},
+    {"t": "1 test that failed, because the whole table counts as one test", "why": "Without parametrize you might write one test with a loop inside, and then the first bad case would stop it. Parametrize makes one test per row."},
+    {"t": "Only the rows before the bad one, then pytest stops the test", "why": "Every row runs, just as every test function runs."},
+    {"t": "6 tests, all failed, because one bad row spoils the whole table", "why": "The rows are independent. Only the row whose case is wrong fails."}]}</script>
+
+  <div data-ex="trace" data-model="e4m" id="e4"></div>
+  <script type="application/json" id="e4m">{"program": "ex_cases.py", "columns": ["km", "got", "ok"], "given": [0], "prompt": "This is what parametrize does for you, written by hand: one loop over a table of cases. Fill in what each pass prints.", "explain": "10 km: 10 × 3 + 50 = 80, as expected. 0 km: just the reserve, 50. 100 km: 300 + 50 = 350, but the table says 300, so <code>False</code>. The table had the wrong number; tables need checking too. parametrize would report it as <code>test[100-300]</code> failed, and still run the other two."}</script>
+
+  <!-- ===================================================== PART 2 ===================================================== -->
+  <h2 class="part-h" id="part-2">Part 2 · The ground crew<small>fixtures: fresh things for every test, set up before and cleaned up after</small></h2>
+
+  <section class="panel pop" aria-label="Panel 7: the ground crew">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Before each flight a ground crew fuels the plane. After it lands, they park it and clean up. The pilot doesn't do either: the plane is just ready.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="happy" data-mouth="smile" data-arms="wave"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My tests keep starting with the same three lines: make a plane, fill it up, empty the seats. Can somebody else do that part?</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>A <b>fixture</b> is your ground crew: a function that prepares something a test needs. The test asks for it by <b>naming it as a parameter</b>, and pytest runs the fixture and hands over what it returns.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: a fixture, fresh for every test">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption"><code>@pytest.fixture</code> turns a function into a fixture. Three tests ask for <code>plane</code>.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_plane.py</span><pre class="code" data-src="test_plane.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_plane.py" data-exit></pre>
+        <div class="fact26"><p class="h">WHY THE SECOND TEST PASSES</p><p><code>test_board_ada</code> puts Ada in a seat. Yet <code>test_seats_start_empty</code> finds the seats empty. pytest calls the fixture <b>again for every test</b>, so each one gets a brand-new dict and list. No test sees another's leftovers.</p></div>
+      </div>
+    </div>
+    <p class="caption soft">You never call <code>plane()</code> yourself. pytest reads the parameter names of each test, finds fixtures with those names, and calls them first. That's called <b>dependency injection</b>: the test declares what it needs; something else provides it.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 9: the fixture map: setup, test, teardown" data-map="map-fix">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">A fixture with <code>yield</code> has two halves: <b>setup</b> before the <code>yield</code>, <b>teardown</b> after it. Every road below is a real run with <code>-s</code>, which lets <code>print</code> lines through. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mf-t mf-d"><title id="mf-t">Map of a fixture's life</title><desc id="mf-d">From the start, a test that uses a fixture goes to SETUP, where the fixture runs up to yield. From SETUP, yield leads to TEST, where the test body runs. From TEST, when the test ends, the road leads to TEARDOWN, the code after yield. From TEARDOWN, if every assert passed, the road ends at PASSED; if an assert failed, it ends at FAILED. If SETUP raises an error, the road goes straight to ERROR, and neither the test nor the teardown runs.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Pip is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The three programs behind the roads, and their real runs</summary><div class="ch26-duo" style="margin-top:10px">
+      <div class="ch26-stack"><span class="file-tab">test_life_pass.py</span><pre class="code" data-src="test_life_pass.py"></pre><pre class="term" data-run="test_life_pass.py" data-exit></pre></div>
+      <div class="ch26-stack"><span class="file-tab">test_life_fail.py</span><pre class="code" data-src="test_life_fail.py"></pre><pre class="term" data-run="test_life_fail.py" data-exit></pre></div>
+      <div class="ch26-stack"><span class="file-tab">test_life_error.py</span><pre class="code" data-src="test_life_error.py"></pre><pre class="term" data-run="test_life_error.py" data-exit></pre></div>
+    </div></details>
+    <script type="application/json" id="map-fix">{"seed": 26, "size": [690, 430], "start": [[105, 4], [105, 44]], "states": [{"id": "S", "x": 20, "y": 50, "w": 170, "h": 72, "label": "SETUP", "sub": "fixture runs to yield"}, {"id": "T", "x": 260, "y": 50, "w": 170, "h": 72, "label": "TEST", "sub": "the test body runs"}, {"id": "D", "x": 500, "y": 50, "w": 170, "h": 72, "label": "TEARDOWN", "sub": "code after yield"}, {"id": "E", "x": 20, "y": 330, "w": 170, "h": 72, "label": "ERROR", "sub": "E: setup broke", "kind": "error"}, {"id": "P", "x": 260, "y": 330, "w": 170, "h": 72, "label": "PASSED", "sub": "a dot in the marks", "kind": "end"}, {"id": "F", "x": 500, "y": 330, "w": 170, "h": 72, "label": "FAILED", "sub": "F in the marks", "kind": "end"}], "transitions": [{"id": "tST", "from": "S", "to": "T", "pts": [[192, 86], [256, 86]], "label": "yield", "lx": 224, "ly": 74, "anchor": "middle"}, {"id": "tTD", "from": "T", "to": "D", "pts": [[432, 86], [496, 86]], "label": "ends", "lx": 464, "ly": 74, "anchor": "middle"}, {"id": "tDP", "from": "D", "to": "P", "pts": [[525, 124], [525, 230], [345, 230], [345, 326]], "label": ["every assert", "passed"], "lx": 357, "ly": 262}, {"id": "tDF", "from": "D", "to": "F", "pts": [[615, 124], [615, 326]], "label": ["an assert", "failed"], "lx": 605, "ly": 272, "anchor": "end"}, {"id": "tSE", "from": "S", "to": "E", "pts": [[105, 124], [105, 326]], "label": ["setup raised", "an error"], "lx": 122, "ly": 200, "bug": true}], "paths": [{"id": "pass", "label": "1. A passing test", "program": "test_life_pass.py", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["S"], "via": ["start"], "output": ["crew: fuel the plane"], "note": "pytest sees that <code>test_fuel</code> asks for <code>plane</code>, so it calls the fixture first. The fixture prints and builds the plane, up to <code>yield</code>."}, {"on": ["T"], "via": ["tST"], "output": ["crew: fuel the plane", "test: check the fuel"], "note": "<code>yield</code> hands the plane to the test and <b>pauses</b> the fixture right there. The test body runs."}, {"on": ["D"], "via": ["tTD"], "output": ["crew: fuel the plane", "test: check the fuel", ".crew: park the plane"], "note": "The test passed, so pytest prints its dot. Then it wakes the fixture up again: the lines after <code>yield</code> run. That's the <b>teardown</b>."}, {"on": ["P"], "via": ["tDP"], "output": ["crew: fuel the plane", "test: check the fuel", ".crew: park the plane", ""], "note": "Done: one passing test, one tidy hangar. (The <code>-s</code> flag let the <code>print</code> lines through; normally pytest hides output of passing tests.)"}]}, {"id": "fail", "label": "2. A failing test", "program": "test_life_fail.py", "expect": {"exit": 1, "stdoutExact": true}, "steps": [{"on": ["S"], "output": ["crew: fuel the plane"], "note": "Same fixture. This time the test expects 90 litres."}, {"on": ["T"], "via": ["tST"], "output": ["crew: fuel the plane", "test: check the fuel"], "note": "The test body runs and its <code>assert</code> fails."}, {"on": ["D"], "via": ["tTD"], "output": ["crew: fuel the plane", "test: check the fuel", "Fcrew: park the plane"], "note": "pytest prints <code>F</code>, and then <b>teardown still runs</b>. A failing test never leaves the plane on the runway. That's the big promise of a yield fixture."}, {"on": ["F"], "via": ["tDF"], "output": ["crew: fuel the plane", "test: check the fuel", "Fcrew: park the plane", "", "=========================== short test summary info ============================", "FAILED test_life_fail.py::test_fuel - assert 100 == 90"], "note": "The summary names the failure: <code>assert 100 == 90</code>."}]}, {"id": "error", "label": "3. Setup breaks", "bug": true, "program": "test_life_error.py", "expect": {"exit": 1, "stdoutExact": true}, "steps": [{"on": ["S"], "output": ["crew: fuel the plane"], "note": "This fixture has a bug of its own: <code>tank[\"oil\"] += 5</code>, but the tank has no <code>\"oil\"</code> key."}, {"on": ["E"], "via": ["tSE"], "output": ["crew: fuel the plane", "E", "=========================== short test summary info ============================", "ERROR test_life_error.py::test_fuel - KeyError: 'oil'"], "note": "The fixture crashed <em>before</em> <code>yield</code>, so the test <b>never ran</b> and there's nothing to tear down. pytest marks it <code>E</code> (ERROR), not <code>F</code>: \"your checklist is broken\", not \"the plane failed a check\". Jangles (KeyError, Chapter 9) strikes again."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="e5m" id="e5"></div>
+  <script type="application/json" id="e5m">{"program": "ex_yield.py", "prompt": "Under the hood, a yield fixture is a generator (Chapter 16). This program does by hand what pytest does with one. What does it print?", "hint": "<code>next(crew)</code> runs the generator up to <code>yield</code> and hands back the value. The second <code>next</code> runs the rest; the <code>None</code> stops it raising StopIteration when the generator ends.", "explain": "First <code>next</code>: setup prints <samp>crew: fuel up</samp> and hands over <samp>plane 7</samp>. The \"test\" prints. The second <code>next</code> wakes the generator after its <code>yield</code>: teardown prints <samp>crew: park</samp>. That's exactly the setup, test, teardown order of Panel 9."}</script>
+
+  <div data-ex="parsons" data-model="e6m" id="e6"></div>
+  <script type="application/json" id="e6m">{"program": "ex_fixture.py", "seed": 26, "pin": [1, 4, 5, 6, 7, 8], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12], "program": "ex_fixture_alt.py"}], "prompt": "The fixture is already in place, first, as is the convention. Rebuild the test that uses it. The goal output was printed with <code>-qq -s</code>.", "explain": "The decorator sits right above the fixture's <code>def</code>. Setup comes before <code>yield</code>, teardown after it. The test names <code>runway</code> as a parameter to receive <samp>runway 2</samp>. The dot is printed after the test passes and before teardown, just as in Panel 9."}</script>
+
+  <section class="panel pop" aria-label="Panel 10: fixture not found">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <svg class="sfx tr" data-sfx="E!" data-seed="10"></svg>
+    <p class="caption">A one-letter typo in a parameter name. Read it like a detective.</p>
+    <span class="file-tab">test_typo.py</span>
+    <pre class="code" data-src="test_typo.py"></pre>
+    <pre class="term small26" data-run="test_typo.py" data-exit></pre>
+    <ol class="checklist">
+      <li><span>Last line first: <samp>ERROR test_typo.py::test_fuel</samp>. <b>E</b>, not <b>F</b>: the test never started.</span></li>
+      <li><span>The reason: <samp>fixture 'plain' not found</samp>. The test asked for a fixture called <code>plain</code>.</span></li>
+      <li><span>The clue list: <samp>available fixtures</samp> includes <code>plane</code>, which is what we meant, and every fixture pytest provides for free.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Because fixtures are found by name, a parameter name is a request. A typo asks for something that doesn't exist.</p></div>
+    </div>
+    <p class="caption soft">The list of available fixtures depends on which pytest plugins are installed, so yours will differ. On this book's Python 3.13 it's longer, with fixtures from a few plugins installed there; the notebook's version notes show it.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: fixtures you get for free, and tmp_path">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">pytest brings its own crew. Ask for these by name in any test:</p>
+    <div class="cmd26-wrap"><table class="cmd26 keys26">
+      <thead><tr><th>Fixture</th><th>What the test gets</th></tr></thead>
+      <tbody>
+        <tr><td><code>tmp_path</code></td><td>A brand-new, empty folder (a <code>pathlib.Path</code>, Chapter 12) just for this test.</td></tr>
+        <tr><td><code>capsys</code></td><td>Catches everything printed, so the test can check it.</td></tr>
+        <tr><td><code>monkeypatch</code></td><td>Swaps names, settings and environment variables for the length of one test, then puts them back (Part 3).</td></tr>
+        <tr><td><code>caplog</code></td><td>Catches log messages (Part 6).</td></tr>
+      </tbody>
+    </table></div>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_logbook.py</span><pre class="code" data-src="test_logbook.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_logbook.py" data-exit></pre>
+        <div class="scene">
+          <svg class="char sm" data-char="professor"></svg>
+          <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>A test that writes files must never write into your real folders. <code>tmp_path</code> is a scratch hangar: each test gets its own, empty, and pytest tidies old ones away for you (it keeps the last three runs' folders, in case you want to look).</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e7m" id="e7"></div>
+  <script type="application/json" id="e7m">{"program": "test_ex_tmp.py", "prompt": "The test needs a scratch folder. Fill both blanks with the name of pytest's built-in fixture for that.", "blanks": [{"line": 5, "text": "tmp_path"}, {"line": 6, "text": "tmp_path"}], "explain": "The parameter name <code>tmp_path</code> asks pytest for the fixture; inside the test it's a <code>Path</code>, so <code>tmp_path / \"notes.txt\"</code> builds a path to a file in that folder. The file is written there and counted: 3 lines, one dot."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: capsys checks what was printed">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">How do you test a function that <em>prints</em>? Ask for <code>capsys</code>, call the function, then <code>capsys.readouterr()</code> hands back what was printed so far, as <code>.out</code> and <code>.err</code>.</p>
+    <span class="file-tab">test_announce.py</span>
+    <pre class="code" data-src="test_announce.py"></pre>
+    <pre class="term" data-run="test_announce.py" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The two lines of the diff look identical! Then the <code>?</code> line puts a <code>+</code> under the very end: one extra character. <code>print</code> adds a newline, <code>\n</code>, after the text.</p></div>
+    </div>
+    <p class="caption soft"><code>--tb=short</code> asks for <b>short tracebacks</b>: just the failing line and the explanation. (The long style would also print <code>capsys</code> itself, with a memory address that changes on every run.)</p>
+  </section>
+
+  <div data-ex="spot" data-model="e8m" id="e8"></div>
+  <script type="application/json" id="e8m">{"program": "test_ex_noassert.py", "bug": 8, "prompt": "<code>greet</code> prints a question mark instead of <code>!</code>, yet this test passes. Which line lets the bug escape?", "explain": "Line 8 compares, gets <code>False</code>, and throws the answer away: there's no <code>assert</code>. A test with no assert can only fail by crashing. That's Chapter 14's plastic smoke alarm. Write <code>assert captured.out == ...</code> and the alarm rings. Red first: watch every new test fail once."}</script>
+
+  <!-- ===================================================== PART 3 ===================================================== -->
+  <h2 class="part-h" id="part-3">Part 3 · The flight simulator<small>fake weather, fake settings, and tests that don't depend on each other</small></h2>
+
+  <section class="panel pop" aria-label="Panel 13: the outside world in a test">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Trainee pilots practise storms in a <b>simulator</b>, not in a real storm. Tests need the same trick.</p>
+    <div class="scene">
+      <svg class="char" data-char="pip" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>My tower code asks a weather service for the wind. In the hangar there's no network, so every test crashes. And even with a network, the wind changes, so the answer would change too.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>A test must give the same answer every time, anywhere. So for one test, swap the weather service for a <b>fake</b> that always says what you choose. People call it a <b>stub</b>, a <b>mock</b> or a <b>test double</b>.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: monkeypatch swaps a name for one test">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Two small modules. <code>radar.py</code> would ask the network; here it can only fail. <code>tower.py</code> imports it.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">radar.py</span><pre class="code" data-src="radar.py"></pre></div>
+      <div class="ch26-stack"><span class="file-tab">tower.py</span><pre class="code" data-src="tower.py"></pre></div>
+    </div>
+    <p class="caption">The <code>monkeypatch</code> fixture's <code>setattr(module, "name", value)</code> swaps one name in one module, and puts it back when the test ends.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_tower_monkey.py</span><pre class="code" data-src="test_tower_monkey.py"></pre><pre class="term" data-run="test_tower_monkey.py" data-exit></pre></div>
+      <div class="ch26-stack"><span class="file-tab">test_env.py</span><pre class="code" data-src="test_env.py"></pre><pre class="term" data-run="test_env.py" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char wide26" data-char="machine" data-label="lambda: 20"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The fake says: </span>I'm a tiny machine (a lambda, Chapter 17) that always answers 20. The tower can't tell I'm not the real radar. <code>setenv</code> and <code>delenv</code> do the same for environment variables.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="e9m" id="e9"></div>
+  <script type="application/json" id="e9m">{"program": "test_ex_monkey.py", "prompt": "A wind of exactly 50 km/h should ground the plane. Fill the blanks so the test swaps tower's <code>wind_speed</code> for a fake.", "blanks": [{"line": 5, "text": "setattr"}, {"line": 5, "text": "\"wind_speed\"", "accept": ["'wind_speed'"]}], "explain": "<code>monkeypatch.setattr(tower, \"wind_speed\", ...)</code>: the module, the name as a string, and the stand-in. <code>cleared_for_takeoff</code> needs the wind to be <em>below</em> 50, so 50 gives <code>False</code>: a border case, tested on purpose."}</script>
+
+  <section class="panel pop" aria-label="Panel 15: the patch that does nothing">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="15"></svg>
+    <p class="caption"><code>unittest.mock.patch</code> is the standard library's version, used as a <code>with</code> block. Pip patches the radar... and the real radar runs anyway.</p>
+    <span class="file-tab">test_tower_wrong.py</span>
+    <pre class="code" data-src="test_tower_wrong.py"></pre>
+    <pre class="term" data-run="test_tower_wrong.py" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The traceback walks from my test into <code>tower.py</code> line 5, then into <code>radar.py</code> line 3: the <em>real</em> <code>wind_speed</code>. My patch was there. Why didn't the tower use it?</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 16: where a patch really lands" data-tracer="tr-patch" id="tr-patch-box">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Watch the name tags. Each module has its own namespace: its own set of tags. This plain program patches twice and prints what happens.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-patch-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-patch">{"program": "patch_demo.py", "steps": [{"line": 1, "output": [], "frames": [{"name": "global (patch_demo)", "vars": []}], "objects": {}, "note": "Two small modules sit next to this file: <code>radar.py</code> defines <code>wind_speed()</code>, which needs the network, and <code>tower.py</code> does <code>from radar import wind_speed</code>."}, {"line": 3, "output": [], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}}, "changed": ["mock"], "note": "Line 1 brings in the mock tools."}, {"line": 4, "output": [], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}}, "changed": ["radar", "wind_speed"], "note": "<code>import radar</code> runs <code>radar.py</code>. Its own namespace (its own set of name tags) gets <code>wind_speed</code>, pointing at the real function."}, {"line": 6, "output": [], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}}, "changed": ["tower", "wind_speed", "cleared_for_takeoff"], "note": "<code>import tower</code> runs <code>tower.py</code>. Its <code>from radar import wind_speed</code> makes a <b>second tag</b> named <code>wind_speed</code>, in tower's namespace, pointing at the <b>same</b> function object (Chapter 2's name tags, Chapter 13's imports)."}, {"line": 7, "output": [], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "M1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}, "M1": {"kind": "MagicMock", "value": "fake: returns 20", "label": "patch 1"}}, "changed": ["wind_speed"], "note": "<code>mock.patch(\"radar.wind_speed\")</code> moves the tag <b>in radar's namespace</b> to a fake. Look at tower's tag: it still points at the real function."}, {"line": 9, "output": [], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "M1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}, "M1": {"kind": "MagicMock", "value": "fake: returns 20", "label": "patch 1"}}, "note": "<code>cleared_for_takeoff()</code> looks up <code>wind_speed</code> in <b>tower's</b> namespace, finds the real function, and the real one tries the network: ConnectionError. The fake sat there unused."}, {"line": 12, "output": ["patched radar: the real one ran! no network in the hangar"], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}}, "note": "The <code>with</code> block ends and the patch puts radar's tag back where it was."}, {"line": 13, "output": ["patched radar: the real one ran! no network in the hangar"], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "M2"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}, "M2": {"kind": "MagicMock", "value": "fake: returns 20", "label": "patch 2"}}, "changed": ["wind_speed"], "note": "This time the patch targets <code>\"tower.wind_speed\"</code>: the tag that <code>cleared_for_takeoff</code> really reads."}, {"line": 15, "output": ["patched radar: the real one ran! no network in the hangar", "patched tower: True"], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}}, "changed": ["wind_speed"], "note": "The fake answered 20, so it printed <samp>True</samp>, with no network at all. Then the patch ended and tower's tag went home."}, {"line": null, "output": ["patched radar: the real one ran! no network in the hangar", "patched tower: True", "after: True"], "frames": [{"name": "global (patch_demo)", "vars": [{"n": "mock", "ref": "MK"}, {"n": "radar", "ref": "R"}, {"n": "tower", "ref": "T"}]}, {"name": "module radar", "vars": [{"n": "wind_speed", "ref": "F1"}]}, {"name": "module tower", "vars": [{"n": "wind_speed", "ref": "F1"}, {"n": "cleared_for_takeoff", "ref": "F2"}]}], "objects": {"MK": {"kind": "module", "value": "unittest.mock"}, "R": {"kind": "module", "value": "radar"}, "T": {"kind": "module", "value": "tower"}, "F1": {"kind": "function", "value": "wind_speed()  (the real one)"}, "F2": {"kind": "function", "value": "cleared_for_takeoff()"}}, "note": "Both tags point at the real function again: a patch always cleans up after itself. Rule: <b>patch the name where it is looked up</b>, not where it was defined."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: patch where the name is looked up">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The fix: patch <code>"tower.wind_speed"</code>, the tag that <code>cleared_for_takeoff</code> actually reads. <code>as fake</code> keeps hold of the fake, so the test can also ask it questions afterwards.</p>
+    <span class="file-tab">test_tower_right.py</span>
+    <pre class="code" data-src="test_tower_right.py"></pre>
+    <pre class="term" data-run="test_tower_right.py" data-exit></pre>
+    <div class="fix26"><p class="h">PATCH WHERE IT'S LOOKED UP</p><p>If a module does <code>from radar import wind_speed</code>, patch <code>"thatmodule.wind_speed"</code>. If it does <code>import radar</code> and calls <code>radar.wind_speed()</code>, patch <code>"radar.wind_speed"</code>. Patching the wrong place raises no error at all: the real thing quietly runs.</p></div>
+    <p class="caption soft">A mock records every call: <code>fake.assert_called_once()</code> fails the test unless the fake was called exactly once, and <code>fake.call_count</code> counts calls. <code>return_value=20</code> answers 20 every time; <code>side_effect=[30, 70, 10]</code> answers each value in turn, and <code>side_effect=ConnectionError("down")</code> makes the fake raise, to test how your code copes.</p>
+  </section>
+
+  <div data-ex="choice" data-model="e10m" id="e10"></div>
+  <script type="application/json" id="e10m">{"q": "<code>shop.py</code> starts with <code>from payments import charge</code> and calls <code>charge(total)</code>. Your test must not charge a real card. What do you patch?", "options": [
+    {"t": "<code>mock.patch(\"shop.charge\")</code>", "correct": true, "why": "<code>shop</code> has its own tag named <code>charge</code>, made by its <code>from</code> import. That's the tag its code reads, so that's the one to swap."},
+    {"t": "<code>mock.patch(\"payments.charge\")</code>", "why": "That moves the tag inside <code>payments</code>. <code>shop</code>'s own tag still points at the real function: Panel 16's trap."},
+    {"t": "<code>mock.patch(\"charge\")</code>", "why": "A patch target needs a module and a name, like <code>\"shop.charge\"</code>. A bare name raises an error telling you so."},
+    {"t": "Both <code>shop.charge<\/code> and <code>payments.charge<\/code> work", "why": "Only the tag that's looked up matters. Patching <code>payments.charge<\/code> leaves the real card being charged."}]}</script>
+
+  <div data-ex="predict" data-model="e11m" id="e11"></div>
+  <script type="application/json" id="e11m">{"program": "patch_typo.py", "expect": "error", "prompt": "Look closely at the patch target. Which error does this program raise?", "hint": "A typo in a patch target is caught straight away, when the <code>with</code> block starts. Which error means \"this object has no such name\"?", "explain": "An <b>AttributeError</b> (Pockets, Chapter 9): <samp>&lt;module 'tower' ...&gt; does not have the attribute 'wind_sped'</samp>. Good news: a misspelled name fails loudly. Only a correctly spelled name in the <em>wrong module</em> fails silently."}</script>
+
+  <div data-ex="predict" data-model="e11bm" id="e11b"></div>
+  <script type="application/json" id="e11bm">{"program": "pred_side.py", "expect": "error", "prompt": "A fake with a list of answers is asked three times. The first three lines print fine. Which error ends the run?", "hint": "<code>side_effect=[30, 70]<\/code> hands out the list's items one per call, like <code>next()<\/code> on an iterator (Chapter 16). What does <code>next()<\/code> raise when there's nothing left?", "explain": "The fake answers <samp>30<\/samp>, then <samp>70<\/samp>, and <code>call_count<\/code> is <samp>2<\/samp>. The third call finds the list used up, so the mock raises <b>StopIteration<\/b>, exactly as <code>next()<\/code> does on an empty iterator. Give a fake one answer per call you expect."}</script>
+
+  <section class="panel pop" aria-label="Panel 18: passes alone, fails in the suite">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">The spookiest bug in testing. Run one test alone: green. Run the whole file: red. Same code.</p>
+    <span class="file-tab">test_iso.py</span>
+    <pre class="code" data-src="test_iso.py"></pre>
+    <pre class="term" data-run="test_iso.py" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak whispers: </span><code>LOG</code> is made once, when the file is imported, and every test shares it. The first test left <code>'takeoff'</code> in it. Leftovers from one test are my favourite hiding place.</p></div>
+    </div>
+    <p class="caption soft"><code>test_iso.py::<wbr>test_log_starts_empty</code> means "only this test from this file". A test suite should pass in any order and any selection: each test is <b>isolated</b>.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><p class="ch26-lab">THE FIX: A FRESH LOG FROM A FIXTURE</p><span class="file-tab">test_iso_fixed.py</span><pre class="code" data-src="test_iso_fixed.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_iso_fixed.py" data-exit></pre>
+        <div class="fact26"><p class="h">THE USUAL SUSPECTS</p><p>Module-level lists and dicts, files left behind, changed environment variables, a changed current folder, a mutable default argument (Chapter 17). Fixtures, <code>tmp_path</code> and <code>monkeypatch</code> give every test its own copy and undo changes afterwards.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e12m" id="e12"></div>
+  <script type="application/json" id="e12m">{"q": "<code>test_b</code> fails when you run the whole suite, but passes when you run it alone. What's the most likely cause?", "options": [
+    {"t": "An earlier test changed something they share, like a module-level list or a file", "correct": true, "why": "Leftover state is the classic cause. Give each test its own fresh copy with a fixture, <code>tmp_path</code> or <code>monkeypatch</code>."},
+    {"t": "pytest is flaky, and now and then it simply gets a test result wrong", "why": "pytest is extremely reliable. When the result depends on what ran before, the tests share something."},
+    {"t": "<code>test_b</code> has a syntax error that only shows up in the full run", "why": "A syntax error would stop it running alone too."},
+    {"t": "The suite runs tests at the same time, and two of them collide", "why": "pytest runs tests one after another unless you add a plugin for parallel runs."}]}</script>
+
+  <!-- ===================================================== PART 4 ===================================================== -->
+  <h2 class="part-h" id="part-4">Part 4 · More checklists<small>unittest, unit and integration tests, coverage, doctests and properties</small></h2>
+
+  <section class="panel clean" aria-label="Panel 19: unittest, the checklist in the standard library">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Python ships its own test framework, <code>unittest</code>. You'll meet it in older projects and in Python itself. Tests are methods of a class that inherits from <code>unittest.TestCase</code> (Chapter 19).</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_unit.py</span><pre class="code" data-src="test_unit.py"></pre></div>
+      <div class="ch26-stack"><p class="tag26">One possible run: the time on the "Ran" line changes</p><pre class="term" data-run="test_unit.py" data-exit></pre></div>
+    </div>
+    <div class="cmd26-wrap"><table class="cmd26">
+      <thead><tr><th>unittest</th><th>pytest</th></tr></thead>
+      <tbody>
+        <tr><td><code>setUp</code> / <code>tearDown</code> methods, run before and after every test</td><td>a fixture with <code>yield</code></td></tr>
+        <tr><td><code>self.assertEqual(a, b)</code></td><td><code>assert a == b</code></td></tr>
+        <tr><td><code>self.assertAlmostEqual(a, b)</code> (equal when rounded to 7 decimal places)</td><td><code>assert a == pytest.approx(b)</code></td></tr>
+        <tr><td><code>with self.assertRaises(ZeroDivisionError):</code></td><td><code>with pytest.raises(ZeroDivisionError):</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char" data-char="jelly" data-label="0.0999…"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The jelly says: </span>0.3 / 3 isn't exactly 0.1 (Chapter 3). <code>assertEqual</code> fails, <code>assertAlmostEqual</code> forgives me. Notice the dots: unittest runs tests in alphabetical order, <code>close_enough</code> first.</p></div>
+    </div>
+    <p class="caption soft">The report goes to the error stream and ends with <samp>FAILED (failures=1)</samp>. And pytest runs <code>TestCase</code> classes too, with no changes, so a project can move over gradually.</p>
+  </section>
+
+  <div data-ex="fill" data-model="e13m" id="e13"></div>
+  <script type="application/json" id="e13m">{"program": "test_ex_unit.py", "prompt": "A unittest test with a float. Fill the method that runs before every test, and the assertion that forgives tiny float differences. (This run used pytest, which runs TestCase classes too.)", "blanks": [{"line": 9, "text": "setUp"}, {"line": 13, "text": "assertAlmostEqual"}], "explain": "<code>setUp</code> (with a capital U) runs before each test method. <code>assertAlmostEqual</code> rounds the difference to 7 decimal places before comparing, so a float that's off in the 17th digit still passes. Here <code>0.1 * 1.609344</code> is really <code>0.16093440000000003</code>, so <code>assertEqual</code> would fail."}</script>
+
+  <section class="panel sketch" aria-label="Panel 20: unit tests and integration tests">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">A mechanic tests one instrument on the bench. Then the whole engine on a test stand. Then a real test flight. Tests come in the same sizes.</p>
+    <div class="pyr" role="img" aria-label="A test pyramid: a narrow top for end-to-end tests, a wider middle for integration tests, and the widest base for unit tests.">
+      <div class="e2e"><b>END-TO-END</b>the whole program, run like a user would. Few, slow.</div>
+      <div class="int"><b>INTEGRATION</b>several parts together: real files, a real database, modules calling modules.</div>
+      <div class="unit"><b>UNIT</b>one function or class on its own, often with fakes for the rest. Many, fast.</div>
+    </div>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_trip.py</span><pre class="code" data-src="test_trip.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="test_trip.py" data-exit></pre>
+        <p class="caption soft"><code>test_parse_one_leg</code> is a <b>unit</b> test: one function, one value. <code>test_total_from_a_real_file</code> is a small <b>integration</b> test: a real file, read and added up by two functions working together. (<code>flightlog.py</code> is Part 7's project.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e14m" id="e14"></div>
+  <script type="application/json" id="e14m">{"q": "A test saves a booking with <code>save_booking()</code> into a real SQLite file in <code>tmp_path</code>, then reads it back with <code>load_bookings()</code>. What kind of test is it?", "options": [
+    {"t": "An integration test", "correct": true, "why": "Two functions and a real database file work together. It's slower than a unit test, and it catches problems where the pieces meet."},
+    {"t": "A unit test", "why": "A unit test checks one piece on its own, usually with no real files or databases."},
+    {"t": "A doctest", "why": "Doctests are examples written inside docstrings."},
+    {"t": "Not a test, because it writes a file", "why": "Writing files is fine in a test, as long as it's into <code>tmp_path</code>."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 21: coverage, which lines did the tests run">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Which lines did your checks actually reach? That's <b>coverage</b>. Real projects use the third-party package <code>coverage.py</code>; the standard library's <code>trace</code> module shows the same idea with no install.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">fare.py</span><pre class="code" data-src="fare.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="fare.py" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak whispers: </span>The numbers count how often each line ran. <code>&gt;&gt;&gt;&gt;&gt;&gt;</code> marks a line that <b>never</b> ran: nobody tried a baby's fare. If that line had a bug, no check would ever see it.</p></div>
+    </div>
+    <p class="caption soft">With coverage.py installed, it's <code>python -m coverage run -m pytest</code> and then <code>python -m coverage report -m</code>, which lists the missed line numbers. Careful: 100% coverage means every line <em>ran</em>, not that every answer was <em>checked</em>.</p>
+  </section>
+
+  <div data-ex="choice" data-model="e15m" id="e15"></div>
+  <script type="application/json" id="e15m">{"q": "Your tests reach 100% coverage. What does that prove?", "options": [
+    {"t": "Every line ran at least once during the tests, and nothing more", "correct": true, "why": "Coverage counts lines reached. A test with no <code>assert</code> (Panel 12's exercise) adds coverage without checking anything, and a wrong expected value passes happily."},
+    {"t": "The program has no bugs left, since every line was checked", "why": "Coverage can't see missing cases or wrong answers. The border case of Panel 4 can hide even when every line runs."},
+    {"t": "Every possible input was tried on every line of the program", "why": "Each line ran for <em>some</em> input, not for every input."},
+    {"t": "Every line of the code follows the PEP 8 style rules", "why": "Style is the linter's job (Part 5)."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 22: doctests and property checks">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Two more ways to write checks. <b>Doctests</b> (Chapter 14's notebook) are examples inside a docstring; pytest runs them with <code>--doctest-modules</code>.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">doc_fuel.py</span><pre class="code" data-src="doc_fuel.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="doc_fuel.py" data-exit></pre></div>
+    </div>
+    <p class="caption"><b>Property checks</b> don't list examples. They state a rule that must hold for <em>any</em> input, then try lots of inputs. Here the rule is "glue the chunks back together and you get the items back".</p>
+    <span class="file-tab">prop_chunk.py</span>
+    <pre class="code" data-src="prop_chunk.py"></pre>
+    <pre class="term" data-run="prop_chunk.py" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Both examples happened to divide evenly. The random inputs found an odd one in three tries: the last, half-full chunk was dropped. <code>random.seed(26)</code> makes the "random" inputs the same on every run, so a failure can be repeated.</p></div>
+    </div>
+    <p class="caption soft">The third-party library <b>Hypothesis</b> does this properly with pytest: it picks clever inputs, remembers failures, and <b>shrinks</b> each one to the smallest input that still fails. And the habit from Chapter 14 still leads it all: <b>test-driven development</b>, writing the failing check first.</p>
+  </section>
+
+  <!-- ===================================================== PART 5 ===================================================== -->
+  <h2 class="part-h" id="part-5">Part 5 · The walkaround inspection<small>a linter that reads for likely bugs, a formatter that tidies, docstrings that explain</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 23: the walkaround checker and the tidy crew">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Before boarding, someone walks around the plane looking for anything odd. Code gets the same walkaround, without running it. (This checker reads code habits; Chapter 21's Inspector, in the blue cap, checks type labels.)</p>
+    <div class="duo">
+      <div class="duo-card"><div class="pic"><svg class="char" data-char="specs"></svg></div><h3>THE WALKAROUND CHECKER<small>a linter: ruff check, flake8</small></h3><p>Reads your code and points at likely bugs and style slips: unused imports, a variable set but never used, <code>== None</code>, a list as a default argument. Like a spell-checker for code. It only <b>reports</b>.</p></div>
+      <div class="duo-card dashed"><div class="pic"><svg class="char" data-char="tidy"></svg></div><h3>THE TIDY CREW<small>a formatter: ruff format, black</small></h3><p>Rewrites the layout in one standard style: spaces, line breaks, quotes, blank lines. It never changes what the code does, and it never argues. Nobody has to debate commas again.</p></div>
+    </div>
+    <p class="sr-only">Two cards. The walkaround checker is a proof-reading critter with big glasses. The tidy crew is a little robot with a broom.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="proofreader"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Proofreader says: </span>I only stop code Python can't read (Chapter 1). Code can pass me and still be untidy, or quietly wrong. PEP 8 (Chapter 14) is the style these tools enforce for you.</p></div>
+    </div>
+    <p class="caption soft">This book uses <b>ruff</b>, one fast tool that does both jobs. <b>flake8</b> (a linter) and <b>black</b> (a formatter) are older, popular choices that work the same way. Your editor can run them every time you save, and your type checker (Chapter 21) can sit beside them.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: ruff check reads messy code">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">This program runs without a single error. Then the walkaround checker reads it.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">messy.py</span><pre class="code" data-src="messy.py"></pre>
+        <span class="file-tab">ruff.toml</span><pre class="code" data-src="ruff.toml"></pre></div>
+      <div class="ch26-stack"><pre class="term small26" data-run="messy.py" data-exit></pre><p class="caption soft ch26-how"><b>How this run was really made:</b> ruff is installed for this computer's user only, so the capture called it by its full path, <code>/root/.local/bin/ruff</code>, with exactly the arguments shown.</p></div>
+    </div>
+    <p class="caption soft">Every report line has the same five parts. Tap each one.</p>
+    <div class="anatomy" data-anatomy>
+      <p class="anat-line ruff26" aria-hidden="true"><span class="part" data-p="file">messy.py</span>:<span class="part" data-p="line">5</span>:<span class="part" data-p="col">34</span>: <span class="part" data-p="code">B006</span> <span class="part" data-p="msg">Do not use mutable data structures for argument defaults</span></p>
+      <ul class="anat-keys" aria-label="Tap a part of the report line">
+        <li><button type="button" data-part="file" aria-pressed="false"><b>messy.py</b>The file.</button></li>
+        <li><button type="button" data-part="line" aria-pressed="false"><b>5</b>The line number.</button></li>
+        <li><button type="button" data-part="col" aria-pressed="false"><b>34</b>The column: 34 characters along, the <code>[</code> of <code>manifest=[]</code>.</button></li>
+        <li><button type="button" data-part="code" aria-pressed="false"><b>B006</b>The rule's code. Its letter is the family: <b>F</b> likely errors, <b>E</b>/<b>W</b> PEP 8 style, <b>I</b> import order, <b>B</b> likely bugs.</button></li>
+        <li><button type="button" data-part="msg" aria-pressed="false"><b>the message</b>What's wrong, in words. Search the code online for the rule's full page.</button></li>
+      </ul>
+      <p class="sr-only" aria-live="polite"></p>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The walkaround checker says: </span>Look at the second printed line: Grace's list still has Ada in it. That's B006, the shared default list from Chapter 17, caught before anyone ran a test. <code>ruff check --fix</code> would fix the starred ones; always read what it changed.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e17m" id="e17"></div>
+  <script type="application/json" id="e17m">{"program": "lint_ex.py", "bug": 4, "prompt": "This program prints the right answer, but <code>ruff check lint_ex.py<\/code> reports one problem. Which line will it point at? (The capture ran ruff by its full path, <code>/root/.local/bin/ruff<\/code>, with the same arguments.)", "explain": "<samp>F841 Local variable `overbooked` is assigned to but never used</samp>. A value worked out and then ignored is often a half-finished thought: maybe the function meant to warn about overbooking. The linter spots it without running anything."}</script>
+
+  <section class="panel clean" aria-label="Panel 25: ruff format tidies the layout">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Now the tidy crew. <code>ruff format cramped.py</code> would rewrite the file; <code>--diff</code> only shows what it would change.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">cramped.py</span><pre class="code" data-src="cramped.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="cramped.py" data-exit></pre><p class="caption soft ch26-how"><b>How this run was really made:</b> ruff is installed for this computer's user only, so the capture called it by its full path, <code>/root/.local/bin/ruff</code>, with exactly the arguments shown.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="tidy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The tidy critter says: </span>Lines starting with <code>-</code> go, lines with <code>+</code> come in. Spaces after commas and around <code>*</code> and <code>+</code>, none around <code>=</code> in a default, two blank lines after a function. Same program, same output.</p></div>
+    </div>
+    <p class="caption soft">The exit code is 1 because the file "would be reformatted". <code>ruff format --check</code> does the same without the diff. That non-zero exit is what lets a script, or a pre-commit hook, stop a commit (Panel 39).</p>
+  </section>
+
+  <div data-ex="choice" data-model="e18m" id="e18"></div>
+  <script type="application/json" id="e18m">{"q": "Which job belongs to a <b>formatter</b> such as <code>ruff format</code> or black?", "options": [
+    {"t": "Rewriting <code>x=f( a,b )</code> as <code>x = f(a, b)</code>", "correct": true, "why": "Layout only: spaces, line breaks, quotes. The program does exactly the same thing afterwards."},
+    {"t": "Warning that a variable is assigned but never used", "why": "That's a linter's job (F841). A formatter never comments on what code means."},
+    {"t": "Checking that <code>add(\"3\", 4)</code> passes the right types", "why": "That's a type checker such as mypy (Chapter 21)."},
+    {"t": "Running your tests", "why": "That's pytest. A formatter never runs your code."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 26: docstrings that explain">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">The walkaround checker can also check <b>docstrings</b> (Chapter 6): the <code>D</code> rules come from PEP 257, the docstring conventions. <code>--select D</code> runs just those.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">docless.py</span><pre class="code" data-src="docless.py"></pre><pre class="term" data-run="docless.py" data-exit></pre></div>
+      <div class="ch26-stack"><span class="file-tab">documented.py</span><pre class="code" data-src="documented.py"></pre></div>
+    </div>
+    <pre class="term" data-run="documented.py" data-exit></pre>
+    <p class="caption soft ch26-how"><b>How these runs were really made:</b> ruff is installed for this computer's user only, so for both <code>ruff check --select D</code> runs in this panel the capture called it by its full path, <code>/root/.local/bin/ruff</code>, with exactly the arguments shown.</p>
+    <ul class="checklist">
+      <li><span>Start with a one-line summary that ends with a full stop, saying what the function does.</span></li>
+      <li><span>Then a blank line, then the details: here in the <b>Google style</b>, with <code>Args:</code> and <code>Returns:</code> sections (and <code>Raises:</code> when a function raises, as in Panel 38's <code>flightlog.py</code>). (The <code>ruff.toml</code> above chose that convention.)</span></li>
+      <li><span>A module gets a docstring too: one line at the top of the file saying what it's for.</span></li>
+      <li><span>Explain <em>why</em> and <em>what</em>, not every step: the code already says how.</span></li>
+    </ul>
+  </section>
+
+  <div data-ex="choice" data-model="e19m" id="e19"></div>
+  <script type="application/json" id="e19m">{"q": "Which first line of a docstring follows PEP 257 best?", "options": [
+    {"t": "<code>\"\"\"Return the litres of fuel a trip needs.\"\"\"</code>", "correct": true, "why": "One line, says what the function does, ends with a full stop. Details can follow after a blank line."},
+    {"t": "<code>\"\"\"this function takes km and then multiplies it by 3 and then adds 50 and returns it\"\"\"</code>", "why": "Too long for a summary, and it retells the code step by step instead of saying what it's for."},
+    {"t": "<code># Return the litres of fuel a trip needs.</code>", "why": "That's a comment. <code>help()</code> can't see comments; it shows docstrings."},
+    {"t": "<code>\"\"\"fuel_needed(km)\"\"\"</code>", "why": "<code>help()</code> already shows the signature. The summary should say what the function does."}]}</script>
+
+  <!-- ===================================================== PART 6 ===================================================== -->
+  <h2 class="part-h" id="part-6">Part 6 · The flight recorder<small>logging with levels and a dial, loggers per module, and the warnings module</small></h2>
+
+  <section class="panel pop" aria-label="Panel 27: debug prints left behind">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Pip found a bug last week with a <code>print</code>. The print is still there.</p>
+    <span class="file-tab">debug_prints.py</span>
+    <pre class="code" data-src="debug_prints.py"></pre>
+    <pre class="term" data-run="debug_prints.py"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak whispers: </span>Your passengers see your debugging notes. And if this function lives in a library, every program that uses it prints them too. You can't switch them off without editing the code.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Pip says: </span>Planes have a better idea: a <b>flight recorder</b>. It notes everything, and you choose how much of it to read.</p></div>
+      <svg class="char sm" data-char="blackbox" data-label="WARNING"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: logging levels and the default dial">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">The <code>logging</code> module has five levels of message, from chatty to urgent. Watch which ones appear.</p>
+    <span class="file-tab">log_default.py</span>
+    <pre class="code" data-src="log_default.py"></pre>
+    <pre class="term" data-run="log_default.py" data-exit></pre>
+    <div class="cmd26-wrap"><table class="cmd26 keys26">
+      <thead><tr><th>Level</th><th>Number</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td><code>DEBUG</code></td><td>10</td><td>details for whoever is hunting a bug</td></tr>
+        <tr><td><code>INFO</code></td><td>20</td><td>normal milestones: "connected", "saved 3 files"</td></tr>
+        <tr><td><code>WARNING</code></td><td>30</td><td>something odd, but the program carries on</td></tr>
+        <tr><td><code>ERROR</code></td><td>40</td><td>something failed; one job couldn't be done</td></tr>
+        <tr><td><code>CRITICAL</code></td><td>50</td><td>the whole program may not be able to go on</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The debug and info lines vanished, with no error! Out of the box the dial is at <b>WARNING</b>: only level 30 and up gets written. And each line reads <code>LEVEL:logger name:message</code>, with <code>root</code> as the name of the main logger.</p></div>
+    </div>
+    <p class="caption soft">Log messages go to the <b>error stream</b> (stderr), which is why they show in red, while <samp>program finished</samp> is ordinary output. That keeps logs apart from a program's real results.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: the logging dial" data-dial="dial-m">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Turn the dial. The same five messages go in every time; the level decides which ones the recorder writes. Each position below is a real run.</p>
+    <div class="chips"></div>
+    <div class="dial-stage">
+      <div><p class="ch26-lab">MESSAGES GOING IN</p><ul class="dial-in"></ul></div>
+      <div><svg class="char dial-art" data-char="blackbox" data-label="WARNING"></svg></div>
+      <div class="dial-out"><p class="label">WRITTEN OUT</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every dial position</summary><table class="transcript"><thead><tr><th>Dial</th><th>Each message</th><th>Real output</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The program behind the dial, and its real run</summary><div class="ch26-duo" style="margin-top:10px">
+      <div class="ch26-stack"><span class="file-tab">dial.py</span><pre class="code" data-src="dial.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="dial.py"></pre></div>
+    </div></details>
+    <script type="application/json" id="dial-m">{"program": "dial.py", "start": 2, "messages": [
+      {"level": "DEBUG", "text": "flaps at 10 degrees"},
+      {"level": "INFO", "text": "climbing to 3000 m"},
+      {"level": "WARNING", "text": "light turbulence ahead"},
+      {"level": "ERROR", "text": "left engine is coughing"},
+      {"level": "CRITICAL", "text": "both engines stopped"}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="e20m" id="e20"></div>
+  <script type="application/json" id="e20m">{"program": "levels.py", "columns": ["name", "number", "written"], "given": [0], "prompt": "Levels are just numbers. The dial is at INFO. Fill in each level's number, and whether a message at that level gets written.", "explain": "DEBUG 10, INFO 20, WARNING 30, ERROR 40. A message is written when its number is at least the dial's: 10 &lt; 20, so DEBUG is filtered; INFO, WARNING and ERROR get through. Spacing the numbers by 10 leaves room for custom levels in between."}</script>
+
+  <div data-ex="predict" data-model="e21m" id="e21"></div>
+  <script type="application/json" id="e21m">{"program": "log_ex.py", "prompt": "This program sends its log to ordinary output (<code>stream=sys.stdout</code>) with the dial at INFO. What does it print?", "hint": "Check each message's level against INFO. The format is <code>LEVEL:name:message</code>. Which logger does <code>logging.warning</code> use?", "explain": "<code>debug</code> is below INFO: filtered. The info and error lines come from the logger named <samp>gate</samp>. <code>logging.warning(...)</code>, called on the module itself, uses the <samp>root</samp> logger."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: basicConfig and one logger per module">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The real pattern. Every module gets its own logger, named after the module. The program's entry point sets the dial and the format once, with <code>logging.basicConfig</code>.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><p class="ch26-lab">A LIBRARY MODULE: LOGS, NEVER PRINTS</p><span class="file-tab">engine.py</span><pre class="code" data-src="engine.py"></pre></div>
+      <div class="ch26-stack"><p class="ch26-lab">THE PROGRAM: SETS THE DIAL</p><span class="file-tab">log_setup.py</span><pre class="code" data-src="log_setup.py"></pre><pre class="term" data-run="log_setup.py" data-exit></pre></div>
+    </div>
+    <ul class="checklist">
+      <li><span><code>logging.getLogger(__name__)</code>: <code>__name__</code> is the module's name (Chapter 13), so <code>engine</code>'s messages say <samp>engine</samp>, and the main file's say <samp>__main__</samp>. You can see who said what.</span></li>
+      <li><span><code>%(levelname)-8s</code> pads the level to 8 characters, so the columns line up. Other fields include <code>%(asctime)s</code> (the time) and <code>%(lineno)d</code>.</span></li>
+      <li><span>Pass values as extra arguments, <code>log.warning("only %s litres left", fuel)</code>, not as an f-string. The text is only built if the message is actually written.</span></li>
+      <li><span>A library never calls <code>basicConfig</code> and never prints: it logs, and lets each program decide what to show.</span></li>
+    </ul>
+  </section>
+
+  <div data-ex="fill" data-model="e22m" id="e22"></div>
+  <script type="application/json" id="e22m">{"program": "ex_basic.py", "prompt": "Set up logging so that even the chattiest messages appear.", "blanks": [{"line": 4, "text": "basicConfig"}, {"line": 4, "text": "DEBUG"}], "explain": "<code>logging.basicConfig(level=logging.DEBUG)</code> turns the dial all the way down, so all five levels are written. <code>stream=sys.stdout</code> sends them to ordinary output instead of the error stream."}</script>
+
+  <section class="panel pop" aria-label="Panel 31: basicConfig too late">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="SILENCE" data-seed="31"></svg>
+    <p class="caption">Pip turns the dial to DEBUG... on line 4. The radio messages never appear. No error either.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><p class="ch26-lab">DIAL SET TOO LATE</p><span class="file-tab">log_late.py</span><pre class="code" data-src="log_late.py"></pre><pre class="term" data-run="log_late.py" data-exit></pre></div>
+      <div class="ch26-stack"><p class="ch26-lab">FORCE=TRUE REPLACES THE OLD SETUP</p><span class="file-tab">log_force.py</span><pre class="code" data-src="log_force.py"></pre><pre class="term" data-run="log_force.py" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The first <code>logging.warning</code> found no setup, so it quietly ran a default <code>basicConfig()</code> for you. After that, <code>basicConfig</code> does <b>nothing</b>: the docs say it only works if the root logger has no handlers yet. Set up logging first thing, at the top of your entry point. <code>force=True</code> (Python 3.8+) throws the old setup away.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="e23m" id="e23"></div>
+  <script type="application/json" id="e23m">{"program": "ex_late.py", "bug": 4, "prompt": "The two weather lines never appear. The <code>basicConfig</code> on line 5 is correct on its own. Which line is the real problem?", "explain": "Line 4 logs before anything is set up, so logging configures itself with the defaults (the error stream, dial at WARNING). Line 5 is then ignored. Move <code>basicConfig</code> above every logging call, or add <code>force=True</code>."}</script>
+
+  <div data-ex="choice" data-model="e24m" id="e24"></div>
+  <script type="application/json" id="e24m">{"q": "Your backup script couldn't copy one photo because the file was locked, then carried on with the other 300. Which level fits that message?", "options": [
+    {"t": "<code>log.error(...)</code>", "correct": true, "why": "One job failed (that photo isn't backed up), but the program carries on. Someone should look at it later."},
+    {"t": "<code>log.debug(...)</code>", "why": "Debug is for details only a bug hunter wants. A missing backup matters to the user."},
+    {"t": "<code>log.info(...)</code>", "why": "Info is for things going as planned. This didn't."},
+    {"t": "<code>log.critical(...)</code>", "why": "Critical means the whole program can't go on, like the backup drive being missing. Here 300 photos still got copied."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 32: caplog tests the flight recorder">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Logs are behaviour, so they deserve tests. The <code>caplog</code> fixture catches log messages; <code>caplog.at_level(logging.WARNING)</code> sets the dial for the block.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">test_engine_log.py</span><pre class="code" data-src="test_engine_log.py"></pre></div>
+      <div class="ch26-stack"><pre class="term small26" data-run="test_engine_log.py" data-exit></pre></div>
+    </div>
+    <p class="caption soft">Under <code>PASSES</code>, pytest shows the log it captured for the first test, with the logger's name, the file and the line number: <samp>engine:engine.py:9</samp>. The second test checks the opposite: a full tank logs nothing at all.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: the warnings module">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">A cousin of logging: the <code>warnings</code> module. Libraries use it to tell <em>programmers</em> (not users) that something should change, such as a function on its way out.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">warn_demo.py</span><pre class="code" data-src="warn_demo.py"></pre></div>
+      <div class="ch26-stack"><pre class="term small26" data-run="warn_demo.py" data-exit></pre></div>
+    </div>
+    <ul class="checklist">
+      <li><span>A warning names its file, line and <b>category</b>: <code>DeprecationWarning</code> ("this will be removed"), <code>UserWarning</code> (the default), and others.</span></li>
+      <li><span><code>stacklevel=2</code> blames the line that <em>called</em> <code>old_fuel_check</code> (line 11), which is where the fix belongs.</span></li>
+      <li><span>The function ran three times, but the warning printed <b>once</b>: by default each warning is shown once per place in the code.</span></li>
+      <li><span><code>python3 -W error</code> turns warnings into exceptions. Tests often run that way, so nothing deprecated slips through; pytest also lists warnings in a "warnings summary".</span></li>
+    </ul>
+    <p class="caption soft">Why are both warnings above <samp>80 True</samp>? This run went through a pipe, and then Python holds ordinary output back until the program ends, while warnings (on the error stream) go out at once. In your own terminal the <samp>80</samp>, <samp>60</samp> and <samp>40</samp> lines would appear between the two warnings. Chapter 14's <code>SyntaxWarning</code> about an always-true <code>assert</code> was a warning too, from the Proofreader.</p>
+  </section>
+
+  <!-- ===================================================== PART 7 ===================================================== -->
+  <h2 class="part-h" id="part-7">Part 7 · Crash investigators, then takeoff<small>post-mortem pdb, conditional breakpoints, exception groups, and the preflight script</small></h2>
+
+  <section class="panel pop" aria-label="Panel 34: look at the wreck">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">After a real crash, investigators don't guess. They go to the wreck, and read the recorder.</p>
+    <div class="scene">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Chapter 14's <code>breakpoint()</code> stops <em>before</em> the trouble, if you know where it will be. When you don't, run the program under pdb and let it crash. pdb catches the crash and lets you walk around the wreck: every frame, every variable, frozen at the moment it happened. That's <b>post-mortem debugging</b>.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Zilch says: </span>Somebody divided by me again.</p></div>
+      <svg class="char sm" data-char="zilch"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: a post-mortem pdb session" data-walk="walk-pdb" data-walk-new-lines id="walk-pdb-box">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">A league table crashes on its second team. Walk through a real session, one command at a time.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">crash.py</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next command <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The whole session in one terminal</summary><pre class="term small26" data-run="crash.py" style="margin-top:10px"></pre></details>
+    <script type="application/json" id="walk-pdb">{"program": "crash.py", "steps": [{"line": 1, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):"], "mood": "focus", "mouth": "smile", "arms": "point", "note": "<code>python3 -m pdb crash.py</code> starts the whole program <b>inside</b> pdb. It stops before line 1 and waits at the <code>(Pdb)</code> prompt. You don't need to edit the file or add <code>breakpoint()</code>."}, {"line": 2, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)"], "mood": "surprised", "mouth": "o", "arms": "shrug", "note": "<code>c</code> (continue) runs at full speed. The Hawks line prints, then the crash: read the traceback from the bottom, as always. <b>ZeroDivisionError</b> in <code>average</code>, line 2. (The first few frames are pdb's own machinery: skip them.) Then the magic words: <b>Entering post mortem debugging</b>. The program is dead, but pdb froze the wreck exactly as it was."}, {"line": 2, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)", "(Pdb) p scores", "[]"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "We're standing in the frame that crashed. <code>p scores</code> prints the value: an <b>empty list</b>. <code>len([])</code> is 0. That's the division by zero. But who passed an empty list?"}, {"line": 6, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)", "(Pdb) p scores", "[]", "(Pdb) u", "> /home/you/python-ch26/crash.py(6)report()", "-> avg = average(team[\"scores\"])"], "mood": "focus", "mouth": "smile", "arms": "point", "note": "<code>u</code> (up) climbs one frame towards the caller, like climbing one line up the traceback. Now we're in <code>report</code>, paused on line 6, the line that called <code>average</code>."}, {"line": 6, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)", "(Pdb) p scores", "[]", "(Pdb) u", "> /home/you/python-ch26/crash.py(6)report()", "-> avg = average(team[\"scores\"])", "(Pdb) p team", "{'name': 'Owls', 'scores': []}"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "<code>p team</code>: the Owls have no scores yet. Case closed: the data is fine, the code just never planned for a team with no games. (<code>d</code>, down, would go back to <code>average</code>.)"}, {"line": 6, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)", "(Pdb) p scores", "[]", "(Pdb) u", "> /home/you/python-ch26/crash.py(6)report()", "-> avg = average(team[\"scores\"])", "(Pdb) p team", "{'name': 'Owls', 'scores': []}", "(Pdb) ll", "  5  \tdef report(team):", "  6  ->\t    avg = average(team[\"scores\"])", "  7  \t    return f\"{team['name']}: {avg:.1f}\""], "mood": "happy", "mouth": "smile", "arms": "point", "note": "<code>ll</code> (long list) shows the whole current function, with <code>-&gt;</code> on the line where this frame is paused. Handy when you've lost your place."}, {"line": null, "output": ["> /home/you/python-ch26/crash.py(1)<module>()", "-> def average(scores):", "(Pdb) c", "Hawks: 8.0", "Traceback (most recent call last):", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 3873, in main", "    pdb._run(target)", "    ~~~~~~~~^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/pdb.py\", line 2770, in _run", "    self.run(target.code)", "    ~~~~~~~~^^^^^^^^^^^^^", "  File \"/root/.local/share/uv/python/cpython-3.15.2-linux-x86_64-gnu/lib/python3.15/bdb.py\", line 912, in run", "    exec(cmd, globals, locals)", "    ~~~~^^^^^^^^^^^^^^^^^^^^^^", "  File \"<string>\", line 1, in <module>", "  File \"/home/you/python-ch26/crash.py\", line 13, in <module>", "    print(report(t))", "          ~~~~~~^^^", "  File \"/home/you/python-ch26/crash.py\", line 6, in report", "    avg = average(team[\"scores\"])", "  File \"/home/you/python-ch26/crash.py\", line 2, in average", "    return sum(scores) / len(scores)", "           ~~~~~~~~~~~~^~~~~~~~~~~~~", "ZeroDivisionError: division by zero", "Uncaught exception. Entering post mortem debugging", "Running 'cont' or 'step' will restart the program", "> /home/you/python-ch26/crash.py(2)average()", "-> return sum(scores) / len(scores)", "(Pdb) p scores", "[]", "(Pdb) u", "> /home/you/python-ch26/crash.py(6)report()", "-> avg = average(team[\"scores\"])", "(Pdb) p team", "{'name': 'Owls', 'scores': []}", "(Pdb) ll", "  5  \tdef report(team):", "  6  ->\t    avg = average(team[\"scores\"])", "  7  \t    return f\"{team['name']}: {avg:.1f}\"", "(Pdb) q"], "mood": "happy", "mouth": "shout", "arms": "cheer", "note": "<code>q</code> quits pdb. The fix is a decision, like the empty list in Chapter 14: <code>average</code> could return 0, or <code>report</code> could print \"no games yet\". Either way, add a test for the empty team first."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="e25m" id="e25"></div>
+  <script type="application/json" id="e25m">{"q": "pdb has stopped after a crash inside <code>average</code>. You want to see the values in the function that <em>called</em> <code>average</code>. Which command?", "options": [
+    {"t": "<code>u</code>", "correct": true, "why": "<code>u</code> (up) moves one frame towards the caller: one line up the traceback. <code>d</code> (down) goes back."},
+    {"t": "<code>c</code>", "why": "After a crash, <code>c</code> restarts the program from the top, as pdb's message says."},
+    {"t": "<code>n</code>", "why": "There's no next line after a crash: the program is over. Post-mortem is for looking, not running."},
+    {"t": "<code>q</code>", "why": "That quits pdb. You'd lose the frozen wreck."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 36: conditional breakpoints and more pdb tools">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">One leg in a long list has a negative distance. Stepping through every pass would take ages, so tell pdb <em>when</em> to stop: <code>b 4, km &lt; 0</code> means "break at line 4, but only when <code>km &lt; 0</code> is true".</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">fuel_log.py</span><pre class="code" data-src="fuel_log.py"></pre></div>
+      <div class="ch26-stack"><pre class="term small26" data-run="fuel_log.py"></pre></div>
+    </div>
+    <div class="cmd26-wrap"><table class="cmd26 keys26">
+      <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>b 4</code> / <code>b 4, cond</code></td><td>set a breakpoint at line 4, optionally only when <code>cond</code> is true; <code>b</code> alone lists them, <code>cl</code> clears them</td></tr>
+        <tr><td><code>display total</code></td><td>show <code>total</code> after every step, with its old value when it changes</td></tr>
+        <tr><td><code>w</code></td><td>where: print the stack of frames, newest at the bottom</td></tr>
+        <tr><td><code>u</code> / <code>d</code></td><td>up to the caller's frame / back down</td></tr>
+        <tr><td><code>l</code> / <code>ll</code></td><td>list the code around here / the whole current function</td></tr>
+        <tr><td><code>r</code></td><td>return: run until the current function returns</td></tr>
+        <tr><td><code>until 9</code></td><td>run until line 9 (handy for jumping past a loop)</td></tr>
+        <tr><td><code>pp value</code></td><td>pretty-print a big dict or list across several lines</td></tr>
+        <tr><td><code>interact</code></td><td>open a normal Python prompt with all the current names</td></tr>
+        <tr><td><code>h</code></td><td>help: lists every command; <code>h b</code> explains one</td></tr>
+      </tbody>
+    </table></div>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><p class="ch26-lab">SWITCH EVERY BREAKPOINT() OFF</p><span class="file-tab">forgot_bp.py</span><pre class="code" data-src="forgot_bp.py"></pre></div>
+      <div class="ch26-stack"><pre class="term" data-run="forgot_bp.py" data-exit></pre>
+        <p class="caption soft">The environment variable <code>PYTHONBREAKPOINT=0</code> makes every <code>breakpoint()</code> call do nothing, without editing the file. (On Windows PowerShell: <code>$env:PYTHONBREAKPOINT="0"</code> first.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="e26m" id="e26"></div>
+  <script type="application/json" id="e26m">{"q": "In the run above, pdb showed <samp>display total: 480  [old: 600]</samp>. What happened?", "options": [
+    {"t": "Line 4 ran with <code>km = -40</code>: <code>total</code> fell from 600 to 480", "correct": true, "why": "600 + (-40 × 3) = 480, and <code>display</code> reported the change. A fuel total that goes <em>down</em> is the bug: a negative leg slipped into the data."},
+    {"t": "pdb itself changed <code>total</code> to 480 while the program was paused", "why": "<code>display</code> only watches. pdb never changes values unless you assign one yourself."},
+    {"t": "The loop restarted from the top, and <code>total</code> was reset", "why": "The loop moved on to its next item; line 3 is the <code>for</code> line, as always between passes."},
+    {"t": "The breakpoint stopped working, so the whole loop ran on", "why": "It stopped exactly once, when <code>km &lt; 0</code> became true."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 37: reading an exception group">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">A preflight that finds <em>two</em> problems should report both at once. Chapter 22's <code>ExceptionGroup</code> does that, and its traceback is drawn as a tree.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">egroup.py</span><pre class="code" data-src="egroup.py"></pre></div>
+      <div class="ch26-stack"><pre class="term small26" data-run="egroup.py" data-exit></pre></div>
+    </div>
+    <ol class="checklist">
+      <li><span>The outer box (lines starting with <code>|</code>) is the group itself: where it was raised, and <samp>ExceptionGroup: preflight failed (2 sub-exceptions)</samp>.</span></li>
+      <li><span>Each numbered branch, <code>1</code> and <code>2</code>, is one problem inside the group, read like a small traceback of its own.</span></li>
+      <li><span>The line under <samp>RuntimeError: cabin door open</samp> is the <b>note</b> added with <code>add_note()</code>: extra advice for whoever reads it.</span></li>
+    </ol>
+    <p class="caption soft">Tools that run many checks at once, like test runners and <code>asyncio</code> task groups (Chapter 27), raise groups like this. Read the outer line first, then each branch.</p>
+  </section>
+
+  <div data-ex="choice" data-model="e27m" id="e27"></div>
+  <script type="application/json" id="e27m">{"q": "In <code>egroup.py</code>'s traceback, where does <samp>Check door 2L, behind the galley.</samp> come from?", "options": [
+    {"t": "<code>err.add_note(...)</code> on line 7, attached to that RuntimeError", "correct": true, "why": "Notes are printed under their exception's message, inside its branch of the tree."},
+    {"t": "It's the message of a third exception inside the group", "why": "The header says 2 sub-exceptions. A note belongs to an exception; it isn't one."},
+    {"t": "Python adds a hint like this for every RuntimeError", "why": "Python adds no hints here. Every word of it is in line 7."},
+    {"t": "It's printed by a <code>print</code> call after the traceback", "why": "There's no <code>print</code> in the program. It's part of the traceback."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 38: the preflight script">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Time to fly. Pip's project, <code>flightlog.py</code>, gets the full preflight: walkaround checker, tidy crew, checklist. One command each, in one terminal.</p>
+    <div class="ch26-duo">
+      <div class="ch26-stack"><span class="file-tab">flightlog.py</span><pre class="code" data-src="flightlog.py"></pre></div>
+      <div class="ch26-stack"><span class="file-tab">test_flightlog.py</span><pre class="code" data-src="test_flightlog.py"></pre></div>
+    </div>
+    <pre class="term" data-run="flightlog.py" data-exit></pre>
+    <p class="caption soft ch26-how"><b>How this run was really made:</b> ruff is installed for this computer's user only, so the capture called it by its full path, <code>/root/.local/bin/ruff</code>, with exactly the arguments shown. The pytest step ran as shown.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="checklist" data-marks="vvv" data-label="TAKEOFF"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The checklist says: </span>Lint: clean. Format: tidy. Five tests: green. Cleared for takeoff! (<code>test_flightlog.py</code> uses the formatter's own layout for the parametrize lists: one item per line, with a comma after the last.)</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: let a robot read the checklist">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">People forget. So teams make the computer run the preflight for them. A <b>pre-commit hook</b> is a script that git runs every time you type <code>git commit</code>. If any check fails, the commit doesn't happen.</p>
+    <span class="file-tab">.pre-commit-config.yaml</span>
+    <pre class="code" data-src=".pre-commit-config.yaml"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-mouth="smile" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>This file is for <b>pre-commit</b>, a popular third-party tool (installed with pip, then <code>pre-commit install</code> once per project). It runs ruff's two checks and my tests before every commit. Then the same checks run again on a server for every change: that's <b>continuous integration</b>.</p></div>
+    </div>
+    <p class="caption soft">The file isn't Python, so this book doesn't run it; it's shown as a sample. It is <b>YAML</b>, a settings format where indentation shows what belongs to what.</p>
+  </section>
+
+  <!-- ===================================================== BOSS ===================================================== -->
+  <section class="panel pop" data-play aria-label="Panel 40: boss level" id="boss">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="40"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <p class="caption">Every check mixes ideas from this chapter.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="pip" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>Before each answer, read it like a checklist line: what does this test ask for, what does it fake, and what would make it fail?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="b1m" id="b1"></div>
+  <script type="application/json" id="b1m">{"program": "test_boss_parsons.py", "seed": 7, "pin": [1, 4, 5, 6], "prompt": "The fixture comes first, as is the convention, and is already in place. Put the parametrized test's lines in order so the run matches.", "explain": "Each decorator sits right above its own <code>def</code>. The test asks for the <code>cabin</code> fixture <em>and</em> the parametrized <code>name</code>. Both cases pass because every case gets a fresh cabin: Grace's run never sees Ada."}</script>
+
+  <div data-ex="predict" data-model="b2m" id="b2"></div>
+  <script type="application/json" id="b2m">{"program": "boss_predict.py", "hint": "The root dial is at WARNING. But <code>radio</code> has its own dial, set to DEBUG. A logger without its own dial (<code>fuel</code>) uses root's.", "explain": "<code>radio</code> has its own level, DEBUG, so its debug message is written: a logger's own level decides, and root's handler then prints it. <code>fuel</code> has no level of its own, so it takes root's WARNING: the info message is filtered, the warning is written. <code>logging.error</code> uses root. Turning up one module's logger while leaving the rest quiet is exactly how you debug one part of a big program."}</script>
+
+  <div data-ex="spot" data-model="b3m" id="b3"></div>
+  <script type="application/json" id="b3m">{"program": "test_boss_spot.py", "bug": 10, "prompt": "The function is right, and the table is right. But one case fails. Click the buggy line.", "explain": "Line 10 always passes <code>10</code> instead of the table's <code>km</code>. The first row happens to use 10, so it passes by luck; the second row exposes it: <samp>assert 80 == 350</samp>, where 80 = fuel_needed(10). The test itself was the bug."}</script>
+
+  <div data-ex="fill" data-model="b4m" id="b4"></div>
+  <script type="application/json" id="b4m">{"program": "test_boss_fill.py", "prompt": "Test a printed departure sign for two cases. Fill in the marker, the fixture that catches printing, and the method that reads what was printed.", "blanks": [{"line": 9, "text": "parametrize"}, {"line": 10, "text": "capsys"}, {"line": 12, "text": "readouterr()"}], "explain": "<code>@pytest.mark.parametrize</code> makes two tests, with ids <code>[True-DELAYED]</code> and <code>[False-ON TIME]</code>. Fixtures and parametrized names mix freely in one parameter list. <code>capsys.readouterr().out</code> is everything printed so far, newline included."}</script>
+
+  <div data-ex="trace" data-model="b5m" id="b5"></div>
+  <script type="application/json" id="b5m">{"program": "boss_trace.py", "columns": ["city", "wind", "calls"], "given": [0], "prompt": "A fake radar made with <code>mock.Mock</code>. Fill in what it answers each time, and how many calls it has counted.", "explain": "With <code>side_effect</code> set to a list, each call returns the next item: 30, 70, 10. The arguments make no difference: Oslo gets 30 the first time and 10 the second. <code>call_count</code> goes up by one per call. A list of answers is handy for testing \"calm, then storm, then calm\"."}</script>
+
+  <div data-ex="choice" data-model="b6m" id="b6"></div>
+  <script type="application/json" id="b6m">{"q": "Your test for <code>send_report()</code> passes on your laptop but fails on the team's test server, which has no internet. What should change?", "options": [
+    {"t": "Patch the network call where <code>send_report</code>'s module looks it up", "correct": true, "why": "A unit test shouldn't depend on the network. Patch the name in the module that uses it (Panel 17), so the test uses a fake, and maybe add <code>fake.assert_called_once()</code> to check the report was sent."},
+    {"t": "Run the tests only on machines that have a working internet connection", "why": "Then the test also fails whenever the real service is down or slow. It's testing the internet, not your code."},
+    {"t": "Raise the log level to DEBUG so you can see why the request fails", "why": "Logging helps you see what happened. It doesn't stop the real network call."},
+    {"t": "Patch the network function in the module where it was first defined", "why": "If <code>send_report</code>'s module imported it with <code>from ... import</code>, that leaves its own tag on the real function. That's Panel 15's silent trap."}]}</script>
+
+  <section class="panel pop" id="recap" aria-label="Panel 41: what you learned">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">What you learned in Chapter 26</p>
+    <ul class="recap">
+      <li><b>EVERY FLIGHT, EVERY LINE OF THE CHECKLIST.</b>Run the whole test suite before every commit. <code>-qq -rA</code> names every check; <code>parametrize</code> turns a table of cases into one test per row, each with its own id.</li>
+      <li><b>THE GROUND CREW SETS UP AND CLEANS UP.</b>A fixture is asked for by name. Setup runs before <code>yield</code>, teardown after it, even when the test fails. <code>tmp_path</code>, <code>capsys</code>, <code>caplog</code> and <code>monkeypatch</code> come free.</li>
+      <li><b>PATCH WHERE IT'S LOOKED UP.</b>Fakes replace the network, the clock and settings for one test. Patch the tag the code reads; the wrong module raises no error. Tests share nothing: each passes alone and in any order.</li>
+      <li><b>THE CHECKER REPORTS, THE TIDY CREW REWRITES.</b><code>ruff check</code> finds likely bugs and style slips; <code>ruff format</code> fixes layout; docstrings follow PEP 257.</li>
+      <li><b>THE RECORDER WRITES EVERYTHING AT OR ABOVE THE DIAL.</b>DEBUG 10, INFO 20, WARNING 30, ERROR 40, CRITICAL 50; the default dial is WARNING. One <code>getLogger(__name__)</code> per module, <code>basicConfig</code> once and first, never <code>print</code> in libraries.</li>
+      <li><b>DON'T GUESS: GO TO THE WRECK.</b><code>python3 -m pdb</code> catches the crash; <code>p</code>, <code>u</code>, <code>d</code>, <code>ll</code> look around. Conditional breakpoints stop only when it matters. Exception groups read as a tree, notes and all.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="pip" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Pip says: </span>The checklist was never about distrust. It's what lets me fly without worrying.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 42: next time, waiters and open doors">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption soft">Coming up in Chapter 27, the last chapter…</p>
+    <div class="teaser">
+      <div class="ch26-row">
+        <figure><svg class="char" data-char="chef"></svg><figcaption>One kitchen, many orders at once…</figcaption></figure>
+        <figure><svg class="char" data-char="pip" data-mood="happy" data-arms="wave"></svg><figcaption>…and a program that talks to the world outside.</figcaption></figure>
+      </div>
+      <p class="sr-only">Teaser picture: the chef from Chapter 1, and Pip waving at the world outside.</p>
+      <div class="scene">
+        <svg class="char sm" data-char="pip" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Pip thinks: </span>How can one program wait for ten slow things at once, like a waiter who never stands still? And how does it read command-line arguments, run other programs and save to a database? Waiters, kitchens and open doors.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 27 · WAITERS AND OPEN DOORS<br><small style="font: 700 1rem var(--f-bubble)">Concurrency as a restaurant with waiters and kitchens, and programs that talk to the world: arguments, exit codes, subprocesses, files, SQLite and web APIs.</small></p>
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch25.html">← Ch 25 · Stencils and Codebooks</a><a class="next" href="ch27.html">Ch 27 · Waiters and Open Doors →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how pytest finds, injects and rewrites</summary>
+    <div class="page-body">
+      <svg class="char sm" data-char="professor"></svg>
+      <h3>Collection, then running</h3>
+      <p>pytest works in two phases. <b>Collection</b> imports every test file and builds a list of test items: one per test function, one per parametrize row, one per <code>TestCase</code> method. Then it <b>runs</b> each item: it works out which fixtures the item needs (by parameter name, recursively, because fixtures can ask for other fixtures), sets them up, calls the test, and tears the fixtures down in the reverse order.</p>
+      <h3>Fixture scope</h3>
+      <p>A fixture is made fresh for every test by default (<code>scope="function"</code>). <code>@pytest.fixture(scope="module")</code> makes one per file and <code>scope="session"</code> one per whole run: useful for something slow, like starting a test database, but shared state is exactly how Panel 18's leftovers happen. Fixtures that every file needs go in a file called <code>conftest.py</code>; pytest finds them without any import. <code>autouse=True</code> makes a fixture apply to every test without being asked for.</p>
+      <h3>Why <code>assert a == b</code> shows both values</h3>
+      <p>A plain <code>assert</code> in Python just raises <code>AssertionError</code>. pytest <b>rewrites</b> the assert statements in test files as it imports them, adding code that records each side's value, which is how its reports can say <samp>assert 'B' == 'A'</samp> and draw diffs. That's also why pytest stores compiled test files in <code>__pycache__</code> with its own tag.</p>
+      <h3>What a <code>Mock</code> is</h3>
+      <p><code>unittest.mock.Mock</code> creates an object that accepts any attribute and any call, and remembers them all. <code>MagicMock</code> (what <code>patch</code> uses by default) also supports dunder methods such as <code>len()</code> and iteration (Chapter 20). <code>mock.patch("tower.wind_speed")</code> imports <code>tower</code>, saves the current value of its <code>wind_speed</code> attribute, sets a <code>MagicMock</code> in its place, and puts the original back when the <code>with</code> block (or decorated test) ends. Pass <code>autospec=True</code> and the fake also refuses calls with the wrong arguments, which catches tests that drifted away from the real function.</p>
+      <h3>How a logger decides</h3>
+      <p>Loggers form a tree by name: <code>"pip.engine"</code> is a child of <code>"pip"</code>, which is a child of the root logger. A message is first checked against its own logger's level (or the nearest ancestor's that has one set). If it passes, it travels up the tree to every handler on the way; each handler can have its own level and format. <code>basicConfig</code> just adds one handler to the root logger. That's why Boss question 2's <code>radio.debug</code> was printed by root's handler, though root's own level was WARNING.</p>
+      <h3>How <code>python -m pdb</code> gets a post-mortem</h3>
+      <p>pdb runs your script inside a <code>try</code>. When an exception escapes, it prints the traceback and calls <code>pdb.post_mortem()</code> on the exception's traceback object, which still holds every frame and its local variables. You can do the same from your own code with <code>pdb.post_mortem()</code> inside an <code>except</code> block, or after a crash in the interactive prompt with <code>import pdb; pdb.pm()</code>.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: how teams run the preflight</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>A <code>tests/</code> folder and one command.</b> Real projects keep tests in <code>tests/</code>, with shared fixtures in <code>tests/conftest.py</code>, and configure pytest in <code>pyproject.toml</code> under <code>[tool.pytest.ini_options]</code> (this chapter's folder uses a tiny <code>pytest.ini</code> instead).</li>
+        <li><b>Markers.</b> <code>@pytest.mark.skip</code>, <code>@pytest.mark.skipif(sys.platform == "win32", reason=...)</code> and <code>@pytest.mark.xfail</code> (expected to fail, for a known bug) show up as <code>s</code> and <code>x</code> in the marks. Teams also tag slow tests and run <code>pytest -m "not slow"</code> while working.</li>
+        <li><b>Readable ids.</b> <code>@pytest.mark.parametrize(..., ids=["short hop", "long haul"])</code> replaces the ids pytest makes from the values, like <code>[5-A]</code> in Panel 6, with names you choose. Two parametrize decorators stacked on one test run every combination.</li>
+        <li><b>Handy flags.</b> <code>-x</code> stops at the first failure, <code>-k fuel</code> runs only tests whose names contain "fuel", <code>--lf</code> re-runs only the last failures, <code>-v</code> lists each test as it runs, <code>--pdb</code> opens pdb at every failure, and <code>-W error</code> turns warnings into failures.</li>
+        <li><b>Coverage in CI.</b> Continuous-integration servers run <code>coverage run -m pytest</code> and often fail the build if coverage drops below a chosen percentage.</li>
+        <li><b>Linters and formatters in the editor.</b> Most editors can run ruff on save; the ruff settings usually live in <code>pyproject.toml</code> under <code>[tool.ruff]</code>. A project picks one style and never discusses it again.</li>
+        <li><b>Logging configuration.</b> Bigger programs configure logging from a dict or file with <code>logging.config.dictConfig</code>: several handlers (screen, file, a log server), different levels per module, timestamps on every line. Libraries add only <code>logging.NullHandler()</code> to their top logger, so they stay silent unless the program asks.</li>
+        <li><b>Debugging a running program.</b> Since Python 3.14, <code>python -m pdb -p PID</code> can attach pdb to a Python process that's already running (with the right operating-system permissions).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Fixtures run once for the whole file."</b> By default they run again for every test (Panel 8). Module and session scopes are opt-in.</li>
+        <li><b>"If a test fails, the teardown is skipped."</b> Teardown after <code>yield</code> runs even when the test fails (Panel 9). Only a crash during setup skips it, because the fixture never reached <code>yield</code>.</li>
+        <li><b>"Patching a function patches it everywhere."</b> A patch moves one name tag in one module. Other modules' tags, made by <code>from ... import</code>, still point at the original (Panel 16).</li>
+        <li><b>"A test that passes alone is fine."</b> It must pass in the suite too, in any order (Panel 18).</li>
+        <li><b>"Mock everything."</b> A test full of fakes can pass while the real pieces don't fit together. Fake the slow, random or outside parts; keep some integration tests with the real thing.</li>
+        <li><b>"100% coverage means no bugs."</b> It means every line ran (Panel 21).</li>
+        <li><b>"A linter warning is just style."</b> Some are real bugs, like the shared default list in Panel 24.</li>
+        <li><b>"<code>logging.info</code> is broken: nothing prints."</b> The default dial is WARNING (Panel 28).</li>
+        <li><b>"I can call <code>basicConfig</code> whenever I like."</b> Only before any other logging call, or with <code>force=True</code> (Panel 31).</li>
+        <li><b>"Log messages should be f-strings."</b> Pass the values as arguments: <code>log.info("saved %s files", n)</code>. The text is only built when the message is written, and log tools can group messages by their template.</li>
+        <li><b>"After a crash, <code>c</code> carries on."</b> In post-mortem, <code>c</code> restarts the program from the top.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: what is new, and since when</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The tools.</b> pytest 9.2.0 was installed for Python 3.15.2 and pytest 9.1.1 for 3.13.18; every pytest run on this page gave the same output on both, except the list of available fixtures (below). ruff 0.16.9 ran every lint and format command (called by its full path, <code>/root/.local/bin/ruff</code>, so both Python versions used the same ruff).</li>
+        <li><b>Panel 10's fixture list</b> differs because different plugins are installed for the two versions. The 3.13.18 run, in full:
+          <pre class="term small26" data-run="test_typo.py" data-alt data-exit></pre></li>
+        <li><b>Panel 35's pdb session</b> differs between versions only in pdb's own frames: their file paths and line numbers inside the standard library. Everything about <code>crash.py</code> was the same.</li>
+        <li><b>The patch typo</b> and <b>the used-up fake</b> (the two predict exercises after Panel 17, <code>patch_typo.py</code> and <code>pred_side.py</code>) likewise differ only in the file paths and line numbers inside <code>unittest/mock.py</code>.</li>
+        <li><b><code>basicConfig(force=True)</code></b> exists since Python 3.8. <b><code>add_note()</code></b> and <b><code>ExceptionGroup</code></b> since 3.11. <b>Remote attaching with <code>python -m pdb -p PID</code></b> since 3.14.</li>
+        <li><b>Test order.</b> pytest runs tests in file order; <code>unittest</code>'s runner sorts test methods by name (Panel 19).</li>
+      </ul>
+      <p>All programs in this chapter were run with both Python 3.15.2 and 3.13.18. Only <code>test_unit.py</code> varies from run to run (the time on its "Ran" line); it's labelled "one possible run" and isn't used as an answer.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself</summary>
+    <div class="page-body">
+      <ol>
+        <li>Make a project folder with a virtual environment (Chapter 13). macOS and Linux: <code>python3 -m venv .venv</code> then <code>source .venv/bin/activate</code>. Windows: <code>py -m venv .venv</code> then <code>.venv\Scripts\activate</code>.</li>
+        <li>Install the tools into it: <code>python -m pip install pytest ruff</code>. Optional: <code>python -m pip install coverage hypothesis pre-commit</code>.</li>
+        <li>Save <code>test_board.py</code> (Panel 5) and run <code>python -m pytest -qq -rA test_board.py</code>. Fix line 5 to <code>row &lt;= 5</code> and run it again. Then add a row for 0 to the table and decide what it should be.</li>
+        <li>Save <code>test_life_fail.py</code> (Panel 9) and run it with and without <code>-s</code>. Without it, pytest shows the printed lines only for the failing test, in a "Captured stdout" section.</li>
+        <li>Save <code>radar.py</code>, <code>tower.py</code> and <code>test_tower_wrong.py</code>. Run it, then change the target to <code>"tower.wind_speed"</code>.</li>
+        <li>Save <code>messy.py</code> and run <code>ruff check messy.py</code>, then <code>ruff check --fix messy.py</code>, and compare the file before and after. Try <code>ruff format messy.py</code> too.</li>
+        <li>Save <code>log_setup.py</code> and <code>engine.py</code>. Change the level to <code>logging.DEBUG</code> and add <code>%(asctime)s</code> to the format.</li>
+        <li>Save <code>crash.py</code> and run <code>python -m pdb crash.py</code> (Windows: <code>py -m pdb crash.py</code>). Type <code>c</code>, then explore with <code>w</code>, <code>u</code>, <code>d</code>, <code>p</code> and <code>ll</code>.</li>
+        <li>Coverage with coverage.py: <code>python -m coverage run -m pytest</code>, then <code>python -m coverage report -m</code>. Without it, Panel 21's <code>python -m trace --count --missing -C . fare.py</code> works anywhere.</li>
+        <li>In a git repository with <code>.pre-commit-config.yaml</code> (Panel 39), run <code>pre-commit install</code> once, then <code>pre-commit run --all-files</code> to try every hook.</li>
+      </ol>
+      <p>On Windows, use <code>py</code> where this page says <code>python3</code>, and set an environment variable for one command in PowerShell with <code>$env:PYTHONBREAKPOINT="0"; py forgot_bp.py</code>. On macOS and Linux, <code>PYTHONBREAKPOINT=0 python3 forgot_bp.py</code> works as shown. pytest's output and ruff's report look the same on all three systems, apart from <code>\</code> in Windows paths.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>commit</dt><dd>Saving a set of changes for good in a version-control system such as git. The "takeoff" of this chapter.</dd>
+        <dt>test suite</dt><dd>All of a project's tests, run together.</dd>
+        <dt>parametrize</dt><dd>Running one test once per row of a table of cases: <code>@pytest.mark.parametrize</code>.</dd>
+        <dt>test id</dt><dd>The name in square brackets after a parametrized test, such as <code>[5-A]</code>.</dd>
+        <dt>fixture</dt><dd>A function that prepares something a test needs. Tests ask for it by naming it as a parameter.</dd>
+        <dt>setup / teardown</dt><dd>The work done before a test (getting things ready) and after it (cleaning up).</dd>
+        <dt>dependency injection</dt><dd>Giving a piece of code what it needs from outside, instead of it making things itself.</dd>
+        <dt>scope (fixture)</dt><dd>How long one fixture value lives: per test (the default), per module or per whole run.</dd>
+        <dt>conftest.py</dt><dd>A file where fixtures shared by many test files live; pytest loads it automatically.</dd>
+        <dt>test double</dt><dd>Any stand-in for the real thing in a test. A <b>stub</b> gives canned answers; a <b>mock</b> also records how it was used.</dd>
+        <dt>monkeypatch</dt><dd>pytest's fixture for temporarily replacing names, settings and environment variables.</dd>
+        <dt>patch</dt><dd><code>unittest.mock.patch</code>: temporarily replace a name in a module with a mock.</dd>
+        <dt>return_value / side_effect</dt><dd>What a mock gives back every time / a list of answers in turn, or an exception to raise.</dd>
+        <dt>namespace</dt><dd>A set of names and what they point to. Every module has its own.</dd>
+        <dt>test isolation</dt><dd>The rule that a test's result never depends on which other tests ran before it.</dd>
+        <dt>unittest</dt><dd>The test framework in Python's standard library: test classes based on <code>TestCase</code>.</dd>
+        <dt>unit test</dt><dd>A test of one small piece on its own.</dd>
+        <dt>integration test</dt><dd>A test of several pieces working together, often with real files or databases.</dd>
+        <dt>end-to-end test</dt><dd>A test of the whole program, used the way a person would use it.</dd>
+        <dt>coverage</dt><dd>Which lines of code ran during the tests, often given as a percentage.</dd>
+        <dt>doctest</dt><dd>An example in a docstring, written like a Python prompt session, that can be run as a test.</dd>
+        <dt>property-based testing</dt><dd>Testing a rule that should hold for all inputs, by trying many generated inputs.</dd>
+        <dt>shrinking</dt><dd>Making a failing generated input smaller and smaller while it still fails, to find the simplest example.</dd>
+        <dt>linter</dt><dd>A tool that reads code without running it and reports likely bugs and style problems.</dd>
+        <dt>formatter</dt><dd>A tool that rewrites code's layout in one standard style without changing what it does.</dd>
+        <dt>PEP 257</dt><dd>The conventions for writing docstrings.</dd>
+        <dt>logging</dt><dd>Recording what a program does as messages with a level, which can be shown, filtered or saved.</dd>
+        <dt>log level</dt><dd>How serious a message is: DEBUG, INFO, WARNING, ERROR or CRITICAL (10 to 50).</dd>
+        <dt>logger</dt><dd>A named object you send log messages to, usually one per module.</dd>
+        <dt>handler</dt><dd>The part of logging that writes messages somewhere: the screen, a file, a server.</dd>
+        <dt>root logger</dt><dd>The logger at the top of the tree, used by <code>logging.warning()</code> and friends.</dd>
+        <dt>warning (warnings module)</dt><dd>A message for programmers that something should change, such as a deprecated function.</dd>
+        <dt>post-mortem debugging</dt><dd>Examining a program's frames and values after it has crashed.</dd>
+        <dt>conditional breakpoint</dt><dd>A breakpoint that stops only when a condition is true.</dd>
+        <dt>pre-commit hook</dt><dd>A script git runs before every commit; if it fails, the commit stops.</dd>
+        <dt>continuous integration (CI)</dt><dd>A server that runs the checks automatically for every change.</dd>
+        <dt>YAML</dt><dd>A settings-file format where indentation shows structure.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://docs.pytest.org/en/stable/how-to/fixtures.html">pytest: how to use fixtures</a>, <a href="https://docs.pytest.org/en/stable/how-to/parametrize.html">parametrize</a>, <a href="https://docs.pytest.org/en/stable/how-to/tmp_path.html">tmp_path</a>, <a href="https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html">capturing output</a> and <a href="https://docs.pytest.org/en/stable/how-to/monkeypatch.html">monkeypatch</a></li>
+        <li><a href="https://docs.python.org/3/library/unittest.html">unittest</a> and <a href="https://docs.python.org/3/library/unittest.mock.html#where-to-patch">unittest.mock: where to patch</a></li>
+        <li><a href="https://docs.python.org/3/howto/logging.html">The Logging HOWTO</a> and the <a href="https://docs.python.org/3/library/logging.html#logging.basicConfig">basicConfig reference</a></li>
+        <li><a href="https://docs.python.org/3/library/warnings.html">The warnings module</a>, <a href="https://docs.python.org/3/library/pdb.html">pdb</a>, <a href="https://docs.python.org/3/library/trace.html">trace</a> and <a href="https://docs.python.org/3/library/doctest.html">doctest</a></li>
+        <li><a href="https://peps.python.org/pep-0008/">PEP 8</a> and <a href="https://peps.python.org/pep-0257/">PEP 257</a></li>
+        <li><a href="https://docs.astral.sh/ruff/">ruff's documentation</a>, with a page for every rule code</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://cs50.harvard.edu/python/">CS50P</a>: week 5 is unit tests with pytest; week 9 covers more tools.</li>
+        <li><a href="https://roadmap.sh/python">roadmap.sh Python roadmap</a>: the testing, formatting and documentation branches list the tools in this chapter.</li>
+        <li><a href="https://hypothesis.readthedocs.io/">Hypothesis documentation</a>: property-based testing for real.</li>
+        <li><a href="https://coverage.readthedocs.io/">coverage.py documentation</a>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: 66 programs, run with CPython 3.15.2 and CPython 3.13.18 on 2026-11-08, in <code>/home/you/python-ch26</code>. pytest commands ran with that folder's <code>pytest.ini</code> (<code>-p no:cacheprovider</code>), mostly with <code>-qq</code> so that no run-time appears. ruff 0.16.9 was called by its full path, <code>/root/.local/bin/ruff</code>; the terminals show the command as you'd type it, <code>ruff ...</code>. One program, <code>test_unit.py</code>, prints a time that changes on every run; it's marked "one possible run" and never used as an answer. Four programs differ between the two versions (listed in the notebook's version notes). Tracebacks show the real file paths, including where Python itself is installed.</p>
+  <p>The fixture map, the patch tracer, the pdb walk-through, the checklist boards and the logging dial are teaching models. Each one checks its claims against those runs and shows a badge; the checklist boards and the dial are built from the programs' own output. The checklist clipboard and the flight recorder are new drawings for this chapter; Pip, the Professor, the Proofreader, Sneak, Zilch, the walkaround-checker and tidy critters, the jelly, the machine and the chef are the book's original cast, drawn in code.</p>
+  <p>Sources consulted for scope, order and common pitfalls (no text or exercises copied): the pytest documentation (fixtures, parametrize, tmp_path and its retention, capsys, caplog, monkeypatch); the Python documentation for unittest, unittest.mock (including "Where to patch"), logging and the Logging HOWTO, warnings, pdb, trace and doctest; PEP 8 and PEP 257; ruff's documentation and rule pages; the course's research map, which cross-references CS50P weeks 5 and 9, Effective Python (3rd ed.) on testing, mocks and debugging, Python Crash Course chapter 11, Real Python's testing and development-setup paths, and roadmap.sh/python's testing and formatting branches.</p>
+</footer>
+</body>
+</html>
