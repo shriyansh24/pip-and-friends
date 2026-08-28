@@ -1,0 +1,906 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch1",
+  "versionDifferences": [
+   "check_only.rs",
+   "debug_build.rs",
+   "first_run.rs",
+   "missing_bang.rs",
+   "release_build.rs",
+   "spot_bang.rs",
+   "streams.rs",
+   "versions.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): check_only.rs, debug_build.rs, first_run.rs, missing_bang.rs, release_build.rs, spot_bang.rs, streams.rs, versions.rs."
+ },
+ "programs": {
+  "any_text.rs": {
+   "src": "fn main() {\n    println!(\"Strings can hold any text: ¡Hola! こんにちは\");\n    println!(\"Even \\\"quotes\\\" inside, with a backslash.\");\n}\n",
+   "stdout": "Strings can hold any text: ¡Hola! こんにちは\nEven \"quotes\" inside, with a backslash.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Strings can hold any text: ¡Hola! こんにちは\nEven \"quotes\" inside, with a backslash.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/any_text"
+    }
+   ]
+  },
+  "boss_brace.rs": {
+   "src": "fn main()\n    println!(\"Hello!\");\n}\n",
+   "stdout": "",
+   "stderr": "error: unexpected closing delimiter: `}`\n --> src/main.rs:3:1\n  |\n3 | }\n  | ^ unexpected closing delimiter\n\nerror: could not compile `boss_brace` (bin \"boss_brace\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: unexpected closing delimiter: `}`\n --> src/main.rs:3:1\n  |\n3 | }\n  | ^ unexpected closing delimiter\n\nerror: could not compile `boss_brace` (bin \"boss_brace\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/boss_brace"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "fn main() {\n    // Every line below is an instruction.\n    println!(\"Rust is compiled.\");\n    println!();\n    println!(\"Cargo calls the compiler.\");\n}\n",
+   "stdout": "Rust is compiled.\n\nCargo calls the compiler.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Rust is compiled.\n\nCargo calls the compiler.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    println!(\"Write the recipe\");\n    println!(\"The Compiler checks it\");\n    println!(\"The executable runs\");\n    println!(\"You see this text\");\n}\n",
+   "stdout": "Write the recipe\nThe Compiler checks it\nThe executable runs\nYou see this text\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Write the recipe\nThe Compiler checks it\nThe executable runs\nYou see this text\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "// Boss 2: read every character.\nfn main() {\n    println!(\"Rust\"); // println!(\"Python\");\n    println!();\n    /* println!(\"Go\");\n    println!(\"C++\"); */\n    println!(\"/* not a comment */\");\n    // println!(\"JavaScript\");\n    println!(\"done\");\n}\n",
+   "stdout": "Rust\n\n/* not a comment */\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Rust\n\n/* not a comment */\ndone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/boss_predict"
+    }
+   ]
+  },
+  "boss_quote.rs": {
+   "src": "fn main() {\n    println!(\"Ready\");\n    println!(\"Set);\n    println!(\"Go!\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0765]: unterminated double quote string\n --> src/main.rs:4:18\n  |\n4 |       println!(\"Go!\");\n  |  __________________^\n5 | | }\n  | |__^\n\nFor more information about this error, try `rustc --explain E0765`.\nerror: could not compile `boss_quote` (bin \"boss_quote\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0765]: unterminated double quote string\n --> src/main.rs:4:18\n  |\n4 |       println!(\"Go!\");\n  |  __________________^\n5 | | }\n  | |__^\n\nFor more information about this error, try `rustc --explain E0765`.\nerror: could not compile `boss_quote` (bin \"boss_quote\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/boss_quote"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    println!(\"red apple\"); /* println!(\"green pear\"); */\n    // println!(\"blue plum\");\n    println!(\"yellow //banana\");\n    println!(\"purple grape\");\n}\n",
+   "stdout": "red apple\nyellow //banana\npurple grape\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "red apple\nyellow //banana\npurple grape\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/boss_trace"
+    }
+   ]
+  },
+  "cargo_new.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stderr": "    Creating binary (application) `hello` package\nnote: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo new hello",
+     "out": "",
+     "err": "    Creating binary (application) `hello` package\nnote: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n",
+     "exit": 0
+    },
+    {
+     "cmd": "ls -A hello",
+     "out": ".git\n.gitignore\nCargo.toml\nsrc\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "cat hello/Cargo.toml",
+     "out": "[package]\nname = \"hello\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "cat hello/src/main.rs",
+     "out": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "check_only.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "build\ndeps\nexamples\nincremental\n",
+   "stderr": "    Checking hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cargo check",
+     "out": "",
+     "err": "    Checking hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s\n",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "ls target/debug",
+     "out": "build\ndeps\nexamples\nincremental\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "build\ndeps\nexamples\nincremental\n",
+    "stderr": "    Checking hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.29s\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd hello",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1"
+     },
+     {
+      "cmd": "cargo check",
+      "out": "",
+      "err": "    Checking hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.29s\n",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "ls target/debug",
+      "out": "build\ndeps\nexamples\nincremental\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     }
+    ]
+   }
+  },
+  "comment_predict.rs": {
+   "src": "fn main() {\n    println!(\"one\");\n    // println!(\"two\");\n    println!(\"three\"); // println!(\"four\");\n    /* println!(\"five\");\n    println!(\"six\"); */\n    println!(\"// seven\");\n}\n",
+   "stdout": "one\nthree\n// seven\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "one\nthree\n// seven\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/comment_predict"
+    }
+   ]
+  },
+  "comments.rs": {
+   "src": "// A greeting program. Comments are notes for people.\nfn main() {\n    println!(\"Hello!\"); // a note can sit after the code\n    // println!(\"This line is switched off.\");\n    /* A block comment can\n       cover several lines. */\n    println!(\"Goodbye!\");\n}\n",
+   "stdout": "Hello!\nGoodbye!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hello!\nGoodbye!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/comments"
+    }
+   ]
+  },
+  "countdown.rs": {
+   "src": "fn main() {\n    println!(\"3...\");\n    println!(\"2...\");\n    println!(\"1...\");\n    println!(\"Liftoff!\");\n}\n",
+   "stdout": "3...\n2...\n1...\nLiftoff!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3...\n2...\n1...\nLiftoff!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/countdown"
+    }
+   ]
+  },
+  "debug_build.rs": {
+   "src": "fn main() {\n    println!(\"I live in target/debug.\");\n}\n",
+   "stdout": "I live in target/debug.\n",
+   "stderr": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.73s\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cargo build",
+     "out": "",
+     "err": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.73s\n",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "ls",
+     "out": "Cargo.lock\nCargo.toml\nsrc\ntarget\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "ls target/debug",
+     "out": "build\ndeps\nexamples\nhello\nhello.d\nincremental\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "./target/debug/hello",
+     "out": "I live in target/debug.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "I live in target/debug.\n",
+    "stderr": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.82s\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd hello",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1"
+     },
+     {
+      "cmd": "cargo build",
+      "out": "",
+      "err": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.82s\n",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "ls",
+      "out": "Cargo.lock\nCargo.toml\nsrc\ntarget\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "ls target/debug",
+      "out": "build\ndeps\nexamples\nhello\nhello.d\nincremental\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "./target/debug/hello",
+      "out": "I live in target/debug.\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     }
+    ]
+   }
+  },
+  "fill_fix.rs": {
+   "src": "fn main() {\n    println!(\"Fixed the bang\");\n    println!();\n    println!(\"Fixed the semicolon\");\n}\n",
+   "stdout": "Fixed the bang\n\nFixed the semicolon\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Fixed the bang\n\nFixed the semicolon\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/fill_fix"
+    }
+   ]
+  },
+  "fill_main.rs": {
+   "src": "fn main() {\n    println!(\"I can write Rust.\");\n    println!();\n    println!(\"Cargo ran me.\");\n}\n",
+   "stdout": "I can write Rust.\n\nCargo ran me.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "I can write Rust.\n\nCargo ran me.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/fill_main"
+    }
+   ]
+  },
+  "first_run.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running `target/debug/hello`\nHello, world!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cargo run 2>&1",
+     "out": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.50s\n     Running `target/debug/hello`\nHello, world!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "cargo run 2>&1",
+     "out": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running `target/debug/hello`\nHello, world!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s\n     Running `target/debug/hello`\nHello, world!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd hello",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1"
+     },
+     {
+      "cmd": "cargo run 2>&1",
+      "out": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.55s\n     Running `target/debug/hello`\nHello, world!\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "cargo run 2>&1",
+      "out": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s\n     Running `target/debug/hello`\nHello, world!\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     }
+    ]
+   }
+  },
+  "gitignore.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "/target\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cat .gitignore",
+     "out": "/target\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ]
+  },
+  "hello_world.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "Hello, world!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hello, world!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello_world"
+    }
+   ]
+  },
+  "last_no_semi.rs": {
+   "src": "fn main() {\n    println!(\"The last line\");\n    println!(\"has no semicolon\")\n}\n",
+   "stdout": "The last line\nhas no semicolon\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "The last line\nhas no semicolon\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/last_no_semi"
+    }
+   ]
+  },
+  "logbook.rs": {
+   "src": "fn main() {\n    println!(\"1 ant\");\n    /* println!(\"2 bee\"); */\n    println!(\"3 cat\"); // println!(\"4 dog\");\n    println!(\"5 /*eel*/\");\n}\n",
+   "stdout": "1 ant\n3 cat\n5 /*eel*/\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 ant\n3 cat\n5 /*eel*/\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/logbook"
+    }
+   ]
+  },
+  "missing_bang.rs": {
+   "src": "fn main() {\n    println(\"Hello, world!\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0423]: cannot find function `println` in this scope\n --> src/main.rs:2:5\n  |\n2 |     println(\"Hello, world!\");\n  |     ^^^^^^^ not found in this scope\n  |\n  = note: a macro named `println` exists in another namespace\nhelp: use `!` to invoke the macro\n  |\n2 |     println!(\"Hello, world!\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `missing_bang` (bin \"missing_bang\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0423]: cannot find function `println` in this scope\n --> src/main.rs:2:5\n  |\n2 |     println(\"Hello, world!\");\n  |     ^^^^^^^ not found in this scope\n  |\n  = note: a macro named `println` exists in another namespace\nhelp: use `!` to invoke the macro\n  |\n2 |     println!(\"Hello, world!\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `missing_bang` (bin \"missing_bang\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/missing_bang"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0423]: expected function, found macro `println`\n --> src/main.rs:2:5\n  |\n2 |     println(\"Hello, world!\");\n  |     ^^^^^^^ not a function\n  |\nhelp: use `!` to invoke the macro\n  |\n2 |     println!(\"Hello, world!\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `missing_bang` (bin \"missing_bang\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0423]: expected function, found macro `println`\n --> src/main.rs:2:5\n  |\n2 |     println(\"Hello, world!\");\n  |     ^^^^^^^ not a function\n  |\nhelp: use `!` to invoke the macro\n  |\n2 |     println!(\"Hello, world!\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `missing_bang` (bin \"missing_bang\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch1/missing_bang"
+     }
+    ]
+   }
+  },
+  "missing_file.rs": {
+   "src": "fn main() {\n    println!(\"Opening the recipe book...\");\n    std::fs::read_to_string(\"recipe.txt\").unwrap();\n    println!(\"Recipe loaded!\");\n}\n",
+   "stdout": "Opening the recipe book...\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:3:43:\ncalled `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Opening the recipe book...\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:3:43:\ncalled `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/missing_file",
+     "merged": "Opening the recipe book...\n\nthread 'main' (1) panicked at src/main.rs:3:43:\ncalled `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "missing_semi.rs": {
+   "src": "fn main() {\n    println!(\"Hello\")\n    println!(\"world\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected `;`, found `println`\n --> src/main.rs:2:22\n  |\n2 |     println!(\"Hello\")\n  |                      ^ help: add `;` here\n3 |     println!(\"world\");\n  |     ------- unexpected token\n\nerror: could not compile `missing_semi` (bin \"missing_semi\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected `;`, found `println`\n --> src/main.rs:2:22\n  |\n2 |     println!(\"Hello\")\n  |                      ^ help: add `;` here\n3 |     println!(\"world\");\n  |     ------- unexpected token\n\nerror: could not compile `missing_semi` (bin \"missing_semi\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/missing_semi"
+    }
+   ]
+  },
+  "nested_comments.rs": {
+   "src": "fn main() {\n    /* outer comment\n       /* inner comment */\n       still inside the outer one */\n    println!(\"Block comments can nest in Rust.\");\n}\n",
+   "stdout": "Block comments can nest in Rust.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Block comments can nest in Rust.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/nested_comments"
+    }
+   ]
+  },
+  "panic_end.rs": {
+   "src": "fn main() {\n    println!(\"Mixing the batter\");\n    println!(\"Heating the oven\");\n    panic!(\"The oven is on fire!\");\n}\n",
+   "stdout": "Mixing the batter\nHeating the oven\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:4:5:\nThe oven is on fire!\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Mixing the batter\nHeating the oven\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:4:5:\nThe oven is on fire!\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/panic_end",
+     "merged": "Mixing the batter\nHeating the oven\n\nthread 'main' (1) panicked at src/main.rs:4:5:\nThe oven is on fire!\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "release_build.rs": {
+   "src": "fn main() {\n    println!(\"I live in target/release.\");\n}\n",
+   "stdout": "I live in target/release.\n",
+   "stderr": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `release` profile [optimized] target(s) in 0.51s\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cargo build --release",
+     "out": "",
+     "err": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `release` profile [optimized] target(s) in 0.51s\n",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "ls target",
+     "out": "CACHEDIR.TAG\nrelease\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "./target/release/hello",
+     "out": "I live in target/release.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "I live in target/release.\n",
+    "stderr": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `release` profile [optimized] target(s) in 0.64s\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd hello",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1"
+     },
+     {
+      "cmd": "cargo build --release",
+      "out": "",
+      "err": "   Compiling hello v0.1.0 (/home/you/rust-ch1/hello)\n    Finished `release` profile [optimized] target(s) in 0.64s\n",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "ls target",
+      "out": "CACHEDIR.TAG\nrelease\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "./target/release/hello",
+      "out": "I live in target/release.\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     }
+    ]
+   }
+  },
+  "routine.rs": {
+   "src": "fn main() {\n    println!(\"Wake up\");\n    println!();\n    println!(\"Brush teeth\");\n    println!(\"Eat breakfast\");\n}\n",
+   "stdout": "Wake up\n\nBrush teeth\nEat breakfast\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Wake up\n\nBrush teeth\nEat breakfast\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/routine"
+    }
+   ]
+  },
+  "rustc_edition.rs": {
+   "src": "// `async` is a newer Rust word. You will meet it much later.\npub async fn later() {}\n\nfn main() {\n    println!(\"Built with edition 2024!\");\n}\n",
+   "stdout": "Built with edition 2024!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd trap",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "rustc --edition 2024 main.rs",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/trap"
+    },
+    {
+     "cmd": "./main",
+     "out": "Built with edition 2024!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/trap"
+    }
+   ]
+  },
+  "rustc_trap.rs": {
+   "src": "// `async` is a newer Rust word. You will meet it much later.\npub async fn later() {}\n\nfn main() {\n    println!(\"Built with edition 2024!\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0670]: `async fn` is not permitted in Rust 2015\n --> main.rs:2:5\n  |\n2 | pub async fn later() {}\n  |     ^^^^^ to use `async fn`, switch to Rust 2018 or later\n  |\n  = help: pass `--edition 2024` to `rustc`\n  = note: for more on editions, read https://doc.rust-lang.org/edition-guide\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0670`.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cd trap",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "rustc main.rs",
+     "out": "",
+     "err": "error[E0670]: `async fn` is not permitted in Rust 2015\n --> main.rs:2:5\n  |\n2 | pub async fn later() {}\n  |     ^^^^^ to use `async fn`, switch to Rust 2018 or later\n  |\n  = help: pass `--edition 2024` to `rustc`\n  = note: for more on editions, read https://doc.rust-lang.org/edition-guide\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0670`.\n",
+     "exit": 1,
+     "dir": "~/rust-ch1/trap"
+    }
+   ]
+  },
+  "spot_bang.rs": {
+   "src": "fn main() {\n    println!(\"Rivets ready\");\n    println!(\"Bolts ready\");\n    println(\"Wrench ready\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0423]: cannot find function `println` in this scope\n --> src/main.rs:4:5\n  |\n4 |     println(\"Wrench ready\");\n  |     ^^^^^^^ not found in this scope\n  |\n  = note: a macro named `println` exists in another namespace\nhelp: use `!` to invoke the macro\n  |\n4 |     println!(\"Wrench ready\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `spot_bang` (bin \"spot_bang\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0423]: cannot find function `println` in this scope\n --> src/main.rs:4:5\n  |\n4 |     println(\"Wrench ready\");\n  |     ^^^^^^^ not found in this scope\n  |\n  = note: a macro named `println` exists in another namespace\nhelp: use `!` to invoke the macro\n  |\n4 |     println!(\"Wrench ready\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `spot_bang` (bin \"spot_bang\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/spot_bang"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0423]: expected function, found macro `println`\n --> src/main.rs:4:5\n  |\n4 |     println(\"Wrench ready\");\n  |     ^^^^^^^ not a function\n  |\nhelp: use `!` to invoke the macro\n  |\n4 |     println!(\"Wrench ready\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `spot_bang` (bin \"spot_bang\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0423]: expected function, found macro `println`\n --> src/main.rs:4:5\n  |\n4 |     println(\"Wrench ready\");\n  |     ^^^^^^^ not a function\n  |\nhelp: use `!` to invoke the macro\n  |\n4 |     println!(\"Wrench ready\");\n  |            +\n\nFor more information about this error, try `rustc --explain E0423`.\nerror: could not compile `spot_bang` (bin \"spot_bang\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch1/spot_bang"
+     }
+    ]
+   }
+  },
+  "spot_semi.rs": {
+   "src": "fn main() {\n    println!(\"Preheat the oven\");\n    println!(\"Mix the batter\")\n    println!(\"Bake for 20 minutes\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected `;`, found `println`\n --> src/main.rs:3:31\n  |\n3 |     println!(\"Mix the batter\")\n  |                               ^ help: add `;` here\n4 |     println!(\"Bake for 20 minutes\");\n  |     ------- unexpected token\n\nerror: could not compile `spot_semi` (bin \"spot_semi\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected `;`, found `println`\n --> src/main.rs:3:31\n  |\n3 |     println!(\"Mix the batter\")\n  |                               ^ help: add `;` here\n4 |     println!(\"Bake for 20 minutes\");\n  |     ------- unexpected token\n\nerror: could not compile `spot_semi` (bin \"spot_semi\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch1/spot_semi"
+    }
+   ]
+  },
+  "streams.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "",
+   "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running `target/debug/hello`\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd hello",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1"
+    },
+    {
+     "cmd": "cargo run 2> /dev/null",
+     "out": "Hello, world!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    },
+    {
+     "cmd": "cargo run > /dev/null",
+     "out": "",
+     "err": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running `target/debug/hello`\n",
+     "exit": 0,
+     "dir": "~/rust-ch1/hello"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s\n     Running `target/debug/hello`\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd hello",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1"
+     },
+     {
+      "cmd": "cargo run 2> /dev/null",
+      "out": "Hello, world!\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     },
+     {
+      "cmd": "cargo run > /dev/null",
+      "out": "",
+      "err": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s\n     Running `target/debug/hello`\n",
+      "exit": 0,
+      "dir": "~/rust-ch1/hello"
+     }
+    ]
+   }
+  },
+  "versions.rs": {
+   "src": "fn main() {\n    println!(\"Hello, world!\");\n}\n",
+   "stdout": "cargo 1.99.1 (5f94df478 2026-08-27)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "rustc --version",
+     "out": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "cargo --version",
+     "out": "cargo 1.99.1 (5f94df478 2026-08-27)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "cargo 1.97.0 (c980f4866 2026-06-30)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "rustc --version",
+      "out": "rustc 1.97.0 (2d8144b78 2026-07-07)\n",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "cargo --version",
+      "out": "cargo 1.97.0 (c980f4866 2026-06-30)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "walk_morning.rs": {
+   "src": "fn main() {\n    println!(\"Good morning!\");\n    println!(\"Rust runs main from top to bottom.\");\n    println!(\"The end.\");\n}\n",
+   "stdout": "Good morning!\nRust runs main from top to bottom.\nThe end.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Good morning!\nRust runs main from top to bottom.\nThe end.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch1/walk_morning"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

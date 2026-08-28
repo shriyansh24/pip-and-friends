@@ -1,0 +1,774 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch2",
+  "versionDifferences": [
+   "uninit.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): uninit.rs."
+ },
+ "programs": {
+  "assign_twice.rs": {
+   "src": "fn main() {\n    let books = 5;\n    println!(\"Books: {books}\");\n    books = 6;\n    println!(\"Books: {books}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0384]: cannot assign twice to immutable variable `books`\n --> src/main.rs:4:5\n  |\n2 |     let books = 5;\n  |         ----- first assignment to `books`\n3 |     println!(\"Books: {books}\");\n4 |     books = 6;\n  |     ^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut books = 5;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `assign_twice` (bin \"assign_twice\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0384]: cannot assign twice to immutable variable `books`\n --> src/main.rs:4:5\n  |\n2 |     let books = 5;\n  |         ----- first assignment to `books`\n3 |     println!(\"Books: {books}\");\n4 |     books = 6;\n  |     ^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut books = 5;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `assign_twice` (bin \"assign_twice\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/assign_twice"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "const MAX_RENEWALS: i32 = 2;\n\nfn main() {\n    let mut due = \"Monday\";\n    println!(\"Due {due}, renew up to {MAX_RENEWALS} times\");\n    due = \"Friday\";\n    let due = due.len();\n    println!(\"Due day has {due} letters\");\n}\n",
+   "stdout": "Due Monday, renew up to 2 times\nDue day has 6 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Due Monday, renew up to 2 times\nDue day has 6 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    let mut reader = \"Ada\";\n    println!(\"First reader: {reader}\");\n    reader = \"Grace\";\n    println!(\"Next reader: {reader}\");\n    let reader = reader.len();\n    println!(\"Name length: {reader}\");\n}\n",
+   "stdout": "First reader: Ada\nNext reader: Grace\nName length: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "First reader: Ada\nNext reader: Grace\nName length: 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "const SHELVES: i32 = 4;\n\nfn main() {\n    let mut label = \"Atlas\";\n    let _spare = \"unused on purpose\";\n    println!(\"{label} on shelf {SHELVES}\");\n    label = \"Almanac\";\n    let label = label.len();\n    println!(\"{label} letters\");\n}\n",
+   "stdout": "Atlas on shelf 4\n7 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Atlas on shelf 4\n7 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "fn main() {\n    let mut visitors = \"none yet\";\n    let open = \"9 am\";\n    println!(\"Opens at {open}\");\n    println!(\"Visitors: {visitors}\");\n    open = \"10 am\";\n    println!(\"Now opens at {open}\");\n}\n",
+   "stdout": "",
+   "stderr": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut visitors = \"none yet\";\n  |         ----^^^^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nerror[E0384]: cannot assign twice to immutable variable `open`\n --> src/main.rs:6:5\n  |\n3 |     let open = \"9 am\";\n  |         ---- first assignment to `open`\n...\n6 |     open = \"10 am\";\n  |     ^^^^^^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n3 |     let mut open = \"9 am\";\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error; 1 warning emitted\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut visitors = \"none yet\";\n  |         ----^^^^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nerror[E0384]: cannot assign twice to immutable variable `open`\n --> src/main.rs:6:5\n  |\n3 |     let open = \"9 am\";\n  |         ---- first assignment to `open`\n...\n6 |     open = \"10 am\";\n  |     ^^^^^^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n3 |     let mut open = \"9 am\";\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error; 1 warning emitted\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let mut x = \"ink\";\n    let y = \"pen\";\n    println!(\"{x} {y}\");\n    x = \"nib\";\n    let y = x;\n    println!(\"{x} {y}\");\n    let x = y.len();\n    println!(\"{x} {y}\");\n    let y = \"quill\";\n    println!(\"{x} {y}\");\n}\n",
+   "stdout": "ink pen\nnib nib\n3 nib\n3 quill\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "ink pen\nnib nib\n3 nib\n3 quill\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/boss_trace"
+    }
+   ]
+  },
+  "const_assign.rs": {
+   "src": "const MAX_LOANS: i32 = 5;\n\nfn main() {\n    MAX_LOANS = 6;\n    println!(\"You may borrow up to {MAX_LOANS} books.\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0070]: invalid left-hand side of assignment\n --> src/main.rs:4:15\n  |\n4 |     MAX_LOANS = 6;\n  |     --------- ^\n  |     |\n  |     cannot assign to this expression\n\nFor more information about this error, try `rustc --explain E0070`.\nerror: could not compile `const_assign` (bin \"const_assign\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0070]: invalid left-hand side of assignment\n --> src/main.rs:4:15\n  |\n4 |     MAX_LOANS = 6;\n  |     --------- ^\n  |     |\n  |     cannot assign to this expression\n\nFor more information about this error, try `rustc --explain E0070`.\nerror: could not compile `const_assign` (bin \"const_assign\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/const_assign"
+    }
+   ]
+  },
+  "const_notype.rs": {
+   "src": "const MAX_LOANS = 5;\n\nfn main() {\n    println!(\"You may borrow up to {MAX_LOANS} books.\");\n}\n",
+   "stdout": "",
+   "stderr": "error: missing type for `const` item\n --> src/main.rs:1:16\n  |\n1 | const MAX_LOANS = 5;\n  |                ^ help: provide a type for the constant: `: i32`\n\nerror: could not compile `const_notype` (bin \"const_notype\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: missing type for `const` item\n --> src/main.rs:1:16\n  |\n1 | const MAX_LOANS = 5;\n  |                ^ help: provide a type for the constant: `: i32`\n\nerror: could not compile `const_notype` (bin \"const_notype\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/const_notype"
+    }
+   ]
+  },
+  "consts.rs": {
+   "src": "const MAX_LOANS: i32 = 5;\nconst LIBRARY_NAME: &str = \"Maple Street Library\";\n\nfn main() {\n    println!(\"Welcome to {LIBRARY_NAME}!\");\n    println!(\"You may borrow up to {MAX_LOANS} books.\");\n}\n",
+   "stdout": "Welcome to Maple Street Library!\nYou may borrow up to 5 books.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Welcome to Maple Street Library!\nYou may borrow up to 5 books.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/consts"
+    }
+   ]
+  },
+  "digit_first.rs": {
+   "src": "fn main() {\n    let 2nd_shelf = \"Art\";\n    println!(\"{2nd_shelf}\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected identifier, found `2nd_shelf`\n --> src/main.rs:2:9\n  |\n2 |     let 2nd_shelf = \"Art\";\n  |         ^^^^^^^^^ expected identifier\n  |\nhelp: identifiers cannot start with a number\n --> src/main.rs:2:9\n  |\n2 |     let 2nd_shelf = \"Art\";\n  |         ^\n\nerror: could not compile `digit_first` (bin \"digit_first\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected identifier, found `2nd_shelf`\n --> src/main.rs:2:9\n  |\n2 |     let 2nd_shelf = \"Art\";\n  |         ^^^^^^^^^ expected identifier\n  |\nhelp: identifiers cannot start with a number\n --> src/main.rs:2:9\n  |\n2 |     let 2nd_shelf = \"Art\";\n  |         ^\n\nerror: could not compile `digit_first` (bin \"digit_first\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/digit_first"
+    }
+   ]
+  },
+  "ex_first.rs": {
+   "src": "fn main() {\n    let title = \"Treasure Island\";\n    let pages = 320;\n    println!(\"{title} has {pages} pages.\");\n    println!(\"title\");\n}\n",
+   "stdout": "Treasure Island has 320 pages.\ntitle\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Treasure Island has 320 pages.\ntitle\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/ex_first"
+    }
+   ]
+  },
+  "explain.rs": {
+   "src": "// This file only names the error code to look up; the terminal shows `rustc --explain`.\nfn main() {}\n",
+   "stdout": "An immutable variable was reassigned.\n\nErroneous code example:\n\n```\nfn main() {\n    let x = 3;\n    x = 5; // error, reassignment of immutable variable\n}\n```\n\nBy default, variables in Rust are immutable. To fix this error, add the keyword\n`mut` after the keyword `let` when declaring the variable. For example:\n\n```\nfn main() {\n    let mut x = 3;\n    x = 5;\n}\n```\n\nAlternatively, you might consider initializing a new variable: either with a new\nbound name or (by [shadowing]) with the bound name of your existing variable.\nFor example:\n\n[shadowing]: https://doc.rust-lang.org/book/ch03-01-variables-and-mutability.html#shadowing\n\n```\nfn main() {\n    let x = 3;\n    let x = 5;\n}\n```\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "rustc --explain E0384",
+     "out": "An immutable variable was reassigned.\n\nErroneous code example:\n\n```\nfn main() {\n    let x = 3;\n    x = 5; // error, reassignment of immutable variable\n}\n```\n\nBy default, variables in Rust are immutable. To fix this error, add the keyword\n`mut` after the keyword `let` when declaring the variable. For example:\n\n```\nfn main() {\n    let mut x = 3;\n    x = 5;\n}\n```\n\nAlternatively, you might consider initializing a new variable: either with a new\nbound name or (by [shadowing]) with the bound name of your existing variable.\nFor example:\n\n[shadowing]: https://doc.rust-lang.org/book/ch03-01-variables-and-mutability.html#shadowing\n\n```\nfn main() {\n    let x = 3;\n    let x = 5;\n}\n```\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_const.rs": {
+   "src": "const MAX_LOANS: i32 = 5;\n\nfn main() {\n    println!(\"Limit: {MAX_LOANS} books\");\n}\n",
+   "stdout": "Limit: 5 books\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Limit: 5 books\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/fill_const"
+    }
+   ]
+  },
+  "fill_mut.rs": {
+   "src": "fn main() {\n    let mut stamps = 10;\n    println!(\"Stamps left: {stamps}\");\n    stamps = 9;\n    println!(\"Stamps left: {stamps}\");\n}\n",
+   "stdout": "Stamps left: 10\nStamps left: 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Stamps left: 10\nStamps left: 9\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/fill_mut"
+    }
+   ]
+  },
+  "first_box.rs": {
+   "src": "fn main() {\n    let books = 5;\n    println!(\"Books on the shelf: {books}\");\n}\n",
+   "stdout": "Books on the shelf: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Books on the shelf: 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/first_box"
+    }
+   ]
+  },
+  "fmt_messy.rs": {
+   "src": "fn main(){let  books=5;\n        println!(\"Books: {books}\");   let shelf=\"Poetry\";\nprintln!(\"Shelf: {shelf}\");}\n",
+   "stdout": "Books: 5\nShelf: Poetry\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2"
+    },
+    {
+     "cmd": "cat src/main.rs",
+     "out": "fn main(){let  books=5;\n        println!(\"Books: {books}\");   let shelf=\"Poetry\";\nprintln!(\"Shelf: {shelf}\");}\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/tidy"
+    },
+    {
+     "cmd": "cargo fmt",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/tidy"
+    },
+    {
+     "cmd": "cat src/main.rs",
+     "out": "fn main() {\n    let books = 5;\n    println!(\"Books: {books}\");\n    let shelf = \"Poetry\";\n    println!(\"Shelf: {shelf}\");\n}\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/tidy"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "Books: 5\nShelf: Poetry\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/tidy"
+    }
+   ]
+  },
+  "gen_2021.rs": {
+   "src": "fn main() {\n    let gen = 1;\n    println!(\"Generation {gen}\");\n}\n",
+   "stdout": "Generation 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Generation 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/gen_2021"
+    }
+   ]
+  },
+  "gen_2024.rs": {
+   "src": "fn main() {\n    let gen = 1;\n    println!(\"Generation {gen}\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected identifier, found reserved keyword `gen`\n --> src/main.rs:2:9\n  |\n2 |     let gen = 1;\n  |         ^^^ expected identifier, found reserved keyword\n  |\nhelp: escape `gen` to use it as an identifier\n  |\n2 |     let r#gen = 1;\n  |         ++\n\nerror[E0425]: cannot find value `r#gen` in this scope\n --> src/main.rs:3:27\n  |\n3 |     println!(\"Generation {gen}\");\n  |                           ^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `gen_2024` (bin \"gen_2024\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected identifier, found reserved keyword `gen`\n --> src/main.rs:2:9\n  |\n2 |     let gen = 1;\n  |         ^^^ expected identifier, found reserved keyword\n  |\nhelp: escape `gen` to use it as an identifier\n  |\n2 |     let r#gen = 1;\n  |         ++\n\nerror[E0425]: cannot find value `r#gen` in this scope\n --> src/main.rs:3:27\n  |\n3 |     println!(\"Generation {gen}\");\n  |                           ^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `gen_2024` (bin \"gen_2024\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/gen_2024"
+    }
+   ]
+  },
+  "late_fill.rs": {
+   "src": "fn main() {\n    let answer; // declared: a labelled box, still empty\n    answer = 42; // assigned: the box gets its first value\n    println!(\"The answer is {answer}\");\n}\n",
+   "stdout": "The answer is 42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "The answer is 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/late_fill"
+    }
+   ]
+  },
+  "lid.rs": {
+   "src": "fn main() {\n    let mut books = 5;\n    println!(\"Books: {books}\");\n    books = 6;\n    println!(\"Books: {books}\");\n    books = 2;\n    println!(\"Books: {books}\");\n}\n",
+   "stdout": "Books: 5\nBooks: 6\nBooks: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Books: 5\nBooks: 6\nBooks: 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/lid"
+    }
+   ]
+  },
+  "machine_late.rs": {
+   "src": "fn main() {\n    let x;\n    x = 6;\n    println!(\"x is {x}\");\n}\n",
+   "stdout": "x is 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "x is 6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/machine_late"
+    }
+   ]
+  },
+  "machine_lid.rs": {
+   "src": "fn main() {\n    let mut x = 5;\n    println!(\"x was {x}\");\n    x = 6;\n    println!(\"x is {x}\");\n}\n",
+   "stdout": "x was 5\nx is 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "x was 5\nx is 6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/machine_lid"
+    }
+   ]
+  },
+  "machine_sealed.rs": {
+   "src": "fn main() {\n    let x = 5;\n    println!(\"x was {x}\");\n    x = 6;\n    println!(\"x is {x}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0384]: cannot assign twice to immutable variable `x`\n --> src/main.rs:4:5\n  |\n2 |     let x = 5;\n  |         - first assignment to `x`\n3 |     println!(\"x was {x}\");\n4 |     x = 6;\n  |     ^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut x = 5;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `machine_sealed` (bin \"machine_sealed\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0384]: cannot assign twice to immutable variable `x`\n --> src/main.rs:4:5\n  |\n2 |     let x = 5;\n  |         - first assignment to `x`\n3 |     println!(\"x was {x}\");\n4 |     x = 6;\n  |     ^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut x = 5;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `machine_sealed` (bin \"machine_sealed\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/machine_sealed"
+    }
+   ]
+  },
+  "machine_type.rs": {
+   "src": "fn main() {\n    let mut x = \"five\";\n    println!(\"x was {x}\");\n    x = 6;\n    println!(\"x is {x}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:9\n  |\n2 |     let mut x = \"five\";\n  |                 ------ expected due to this value\n3 |     println!(\"x was {x}\");\n4 |     x = 6;\n  |         ^ expected `&str`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `machine_type` (bin \"machine_type\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:4:9\n  |\n2 |     let mut x = \"five\";\n  |                 ------ expected due to this value\n3 |     println!(\"x was {x}\");\n4 |     x = 6;\n  |         ^ expected `&str`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `machine_type` (bin \"machine_type\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/machine_type"
+    }
+   ]
+  },
+  "no_let.rs": {
+   "src": "fn main() {\n    count = 3;\n    println!(\"Count: {count}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find value `count` in this scope\n --> src/main.rs:2:5\n  |\n2 |     count = 3;\n  |     ^^^^^\n  |\nhelp: you might have meant to introduce a new binding\n  |\n2 |     let count = 3;\n  |     +++\n\nerror[E0425]: cannot find value `count` in this scope\n --> src/main.rs:3:23\n  |\n3 |     println!(\"Count: {count}\");\n  |                       ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `no_let` (bin \"no_let\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find value `count` in this scope\n --> src/main.rs:2:5\n  |\n2 |     count = 3;\n  |     ^^^^^\n  |\nhelp: you might have meant to introduce a new binding\n  |\n2 |     let count = 3;\n  |     +++\n\nerror[E0425]: cannot find value `count` in this scope\n --> src/main.rs:3:23\n  |\n3 |     println!(\"Count: {count}\");\n  |                       ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `no_let` (bin \"no_let\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/no_let"
+    }
+   ]
+  },
+  "parsons_mut.rs": {
+   "src": "fn main() {\n    let mut loans = 1;\n    println!(\"Before: {loans}\");\n    loans = 2;\n    println!(\"After: {loans}\");\n}\n",
+   "stdout": "Before: 1\nAfter: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Before: 1\nAfter: 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/parsons_mut"
+    }
+   ]
+  },
+  "parsons_shadow.rs": {
+   "src": "fn main() {\n    let input = \"  Dune  \";\n    println!(\"[{input}]\");\n    let input = input.trim();\n    println!(\"[{input}]\");\n    let input = input.len();\n    println!(\"{input} letters\");\n}\n",
+   "stdout": "[  Dune  ]\n[Dune]\n4 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[  Dune  ]\n[Dune]\n4 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/parsons_shadow"
+    }
+   ]
+  },
+  "predict_mut.rs": {
+   "src": "fn main() {\n    let mut genre = \"Poetry\";\n    println!(\"{genre}\");\n    genre = \"History\";\n    println!(\"{genre}\");\n    genre = \"Science\";\n    println!(\"Now: {genre}\");\n}\n",
+   "stdout": "Poetry\nHistory\nNow: Science\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Poetry\nHistory\nNow: Science\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/predict_mut"
+    }
+   ]
+  },
+  "rustc_abort.rs": {
+   "src": "fn main() {\n    let books = 5;\n    books = 6;\n    println!(\"Books: {books}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0384]: cannot assign twice to immutable variable `books`\n --> main.rs:3:5\n  |\n2 |     let books = 5;\n  |         ----- first assignment to `books`\n3 |     books = 6;\n  |     ^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut books = 5;\n  |         +++\n\nwarning: value assigned to `books` is never read\n --> main.rs:2:17\n  |\n2 |     let books = 5;\n  |                 ^ this value is reassigned later and never used\n3 |     books = 6;\n  |     --------- `books` is overwritten here before the previous value is read\n  |\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0384`.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cd bare",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2"
+    },
+    {
+     "cmd": "rustc --edition 2024 main.rs",
+     "out": "",
+     "err": "error[E0384]: cannot assign twice to immutable variable `books`\n --> main.rs:3:5\n  |\n2 |     let books = 5;\n  |         ----- first assignment to `books`\n3 |     books = 6;\n  |     ^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut books = 5;\n  |         +++\n\nwarning: value assigned to `books` is never read\n --> main.rs:2:17\n  |\n2 |     let books = 5;\n  |                 ^ this value is reassigned later and never used\n3 |     books = 6;\n  |     --------- `books` is overwritten here before the previous value is read\n  |\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0384`.\n",
+     "exit": 1,
+     "dir": "~/rust-ch2/bare"
+    }
+   ]
+  },
+  "shadow.rs": {
+   "src": "fn main() {\n    let title = \"Moby-Dick\";\n    println!(\"The title is {title}\");\n    let title = title.len();\n    println!(\"The title is {title} characters long\");\n}\n",
+   "stdout": "The title is Moby-Dick\nThe title is 9 characters long\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "The title is Moby-Dick\nThe title is 9 characters long\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/shadow"
+    }
+   ]
+  },
+  "shadow_mut_fail.rs": {
+   "src": "fn main() {\n    let mut title = \"Moby-Dick\";\n    println!(\"The title is {title}\");\n    title = title.len();\n    println!(\"The title is {title} characters long\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:13\n  |\n2 |     let mut title = \"Moby-Dick\";\n  |                     ----------- expected due to this value\n3 |     println!(\"The title is {title}\");\n4 |     title = title.len();\n  |             ^^^^^^^^^^^ expected `&str`, found `usize`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `shadow_mut_fail` (bin \"shadow_mut_fail\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:4:13\n  |\n2 |     let mut title = \"Moby-Dick\";\n  |                     ----------- expected due to this value\n3 |     println!(\"The title is {title}\");\n4 |     title = title.len();\n  |             ^^^^^^^^^^^ expected `&str`, found `usize`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `shadow_mut_fail` (bin \"shadow_mut_fail\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/shadow_mut_fail"
+    }
+   ]
+  },
+  "shadow_spot.rs": {
+   "src": "fn main() {\n    let mut code = \"QA-76\";\n    println!(\"Shelf code: {code}\");\n    println!(\"Counting its characters...\");\n    code = code.len();\n    println!(\"It has {code} characters\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:5:12\n  |\n2 |     let mut code = \"QA-76\";\n  |                    ------- expected due to this value\n...\n5 |     code = code.len();\n  |            ^^^^^^^^^^ expected `&str`, found `usize`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `shadow_spot` (bin \"shadow_spot\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:5:12\n  |\n2 |     let mut code = \"QA-76\";\n  |                    ------- expected due to this value\n...\n5 |     code = code.len();\n  |            ^^^^^^^^^^ expected `&str`, found `usize`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `shadow_spot` (bin \"shadow_spot\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/shadow_spot"
+    }
+   ]
+  },
+  "shadow_trace.rs": {
+   "src": "fn main() {\n    let mut a = \"red\";\n    let b = \"blue\";\n    println!(\"{a} {b}\");\n    a = b;\n    println!(\"{a} {b}\");\n    let b = \"green\";\n    println!(\"{a} {b}\");\n    let a = a.len();\n    println!(\"{a} {b}\");\n}\n",
+   "stdout": "red blue\nblue blue\nblue green\n4 green\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "red blue\nblue blue\nblue green\n4 green\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/shadow_trace"
+    }
+   ]
+  },
+  "short_format.rs": {
+   "src": "fn main() {\n    let mut shelf = \"Fiction\";\n    let books = 5;\n    books = 6;\n    println!(\"{shelf}: {books}\");\n}\n",
+   "stdout": "",
+   "stderr": "   Compiling shelf v0.1.0 (/home/you/rust-ch2/shelf)\nsrc/main.rs:2:9: warning: variable does not need to be mutable\nsrc/main.rs:4:5: error[E0384]: cannot assign twice to immutable variable `books`: cannot assign twice to immutable variable\nsrc/main.rs:3:17: warning: value assigned to `books` is never read: this value is reassigned later and never used\nwarning: `shelf` (bin \"shelf\") generated 2 warnings\nerror: could not compile `shelf` (bin \"shelf\") due to 1 previous error; 2 warnings emitted\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cd shelf",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2"
+    },
+    {
+     "cmd": "cargo build --message-format short",
+     "out": "",
+     "err": "   Compiling shelf v0.1.0 (/home/you/rust-ch2/shelf)\nsrc/main.rs:2:9: warning: variable does not need to be mutable\nsrc/main.rs:4:5: error[E0384]: cannot assign twice to immutable variable `books`: cannot assign twice to immutable variable\nsrc/main.rs:3:17: warning: value assigned to `books` is never read: this value is reassigned later and never used\nwarning: `shelf` (bin \"shelf\") generated 2 warnings\nerror: could not compile `shelf` (bin \"shelf\") due to 1 previous error; 2 warnings emitted\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/shelf"
+    }
+   ]
+  },
+  "snake.rs": {
+   "src": "const max_loans: i32 = 5;\n\nfn main() {\n    let bookCount = 3;\n    println!(\"{bookCount} of {max_loans}\");\n}\n",
+   "stdout": "3 of 5\n",
+   "stderr": "warning: constant `max_loans` should have an upper case name\n --> src/main.rs:1:7\n  |\n1 | const max_loans: i32 = 5;\n  |       ^^^^^^^^^\n  |\n  = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default\nhelp: convert the identifier to upper case\n  |\n1 - const max_loans: i32 = 5;\n1 + const MAX_LOANS: i32 = 5;\n  |\n\nwarning: variable `bookCount` should have a snake case name\n --> src/main.rs:4:9\n  |\n4 |     let bookCount = 3;\n  |         ^^^^^^^^^ help: convert the identifier to snake case: `book_count`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 of 5\n",
+     "err": "warning: constant `max_loans` should have an upper case name\n --> src/main.rs:1:7\n  |\n1 | const max_loans: i32 = 5;\n  |       ^^^^^^^^^\n  |\n  = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default\nhelp: convert the identifier to upper case\n  |\n1 - const max_loans: i32 = 5;\n1 + const MAX_LOANS: i32 = 5;\n  |\n\nwarning: variable `bookCount` should have a snake case name\n --> src/main.rs:4:9\n  |\n4 |     let bookCount = 3;\n  |         ^^^^^^^^^ help: convert the identifier to snake case: `book_count`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch2/snake",
+     "merged": "warning: constant `max_loans` should have an upper case name\n --> src/main.rs:1:7\n  |\n1 | const max_loans: i32 = 5;\n  |       ^^^^^^^^^\n  |\n  = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default\nhelp: convert the identifier to upper case\n  |\n1 - const max_loans: i32 = 5;\n1 + const MAX_LOANS: i32 = 5;\n  |\n\nwarning: variable `bookCount` should have a snake case name\n --> src/main.rs:4:9\n  |\n4 |     let bookCount = 3;\n  |         ^^^^^^^^^ help: convert the identifier to snake case: `book_count`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n3 of 5\n"
+    }
+   ]
+  },
+  "spot_fixline.rs": {
+   "src": "fn main() {\n    let stamps = 10;\n    println!(\"Stamps left: {stamps}\");\n    println!(\"Stamping a book...\");\n    stamps = 9;\n    println!(\"Stamps left: {stamps}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0384]: cannot assign twice to immutable variable `stamps`\n --> src/main.rs:5:5\n  |\n2 |     let stamps = 10;\n  |         ------ first assignment to `stamps`\n...\n5 |     stamps = 9;\n  |     ^^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut stamps = 10;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `spot_fixline` (bin \"spot_fixline\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0384]: cannot assign twice to immutable variable `stamps`\n --> src/main.rs:5:5\n  |\n2 |     let stamps = 10;\n  |         ------ first assignment to `stamps`\n...\n5 |     stamps = 9;\n  |     ^^^^^^^^^^ cannot assign twice to immutable variable\n  |\nhelp: consider making this binding mutable\n  |\n2 |     let mut stamps = 10;\n  |         +++\n\nFor more information about this error, try `rustc --explain E0384`.\nerror: could not compile `spot_fixline` (bin \"spot_fixline\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/spot_fixline"
+    }
+   ]
+  },
+  "spot_gen.rs": {
+   "src": "fn main() {\n    let shelf = \"Sci-fi\";\n    let gen = 3;\n    println!(\"{shelf}, generation {gen}\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected identifier, found reserved keyword `gen`\n --> src/main.rs:3:9\n  |\n3 |     let gen = 3;\n  |         ^^^ expected identifier, found reserved keyword\n  |\nhelp: escape `gen` to use it as an identifier\n  |\n3 |     let r#gen = 3;\n  |         ++\n\nerror[E0425]: cannot find value `r#gen` in this scope\n --> src/main.rs:4:36\n  |\n4 |     println!(\"{shelf}, generation {gen}\");\n  |                                    ^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `spot_gen` (bin \"spot_gen\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected identifier, found reserved keyword `gen`\n --> src/main.rs:3:9\n  |\n3 |     let gen = 3;\n  |         ^^^ expected identifier, found reserved keyword\n  |\nhelp: escape `gen` to use it as an identifier\n  |\n3 |     let r#gen = 3;\n  |         ++\n\nerror[E0425]: cannot find value `r#gen` in this scope\n --> src/main.rs:4:36\n  |\n4 |     println!(\"{shelf}, generation {gen}\");\n  |                                    ^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `spot_gen` (bin \"spot_gen\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/spot_gen"
+    }
+   ]
+  },
+  "statics.rs": {
+   "src": "static GREETING: &str = \"Shh! This is a library.\";\n\nfn main() {\n    println!(\"{GREETING}\");\n}\n",
+   "stdout": "Shh! This is a library.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shh! This is a library.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/statics"
+    }
+   ]
+  },
+  "trace_mut.rs": {
+   "src": "fn main() {\n    let mut shelf = \"A\";\n    let mut books = 3;\n    println!(\"{shelf} {books}\");\n    books = 5;\n    println!(\"{shelf} {books}\");\n    shelf = \"B\";\n    println!(\"{shelf} {books}\");\n    books = 0;\n    println!(\"{shelf} {books}\");\n}\n",
+   "stdout": "A 3\nA 5\nB 5\nB 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "A 3\nA 5\nB 5\nB 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/trace_mut"
+    }
+   ]
+  },
+  "two_ways.rs": {
+   "src": "fn main() {\n    let shelf = \"Poetry\";\n    let books = 12;\n    println!(\"Shelf: {shelf}, books: {books}\");\n    println!(\"Shelf: {}, books: {}\", shelf, books);\n}\n",
+   "stdout": "Shelf: Poetry, books: 12\nShelf: Poetry, books: 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf: Poetry, books: 12\nShelf: Poetry, books: 12\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/two_ways"
+    }
+   ]
+  },
+  "typed.rs": {
+   "src": "fn main() {\n    let loans: i32 = 3;\n    let shelf: &str = \"Mysteries\";\n    println!(\"{loans} loans from {shelf}\");\n}\n",
+   "stdout": "3 loans from Mysteries\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 loans from Mysteries\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/typed"
+    }
+   ]
+  },
+  "typed_wrong.rs": {
+   "src": "fn main() {\n    let shelf = \"Mysteries\";\n    let loans: i32 = \"three\";\n    println!(\"{loans} loans from {shelf}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:22\n  |\n3 |     let loans: i32 = \"three\";\n  |                ---   ^^^^^^^ expected `i32`, found `&str`\n  |                |\n  |                expected due to this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `typed_wrong` (bin \"typed_wrong\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:3:22\n  |\n3 |     let loans: i32 = \"three\";\n  |                ---   ^^^^^^^ expected `i32`, found `&str`\n  |                |\n  |                expected due to this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `typed_wrong` (bin \"typed_wrong\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/typed_wrong"
+    }
+   ]
+  },
+  "uninit.rs": {
+   "src": "fn main() {\n    let answer: i32;\n    println!(\"The answer is {answer}\");\n    answer = 42;\n}\n",
+   "stdout": "",
+   "stderr": "error[E0381]: used binding `answer` isn't initialized on any path leading to this point\n --> src/main.rs:3:30\n  |\n2 |     let answer: i32;\n  |         ------ binding declared here but left uninitialized\n3 |     println!(\"The answer is {answer}\");\n  |                              ^^^^^^ `answer` used here but it isn't initialized on any path leading to this point\n  |\nhelp: consider assigning a value\n  |\n2 |     let answer: i32 = 42;\n  |                     ++++\n\nwarning: value assigned to `answer` is never read\n --> src/main.rs:4:5\n  |\n4 |     answer = 42;\n  |     ^^^^^^^^^^^\n  |\n  = help: maybe it is overwritten before being read?\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nFor more information about this error, try `rustc --explain E0381`.\nerror: could not compile `uninit` (bin \"uninit\") due to 1 previous error; 1 warning emitted\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0381]: used binding `answer` isn't initialized on any path leading to this point\n --> src/main.rs:3:30\n  |\n2 |     let answer: i32;\n  |         ------ binding declared here but left uninitialized\n3 |     println!(\"The answer is {answer}\");\n  |                              ^^^^^^ `answer` used here but it isn't initialized on any path leading to this point\n  |\nhelp: consider assigning a value\n  |\n2 |     let answer: i32 = 42;\n  |                     ++++\n\nwarning: value assigned to `answer` is never read\n --> src/main.rs:4:5\n  |\n4 |     answer = 42;\n  |     ^^^^^^^^^^^\n  |\n  = help: maybe it is overwritten before being read?\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nFor more information about this error, try `rustc --explain E0381`.\nerror: could not compile `uninit` (bin \"uninit\") due to 1 previous error; 1 warning emitted\n",
+     "exit": 101,
+     "dir": "~/rust-ch2/uninit"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0381]: used binding `answer` is possibly-uninitialized\n --> src/main.rs:3:30\n  |\n2 |     let answer: i32;\n  |         ------ binding declared here but left uninitialized\n3 |     println!(\"The answer is {answer}\");\n  |                              ^^^^^^ `answer` used here but it is possibly-uninitialized\n\nwarning: value assigned to `answer` is never read\n --> src/main.rs:4:5\n  |\n4 |     answer = 42;\n  |     ^^^^^^^^^^^\n  |\n  = help: maybe it is overwritten before being read?\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nFor more information about this error, try `rustc --explain E0381`.\nerror: could not compile `uninit` (bin \"uninit\") due to 1 previous error; 1 warning emitted\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0381]: used binding `answer` is possibly-uninitialized\n --> src/main.rs:3:30\n  |\n2 |     let answer: i32;\n  |         ------ binding declared here but left uninitialized\n3 |     println!(\"The answer is {answer}\");\n  |                              ^^^^^^ `answer` used here but it is possibly-uninitialized\n\nwarning: value assigned to `answer` is never read\n --> src/main.rs:4:5\n  |\n4 |     answer = 42;\n  |     ^^^^^^^^^^^\n  |\n  = help: maybe it is overwritten before being read?\n  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default\n\nFor more information about this error, try `rustc --explain E0381`.\nerror: could not compile `uninit` (bin \"uninit\") due to 1 previous error; 1 warning emitted\n",
+      "exit": 101,
+      "dir": "~/rust-ch2/uninit"
+     }
+    ]
+   }
+  },
+  "warn.rs": {
+   "src": "fn main() {\n    let mut shelf = \"Fiction\";\n    let note = \"dust the top shelf\";\n    println!(\"Shelf: {shelf}\");\n}\n",
+   "stdout": "Shelf: Fiction\n",
+   "stderr": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Fiction\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `note`\n --> src/main.rs:3:9\n  |\n3 |     let note = \"dust the top shelf\";\n  |         ^^^^ help: if this is intentional, prefix it with an underscore: `_note`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf: Fiction\n",
+     "err": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Fiction\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `note`\n --> src/main.rs:3:9\n  |\n3 |     let note = \"dust the top shelf\";\n  |         ^^^^ help: if this is intentional, prefix it with an underscore: `_note`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch2/warn",
+     "merged": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Fiction\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `note`\n --> src/main.rs:3:9\n  |\n3 |     let note = \"dust the top shelf\";\n  |         ^^^^ help: if this is intentional, prefix it with an underscore: `_note`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nShelf: Fiction\n"
+    }
+   ]
+  },
+  "warn_fixed.rs": {
+   "src": "fn main() {\n    let shelf = \"Fiction\";\n    let _note = \"dust the top shelf\";\n    println!(\"Shelf: {shelf}\");\n}\n",
+   "stdout": "Shelf: Fiction\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf: Fiction\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch2/warn_fixed"
+    }
+   ]
+  },
+  "warn_predict.rs": {
+   "src": "fn main() {\n    let mut shelf = \"Maps\";\n    let unused = 7;\n    println!(\"Shelf: {shelf}\");\n    println!(\"Still running!\");\n}\n",
+   "stdout": "Shelf: Maps\nStill running!\n",
+   "stderr": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Maps\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `unused`\n --> src/main.rs:3:9\n  |\n3 |     let unused = 7;\n  |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf: Maps\nStill running!\n",
+     "err": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Maps\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `unused`\n --> src/main.rs:3:9\n  |\n3 |     let unused = 7;\n  |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch2/warn_predict",
+     "merged": "warning: variable does not need to be mutable\n --> src/main.rs:2:9\n  |\n2 |     let mut shelf = \"Maps\";\n  |         ----^^^^^\n  |         |\n  |         help: remove this `mut`\n  |\n  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\nwarning: unused variable: `unused`\n --> src/main.rs:3:9\n  |\n3 |     let unused = 7;\n  |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nShelf: Maps\nStill running!\n"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
