@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plate Stacks, House Keys</title>
+<meta name="description" content="Chapter 7 of the Pip &amp; Friends Rust book, a comic course: memory as numbered cells, the stack of function frames (last in, first out), the heap, pointers, what a String really is (pointer, length, capacity), Box, then ownership: the three rules, scope and drop, moves (E0382), moving into and out of functions, Copy types, clone, and partial moves.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch7.css">
+<script defer src="../data/rs-ch7.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch6.html">&larr; Ch 6</a><span aria-current="page">Ch 7 of 29</span><a href="ch8.html">Ch 8 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 7</p>
+    <h1 id="cover-h">PLATE STACKS, HOUSE KEYS</h1>
+    <div class="cover-pair">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char key" data-char="key" data-label="owner" data-mood="happy"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Next to her, a smiling golden key with a paper tag that says owner.</p>
+    <p class="caption blurb">Where do your values actually live while a program runs? First we draw memory: a stack of plates for the functions that are running, and a coat-check room for things that grow. Then we meet Rust's big idea, the one that makes it different from almost every other language: <b>ownership</b>. Every value has exactly one owner, like a house with exactly one key. About 2 hours, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Memory cells and the plate stack</a></li>
+      <li><a href="#part-2">The heap: pointers, <code>String</code>, <code>Box</code></a></li>
+      <li><a href="#part-3">One key, one owner: scope and drop</a></li>
+      <li><a href="#part-4">Moves and E0382</a></li>
+      <li><a href="#part-5"><code>Copy</code> and <code>.clone()</code></a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · WHERE DO VALUES LIVE?<small>Memory as numbered cells, and the stack: one plate per running function</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: a question nobody asks">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Six chapters of lines like <code>let age = 36;</code>. Mabel has a question that most courses skip.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Mabel says: </span>When you write <code>let age = 36;</code>, the 36 has to be kept <em>somewhere</em> while the program runs. Where, exactly?</p>
+        <p class="bubble"><span class="sr-only">Mabel says: </span>The answer is the computer's <b>memory</b> (also called <b>RAM</b>). Today we draw it. Once you can picture it, Rust's strictest rules stop feeling strange and start making sense.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Mabel points at her ledger, looking thoughtful.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: memory is a wall of numbered cells">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Picture memory as a very long wall of tiny pigeonholes, like the mail cubbies behind a library desk. Each cell holds one <b>byte</b> (a small number from 0 to 255), and each cell has a number painted on it: its <b>address</b>.</p>
+    <svg class="fig" style="max-width:520px" viewBox="0 0 470 290" role="img" aria-label="A row of eight memory cells, part of a much longer row. Addresses are painted under them: 1000 under the first cell and 1004 under the fifth. Cells 1000 to 1003 are grouped together and labelled age, an i32 that takes 4 bytes. Cell 1004 is labelled open, a bool that takes 1 byte. An arrow says the address of age is 1000 and points at the first cell.">
+      <rect x="20" y="70" width="430" height="70" rx="8" fill="#C8955E" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3">
+        <rect x="30" y="80" width="42" height="50" rx="4" fill="#FFE7CC"/><rect x="81" y="80" width="42" height="50" rx="4" fill="#FFE7CC"/><rect x="132" y="80" width="42" height="50" rx="4" fill="#FFE7CC"/><rect x="183" y="80" width="42" height="50" rx="4" fill="#FFE7CC"/>
+        <rect x="234" y="80" width="42" height="50" rx="4" fill="#FFF6CC"/>
+        <rect x="285" y="80" width="42" height="50" rx="4" fill="#FFFFFF"/><rect x="336" y="80" width="42" height="50" rx="4" fill="#FFFFFF"/><rect x="387" y="80" width="42" height="50" rx="4" fill="#FFFFFF"/>
+      </g>
+      <path d="M51 140 v10 M102 140 v6 M153 140 v6 M204 140 v6 M255 140 v10 M306 140 v6 M357 140 v6 M408 140 v6" stroke="#111" stroke-width="3"/>
+      <text class="m mid" x="51" y="174">1000</text><text class="m mid" x="255" y="174">1004</text>
+      <path d="M30 190 v10 h195 v-10 M255 190 v10" fill="none" stroke="#111" stroke-width="3"/>
+      <text class="m mid" x="128" y="230">age: i32 = 36</text>
+      <text class="s mid" x="128" y="260">4 cells (4 bytes)</text>
+      <text class="m" x="244" y="230">open: bool</text>
+      <text class="s" x="244" y="260">1 cell</text>
+      <path d="M51 30 v40" fill="none" stroke="#111" stroke-width="3"/><path d="M43 60 l8 12 l8 -12" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <text class="s" x="64" y="36">the address of age is 1000</text>
+    </svg>
+    <ul class="checklist">
+      <li><span><b>A value can take several cells.</b> An <code>i32</code> takes 4 bytes side by side; a <code>bool</code> takes 1. The value's address is the number of its first cell.</span></li>
+      <li><span><b>A name is a label for some cells.</b> Your program says <code>age</code>; the computer thinks "the 4 cells starting at 1000".</span></li>
+      <li><span><b>The real row goes on for billions of cells, and the addresses here are made up.</b> Real ones are huge numbers and change every run, so this book draws memory instead of printing real addresses.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 3: the cafeteria plate stack">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">A running program keeps its everyday values in a part of memory called <b>the stack</b>. Think of the spring-loaded plate stack in a cafeteria.</p>
+    <svg class="fig" style="max-width:540px" viewBox="0 0 520 350" role="img" aria-label="A spring-loaded plate dispenser holding three plates. The bottom plate is labelled main, the middle plate breakfast, and the top plate toast. An arrow coming down onto the top says push: a call adds a plate. An arrow going up from the top says pop: a return takes it off. Springs sit under the bottom plate.">
+      <rect x="140" y="120" width="240" height="220" rx="14" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <path d="M210 330 l30 -12 l-30 -12 l30 -12 l-30 -12 l30 -12" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M280 330 l30 -12 l-30 -12 l30 -12 l-30 -12 l30 -12" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <g class="plate-drop"><ellipse cx="260" cy="256" rx="105" ry="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/><rect x="155" y="238" width="210" height="18" fill="#FFFFFF"/><ellipse cx="260" cy="238" rx="105" ry="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/><text class="m mid" x="260" y="245">main</text></g><g class="plate-drop d2"><ellipse cx="260" cy="212" rx="105" ry="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/><rect x="155" y="194" width="210" height="18" fill="#FFFFFF"/><ellipse cx="260" cy="194" rx="105" ry="16" fill="#FFF6CC" stroke="#111" stroke-width="4"/><text class="m mid" x="260" y="201">breakfast</text></g><g class="plate-drop d3"><ellipse cx="260" cy="168" rx="105" ry="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/><rect x="155" y="150" width="210" height="18" fill="#FFFFFF"/><ellipse cx="260" cy="150" rx="105" ry="16" fill="#FFD60A" stroke="#111" stroke-width="4"/><text class="m mid" x="260" y="157">toast</text></g>
+      <path d="M200 20 v100" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/><path d="M190 108 l10 14 l10 -14" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="h" x="186" y="40" text-anchor="end">PUSH</text><text class="s" x="186" y="68" text-anchor="end">a call adds</text><text class="s" x="186" y="94" text-anchor="end">a plate</text>
+      <path d="M320 122 v-100" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/><path d="M310 34 l10 -14 l10 14" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="h" x="334" y="40">POP</text><text class="s" x="334" y="68">a return</text><text class="s" x="334" y="94">takes it off</text>
+    </svg>
+    <div class="duo">
+      <div class="duo-card"><h3>ONE PLATE PER CALL</h3><p>Each time a function is <b>called</b>, a fresh plate goes on top: its <b>frame</b>, holding that call's parameters and local variables. Putting it on is called a <b>push</b>.</p></div>
+      <div class="duo-card"><h3>LAST IN, FIRST OUT</h3><p>Only the top plate is in use. When that function <b>returns</b>, its plate comes off (a <b>pop</b>) and everything on it is gone. The plate that went on last always comes off first.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: a program with three plates">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption"><code>main</code> calls <code>breakfast</code>, which calls <code>toast</code>. The indents in the output are just spaces, so you can see who is talking.</p>
+    <span class="file-tab">frames.rs</span>
+    <pre class="code" data-src="frames.rs"></pre>
+    <pre class="term" data-run="frames.rs" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>main</code> stops halfway through this line and waits while <code>breakfast</code> runs. It can't finish the <code>let</code> until it gets the answer.</span></li>
+      <li><span><b>Line 9</b>: same again: <code>breakfast</code> waits for <code>toast</code>.</span></li>
+      <li><span><b>The output</b>: <code>toast</code> started last but finished first. Then <code>breakfast</code>, then <code>main</code>. Last in, first out.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 5: the plate stack, step by step" data-mem="mem-frames" data-heap-label="the coat-check room" id="mem-frames-box">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Step through it. Watch plates go on (push) and come off (pop). The two <code>crumbs</code> are on different plates, so they never clash.</p>
+    <ul class="mem-legend" aria-label="How to read the diagram">
+      <li><span class="sw" aria-hidden="true"></span> a plate (one frame), newest on top</li>
+      <li><span class="sw ptr" aria-hidden="true"></span> a pointer: a ticket number like #1 and an arrow</li>
+      <li><span class="sw dash" aria-hidden="true"></span> dashed and striped: moved away, or freed</li>
+    </ul>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-frames">{"program": "frames.rs", "steps": [
+      {"line": 2, "note": "The program starts by calling <code>main</code>. Its frame is the first plate on the stack. It has no names yet.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "Line 2 printed. Line 3 is about to call <code>breakfast(2)</code>.", "output": ["main starts"], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 8, "note": "<b>Push!</b> Calling <code>breakfast</code> puts a new plate on top. The argument 2 is copied into its parameter <code>guests</code>. <code>main</code> waits underneath, halfway through line 3.", "output": ["main starts"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}]}], "heap": {}, "changed": ["guests"]},
+      {"line": 9, "note": "<code>breakfast</code> prints its first line.", "output": ["main starts", "  breakfast starts for 2"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}]}], "heap": {}},
+      {"line": 15, "note": "<b>Push again.</b> <code>toast(guests * 2)</code> puts a third plate on top, with <code>slices</code> = 4. Only the top plate is running; the two below are waiting.", "output": ["main starts", "  breakfast starts for 2"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}]}, {"name": "toast", "slots": [{"n": "slices", "type": "i32", "val": "4"}]}], "heap": {}, "changed": ["slices"]},
+      {"line": 16, "note": "<code>crumbs</code> = 4 × 3 = 12, a new slot on <code>toast</code>'s plate. <code>breakfast</code> will get its <em>own</em> <code>crumbs</code> later: same name, different plate.", "output": ["main starts", "  breakfast starts for 2"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}]}, {"name": "toast", "slots": [{"n": "slices", "type": "i32", "val": "4"}, {"n": "crumbs", "type": "i32", "val": "12"}]}], "heap": {}, "changed": ["crumbs"]},
+      {"line": 17, "note": "Printed. Next, line 17 hands back <code>crumbs</code>.", "output": ["main starts", "  breakfast starts for 2", "    toast: 4 slices make 12 crumbs"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}]}, {"name": "toast", "slots": [{"n": "slices", "type": "i32", "val": "4"}, {"n": "crumbs", "type": "i32", "val": "12"}]}], "heap": {}},
+      {"line": 10, "note": "<b>Pop!</b> <code>toast</code> returns 12, and its plate comes off the top with <code>slices</code> and its <code>crumbs</code>. The 12 lands in <code>breakfast</code>'s own <code>crumbs</code>.", "output": ["main starts", "  breakfast starts for 2", "    toast: 4 slices make 12 crumbs"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}, {"n": "crumbs", "type": "i32", "val": "12"}]}], "heap": {}, "changed": ["crumbs"]},
+      {"line": 11, "note": "Printed.", "output": ["main starts", "  breakfast starts for 2", "    toast: 4 slices make 12 crumbs", "  breakfast ends"], "frames": [{"name": "main", "slots": []}, {"name": "breakfast", "slots": [{"n": "guests", "type": "i32", "val": "2"}, {"n": "crumbs", "type": "i32", "val": "12"}]}], "heap": {}},
+      {"line": 4, "note": "<b>Pop!</b> <code>breakfast</code> returns 12 and its plate comes off. Back in <code>main</code>, line 3 can finally finish: <code>total</code> = 12.", "output": ["main starts", "  breakfast starts for 2", "    toast: 4 slices make 12 crumbs", "  breakfast ends"], "frames": [{"name": "main", "slots": [{"n": "total", "type": "i32", "val": "12"}]}], "heap": {}, "changed": ["total"]},
+      {"line": null, "note": "Line 4 printed. <code>main</code> ends, so its plate comes off too: the stack is empty and the program is over. <code>toast</code> went on last and came off first.", "output": ["main starts", "  breakfast starts for 2", "    toast: 4 slices make 12 crumbs", "  breakfast ends", "main ends: 12 crumbs"], "frames": [], "heap": {}}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-frames-trace-m" id="ex-frames-trace"></div>
+  <script type="application/json" id="ex-frames-trace-m">{"program": "frames_trace.rs", "columns": ["event", "function", "plates"], "given": [0], "prompt": "Each function prints a line when its plate goes on (push) and when it is about to come off (pop), with the number of plates on the stack at that moment. The events are filled in: write which function is speaking and how many plates there are.", "explain": "<code>main</code> is plate 1. <code>shelf(2)</code> makes 2 plates, and <code>shelf</code> calls <code>stamp</code>: 3 plates. <code>stamp</code> pops first (last in, first out), then <code>shelf</code>. Then <code>main</code> calls <code>stamp</code> again, on a stack of 2. Each pop line prints the count <em>after</em> that plate leaves."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: every plate has a fixed size">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Before anything runs, the Compiler plans every plate: how many bytes each one needs. So everything on the stack must have a size that is <b>known at compile time</b> and never changes. <code>std::mem::size_of::&lt;T&gt;()</code> asks for a type's size in bytes.</p>
+    <span class="file-tab">sizes.rs</span>
+    <pre class="code" data-src="sizes.rs"></pre>
+    <pre class="term" data-run="sizes.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>use std::mem::size_of;</code> brings in the <code>size_of</code> tool, like <code>use std::io;</code> in Chapter 6.</span></li>
+      <li><span><b>Numbers, bools, chars, tuples and arrays</b> have fixed sizes: an array of 3 <code>i32</code>s is always 3 × 4 = 12 bytes.</span></li>
+      <li><span><b>Line 10</b>: <code>String</code> is 24 bytes. Always. Whether it holds "Hi" or a whole novel. How can a novel fit in 24 bytes? It can't: Part 2 shows where the text really goes.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>I measure every plate before the program starts. A size that could change while running doesn't fit on a plate. Those things go somewhere else.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+    </div>
+    <p class="caption soft">These sizes are for this book's computer, a 64-bit Linux machine. Any 64-bit computer (almost every PC and Mac today) gives the same numbers for these types.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-size-predict-m" id="ex-size-predict"></div>
+  <script type="application/json" id="ex-size-predict-m">{"program": "size_predict.rs", "prompt": "Two Strings, one short and one long. <code>.len()</code> counts the bytes of text. What are the three lines?", "hint": "Count the long text carefully, spaces and punctuation included. Then remember what <code>sizes.rs</code> said about <code>String</code>.", "explain": "\"Hi\" has 2 bytes and the long greeting has 33. But <code>size_of::&lt;String&gt;()</code> is 24 no matter what text a <code>String</code> holds: the 24 bytes are a small fixed-size record, not the text. An array of 5 <code>i32</code>s is 5 × 4 = 20 bytes."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE COAT-CHECK ROOM<small>The heap, pointers, what a <code>String</code> really is, capacity, and <code>Box</code></small></h2>
+
+  <section class="panel pop" aria-label="Panel 7: things that grow">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A problem: some things grow while the program runs. A guest list. A text you keep typing into.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Mabel says: </span>A plate's size is fixed before the program starts. So where do I put a <code>String</code> that might hold 2 letters now and 2,000 later?</p>
+        <p class="bubble"><span class="sr-only">Mabel says: </span>In the other part of memory: <b>the heap</b>. It's a big open room where a program can ask, while it runs, "please give me room for 5 bytes", and later "actually, make that 8".</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Mabel shrugs, puzzled.</p>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 8: the coat-check room">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">The heap works like a <b>coat-check room</b>. You hand over a big, bulky coat and get back a small numbered ticket. The coat stays in the back room; the ticket goes in your pocket.</p>
+    <svg class="fig" style="max-width:540px" viewBox="0 0 520 310" role="img" aria-label="Left: a pocket (the stack) holding a small ticket numbered 1. Right: a back room (the heap) with a rail of hangers; one coat on a hanger has a tag numbered 1, and other coats hang nearby. A dashed arrow goes from the ticket to the coat: follow the ticket.">
+      <rect x="20" y="60" width="150" height="210" rx="16" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <path d="M20 110 h150" stroke="#111" stroke-width="3"/>
+      <text class="h mid" x="95" y="96">STACK</text>
+      <text class="s mid" x="95" y="256">your pocket</text>
+      <g class="key-slide"><rect x="38" y="140" width="112" height="74" rx="8" fill="#DDE8FF" stroke="#111" stroke-width="4"/><circle cx="56" cy="177" r="7" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text class="m mid" x="106" y="185">#1</text></g>
+      <rect x="250" y="30" width="250" height="240" rx="16" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <text class="h mid" x="375" y="64">HEAP</text>
+      <text class="s mid" x="375" y="256">the back room</text>
+      <path d="M266 92 h218" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="3" stroke-linejoin="round">
+        <path d="M300 92 l-22 20 h44 z" fill="none"/><path d="M280 114 h40 l8 104 h-56 z" fill="#FF9F43"/>
+        <path d="M380 92 l-22 20 h44 z" fill="none"/><path d="M360 114 h40 l12 116 h-64 z" fill="#8EE6A8"/>
+        <path d="M455 92 l-22 20 h44 z" fill="none"/><path d="M435 114 h40 l5 78 h-50 z" fill="#FFC2CF"/>
+      </g>
+      <rect x="352" y="150" width="56" height="34" rx="5" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text class="m mid" x="380" y="174">#1</text>
+      <path d="M150 177 C 200 177, 260 200, 344 168" fill="none" stroke="#111" stroke-width="3.5" stroke-dasharray="9 6"/><path d="M334 160 l12 8 l-12 8" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="s mid" x="260" y="300">dashed arrow: follow the ticket</text>
+    </svg>
+    <ul class="checklist">
+      <li><span><b>The ticket is a pointer.</b> A <b>pointer</b> is a value that holds an <em>address</em>: "your coat is on hook #1". It's small and always the same size (8 bytes here), so it fits on a plate.</span></li>
+      <li><span><b>The coat is the heap data.</b> It can be any size, and it can be swapped for a bigger one.</span></li>
+      <li><span><b>Fetching takes a walk.</b> To use the coat you first read the ticket, then go to the back room. That's why heap data is a little slower to reach than plate data.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: a String and a number">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">So what does a <code>String</code> look like in memory? Here's a tiny program to x-ray.</p>
+    <span class="file-tab">string_layout.rs</span>
+    <pre class="code" data-src="string_layout.rs"></pre>
+    <pre class="term" data-run="string_layout.rs"></pre>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 10: a String is a ticket plus bytes" data-mem="mem-string" data-heap-label="the coat-check room" id="mem-string-box">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Step through it. <code>age</code> sits right on the plate. <code>name</code> is a ticket with two counters; the letters are in the coat-check room.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-string">{"program": "string_layout.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts: one empty plate. Nothing on the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>age</code> is an <code>i32</code>: 4 bytes, a size known before the program runs. It sits right on the plate.", "output": [], "frames": [{"name": "main", "slots": [{"n": "age", "type": "i32", "val": "36"}]}], "heap": {}, "changed": ["age"]},
+      {"line": 4, "note": "<code>String::from</code> asks the heap for room for 5 bytes and copies M, a, b, e, l there. On the plate, <code>name</code> holds just three numbers: <b>ptr</b>, the ticket saying where the bytes are (#1); <b>len</b>, how many bytes are in use (5); and <b>cap</b>, the <b>capacity</b>: how many bytes of room it has (5). That's the 24 bytes: three 8-byte numbers. (Rust doesn't promise their order in memory; these diagrams draw ptr last, so its arrow is easy to follow.)", "output": [], "frames": [{"name": "main", "slots": [{"n": "age", "type": "i32", "val": "36"}, {"n": "name", "type": "String", "ptr": "H1", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["M", "a", "b", "e", "l"], "cap": 5, "label": "String bytes"}}, "changed": ["name", "H1"]},
+      {"line": 5, "note": "To print <code>name</code>, Rust follows the ticket to the heap and reads <code>len</code> bytes from there.", "output": ["Mabel is 36"], "frames": [{"name": "main", "slots": [{"n": "age", "type": "i32", "val": "36"}, {"n": "name", "type": "String", "ptr": "H1", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["M", "a", "b", "e", "l"], "cap": 5, "label": "String bytes"}}},
+      {"line": null, "note": "The closing brace: <code>main</code> is over. Its <code>String</code> is cleaned up first: the 5 heap bytes are <b>freed</b>, given back so the room can be reused. Then the whole plate comes off. You wrote no clean-up code. Rust did it for you (Part 3 explains how).", "output": ["Mabel is 36"], "frames": [], "heap": {"H1": {"cells": ["M", "a", "b", "e", "l"], "cap": 5, "label": "String bytes", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 11: a wrong idea, fixed">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">The most common wrong picture of a <code>String</code>, and the right one. Keep the right one in your head for the rest of the book.</p>
+    <div class="duo">
+      <div class="duo-card dashed">
+        <h3>WRONG<small>"name contains Mabel"</small></h3>
+        <div class="pic"><svg viewBox="0 0 220 110" aria-hidden="true">
+          <rect x="10" y="20" width="200" height="70" rx="10" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+          <text x="22" y="16" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">name</text>
+          <text x="110" y="64" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="26" fill="#111">"Mabel"</text>
+        </svg></div>
+        <p>The text is <em>not</em> inside the variable. If it were, a growing text would need a growing plate, and plates can't grow.</p>
+      </div>
+      <div class="duo-card">
+        <h3>RIGHT<small>a ticket and two counters</small></h3>
+        <div class="pic"><svg viewBox="0 0 260 120" aria-hidden="true">
+          <text x="8" y="16" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">name (stack)</text>
+          <rect x="8" y="24" width="56" height="34" rx="5" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text x="36" y="47" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">5</text>
+          <rect x="68" y="24" width="56" height="34" rx="5" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text x="96" y="47" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">5</text>
+          <rect x="128" y="24" width="56" height="34" rx="5" fill="#DDE8FF" stroke="#111" stroke-width="3"/><text x="156" y="47" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">#1</text>
+          <path d="M156 58 v12" fill="none" stroke="#111" stroke-width="3"/><path d="M150 64 l6 8 l6 -8" fill="none" stroke="#111" stroke-width="3"/>
+          <rect x="82" y="72" width="170" height="34" rx="6" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+          <text x="167" y="95" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">M a b e l</text>
+        </svg></div>
+        <p>On the plate: <b>ptr</b>, <b>len</b> and <b>cap</b>. On the heap: the bytes. Catchphrase: <b>the ticket's in your pocket, the coat's in the back.</b></p>
+      </div>
+    </div>
+    <p class="sr-only">Two drawings. Wrong: a dashed box labelled name with the word Mabel inside it. Right: a box labelled name on the stack with three cells, 5, 5 and a ticket #1, and an arrow from the ticket to a heap box holding the letters M a b e l.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-where-m" id="ex-where"></div>
+  <script type="application/json" id="ex-where-m">{"q": "<code>let title = String::from(\"Emma\");</code> Where are the four letters E, m, m, a kept?", "options": [
+    {"t": "On the stack, inside <code>title</code>'s own 24 bytes", "why": "That's the wrong picture from the last panel. <code>title</code>'s 24 bytes are three numbers: a pointer, a length and a capacity."},
+    {"t": "On the heap, with a pointer to them in <code>title</code>", "correct": true, "why": "Yes: ticket in the pocket, coat in the back room. <code>title</code> on the stack holds the pointer, the length and the capacity; the letters live on the heap, where they can grow."},
+    {"t": "Half on the stack, and half on the heap", "why": "No splitting: all the text bytes are together in one heap block. Only the ptr/len/cap record is on the stack."},
+    {"t": "Only in the program file, nowhere else", "why": "The text \"Emma\" is in the program file too, but <code>String::from</code> <em>copies</em> it into a fresh heap block, so the String can change it and grow it."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 12: length and capacity">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Why two counters? <b>len</b> is how many bytes are in use. <b>cap</b> is how many bytes of room the heap block has. <code>.push_str</code> adds text to the end (it needs <code>let mut</code>, since it changes the String).</p>
+    <span class="file-tab">grow.rs</span>
+    <pre class="code" data-src="grow.rs"></pre>
+    <pre class="term" data-run="grow.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>"Ma"</b>: exactly 2 bytes of room for 2 bytes of text.</span></li>
+      <li><span><b>Adding "bel"</b> needs 5 bytes, but there is room for only 2. So the String asks the heap for a <em>bigger</em> block, here 8 bytes, copies the old bytes across and gives the old block back. It grabs extra room on purpose, so the next few additions are cheap.</span></li>
+      <li><span><b>Adding " Q."</b> fits in the spare room: len 8, cap still 8. No new block needed.</span></li>
+    </ol>
+    <p class="caption soft">The exact capacities (2, then 8) are what this version of Rust chose. They're a detail that can change between versions; only <code>len</code> is a promise.</p>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 13: watch the String grow" data-mem="mem-grow" data-heap-label="the coat-check room" id="mem-grow-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Step through the growth. Dashed cells are spare room. The space character is drawn as <code>␣</code>.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-grow">{"program": "grow.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "A heap block with room for exactly 2 bytes, holding M and a. len 2, cap 2.", "output": [], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H1", "len": 2, "cap": 2}]}], "heap": {"H1": {"cells": ["M", "a"], "cap": 2, "label": "String bytes"}}, "changed": ["name", "H1"]},
+      {"line": 4, "note": "Printed: len 2, capacity 2.", "output": ["Ma: len 2, capacity 2"], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H1", "len": 2, "cap": 2}]}], "heap": {"H1": {"cells": ["M", "a"], "cap": 2, "label": "String bytes"}}},
+      {"line": 5, "note": "<code>push_str(\"bel\")</code> needs 5 bytes; block #1 has room for 2. So the String gets a new block with room for 8 (#2), copies M and a over, adds b, e, l, and frees block #1. The ticket in <code>ptr</code> now says #2. (Sometimes the heap can simply stretch the old block instead; either way, <code>ptr</code> always says where the bytes are now.)", "output": ["Ma: len 2, capacity 2"], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["M", "a"], "cap": 2, "label": "String bytes", "freed": true}, "H2": {"cells": ["M", "a", "b", "e", "l"], "cap": 8, "label": "String bytes"}}, "changed": ["name", "H2"]},
+      {"line": 6, "note": "Printed: len 5, capacity 8. The old block is gone; 3 spare bytes wait at the end of the new one.", "output": ["Ma: len 2, capacity 2", "Mabel: len 5, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H2": {"cells": ["M", "a", "b", "e", "l"], "cap": 8, "label": "String bytes"}}},
+      {"line": 7, "note": "<code>push_str(\" Q.\")</code> adds 3 bytes, which fit in the spare room. No new block, same ticket. len 8, cap 8.", "output": ["Ma: len 2, capacity 2", "Mabel: len 5, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H2", "len": 8, "cap": 8}]}], "heap": {"H2": {"cells": ["M", "a", "b", "e", "l", "␣", "Q", "."], "cap": 8, "label": "String bytes"}}, "changed": ["name", "H2"]},
+      {"line": 8, "note": "Printed.", "output": ["Ma: len 2, capacity 2", "Mabel: len 5, capacity 8", "Mabel Q.: len 8, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "name", "type": "String", "ptr": "H2", "len": 8, "cap": 8}]}], "heap": {"H2": {"cells": ["M", "a", "b", "e", "l", "␣", "Q", "."], "cap": 8, "label": "String bytes"}}},
+      {"line": null, "note": "<code>main</code> ends: block #2 is freed and the plate comes off.", "output": ["Ma: len 2, capacity 2", "Mabel: len 5, capacity 8", "Mabel Q.: len 8, capacity 8"], "frames": [], "heap": {"H2": {"cells": ["M", "a", "b", "e", "l", "␣", "Q", "."], "cap": 8, "label": "String bytes", "freed": true}}, "changed": ["H2"]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: Box, your first heap value">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">You can put <em>any</em> value on the heap on purpose. <code>Box::new(value)</code> moves the value into a heap block and gives you a <code>Box</code>: a pointer that owns that block. It's the simplest heap value in Rust.</p>
+    <span class="file-tab">box_first.rs</span>
+    <pre class="code" data-src="box_first.rs"></pre>
+    <pre class="term" data-run="box_first.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 2 and 3</b>: two fives. <code>seats</code> is an <code>i32</code> on the plate. <code>boxed</code> is a <code>Box&lt;i32&gt;</code>: an 8-byte pointer on the plate, and the 5 itself in a 4-byte heap block.</span></li>
+      <li><span><b>Line 5</b>: printing a box prints what's inside it. The box is see-through for <code>{}</code> and <code>{:?}</code>.</span></li>
+      <li><span><b>Why bother?</b> For one small number you wouldn't. Boxes matter for big things you'll want to hand around cheaply, and for shapes that refer to themselves (Chapter 23).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 15: two boxes on the heap" data-mem="mem-box" data-heap-label="the coat-check room" id="mem-box-box">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Step through it: one 5 on the plate, one 5 in the coat-check room.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-box">{"program": "box_first.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "A plain <code>i32</code>: the 5 sits on the plate.", "output": [], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}]}], "heap": {}, "changed": ["seats"]},
+      {"line": 4, "note": "<code>Box::new(5)</code>: a 4-byte heap block holds the 5. On the plate, <code>boxed</code> is only a ticket, #1. No len or cap here: a box always holds exactly one value.", "output": [], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}, {"n": "boxed", "type": "Box<i32>", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["5"], "label": "i32"}}, "changed": ["boxed", "H1"]},
+      {"line": 5, "note": "Printed straight from the plate.", "output": ["seats = 5"], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}, {"n": "boxed", "type": "Box<i32>", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["5"], "label": "i32"}}},
+      {"line": 6, "note": "Printed by following ticket #1 to the heap.", "output": ["seats = 5", "boxed = 5"], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}, {"n": "boxed", "type": "Box<i32>", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["5"], "label": "i32"}}},
+      {"line": 7, "note": "A whole array in a box: 12 bytes on the heap, still just an 8-byte ticket on the plate.", "output": ["seats = 5", "boxed = 5"], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}, {"n": "boxed", "type": "Box<i32>", "ptr": "H1"}, {"n": "shelf", "type": "Box<[i32; 3]>", "ptr": "H2"}]}], "heap": {"H1": {"cells": ["5"], "label": "i32"}, "H2": {"cells": ["7", "8", "9"], "label": "[i32; 3]"}}, "changed": ["shelf", "H2"]},
+      {"line": 8, "note": "Printed with the X-ray voice <code>{:?}</code>, as arrays need.", "output": ["seats = 5", "boxed = 5", "shelf = [7, 8, 9]"], "frames": [{"name": "main", "slots": [{"n": "seats", "type": "i32", "val": "5"}, {"n": "boxed", "type": "Box<i32>", "ptr": "H1"}, {"n": "shelf", "type": "Box<[i32; 3]>", "ptr": "H2"}]}], "heap": {"H1": {"cells": ["5"], "label": "i32"}, "H2": {"cells": ["7", "8", "9"], "label": "[i32; 3]"}}},
+      {"line": null, "note": "<code>main</code> ends. Both boxes free their heap blocks, then the plate comes off.", "output": ["seats = 5", "boxed = 5", "shelf = [7, 8, 9]"], "frames": [], "heap": {"H1": {"cells": ["5"], "label": "i32", "freed": true}, "H2": {"cells": ["7", "8", "9"], "label": "[i32; 3]", "freed": true}}, "changed": ["H1", "H2"]}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-box-fill-m" id="ex-box-fill"></div>
+  <script type="application/json" id="ex-box-fill-m">{"program": "fill_box.rs", "prompt": "Make <code>boxed</code> hold its 5 in a heap block, while <code>plain</code> keeps its 5 on the plate. Fill the blank.", "blanks": [{"line": 2, "text": "Box::new", "accept": ["Box::new"]}], "explain": "<code>Box::new(5)</code> puts the 5 on the heap and hands back a box that points at it. Both print as 5: <code>{}</code> looks through the box."}</script>
+
+  <section class="panel sketch" aria-label="Panel 16: stack versus heap, side by side">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">The two parts of memory, compared.</p>
+    <table class="ref-table">
+      <thead><tr><th scope="col">What</th><th scope="col">STACK · the plates</th><th scope="col">HEAP · the coat-check room</th></tr></thead>
+      <tbody>
+        <tr><td>Size</td><td>fixed, known at compile time</td><td>decided while running; can grow</td></tr>
+        <tr><td>Order</td><td>last in, first out, one plate per call</td><td>any order: blocks come and go</td></tr>
+        <tr><td>Speed</td><td>very fast: it's right on top</td><td>a little slower: find room, follow the ticket</td></tr>
+        <tr><td>Cleaned up</td><td>automatically, when the function returns</td><td>when the value's owner is done (Part 3)</td></tr>
+        <tr><td>Examples</td><td><code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code>, tuples, arrays, and the ptr/len/cap of a <code>String</code></td><td>the bytes of a <code>String</code>, the inside of a <code>Box</code>, the items of a <code>vec![...]</code></td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Plates clean themselves: off they come when a function returns. The coat-check room is the tricky one. Who gives a coat back, and when? Give it back too early, twice, or never, and you're in trouble. Rust's answer is the rest of this chapter.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · ONE KEY, ONE OWNER<small>Ownership's three rules, scope, and the drop at the closing brace</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 17: a house with one key">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="CLICK!" data-seed="17"></svg>
+    <p class="caption">Rust's answer to "who gives the coat back?" is a rule you already know from real life.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="pointL" data-prop="none"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Mabel says: </span>Every heap value in Rust is like a house with exactly <b>one key</b>. Whoever holds the key is the value's <b>owner</b>.</p>
+        <p class="bubble"><span class="sr-only">Mabel says: </span>The owner is responsible for the house. When the owner leaves for good, the house is cleaned up and handed back. One key means exactly one owner, so the house is never cleaned up twice, and never forgotten. <b>One key, one owner.</b></p>
+      </div>
+    </div>
+    <div class="critters">
+      <figure><svg class="char" data-char="key" data-label="name"></svg><figcaption>the key, with its owner's name on the tag</figcaption></figure>
+      <figure><svg viewBox="0 0 130 130" width="120" aria-hidden="true"><path d="M14 60 l51 -44 l51 44 v62 h-102 z" fill="#FFC2CF" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="50" y="78" width="30" height="44" rx="3" fill="#C8955E" stroke="#111" stroke-width="3"/><circle cx="73" cy="101" r="3.5" fill="#111"/><rect x="24" y="70" width="20" height="18" fill="#DDE8FF" stroke="#111" stroke-width="3"/><rect x="86" y="70" width="20" height="18" fill="#DDE8FF" stroke="#111" stroke-width="3"/></svg><figcaption>the house: the heap value</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: Mabel points at a smiling golden key with a tag that says name, next to a little pink house with a door. A burst says CLICK.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 18: the three ownership rules">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">The three ownership rules. Everything else in this chapter, and the next two, follows from them.</p>
+    <ol class="rules">
+      <li><span>Each value has an <b>owner</b>.<small>The owner is a variable (or a parameter): the name holding the key.</small></span></li>
+      <li><span>There is only <b>one owner at a time</b>.<small>Keys can be handed over, but never shared. Two names can't own the same heap block.</small></span></li>
+      <li><span>When the owner goes <b>out of scope</b>, the value is <b>dropped</b>.<small>"Dropped" means cleaned up: Rust frees its heap memory, automatically, right there.</small></span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>In my library: every book has exactly one owner. When the owner leaves, the library takes the book back. The next panel shows what "out of scope" means.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: scope is a room between braces">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">A <b>scope</b> is the stretch of code where a name can be used. In Rust it runs from the name's <code>let</code> to the closing brace <code>}</code> of the block it was made in. A pair of braces is like a room: names made inside stay inside.</p>
+    <span class="file-tab">scope.rs</span>
+    <pre class="code" data-src="scope.rs"></pre>
+    <pre class="term" data-run="scope.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: a bare pair of braces makes an inner room (a <b>block</b>). You saw blocks as expressions in Chapter 4; here it's just used as a room.</span></li>
+      <li><span><b>Line 5</b>: inside the room you can use both <code>inside</code> and <code>outside</code>: the outer room's names are visible from the inner room.</span></li>
+      <li><span><b>Line 6</b>: the room ends. <code>inside</code> goes out of scope, so rule 3 kicks in: its String is <b>dropped</b> right here. The <code>//</code> comment marks the spot; the drop itself is invisible.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 20: the drop at the closing brace" data-mem="mem-scope" data-heap-label="the coat-check room" id="mem-scope-box">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Step through it. Watch the heap block disappear at line 6's closing brace, not at the end of the program.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-scope">{"program": "scope.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>outside</code> = 1, on the plate. Its scope is the whole of <code>main</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}]}], "heap": {}, "changed": ["outside"]},
+      {"line": 4, "note": "The inner room opens.", "output": [], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}]}], "heap": {}},
+      {"line": 5, "note": "<code>inside</code> owns a new String: ticket #1, with t, e, a on the heap. Its scope is the inner room only.", "output": [], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}, {"n": "inside", "type": "String", "ptr": "H1", "len": 3, "cap": 3}]}], "heap": {"H1": {"cells": ["t", "e", "a"], "cap": 3, "label": "String bytes"}}, "changed": ["inside", "H1"]},
+      {"line": 6, "note": "Both names work inside the room.", "output": ["in the room: tea and 1"], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}, {"n": "inside", "type": "String", "ptr": "H1", "len": 3, "cap": 3}]}], "heap": {"H1": {"cells": ["t", "e", "a"], "cap": 3, "label": "String bytes"}}},
+      {"line": 7, "note": "<b>The closing brace.</b> <code>inside</code> goes out of scope: its owner is leaving, so the String is <b>dropped</b>. Block #1 is freed, and the name <code>inside</code> is gone from the plate.", "output": ["in the room: tea and 1"], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}]}], "heap": {"H1": {"cells": ["t", "e", "a"], "cap": 3, "label": "String bytes", "freed": true}}, "changed": ["H1"]},
+      {"line": 8, "note": "Back in the outer room. <code>outside</code> is still here; the tea is long gone.", "output": ["in the room: tea and 1", "back outside: 1"], "frames": [{"name": "main", "slots": [{"n": "outside", "type": "i32", "val": "1"}]}], "heap": {}},
+      {"line": null, "note": "<code>main</code> ends and its plate comes off. Nothing left to free: the heap was already tidy.", "output": ["in the room: tea and 1", "back outside: 1"], "frames": [], "heap": {}}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 21: using a name outside its room">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="WHO?" data-seed="21"></svg>
+    <p class="caption">What if we use <code>inside</code> after its room has closed?</p>
+    <span class="file-tab">scope_error.rs</span>
+    <pre class="code" data-src="scope_error.rs"></pre>
+    <pre class="term wrap" data-run="scope_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0425]: cannot find value `inside` in this scope</code><br>The headline. You met E0425 in earlier chapters as "a name that doesn't exist". Here the name did exist, just not <em>here</em>.</span></li>
+      <li><span><code>--> src/main.rs:7:30</code> and <code>^^^^^^</code><br>Where: line 7, column 30, the carets under <code>inside</code>.</span></li>
+      <li><span><code>help: the binding `inside` is available in a different scope in the same function</code><br>The clue: it points at line 4, where <code>inside</code> was made, inside the inner room. A <b>binding</b> is what the Compiler calls a name made by <code>let</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Its room closed on line 6, and its String was dropped there. If I let line 7 use it, you'd be reading a coat that was already handed back. So: gate down. Fix it by using the value inside the room, or by making it in the outer room.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-scope-predict-m" id="ex-scope-predict"></div>
+  <script type="application/json" id="ex-scope-predict-m">{"program": "scope_predict.rs", "prompt": "Two boxes called <code>x</code>, in two rooms. What does it print?", "hint": "The inner <code>let x = 20;</code> is shadowing (Chapter 2), but only inside the inner room. What happens to it at the closing brace?", "explain": "Inside the room, the inner <code>x</code> (20) hides the outer one, so it prints <samp>inner 20</samp>. At the closing brace the inner <code>x</code> and <code>note</code> go out of scope (and <code>note</code>'s String is dropped). The outer <code>x</code> was never changed, so the last line prints <samp>outer 10</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-scope-spot-m" id="ex-scope-spot"></div>
+  <script type="application/json" id="ex-scope-spot-m">{"program": "spot_scope.rs", "bug": 8, "prompt": "This won't compile. Click the line that uses a name outside its room.", "explain": "<code>menu</code> was made on line 4, inside the room that closes on line 6, so its String is dropped there. Line 8 asks for it after the room is gone: E0425. <code>guests</code> and <code>plates</code> are fine: they live in <code>main</code>'s room. Fix: print the menu inside the room, or make <code>menu</code> before line 3."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: walk Mabel through two rooms" data-walk="walk-drop">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Walk Mabel through two rooms. Each String is dropped at the closing brace of the room its owner was made in: B at line 8, A at line 11.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">src/main.rs</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-drop">{"program": "drop_order.rs", "steps": [
+      {"line": 2, "output": [], "mood": "focus", "arms": "point", "note": "<code>main</code> starts: the outer room opens."},
+      {"line": 3, "output": [], "mood": "happy", "arms": "point", "note": "<code>a</code> now owns a String holding A. Its room is all of <code>main</code>."},
+      {"line": 4, "output": ["made A"], "mood": "happy", "arms": "point", "note": "Printed."},
+      {"line": 5, "output": ["made A"], "mood": "focus", "arms": "point", "note": "An opening brace: an inner room starts."},
+      {"line": 6, "output": ["made A"], "mood": "happy", "arms": "point", "note": "<code>b</code> owns a String holding B. Its room is only lines 5 to 8."},
+      {"line": 7, "output": ["made A", "made B"], "mood": "happy", "arms": "point", "note": "Printed."},
+      {"line": 8, "output": ["made A", "made B", "closing the inner room"], "mood": "focus", "arms": "point", "note": "Printed. The next line is a closing brace…"},
+      {"line": 9, "output": ["made A", "made B", "closing the inner room"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "<b>Closing brace!</b> The inner room ends, so <code>b</code> goes out of scope and B is <b>dropped</b>: its heap bytes are freed. <code>a</code> belongs to the outer room, so it stays."},
+      {"line": 10, "output": ["made A", "made B", "closing the inner room", "inner room closed: B is gone"], "mood": "happy", "arms": "point", "note": "Printed. Only A is still alive."},
+      {"line": 11, "output": ["made A", "made B", "closing the inner room", "inner room closed: B is gone", "closing main: A goes too"], "mood": "happy", "arms": "point", "note": "Printed. <code>a</code> is still usable on its last line."},
+      {"line": null, "output": ["made A", "made B", "closing the inner room", "inner room closed: B is gone", "closing main: A goes too"], "mood": "happy", "arms": "cheer", "note": "<code>main</code>'s closing brace: <code>a</code> goes out of scope and A is dropped. Two heap blocks, each freed exactly once, with no clean-up code written."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 23: three ways to clean up">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Every language has to give heap memory back somehow. There are three main ways to do it.</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <h3>THE JANITOR<small>a garbage collector</small></h3>
+        <div class="pic"><svg viewBox="0 0 200 120" aria-hidden="true"><circle cx="70" cy="34" r="20" fill="#E9B98E" stroke="#111" stroke-width="3"/><path d="M50 22 q20 -18 40 0 z" fill="#7FB2FF" stroke="#111" stroke-width="3"/><circle cx="63" cy="34" r="2.5" fill="#111"/><circle cx="77" cy="34" r="2.5" fill="#111"/><path d="M50 116 l6 -60 h28 l6 60 z" fill="#7FB2FF" stroke="#111" stroke-width="3"/><path d="M120 20 l-30 92" stroke="#C8955E" stroke-width="6" stroke-linecap="round"/><path d="M78 108 l26 10 l-6 -22 z" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="150" y="56" font-family="Bangers, Impact, sans-serif" font-size="40" fill="#111">?</text></svg></div>
+        <p>Go, JavaScript and Java have a helper that walks around while your program runs, finds coats nobody holds a ticket for, and hands them back. (Python mostly counts tickets instead, and keeps a janitor for the leftovers.) Easy for you, but it costs time, and you can't be sure exactly <em>when</em> it happens.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>DO IT YOURSELF<small>manual freeing, as in C</small></h3>
+        <div class="pic"><svg viewBox="0 0 200 120" aria-hidden="true"><rect x="20" y="16" width="74" height="56" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="3" transform="rotate(-6 57 44)"/><text x="54" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" transform="rotate(-6 57 44)">free(x)</text><rect x="106" y="40" width="74" height="56" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="3" transform="rotate(5 143 68)"/><text x="143" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" transform="rotate(5 143 68)">free(x)</text><text x="98" y="116" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#111">TWICE?!</text></svg></div>
+        <p>You write "give it back" yourself. Forget, and memory leaks away. Do it twice (a <b>double free</b>), or use a coat after giving it back, and the program can crash or be attacked. These bugs are famous for causing security holes.</p>
+      </div>
+      <div class="duo-card">
+        <h3>THE OWNER<small>Rust</small></h3>
+        <div class="pic"><svg class="char" data-char="key" data-label="owner" data-mood="happy"></svg></div>
+        <p>The Compiler knows who owns each value and where its scope ends, so it puts the clean-up at that closing brace for you. No janitor wandering about, nothing to forget, never twice. The rules are checked <b>before</b> the program runs.</p>
+      </div>
+    </div>
+    <p class="sr-only">Three cards. The janitor: a cleaner with a broom and a question mark. Do it yourself: two sticky notes that both say free(x), and the word TWICE. The owner: the smiling key with an owner tag.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-when-drop-m" id="ex-when-drop"></div>
+  <script type="application/json" id="ex-when-drop-m">{"q": "In <code>scope.rs</code>, exactly when are the heap bytes of <code>inside</code> (t, e, a) freed?", "options": [
+    {"t": "At the closing brace on line 6", "correct": true, "why": "Rule 3: when the owner, <code>inside</code>, goes out of scope, the value is dropped, right there. The Compiler puts the clean-up at that brace."},
+    {"t": "When the whole program has finished", "why": "Much earlier than that. If values lived until the end, a long-running program would slowly fill memory with coats nobody can reach."},
+    {"t": "Whenever a garbage collector gets round to it", "why": "Rust has no garbage collector. Ownership tells the Compiler the exact spot instead."},
+    {"t": "Never: you have to free it yourself", "why": "That's C's way. In Rust you never write the clean-up for a String: dropping is automatic."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · GIVING THE KEY AWAY<small>Moves, E0382 read like a detective, moving into functions and back out, and loops that take the whole collection</small></h2>
+
+  <section class="panel pop" aria-label="Panel 24: handing over the key">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">One key, one owner. So what happens when you write <code>let s2 = s1;</code> for a String?</p>
+    <div class="critters">
+      <figure><svg class="char" data-char="key" data-label="s1"></svg><figcaption>before: s1 holds the key</figcaption></figure>
+      <figure><svg viewBox="0 0 120 60" width="100" aria-hidden="true"><path d="M8 30 h90" stroke="#111" stroke-width="5" stroke-linecap="round"/><path d="M84 14 l20 16 l-20 16" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>let s2 = s1;</figcaption></figure>
+      <figure><svg class="char" data-char="key" data-label="s1" data-state="moved"></svg><figcaption>after: s1 holds nothing</figcaption></figure>
+      <figure><svg class="char" data-char="key" data-label="s2"></svg><figcaption>s2 is the owner now</figcaption></figure>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The key is <b>handed over</b>. Rust calls this a <b>move</b>: ownership goes from <code>s1</code> to <code>s2</code>, and <code>s1</code> is left with an empty hand. Give your only house key to a friend, and you can't open the door any more.</p></div>
+    </div>
+    <p class="sr-only">Pictures: a golden key tagged s1; an arrow labelled let s2 = s1; then a dashed, empty outline of a key tagged s1 with a question mark, and a golden key tagged s2.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: a move that works">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Using the new owner is perfectly fine.</p>
+    <span class="file-tab">move_ok.rs</span>
+    <pre class="code" data-src="move_ok.rs"></pre>
+    <pre class="term" data-run="move_ok.rs"></pre>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 26: what a move does in memory" data-mem="mem-move" data-heap-label="the coat-check room" id="mem-move-box">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Step through it. A move copies only the small ticket record. The heap bytes stay exactly where they are, and <code>s1</code> is marked "moved away".</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-move">{"program": "move_ok.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>s1</code> owns a String: ticket #1, len 5, cap 5, and h, e, l, l, o on the heap.", "output": [], "frames": [{"name": "main", "slots": [{"n": "s1", "type": "String", "ptr": "H1", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["h", "e", "l", "l", "o"], "cap": 5, "label": "String bytes"}}, "changed": ["s1", "H1"]},
+      {"line": 4, "note": "<b>The move.</b> <code>let s2 = s1;</code> copies the 24-byte record (ticket #1, 5, 5) into <code>s2</code>. The five heap bytes are <em>not</em> copied. Now there would be two tickets for one coat… so Rust marks <code>s1</code> as <b>moved away</b>: from here on, <code>s1</code> may not be used. One key, one owner: <code>s2</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "s1", "type": "String", "moved": true}, {"n": "s2", "type": "String", "ptr": "H1", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["h", "e", "l", "l", "o"], "cap": 5, "label": "String bytes"}}, "changed": ["s1", "s2"]},
+      {"line": 5, "note": "<code>s2</code> follows ticket #1 and prints.", "output": ["s2 says hello"], "frames": [{"name": "main", "slots": [{"n": "s1", "type": "String", "moved": true}, {"n": "s2", "type": "String", "ptr": "H1", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["h", "e", "l", "l", "o"], "cap": 5, "label": "String bytes"}}},
+      {"line": null, "note": "<code>main</code> ends. <code>s2</code> is the owner, so <code>s2</code> drops the String: block #1 is freed <b>once</b>. <code>s1</code> was moved away, so it has nothing to drop. That's how Rust avoids a double free.", "output": ["s2 says hello"], "frames": [], "heap": {"H1": {"cells": ["h", "e", "l", "l", "o"], "cap": 5, "label": "String bytes", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 27: E0382, borrow of moved value">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="E0382!" data-seed="27"></svg>
+    <p class="caption">Now use <code>s1</code> after the move. This is the most famous error in Rust. Read it like a detective.</p>
+    <span class="file-tab">move_error.rs</span>
+    <pre class="code" data-src="move_error.rs"></pre>
+    <pre class="term wrap" data-run="move_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0382]: borrow of moved value: `s1`</code><br><b>The headline.</b> E0382 is the move error. "Borrow" is the Compiler's word for "just look at it": that's what <code>println!</code> wanted to do with <code>s1</code>. (Borrowing is Chapter 8.)</span></li>
+      <li><span><code>--> src/main.rs:4:16</code><br><b>Where it was noticed</b>: line 4, column 16.</span></li>
+      <li><span><code>^^ value borrowed here after move</code><br><b>The primary label</b> (the carets): the scene of the crime, where <code>s1</code> was used. But this is not the cause…</span></li>
+      <li><span><code>-- value moved here</code><br><b>The secondary label</b> (the dashes) on line 3: the real cause! This is where the key changed hands. Detectives read the dashes.</span></li>
+      <li><span><code>-- move occurs because `s1` has type `String`, which does not implement the `Copy` trait</code><br><b>The motive</b>: a <code>String</code> moves instead of being copied. Part 5 explains <code>Copy</code>.</span></li>
+      <li><span><code>help: consider cloning the value if the performance cost is acceptable</code><br><b>A suggested fix</b>, with the change marked by <code>++++++++</code>: <code>s1.clone()</code> makes a second, separate String. Part 5 again.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where, and here's a fix. And nothing runs until everything checks out: this program never started, so it never printed a thing. Exit code 101 is cargo saying the build failed.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 28: why s1 has to stop working">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Why is Rust so strict? Picture what would happen if <code>s1</code> kept working.</p>
+    <div class="picscroll"><svg class="fig fixed pic-wide" viewBox="0 0 660 260" role="img" aria-label="Two tickets, s1 and s2, both numbered 1, point at the same coat. At the end of the program, s2 hands the coat back, then s1 tries to hand back the same coat, but the hook is empty or has someone else's coat. Labelled: double free, the bug Rust rules out.">
+      <rect x="20" y="40" width="130" height="60" rx="8" fill="#DDE8FF" stroke="#111" stroke-width="4"/><text class="m mid" x="85" y="78">s1 · #1</text>
+      <rect x="20" y="150" width="130" height="60" rx="8" fill="#DDE8FF" stroke="#111" stroke-width="4"/><text class="m mid" x="85" y="188">s2 · #1</text>
+      <path d="M150 70 C 230 70, 260 120, 330 124" fill="none" stroke="#111" stroke-width="3.5"/><path d="M150 180 C 230 180, 260 130, 330 128" fill="none" stroke="#111" stroke-width="3.5"/>
+      <path d="M322 116 l12 9 l-12 9" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M380 70 l-30 26 h60 z" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/><path d="M352 98 h56 l14 120 h-84 z" fill="#FF9F43" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M345 60 h70" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <text x="440" y="96">1. s2 hands it back: fine.</text>
+      <text x="440" y="136">2. s1 hands back the</text>
+      <text x="440" y="160">   same coat: CRASH!</text>
+      <text class="h" x="440" y="214">DOUBLE FREE</text>
+    </svg></div>
+    <ul class="checklist">
+      <li><span><b>Two owners would mean two clean-ups.</b> When both left scope, both would free block #1: a <b>double free</b>, one of the worst bugs a program can have.</span></li>
+      <li><span><b>Copying the heap bytes instead</b> would fix that, but could be very slow for a big String, and would happen silently on every <code>=</code>. Rust never copies heap data behind your back.</span></li>
+      <li><span><b>So Rust moves.</b> Cheap (only 24 bytes), and safe: the old name simply stops working. Catchphrase: <b>give away the key, and the door stays shut.</b></span></li>
+    </ul>
+  </section>
+
+  <div data-ex="predict" data-model="ex-key-predict-m" id="ex-key-predict"></div>
+  <script type="application/json" id="ex-key-predict-m">{"program": "key_predict.rs", "expect": "error", "answer": "E0382", "ask": "Does it compile? If not, which error code does the Compiler print? Type it like E0000.", "prompt": "You give your neighbour the front door key.", "hint": "Line 3 hands the key over. Who is the owner on line 5?", "explain": "<code>let neighbour = key;</code> moves the String: <code>key</code> holds nothing afterwards. Line 4 is fine (<code>neighbour</code> is the owner), but line 5 uses <code>key</code>: <samp>error[E0382]: borrow of moved value: `key`</samp>, with the secondary label <samp>value moved here</samp> under line 3. Nothing is printed at all, not even line 4: the program never ran."}</script>
+
+  <div data-ex="spot" data-model="ex-move-spot-m" id="ex-move-spot"></div>
+  <script type="application/json" id="ex-move-spot-m">{"program": "spot_move.rs", "bug": 4, "prompt": "Be the detective. The primary label will point at line 7, but which line actually <b>caused</b> the problem? Click the line where the key changed hands.", "explain": "Line 4, <code>let radio = song;</code>, moves the String to <code>radio</code>; that's the secondary label <samp>value moved here</samp>. Line 7 is only where the moved name was used. Line 5 is innocent: <code>count</code> is an <code>i32</code>, which is copied, not moved (Part 5). Fixes: print <code>radio</code> instead, or write <code>song.clone()</code> on line 4."}</script>
+
+  <div data-ex="choice" data-model="ex-why-move-m" id="ex-why-move"></div>
+  <script type="application/json" id="ex-why-move-m">{"q": "After <code>let s2 = s1;</code>, why does Rust stop you using <code>s1</code>?", "options": [
+    {"t": "Because the move erased the text from the heap", "why": "The bytes are untouched; <code>s2</code> points at them. It's <code>s1</code>'s permission that's gone, not the data."},
+    {"t": "Otherwise both names would free the same block: a double free", "correct": true, "why": "Exactly. Both would go out of scope and both would free that heap block. A move makes <code>s2</code> the only owner, so the block is freed once, by <code>s2</code>."},
+    {"t": "Because the bytes were copied, so <code>s1</code> is out of date", "why": "No bytes were copied, only the 24-byte ptr/len/cap record. Rust never copies heap data unless you ask with <code>.clone()</code>."},
+    {"t": "Because a String can only be used once", "why": "You can use the owner as many times as you like. The rule is about <em>who</em> owns it, not how often you use it."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 29: moving a value into a function">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Passing a value to a function works just like <code>=</code>: a String argument is <b>moved</b> into the parameter. The key goes onto the function's plate.</p>
+    <span class="file-tab">shelve.rs</span>
+    <pre class="code" data-src="shelve.rs"></pre>
+    <pre class="term" data-run="shelve.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>shelve(book)</code> moves the String into <code>title</code>. <code>main</code>'s <code>book</code> holds nothing now.</span></li>
+      <li><span><b>Line 9</b>: <code>shelve</code>'s closing brace. <code>title</code> is the owner, and it's going out of scope, so the String is dropped <em>here</em>, inside <code>shelve</code>, before <code>main</code> carries on.</span></li>
+      <li><span><b>Line 4</b>: <code>main</code> carries on without the book. That's fine, as long as it doesn't try to use <code>book</code>…</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 30: using a value after moving it into a function">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="GONE!" data-seed="30"></svg>
+    <p class="caption">…like this.</p>
+    <span class="file-tab">shelve_error.rs</span>
+    <pre class="code" data-src="shelve_error.rs"></pre>
+    <pre class="term wrap" data-run="shelve_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>---- value moved here</code><br>The dashes are under <code>book</code> in <code>shelve(book)</code>, line 3: the call itself is the move.</span></li>
+      <li><span><code>note: consider changing this parameter type in function `shelve` to borrow instead if owning the value isn't necessary</code><br>A second clue, pointing at the parameter <code>title: String</code>, with the label <samp>this parameter takes ownership of the value</samp>. The Compiler is hinting at a better tool: letting <code>shelve</code> <em>borrow</em> the book instead of keeping it. That's exactly Chapter 8.</span></li>
+      <li><span><code>help: consider cloning the value if the performance cost is acceptable</code><br><code>shelve(book.clone())</code> would give <code>shelve</code> its own copy to drop. It works, but it costs a copy of every byte.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: giving ownership back">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">A function can hand ownership <b>back</b> by returning the value. The key goes in with the argument and comes back out with the return value.</p>
+    <span class="file-tab">give_back.rs</span>
+    <pre class="code" data-src="give_back.rs"></pre>
+    <pre class="term" data-run="give_back.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 7</b>: <code>mut title: String</code>. The function owns <code>title</code> now, so it may change it, but only if the parameter is marked <code>mut</code>, just like a <code>let mut</code> box.</span></li>
+      <li><span><b>Line 9</b>: the last line, with no semicolon, is the value the function hands back (Chapter 4). Returning <code>title</code> <em>moves</em> the String out to the caller.</span></li>
+      <li><span><b>Line 3</b>: <code>back</code> becomes the new owner. The moves themselves copied no text: only the 24-byte ticket record travelled. (<code>push_str</code> on line 8 may move the bytes to a bigger block, as in <code>grow.rs</code>.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 32: the key goes in and comes back out" data-mem="mem-fn" data-heap-label="the coat-check room" id="mem-fn-box">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Step through it. The ticket moves up onto <code>stamp</code>'s plate, then back down to <code>main</code>. The moves never touch the heap bytes.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-fn">{"program": "give_back.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>book</code> owns a String: ticket #1, len 4, cap 4.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["book", "H1"]},
+      {"line": 8, "note": "<b>Call and move.</b> <code>stamp(book)</code> pushes a new plate. The ticket record is moved into the parameter <code>title</code>; <code>main</code>'s <code>book</code> is now moved away.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "moved": true}]}, {"name": "stamp", "slots": [{"n": "title", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["book", "title"]},
+      {"line": 9, "note": "<code>push_str(\" OK\")</code> needs 7 bytes; there's room for 4. The String gets a bigger block, room for 8 (as in <code>grow.rs</code>, the bytes may move; <code>ptr</code> follows them, so we keep calling it ticket #1).", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "moved": true}]}, {"name": "stamp", "slots": [{"n": "title", "type": "String", "ptr": "H1", "len": 7, "cap": 8}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a", "␣", "O", "K"], "cap": 8, "label": "String bytes"}}, "changed": ["title", "H1"]},
+      {"line": 4, "note": "<b>Return and move back.</b> <code>title</code> is handed back: the ticket record moves down into <code>back</code>, and <code>stamp</code>'s plate comes off. Nothing is dropped, because the String has a new owner.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "moved": true}, {"n": "back", "type": "String", "ptr": "H1", "len": 7, "cap": 8}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a", "␣", "O", "K"], "cap": 8, "label": "String bytes"}}, "changed": ["back"]},
+      {"line": 5, "note": "Printed.", "output": ["back home: Emma OK"], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "moved": true}, {"n": "back", "type": "String", "ptr": "H1", "len": 7, "cap": 8}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a", "␣", "O", "K"], "cap": 8, "label": "String bytes"}}},
+      {"line": null, "note": "<code>main</code> ends. <code>back</code> drops the String (freed once); <code>book</code> has nothing to drop.", "output": ["back home: Emma OK"], "frames": [], "heap": {"H1": {"cells": ["E", "m", "m", "a", "␣", "O", "K"], "cap": 8, "label": "String bytes", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-owner-trace-m" id="ex-owner-trace"></div>
+  <script type="application/json" id="ex-owner-trace-m">{"program": "trace_owner.rs", "columns": ["owner", "text"], "given": [], "prompt": "One String travels into two functions and back. Each line prints which function owns it at that moment, and the text. Fill every row.", "explain": "<code>main</code> owns \"ab\" first. <code>add_c(word)</code> moves it into <code>w</code>, which adds c and prints; returning <code>w</code> moves it back into <code>word</code>. The same round trip happens with <code>add_d</code>. Five rows, one String, never cloned: adding a letter may move its bytes to a bigger block, but no second String is ever made."}</script>
+
+  <div data-ex="fill" data-model="ex-return-fill-m" id="ex-return-fill"></div>
+  <script type="application/json" id="ex-return-fill-m">{"program": "fill_return.rs", "prompt": "<code>label</code> should take the jar, add a date, and give it back. Fill in the return type and the value handed back.", "blanks": [{"line": 7, "text": "String", "accept": ["String"]}, {"line": 9, "text": "contents", "accept": ["contents"]}], "explain": "<code>-&gt; String</code> promises to hand a String back, and the last line, <code>contents</code> with no semicolon, is that String moving out. Back in <code>main</code>, the shadowing <code>let jar = label(jar);</code> catches it."}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: the map of a String's life" data-map="map-life">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">The map of a String's life. Four small programs make a hat and send it down different roads. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="map-life-t map-life-d"><title id="map-life-t">Map of the life of a String</title><desc id="map-life-d">Five places. Born, made by String::from. Owned by s. New owner, which is t or a function parameter. Dropped, freed at a closing brace. Gate down, error E0382, where nothing runs. From born, let s goes to owned. From owned, when s's scope ends at a closing brace, the road goes to dropped. From owned, a move with let t = s or wear(s) goes to new owner. From new owner, when the new owner's scope ends, the road goes to dropped. From new owner, using the old name s goes to gate down.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-life">{"seed": 7, "size": [690, 560], "start": [[345, 6], [345, 32]],
+      "states": [
+        {"id": "BORN", "x": 230, "y": 36, "w": 230, "h": 70, "label": "born", "sub": "`String::from(\"hat\")`"},
+        {"id": "OWNED", "x": 230, "y": 170, "w": 230, "h": 70, "label": "owned by `s`", "sub": "one value, one owner"},
+        {"id": "MOVED", "x": 440, "y": 300, "w": 230, "h": 74, "label": "new owner", "sub": "`t`, or a parameter"},
+        {"id": "DROPPED", "x": 150, "y": 470, "w": 230, "h": 70, "label": "dropped", "sub": "freed at a closing `}`", "kind": "end"},
+        {"id": "ERROR", "x": 440, "y": 470, "w": 230, "h": 70, "label": "gate down", "sub": "E0382: nothing runs", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "BORN", "to": "OWNED", "pts": [[345, 110], [345, 164]], "label": "`let s = …`", "lx": 356, "ly": 142},
+        {"id": "t1", "from": "OWNED", "to": "DROPPED", "pts": [[300, 244], [300, 464]], "label": ["`s`'s scope", "ends: `}`"], "lx": 288, "ly": 350, "anchor": "end"},
+        {"id": "t2", "from": "OWNED", "to": "MOVED", "pts": [[464, 205], [555, 205], [555, 294]], "label": ["moved:", "`let t = s;`", "or `wear(s)`"], "lx": 566, "ly": 232},
+        {"id": "t3", "from": "MOVED", "to": "DROPPED", "pts": [[436, 340], [360, 340], [360, 464]], "label": ["new owner's", "scope ends"], "lx": 370, "ly": 410},
+        {"id": "t4", "from": "MOVED", "to": "ERROR", "pts": [[555, 378], [555, 464]], "label": ["use the old", "name `s`"], "lx": 566, "ly": 408, "bug": true}],
+      "paths": [
+        {"id": "home", "label": "stays home", "program": "map_home.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["BORN"], "output": [], "note": "<code>map_home.rs</code>. Line 2 makes a String on the heap."},
+          {"on": ["OWNED"], "via": ["t0"], "output": [], "note": "<code>s</code> holds the key: it's the owner."},
+          {"on": ["OWNED"], "output": ["using hat"], "note": "Using the owner is always fine."},
+          {"on": ["OWNED"], "output": ["using hat", "end of main"], "note": "Still owned by <code>s</code>."},
+          {"on": ["DROPPED"], "via": ["t1"], "output": ["using hat", "end of main"], "note": "<code>main</code>'s closing brace: <code>s</code> goes out of scope, so the String is dropped and its bytes freed."}]},
+        {"id": "moved", "label": "moved to t", "program": "map_moved.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["BORN"], "output": [], "note": "<code>map_moved.rs</code>. A String is born."},
+          {"on": ["OWNED"], "via": ["t0"], "output": [], "note": "Owned by <code>s</code>."},
+          {"on": ["MOVED"], "via": ["t2"], "output": [], "note": "<code>let t = s;</code> moves the key to <code>t</code>. <code>s</code> holds nothing now."},
+          {"on": ["MOVED"], "output": ["t has the hat"], "note": "The new owner uses it."},
+          {"on": ["DROPPED"], "via": ["t3"], "output": ["t has the hat"], "note": "Closing brace: <code>t</code> drops the String. <code>s</code> owns nothing, so it drops nothing: freed once, never twice."}]},
+        {"id": "fn", "label": "moved into a function", "program": "map_fn.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["BORN"], "output": [], "note": "<code>map_fn.rs</code>. A String is born."},
+          {"on": ["OWNED"], "via": ["t0"], "output": [], "note": "Owned by <code>s</code>."},
+          {"on": ["MOVED"], "via": ["t2"], "output": [], "note": "<code>wear(s)</code> moves the key into the parameter <code>h</code>, on <code>wear</code>'s plate."},
+          {"on": ["MOVED"], "output": ["wearing the hat"], "note": "<code>wear</code> uses it."},
+          {"on": ["DROPPED"], "via": ["t3"], "output": ["wearing the hat"], "note": "<code>wear</code>'s closing brace: <code>h</code> goes out of scope, so the String is dropped right there, before <code>main</code> carries on."},
+          {"on": ["DROPPED"], "output": ["wearing the hat", "back in main"], "note": "<code>main</code> carries on without the hat. It may not use <code>s</code> again."}]},
+        {"id": "err", "label": "use after move", "bug": true, "program": "map_error.rs", "expect": {"exit": 101, "stderrContains": "E0382"}, "steps": [
+          {"on": ["BORN"], "output": [], "note": "<code>map_error.rs</code>. Remember: the Compiler checks every road <em>before</em> anything runs."},
+          {"on": ["OWNED"], "via": ["t0"], "output": [], "note": "Owned by <code>s</code>."},
+          {"on": ["MOVED"], "via": ["t2"], "output": [], "note": "Line 3 moves the key to <code>t</code>."},
+          {"on": ["ERROR"], "via": ["t4"], "output": [], "error": "error[E0382]: borrow of moved value: `s`", "mood": "worried", "note": "Line 4 tries to use <code>s</code> again. That road is closed: E0382. The program never runs, so the only thing on the screen is the Compiler's message."}]}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 34: a for loop takes the whole collection">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="TAKEN!" data-seed="34"></svg>
+    <p class="caption">A sneaky move. <code>vec![7, 9, 4]</code> makes a <b>vector</b>, a growable list whose items live on the heap (Chapter 11 covers vectors in depth; for now it's just a heap example). Loop over it with Chapter 5's <code>for</code>, then try to use it again…</p>
+    <span class="file-tab">for_vec_error.rs</span>
+    <pre class="code" data-src="for_vec_error.rs"></pre>
+    <pre class="term wrap" data-run="for_vec_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>------ `scores` moved due to this implicit call to `.into_iter()`</code><br>The secondary label, on line 3. <code>for s in scores</code> <b>moves the whole vector into the loop</b>. The loop owns it now, hands you its items one lap at a time, and drops what's left when it ends. "Implicit" means you didn't write the call; the <code>for</code> did.</span></li>
+      <li><span><code>note: the `for` loop is desugared into …</code><br>A note pointing into Rust's own library files (the long <code>/rustc/…</code> path names the exact compiler build, so it differs on your machine). You can skip it.</span></li>
+      <li><span><code>help: consider iterating over a slice … for s in &amp;scores</code><br>The <code>&amp;</code> means "loop over it without taking it". That's borrowing, Chapter 8. Today's fix is simpler: ask for the length <em>before</em> the loop takes the vector.</span></li>
+    </ol>
+    <span class="file-tab">for_vec_fix.rs</span>
+    <pre class="code" data-src="for_vec_fix.rs"></pre>
+    <pre class="term" data-run="for_vec_fix.rs"></pre>
+    <p class="caption soft">Why didn't Chapter 5's array loops do this? An array of numbers is <code>Copy</code> (Part 5), so <code>for x in array</code> loops over a copy and the array stays usable. (Chapter 5's <code>walk_eggs.rs</code> looped over <code>eggs</code> and then used it twice more.)</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-vec-spot-m" id="ex-vec-spot"></div>
+  <script type="application/json" id="ex-vec-spot-m">{"program": "spot_vec.rs", "bug": 4, "prompt": "Two names, one greeting each, then a summary. It won't compile. Click the line that moves <code>names</code> away.", "explain": "Line 4, <code>for n in names</code>, moves the whole vector into the loop (the secondary label says <samp>`names` moved due to this implicit call to `.into_iter()`</samp>). Line 7 then tries to print it. Line 3 is fine: it reads the length before the move. Fix: print only <code>total</code> on line 7, or loop over <code>&amp;names</code> once you know Chapter 8."}</script>
+
+  <div data-ex="parsons" data-model="ex-move-parsons-m" id="ex-move-parsons"></div>
+  <script type="application/json" id="ex-move-parsons-m">{"program": "parsons_move.rs", "seed": 7, "prompt": "Put the lines in order so it compiles and prints the goal output. Careful: once the list is moved to the fridge note, the old name can't be used.", "explain": "<code>list</code> must be <code>mut</code> and still the owner when <code>push_str</code> adds the eggs. Only <em>then</em> can it be moved into <code>fridge_note</code>, and the new owner prints it. Put the <code>push_str</code> after the move and you get E0382."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · FLYERS AND LOCKSMITHS<small><code>Copy</code> types are copied, <code>.clone()</code> makes a deep copy on purpose, and partial moves</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 35: give, photocopy, or cut a new key">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">But wait: with numbers, <code>let b = a;</code> leaves <code>a</code> working (<code>copy.rs</code> in the next panel shows it). Three different things can happen when you hand a value over.</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <h3>GIVE THE KEY<small>move</small></h3>
+        <div class="pic"><svg class="char" data-char="key" data-label="b"></svg></div>
+        <p>For <code>String</code>, <code>Box</code>, <code>vec!</code>… anything that owns heap memory. Cheap, and <code>a</code> stops working.</p>
+      </div>
+      <div class="duo-card">
+        <h3>PHOTOCOPY<small>Copy</small></h3>
+        <div class="pic"><svg class="char" data-char="key" data-variant="copy"></svg></div>
+        <p>For small plate-only values: numbers, <code>bool</code>, <code>char</code>. Copying a few bytes is as cheap as moving them, and there's no heap to free twice, so both names keep working.</p>
+      </div>
+      <div class="duo-card">
+        <h3>CUT A NEW KEY<small><code>.clone()</code></small></h3>
+        <div class="pic"><svg class="char" data-char="key" data-variant="cut" data-label="spare"></svg></div>
+        <p>You ask the locksmith on purpose: <code>a.clone()</code> builds a second, separate heap value. Both keys work, but cutting takes time.</p>
+      </div>
+    </div>
+    <p class="sr-only">Three cards. Give the key: a golden key tagged b. Photocopy: a sheet of paper with a key printed on it and a COPY stamp. Cut a new key: a shiny silver key with sparkle lines, tagged spare.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: Copy types are photocopied">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Values that live entirely on the plate are marked <code>Copy</code>. For them, <code>=</code> makes a copy, and the original stays usable.</p>
+    <span class="file-tab">copy.rs</span>
+    <pre class="code" data-src="copy.rs"></pre>
+    <pre class="term" data-run="copy.rs"></pre>
+    <div class="critters">
+      <figure><svg class="char" data-char="brick" data-label="7"></svg><figcaption>integers</figcaption></figure>
+      <figure><svg class="char" data-char="jelly" data-label="2.5"></svg><figcaption>floats</figcaption></figure>
+      <figure><svg class="char" data-char="lamp" data-on="true"></svg><figcaption>bool</figcaption></figure>
+      <figure><svg class="char" data-char="key" data-variant="copy"></svg><figcaption>char, and tuples or arrays made only of Copy things</figcaption></figure>
+    </div>
+    <ul class="checklist">
+      <li><span><b>Copy:</b> every integer type (<code>i32</code>, <code>u8</code>, <code>usize</code>…), <code>f32</code> and <code>f64</code>, <code>bool</code>, <code>char</code>, and tuples and arrays whose parts are all Copy, like <code>(i32, bool)</code> or <code>[i32; 3]</code>.</span></li>
+      <li><span><b>Not Copy:</b> anything that owns heap memory: <code>String</code>, <code>Box</code>, vectors, and any tuple or array that contains one of those.</span></li>
+      <li><span><b>How to tell:</b> when a move error says <samp>does not implement the `Copy` trait</samp>, the type is a give-the-key type. (A <b>trait</b> is a named ability a type can have; Chapter 17 explains them.)</span></li>
+    </ul>
+    <p class="sr-only">Creatures: the orange brick holding 7 for integers, the green jelly holding 2.5 for floats, the lit lamp for bool, and the photocopied key flyer for char and Copy tuples and arrays.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 37: one String spoils the copy">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="37"></svg>
+    <p class="caption">A tuple is Copy only if <em>every</em> part is. One String inside, and the whole tuple moves.</p>
+    <span class="file-tab">tuple_move_error.rs</span>
+    <pre class="code" data-src="tuple_move_error.rs"></pre>
+    <pre class="term wrap" data-run="tuple_move_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>move occurs because `pair` has type `(i32, String)`, which does not implement the `Copy` trait</code><br>The motive names the full type. The <code>i32</code> could be photocopied, but the <code>String</code> can't, so the tuple as a whole is a give-the-key type.</span></li>
+      <li><span><code>---- value moved here</code><br>Line 3 again: the cause is always under the dashes.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-copy-predict-m" id="ex-copy-predict"></div>
+  <script type="application/json" id="ex-copy-predict-m">{"program": "copy_predict.rs", "prompt": "A copied number and a cloned String. Both originals change afterwards. What are the two lines?", "hint": "After a copy or a clone, the two values are completely separate. Changing one never touches the other.", "explain": "<code>saved</code> got its own copy of 10, so <code>score += 5</code> only changes <code>score</code>: <samp>15 10</samp>. <code>saved_word</code> is a separate String with its own heap bytes, so <code>push('!')</code> only changes <code>word</code>: <samp>hi! hi</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 38: clone cuts a second key">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">When you really do want two separate Strings, say so: <code>.clone()</code> makes a <b>deep copy</b>, a new heap block with the same bytes, owned by a new name.</p>
+    <span class="file-tab">clone.rs</span>
+    <pre class="code" data-src="clone.rs"></pre>
+    <pre class="term" data-run="clone.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>original.clone()</code> copies every byte into a fresh block. <code>original</code> is untouched and still the owner of its own block.</span></li>
+      <li><span><b>Line 4</b>: changing <code>spare</code> doesn't change <code>original</code>: two keys, two houses.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 39: two heap blocks after a clone" data-mem="mem-clone" data-heap-label="the coat-check room" id="mem-clone-box">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Step through it. Compare with the move: this time there are <em>two</em> heap blocks, and nobody is moved away.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-clone">{"program": "clone.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>original</code> owns block #1: k, e, y.", "output": [], "frames": [{"name": "main", "slots": [{"n": "original", "type": "String", "ptr": "H1", "len": 3, "cap": 3}]}], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}}, "changed": ["original", "H1"]},
+      {"line": 4, "note": "<b>The clone.</b> A brand-new block #2 gets its own copy of k, e, y, and <code>spare</code> owns it. <code>original</code> is not moved: it still owns block #1.", "output": [], "frames": [{"name": "main", "slots": [{"n": "original", "type": "String", "ptr": "H1", "len": 3, "cap": 3}, {"n": "spare", "type": "String", "ptr": "H2", "len": 3, "cap": 3}]}], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}, "H2": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}}, "changed": ["spare", "H2"]},
+      {"line": 5, "note": "<code>spare</code> grows to k, e, y, -, 2 (with room for 8; <code>ptr</code> follows if the bytes move). Block #1 doesn't change at all.", "output": [], "frames": [{"name": "main", "slots": [{"n": "original", "type": "String", "ptr": "H1", "len": 3, "cap": 3}, {"n": "spare", "type": "String", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}, "H2": {"cells": ["k", "e", "y", "-", "2"], "cap": 8, "label": "String bytes"}}, "changed": ["spare", "H2"]},
+      {"line": 6, "note": "<code>original</code> still works.", "output": ["original: key"], "frames": [{"name": "main", "slots": [{"n": "original", "type": "String", "ptr": "H1", "len": 3, "cap": 3}, {"n": "spare", "type": "String", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}, "H2": {"cells": ["k", "e", "y", "-", "2"], "cap": 8, "label": "String bytes"}}},
+      {"line": 7, "note": "And so does <code>spare</code>.", "output": ["original: key", "spare: key-2"], "frames": [{"name": "main", "slots": [{"n": "original", "type": "String", "ptr": "H1", "len": 3, "cap": 3}, {"n": "spare", "type": "String", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes"}, "H2": {"cells": ["k", "e", "y", "-", "2"], "cap": 8, "label": "String bytes"}}},
+      {"line": null, "note": "<code>main</code> ends. Two owners, two blocks, two drops: each block is freed exactly once by its own owner.", "output": ["original: key", "spare: key-2"], "frames": [], "heap": {"H1": {"cells": ["k", "e", "y"], "cap": 3, "label": "String bytes", "freed": true}, "H2": {"cells": ["k", "e", "y", "-", "2"], "cap": 8, "label": "String bytes", "freed": true}}, "changed": ["H1", "H2"]}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-clone-fill-m" id="ex-clone-fill"></div>
+  <script type="application/json" id="ex-clone-fill-m">{"program": "fill_clone.rs", "prompt": "You keep your recipe and your friend gets their own. Fill the blank so both lines compile and print.", "blanks": [{"line": 3, "text": "recipe.clone()", "accept": ["recipe.clone()"]}], "explain": "<code>let for_friend = recipe;</code> would <em>move</em> the String, and line 4 would get E0382. <code>recipe.clone()</code> cuts a second key: a separate String with its own bytes, so both names stay usable."}</script>
+
+  <section class="panel clean" aria-label="Panel 40: a clone costs work">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">The locksmith charges by the size of the key. <code>"ab".repeat(500_000)</code> builds a String of a million bytes (the underscores in <code>500_000</code> are just for reading, like commas).</p>
+    <span class="file-tab">clone_cost.rs</span>
+    <pre class="code" data-src="clone_cost.rs"></pre>
+    <pre class="term" data-run="clone_cost.rs"></pre>
+    <ul class="checklist">
+      <li><span><b>The clone (line 3)</b> asks for a second million-byte block and copies every byte into it. Twice the memory, and work proportional to the size.</span></li>
+      <li><span><b>The move (line 6)</b> copies 24 bytes, whatever the size of the text. That's why Rust moves by default and makes you write <code>.clone()</code> out loud: <b>every expensive copy is visible in your code</b>.</span></li>
+      <li><span><b>Is cloning bad?</b> No. While you're learning, cloning to make the Compiler happy is completely fine. Chapter 8's borrowing often lets you avoid it.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 41: the hand-over machine" data-machine="m-handover">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">The hand-over machine runs <code>let b = a;</code> on different kinds of <code>a</code>, then tries to print both. Copy types come out twice; give-the-key types jam with the real error. Feed it.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-handover">{"label": "let b = a;", "program": "handover.rs", "examples": [
+      {"in": "a: i32 = 7", "out": "i32: a = 7, b = 7", "outKind": "photocopied", "note": "An <code>i32</code> is 4 bytes on the plate. <code>b</code> gets a copy and <code>a</code> keeps its own."},
+      {"in": "a: f64 = 2.5", "out": "f64: a = 2.5, b = 2.5", "outKind": "photocopied", "note": "Floats are Copy too."},
+      {"in": "a: char = 'z'", "out": "char: a = z, b = z", "outKind": "photocopied", "note": "A <code>char</code> is 4 bytes: Copy."},
+      {"in": "a: (i32, bool)", "out": "(i32, bool): a = (1, true), b = (1, true)", "outKind": "photocopied", "note": "A tuple whose parts are all Copy is Copy itself."},
+      {"in": "a: String, b = a.clone()", "out": "String, cloned: a = hi, b = hi", "outKind": "new key cut", "note": "With <code>.clone()</code>, a String hands over a deep copy and keeps its own. Both print."},
+      {"in": "a: String", "error": "error[E0382]: borrow of moved value: `a`", "program": "handover_string.rs", "note": "Jammed at compile time. A String owns heap bytes, so <code>let b = a;</code> moves it, and printing <code>a</code> afterwards is E0382."},
+      {"in": "a: Box<i32>", "error": "error[E0382]: borrow of moved value: `a`", "program": "handover_box.rs", "note": "Jammed. A box owns a heap block, so it moves, even though the 7 inside is Copy."},
+      {"in": "a: (i32, String)", "error": "error[E0382]: borrow of moved value: `a`", "program": "handover_tuple.rs", "note": "Jammed. One non-Copy part makes the whole tuple move."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-which-moves-m" id="ex-which-moves"></div>
+  <script type="application/json" id="ex-which-moves-m">{"q": "In which of these does <code>let b = a;</code> <b>move</b> <code>a</code>, so that <code>a</code> can't be used afterwards?", "options": [
+    {"t": "<code>let a = 42;</code>", "why": "An integer is Copy: <code>b</code> gets a photocopy and <code>a</code> still works."},
+    {"t": "<code>let a = 'k';</code>", "why": "A <code>char</code> is Copy."},
+    {"t": "<code>let a = (2, 3.5);</code>", "why": "Both parts are Copy (an integer and a float), so the tuple is Copy."},
+    {"t": "<code>let a = Box::new(42);</code>", "correct": true, "why": "A <code>Box</code> owns a heap block, so it moves, like a String. The 42 inside doesn't change that."}]}</script>
+
+  <div data-ex="choice" data-model="ex-friend-m" id="ex-friend-m-box"></div>
+  <script type="application/json" id="ex-friend-m">{"q": "<code>mine</code> is your shopping list, a <code>String</code>. Your friend wants their own list to scribble on, and you want to keep yours. Which line?", "options": [
+    {"t": "<code>let theirs = mine;</code>", "why": "That moves your list to your friend. You'd have no list left (E0382 if you use <code>mine</code>)."},
+    {"t": "<code>let theirs = mine.clone();</code>", "correct": true, "why": "A deep copy: two separate Strings. Your friend can change theirs without touching yours."},
+    {"t": "Nothing special: Strings are copied automatically", "why": "Only Copy types are copied automatically. A String moves unless you clone it."},
+    {"t": "<code>let mut theirs = mine;</code>", "why": "<code>mut</code> lets <code>theirs</code> change, but it's still a move: <code>mine</code> stops working."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 42: partial moves">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">One more thing, just so it doesn't surprise you later: you can move <em>one part</em> out of a tuple. That's a <b>partial move</b>. The Copy parts stay usable; the whole tuple doesn't.</p>
+    <div class="pair">
+      <div><span class="file-tab">partial_move.rs</span><pre class="code" data-src="partial_move.rs"></pre><pre class="term" data-run="partial_move.rs"></pre></div>
+      <div><span class="file-tab">partial_move_error.rs</span><pre class="code" data-src="partial_move_error.rs"></pre><pre class="term wrap" data-run="partial_move_error.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b><code>let name = card.0;</code></b> moves the String out of the tuple into <code>name</code>. <code>card.1</code> is an <code>i32</code>, so it's still there and usable.</span></li>
+      <li><span><code>error[E0382]: borrow of partially moved value: `card`</code><br>Printing the <em>whole</em> tuple needs all its parts, and one part has left. The label says <samp>value partially moved here</samp>.</span></li>
+    </ol>
+    <p class="caption soft">You'll meet partial moves again with structs (Chapter 10). For now: if E0382 says "partially", one piece of the value was moved out.</p>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 43: boss level">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="43"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Plates, tickets and keys, all mixed together. For each name, ask: who holds the key right now? And when a move error appears, read the dashes.</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. A clone, a move into a function and back, and a Copy number. What does it print?", "hint": "<code>copy</code> was cloned <em>before</em> <code>shout</code> changed the String. And what happens to <code>n</code> when it's passed to <code>triple</code>?", "explain": "<code>copy</code> is a separate String made while the text was still \"A\". <code>shout(tag)</code> moves the String in, adds !, and moves it back into <code>tag</code>: \"A!\". <code>triple(n)</code> gets a <em>copy</em> of 3, so <code>n</code> still works, and <code>m</code> is 9. Result: <samp>A! A 3 9</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.rs", "columns": ["owner", "plates", "text"], "given": [], "prompt": "Boss 2. A String travels two plates up and back down. Each line prints the function that owns it, how many plates are on the stack, and the text. Fill every row.", "explain": "<code>main</code> (1 plate) owns \"x\". <code>wrap</code> (2 plates) adds y; <code>inner</code> (3 plates) adds z. Returning moves the String back down: <code>wrap</code> sees xyz, then <code>main</code> does. Plates pop in reverse order, and the one String is never cloned."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. Keep a backup of the draft, give the draft to <code>sign</code>, and get the signed letter back. Fill all three blanks.", "blanks": [{"line": 3, "text": "draft.clone()", "accept": ["draft.clone()"]}, {"line": 9, "text": "String", "accept": ["String"]}, {"line": 11, "text": "text", "accept": ["text"]}], "explain": "The backup must be a clone, made while <code>draft</code> is still the owner (before line 4 moves it into <code>sign</code>). <code>sign</code> promises <code>-&gt; String</code> and hands <code>text</code> back on its last line, with no semicolon. Two Strings exist at the end: <code>letter</code> and <code>backup</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 11, "pin": [1, 6], "prompt": "Boss 4. Put the lines in order: <code>main</code> first, then the function it calls. The String goes into <code>louder</code> and comes back out.", "explain": "<code>main</code> makes the note, moves it into <code>louder</code> and catches the return value in a new <code>note</code> (shadowing). <code>louder</code> owns <code>s</code>, so with <code>mut</code> it may add \"!!\", and its last line hands <code>s</code> back."}</script>
+
+  <div data-ex="spot" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_spot.rs", "bug": 4, "prompt": "Boss 5. A photo of the ticket, then the ticket is handed in. It won't compile. Click the line that <b>causes</b> the error (where the key changes hands), not the line where it's noticed.", "explain": "Line 4, <code>hand_in(ticket)</code>, moves the String into the function, where it's dropped at line 11. Line 6 uses <code>ticket</code> afterwards: E0382. Line 3 is innocent: <code>.clone()</code> made a separate String, and <code>photo</code> is fine on line 5. Fixes: print the photo instead, or call <code>hand_in(ticket.clone())</code>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_error.rs", "expect": "error", "answer": "E0382", "ask": "Does it compile? If not, which error code does the Compiler print? Type it like E0000.", "prompt": "Boss 6. Posting the same letter on two days.", "hint": "The loop runs its body twice. What does <code>post(letter)</code> do to <code>letter</code> on the first lap?", "explain": "On lap 1, <code>post(letter)</code> moves the String into <code>post</code>, which drops it. On lap 2 there's nothing left to post. The Compiler checks every lap in advance and says <samp>error[E0382]: use of moved value: `letter`</samp>, with the label <samp>value moved here, in previous iteration of loop</samp>. (\"Use\", not \"borrow\", because the second <code>post</code> wants to take it, not just look.) Fix: <code>post(letter.clone())</code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 44: what you learned">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">What you learned in Chapter 7</p>
+    <ul class="recap">
+      <li><b>PLATES STACK UP: LAST IN, FIRST OUT</b>Each function call pushes a frame onto the stack, holding its parameters and local variables; returning pops it. Everything on the stack has a size known at compile time (<code>size_of</code>).</li>
+      <li><b>THE TICKET'S IN YOUR POCKET, THE COAT'S IN THE BACK</b>Growable data lives on the heap. A <code>String</code> is 24 bytes on the stack (<code>ptr</code>, <code>len</code>, <code>cap</code>) plus its bytes on the heap. <code>Box::new(v)</code> puts any value on the heap.</li>
+      <li><b>ONE KEY, ONE OWNER</b>Each value has one owner at a time. When the owner goes out of scope (its closing <code>}</code>), the value is dropped and its heap memory freed: no garbage collector, no double free.</li>
+      <li><b>GIVE AWAY THE KEY, AND THE DOOR STAYS SHUT</b><code>let s2 = s1;</code> and <code>f(s1)</code> move a String; using <code>s1</code> afterwards is E0382. Read the dashes: <samp>value moved here</samp> is the cause. Returning a value moves ownership back out. A <code>for</code> loop moves the whole vector.</li>
+      <li><b>FLYERS ARE PHOTOCOPIED, KEYS ARE CUT</b>Copy types (integers, floats, <code>bool</code>, <code>char</code>, tuples and arrays of them) are copied by <code>=</code>. <code>.clone()</code> is a deep copy you ask for out loud, and it costs time.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>You now know where every value lives and who's responsible for it. That's the hardest new idea in Rust, and you've got it.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 45: next time, the library ledger">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption soft">Coming up in Chapter 8: The Library Ledger…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 560 220" role="img" aria-label="Teaser picture: a library reading room. One red book lies open on a table, and three readers look at it together. To the side, a ledger says readers: 3 and writers: 0.">
+        <rect x="20" y="130" width="320" height="22" rx="6" fill="#C8955E" stroke="#111" stroke-width="4"/>
+        <path d="M60 152 v50 M300 152 v50" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+        <path d="M130 128 l50 -14 l50 14 v-34 l-50 -14 l-50 14 z" fill="#FF5A4E" stroke="#111" stroke-width="4" stroke-linejoin="round"/><path d="M180 80 v34" stroke="#111" stroke-width="3"/>
+        <g stroke="#111" stroke-width="3.5"><circle cx="70" cy="70" r="22" fill="#E9B98E"/><circle cx="180" cy="40" r="22" fill="#F2D3B0"/><circle cx="290" cy="70" r="22" fill="#C99A70"/></g>
+        <g fill="#111"><circle cx="63" cy="70" r="3"/><circle cx="77" cy="70" r="3"/><circle cx="173" cy="40" r="3"/><circle cx="187" cy="40" r="3"/><circle cx="283" cy="70" r="3"/><circle cx="297" cy="70" r="3"/></g>
+        <path d="M92 84 l30 20 M268 84 l-30 20" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 5"/>
+        <rect x="380" y="40" width="160" height="150" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+        <path d="M396 80 h128 M396 110 h128 M396 140 h128" stroke="#B9C7E3" stroke-width="3"/>
+        <text class="h mid" x="460" y="70">LEDGER</text>
+        <text class="s" x="396" y="104">readers: 3</text>
+        <text class="s" x="396" y="134">writers: 0</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Moving the key in and out of every function is tiring. Next time: <b>borrowing</b>. You can <em>lend</em> a value without giving it away, to many readers, or to one writer, but never both at once. And we finally learn what that <code>&amp;mut guess</code> from Chapter 6 meant.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch6.html">← Ch 6 · The Guessing Game</a><a class="next" href="ch8.html">Ch 8 · The Library Ledger →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: real stacks, real heaps, and what a move compiles to</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The plates and the coat-check room are good pictures. Here's what they stand for.</p></div>
+      </div>
+      <h3>The stack is one block of memory and a pointer</h3>
+      <p>Each thread gets one stretch of memory for its stack, plus a register (a tiny storage slot inside the processor) called the <b>stack pointer</b>, which marks the top. A call "pushes a plate" by moving the stack pointer by the frame's size, which the Compiler worked out in advance; a return moves it back. That's why the stack is so fast: no searching, just one addition. It's also why every local variable needs a size known at compile time. The stack is not huge: a Rust program's main thread usually gets the operating system's default (often 8 MB on Linux), and threads you start yourself get 2 MB unless you ask for more. A function that calls itself forever runs out of plates, and the program is stopped: a <b>stack overflow</b> (not run in this chapter).</p>
+      <h3>The heap is managed by an allocator</h3>
+      <p>Asking for heap memory ("allocating") goes through the <b>allocator</b>, a part of the standard library that keeps track of which blocks are in use and finds a free one of the right size. Freeing gives the block back to it. That bookkeeping is why the heap is slower than the stack, and why programs that allocate in a tight loop can be sped up by allocating once and reusing.</p>
+      <h3>A String is a vector of bytes</h3>
+      <p>Inside the standard library, <code>String</code> is a wrapper around a <code>Vec&lt;u8&gt;</code>: a vector of bytes that Rust promises is valid UTF-8 text (Chapter 12). The vector holds the pointer, the capacity and the length: three 8-byte numbers on a 64-bit machine, so 24 bytes. Rust doesn't promise the order of those three fields in memory, and you never need it. When the String needs more room it usually at least doubles its capacity, which keeps a long run of <code>push_str</code> calls fast overall. Those exact growth numbers are an internal detail and can change between versions.</p>
+      <h3>A move is a byte copy, then a rule</h3>
+      <p>At the machine level, <code>let s2 = s1;</code> copies the 24-byte record from one stack slot to another, the same as copying an integer, and the optimizer often removes even that. The "move" part exists only in the Compiler's bookkeeping: it notes that <code>s1</code> may no longer be used and must not be dropped. When a value is moved on only <em>some</em> paths (say, inside an <code>if</code>), Rust keeps a small hidden <b>drop flag</b> so that the closing brace drops it only if it's still there.</p>
+      <h3>The capacities in the steppers, measured</h3>
+      <p>The steppers draw each String's <code>cap</code>. Those numbers aren't guesses: this program makes the same Strings the same way and asks each one for its <code>capacity()</code>. (<code>grow.rs</code> in panel 12 shows the same growth rule.)</p>
+      <span class="file-tab">caps.rs</span><pre class="code" data-src="caps.rs"></pre><pre class="term" data-run="caps.rs"></pre>
+      <h3>"Borrow of moved value" or "use of moved value"?</h3>
+      <p>Both are E0382. The Compiler says <b>borrow</b> when the later line only wants to look (like <code>println!</code>), and <b>use</b> when it wants to take the value again, as in boss 6 or here:</p>
+      <span class="file-tab">move_use.rs</span><pre class="code" data-src="move_use.rs"></pre><pre class="term wrap" data-run="move_use.rs" data-exit></pre>
+      <h3>One version difference</h3>
+      <p>The two Rust versions this book checks give the same errors everywhere in this chapter except for one line of the <code>for</code> loop error. Rust 1.99 explains that the loop is "desugared" (rewritten behind the scenes) into a call to <code>IntoIterator::into_iter</code>. Here's the same program on Rust 1.97, which says it more briefly:</p>
+      <p class="caption soft">Rust 1.97.0 (edition 2024):</p>
+      <pre class="term wrap" data-run="for_vec_error.rs" data-alt data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where moves, clones and boxes show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Functions that keep what you give them take ownership.</b> A function that stores a name in a list, or sends a message to another thread, takes a <code>String</code> by value, because it needs the value to outlive the call. Functions that only look at a value borrow it instead (Chapter 8).</li>
+        <li><b>Builders pass ownership along a chain.</b> Many libraries let you write <code>thing.with_size(3).with_colour(red)</code>: each method takes the value by move and hands it back, exactly like <code>stamp</code> in <code>give_back.rs</code>.</li>
+        <li><b>Clone while learning, then tidy up.</b> Experienced Rust programmers also reach for <code>.clone()</code> when a design isn't settled. Clone small things freely; think twice about cloning big things in loops.</li>
+        <li><b>Box is for size and indirection.</b> A big array is moved cheaply if it's boxed (8 bytes instead of all its contents); and a type that contains itself, like a tree node, needs a box to have a known size (Chapter 23).</li>
+        <li><b>Drop is how Rust closes things.</b> Files, network connections and locks are also owned values. When their owner goes out of scope, they're closed or released automatically. This pattern has a name: RAII (Resource Acquisition Is Initialization). Chapter 18 shows how to write your own clean-up code.</li>
+        <li><b>The same three rules make threads safe.</b> Because a value has one owner, handing it to another thread is a move, and the first thread can't touch it any more. Chapter 26 builds on exactly this.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A String variable contains its text."</b> It contains a pointer, a length and a capacity. The text is on the heap.</li>
+        <li><b>"<code>let b = a;</code> copies everything."</b> For a String it copies only the 24-byte record, and moves ownership. Heap data is never copied unless you call <code>.clone()</code>.</li>
+        <li><b>"After a move, the data is deleted."</b> The data is untouched; the new owner uses it. Only the old <em>name</em> stops working.</li>
+        <li><b>"A moved variable is dropped at the move."</b> Nothing is dropped at a move. The value is dropped later, when its <em>new</em> owner goes out of scope.</li>
+        <li><b>"The error is where the carets are."</b> For E0382 the carets show where the moved value was used. The cause is under the dashes: <samp>value moved here</samp>.</li>
+        <li><b>"Integers move too, so I need <code>.clone()</code> on numbers."</b> Integers, floats, <code>bool</code> and <code>char</code> are Copy. <code>.clone()</code> on them works but does nothing extra.</li>
+        <li><b>"<code>mut</code> lets me use a value after moving it."</b> <code>mut</code> is about changing a value, not about who owns it. A <code>let mut</code> String still moves.</li>
+        <li><b>"Rust has a garbage collector that frees things at the end."</b> There's no collector. Each value is freed at the closing brace of its owner's scope, often long before the program ends.</li>
+        <li><b>"Stack variables are faster, so I should avoid Strings."</b> Use the type that fits the job. The heap costs a little; a correct, readable program matters far more.</li>
+        <li><b>"A <code>for</code> loop just reads the vector."</b> <code>for x in v</code> moves <code>v</code> into the loop. To keep the vector, loop over <code>&amp;v</code> (Chapter 8).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Install Rust (if you haven't yet)</h3>
+      <ul>
+        <li><b>macOS and Linux</b>: in a terminal, run <code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code>, accept the defaults, then open a new terminal.</li>
+        <li><b>Windows</b>: download and run <code>rustup-init.exe</code> from rustup.rs. It will offer to install the Visual Studio C++ build tools that Rust needs; say yes. Then use PowerShell or Windows Terminal.</li>
+        <li>Check with <code>cargo --version</code>. This book used Rust 1.99.1; any recent version works, though some error wording may differ slightly.</li>
+      </ul>
+      <h3>2. Make a project</h3>
+      <p>Run <code>cargo new keys</code>, then <code>cd keys</code>, and open <code>src/main.rs</code>. Run each experiment with <code>cargo run</code>. (This book's terminals use <code>cargo run -q</code>, where <code>-q</code> means "quiet": it hides cargo's own Compiling/Running lines.)</p>
+      <h3>3. Experiments</h3>
+      <ol>
+        <li><b>Make E0382.</b> Paste <code>move_error.rs</code>. Run it and find the dashes. Then run <code>rustc --explain E0382</code> to read the official explanation.</li>
+        <li><b>Fix it three ways.</b> (a) print <code>s2</code> only; (b) <code>let s2 = s1.clone();</code>; (c) swap the order so <code>s1</code> is printed before the move. Predict first: which ones compile, and which one copies heap bytes? Then run them (these three weren't run for this page).</li>
+        <li><b>Measure.</b> Paste <code>sizes.rs</code> and add lines for <code>u8</code>, <code>(u8, u32)</code> and <code>[u8; 100]</code>. Predict first, then run. (The tuple may surprise you: see the notebook in Chapter 5.)</li>
+        <li><b>Watch capacity.</b> In <code>grow.rs</code>, add a loop that pushes one letter 20 times and prints <code>len</code> and <code>capacity()</code> each time. Note when the capacity jumps.</li>
+        <li><b>Move into a loop.</b> Write <code>boss_error.rs</code> from memory and read the label <samp>in previous iteration of loop</samp>.</li>
+        <li><b>Try a Box.</b> <code>let b = Box::new(5); let c = b;</code> then print <code>b</code>. Same error as a String?</li>
+      </ol>
+      <h3>4. Playground and diagrams</h3>
+      <p>No install? play.rust-lang.org runs all of this in a browser (choose edition 2024). The Brown University edition of the Rust book (linked under Go deeper) has interactive stack-and-heap diagrams of its examples, a good companion to the ones here.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>memory (RAM)</dt><dd>Where a running program keeps its values: a long row of numbered cells.</dd>
+        <dt>byte</dt><dd>One memory cell: a number from 0 to 255. An <code>i32</code> takes 4 bytes.</dd>
+        <dt>address</dt><dd>The number of a memory cell. A value's address is the number of its first cell.</dd>
+        <dt>stack</dt><dd>The part of memory for function calls, used last in, first out, like a pile of plates.</dd>
+        <dt>frame</dt><dd>One function call's plate on the stack: its parameters and local variables.</dd>
+        <dt>push / pop</dt><dd>Putting a frame on top of the stack (a call) / taking it off (a return).</dd>
+        <dt>last in, first out (LIFO)</dt><dd>The thing that went on most recently comes off first.</dd>
+        <dt>known at compile time</dt><dd>Decided before the program runs. Every stack value's size must be.</dd>
+        <dt>heap</dt><dd>The part of memory where a program can ask for blocks of any size while it runs.</dd>
+        <dt>allocate / free</dt><dd>Ask the heap for a block / give it back.</dd>
+        <dt>pointer</dt><dd>A value holding an address: the ticket saying where the coat is.</dd>
+        <dt>length (len)</dt><dd>How many bytes a String is using.</dd>
+        <dt>capacity (cap)</dt><dd>How many bytes of room its heap block has. Always at least the length.</dd>
+        <dt><code>Box</code></dt><dd>A pointer that owns one value on the heap: <code>Box::new(5)</code>.</dd>
+        <dt>vector, <code>vec![...]</code></dt><dd>A growable list whose items live on the heap. Chapter 11.</dd>
+        <dt>scope</dt><dd>Where a name can be used: from its <code>let</code> to the closing brace of its block.</dd>
+        <dt>block</dt><dd>Code between a pair of braces: a room for names.</dd>
+        <dt>binding</dt><dd>The Compiler's word for a name made by <code>let</code> (or a parameter).</dd>
+        <dt>owner, ownership</dt><dd>The one name responsible for a value. The three rules: one owner; one at a time; dropped when the owner goes out of scope.</dd>
+        <dt>drop</dt><dd>Clean a value up when its owner goes out of scope, freeing its heap memory.</dd>
+        <dt>move</dt><dd>Hand ownership to another name or function. The old name can't be used afterwards.</dd>
+        <dt>E0382</dt><dd>"borrow of / use of moved value": a name used after its value moved away.</dd>
+        <dt>E0425</dt><dd>"cannot find value in this scope": a name used where it doesn't exist (for example, outside its block).</dd>
+        <dt>double free</dt><dd>Freeing the same heap block twice: a serious bug that ownership rules out.</dd>
+        <dt>garbage collector</dt><dd>A helper in some languages that finds and frees unused heap memory while the program runs. Rust doesn't have one.</dd>
+        <dt><code>Copy</code></dt><dd>Types copied by <code>=</code> instead of moved: integers, floats, <code>bool</code>, <code>char</code>, and tuples and arrays of them.</dd>
+        <dt>trait</dt><dd>A named ability a type can have, like <code>Copy</code>. Chapter 17.</dd>
+        <dt><code>.clone()</code>, deep copy</dt><dd>Make a separate copy of a value, heap data included.</dd>
+        <dt>partial move</dt><dd>Moving one part out of a tuple (or struct), leaving the rest.</dd>
+        <dt><code>size_of</code></dt><dd><code>std::mem::size_of::&lt;T&gt;()</code>: the number of bytes a type takes.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li><a href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html">The Rust Programming Language, 4.1 What Is Ownership?</a> (stack and heap, the rules, move, clone, Copy, functions)</li>
+        <li><a href="https://doc.rust-lang.org/rust-by-example/scope/raii.html">Rust by Example: RAII</a>, <a href="https://doc.rust-lang.org/rust-by-example/scope/move.html">Ownership and moves</a> and <a href="https://doc.rust-lang.org/rust-by-example/scope/move/partial_move.html">Partial moves</a></li>
+        <li><a href="https://doc.rust-lang.org/error_codes/E0382.html">The error index: E0382</a> (the same text as <code>rustc --explain E0382</code>)</li>
+        <li><a href="https://doc.rust-lang.org/std/string/struct.String.html#representation">std: String, "Representation"</a> (the pointer, length and capacity)</li>
+        <li><a href="https://doc.rust-lang.org/std/boxed/struct.Box.html">std: Box</a>, <a href="https://doc.rust-lang.org/std/marker/trait.Copy.html">std: Copy</a> and <a href="https://doc.rust-lang.org/std/clone/trait.Clone.html">std: Clone</a></li>
+        <li><a href="https://doc.rust-lang.org/std/mem/fn.size_of.html">std::mem::size_of</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://rust-book.cs.brown.edu/ch04-01-what-is-ownership.html">The Brown University interactive edition, 4.1</a>: stack-and-heap diagrams for every example, and quizzes.</li>
+        <li><a href="https://rustlings.rust-lang.org/">Rustlings</a>: the <code>move_semantics</code> exercises, small programs to fix until they compile.</li>
+        <li><a href="https://google.github.io/comprehensive-rust/">Comprehensive Rust</a>: the Memory Management segment (program memory, move semantics, Clone, Copy, Drop).</li>
+        <li><a href="https://dhghomon.github.io/easy_rust/">Easy Rust</a>: "The stack, the heap, and pointers", in simple English.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch7</code>. Each of the 50 programs was built and run as its own cargo project with <code>cargo run -q</code>, a debug build; the compile errors are real <code>cargo</code> failures, which exit with code 101. Two programs differ between the versions, <code>for_vec_error.rs</code> and <code>spot_vec.rs</code>: in the <code>for</code> loop's E0382 message, Rust 1.99.1 prints <samp>note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, …</samp> where Rust 1.97.0 prints <samp>note: `into_iter` takes ownership of the receiver `self`, …</samp>, and the <code>/rustc/…</code> library path names each compiler's build. Every program output and every other message is identical. No program in this chapter prints a memory address: real addresses change on every run, so the stacks and heaps here are drawn models.</p>
+  <p>The stack-and-heap steppers, the walk-through, the machine and the map are teaching models; each checks its screen against those runs and shows a badge. Capacities shown in the steppers are the ones this Rust version really chose: <code>caps.rs</code> (in the notebook's "Under the hood" page) prints <code>capacity()</code> for the exact Strings the steppers draw, and <code>grow.rs</code> shows them growing; ticket numbers like #1 stand in for real addresses. The key, the plates and the coat-check room are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, 4.1 What Is Ownership?, and its Brown University interactive edition (4.1, with its Box-based memory diagrams and its list of ownership misconceptions); Rust by Example (RAII, ownership and moves, partial moves); the Rust error index (E0382); the std documentation for String, Box, Copy, Clone and size_of; Comprehensive Rust (Memory Management); 100 Exercises to Learn Rust (stack, heap and references in memory); Rustlings (move_semantics); Easy Rust (the stack, the heap, and pointers); Tour of Rust (ownership lessons); roadmap.sh/rust.</p>
+  <p>Mabel, the Compiler, the Professor, the key, the creatures and every picture here are original characters and drawings made in code; Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
