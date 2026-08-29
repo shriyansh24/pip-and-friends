@@ -1,0 +1,1002 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch4",
+  "versionDifferences": [
+   "let_let.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): let_let.rs."
+ },
+ "programs": {
+  "anatomy.rs": {
+   "src": "fn main() {\n    let fee = late_fee(3);\n    println!(\"Fee: {fee} cents\");\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "Fee: 75 cents\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Fee: 75 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/anatomy"
+    }
+   ]
+  },
+  "assert_fail.rs": {
+   "src": "fn main() {\n    assert_eq!(add(2, 3), 5);\n    println!(\"All checks passed!\");\n}\n\nfn add(a: i32, b: i32) -> i32 {\n    a - b\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:2:5:\nassertion `left == right` failed\n  left: -1\n right: 5\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:2:5:\nassertion `left == right` failed\n  left: -1\n right: 5\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/assert_fail"
+    }
+   ]
+  },
+  "asserts.rs": {
+   "src": "fn main() {\n    assert_eq!(add(2, 3), 5);\n    assert_eq!(add(-1, 1), 0);\n    println!(\"All checks passed!\");\n}\n\nfn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+   "stdout": "All checks passed!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "All checks passed!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/asserts"
+    }
+   ]
+  },
+  "assign_in_if.rs": {
+   "src": "fn main() {\n    let books = 3;\n    if books = 3 {\n        println!(\"Exactly three!\");\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:8\n  |\n3 |     if books = 3 {\n  |        ^^^^^^^^^ expected `bool`, found `()`\n  |\nhelp: you might have meant to compare for equality\n  |\n3 |     if books == 3 {\n  |               +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `assign_in_if` (bin \"assign_in_if\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:3:8\n  |\n3 |     if books = 3 {\n  |        ^^^^^^^^^ expected `bool`, found `()`\n  |\nhelp: you might have meant to compare for equality\n  |\n3 |     if books == 3 {\n  |               +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `assign_in_if` (bin \"assign_in_if\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/assign_in_if"
+    }
+   ]
+  },
+  "blocks.rs": {
+   "src": "fn main() {\n    let total = {\n        let fiction = 12;\n        let poetry = 5;\n        fiction + poetry\n    };\n    println!(\"Books on the cart: {total}\");\n}\n",
+   "stdout": "Books on the cart: 17\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Books on the cart: 17\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/blocks"
+    }
+   ]
+  },
+  "boss_error.rs": {
+   "src": "fn main() {\n    let open = true;\n    let sign = if open { \"OPEN\" } else { 0 };\n    println!(\"{sign}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: `if` and `else` have incompatible types\n --> src/main.rs:3:42\n  |\n3 |     let sign = if open { \"OPEN\" } else { 0 };\n  |                          ------          ^ expected `&str`, found integer\n  |                          |\n  |                          expected because of this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: `if` and `else` have incompatible types\n --> src/main.rs:3:42\n  |\n3 |     let sign = if open { \"OPEN\" } else { 0 };\n  |                          ------          ^ expected `&str`, found integer\n  |                          |\n  |                          expected because of this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/boss_error"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "fn main() {\n    println!(\"{}\", is_teen(13));\n    println!(\"{}\", is_teen(21));\n}\n\nfn is_teen(age: i32) -> bool {\n    age >= 13 && age <= 19\n}\n",
+   "stdout": "true\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "true\nfalse\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    println!(\"{}\", fine(0));\n    println!(\"{}\", fine(12));\n}\nfn fine(days: i32) -> i32 {\n    if days == 0 {\n        return 0;\n    }\n    days * 5 + 50\n}\n",
+   "stdout": "0\n110\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0\n110\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "fn main() {\n    let a = bump(1);\n    let b = bump(a) * 2;\n    println!(\"{a} {b}\");\n    println!(\"{}\", pick(b));\n}\n\nfn bump(n: i32) -> i32 {\n    println!(\"bump {n}\");\n    n + 1\n}\n\nfn pick(n: i32) -> i32 {\n    if n > 5 { n - 5 } else { n + 5 }\n}\n",
+   "stdout": "bump 1\nbump 2\n2 6\n1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "bump 1\nbump 2\n2 6\n1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "fn main() {\n    println!(\"{}\", ticket(10));\n    println!(\"{}\", ticket(70));\n}\n\nfn ticket(age: i32) -> i32 {\n    let price = if age < 12 { 3 } else { 8 };\n    if age > 64 {\n        return 4;\n    }\n    price;\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n  --> src/main.rs:6:24\n   |\n 6 | fn ticket(age: i32) -> i32 {\n   |    ------              ^^^ expected `i32`, found `()`\n   |    |\n   |    implicitly returns `()` as its body has no tail or `return` expression\n...\n11 |     price;\n   |          - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n  --> src/main.rs:6:24\n   |\n 6 | fn ticket(age: i32) -> i32 {\n   |    ------              ^^^ expected `i32`, found `()`\n   |    |\n   |    implicitly returns `()` as its body has no tail or `return` expression\n...\n11 |     price;\n   |          - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    println!(\"{} {} {}\", 4, sign(4), half(4));\n    println!(\"{} {} {}\", 0, sign(0), half(0));\n    println!(\"{} {} {}\", -6, sign(-6), half(-6));\n    println!(\"{} {} {}\", 7, sign(7), half(7));\n}\n\nfn sign(n: i32) -> char {\n    if n > 0 { '+' } else if n < 0 { '-' } else { '0' }\n}\n\nfn half(n: i32) -> i32 {\n    n / 2\n}\n",
+   "stdout": "4 + 2\n0 0 0\n-6 - -3\n7 + 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4 + 2\n0 0 0\n-6 - -3\n7 + 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/boss_trace"
+    }
+   ]
+  },
+  "call_order.rs": {
+   "src": "fn main() {\n    println!(\"Open the doors.\");\n    greet();\n    println!(\"Shelve a book.\");\n    greet();\n    println!(\"Lock up.\");\n}\n\nfn greet() {\n    println!(\"  Welcome!\");\n}\n",
+   "stdout": "Open the doors.\n  Welcome!\nShelve a book.\n  Welcome!\nLock up.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Open the doors.\n  Welcome!\nShelve a book.\n  Welcome!\nLock up.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/call_order"
+    }
+   ]
+  },
+  "camel_name.rs": {
+   "src": "fn main() {\n    StampCard();\n}\n\nfn StampCard() {\n    println!(\"Stamped!\");\n}\n",
+   "stdout": "Stamped!\n",
+   "stderr": "warning: function `StampCard` should have a snake case name\n --> src/main.rs:5:4\n  |\n5 | fn StampCard() {\n  |    ^^^^^^^^^ help: convert the identifier to snake case: `stamp_card`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Stamped!\n",
+     "err": "warning: function `StampCard` should have a snake case name\n --> src/main.rs:5:4\n  |\n5 | fn StampCard() {\n  |    ^^^^^^^^^ help: convert the identifier to snake case: `stamp_card`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch4/camel_name",
+     "merged": "warning: function `StampCard` should have a snake case name\n --> src/main.rs:5:4\n  |\n5 | fn StampCard() {\n  |    ^^^^^^^^^ help: convert the identifier to snake case: `stamp_card`\n  |\n  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\nStamped!\n"
+    }
+   ]
+  },
+  "compare.rs": {
+   "src": "fn main() {\n    let a = 5;\n    let b = 8;\n    println!(\"a == b is {}\", a == b);\n    println!(\"a != b is {}\", a != b);\n    println!(\"a < b  is {}\", a < b);\n    println!(\"a > b  is {}\", a > b);\n    println!(\"a <= 5 is {}\", a <= 5);\n    println!(\"b >= 9 is {}\", b >= 9);\n}\n",
+   "stdout": "a == b is false\na != b is true\na < b  is true\na > b  is false\na <= 5 is true\nb >= 9 is false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "a == b is false\na != b is true\na < b  is true\na > b  is false\na <= 5 is true\nb >= 9 is false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/compare"
+    }
+   ]
+  },
+  "copy_paste.rs": {
+   "src": "fn main() {\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n    println!(\"Book returned. Thank you!\");\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n    println!(\"Book returned. Thank you!\");\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n}\n",
+   "stdout": "~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/copy_paste"
+    }
+   ]
+  },
+  "early_return.rs": {
+   "src": "fn main() {\n    println!(\"{}\", fee_for(0));\n    println!(\"{}\", fee_for(-2));\n    println!(\"{}\", fee_for(4));\n    println!(\"{}\", fee_for(40));\n}\n\nfn fee_for(days: i32) -> i32 {\n    if days <= 0 {\n        return 0;\n    }\n    if days > 30 {\n        return 500;\n    }\n    days * 10\n}\n",
+   "stdout": "0\n0\n40\n500\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0\n0\n40\n500\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/early_return"
+    }
+   ]
+  },
+  "explicit_return.rs": {
+   "src": "fn main() {\n    println!(\"{}\", fee_tail(4));\n    println!(\"{}\", fee_return(4));\n}\n\nfn fee_tail(days: i32) -> i32 {\n    days * 25\n}\n\nfn fee_return(days: i32) -> i32 {\n    return days * 25;\n}\n",
+   "stdout": "100\n100\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "100\n100\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/explicit_return"
+    }
+   ]
+  },
+  "expressions.rs": {
+   "src": "fn main() {\n    let a = 5 + 6;\n    let b = late_fee(2);\n    let c = {\n        let shelves = 3;\n        shelves * 10\n    };\n    println!(\"{a} {b} {c}\");\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "11 50 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "11 50 30\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/expressions"
+    }
+   ]
+  },
+  "fill_assert.rs": {
+   "src": "fn main() {\n    assert_eq!(double(4), 8);\n    assert_eq!(double(0), 0);\n    println!(\"double works!\");\n}\n\nfn double(n: i32) -> i32 {\n    n * 2\n}\n",
+   "stdout": "double works!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "double works!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/fill_assert"
+    }
+   ]
+  },
+  "fill_else.rs": {
+   "src": "fn main() {\n    let pages = 320;\n    let kind = if pages > 300 { \"long\" } else { \"short\" };\n    println!(\"A {kind} book\");\n}\n",
+   "stdout": "A long book\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "A long book\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/fill_else"
+    }
+   ]
+  },
+  "fill_types.rs": {
+   "src": "fn main() {\n    sign_card('M', 7);\n    sign_card('K', 10);\n}\n\nfn sign_card(initial: char, age: i32) {\n    println!(\"Card for {initial}, age {age}\");\n}\n",
+   "stdout": "Card for M, age 7\nCard for K, age 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Card for M, age 7\nCard for K, age 10\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/fill_types"
+    }
+   ]
+  },
+  "fn_scope.rs": {
+   "src": "fn main() {\n    count_books();\n    println!(\"Total: {total}\");\n}\n\nfn count_books() {\n    let total = 17;\n    println!(\"Counted {total} books\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find value `total` in this scope\n --> src/main.rs:3:23\n  |\n3 |     println!(\"Total: {total}\");\n  |                       ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `fn_scope` (bin \"fn_scope\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find value `total` in this scope\n --> src/main.rs:3:23\n  |\n3 |     println!(\"Total: {total}\");\n  |                       ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `fn_scope` (bin \"fn_scope\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/fn_scope"
+    }
+   ]
+  },
+  "frames.rs": {
+   "src": "fn main() {\n    let days = 3;\n    let fee = late_fee(days);\n    println!(\"Fee: {fee}\");\n}\n\nfn late_fee(d: i32) -> i32 {\n    let per_day = 25;\n    d * per_day\n}\n",
+   "stdout": "Fee: 75\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Fee: 75\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/frames"
+    }
+   ]
+  },
+  "grade.rs": {
+   "src": "fn main() {\n    let score = 85;\n    if score >= 90 {\n        println!(\"Grade A\");\n    } else if score >= 80 {\n        println!(\"Grade B\");\n    } else if score >= 70 {\n        println!(\"Grade C\");\n    } else {\n        println!(\"Keep reading!\");\n    }\n}\n",
+   "stdout": "Grade B\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Grade B\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/grade"
+    }
+   ]
+  },
+  "grade_40.rs": {
+   "src": "fn main() {\n    let score = 40;\n    if score >= 90 {\n        println!(\"Grade A\");\n    } else if score >= 80 {\n        println!(\"Grade B\");\n    } else if score >= 70 {\n        println!(\"Grade C\");\n    } else {\n        println!(\"Keep reading!\");\n    }\n}\n",
+   "stdout": "Keep reading!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Keep reading!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/grade_40"
+    }
+   ]
+  },
+  "grade_72.rs": {
+   "src": "fn main() {\n    let score = 72;\n    if score >= 90 {\n        println!(\"Grade A\");\n    } else if score >= 80 {\n        println!(\"Grade B\");\n    } else if score >= 70 {\n        println!(\"Grade C\");\n    } else {\n        println!(\"Keep reading!\");\n    }\n}\n",
+   "stdout": "Grade C\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Grade C\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/grade_72"
+    }
+   ]
+  },
+  "grade_95.rs": {
+   "src": "fn main() {\n    let score = 95;\n    if score >= 90 {\n        println!(\"Grade A\");\n    } else if score >= 80 {\n        println!(\"Grade B\");\n    } else if score >= 70 {\n        println!(\"Grade C\");\n    } else {\n        println!(\"Keep reading!\");\n    }\n}\n",
+   "stdout": "Grade A\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Grade A\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/grade_95"
+    }
+   ]
+  },
+  "grade_wrong.rs": {
+   "src": "fn main() {\n    let score = 95;\n    if score >= 70 {\n        println!(\"Grade C\");\n    } else if score >= 80 {\n        println!(\"Grade B\");\n    } else if score >= 90 {\n        println!(\"Grade A\");\n    } else {\n        println!(\"Keep reading!\");\n    }\n}\n",
+   "stdout": "Grade C\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Grade C\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/grade_wrong"
+    }
+   ]
+  },
+  "if_basic.rs": {
+   "src": "fn main() {\n    let books = 7;\n    if books > 5 {\n        println!(\"That's a big pile!\");\n    } else {\n        println!(\"A light load.\");\n    }\n    println!(\"Next reader, please.\");\n}\n",
+   "stdout": "That's a big pile!\nNext reader, please.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "That's a big pile!\nNext reader, please.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/if_basic"
+    }
+   ]
+  },
+  "if_fixed.rs": {
+   "src": "fn main() {\n    let books = 3;\n    if books != 0 {\n        println!(\"You have books.\");\n    }\n}\n",
+   "stdout": "You have books.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "You have books.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/if_fixed"
+    }
+   ]
+  },
+  "if_int.rs": {
+   "src": "fn main() {\n    let books = 3;\n    if books {\n        println!(\"You have books.\");\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:8\n  |\n3 |     if books {\n  |        ^^^^^ expected `bool`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `if_int` (bin \"if_int\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:3:8\n  |\n3 |     if books {\n  |        ^^^^^ expected `bool`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `if_int` (bin \"if_int\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/if_int"
+    }
+   ]
+  },
+  "if_mismatch.rs": {
+   "src": "fn main() {\n    let books = 7;\n    let bag = if books > 5 { \"heavy\" } else { 0 };\n    println!(\"This bag is {bag}.\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: `if` and `else` have incompatible types\n --> src/main.rs:3:47\n  |\n3 |     let bag = if books > 5 { \"heavy\" } else { 0 };\n  |                              -------          ^ expected `&str`, found integer\n  |                              |\n  |                              expected because of this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `if_mismatch` (bin \"if_mismatch\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: `if` and `else` have incompatible types\n --> src/main.rs:3:47\n  |\n3 |     let bag = if books > 5 { \"heavy\" } else { 0 };\n  |                              -------          ^ expected `&str`, found integer\n  |                              |\n  |                              expected because of this\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `if_mismatch` (bin \"if_mismatch\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/if_mismatch"
+    }
+   ]
+  },
+  "if_no_else.rs": {
+   "src": "fn main() {\n    let books = 7;\n    let bag = if books > 5 { \"heavy\" };\n    println!(\"This bag is {bag}.\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0317]: `if` may be missing an `else` clause\n --> src/main.rs:3:15\n  |\n3 |     let bag = if books > 5 { \"heavy\" };\n  |               ^^^^^^^^^^^^^^^-------^^\n  |               |              |\n  |               |              found here\n  |               expected `&str`, found `()`\n  |\n  = note: `if` expressions without `else` evaluate to `()`\n  = help: consider adding an `else` block that evaluates to the expected type\n\nFor more information about this error, try `rustc --explain E0317`.\nerror: could not compile `if_no_else` (bin \"if_no_else\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0317]: `if` may be missing an `else` clause\n --> src/main.rs:3:15\n  |\n3 |     let bag = if books > 5 { \"heavy\" };\n  |               ^^^^^^^^^^^^^^^-------^^\n  |               |              |\n  |               |              found here\n  |               expected `&str`, found `()`\n  |\n  = note: `if` expressions without `else` evaluate to `()`\n  = help: consider adding an `else` block that evaluates to the expected type\n\nFor more information about this error, try `rustc --explain E0317`.\nerror: could not compile `if_no_else` (bin \"if_no_else\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/if_no_else"
+    }
+   ]
+  },
+  "if_value.rs": {
+   "src": "fn main() {\n    let books = 7;\n    let bag = if books > 5 { \"heavy\" } else { \"light\" };\n    println!(\"This bag is {bag}.\");\n}\n",
+   "stdout": "This bag is heavy.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "This bag is heavy.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/if_value"
+    }
+   ]
+  },
+  "let_let.rs": {
+   "src": "fn main() {\n    let x = (let y = 6);\n    println!(\"{x}\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected expression, found `let` statement\n --> src/main.rs:2:14\n  |\n2 |     let x = (let y = 6);\n  |              ^^^\n  |\n  = note: only supported directly in conditions of `if` and `while` expressions\n\nwarning: unnecessary parentheses around assigned value\n --> src/main.rs:2:13\n  |\n2 |     let x = (let y = 6);\n  |             ^         ^\n  |\n  = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default\nhelp: remove these parentheses\n  |\n2 -     let x = (let y = 6);\n2 +     let x = let y = 6;\n  |\n\nerror: could not compile `let_let` (bin \"let_let\") due to 1 previous error; 1 warning emitted\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected expression, found `let` statement\n --> src/main.rs:2:14\n  |\n2 |     let x = (let y = 6);\n  |              ^^^\n  |\n  = note: only supported directly in conditions of `if` and `while` expressions\n\nwarning: unnecessary parentheses around assigned value\n --> src/main.rs:2:13\n  |\n2 |     let x = (let y = 6);\n  |             ^         ^\n  |\n  = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default\nhelp: remove these parentheses\n  |\n2 -     let x = (let y = 6);\n2 +     let x = let y = 6;\n  |\n\nerror: could not compile `let_let` (bin \"let_let\") due to 1 previous error; 1 warning emitted\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/let_let"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error: expected expression, found `let` statement\n --> src/main.rs:2:14\n  |\n2 |     let x = (let y = 6);\n  |              ^^^\n  |\n  = note: only supported directly in conditions of `if` and `while` expressions\n\nwarning: unnecessary parentheses around assigned value\n --> src/main.rs:2:13\n  |\n2 |     let x = (let y = 6);\n  |             ^         ^\n  |\n  = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default\nhelp: remove these parentheses\n  |\n2 -     let x = (let y = 6);\n2 +     let x = let y = 6 ;\n  |\n\nerror: could not compile `let_let` (bin \"let_let\") due to 1 previous error; 1 warning emitted\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error: expected expression, found `let` statement\n --> src/main.rs:2:14\n  |\n2 |     let x = (let y = 6);\n  |              ^^^\n  |\n  = note: only supported directly in conditions of `if` and `while` expressions\n\nwarning: unnecessary parentheses around assigned value\n --> src/main.rs:2:13\n  |\n2 |     let x = (let y = 6);\n  |             ^         ^\n  |\n  = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default\nhelp: remove these parentheses\n  |\n2 -     let x = (let y = 6);\n2 +     let x = let y = 6 ;\n  |\n\nerror: could not compile `let_let` (bin \"let_let\") due to 1 previous error; 1 warning emitted\n",
+      "exit": 101,
+      "dir": "~/rust-ch4/let_let"
+     }
+    ]
+   }
+  },
+  "logic.rs": {
+   "src": "fn main() {\n    let age = 12;\n    let has_card = true;\n    let can_borrow = has_card && age >= 8;\n    let free_entry = age < 5 || age > 64;\n    println!(\"can borrow: {can_borrow}\");\n    println!(\"free entry: {free_entry}\");\n    println!(\"no card: {}\", !has_card);\n}\n",
+   "stdout": "can borrow: true\nfree entry: false\nno card: false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "can borrow: true\nfree entry: false\nno card: false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/logic"
+    }
+   ]
+  },
+  "machine_fee.rs": {
+   "src": "fn main() {\n    println!(\"{}\", late_fee(0));\n    println!(\"{}\", late_fee(1));\n    println!(\"{}\", late_fee(4));\n    println!(\"{}\", late_fee(-2));\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "0\n25\n100\n-50\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0\n25\n100\n-50\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/machine_fee"
+    }
+   ]
+  },
+  "max_machine.rs": {
+   "src": "fn main() {\n    println!(\"{}\", max_of(3, 8));\n    println!(\"{}\", max_of(9, 2));\n    println!(\"{}\", max_of(-4, -7));\n}\n\nfn max_of(a: i32, b: i32) -> i32 {\n    if a > b { a } else { b }\n}\n",
+   "stdout": "8\n9\n-4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "8\n9\n-4\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/max_machine"
+    }
+   ]
+  },
+  "max_shut.rs": {
+   "src": "fn main() {\n    println!(\"{}\", max_of(3, 8));\n}\n\nfn max_of(a: i32, b: i32) -> i32 {\n    if a > b { a } else { b; }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:6:25\n  |\n6 |     if a > b { a } else { b; }\n  |                         ^^^-^^\n  |                         |  |\n  |                         |  help: remove this semicolon to return this value\n  |                         expected `i32`, found `()`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `max_shut` (bin \"max_shut\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:6:25\n  |\n6 |     if a > b { a } else { b; }\n  |                         ^^^-^^\n  |                         |  |\n  |                         |  help: remove this semicolon to return this value\n  |                         expected `i32`, found `()`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `max_shut` (bin \"max_shut\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/max_shut"
+    }
+   ]
+  },
+  "no_args.rs": {
+   "src": "fn main() {\n    let fee = late_fee();\n    println!(\"3 days late: {fee} cents\");\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "",
+   "stderr": "error[E0061]: this function takes 1 argument but 0 arguments were supplied\n --> src/main.rs:2:15\n  |\n2 |     let fee = late_fee();\n  |               ^^^^^^^^-- argument #1 of type `i32` is missing\n  |\nnote: function defined here\n --> src/main.rs:6:4\n  |\n6 | fn late_fee(days: i32) -> i32 {\n  |    ^^^^^^^^ ---------\nhelp: provide the argument\n  |\n2 |     let fee = late_fee(/* i32 */);\n  |                        +++++++++\n\nFor more information about this error, try `rustc --explain E0061`.\nerror: could not compile `no_args` (bin \"no_args\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0061]: this function takes 1 argument but 0 arguments were supplied\n --> src/main.rs:2:15\n  |\n2 |     let fee = late_fee();\n  |               ^^^^^^^^-- argument #1 of type `i32` is missing\n  |\nnote: function defined here\n --> src/main.rs:6:4\n  |\n6 | fn late_fee(days: i32) -> i32 {\n  |    ^^^^^^^^ ---------\nhelp: provide the argument\n  |\n2 |     let fee = late_fee(/* i32 */);\n  |                        +++++++++\n\nFor more information about this error, try `rustc --explain E0061`.\nerror: could not compile `no_args` (bin \"no_args\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/no_args"
+    }
+   ]
+  },
+  "no_type.rs": {
+   "src": "fn main() {\n    stamp_card(3);\n}\n\nfn stamp_card(books) {\n    println!(\"This reader borrowed {books} books.\");\n}\n",
+   "stdout": "",
+   "stderr": "error: expected one of `:`, `@`, or `|`, found `)`\n --> src/main.rs:5:20\n  |\n5 | fn stamp_card(books) {\n  |                    ^ expected one of `:`, `@`, or `|`\n  |\nhelp: if this is a parameter name, give it a type\n  |\n5 | fn stamp_card(books: TypeName) {\n  |                    ++++++++++\nhelp: if this is a type, explicitly ignore the parameter name\n  |\n5 | fn stamp_card(_: books) {\n  |               ++\n\nerror: could not compile `no_type` (bin \"no_type\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: expected one of `:`, `@`, or `|`, found `)`\n --> src/main.rs:5:20\n  |\n5 | fn stamp_card(books) {\n  |                    ^ expected one of `:`, `@`, or `|`\n  |\nhelp: if this is a parameter name, give it a type\n  |\n5 | fn stamp_card(books: TypeName) {\n  |                    ++++++++++\nhelp: if this is a type, explicitly ignore the parameter name\n  |\n5 | fn stamp_card(_: books) {\n  |               ++\n\nerror: could not compile `no_type` (bin \"no_type\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/no_type"
+    }
+   ]
+  },
+  "params.rs": {
+   "src": "fn main() {\n    stamp_card(3);\n    stamp_card(12);\n}\n\nfn stamp_card(books: i32) {\n    println!(\"This reader borrowed {books} books.\");\n}\n",
+   "stdout": "This reader borrowed 3 books.\nThis reader borrowed 12 books.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "This reader borrowed 3 books.\nThis reader borrowed 12 books.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/params"
+    }
+   ]
+  },
+  "parsons_card.rs": {
+   "src": "fn main() {\n    println!(\"Library card\");\n    print_line('*', 2);\n    println!(\"Done\");\n}\nfn print_line(symbol: char, count: i32) {\n    println!(\"{symbol} x {count}\");\n}\n",
+   "stdout": "Library card\n* x 2\nDone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Library card\n* x 2\nDone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/parsons_card"
+    }
+   ]
+  },
+  "parsons_grade.rs": {
+   "src": "fn main() {\n    println!(\"{} {} {}\", grade(95), grade(85), grade(50));\n}\nfn grade(score: i32) -> char {\n    if score >= 90 {\n        'A'\n    } else if score >= 80 {\n        'B'\n    } else {\n        'C'\n    }\n}\n",
+   "stdout": "A B C\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "A B C\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/parsons_grade"
+    }
+   ]
+  },
+  "predict_ifvalue.rs": {
+   "src": "fn main() {\n    let temp = 31;\n    let advice = if temp > 30 { \"shorts\" } else { \"jumper\" };\n    let fans = if temp > 25 { 2 } else { 0 };\n    println!(\"Wear {advice}, switch on {fans} fans.\");\n    println!(\"{}\", if fans == 0 { \"quiet\" } else { \"whirr\" });\n}\n",
+   "stdout": "Wear shorts, switch on 2 fans.\nwhirr\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Wear shorts, switch on 2 fans.\nwhirr\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/predict_ifvalue"
+    }
+   ]
+  },
+  "predict_order.rs": {
+   "src": "fn main() {\n    println!(\"start\");\n    one();\n    two();\n    println!(\"end\");\n}\n\nfn two() {\n    println!(\"two\");\n    one();\n}\n\nfn one() {\n    println!(\"one\");\n}\n",
+   "stdout": "start\none\ntwo\none\nend\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "start\none\ntwo\none\nend\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/predict_order"
+    }
+   ]
+  },
+  "predict_return.rs": {
+   "src": "fn main() {\n    let a = triple(2);\n    let b = triple(a) + 1;\n    println!(\"{a}\");\n    println!(\"{b}\");\n    println!(\"{}\", triple(triple(1)));\n}\n\nfn triple(n: i32) -> i32 {\n    n * 3\n}\n",
+   "stdout": "6\n19\n9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "6\n19\n9\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/predict_return"
+    }
+   ]
+  },
+  "predict_short.rs": {
+   "src": "fn main() {\n    let x = check('A', true) || check('B', true);\n    let y = check('C', true) && check('D', false);\n    println!(\"{x} {y}\");\n}\n\nfn check(name: char, value: bool) -> bool {\n    println!(\"{name}\");\n    value\n}\n",
+   "stdout": "A\nC\nD\ntrue false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "A\nC\nD\ntrue false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/predict_short"
+    }
+   ]
+  },
+  "receipt_fn.rs": {
+   "src": "fn main() {\n    print_receipt();\n    print_receipt();\n}\n\nfn print_receipt() {\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n    println!(\"Book returned. Thank you!\");\n    println!(\"~~~~~~~~~~~~~~~~~~~~~~~~~\");\n}\n",
+   "stdout": "~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n~~~~~~~~~~~~~~~~~~~~~~~~~\nBook returned. Thank you!\n~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/receipt_fn"
+    }
+   ]
+  },
+  "returns.rs": {
+   "src": "fn main() {\n    let fee = late_fee(3);\n    println!(\"3 days late: {fee} cents\");\n    println!(\"10 days late: {} cents\", late_fee(10));\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "3 days late: 75 cents\n10 days late: 250 cents\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 days late: 75 cents\n10 days late: 250 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/returns"
+    }
+   ]
+  },
+  "scope_gone.rs": {
+   "src": "fn main() {\n    {\n        let secret = 42;\n        println!(\"Inside: {secret}\");\n    }\n    println!(\"Outside: {secret}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find value `secret` in this scope\n --> src/main.rs:6:25\n  |\n6 |     println!(\"Outside: {secret}\");\n  |                         ^^^^^^\n  |\nhelp: the binding `secret` is available in a different scope in the same function\n --> src/main.rs:3:13\n  |\n3 |         let secret = 42;\n  |             ^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `scope_gone` (bin \"scope_gone\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find value `secret` in this scope\n --> src/main.rs:6:25\n  |\n6 |     println!(\"Outside: {secret}\");\n  |                         ^^^^^^\n  |\nhelp: the binding `secret` is available in a different scope in the same function\n --> src/main.rs:3:13\n  |\n3 |         let secret = 42;\n  |             ^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `scope_gone` (bin \"scope_gone\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/scope_gone"
+    }
+   ]
+  },
+  "semicolon_shut.rs": {
+   "src": "fn main() {\n    let fee = late_fee(3);\n    println!(\"3 days late: {fee} cents\");\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25;\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:6:27\n  |\n6 | fn late_fee(days: i32) -> i32 {\n  |    --------               ^^^ expected `i32`, found `()`\n  |    |\n  |    implicitly returns `()` as its body has no tail or `return` expression\n7 |     days * 25;\n  |              - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `semicolon_shut` (bin \"semicolon_shut\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:6:27\n  |\n6 | fn late_fee(days: i32) -> i32 {\n  |    --------               ^^^ expected `i32`, found `()`\n  |    |\n  |    implicitly returns `()` as its body has no tail or `return` expression\n7 |     days * 25;\n  |              - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `semicolon_shut` (bin \"semicolon_shut\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/semicolon_shut"
+    }
+   ]
+  },
+  "short_circuit.rs": {
+   "src": "fn main() {\n    println!(\"--- && ---\");\n    let a = asks(false) && asks(true);\n    println!(\"answer: {a}\");\n    println!(\"--- || ---\");\n    let b = asks(true) || asks(false);\n    println!(\"answer: {b}\");\n}\n\nfn asks(reply: bool) -> bool {\n    println!(\"  asked, got {reply}\");\n    reply\n}\n",
+   "stdout": "--- && ---\n  asked, got false\nanswer: false\n--- || ---\n  asked, got true\nanswer: true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "--- && ---\n  asked, got false\nanswer: false\n--- || ---\n  asked, got true\nanswer: true\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/short_circuit"
+    }
+   ]
+  },
+  "spot_argtype.rs": {
+   "src": "fn main() {\n    stamp_card(3);\n    stamp_card(2.5);\n    stamp_card(8);\n}\n\nfn stamp_card(books: i32) {\n    println!(\"This reader borrowed {books} books.\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:16\n  |\n3 |     stamp_card(2.5);\n  |     ---------- ^^^ expected `i32`, found floating-point number\n  |     |\n  |     arguments to this function are incorrect\n  |\nnote: function defined here\n --> src/main.rs:7:4\n  |\n7 | fn stamp_card(books: i32) {\n  |    ^^^^^^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_argtype` (bin \"spot_argtype\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:3:16\n  |\n3 |     stamp_card(2.5);\n  |     ---------- ^^^ expected `i32`, found floating-point number\n  |     |\n  |     arguments to this function are incorrect\n  |\nnote: function defined here\n --> src/main.rs:7:4\n  |\n7 | fn stamp_card(books: i32) {\n  |    ^^^^^^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_argtype` (bin \"spot_argtype\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/spot_argtype"
+    }
+   ]
+  },
+  "spot_ladder.rs": {
+   "src": "fn main() {\n    println!(\"{}\", size(2));\n    println!(\"{}\", size(30));\n    println!(\"{}\", size(8));\n}\n\nfn size(books: i32) -> char {\n    if books > 5 {\n        'M'\n    } else if books > 20 {\n        'L'\n    } else {\n        'S'\n    }\n}\n",
+   "stdout": "S\nM\nM\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "S\nM\nM\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/spot_ladder"
+    }
+   ]
+  },
+  "spot_shut.rs": {
+   "src": "fn main() {\n    println!(\"Area: {}\", area(4, 5));\n}\n\nfn area(width: i32, height: i32) -> i32 {\n    let result = width * height;\n    result;\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:5:37\n  |\n5 | fn area(width: i32, height: i32) -> i32 {\n  |    ----                             ^^^ expected `i32`, found `()`\n  |    |\n  |    implicitly returns `()` as its body has no tail or `return` expression\n6 |     let result = width * height;\n7 |     result;\n  |           - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_shut` (bin \"spot_shut\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:5:37\n  |\n5 | fn area(width: i32, height: i32) -> i32 {\n  |    ----                             ^^^ expected `i32`, found `()`\n  |    |\n  |    implicitly returns `()` as its body has no tail or `return` expression\n6 |     let result = width * height;\n7 |     result;\n  |           - help: remove this semicolon to return this value\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_shut` (bin \"spot_shut\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/spot_shut"
+    }
+   ]
+  },
+  "spot_truthy.rs": {
+   "src": "fn main() {\n    let late_days = 2;\n    let fee = late_days * 25;\n    if fee {\n        println!(\"Please pay {fee} cents.\");\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:8\n  |\n4 |     if fee {\n  |        ^^^ expected `bool`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_truthy` (bin \"spot_truthy\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:4:8\n  |\n4 |     if fee {\n  |        ^^^ expected `bool`, found integer\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_truthy` (bin \"spot_truthy\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/spot_truthy"
+    }
+   ]
+  },
+  "todo_demo.rs": {
+   "src": "fn main() {\n    println!(\"Fee for 3 days: {}\", late_fee(3));\n    println!(\"Fine for a lost book: {}\", lost_book_fine());\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n\nfn lost_book_fine() -> i32 {\n    todo!()\n}\n",
+   "stdout": "Fee for 3 days: 75\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:11:5:\nnot yet implemented\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Fee for 3 days: 75\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:11:5:\nnot yet implemented\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/todo_demo",
+     "merged": "Fee for 3 days: 75\n\nthread 'main' (1) panicked at src/main.rs:11:5:\nnot yet implemented\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "trace_compare.rs": {
+   "src": "fn main() {\n    println!(\"{} {} {} {}\", 3, 3 < 5, 3 <= 5, 3 == 5);\n    println!(\"{} {} {} {}\", 5, 5 < 5, 5 <= 5, 5 == 5);\n    println!(\"{} {} {} {}\", 7, 7 < 5, 7 <= 5, 7 == 5);\n}\n",
+   "stdout": "3 true true false\n5 false true true\n7 false false false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 true true false\n5 false true true\n7 false false false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/trace_compare"
+    }
+   ]
+  },
+  "trace_fee.rs": {
+   "src": "fn main() {\n    println!(\"{} {}\", 0, fee(0));\n    println!(\"{} {}\", 1, fee(1));\n    println!(\"{} {}\", 2, fee(2));\n    println!(\"{} {}\", 5, fee(5));\n}\n\nfn fee(days: i32) -> i32 {\n    days * days + 1\n}\n",
+   "stdout": "0 1\n1 2\n2 5\n5 26\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 1\n1 2\n2 5\n5 26\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/trace_fee"
+    }
+   ]
+  },
+  "two_params.rs": {
+   "src": "fn main() {\n    shelf_label(4, 'B');\n    shelf_label(12, 'Q');\n}\n\nfn shelf_label(row: i32, letter: char) {\n    println!(\"Shelf {letter}-{row}\");\n}\n",
+   "stdout": "Shelf B-4\nShelf Q-12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf B-4\nShelf Q-12\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/two_params"
+    }
+   ]
+  },
+  "typo_fn.rs": {
+   "src": "fn main() {\n    let fee = late_fe(3);\n    println!(\"{fee}\");\n}\n\nfn late_fee(days: i32) -> i32 {\n    days * 25\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find function `late_fe` in this scope\n --> src/main.rs:2:15\n  |\n2 |     let fee = late_fe(3);\n  |               ^^^^^^^\n...\n6 | fn late_fee(days: i32) -> i32 {\n  | ----------------------------- similarly named function `late_fee` defined here\n  |\nhelp: a function with a similar name exists\n  |\n2 |     let fee = late_fee(3);\n  |                      +\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `typo_fn` (bin \"typo_fn\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find function `late_fe` in this scope\n --> src/main.rs:2:15\n  |\n2 |     let fee = late_fe(3);\n  |               ^^^^^^^\n...\n6 | fn late_fee(days: i32) -> i32 {\n  | ----------------------------- similarly named function `late_fee` defined here\n  |\nhelp: a function with a similar name exists\n  |\n2 |     let fee = late_fee(3);\n  |                      +\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `typo_fn` (bin \"typo_fn\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/typo_fn"
+    }
+   ]
+  },
+  "unit_fn.rs": {
+   "src": "fn main() {\n    let result = say_hi();\n    println!(\"say_hi gave back: {result:?}\");\n}\n\nfn say_hi() {\n    println!(\"Hi!\");\n}\n",
+   "stdout": "Hi!\nsay_hi gave back: ()\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hi!\nsay_hi gave back: ()\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch4/unit_fn"
+    }
+   ]
+  },
+  "wrong_count.rs": {
+   "src": "fn main() {\n    shelf_label(4);\n}\n\nfn shelf_label(row: i32, letter: char) {\n    println!(\"Shelf {letter}-{row}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0061]: this function takes 2 arguments but 1 argument was supplied\n --> src/main.rs:2:5\n  |\n2 |     shelf_label(4);\n  |     ^^^^^^^^^^^--- argument #2 of type `char` is missing\n  |\nnote: function defined here\n --> src/main.rs:5:4\n  |\n5 | fn shelf_label(row: i32, letter: char) {\n  |    ^^^^^^^^^^^           ------------\nhelp: provide the argument\n  |\n2 |     shelf_label(4, /* char */);\n  |                  ++++++++++++\n\nFor more information about this error, try `rustc --explain E0061`.\nerror: could not compile `wrong_count` (bin \"wrong_count\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0061]: this function takes 2 arguments but 1 argument was supplied\n --> src/main.rs:2:5\n  |\n2 |     shelf_label(4);\n  |     ^^^^^^^^^^^--- argument #2 of type `char` is missing\n  |\nnote: function defined here\n --> src/main.rs:5:4\n  |\n5 | fn shelf_label(row: i32, letter: char) {\n  |    ^^^^^^^^^^^           ------------\nhelp: provide the argument\n  |\n2 |     shelf_label(4, /* char */);\n  |                  ++++++++++++\n\nFor more information about this error, try `rustc --explain E0061`.\nerror: could not compile `wrong_count` (bin \"wrong_count\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch4/wrong_count"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
