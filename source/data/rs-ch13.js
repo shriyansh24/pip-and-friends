@@ -1,0 +1,1195 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch13",
+  "versionDifferences": [
+   "backtrace_full.rs",
+   "get_add.rs",
+   "loop_map.rs",
+   "match_no_err.rs",
+   "no_hash.rs",
+   "parse_add.rs",
+   "spot_get.rs",
+   "three_orders.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): backtrace_full.rs, get_add.rs, loop_map.rs, match_no_err.rs, no_hash.rs, parse_add.rs, spot_get.rs, three_orders.rs."
+ },
+ "programs": {
+  "backtrace.rs": {
+   "src": "fn check_shelf(n: u32) {\n    if n == 0 {\n        panic!(\"shelf number can't be 0\");\n    }\n}\n\nfn main() {\n    check_shelf(4);\n    check_shelf(0);\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/backtrace"
+    }
+   ]
+  },
+  "backtrace_full.rs": {
+   "src": "fn check_shelf(n: u32) {\n    if n == 0 {\n        panic!(\"shelf number can't be 0\");\n    }\n}\n\nfn main() {\n    check_shelf(4);\n    check_shelf(0);\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/panicking.rs:679:5\n   1: core::panicking::panic_fmt\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs:80:14\n   2: backtrace::check_shelf\n             at ./src/main.rs:3:9\n   3: backtrace::main\n             at ./src/main.rs:9:5\n   4: <fn() as core::ops::function::FnOnce<()>>::call_once\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/function.rs:250:5\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "RUST_BACKTRACE=1 cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/panicking.rs:679:5\n   1: core::panicking::panic_fmt\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs:80:14\n   2: backtrace::check_shelf\n             at ./src/main.rs:3:9\n   3: backtrace::main\n             at ./src/main.rs:9:5\n   4: <fn() as core::ops::function::FnOnce<()>>::call_once\n             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/function.rs:250:5\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/backtrace"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5\n   1: core::panicking::panic_fmt\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14\n   2: backtrace::check_shelf\n             at ./src/main.rs:3:9\n   3: backtrace::main\n             at ./src/main.rs:9:5\n   4: <fn() as core::ops::function::FnOnce<()>>::call_once\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "RUST_BACKTRACE=1 cargo run -q",
+      "out": "",
+      "err": "\nthread 'main' (1) panicked at src/main.rs:3:9:\nshelf number can't be 0\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5\n   1: core::panicking::panic_fmt\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14\n   2: backtrace::check_shelf\n             at ./src/main.rs:3:9\n   3: backtrace::main\n             at ./src/main.rs:9:5\n   4: <fn() as core::ops::function::FnOnce<()>>::call_once\n             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/backtrace"
+     }
+    ]
+   }
+  },
+  "boss_error.rs": {
+   "src": "use std::collections::HashSet;\n\nfn main() {\n    let mut visitors: HashSet<String> = HashSet::new();\n    let name = String::from(\"Ada\");\n    visitors.insert(name);\n    println!(\"welcome, {name}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: borrow of moved value: `name`\n --> src/main.rs:7:25\n  |\n5 |     let name = String::from(\"Ada\");\n  |         ---- move occurs because `name` has type `String`, which does not implement the `Copy` trait\n6 |     visitors.insert(name);\n  |                     ---- value moved here\n7 |     println!(\"welcome, {name}\");\n  |                         ^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n6 |     visitors.insert(name.clone());\n  |                         ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: borrow of moved value: `name`\n --> src/main.rs:7:25\n  |\n5 |     let name = String::from(\"Ada\");\n  |         ---- move occurs because `name` has type `String`, which does not implement the `Copy` trait\n6 |     visitors.insert(name);\n  |                     ---- value moved here\n7 |     println!(\"welcome, {name}\");\n  |                         ^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n6 |     visitors.insert(name.clone());\n  |                         ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/boss_error"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "use std::collections::HashMap;\nuse std::num::ParseIntError;\n\nfn read_stock(pairs: &[(&str, &str)]) -> Result<HashMap<String, u32>, ParseIntError> {\n    let mut stock = HashMap::new();\n    for (title, count) in pairs {\n        let n = count.parse::<u32>()?;\n        stock.insert(title.to_string(), n);\n    }\n    Ok(stock)\n}\n\nfn main() {\n    let good = read_stock(&[(\"Dune\", \"3\"), (\"Emma\", \"5\")]);\n    match good {\n        Ok(stock) => println!(\"Dune: {:?}\", stock.get(\"Dune\")),\n        Err(e) => println!(\"bad list: {e}\"),\n    }\n    let bad = read_stock(&[(\"Dune\", \"3\"), (\"Emma\", \"five\")]);\n    if let Err(e) = bad {\n        println!(\"bad list: {e}\");\n    }\n}\n",
+   "stdout": "Dune: Some(3)\nbad list: invalid digit found in string\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune: Some(3)\nbad list: invalid digit found in string\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "use std::collections::HashMap;\nfn main() {\n    let mut shelf = HashMap::new();\n    shelf.insert(\"Dune\", 2);\n    let old = shelf.insert(\"Dune\", 5);\n    println!(\"{old:?} {:?}\", shelf.get(\"Dune\"));\n}\n",
+   "stdout": "Some(2) Some(5)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some(2) Some(5)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "use std::collections::HashMap;\n\nfn fee(days: &HashMap<&str, u32>, name: &str) -> Option<u32> {\n    let d = days.get(name)?;\n    Some(d * 10)\n}\n\nfn main() {\n    let mut days = HashMap::new();\n    days.insert(\"Ada\", 3);\n    days.insert(\"Ben\", 0);\n    let old = days.insert(\"Ada\", 5);\n    println!(\"{old:?}\");\n    println!(\"{:?}\", fee(&days, \"Ada\"));\n    println!(\"{:?}\", fee(&days, \"Cleo\"));\n    println!(\"{}\", fee(&days, \"Ben\").unwrap_or(99));\n    println!(\"{}\", days.len());\n}\n",
+   "stdout": "Some(3)\nSome(50)\nNone\n0\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some(3)\nSome(50)\nNone\n0\n2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/boss_predict"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let slips = [\"3\", \"x\", \"4\", \"-2\", \"1o\"];\n    let mut total = 0;\n    let mut bad = 0;\n    for s in slips {\n        match s.parse::<i32>() {\n            Ok(n) => total += n,\n            Err(_) => bad += 1,\n        }\n        println!(\"{s} {total} {bad}\");\n    }\n}\n",
+   "stdout": "3 3 0\nx 3 1\n4 7 1\n-2 5 1\n1o 5 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 3 0\nx 3 1\n4 7 1\n-2 5 1\n1o 5 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/boss_trace"
+    }
+   ]
+  },
+  "btree_preview.rs": {
+   "src": "use std::collections::BTreeMap;\n\nfn main() {\n    let mut fines = BTreeMap::new();\n    fines.insert(\"Cleo\", 120);\n    fines.insert(\"Ada\", 30);\n    fines.insert(\"Eve\", 10);\n    fines.insert(\"Ben\", 0);\n\n    for (name, fine) in &fines {\n        println!(\"{name} owes {fine}\");\n    }\n}\n",
+   "stdout": "Ada owes 30\nBen owes 0\nCleo owes 120\nEve owes 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada owes 30\nBen owes 0\nCleo owes 120\nEve owes 10\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/btree_preview"
+    }
+   ]
+  },
+  "capacity_map.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut m: HashMap<u32, u32> = HashMap::new();\n    println!(\"len {} capacity {}\", m.len(), m.capacity());\n    for i in 1..=8 {\n        m.insert(i, i * i);\n        println!(\"len {} capacity {}\", m.len(), m.capacity());\n    }\n}\n",
+   "stdout": "len 0 capacity 0\nlen 1 capacity 3\nlen 2 capacity 3\nlen 3 capacity 3\nlen 4 capacity 7\nlen 5 capacity 7\nlen 6 capacity 7\nlen 7 capacity 7\nlen 8 capacity 14\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "len 0 capacity 0\nlen 1 capacity 3\nlen 2 capacity 3\nlen 3 capacity 3\nlen 4 capacity 7\nlen 5 capacity 7\nlen 6 capacity 7\nlen 7 capacity 7\nlen 8 capacity 14\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/capacity_map"
+    }
+   ]
+  },
+  "count_small.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let text = \"to be or not to be\";\n    let mut counts: HashMap<&str, u32> = HashMap::new();\n    for word in text.split_whitespace() {\n        *counts.entry(word).or_insert(0) += 1;\n    }\n    let mut words = Vec::new();\n    for w in counts.keys() {\n        words.push(*w);\n    }\n    words.sort();\n    for w in words {\n        println!(\"{w}: {}\", counts[w]);\n    }\n}\n",
+   "stdout": "be: 2\nnot: 1\nor: 1\nto: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "be: 2\nnot: 1\nor: 1\nto: 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/count_small"
+    }
+   ]
+  },
+  "derive_hash.rs": {
+   "src": "use std::collections::HashMap;\n\n#[derive(Debug, PartialEq, Eq, Hash)]\nstruct Spot {\n    floor: u32,\n    row: u32,\n}\n\nfn main() {\n    let mut books = HashMap::new();\n    books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n    books.insert(Spot { floor: 1, row: 9 }, \"Emma\");\n    println!(\"{:?}\", books.get(&Spot { floor: 2, row: 5 }));\n    println!(\"{:?}\", books.get(&Spot { floor: 3, row: 1 }));\n}\n",
+   "stdout": "Some(\"Dune\")\nNone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some(\"Dune\")\nNone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/derive_hash"
+    }
+   ]
+  },
+  "entry_demo.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut stock: HashMap<&str, u32> = HashMap::new();\n    stock.insert(\"Dune\", 2);\n\n    stock.entry(\"Dune\").or_insert(10);\n    stock.entry(\"Emma\").or_insert(10);\n\n    println!(\"Dune: {}\", stock[\"Dune\"]);\n    println!(\"Emma: {}\", stock[\"Emma\"]);\n}\n",
+   "stdout": "Dune: 2\nEmma: 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune: 2\nEmma: 10\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/entry_demo"
+    }
+   ]
+  },
+  "expect_err.rs": {
+   "src": "fn main() {\n    let n: i32 = \"4x2\".parse().expect(\"need a number\");\n    println!(\"{n}\");\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:2:32:\nneed a number: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:2:32:\nneed a number: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/expect_err"
+    }
+   ]
+  },
+  "fill_gentle.rs": {
+   "src": "fn main() {\n    let typed = [\"3\", \"lots\", \"\"];\n    for t in typed {\n        let copies = t.parse::<u32>().unwrap_or(1);\n        println!(\"{copies} copies\");\n    }\n    if let Err(e) = \"lots\".parse::<u32>() {\n        println!(\"lots: {e}\");\n    }\n}\n",
+   "stdout": "3 copies\n1 copies\n1 copies\nlots: invalid digit found in string\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 copies\n1 copies\n1 copies\nlots: invalid digit found in string\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/fill_gentle"
+    }
+   ]
+  },
+  "fill_map.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut pets = HashMap::new();\n    pets.insert(\"Ada\", \"cat\");\n    pets.insert(\"Ben\", \"frog\");\n    if pets.contains_key(\"Ben\") {\n        println!(\"Ben has a {}\", pets[\"Ben\"]);\n    }\n    println!(\"{:?}\", pets.remove(\"Ada\"));\n    println!(\"{} pets left\", pets.len());\n}\n",
+   "stdout": "Ben has a frog\nSome(\"cat\")\n1 pets left\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ben has a frog\nSome(\"cat\")\n1 pets left\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/fill_map"
+    }
+   ]
+  },
+  "fill_q.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn total_pages(a: &str, b: &str) -> Result<u32, ParseIntError> {\n    let x = a.parse::<u32>()?;\n    let y = b.parse::<u32>()?;\n    Ok(x + y)\n}\n\nfn main() {\n    println!(\"{:?}\", total_pages(\"120\", \"80\"));\n    println!(\"{:?}\", total_pages(\"120\", \"eighty\"));\n}\n",
+   "stdout": "Ok(200)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(200)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/fill_q"
+    }
+   ]
+  },
+  "first_map.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut lockers: HashMap<&str, &str> = HashMap::new();\n    lockers.insert(\"Ada\", \"umbrella\");\n    lockers.insert(\"Ben\", \"skateboard\");\n    lockers.insert(\"Cleo\", \"violin\");\n\n    println!(\"Ada's locker: {:?}\", lockers.get(\"Ada\"));\n    println!(\"Zed's locker: {:?}\", lockers.get(\"Zed\"));\n    println!(\"{} lockers in use\", lockers.len());\n}\n",
+   "stdout": "Ada's locker: Some(\"umbrella\")\nZed's locker: None\n3 lockers in use\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada's locker: Some(\"umbrella\")\nZed's locker: None\n3 lockers in use\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/first_map"
+    }
+   ]
+  },
+  "gentle.rs": {
+   "src": "fn main() {\n    let a = \"7\".parse::<i32>().unwrap_or(1);\n    let b = \"seven\".parse::<i32>().unwrap_or(1);\n    let c = \"seven\".parse::<i32>().unwrap_or_default();\n    println!(\"{a} {b} {c}\");\n\n    if let Err(e) = \"\".parse::<i32>() {\n        println!(\"empty text: {e}\");\n    }\n}\n",
+   "stdout": "7 1 0\nempty text: cannot parse integer from empty string\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "7 1 0\nempty text: cannot parse integer from empty string\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/gentle"
+    }
+   ]
+  },
+  "get_add.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines: HashMap<&str, u32> = HashMap::new();\n    fines.insert(\"Ada\", 30);\n    let total = fines.get(\"Ada\") + 50;\n    println!(\"{total}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0369]: cannot add `{integer}` to `Option<&u32>`\n --> src/main.rs:6:34\n  |\n6 |     let total = fines.get(\"Ada\") + 50;\n  |                 ---------------- ^ -- {integer}\n  |                 |\n  |                 Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<{integer}>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/option.rs:598:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `get_add` (bin \"get_add\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0369]: cannot add `{integer}` to `Option<&u32>`\n --> src/main.rs:6:34\n  |\n6 |     let total = fines.get(\"Ada\") + 50;\n  |                 ---------------- ^ -- {integer}\n  |                 |\n  |                 Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<{integer}>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/option.rs:598:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `get_add` (bin \"get_add\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/get_add"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0369]: cannot add `{integer}` to `Option<&u32>`\n --> src/main.rs:6:34\n  |\n6 |     let total = fines.get(\"Ada\") + 50;\n  |                 ---------------- ^ -- {integer}\n  |                 |\n  |                 Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<{integer}>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:597:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `get_add` (bin \"get_add\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0369]: cannot add `{integer}` to `Option<&u32>`\n --> src/main.rs:6:34\n  |\n6 |     let total = fines.get(\"Ada\") + 50;\n  |                 ---------------- ^ -- {integer}\n  |                 |\n  |                 Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<{integer}>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:597:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `get_add` (bin \"get_add\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/get_add"
+     }
+    ]
+   }
+  },
+  "get_fixed.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines: HashMap<&str, u32> = HashMap::new();\n    fines.insert(\"Ada\", 30);\n\n    // 1. open the box with match\n    match fines.get(\"Ada\") {\n        Some(f) => println!(\"Ada owes {}\", f + 50),\n        None => println!(\"Ada owes nothing\"),\n    }\n    // 2. if let: only the Some case matters\n    if let Some(f) = fines.get(\"Zed\") {\n        println!(\"Zed owes {f}\");\n    }\n    // 3. copy the number out of the box, or use 0\n    let zed = fines.get(\"Zed\").copied().unwrap_or(0);\n    println!(\"Zed owes {zed}\");\n}\n",
+   "stdout": "Ada owes 80\nZed owes 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada owes 80\nZed owes 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/get_fixed"
+    }
+   ]
+  },
+  "get_machine.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines: HashMap<&str, u32> = HashMap::new();\n    fines.insert(\"Ada\", 30);\n    fines.insert(\"Ben\", 0);\n    println!(\"get(\\\"Ada\\\") = {:?}\", fines.get(\"Ada\"));\n    println!(\"get(\\\"Ben\\\") = {:?}\", fines.get(\"Ben\"));\n    println!(\"get(\\\"Zed\\\") = {:?}\", fines.get(\"Zed\"));\n    println!(\"contains_key(\\\"Ada\\\") = {}\", fines.contains_key(\"Ada\"));\n    println!(\"contains_key(\\\"Zed\\\") = {}\", fines.contains_key(\"Zed\"));\n    println!(\"fines[\\\"Ada\\\"] = {}\", fines[\"Ada\"]);\n}\n",
+   "stdout": "get(\"Ada\") = Some(30)\nget(\"Ben\") = Some(0)\nget(\"Zed\") = None\ncontains_key(\"Ada\") = true\ncontains_key(\"Zed\") = false\nfines[\"Ada\"] = 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "get(\"Ada\") = Some(30)\nget(\"Ben\") = Some(0)\nget(\"Zed\") = None\ncontains_key(\"Ada\") = true\ncontains_key(\"Zed\") = false\nfines[\"Ada\"] = 30\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/get_machine"
+    }
+   ]
+  },
+  "guest_set.rs": {
+   "src": "use std::collections::HashSet;\n\nfn main() {\n    let mut visitors = HashSet::new();\n    println!(\"{}\", visitors.insert(\"Ada\"));\n    println!(\"{}\", visitors.insert(\"Ben\"));\n    println!(\"{}\", visitors.insert(\"Ada\"));\n    println!(\"{} different visitors\", visitors.len());\n    println!(\"Ben came? {}\", visitors.contains(\"Ben\"));\n    println!(\"Zed came? {}\", visitors.contains(\"Zed\"));\n}\n",
+   "stdout": "true\ntrue\nfalse\n2 different visitors\nBen came? true\nZed came? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "true\ntrue\nfalse\n2 different visitors\nBen came? true\nZed came? false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/guest_set"
+    }
+   ]
+  },
+  "hash_numbers.rs": {
+   "src": "use std::collections::hash_map::DefaultHasher;\nuse std::hash::{Hash, Hasher};\n\nfn hash_of(word: &str) -> u64 {\n    let mut h = DefaultHasher::new();\n    word.hash(&mut h);\n    h.finish()\n}\n\nfn main() {\n    for word in [\"Ada\", \"Ben\", \"Ada\"] {\n        println!(\"{word} -> {}\", hash_of(word));\n    }\n}\n",
+   "stdout": "Ada -> 17390174587215729682\nBen -> 15664868601754151469\nAda -> 17390174587215729682\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada -> 17390174587215729682\nBen -> 15664868601754151469\nAda -> 17390174587215729682\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/hash_numbers"
+    }
+   ]
+  },
+  "in_real.rs": {
+   "src": "use std::collections::{HashMap, HashSet};\nuse std::error::Error;\n\nfn main() -> Result<(), Box<dyn Error>> {\n    let log = [\"ada 3\", \"ben 1\", \"ada 2\", \"cleo 4\", \"ben 2\"];\n    let mut minutes: HashMap<&str, u32> = HashMap::new();\n    let mut readers = HashSet::new();\n    for line in log {\n        let mut parts = line.split_whitespace();\n        let name = parts.next().ok_or(\"missing name\")?;\n        let mins: u32 = parts.next().ok_or(\"missing minutes\")?.parse()?;\n        *minutes.entry(name).or_insert(0) += mins;\n        readers.insert(name);\n    }\n    let mut names = Vec::new();\n    for n in &readers {\n        names.push(*n);\n    }\n    names.sort();\n    for n in names {\n        println!(\"{n}: {} minutes\", minutes[n]);\n    }\n    Ok(())\n}\n",
+   "stdout": "ada: 5 minutes\nben: 3 minutes\ncleo: 4 minutes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "ada: 5 minutes\nben: 3 minutes\ncleo: 4 minutes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/in_real"
+    }
+   ]
+  },
+  "index_panic.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines: HashMap<&str, u32> = HashMap::new();\n    fines.insert(\"Ada\", 30);\n    println!(\"Zed owes {}\", fines[\"Zed\"]);\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:6:34:\nno entry found for key\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:6:34:\nno entry found for key\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/index_panic"
+    }
+   ]
+  },
+  "insert_return.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut lockers = HashMap::new();\n    let first = lockers.insert(\"Ada\", \"umbrella\");\n    let second = lockers.insert(\"Ada\", \"scarf\");\n    println!(\"first insert gave back: {first:?}\");\n    println!(\"second insert gave back: {second:?}\");\n    println!(\"Ada's locker now: {:?}\", lockers.get(\"Ada\"));\n\n    let gone = lockers.remove(\"Ada\");\n    let again = lockers.remove(\"Ada\");\n    println!(\"remove gave back {gone:?}, then {again:?}\");\n    println!(\"{} lockers in use\", lockers.len());\n}\n",
+   "stdout": "first insert gave back: None\nsecond insert gave back: Some(\"umbrella\")\nAda's locker now: Some(\"scarf\")\nremove gave back Some(\"scarf\"), then None\n0 lockers in use\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "first insert gave back: None\nsecond insert gave back: Some(\"umbrella\")\nAda's locker now: Some(\"scarf\")\nremove gave back Some(\"scarf\"), then None\n0 lockers in use\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/insert_return"
+    }
+   ]
+  },
+  "loop_map.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines = HashMap::new();\n    fines.insert(\"Ada\", 30);\n    fines.insert(\"Ben\", 0);\n    fines.insert(\"Cleo\", 120);\n\n    for (name, fine) in &fines {\n        println!(\"{name} owes {fine}\");\n    }\n}\n",
+   "stdout": "Cleo owes 120\nAda owes 30\nBen owes 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Cleo owes 120\nAda owes 30\nBen owes 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/loop_map"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "Ada owes 30\nCleo owes 120\nBen owes 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "Ada owes 30\nCleo owes 120\nBen owes 0\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch13/loop_map"
+     }
+    ]
+   }
+  },
+  "main_err.rs": {
+   "src": "use std::error::Error;\n\nfn main() -> Result<(), Box<dyn Error>> {\n    println!(\"starting\");\n    let n = \"4x2\".parse::<i32>()?;\n    println!(\"got {n}\");\n    Ok(())\n}\n",
+   "stdout": "starting\n",
+   "stderr": "Error: ParseIntError { kind: InvalidDigit }\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "starting\n",
+     "err": "Error: ParseIntError { kind: InvalidDigit }\n",
+     "exit": 1,
+     "dir": "~/rust-ch13/main_err",
+     "merged": "starting\nError: ParseIntError { kind: InvalidDigit }\n"
+    }
+   ]
+  },
+  "main_result.rs": {
+   "src": "use std::error::Error;\n\nfn main() -> Result<(), Box<dyn Error>> {\n    let n = \"42\".parse::<i32>()?;\n    println!(\"got {n}\");\n    Ok(())\n}\n",
+   "stdout": "got 42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "got 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/main_result"
+    }
+   ]
+  },
+  "match_no_err.rs": {
+   "src": "fn main() {\n    for text in [\"42\", \"4x2\"] {\n        match text.parse::<i32>() {\n            Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n        }\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0004]: non-exhaustive patterns: `Err(_)` not covered\n --> src/main.rs:3:15\n  |\n3 |         match text.parse::<i32>() {\n  |               ^^^^^^^^^^^^^^^^^^^ pattern `Err(_)` not covered\n  |\nnote: `Result<i32, ParseIntError>` defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:558:0\n ::: /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:567:4\n  |\n  = note: not covered\n  = note: the matched value is of type `Result<i32, ParseIntError>`\nhelp: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown\n  |\n4 ~             Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n5 ~             Err(_) => todo!(),\n  |\n\nFor more information about this error, try `rustc --explain E0004`.\nerror: could not compile `match_no_err` (bin \"match_no_err\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0004]: non-exhaustive patterns: `Err(_)` not covered\n --> src/main.rs:3:15\n  |\n3 |         match text.parse::<i32>() {\n  |               ^^^^^^^^^^^^^^^^^^^ pattern `Err(_)` not covered\n  |\nnote: `Result<i32, ParseIntError>` defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:558:0\n ::: /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:567:4\n  |\n  = note: not covered\n  = note: the matched value is of type `Result<i32, ParseIntError>`\nhelp: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown\n  |\n4 ~             Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n5 ~             Err(_) => todo!(),\n  |\n\nFor more information about this error, try `rustc --explain E0004`.\nerror: could not compile `match_no_err` (bin \"match_no_err\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/match_no_err"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0004]: non-exhaustive patterns: `Err(_)` not covered\n --> src/main.rs:3:15\n  |\n3 |         match text.parse::<i32>() {\n  |               ^^^^^^^^^^^^^^^^^^^ pattern `Err(_)` not covered\n  |\nnote: `Result<i32, ParseIntError>` defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:557:0\n ::: /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:566:4\n  |\n  = note: not covered\n  = note: the matched value is of type `Result<i32, ParseIntError>`\nhelp: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown\n  |\n4 ~             Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n5 ~             Err(_) => todo!(),\n  |\n\nFor more information about this error, try `rustc --explain E0004`.\nerror: could not compile `match_no_err` (bin \"match_no_err\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0004]: non-exhaustive patterns: `Err(_)` not covered\n --> src/main.rs:3:15\n  |\n3 |         match text.parse::<i32>() {\n  |               ^^^^^^^^^^^^^^^^^^^ pattern `Err(_)` not covered\n  |\nnote: `Result<i32, ParseIntError>` defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:557:0\n ::: /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:566:4\n  |\n  = note: not covered\n  = note: the matched value is of type `Result<i32, ParseIntError>`\nhelp: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown\n  |\n4 ~             Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n5 ~             Err(_) => todo!(),\n  |\n\nFor more information about this error, try `rustc --explain E0004`.\nerror: could not compile `match_no_err` (bin \"match_no_err\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/match_no_err"
+     }
+    ]
+   }
+  },
+  "match_result.rs": {
+   "src": "fn main() {\n    for text in [\"42\", \"4x2\"] {\n        match text.parse::<i32>() {\n            Ok(n) => println!(\"{text}: the number {n}, doubled {}\", n * 2),\n            Err(e) => println!(\"{text}: problem: {e}\"),\n        }\n    }\n}\n",
+   "stdout": "42: the number 42, doubled 84\n4x2: problem: invalid digit found in string\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "42: the number 42, doubled 84\n4x2: problem: invalid digit found in string\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/match_result"
+    }
+   ]
+  },
+  "move_key.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut shelf: HashMap<String, u32> = HashMap::new();\n    let title = String::from(\"Dune\");\n    shelf.insert(title, 3);\n    println!(\"{title} is on shelf 3\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: borrow of moved value: `title`\n --> src/main.rs:7:16\n  |\n5 |     let title = String::from(\"Dune\");\n  |         ----- move occurs because `title` has type `String`, which does not implement the `Copy` trait\n6 |     shelf.insert(title, 3);\n  |                  ----- value moved here\n7 |     println!(\"{title} is on shelf 3\");\n  |                ^^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n6 |     shelf.insert(title.clone(), 3);\n  |                       ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `move_key` (bin \"move_key\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: borrow of moved value: `title`\n --> src/main.rs:7:16\n  |\n5 |     let title = String::from(\"Dune\");\n  |         ----- move occurs because `title` has type `String`, which does not implement the `Copy` trait\n6 |     shelf.insert(title, 3);\n  |                  ----- value moved here\n7 |     println!(\"{title} is on shelf 3\");\n  |                ^^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n6 |     shelf.insert(title.clone(), 3);\n  |                       ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `move_key` (bin \"move_key\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/move_key"
+    }
+   ]
+  },
+  "move_ok.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut shelf: HashMap<String, u32> = HashMap::new();\n    let title = String::from(\"Dune\");\n    let floor = 3;\n    println!(\"putting {title} on shelf {floor}\");\n    shelf.insert(title, floor);\n    println!(\"{:?} {floor}\", shelf.get(\"Dune\"));\n}\n",
+   "stdout": "putting Dune on shelf 3\nSome(3) 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "putting Dune on shelf 3\nSome(3) 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/move_ok"
+    }
+   ]
+  },
+  "must_use.rs": {
+   "src": "fn save_loan(title: &str) -> Result<(), String> {\n    if title.is_empty() {\n        return Err(String::from(\"no title\"));\n    }\n    println!(\"saved {title}\");\n    Ok(())\n}\n\nfn main() {\n    save_loan(\"Dune\");\n    save_loan(\"\");\n    println!(\"all done?\");\n}\n",
+   "stdout": "saved Dune\nall done?\n",
+   "stderr": "warning: unused `Result` that must be used\n  --> src/main.rs:10:5\n   |\n10 |     save_loan(\"Dune\");\n   |     ^^^^^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\n   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n10 |     let _ = save_loan(\"Dune\");\n   |     +++++++\n\nwarning: unused `Result` that must be used\n  --> src/main.rs:11:5\n   |\n11 |     save_loan(\"\");\n   |     ^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n11 |     let _ = save_loan(\"\");\n   |     +++++++\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "saved Dune\nall done?\n",
+     "err": "warning: unused `Result` that must be used\n  --> src/main.rs:10:5\n   |\n10 |     save_loan(\"Dune\");\n   |     ^^^^^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\n   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n10 |     let _ = save_loan(\"Dune\");\n   |     +++++++\n\nwarning: unused `Result` that must be used\n  --> src/main.rs:11:5\n   |\n11 |     save_loan(\"\");\n   |     ^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n11 |     let _ = save_loan(\"\");\n   |     +++++++\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch13/must_use",
+     "merged": "warning: unused `Result` that must be used\n  --> src/main.rs:10:5\n   |\n10 |     save_loan(\"Dune\");\n   |     ^^^^^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\n   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n10 |     let _ = save_loan(\"Dune\");\n   |     +++++++\n\nwarning: unused `Result` that must be used\n  --> src/main.rs:11:5\n   |\n11 |     save_loan(\"\");\n   |     ^^^^^^^^^^^^^\n   |\n   = note: this `Result` may be an `Err` variant, which should be handled\nhelp: use `let _ = ...` to ignore the resulting value\n   |\n11 |     let _ = save_loan(\"\");\n   |     +++++++\n\nsaved Dune\nall done?\n"
+    }
+   ]
+  },
+  "must_use_fixed.rs": {
+   "src": "fn save_loan(title: &str) -> Result<(), String> {\n    if title.is_empty() {\n        return Err(String::from(\"no title\"));\n    }\n    println!(\"saved {title}\");\n    Ok(())\n}\n\nfn main() {\n    for title in [\"Dune\", \"\"] {\n        if let Err(e) = save_loan(title) {\n            println!(\"could not save: {e}\");\n        }\n    }\n    println!(\"all done\");\n}\n",
+   "stdout": "saved Dune\ncould not save: no title\nall done\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "saved Dune\ncould not save: no title\nall done\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/must_use_fixed"
+    }
+   ]
+  },
+  "no_hash.rs": {
+   "src": "use std::collections::HashMap;\n\nstruct Spot {\n    floor: u32,\n    row: u32,\n}\n\nfn main() {\n    let mut books = HashMap::new();\n    books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n    println!(\"{}\", books.len());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ ------------------------- `Spot` doesn't satisfy the trait bound\n   |           |\n   |           the trait `Eq` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/collections/hash/map.rs:1332:4\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n   |\n 3 + #[derive(Eq)]\n 4 | struct Spot {\n   |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ ------------------------- `Spot` doesn't satisfy the trait bound\n   |           |\n   |           the trait `Hash` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/collections/hash/map.rs:1332:4\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n   |\n 3 + #[derive(Hash)]\n 4 | struct Spot {\n   |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash` (bin \"no_hash\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ ------------------------- `Spot` doesn't satisfy the trait bound\n   |           |\n   |           the trait `Eq` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/collections/hash/map.rs:1332:4\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n   |\n 3 + #[derive(Eq)]\n 4 | struct Spot {\n   |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ ------------------------- `Spot` doesn't satisfy the trait bound\n   |           |\n   |           the trait `Hash` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/collections/hash/map.rs:1332:4\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n   |\n 3 + #[derive(Hash)]\n 4 | struct Spot {\n   |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash` (bin \"no_hash\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/no_hash"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ the trait `Eq` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/collections/hash/map.rs:1333:4\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n   |\n 3 + #[derive(Eq)]\n 4 | struct Spot {\n   |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ the trait `Hash` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/collections/hash/map.rs:1333:4\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n   |\n 3 + #[derive(Hash)]\n 4 | struct Spot {\n   |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash` (bin \"no_hash\") due to 2 previous errors\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ the trait `Eq` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/collections/hash/map.rs:1333:4\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n   |\n 3 + #[derive(Eq)]\n 4 | struct Spot {\n   |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n  --> src/main.rs:10:11\n   |\n10 |     books.insert(Spot { floor: 2, row: 5 }, \"Dune\");\n   |           ^^^^^^ the trait `Hash` is not implemented for `Spot`\n   |\nnote: required by a bound in `HashMap::<K, V, S, A>::insert`\n  --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/collections/hash/map.rs:1333:4\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n   |\n 3 + #[derive(Hash)]\n 4 | struct Spot {\n   |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash` (bin \"no_hash\") due to 2 previous errors\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/no_hash"
+     }
+    ]
+   }
+  },
+  "no_hash_from.rs": {
+   "src": "use std::collections::HashMap;\n\nstruct Spot {\n    floor: u32,\n    row: u32,\n}\n\nfn main() {\n    let books = HashMap::from([(Spot { floor: 2, row: 5 }, \"Dune\")]);\n    println!(\"{}\", books.len());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n --> src/main.rs:9:17\n  |\n9 |     let books = HashMap::from([(Spot { floor: 2, row: 5 }, \"Dune\")]);\n  |                 ^^^^^^^ the trait `Eq` is not implemented for `Spot`\n  |\n  = note: required for `HashMap<Spot, &str>` to implement `From<[(Spot, &str); 1]>`\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n  |\n3 + #[derive(Eq)]\n4 | struct Spot {\n  |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n --> src/main.rs:9:17\n  |\n9 |     let books = HashMap::from([(Spot { floor: 2, row: 5 }, \"Dune\")]);\n  |                 ^^^^^^^ the trait `Hash` is not implemented for `Spot`\n  |\n  = note: required for `HashMap<Spot, &str>` to implement `From<[(Spot, &str); 1]>`\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n  |\n3 + #[derive(Hash)]\n4 | struct Spot {\n  |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash_from` (bin \"no_hash_from\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the trait bound `Spot: Eq` is not satisfied\n --> src/main.rs:9:17\n  |\n9 |     let books = HashMap::from([(Spot { floor: 2, row: 5 }, \"Dune\")]);\n  |                 ^^^^^^^ the trait `Eq` is not implemented for `Spot`\n  |\n  = note: required for `HashMap<Spot, &str>` to implement `From<[(Spot, &str); 1]>`\nhelp: consider annotating `Spot` with `#[derive(Eq)]`\n  |\n3 + #[derive(Eq)]\n4 | struct Spot {\n  |\n\nerror[E0277]: the trait bound `Spot: Hash` is not satisfied\n --> src/main.rs:9:17\n  |\n9 |     let books = HashMap::from([(Spot { floor: 2, row: 5 }, \"Dune\")]);\n  |                 ^^^^^^^ the trait `Hash` is not implemented for `Spot`\n  |\n  = note: required for `HashMap<Spot, &str>` to implement `From<[(Spot, &str); 1]>`\nhelp: consider annotating `Spot` with `#[derive(Hash)]`\n  |\n3 + #[derive(Hash)]\n4 | struct Spot {\n  |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `no_hash_from` (bin \"no_hash_from\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/no_hash_from"
+    }
+   ]
+  },
+  "no_star.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let text = \"to be or not to be\";\n    let mut counts: HashMap<&str, u32> = HashMap::new();\n    for word in text.split_whitespace() {\n        counts.entry(word).or_insert(0) += 1;\n    }\n    println!(\"{}\", counts[\"be\"]);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut u32`\n --> src/main.rs:7:9\n  |\n7 |         counts.entry(word).or_insert(0) += 1;\n  |         -------------------------------^^^^^\n  |         |\n  |         cannot use `+=` on type `&mut u32`\n  |\nhelp: `+=` can be used on `u32` if you dereference the left-hand side\n  |\n7 |         *counts.entry(word).or_insert(0) += 1;\n  |         +\n\nFor more information about this error, try `rustc --explain E0368`.\nerror: could not compile `no_star` (bin \"no_star\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut u32`\n --> src/main.rs:7:9\n  |\n7 |         counts.entry(word).or_insert(0) += 1;\n  |         -------------------------------^^^^^\n  |         |\n  |         cannot use `+=` on type `&mut u32`\n  |\nhelp: `+=` can be used on `u32` if you dereference the left-hand side\n  |\n7 |         *counts.entry(word).or_insert(0) += 1;\n  |         +\n\nFor more information about this error, try `rustc --explain E0368`.\nerror: could not compile `no_star` (bin \"no_star\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/no_star"
+    }
+   ]
+  },
+  "no_use.rs": {
+   "src": "fn main() {\n    let mut lockers: HashMap<&str, &str> = HashMap::new();\n    lockers.insert(\"Ada\", \"umbrella\");\n    println!(\"{}\", lockers.len());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find type `HashMap` in this scope\n --> src/main.rs:2:22\n  |\n2 |     let mut lockers: HashMap<&str, &str> = HashMap::new();\n  |                      ^^^^^^^ not found in this scope\n  |\nhelp: consider importing this struct\n  |\n1 + use std::collections::HashMap;\n  |\n\nerror[E0433]: cannot find type `HashMap` in this scope\n --> src/main.rs:2:44\n  |\n2 |     let mut lockers: HashMap<&str, &str> = HashMap::new();\n  |                                            ^^^^^^^ use of undeclared type `HashMap`\n  |\nhelp: consider importing this struct\n  |\n1 + use std::collections::HashMap;\n  |\n\nSome errors have detailed explanations: E0425, E0433.\nFor more information about an error, try `rustc --explain E0425`.\nerror: could not compile `no_use` (bin \"no_use\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find type `HashMap` in this scope\n --> src/main.rs:2:22\n  |\n2 |     let mut lockers: HashMap<&str, &str> = HashMap::new();\n  |                      ^^^^^^^ not found in this scope\n  |\nhelp: consider importing this struct\n  |\n1 + use std::collections::HashMap;\n  |\n\nerror[E0433]: cannot find type `HashMap` in this scope\n --> src/main.rs:2:44\n  |\n2 |     let mut lockers: HashMap<&str, &str> = HashMap::new();\n  |                                            ^^^^^^^ use of undeclared type `HashMap`\n  |\nhelp: consider importing this struct\n  |\n1 + use std::collections::HashMap;\n  |\n\nSome errors have detailed explanations: E0425, E0433.\nFor more information about an error, try `rustc --explain E0425`.\nerror: could not compile `no_use` (bin \"no_use\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/no_use"
+    }
+   ]
+  },
+  "option_q.rs": {
+   "src": "use std::collections::HashMap;\n\nfn doubled_fine(fines: &HashMap<&str, u32>, name: &str) -> Option<u32> {\n    let fine = fines.get(name)?;\n    Some(fine * 2)\n}\n\nfn main() {\n    let mut fines = HashMap::new();\n    fines.insert(\"Ada\", 30);\n    println!(\"{:?}\", doubled_fine(&fines, \"Ada\"));\n    println!(\"{:?}\", doubled_fine(&fines, \"Zed\"));\n}\n",
+   "stdout": "Some(60)\nNone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some(60)\nNone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/option_q"
+    }
+   ]
+  },
+  "panic_demo.rs": {
+   "src": "fn main() {\n    println!(\"opening the library\");\n    let shelves = 0;\n    if shelves == 0 {\n        panic!(\"the library has no shelves\");\n    }\n    println!(\"never printed\");\n}\n",
+   "stdout": "opening the library\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:5:9:\nthe library has no shelves\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "opening the library\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:5:9:\nthe library has no shelves\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/panic_demo",
+     "merged": "opening the library\n\nthread 'main' (1) panicked at src/main.rs:5:9:\nthe library has no shelves\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "parse_add.rs": {
+   "src": "fn main() {\n    let n = \"42\".parse::<i32>();\n    println!(\"{}\", n + 1);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0369]: cannot add `{integer}` to `Result<i32, ParseIntError>`\n --> src/main.rs:3:22\n  |\n3 |     println!(\"{}\", n + 1);\n  |                    - ^ - {integer}\n  |                    |\n  |                    Result<i32, ParseIntError>\n  |\nnote: `Result<i32, ParseIntError>` does not implement `Add<{integer}>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:558:0\n  |\n  = note: `Result<i32, ParseIntError>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `parse_add` (bin \"parse_add\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0369]: cannot add `{integer}` to `Result<i32, ParseIntError>`\n --> src/main.rs:3:22\n  |\n3 |     println!(\"{}\", n + 1);\n  |                    - ^ - {integer}\n  |                    |\n  |                    Result<i32, ParseIntError>\n  |\nnote: `Result<i32, ParseIntError>` does not implement `Add<{integer}>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/result.rs:558:0\n  |\n  = note: `Result<i32, ParseIntError>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `parse_add` (bin \"parse_add\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/parse_add"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0369]: cannot add `{integer}` to `Result<i32, ParseIntError>`\n --> src/main.rs:3:22\n  |\n3 |     println!(\"{}\", n + 1);\n  |                    - ^ - {integer}\n  |                    |\n  |                    Result<i32, ParseIntError>\n  |\nnote: `Result<i32, ParseIntError>` does not implement `Add<{integer}>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:557:0\n  |\n  = note: `Result<i32, ParseIntError>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `parse_add` (bin \"parse_add\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0369]: cannot add `{integer}` to `Result<i32, ParseIntError>`\n --> src/main.rs:3:22\n  |\n3 |     println!(\"{}\", n + 1);\n  |                    - ^ - {integer}\n  |                    |\n  |                    Result<i32, ParseIntError>\n  |\nnote: `Result<i32, ParseIntError>` does not implement `Add<{integer}>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:557:0\n  |\n  = note: `Result<i32, ParseIntError>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `parse_add` (bin \"parse_add\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/parse_add"
+     }
+    ]
+   }
+  },
+  "parse_machine.rs": {
+   "src": "fn main() {\n    println!(\"\\\"42\\\" -> {:?}\", \"42\".parse::<i32>());\n    println!(\"\\\"-7\\\" -> {:?}\", \"-7\".parse::<i32>());\n    println!(\"\\\"4x2\\\" -> {:?}\", \"4x2\".parse::<i32>());\n    println!(\"\\\" 42\\\" -> {:?}\", \" 42\".parse::<i32>());\n    println!(\"\\\"\\\" -> {:?}\", \"\".parse::<i32>());\n    println!(\"\\\"99999999999\\\" -> {:?}\", \"99999999999\".parse::<i32>());\n}\n",
+   "stdout": "\"42\" -> Ok(42)\n\"-7\" -> Ok(-7)\n\"4x2\" -> Err(ParseIntError { kind: InvalidDigit })\n\" 42\" -> Err(ParseIntError { kind: InvalidDigit })\n\"\" -> Err(ParseIntError { kind: Empty })\n\"99999999999\" -> Err(ParseIntError { kind: PosOverflow })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "\"42\" -> Ok(42)\n\"-7\" -> Ok(-7)\n\"4x2\" -> Err(ParseIntError { kind: InvalidDigit })\n\" 42\" -> Err(ParseIntError { kind: InvalidDigit })\n\"\" -> Err(ParseIntError { kind: Empty })\n\"99999999999\" -> Err(ParseIntError { kind: PosOverflow })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/parse_machine"
+    }
+   ]
+  },
+  "parse_result.rs": {
+   "src": "fn main() {\n    let good = \"42\".parse::<i32>();\n    let bad = \"4x2\".parse::<i32>();\n    println!(\"{good:?}\");\n    println!(\"{bad:?}\");\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/parse_result"
+    }
+   ]
+  },
+  "parsons_q.rs": {
+   "src": "use std::num::ParseIntError;\nfn double(text: &str) -> Result<u32, ParseIntError> {\n    let n = text.parse::<u32>()?;\n    Ok(n * 2)\n}\nfn main() {\n    println!(\"{:?}\", double(\"21\"));\n    println!(\"{:?}\", double(\"lots\"));\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/parsons_q"
+    }
+   ]
+  },
+  "parsons_q_alt.rs": {
+   "src": "use std::num::ParseIntError;\nfn main() {\n    println!(\"{:?}\", double(\"21\"));\n    println!(\"{:?}\", double(\"lots\"));\n}\nfn double(text: &str) -> Result<u32, ParseIntError> {\n    let n = text.parse::<u32>()?;\n    Ok(n * 2)\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/parsons_q_alt"
+    }
+   ]
+  },
+  "parsons_votes.rs": {
+   "src": "use std::collections::HashMap;\nfn main() {\n    let mut votes = HashMap::new();\n    for pick in [\"tea\", \"milk\", \"tea\"] {\n        *votes.entry(pick).or_insert(0) += 1;\n    }\n    println!(\"tea {} milk {}\", votes[\"tea\"], votes[\"milk\"]);\n}\n",
+   "stdout": "tea 2 milk 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "tea 2 milk 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/parsons_votes"
+    }
+   ]
+  },
+  "predict_insert.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut seats = HashMap::new();\n    println!(\"{:?}\", seats.insert(\"window\", 1));\n    println!(\"{:?}\", seats.insert(\"aisle\", 2));\n    println!(\"{:?}\", seats.insert(\"window\", 3));\n    println!(\"{:?}\", seats.get(\"window\"));\n    println!(\"{}\", seats.len());\n}\n",
+   "stdout": "None\nNone\nSome(1)\nSome(3)\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "None\nNone\nSome(1)\nSome(3)\n2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/predict_insert"
+    }
+   ]
+  },
+  "predict_letters.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut counts = HashMap::new();\n    for c in \"banana\".chars() {\n        *counts.entry(c).or_insert(0) += 1;\n    }\n    println!(\"{:?}\", counts.get(&'a'));\n    println!(\"{:?}\", counts.get(&'n'));\n    println!(\"{:?}\", counts.get(&'z'));\n    println!(\"{}\", counts.len());\n}\n",
+   "stdout": "Some(3)\nSome(2)\nNone\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some(3)\nSome(2)\nNone\n3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/predict_letters"
+    }
+   ]
+  },
+  "predict_parse.rs": {
+   "src": "fn main() {\n    for text in [\"8\", \"08\", \"8.5\", \"-8\"] {\n        match text.parse::<u32>() {\n            Ok(n) => println!(\"ok {n}\"),\n            Err(_) => println!(\"not a u32: {text}\"),\n        }\n    }\n}\n",
+   "stdout": "ok 8\nok 8\nnot a u32: 8.5\nnot a u32: -8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "ok 8\nok 8\nnot a u32: 8.5\nnot a u32: -8\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/predict_parse"
+    }
+   ]
+  },
+  "predict_q.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn renew(days: &str) -> Result<u32, ParseIntError> {\n    println!(\"checking {days}\");\n    let d = days.parse::<u32>()?;\n    println!(\"ok\");\n    Ok(d + 7)\n}\n\nfn main() {\n    println!(\"{:?}\", renew(\"7\"));\n    println!(\"{:?}\", renew(\"week\"));\n}\n",
+   "stdout": "checking 7\nok\nOk(14)\nchecking week\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "checking 7\nok\nOk(14)\nchecking week\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/predict_q"
+    }
+   ]
+  },
+  "question.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn add_texts(a: &str, b: &str) -> Result<i32, ParseIntError> {\n    let x = a.parse::<i32>()?;\n    let y = b.parse::<i32>()?;\n    Ok(x + y)\n}\n\nfn main() {\n    println!(\"{:?}\", add_texts(\"40\", \"2\"));\n    println!(\"{:?}\", add_texts(\"40\", \"two\"));\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/question"
+    }
+   ]
+  },
+  "question_long.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn add_texts(a: &str, b: &str) -> Result<i32, ParseIntError> {\n    let x = match a.parse::<i32>() {\n        Ok(n) => n,\n        Err(e) => return Err(e),\n    };\n    let y = match b.parse::<i32>() {\n        Ok(n) => n,\n        Err(e) => return Err(e),\n    };\n    Ok(x + y)\n}\n\nfn main() {\n    println!(\"{:?}\", add_texts(\"40\", \"2\"));\n    println!(\"{:?}\", add_texts(\"40\", \"two\"));\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/question_long"
+    }
+   ]
+  },
+  "question_main.rs": {
+   "src": "fn main() {\n    let n = \"42\".parse::<i32>()?;\n    println!(\"{n}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:2:32\n  |\n1 | fn main() {\n  | --------- this function should return `Result` or `Option` to accept `?`\n2 |     let n = \"42\".parse::<i32>()?;\n  |                                ^ cannot use the `?` operator in a function that returns `()`\n  |\nhelp: consider adding return type\n  |\n1 ~ fn main() -> Result<(), Box<dyn std::error::Error>> {\n2 |     let n = \"42\".parse::<i32>()?;\n3 |     println!(\"{n}\");\n4 +     Ok(())\n  |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `question_main` (bin \"question_main\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:2:32\n  |\n1 | fn main() {\n  | --------- this function should return `Result` or `Option` to accept `?`\n2 |     let n = \"42\".parse::<i32>()?;\n  |                                ^ cannot use the `?` operator in a function that returns `()`\n  |\nhelp: consider adding return type\n  |\n1 ~ fn main() -> Result<(), Box<dyn std::error::Error>> {\n2 |     let n = \"42\".parse::<i32>()?;\n3 |     println!(\"{n}\");\n4 +     Ok(())\n  |\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `question_main` (bin \"question_main\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/question_main"
+    }
+   ]
+  },
+  "renew.rs": {
+   "src": "use std::io;\n\nfn main() {\n    println!(\"Renew for how many days?\");\n    let mut line = String::new();\n    io::stdin().read_line(&mut line).expect(\"could not read a line\");\n    match line.trim().parse::<u32>() {\n        Ok(days) => println!(\"Renewed for {days} days.\"),\n        Err(e) => println!(\"Sorry, that's not a number of days ({e}).\"),\n    }\n}\n",
+   "stdout": "Renew for how many days?\nSorry, that's not a number of days (invalid digit found in string).\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Renew for how many days?\nSorry, that's not a number of days (invalid digit found in string).\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/renew"
+    }
+   ],
+   "stdin": "two weeks\n",
+   "screen": "Renew for how many days?\ntwo weeks\nSorry, that's not a number of days (invalid digit found in string).\n"
+  },
+  "road_first.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn add_texts(a: &str, b: &str) -> Result<i32, ParseIntError> {\n    println!(\"reading a\");\n    let x = a.parse::<i32>()?;\n    println!(\"reading b\");\n    let y = b.parse::<i32>()?;\n    println!(\"adding\");\n    Ok(x + y)\n}\n\nfn main() {\n    let answer = add_texts(\"forty\", \"2\");\n    println!(\"caller got {answer:?}\");\n}\n",
+   "stdout": "reading a\ncaller got Err(ParseIntError { kind: InvalidDigit })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading a\ncaller got Err(ParseIntError { kind: InvalidDigit })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/road_first"
+    }
+   ]
+  },
+  "road_ok.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn add_texts(a: &str, b: &str) -> Result<i32, ParseIntError> {\n    println!(\"reading a\");\n    let x = a.parse::<i32>()?;\n    println!(\"reading b\");\n    let y = b.parse::<i32>()?;\n    println!(\"adding\");\n    Ok(x + y)\n}\n\nfn main() {\n    let answer = add_texts(\"40\", \"2\");\n    println!(\"caller got {answer:?}\");\n}\n",
+   "stdout": "reading a\nreading b\nadding\ncaller got Ok(42)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading a\nreading b\nadding\ncaller got Ok(42)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/road_ok"
+    }
+   ]
+  },
+  "road_second.rs": {
+   "src": "use std::num::ParseIntError;\n\nfn add_texts(a: &str, b: &str) -> Result<i32, ParseIntError> {\n    println!(\"reading a\");\n    let x = a.parse::<i32>()?;\n    println!(\"reading b\");\n    let y = b.parse::<i32>()?;\n    println!(\"adding\");\n    Ok(x + y)\n}\n\nfn main() {\n    let answer = add_texts(\"40\", \"\");\n    println!(\"caller got {answer:?}\");\n}\n",
+   "stdout": "reading a\nreading b\ncaller got Err(ParseIntError { kind: Empty })\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading a\nreading b\ncaller got Err(ParseIntError { kind: Empty })\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/road_second"
+    }
+   ]
+  },
+  "set_first.rs": {
+   "src": "use std::collections::HashSet;\n\nfn main() {\n    let loans = vec![\"Dune\", \"Emma\", \"Dune\", \"Ivanhoe\", \"Emma\", \"Dune\"];\n    let mut seen = HashSet::new();\n    let mut first_time = Vec::new();\n    for title in &loans {\n        if seen.insert(*title) {\n            first_time.push(*title);\n        }\n    }\n    println!(\"{} loans, {} different books\", loans.len(), seen.len());\n    println!(\"{first_time:?}\");\n}\n",
+   "stdout": "6 loans, 3 different books\n[\"Dune\", \"Emma\", \"Ivanhoe\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "6 loans, 3 different books\n[\"Dune\", \"Emma\", \"Ivanhoe\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/set_first"
+    }
+   ]
+  },
+  "sizes.rs": {
+   "src": "use std::collections::HashMap;\nuse std::mem::size_of;\nuse std::num::ParseIntError;\n\nfn main() {\n    println!(\"HashMap<&str, u32>: {} bytes\", size_of::<HashMap<&str, u32>>());\n    println!(\"Result<u32, ParseIntError>: {} bytes\", size_of::<Result<u32, ParseIntError>>());\n    println!(\"Result<(), String>: {} bytes\", size_of::<Result<(), String>>());\n    println!(\"Option<u32>: {} bytes\", size_of::<Option<u32>>());\n}\n",
+   "stdout": "HashMap<&str, u32>: 48 bytes\nResult<u32, ParseIntError>: 8 bytes\nResult<(), String>: 24 bytes\nOption<u32>: 8 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "HashMap<&str, u32>: 48 bytes\nResult<u32, ParseIntError>: 8 bytes\nResult<(), String>: 24 bytes\nOption<u32>: 8 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/sizes"
+    }
+   ]
+  },
+  "sorted_keys.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines = HashMap::new();\n    fines.insert(\"Cleo\", 120);\n    fines.insert(\"Ada\", 30);\n    fines.insert(\"Eve\", 10);\n    fines.insert(\"Ben\", 0);\n\n    let mut names = Vec::new();\n    for name in fines.keys() {\n        names.push(*name);\n    }\n    names.sort();\n    for name in names {\n        println!(\"{name} owes {}\", fines[name]);\n    }\n}\n",
+   "stdout": "Ada owes 30\nBen owes 0\nCleo owes 120\nEve owes 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada owes 30\nBen owes 0\nCleo owes 120\nEve owes 10\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/sorted_keys"
+    }
+   ]
+  },
+  "spot_get.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut pages: HashMap<&str, u32> = HashMap::new();\n    pages.insert(\"Dune\", 412);\n    pages.insert(\"Emma\", 474);\n    let both = pages.get(\"Dune\") + pages[\"Emma\"];\n    println!(\"{both} pages to read\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0369]: cannot add `u32` to `Option<&u32>`\n --> src/main.rs:7:34\n  |\n7 |     let both = pages.get(\"Dune\") + pages[\"Emma\"];\n  |                ----------------- ^ ------------- u32\n  |                |\n  |                Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<u32>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/option.rs:598:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `spot_get` (bin \"spot_get\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0369]: cannot add `u32` to `Option<&u32>`\n --> src/main.rs:7:34\n  |\n7 |     let both = pages.get(\"Dune\") + pages[\"Emma\"];\n  |                ----------------- ^ ------------- u32\n  |                |\n  |                Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<u32>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/option.rs:598:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `spot_get` (bin \"spot_get\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/spot_get"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0369]: cannot add `u32` to `Option<&u32>`\n --> src/main.rs:7:34\n  |\n7 |     let both = pages.get(\"Dune\") + pages[\"Emma\"];\n  |                ----------------- ^ ------------- u32\n  |                |\n  |                Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<u32>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:597:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `spot_get` (bin \"spot_get\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0369]: cannot add `u32` to `Option<&u32>`\n --> src/main.rs:7:34\n  |\n7 |     let both = pages.get(\"Dune\") + pages[\"Emma\"];\n  |                ----------------- ^ ------------- u32\n  |                |\n  |                Option<&u32>\n  |\nnote: `Option<&u32>` does not implement `Add<u32>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:597:0\n  |\n  = note: `Option<&u32>` is defined in another crate\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `spot_get` (bin \"spot_get\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch13/spot_get"
+     }
+    ]
+   }
+  },
+  "spot_move.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut owners: HashMap<String, String> = HashMap::new();\n    let book = String::from(\"Emma\");\n    let reader = String::from(\"Ada\");\n    owners.insert(book, reader);\n    println!(\"{} reader(s)\", owners.len());\n    println!(\"{reader} has Emma\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: borrow of moved value: `reader`\n --> src/main.rs:9:16\n  |\n6 |     let reader = String::from(\"Ada\");\n  |         ------ move occurs because `reader` has type `String`, which does not implement the `Copy` trait\n7 |     owners.insert(book, reader);\n  |                         ------ value moved here\n8 |     println!(\"{} reader(s)\", owners.len());\n9 |     println!(\"{reader} has Emma\");\n  |                ^^^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n7 |     owners.insert(book, reader.clone());\n  |                               ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `spot_move` (bin \"spot_move\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: borrow of moved value: `reader`\n --> src/main.rs:9:16\n  |\n6 |     let reader = String::from(\"Ada\");\n  |         ------ move occurs because `reader` has type `String`, which does not implement the `Copy` trait\n7 |     owners.insert(book, reader);\n  |                         ------ value moved here\n8 |     println!(\"{} reader(s)\", owners.len());\n9 |     println!(\"{reader} has Emma\");\n  |                ^^^^^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n7 |     owners.insert(book, reader.clone());\n  |                               ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `spot_move` (bin \"spot_move\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/spot_move"
+    }
+   ]
+  },
+  "spot_q.rs": {
+   "src": "fn total(a: &str, b: &str) -> i32 {\n    let x = a.parse::<i32>()?;\n    let y = b.parse::<i32>()?;\n    x + y\n}\n\nfn main() {\n    println!(\"{}\", total(\"40\", \"2\"));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:2:29\n  |\n1 | fn total(a: &str, b: &str) -> i32 {\n  | --------------------------------- this function should return `Result` or `Option` to accept `?`\n2 |     let x = a.parse::<i32>()?;\n  |                             ^ cannot use the `?` operator in a function that returns `i32`\n\nerror[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:3:29\n  |\n1 | fn total(a: &str, b: &str) -> i32 {\n  | --------------------------------- this function should return `Result` or `Option` to accept `?`\n2 |     let x = a.parse::<i32>()?;\n3 |     let y = b.parse::<i32>()?;\n  |                             ^ cannot use the `?` operator in a function that returns `i32`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_q` (bin \"spot_q\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:2:29\n  |\n1 | fn total(a: &str, b: &str) -> i32 {\n  | --------------------------------- this function should return `Result` or `Option` to accept `?`\n2 |     let x = a.parse::<i32>()?;\n  |                             ^ cannot use the `?` operator in a function that returns `i32`\n\nerror[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)\n --> src/main.rs:3:29\n  |\n1 | fn total(a: &str, b: &str) -> i32 {\n  | --------------------------------- this function should return `Result` or `Option` to accept `?`\n2 |     let x = a.parse::<i32>()?;\n3 |     let y = b.parse::<i32>()?;\n  |                             ^ cannot use the `?` operator in a function that returns `i32`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_q` (bin \"spot_q\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/spot_q"
+    }
+   ]
+  },
+  "spot_unwrap.rs": {
+   "src": "fn main() {\n    let ages = [\"12\", \"9\", \"ten\", \"11\"];\n    let mut total = 0;\n    for a in ages {\n        println!(\"adding {a}\");\n        total += a.parse::<u32>().unwrap();\n    }\n    println!(\"total {total}\");\n}\n",
+   "stdout": "adding 12\nadding 9\nadding ten\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:6:35:\ncalled `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "adding 12\nadding 9\nadding ten\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:6:35:\ncalled `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/spot_unwrap",
+     "merged": "adding 12\nadding 9\nadding ten\n\nthread 'main' (1) panicked at src/main.rs:6:35:\ncalled `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "three_orders.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    for run in 1..=3 {\n        let mut fines = HashMap::new();\n        fines.insert(\"Ada\", 30);\n        fines.insert(\"Ben\", 0);\n        fines.insert(\"Cleo\", 120);\n        fines.insert(\"Dev\", 45);\n        fines.insert(\"Eve\", 10);\n        println!(\"map {run}: {fines:?}\");\n    }\n}\n",
+   "stdout": "map 1: {\"Cleo\": 120, \"Ben\": 0, \"Dev\": 45, \"Eve\": 10, \"Ada\": 30}\nmap 2: {\"Dev\": 45, \"Ben\": 0, \"Ada\": 30, \"Cleo\": 120, \"Eve\": 10}\nmap 3: {\"Eve\": 10, \"Dev\": 45, \"Cleo\": 120, \"Ada\": 30, \"Ben\": 0}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "map 1: {\"Cleo\": 120, \"Ben\": 0, \"Dev\": 45, \"Eve\": 10, \"Ada\": 30}\nmap 2: {\"Dev\": 45, \"Ben\": 0, \"Ada\": 30, \"Cleo\": 120, \"Eve\": 10}\nmap 3: {\"Eve\": 10, \"Dev\": 45, \"Cleo\": 120, \"Ada\": 30, \"Ben\": 0}\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/three_orders"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "map 1: {\"Ada\": 30, \"Cleo\": 120, \"Dev\": 45, \"Ben\": 0, \"Eve\": 10}\nmap 2: {\"Dev\": 45, \"Eve\": 10, \"Ada\": 30, \"Cleo\": 120, \"Ben\": 0}\nmap 3: {\"Cleo\": 120, \"Dev\": 45, \"Ben\": 0, \"Ada\": 30, \"Eve\": 10}\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "map 1: {\"Ada\": 30, \"Cleo\": 120, \"Dev\": 45, \"Ben\": 0, \"Eve\": 10}\nmap 2: {\"Dev\": 45, \"Eve\": 10, \"Ada\": 30, \"Cleo\": 120, \"Ben\": 0}\nmap 3: {\"Cleo\": 120, \"Dev\": 45, \"Ben\": 0, \"Ada\": 30, \"Eve\": 10}\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch13/three_orders"
+     }
+    ]
+   }
+  },
+  "trace_total.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let mut fines = HashMap::new();\n    fines.insert(\"Dev\", 45);\n    fines.insert(\"Ada\", 30);\n    fines.insert(\"Cleo\", 120);\n    let mut names = Vec::new();\n    for name in fines.keys() {\n        names.push(*name);\n    }\n    names.sort();\n    let mut total = 0;\n    for name in names {\n        total += fines[name];\n        println!(\"{name} {} {total}\", fines[name]);\n    }\n}\n",
+   "stdout": "Ada 30 30\nCleo 120 150\nDev 45 195\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada 30 30\nCleo 120 150\nDev 45 195\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/trace_total"
+    }
+   ]
+  },
+  "unwrap_err.rs": {
+   "src": "fn main() {\n    let n: i32 = \"4x2\".parse().unwrap();\n    println!(\"{n}\");\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:2:32:\ncalled `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:2:32:\ncalled `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch13/unwrap_err"
+    }
+   ]
+  },
+  "word_count.rs": {
+   "src": "use std::collections::HashMap;\n\nfn main() {\n    let text = \"the cat saw the dog and the cat ran\";\n    let mut counts: HashMap<&str, u32> = HashMap::new();\n    for word in text.split_whitespace() {\n        *counts.entry(word).or_insert(0) += 1;\n    }\n    println!(\"the: {}\", counts[\"the\"]);\n    println!(\"cat: {}\", counts[\"cat\"]);\n    println!(\"dog: {}\", counts[\"dog\"]);\n    println!(\"{} different words\", counts.len());\n}\n",
+   "stdout": "the: 3\ncat: 2\ndog: 1\n6 different words\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "the: 3\ncat: 2\ndog: 1\n6 different words\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch13/word_count"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
