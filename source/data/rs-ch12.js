@@ -1,0 +1,1064 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch12",
+  "versionDifferences": [
+   "index_error.rs",
+   "push_wrong.rs",
+   "spot_index.rs",
+   "spot_push.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): index_error.rs, push_wrong.rs, spot_index.rs, spot_push.rs."
+ },
+ "programs": {
+  "bad_escape.rs": {
+   "src": "fn main() {\n    let path = \"C:\\data\";\n    println!(\"{path}\");\n}\n",
+   "stdout": "",
+   "stderr": "error: unknown character escape: `d`\n --> src/main.rs:2:20\n  |\n2 |     let path = \"C:\\data\";\n  |                    ^ unknown character escape\n  |\n  = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>\nhelp: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal\n  |\n2 |     let path = r\"C:\\data\";\n  |                +\n\nerror: could not compile `bad_escape` (bin \"bad_escape\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: unknown character escape: `d`\n --> src/main.rs:2:20\n  |\n2 |     let path = \"C:\\data\";\n  |                    ^ unknown character escape\n  |\n  = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>\nhelp: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal\n  |\n2 |     let path = r\"C:\\data\";\n  |                +\n\nerror: could not compile `bad_escape` (bin \"bad_escape\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/bad_escape"
+    }
+   ]
+  },
+  "boss_error.rs": {
+   "src": "fn main() {\n    let name = \"Mabel\";\n    let title = \"Dr. \" + name;\n    println!(\"{title}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0369]: cannot add `&str` to `&str`\n --> src/main.rs:3:24\n  |\n3 |     let title = \"Dr. \" + name;\n  |                 ------ ^ ---- &str\n  |                 |      |\n  |                 |      `+` cannot be used to concatenate two `&str` strings\n  |                 &str\n  |\n  = note: string concatenation requires an owned `String` on the left\nhelp: create an owned `String` from a string reference\n  |\n3 |     let title = \"Dr. \".to_owned() + name;\n  |                       +++++++++++\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0369]: cannot add `&str` to `&str`\n --> src/main.rs:3:24\n  |\n3 |     let title = \"Dr. \" + name;\n  |                 ------ ^ ---- &str\n  |                 |      |\n  |                 |      `+` cannot be used to concatenate two `&str` strings\n  |                 &str\n  |\n  = note: string concatenation requires an owned `String` on the left\nhelp: create an owned `String` from a string reference\n  |\n3 |     let title = \"Dr. \".to_owned() + name;\n  |                       +++++++++++\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/boss_error"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "fn label(name: &str, shelf: u32) -> String {\n    let mut out = name.trim().to_uppercase();\n    out.push_str(\" @ \");\n    out + &shelf.to_string()\n}\n\nfn main() {\n    let typed = String::from(\"  owls \\n\");\n    println!(\"{}\", label(&typed, 7));\n    println!(\"{}\", label(\"cats\", 12));\n}\n",
+   "stdout": "OWLS @ 7\nCATS @ 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "OWLS @ 7\nCATS @ 12\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    let mut out = String::new();\n    for word in \"  ada mabel lee \".split_whitespace() {\n        out.push_str(&word[..1].to_uppercase());\n    }\n    println!(\"{out}\");\n}\n",
+   "stdout": "AML\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "AML\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "fn main() {\n    let word = \"Café\";\n    let mut out = String::new();\n    for c in word.chars() {\n        out.push(c);\n        out.push('.');\n    }\n    println!(\"{out}\");\n    println!(\"{} {}\", word.len(), out.len());\n    println!(\"{}\", out.to_uppercase());\n}\n",
+   "stdout": "C.a.f.é.\n5 9\nC.A.F.É.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "C.a.f.é.\n5 9\nC.A.F.É.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "fn main() {\n    let first = String::from(\"Ana\");\n    let last = String::from(\"Lee\");\n    let space = \" \";\n    let full = first + space + last;\n    println!(\"{full}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:5:32\n  |\n5 |     let full = first + space + last;\n  |                                ^^^^ expected `&str`, found `String`\n  |\nhelp: consider borrowing here\n  |\n5 |     let full = first + space + &last;\n  |                                +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:5:32\n  |\n5 |     let full = first + space + last;\n  |                                ^^^^ expected `&str`, found `String`\n  |\nhelp: consider borrowing here\n  |\n5 |     let full = first + space + &last;\n  |                                +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let line = \"owl ñu 日 hi\";\n    for w in line.split(' ') {\n        println!(\"{w} {} {}\", w.len(), w.chars().count());\n    }\n}\n",
+   "stdout": "owl 3 3\nñu 3 2\n日 3 1\nhi 2 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "owl 3 3\nñu 3 2\n日 3 1\nhi 2 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/boss_trace"
+    }
+   ]
+  },
+  "boundary.rs": {
+   "src": "fn main() {\n    let name = String::from(\"Zoë\");\n    println!(\"{}\", &name[..2]);\n    println!(\"{}\", &name[..3]);\n}\n",
+   "stdout": "Zo\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:4:25:\nend byte index 3 is not a char boundary; it is inside 'ë' (bytes 2..4 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Zo\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:4:25:\nend byte index 3 is not a char boundary; it is inside 'ë' (bytes 2..4 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/boundary",
+     "merged": "Zo\n\nthread 'main' (1) panicked at src/main.rs:4:25:\nend byte index 3 is not a char boundary; it is inside 'ë' (bytes 2..4 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "cn_deref.rs": {
+   "src": "fn shelf_label(s: &str) -> usize {\n    s.len()\n}\n\nfn main() {\n    let name = String::from(\"Owls\");\n    println!(\"{}\", shelf_label(&name));\n}\n",
+   "stdout": "4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/cn_deref"
+    }
+   ]
+  },
+  "cn_format_keep.rs": {
+   "src": "fn main() {\n    let a = String::from(\"ink\");\n    let b = String::from(\"pen\");\n    let both = format!(\"{a}{b}\");\n    println!(\"{both} {a} {b}\");\n}\n",
+   "stdout": "inkpen ink pen\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "inkpen ink pen\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/cn_format_keep"
+    }
+   ]
+  },
+  "cn_index_range.rs": {
+   "src": "fn main() {\n    let s = String::from(\"hello\");\n    let first = &s[0..1];\n    println!(\"{first}\");\n}\n",
+   "stdout": "h\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "h\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/cn_index_range"
+    }
+   ]
+  },
+  "cn_literal_mut.rs": {
+   "src": "fn main() {\n    let mut s = \"hi\";\n    s.push_str(\"!\");\n    println!(\"{s}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0599]: no method named `push_str` found for reference `&str` in the current scope\n --> src/main.rs:3:7\n  |\n3 |     s.push_str(\"!\");\n  |       ^^^^^^^^ method not found in `&str`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `cn_literal_mut` (bin \"cn_literal_mut\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0599]: no method named `push_str` found for reference `&str` in the current scope\n --> src/main.rs:3:7\n  |\n3 |     s.push_str(\"!\");\n  |       ^^^^^^^^ method not found in `&str`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `cn_literal_mut` (bin \"cn_literal_mut\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/cn_literal_mut"
+    }
+   ]
+  },
+  "cn_push_char.rs": {
+   "src": "fn main() {\n    let mut s = String::from(\"caf\");\n    s.push('é');\n    println!(\"{s} {}\", s.len());\n}\n",
+   "stdout": "café 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "café 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/cn_push_char"
+    }
+   ]
+  },
+  "cn_return_str.rs": {
+   "src": "fn make_title() -> &str {\n    let t = String::from(\"Owl Post\");\n    &t\n}\n\nfn main() {\n    println!(\"{}\", make_title());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:20\n  |\n1 | fn make_title() -> &str {\n  |                    ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn make_title() -> &'static str {\n  |                     +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn make_title() -> &str {\n1 + fn make_title() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `cn_return_str` (bin \"cn_return_str\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:20\n  |\n1 | fn make_title() -> &str {\n  |                    ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn make_title() -> &'static str {\n  |                     +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn make_title() -> &str {\n1 + fn make_title() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `cn_return_str` (bin \"cn_return_str\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/cn_return_str"
+    }
+   ]
+  },
+  "conv_machine.rs": {
+   "src": "use std::any::type_name_of_val;\n\nfn main() {\n    let s = String::from(\"owl\");\n    let a = String::from(\"owl\");\n    println!(\"1. String::from(\\\"owl\\\") is {}\", type_name_of_val(&a));\n    let b = \"owl\".to_string();\n    println!(\"2. \\\"owl\\\".to_string() is {}\", type_name_of_val(&b));\n    let c = \"owl\".to_owned();\n    println!(\"3. \\\"owl\\\".to_owned() is {}\", type_name_of_val(&c));\n    let d = &s;\n    println!(\"4. &s is {}\", type_name_of_val(&d));\n    let e = s.as_str();\n    println!(\"5. s.as_str() is {}\", type_name_of_val(&e));\n    let f = &s[..];\n    println!(\"6. &s[..] is {}\", type_name_of_val(&f));\n    let g: &str = &s;\n    println!(\"7. let g: &str = &s; gives {}\", type_name_of_val(&g));\n}\n",
+   "stdout": "1. String::from(\"owl\") is alloc::string::String\n2. \"owl\".to_string() is alloc::string::String\n3. \"owl\".to_owned() is alloc::string::String\n4. &s is &alloc::string::String\n5. s.as_str() is &str\n6. &s[..] is &str\n7. let g: &str = &s; gives &str\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1. String::from(\"owl\") is alloc::string::String\n2. \"owl\".to_string() is alloc::string::String\n3. \"owl\".to_owned() is alloc::string::String\n4. &s is &alloc::string::String\n5. s.as_str() is &str\n6. &s[..] is &str\n7. let g: &str = &s; gives &str\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/conv_machine"
+    }
+   ]
+  },
+  "escape_trap.rs": {
+   "src": "fn main() {\n    let path = \"C:\\new\\table\";\n    println!(\"{path}\");\n    println!(\"{} bytes\", path.len());\n}\n",
+   "stdout": "C:\new\table\n10 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "C:\new\table\n10 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/escape_trap"
+    }
+   ]
+  },
+  "escapes.rs": {
+   "src": "fn main() {\n    println!(\"Line one\\nLine two\");\n    println!(\"Name:\\tMabel\");\n    println!(\"She said \\\"shh\\\".\");\n    println!(\"A backslash: \\\\\");\n    println!(\"caf\\u{e9} and \\u{1F989}\");\n}\n",
+   "stdout": "Line one\nLine two\nName:\tMabel\nShe said \"shh\".\nA backslash: \\\ncafé and 🦉\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Line one\nLine two\nName:\tMabel\nShe said \"shh\".\nA backslash: \\\ncafé and 🦉\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/escapes"
+    }
+   ]
+  },
+  "fill_make.rs": {
+   "src": "fn main() {\n    let mut shelf = \"Shelf B\".to_string();\n    shelf.push_str(\": owls\");\n    println!(\"{shelf}\");\n}\n",
+   "stdout": "Shelf B: owls\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Shelf B: owls\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/fill_make"
+    }
+   ]
+  },
+  "fill_param.rs": {
+   "src": "fn count_vowels(text: &str) -> usize {\n    let mut n = 0;\n    for c in text.chars() {\n        if \"aeiou\".contains(c) {\n            n += 1;\n        }\n    }\n    n\n}\n\nfn main() {\n    let title = String::from(\"Notebooks\");\n    println!(\"{}\", count_vowels(&title));\n    println!(\"{}\", count_vowels(\"photocopy\"));\n}\n",
+   "stdout": "4\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\n3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/fill_param"
+    }
+   ]
+  },
+  "fill_parse.rs": {
+   "src": "fn main() {\n    let typed = String::from(\" 17 \\n\");\n    let n: u32 = typed.trim().parse().expect(\"need a number\");\n    println!(\"{} next year\", n + 1);\n}\n",
+   "stdout": "18 next year\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "18 next year\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/fill_parse"
+    }
+   ]
+  },
+  "fill_raw.rs": {
+   "src": "fn main() {\n    let folder = r\"D:\\photos\\owls\";\n    let note = \"tab:\\there\";\n    println!(\"{folder}\");\n    println!(\"{note}\");\n}\n",
+   "stdout": "D:\\photos\\owls\ntab:\there\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "D:\\photos\\owls\ntab:\there\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/fill_raw"
+    }
+   ]
+  },
+  "format.rs": {
+   "src": "fn main() {\n    let first = String::from(\"Ana\");\n    let last = String::from(\"Lee\");\n    let age = 12;\n    let card = format!(\"{first} {last}, age {age}\");\n    println!(\"{card}\");\n    println!(\"{first} and {last} are still here\");\n    let tag = format!(\"{}-{}\", last.to_uppercase(), age * 2);\n    println!(\"{tag}\");\n}\n",
+   "stdout": "Ana Lee, age 12\nAna and Lee are still here\nLEE-24\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ana Lee, age 12\nAna and Lee are still here\nLEE-24\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/format"
+    }
+   ]
+  },
+  "grow.rs": {
+   "src": "fn main() {\n    let mut note = String::from(\"Dear\");\n    let name = \"Mabel\";\n    note.push(' ');\n    note.push_str(name);\n    note.push('!');\n    println!(\"{note}\");\n    println!(\"{name} is still here\");\n}\n",
+   "stdout": "Dear Mabel!\nMabel is still here\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dear Mabel!\nMabel is still here\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/grow"
+    }
+   ]
+  },
+  "growth.rs": {
+   "src": "fn main() {\n    let mut s = String::with_capacity(3);\n    println!(\"len {} cap {}\", s.len(), s.capacity());\n    s.push_str(\"ink\");\n    println!(\"len {} cap {}\", s.len(), s.capacity());\n    s.push_str(\"well\");\n    println!(\"len {} cap {}\", s.len(), s.capacity());\n    s.push('!');\n    println!(\"len {} cap {}\", s.len(), s.capacity());\n}\n",
+   "stdout": "len 0 cap 3\nlen 3 cap 3\nlen 7 cap 8\nlen 8 cap 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "len 0 cap 3\nlen 3 cap 3\nlen 7 cap 8\nlen 8 cap 8\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/growth"
+    }
+   ]
+  },
+  "idiom.rs": {
+   "src": "fn shout(text: &str) -> String {\n    let mut loud = text.to_uppercase();\n    loud.push('!');\n    loud\n}\n\nfn main() {\n    let owned = String::from(\"quiet please\");\n    println!(\"{}\", shout(\"hello\"));\n    println!(\"{}\", shout(&owned));\n    println!(\"{}\", shout(&owned[..5]));\n    println!(\"{owned} is still mine\");\n}\n",
+   "stdout": "HELLO!\nQUIET PLEASE!\nQUIET!\nquiet please is still mine\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "HELLO!\nQUIET PLEASE!\nQUIET!\nquiet please is still mine\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/idiom"
+    }
+   ]
+  },
+  "in_real.rs": {
+   "src": "fn main() {\n    let config = \"name = Mabel\\nshelf = B12\\n# a comment\\nopen = yes\";\n    for line in config.lines() {\n        if line.starts_with('#') {\n            continue;\n        }\n        if let Some((key, value)) = line.split_once('=') {\n            println!(\"{} -> {}\", key.trim(), value.trim());\n        }\n    }\n}\n",
+   "stdout": "name -> Mabel\nshelf -> B12\nopen -> yes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "name -> Mabel\nshelf -> B12\nopen -> yes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/in_real"
+    }
+   ]
+  },
+  "index_error.rs": {
+   "src": "fn main() {\n    let word = String::from(\"hello\");\n    let first = word[0];\n    println!(\"{first}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:3:22\n  |\n3 |     let first = word[0];\n  |                      ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_error` (bin \"index_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:3:22\n  |\n3 |     let first = word[0];\n  |                      ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_error` (bin \"index_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/index_error"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:3:22\n  |\n3 |     let first = word[0];\n  |                      ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_error` (bin \"index_error\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:3:22\n  |\n3 |     let first = word[0];\n  |                      ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_error` (bin \"index_error\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch12/index_error"
+     }
+    ]
+   }
+  },
+  "len_bytes.rs": {
+   "src": "fn main() {\n    for word in [\"hello\", \"héllo\", \"日本\", \"hi🦉\"] {\n        println!(\"{word}: {} bytes, {} chars\", word.len(), word.chars().count());\n    }\n}\n",
+   "stdout": "hello: 5 bytes, 5 chars\nhéllo: 6 bytes, 5 chars\n日本: 6 bytes, 2 chars\nhi🦉: 6 bytes, 3 chars\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hello: 5 bytes, 5 chars\nhéllo: 6 bytes, 5 chars\n日本: 6 bytes, 2 chars\nhi🦉: 6 bytes, 3 chars\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/len_bytes"
+    }
+   ]
+  },
+  "let_string.rs": {
+   "src": "fn main() {\n    let title: String = \"Owl Post\";\n    println!(\"{title}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:2:25\n  |\n2 |     let title: String = \"Owl Post\";\n  |                ------   ^^^^^^^^^^ expected `String`, found `&str`\n  |                |\n  |                expected due to this\n  |\nhelp: try using a conversion method\n  |\n2 |     let title: String = \"Owl Post\".to_string();\n  |                                   ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `let_string` (bin \"let_string\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:2:25\n  |\n2 |     let title: String = \"Owl Post\";\n  |                ------   ^^^^^^^^^^ expected `String`, found `&str`\n  |                |\n  |                expected due to this\n  |\nhelp: try using a conversion method\n  |\n2 |     let title: String = \"Owl Post\".to_string();\n  |                                   ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `let_string` (bin \"let_string\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/let_string"
+    }
+   ]
+  },
+  "make_strings.rs": {
+   "src": "fn main() {\n    let a = String::from(\"ink\");\n    let b = \"ink\".to_string();\n    let c = \"ink\".to_owned();\n    let mut d = String::new();\n    println!(\"{a} {b} {c} [{d}]\");\n    println!(\"d is empty: {}\", d.is_empty());\n    d.push_str(\"ink\");\n    println!(\"all the same: {}\", a == b && b == c && c == d);\n}\n",
+   "stdout": "ink ink ink []\nd is empty: true\nall the same: true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "ink ink ink []\nd is empty: true\nall the same: true\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/make_strings"
+    }
+   ]
+  },
+  "methods_machine.rs": {
+   "src": "fn main() {\n    let t = \"Owl Post\";\n    println!(\"1 [{}]\", \"  Owl Post  \".trim());\n    println!(\"2 {}\", t.to_uppercase());\n    println!(\"3 {}\", t.replace(\"Post\", \"Mail\"));\n    println!(\"4 {}\", t.contains(\"po\"));\n    println!(\"5 {}\", t.starts_with(\"Owl\"));\n    println!(\"6 {}\", \"Straße\".to_uppercase());\n    println!(\"7 {}\", \"ab\".repeat(3));\n}\n",
+   "stdout": "1 [Owl Post]\n2 OWL POST\n3 Owl Mail\n4 false\n5 true\n6 STRASSE\n7 ababab\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 [Owl Post]\n2 OWL POST\n3 Owl Mail\n4 false\n5 true\n6 STRASSE\n7 ababab\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/methods_machine"
+    }
+   ]
+  },
+  "nth.rs": {
+   "src": "fn main() {\n    let name = \"Zoë\";\n    println!(\"{:?}\", name.chars().nth(2));\n    println!(\"{:?}\", name.chars().nth(5));\n    if let Some(first) = name.chars().next() {\n        println!(\"first letter: {first}\");\n    }\n    println!(\"{} letters, {} bytes\", name.chars().count(), name.len());\n}\n",
+   "stdout": "Some('ë')\nNone\nfirst letter: Z\n3 letters, 4 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Some('ë')\nNone\nfirst letter: Z\n3 letters, 4 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/nth"
+    }
+   ]
+  },
+  "param_fixed.rs": {
+   "src": "fn greet(name: &str) {\n    println!(\"Hello, {name}!\");\n}\n\nfn main() {\n    let ben = String::from(\"Ben\");\n    greet(\"Ana\");\n    greet(&ben);\n    println!(\"{ben} still owns his name\");\n}\n",
+   "stdout": "Hello, Ana!\nHello, Ben!\nBen still owns his name\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hello, Ana!\nHello, Ben!\nBen still owns his name\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/param_fixed"
+    }
+   ]
+  },
+  "param_string.rs": {
+   "src": "fn greet(name: String) {\n    println!(\"Hello, {name}!\");\n}\n\nfn main() {\n    greet(\"Ana\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:6:11\n  |\n6 |     greet(\"Ana\");\n  |     ----- ^^^^^ expected `String`, found `&str`\n  |     |\n  |     arguments to this function are incorrect\n  |\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn greet(name: String) {\n  |    ^^^^^ ------------\nhelp: try using a conversion method\n  |\n6 |     greet(\"Ana\".to_string());\n  |                ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `param_string` (bin \"param_string\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:6:11\n  |\n6 |     greet(\"Ana\");\n  |     ----- ^^^^^ expected `String`, found `&str`\n  |     |\n  |     arguments to this function are incorrect\n  |\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn greet(name: String) {\n  |    ^^^^^ ------------\nhelp: try using a conversion method\n  |\n6 |     greet(\"Ana\".to_string());\n  |                ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `param_string` (bin \"param_string\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/param_string"
+    }
+   ]
+  },
+  "parse.rs": {
+   "src": "fn main() {\n    println!(\"{:?}\", \"42\".parse::<i32>());\n    println!(\"{:?}\", \" 42 \".parse::<i32>());\n    println!(\"{:?}\", \" 42 \".trim().parse::<i32>());\n    println!(\"{:?}\", \"4.2\".parse::<f64>());\n    match \"300\".parse::<u8>() {\n        Ok(n) => println!(\"got {n}\"),\n        Err(e) => println!(\"no: {e}\"),\n    }\n}\n",
+   "stdout": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\nOk(42)\nOk(4.2)\nno: number too large to fit in target type\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok(42)\nErr(ParseIntError { kind: InvalidDigit })\nOk(42)\nOk(4.2)\nno: number too large to fit in target type\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/parse"
+    }
+   ]
+  },
+  "parsons_sentence.rs": {
+   "src": "fn main() {\n    let name = String::from(\"Ana\");\n    let mut line = format!(\"Dear {name}\");\n    line.push(',');\n    line.push_str(\" welcome!\");\n    println!(\"{line}\");\n}\n",
+   "stdout": "Dear Ana, welcome!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dear Ana, welcome!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/parsons_sentence"
+    }
+   ]
+  },
+  "plus.rs": {
+   "src": "fn main() {\n    let s1 = String::from(\"tic\");\n    let s2 = String::from(\"tac\");\n    let s3 = s1 + \"-\" + &s2;\n    println!(\"{s3}\");\n    println!(\"{s2} is still mine\");\n}\n",
+   "stdout": "tic-tac\ntac is still mine\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "tic-tac\ntac is still mine\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/plus"
+    }
+   ]
+  },
+  "plus_literals.rs": {
+   "src": "fn main() {\n    let both = \"tic\" + \"tac\";\n    println!(\"{both}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0369]: cannot add `&str` to `&str`\n --> src/main.rs:2:22\n  |\n2 |     let both = \"tic\" + \"tac\";\n  |                ----- ^ ----- &str\n  |                |     |\n  |                |     `+` cannot be used to concatenate two `&str` strings\n  |                &str\n  |\n  = note: string concatenation requires an owned `String` on the left\nhelp: create an owned `String` from a string reference\n  |\n2 |     let both = \"tic\".to_owned() + \"tac\";\n  |                     +++++++++++\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `plus_literals` (bin \"plus_literals\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0369]: cannot add `&str` to `&str`\n --> src/main.rs:2:22\n  |\n2 |     let both = \"tic\" + \"tac\";\n  |                ----- ^ ----- &str\n  |                |     |\n  |                |     `+` cannot be used to concatenate two `&str` strings\n  |                &str\n  |\n  = note: string concatenation requires an owned `String` on the left\nhelp: create an owned `String` from a string reference\n  |\n2 |     let both = \"tic\".to_owned() + \"tac\";\n  |                     +++++++++++\n\nFor more information about this error, try `rustc --explain E0369`.\nerror: could not compile `plus_literals` (bin \"plus_literals\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/plus_literals"
+    }
+   ]
+  },
+  "plus_machine.rs": {
+   "src": "fn main() {\n    let s1 = String::from(\"tic\");\n    let s2 = String::from(\"tac\");\n    println!(\"{}\", s1 + &s2);\n    let s3 = String::from(\"tic\");\n    println!(\"{}\", s3 + \"-toe\");\n    let s4 = String::from(\"tic\");\n    println!(\"{}\", s4.clone() + &s4);\n}\n",
+   "stdout": "tictac\ntic-toe\ntictic\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "tictac\ntic-toe\ntictic\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/plus_machine"
+    }
+   ]
+  },
+  "plus_moved.rs": {
+   "src": "fn main() {\n    let s1 = String::from(\"tic\");\n    let s2 = String::from(\"tac\");\n    let s3 = s1 + &s2;\n    println!(\"{s3}\");\n    println!(\"{s1}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: borrow of moved value: `s1`\n --> src/main.rs:6:16\n  |\n2 |     let s1 = String::from(\"tic\");\n  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait\n3 |     let s2 = String::from(\"tac\");\n4 |     let s3 = s1 + &s2;\n  |              -- value moved here\n5 |     println!(\"{s3}\");\n6 |     println!(\"{s1}\");\n  |                ^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n4 |     let s3 = s1.clone() + &s2;\n  |                ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `plus_moved` (bin \"plus_moved\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: borrow of moved value: `s1`\n --> src/main.rs:6:16\n  |\n2 |     let s1 = String::from(\"tic\");\n  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait\n3 |     let s2 = String::from(\"tac\");\n4 |     let s3 = s1 + &s2;\n  |              -- value moved here\n5 |     println!(\"{s3}\");\n6 |     println!(\"{s1}\");\n  |                ^^ value borrowed here after move\n  |\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n4 |     let s3 = s1.clone() + &s2;\n  |                ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `plus_moved` (bin \"plus_moved\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/plus_moved"
+    }
+   ]
+  },
+  "plus_string.rs": {
+   "src": "fn main() {\n    let s1 = String::from(\"tic\");\n    let s2 = String::from(\"tac\");\n    let s3 = s1 + s2;\n    println!(\"{s3}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     let s3 = s1 + s2;\n  |                   ^^ expected `&str`, found `String`\n  |\nhelp: consider borrowing here\n  |\n4 |     let s3 = s1 + &s2;\n  |                   +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `plus_string` (bin \"plus_string\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     let s3 = s1 + s2;\n  |                   ^^ expected `&str`, found `String`\n  |\nhelp: consider borrowing here\n  |\n4 |     let s3 = s1 + &s2;\n  |                   +\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `plus_string` (bin \"plus_string\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/plus_string"
+    }
+   ]
+  },
+  "predict_chars.rs": {
+   "src": "fn main() {\n    let word = \"naïve\";\n    let mut count = 0;\n    for c in word.chars() {\n        if c != 'a' {\n            count += 1;\n        }\n    }\n    println!(\"{count}\");\n    println!(\"{:?}\", word.chars().nth(2));\n    println!(\"{}\", word.len());\n}\n",
+   "stdout": "4\nSome('ï')\n6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\nSome('ï')\n6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_chars"
+    }
+   ]
+  },
+  "predict_escapes.rs": {
+   "src": "fn main() {\n    println!(\"say \\\"hi\\\"\");\n    println!(\"up\\ndown\");\n    println!(r\"up\\ndown\");\n    println!(\"\\u{41}\\u{42}\\\\\");\n}\n",
+   "stdout": "say \"hi\"\nup\ndown\nup\\ndown\nAB\\\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "say \"hi\"\nup\ndown\nup\\ndown\nAB\\\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_escapes"
+    }
+   ]
+  },
+  "predict_grow.rs": {
+   "src": "fn main() {\n    let mut tag = String::new();\n    tag.push_str(\"owl\");\n    tag.push('-');\n    tag.push_str(\"42\");\n    println!(\"{tag}\");\n    println!(\"{}\", tag.len());\n    tag.push('!');\n    println!(\"{tag} {}\", tag.len());\n}\n",
+   "stdout": "owl-42\n6\nowl-42! 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "owl-42\n6\nowl-42! 7\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_grow"
+    }
+   ]
+  },
+  "predict_idiom.rs": {
+   "src": "fn tidy(s: &str) -> String {\n    s.trim().replace(' ', \"-\")\n}\n\nfn main() {\n    let owned = String::from(\" big owl \");\n    let a = tidy(&owned);\n    let b = tidy(\"  tiny  \");\n    println!(\"{a}|{b}|{owned}|\");\n}\n",
+   "stdout": "big-owl|tiny| big owl |\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "big-owl|tiny| big owl |\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_idiom"
+    }
+   ]
+  },
+  "predict_len.rs": {
+   "src": "fn main() {\n    let a = \"piñata\";\n    let b = \"日本語\";\n    println!(\"{} {}\", a.len(), a.chars().count());\n    println!(\"{} {}\", b.len(), b.chars().count());\n}\n",
+   "stdout": "7 6\n9 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "7 6\n9 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_len"
+    }
+   ]
+  },
+  "predict_parse.rs": {
+   "src": "fn main() {\n    for s in [\"7\", \" 7\", \"-7\", \"7.5\", \"255\", \"256\"] {\n        let ok = s.parse::<u8>().is_ok();\n        println!(\"{ok}\");\n    }\n}\n",
+   "stdout": "true\nfalse\nfalse\nfalse\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "true\nfalse\nfalse\nfalse\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_parse"
+    }
+   ]
+  },
+  "predict_plus.rs": {
+   "src": "fn main() {\n    let a = String::from(\"rock\");\n    let b = String::from(\"roll\");\n    let c = a + \" & \" + &b;\n    let d = format!(\"{b}, {c}\");\n    println!(\"{c}\");\n    println!(\"{d}\");\n    println!(\"{}\", d.len());\n}\n",
+   "stdout": "rock & roll\nroll, rock & roll\n17\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "rock & roll\nroll, rock & roll\n17\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_plus"
+    }
+   ]
+  },
+  "predict_tidy.rs": {
+   "src": "fn main() {\n    let line = \"  Mabel Lee \\n\";\n    let name = line.trim();\n    println!(\"[{name}]\");\n    println!(\"{}\", name.to_lowercase().replace(' ', \"_\"));\n    println!(\"{}\", name.starts_with(\"mab\"));\n    println!(\"{}\", line.len() - name.len());\n}\n",
+   "stdout": "[Mabel Lee]\nmabel_lee\nfalse\n4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[Mabel Lee]\nmabel_lee\nfalse\n4\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/predict_tidy"
+    }
+   ]
+  },
+  "push_wrong.rs": {
+   "src": "fn main() {\n    let mut note = String::from(\"Dear Mabel\");\n    note.push(\"!\");\n    println!(\"{note}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:15\n  |\n3 |     note.push(\"!\");\n  |          ---- ^^^ expected `char`, found `&str`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/alloc/src/string.rs:1432:11\nhelp: if you meant to write a `char` literal, use single quotes\n  |\n3 -     note.push(\"!\");\n3 +     note.push('!');\n  |\nhelp: you might have meant to use `push_str`\n  |\n3 |     note.push_str(\"!\");\n  |              ++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `push_wrong` (bin \"push_wrong\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:3:15\n  |\n3 |     note.push(\"!\");\n  |          ---- ^^^ expected `char`, found `&str`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/alloc/src/string.rs:1432:11\nhelp: if you meant to write a `char` literal, use single quotes\n  |\n3 -     note.push(\"!\");\n3 +     note.push('!');\n  |\nhelp: you might have meant to use `push_str`\n  |\n3 |     note.push_str(\"!\");\n  |              ++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `push_wrong` (bin \"push_wrong\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/push_wrong"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0308]: mismatched types\n --> src/main.rs:3:15\n  |\n3 |     note.push(\"!\");\n  |          ---- ^^^ expected `char`, found `&str`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/alloc/src/string.rs:1425:11\nhelp: if you meant to write a `char` literal, use single quotes\n  |\n3 -     note.push(\"!\");\n3 +     note.push('!');\n  |\nhelp: you might have meant to use `push_str`\n  |\n3 |     note.push_str(\"!\");\n  |              ++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `push_wrong` (bin \"push_wrong\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0308]: mismatched types\n --> src/main.rs:3:15\n  |\n3 |     note.push(\"!\");\n  |          ---- ^^^ expected `char`, found `&str`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/alloc/src/string.rs:1425:11\nhelp: if you meant to write a `char` literal, use single quotes\n  |\n3 -     note.push(\"!\");\n3 +     note.push('!');\n  |\nhelp: you might have meant to use `push_str`\n  |\n3 |     note.push_str(\"!\");\n  |              ++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `push_wrong` (bin \"push_wrong\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch12/push_wrong"
+     }
+    ]
+   }
+  },
+  "raw.rs": {
+   "src": "fn main() {\n    let path = r\"C:\\new\\table\";\n    let quote = r#\"Mabel said \"shh\" twice\"#;\n    println!(\"{path}\");\n    println!(\"{quote}\");\n    println!(\"{} bytes\", path.len());\n}\n",
+   "stdout": "C:\\new\\table\nMabel said \"shh\" twice\n12 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "C:\\new\\table\nMabel said \"shh\" twice\n12 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/raw"
+    }
+   ]
+  },
+  "ruler.rs": {
+   "src": "fn main() {\n    for word in [\"hello\", \"héllo\", \"Zoë\", \"日本\", \"hi🦉\"] {\n        let mut bytes = Vec::new();\n        for b in word.bytes() {\n            bytes.push(b.to_string());\n        }\n        let mut starts = Vec::new();\n        for (i, _c) in word.char_indices() {\n            starts.push(i.to_string());\n        }\n        println!(\"{word}|{}|{}|{}|{}\", word.len(), word.chars().count(), bytes.join(\" \"), starts.join(\" \"));\n    }\n}\n",
+   "stdout": "hello|5|5|104 101 108 108 111|0 1 2 3 4\nhéllo|6|5|104 195 169 108 108 111|0 1 3 4 5\nZoë|4|3|90 111 195 171|0 1 2\n日本|6|2|230 151 165 230 156 172|0 3\nhi🦉|6|3|104 105 240 159 166 137|0 1 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hello|5|5|104 101 108 108 111|0 1 2 3 4\nhéllo|6|5|104 195 169 108 108 111|0 1 3 4 5\nZoë|4|3|90 111 195 171|0 1 2\n日本|6|2|230 151 165 230 156 172|0 3\nhi🦉|6|3|104 105 240 159 166 137|0 1 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/ruler"
+    }
+   ]
+  },
+  "safe_slice.rs": {
+   "src": "fn first_letters(s: &str, n: usize) -> &str {\n    let mut seen = 0;\n    for (i, _c) in s.char_indices() {\n        if seen == n {\n            return &s[..i];\n        }\n        seen += 1;\n    }\n    s\n}\n\nfn main() {\n    let name = \"Zoë Lee\";\n    println!(\"{} {}\", name.is_char_boundary(3), name.is_char_boundary(4));\n    println!(\"{}\", first_letters(name, 3));\n    println!(\"{}\", first_letters(\"日本語\", 2));\n    println!(\"{}\", first_letters(\"hi\", 5));\n}\n",
+   "stdout": "false true\nZoë\n日本\nhi\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "false true\nZoë\n日本\nhi\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/safe_slice"
+    }
+   ]
+  },
+  "sizes.rs": {
+   "src": "use std::mem::size_of;\n\nfn main() {\n    println!(\"String: {} bytes\", size_of::<String>());\n    println!(\"&str:   {} bytes\", size_of::<&str>());\n    println!(\"char:   {} bytes\", size_of::<char>());\n    let s = String::from(\"héllo\");\n    println!(\"{:?}\", s.as_bytes());\n    let back = String::from_utf8(vec![104, 195, 169]);\n    println!(\"{back:?}\");\n    let bad = String::from_utf8(vec![104, 195]);\n    println!(\"{}\", bad.is_err());\n}\n",
+   "stdout": "String: 24 bytes\n&str:   16 bytes\nchar:   4 bytes\n[104, 195, 169, 108, 108, 111]\nOk(\"hé\")\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "String: 24 bytes\n&str:   16 bytes\nchar:   4 bytes\n[104, 195, 169, 108, 108, 111]\nOk(\"hé\")\ntrue\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/sizes"
+    }
+   ]
+  },
+  "split.rs": {
+   "src": "fn main() {\n    let csv = \"pen,ink,,paper\";\n    for part in csv.split(',') {\n        print!(\"[{part}]\");\n    }\n    println!();\n    let messy = \"  owl   and\\tcat \";\n    for word in messy.split_whitespace() {\n        print!(\"[{word}]\");\n    }\n    println!();\n    let poem = \"roses\\nviolets\\nsugar\";\n    let mut n = 1;\n    for line in poem.lines() {\n        println!(\"{n}: {line}\");\n        n += 1;\n    }\n}\n",
+   "stdout": "[pen][ink][][paper]\n[owl][and][cat]\n1: roses\n2: violets\n3: sugar\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[pen][ink][][paper]\n[owl][and][cat]\n1: roses\n2: violets\n3: sugar\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/split"
+    }
+   ]
+  },
+  "spot_index.rs": {
+   "src": "fn main() {\n    let name = String::from(\"Mabel\");\n    let shout = name.to_uppercase();\n    let initial = name[0];\n    println!(\"{shout} starts with {initial}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:4:24\n  |\n4 |     let initial = name[0];\n  |                        ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:4:24\n  |\n4 |     let initial = name[0];\n  |                        ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/spot_index"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:4:24\n  |\n4 |     let initial = name[0];\n  |                        ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the type `str` cannot be indexed by `{integer}`\n --> src/main.rs:4:24\n  |\n4 |     let initial = name[0];\n  |                        ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `{integer}`\n  = note: you can use `.chars().nth()` or `.bytes().nth()`\n          for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `String` to implement `Index<{integer}>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch12/spot_index"
+     }
+    ]
+   }
+  },
+  "spot_let.rs": {
+   "src": "fn main() {\n    let greeting = \"Hi\";\n    let mut reply = String::from(\"Hello\");\n    reply.push_str(\", there\");\n    let shelf: String = \"B12\";\n    println!(\"{greeting}. {reply}. {shelf}.\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:5:25\n  |\n5 |     let shelf: String = \"B12\";\n  |                ------   ^^^^^ expected `String`, found `&str`\n  |                |\n  |                expected due to this\n  |\nhelp: try using a conversion method\n  |\n5 |     let shelf: String = \"B12\".to_string();\n  |                              ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_let` (bin \"spot_let\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:5:25\n  |\n5 |     let shelf: String = \"B12\";\n  |                ------   ^^^^^ expected `String`, found `&str`\n  |                |\n  |                expected due to this\n  |\nhelp: try using a conversion method\n  |\n5 |     let shelf: String = \"B12\".to_string();\n  |                              ++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_let` (bin \"spot_let\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/spot_let"
+    }
+   ]
+  },
+  "spot_push.rs": {
+   "src": "fn main() {\n    let mut list = String::from(\"pens\");\n    list.push_str(\", ink\");\n    list.push_str('!');\n    println!(\"{list}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     list.push_str('!');\n  |          -------- ^^^ expected `&str`, found `char`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/alloc/src/string.rs:1104:11\nhelp: if you meant to write a string literal, use double quotes\n  |\n4 -     list.push_str('!');\n4 +     list.push_str(\"!\");\n  |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_push` (bin \"spot_push\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     list.push_str('!');\n  |          -------- ^^^ expected `&str`, found `char`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/alloc/src/string.rs:1104:11\nhelp: if you meant to write a string literal, use double quotes\n  |\n4 -     list.push_str('!');\n4 +     list.push_str(\"!\");\n  |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_push` (bin \"spot_push\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch12/spot_push"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     list.push_str('!');\n  |          -------- ^^^ expected `&str`, found `char`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/alloc/src/string.rs:1110:11\nhelp: if you meant to write a string literal, use double quotes\n  |\n4 -     list.push_str('!');\n4 +     list.push_str(\"!\");\n  |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_push` (bin \"spot_push\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0308]: mismatched types\n --> src/main.rs:4:19\n  |\n4 |     list.push_str('!');\n  |          -------- ^^^ expected `&str`, found `char`\n  |          |\n  |          arguments to this method are incorrect\n  |\nnote: method defined here\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/alloc/src/string.rs:1110:11\nhelp: if you meant to write a string literal, use double quotes\n  |\n4 -     list.push_str('!');\n4 +     list.push_str(\"!\");\n  |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `spot_push` (bin \"spot_push\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch12/spot_push"
+     }
+    ]
+   }
+  },
+  "text_memory.rs": {
+   "src": "fn main() {\n    let sign = \"QUIET\";\n    let notes = String::from(\"owls!\");\n    let part = &notes[0..3];\n    let mine = sign.to_string();\n    println!(\"{sign}\");\n    println!(\"{notes}\");\n    println!(\"{part}\");\n    println!(\"{mine}\");\n}\n",
+   "stdout": "QUIET\nowls!\nowl\nQUIET\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "QUIET\nowls!\nowl\nQUIET\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/text_memory"
+    }
+   ]
+  },
+  "tidy.rs": {
+   "src": "fn main() {\n    let raw = \"  Owl Post  \";\n    let t = raw.trim();\n    println!(\"[{raw}] [{t}]\");\n    println!(\"{}\", t.to_uppercase());\n    println!(\"{}\", t.to_lowercase());\n    println!(\"{}\", t.replace(\"Post\", \"Mail\"));\n    println!(\"{}\", t.contains(\"Po\"));\n    println!(\"{}\", t.starts_with(\"owl\"));\n    println!(\"{}\", t.ends_with(\"st\"));\n    println!(\"{raw}!\");\n}\n",
+   "stdout": "[  Owl Post  ] [Owl Post]\nOWL POST\nowl post\nOwl Mail\ntrue\nfalse\ntrue\n  Owl Post  !\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[  Owl Post  ] [Owl Post]\nOWL POST\nowl post\nOwl Mail\ntrue\nfalse\ntrue\n  Owl Post  !\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/tidy"
+    }
+   ]
+  },
+  "trace_indices.rs": {
+   "src": "fn main() {\n    let word = \"año!\";\n    for (i, c) in word.char_indices() {\n        println!(\"{i} {c} {}\", c.len_utf8());\n    }\n}\n",
+   "stdout": "0 a 1\n1 ñ 2\n3 o 1\n4 ! 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 a 1\n1 ñ 2\n3 o 1\n4 ! 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/trace_indices"
+    }
+   ]
+  },
+  "trace_push.rs": {
+   "src": "fn main() {\n    let mut s = String::from(\"a\");\n    for w in [\"bc\", \"def\", \"g\"] {\n        s.push_str(w);\n        s.push('.');\n        println!(\"{w} {} {s}\", s.len());\n    }\n}\n",
+   "stdout": "bc 4 abc.\ndef 8 abc.def.\ng 10 abc.def.g.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "bc 4 abc.\ndef 8 abc.def.\ng 10 abc.def.g.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/trace_push"
+    }
+   ]
+  },
+  "trace_split.rs": {
+   "src": "fn main() {\n    let text = \"the owl saw  the moon\";\n    let mut count = 0;\n    for word in text.split_whitespace() {\n        count += 1;\n        println!(\"{count} {word} {}\", word.len());\n    }\n}\n",
+   "stdout": "1 the 3\n2 owl 3\n3 saw 3\n4 the 3\n5 moon 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 the 3\n2 owl 3\n3 saw 3\n4 the 3\n5 moon 4\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/trace_split"
+    }
+   ]
+  },
+  "two_texts.rs": {
+   "src": "fn main() {\n    let page: &str = \"Rules: whisper\";\n    let mut notebook: String = String::from(\"Ana's notes\");\n    notebook.push_str(\", page 2\");\n    println!(\"page:     {page}\");\n    println!(\"notebook: {notebook}\");\n}\n",
+   "stdout": "page:     Rules: whisper\nnotebook: Ana's notes, page 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "page:     Rules: whisper\nnotebook: Ana's notes, page 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/two_texts"
+    }
+   ]
+  },
+  "walk.rs": {
+   "src": "fn main() {\n    let word = \"héllo\";\n    for c in word.chars() {\n        print!(\"[{c}]\");\n    }\n    println!();\n    for b in word.bytes() {\n        print!(\"{b} \");\n    }\n    println!();\n    for (i, c) in word.char_indices() {\n        print!(\"{i}:{c} \");\n    }\n    println!();\n}\n",
+   "stdout": "[h][é][l][l][o]\n104 195 169 108 108 111 \n0:h 1:é 3:l 4:l 5:o \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[h][é][l][l][o]\n104 195 169 108 108 111 \n0:h 1:é 3:l 4:l 5:o \n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch12/walk"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
