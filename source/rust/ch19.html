@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Due-Date Stamps</title>
+<meta name="description" content="Chapter 19 of the Pip &amp; Friends Rust book, a comic course: lifetimes as library due-date stamps. A lifetime is the region of code where a reference is valid, drawn as bars on a loan timeline. Annotations like 'a describe how long references must live relative to each other and never change how long anything lives. Functions that return references (fn longest&lt;'a&gt;), the three elision rules, structs holding references (struct Excerpt&lt;'a&gt;), impl&lt;'a&gt; blocks, 'static, lifetime bounds T: 'static, edition 2024's impl Trait capture rule, when to own instead of borrow, and the real errors E0597, E0106, E0261, E0621, E0515, E0726 and E0502 read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch19.css">
+<script defer src="../data/rs-ch19.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/rs-ch19.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch18.html">&larr; Ch 18</a><span aria-current="page">Ch 19 of 29</span><a href="ch20.html">Ch 20 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 19</p>
+    <h1 id="cover-h">DUE-DATE STAMPS</h1>
+    <div class="cover-pair">
+      <svg class="char card" data-char="duecard" data-title="Dune" data-label="'a"></svg>
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <svg class="char card" data-char="duecard" data-title="Emma" data-label="'static" data-state="forever"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian holds her ledger and her rubber stamp. On each side stands a little library loan card with a face. The card for Dune is stamped with tick a; the card for Emma is stamped tick static, with an infinity sign under the stamp.</p>
+    <p class="caption blurb">Every loan in Mabel's library gets a due-date stamp. Rust's references get one too: it's called a <b>lifetime</b>. You've been obeying lifetimes since Chapter 8 ("bring it back before the owner leaves"). Now you'll <em>see</em> them as bars on a timeline, learn to <b>write</b> them (<code>'a</code>, said "tick a") when the Compiler can't work them out, learn the three rules that let you skip them most of the time, and put a borrowed reference inside a struct. Seven error codes (three of them new) and one message with no code at all, every one read like a detective. About 120 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Every loan has a due date: what a lifetime is</a></li>
+      <li><a href="#part-2">Whose due date? Functions that return references</a></li>
+      <li><a href="#part-3">Stamps you don't have to write: the elision rules</a></li>
+      <li><a href="#part-4">Bookmarks in a book: structs that hold references</a></li>
+      <li><a href="#part-5">Forever stamps and fine print: 'static, bounds, editions, owning instead</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · EVERY LOAN HAS A DUE DATE<small>a lifetime is a stretch of code, E0597 on a timeline, loans end at their last use, and stamps that change nothing</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: the stamp on the card">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="KA-CHUNK!" data-seed="1"></svg>
+    <p class="caption">Friday afternoon at the library. A reader borrows <i>Dune</i>, and Mabel brings her rubber stamp down on the loan card.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Every loan card gets a <b>due date</b>. Before it, the card is good: you may read the book. After it, the card is worthless. And one more rule: no card may be due <em>after</em> the book itself leaves my library.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Rust references have due dates too. Rust calls them <b>lifetimes</b>. The Compiler stamps every reference in your program, and checks that no reference is used after its stamp, or after its owner is gone.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel stamps a loan card with a loud ka-chunk. The Professor explains from the right.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: a due date is a place in the code">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">In a program there are no calendar days. A Rust "due date" is a <b>place in the code</b>. A reference's <b>lifetime</b> is the stretch of code, from where it is made to where it is last used, in which it is valid.</p>
+    <div class="boxes">
+      <figure><svg class="char sm" data-char="brick" data-label="book"></svg><figcaption>the owner: <code>book</code>, a String</figcaption></figure>
+      <span class="op arrow" aria-hidden="true">&rarr;</span>
+      <figure><svg class="char" data-char="duecard" data-title="card" data-label="LINE 4"></svg><figcaption>the loan: <code>card = &amp;book</code>, due at line 4</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a block creature labelled book, the owner, and an arrow to a loan card titled card, stamped LINE 4.</p>
+    <ul class="checklist">
+      <li><span><b>Owner</b>: the variable that owns the value (Chapter 7). It is dropped at the closing brace of its block.</span></li>
+      <li><span><b>Loan</b>: a reference, <code>&amp;book</code> (Chapter 8). It is valid from where it's made to its last use.</span></li>
+      <li><span><b>The rule</b>: every loan must end before its owner leaves. Mabel's oldest catchphrase, <b>bring it back before the owner leaves</b>.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a loan that ends in time">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <span class="file-tab">loan_ok.rs</span>
+    <pre class="code" data-src="loan_ok.rs"></pre>
+    <pre class="term" data-run="loan_ok.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b>: <code>book</code> owns the text "Dune". Its life runs to the closing brace on line 6.</span></li>
+      <li><span><b>Line 3</b>: <code>card</code> borrows it. <b>Line 4</b> is the card's last use, so the loan's lifetime is lines 3 to 4.</span></li>
+      <li><span>Lines 3–4 sit inside lines 2–6. The loan ends before the owner leaves, so the Compiler is happy.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 4: book does not live long enough">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <svg class="sfx tr" data-sfx="E0597!" data-seed="4"></svg>
+    <p class="caption">Now the owner lives in an inner block, and the card is used after it. You met this case in Chapter 8. This time, read it as a question of <b>due dates</b>.</p>
+    <span class="file-tab">due_too_late.rs</span>
+    <pre class="code" data-src="due_too_late.rs"></pre>
+    <pre class="term" data-run="due_too_late.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0597]: `book` does not live long enough</code><br><b>What</b>: an owner leaves while one of its loans is still needed.</span></li>
+      <li><span><code>^^^^^ borrowed value does not live long enough</code> under <code>&amp;book</code>, line 5: <b>where the loan starts</b>.</span></li>
+      <li><span><code>- `book` dropped here while still borrowed</code>, line 6: <b>where the owner leaves</b>, at the inner block's closing brace.</span></li>
+      <li><span><code>- borrow later used here</code>, line 7: <b>where the loan is still needed</b>. The card would be due at line 7, but the book is gone at line 6.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Three labels, three places: the loan starts here, the owner leaves here, the loan is still needed here. Line 7 comes after line 6. Here's the problem, here's where, and I won't run a single line until it's fixed.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: the loan timeline" data-life="life-basics" id="life-basics-box">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">The <b>loan timeline</b>. Code runs down the page; each name gets a column, with a bar beside the lines where it's alive. Pick a program and step through it the way the Compiler does in its head. Watch for a loan bar that runs past its owner's bar.</p>
+    <ul class="life-legend" aria-label="How to read the timeline">
+      <li><span class="sw" aria-hidden="true"></span> owner: solid bar, <b>✕</b> where it's dropped</li>
+      <li><span class="sw loan" aria-hidden="true"></span> loan (a reference): striped bar</li>
+      <li><span class="sw over" aria-hidden="true"></span> overdue: dashed, marked <b>!</b></li>
+    </ul>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">PROGRAM:</span></div>
+    <div class="life-grid"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step of the chosen program</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Who is alive</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="life-basics">{"paths": [
+      {"id": "p1", "label": "1 · loan_ok.rs", "program": "loan_ok.rs", "from": 1, "to": 6,
+       "bars": [{"n": "book", "kind": "owner", "from": 2, "to": 6}, {"n": "card", "kind": "loan", "from": 3, "to": 4, "owner": "book"}],
+       "expect": {"exit": 0},
+       "steps": [
+        {"line": 1, "output": [], "note": "<code>main</code> starts. Nobody is alive yet: no bars."},
+        {"line": 2, "output": [], "note": "<code>book</code> is born. Its owner bar starts. It will last until the closing brace."},
+        {"line": 3, "output": [], "note": "<code>card = &amp;book</code>: a loan starts. Its striped bar begins under the owner's."},
+        {"line": 4, "output": ["on loan: Dune"], "note": "The card is used, and that's its <b>last</b> use anywhere. So its bar ends here: the loan is returned at line 4."},
+        {"line": 5, "output": ["on loan: Dune", "owner: Dune"], "note": "The owner reads its own book. No loan is open."},
+        {"line": 6, "output": ["on loan: Dune", "owner: Dune"], "note": "The closing brace: <code>book</code> is dropped (✕). The card's bar ended inside the owner's bar, so nothing is overdue. It compiles and runs."}]},
+      {"id": "p2", "label": "2 · due_too_late.rs", "program": "due_too_late.rs", "from": 1, "to": 8,
+       "bars": [{"n": "book", "kind": "owner", "from": 4, "to": 6}, {"n": "card", "kind": "loan", "from": 5, "to": 7, "owner": "book"}],
+       "expect": {"exit": 101, "code": "E0597", "labels": {"borrowed value does not live long enough": 5, "dropped here while still borrowed": 6, "borrow later used here": 7}},
+       "steps": [
+        {"line": 2, "output": [], "note": "<code>let card;</code> makes the name, with no value yet. No value, no loan: no bar."},
+        {"line": 4, "output": [], "note": "Inside the inner block, <code>book</code> is born. Its bar can only last to the block's closing brace, line 6."},
+        {"line": 5, "output": [], "note": "<code>card = &amp;book</code>: the loan starts. Where does it end? The Compiler looks ahead for the card's last use."},
+        {"line": 6, "output": [], "note": "The inner block closes: <code>book</code> is dropped (✕). But the card's last use is still to come…"},
+        {"line": 7, "output": [], "error": "error[E0597]: `book` does not live long enough", "note": "Line 7 uses the card. Its bar has to reach line 7, past its owner's bar: <b>overdue</b> (!). That's E0597. Nothing runs: the only thing on the screen is the Compiler's error."}]},
+      {"id": "p3", "label": "3 · last_use.rs", "program": "last_use.rs", "from": 1, "to": 7,
+       "bars": [{"n": "book", "kind": "owner", "from": 2, "to": 7}, {"n": "card", "kind": "loan", "from": 3, "to": 4, "owner": "book"}],
+       "expect": {"exit": 0},
+       "steps": [
+        {"line": 2, "output": [], "note": "<code>let mut book</code>: an owner that may change its book later."},
+        {"line": 3, "output": [], "note": "A reading loan, <code>card</code>, starts."},
+        {"line": 4, "output": ["on loan: Dune"], "note": "The card's last use. The variable <code>card</code> still exists until line 7, but the <b>loan</b> ends here. A lifetime is about use, not about braces."},
+        {"line": 5, "output": ["on loan: Dune"], "note": "<code>book.push_str(\" II\")</code> changes the book. Allowed: no loan is open any more (Chapter 8's one-writer rule)."},
+        {"line": 6, "output": ["on loan: Dune", "owner: Dune II"], "note": "The owner prints its changed book."},
+        {"line": 7, "output": ["on loan: Dune", "owner: Dune II"], "note": "Closing brace: <code>book</code> dropped. Every loan ended in time."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: two ways to fix it">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">There are two ways to fix an overdue loan: make the owner live longer, or finish the loan sooner. Here the owner moves out of the inner block, so its bar covers line 7.</p>
+    <span class="file-tab">due_fixed.rs</span>
+    <pre class="code" data-src="due_fixed.rs"></pre>
+    <pre class="term" data-run="due_fixed.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b>: <code>book</code> now lives in <code>main</code>'s block, so it's dropped at line 8, after the card's last use on line 7.</span></li>
+      <li><span>The other fix would keep <code>book</code> inside and move the <code>println!</code> inside too. Either way, the loan's bar ends inside the owner's bar.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>a due date is a place in the code</b>. The loan starts where you borrow, ends at your last use, and that whole stretch must fit inside the owner's life.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-loop-m" id="ex-loop"></div>
+  <script type="application/json" id="ex-loop-m">{"program": "spot_loop.rs", "bug": 5, "prompt": "Mabel shouts each title and keeps a reference to the last shout. It doesn't compile. Click the line where the overdue loan <b>starts</b> (the line with the <code>^^^^^</code>).", "explain": "<samp>error[E0597]: `loud` does not live long enough</samp>. <code>loud</code> is born on line 4, inside the loop's body, and dropped at the body's closing brace, line 6, on every trip. Line 5 lends it to <code>last</code>, which is used on line 7, after the loop. The loan starts at line 5 and would be due at line 7: overdue. Fix: make <code>last</code> own its text, <code>let mut last = String::new();</code> and <code>last = loud;</code> (a move, not a loan)."}</script>
+
+  <section class="panel sketch" aria-label="Panel 7: a stamp describes, it never extends">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">You can write a due date down yourself. Rust's notation is an apostrophe and a short name: <code>'a</code>, said "tick a". It goes right after the <code>&amp;</code>: <code>&amp;'a str</code> is "a reference to a str, valid for the stretch called 'a". The name is declared in angle brackets after the function's name, like a type blank from Chapter 17.</p>
+    <span class="file-tab">annot_same.rs</span>
+    <pre class="code" data-src="annot_same.rs"></pre>
+    <pre class="term" data-run="annot_same.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>show_stamped&lt;'a&gt;(card: &amp;'a str)</code> declares a lifetime named <code>'a</code> and stamps the card with it.</span></li>
+      <li><span>Lines 1 and 5 behave exactly the same: same output, same rules. Writing <code>'a</code> didn't make <code>book</code> live one line longer. It only gave the card's stretch a <b>name</b>, so it can be compared with other stretches. (Here there's nothing to compare it with, so the stamp is just decoration. Part 2 shows where you need it.)</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>If I write "due in ten years" on a card, the book still leaves when its owner does. Catchphrase: <b>a stamp describes; it never extends</b>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-annot-m" id="ex-annot"></div>
+  <script type="application/json" id="ex-annot-m">{"q": "Mabel adds <code>'a</code> to a function's reference parameters. What does that change while the program runs?", "options": [
+    {"t": "Nothing at all: every value is still dropped at exactly the same place.", "why": "Right. A lifetime annotation is a label the Compiler checks; the owner is still dropped at its closing brace. Annotations only describe how the stretches of different references relate, so the Compiler can check every caller.", "correct": true},
+    {"t": "The borrowed value now lives as long as <code>'a</code> says.", "why": "That's the most common wrong idea about lifetimes. Panel 7's two functions behave identically: the stamp extends nothing."},
+    {"t": "The value is copied behind the scenes, so the reference can't dangle.", "why": "No copying happens. <code>&amp;'a str</code> is still a plain reference."},
+    {"t": "The reference is checked while the program runs, to catch a missing owner.", "why": "All lifetime checks happen while compiling. When the program runs, there is no trace of <code>'a</code> left."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · WHOSE DUE DATE?<small>functions that return references, E0106 and E0261, longest&lt;'a&gt;, call sites on the timeline, stamping only what's related, E0621 and E0515</small></h2>
+
+  <section class="panel pop" aria-label="Panel 8: the longer title">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Mabel wants a little helper for her shelf labels: give it two titles, get back the longer one. No copying: it should hand back a <b>reference</b> to whichever title wins.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="normal" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Two borrowed books go in, one borrowed book comes out. Simple! …But if I hand a book back across my desk, I have to stamp its card. <b>Whose due date</b> does it get?</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 9: missing lifetime specifier">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="E0106!" data-seed="9"></svg>
+    <span class="file-tab">longest_nolife.rs</span>
+    <pre class="code" data-src="longest_nolife.rs"></pre>
+    <pre class="term" data-run="longest_nolife.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0106]: missing lifetime specifier</code><br><b>What</b>: a returned reference has no due date the Compiler can work out. (Chapter 9 and Chapter 16 met this code too.)</span></li>
+      <li><span><code>^ expected named lifetime parameter</code> under the <code>&amp;</code> of the return type, with <code>----</code> under both inputs: <b>where</b>, and the two suspects.</span></li>
+      <li><span><code>= help: … the signature does not say whether it is borrowed from `x` or `y`</code><br><b>The motive</b>, in plain words. Mabel's exact question.</span></li>
+      <li><span><code>help: consider introducing a named lifetime parameter</code>, with <code>+</code> marks under the four places that gain a stamp: <code>++++</code> under the new <code>&lt;'a&gt;</code> and <code>++</code> under each <code>&amp;</code>. That's the fix, in panel 11.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>I check each function <b>on its own</b>, and when I check a call, I read only the signature, never the body. Which book comes back depends on the lengths, which nobody knows until the program runs. So the signature has to tell me.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 10: the earlier due date wins">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption soft">Mabel's answer: the returned card might be either book's, so she stamps it with the <b>earlier</b> of the two due dates. Then it's safe whichever book it turns out to be.</p>
+    <div class="boxes">
+      <figure class="stamp-drop"><svg class="char sm" data-char="duecard" data-title="x" data-label="MAY 3"></svg><figcaption><code>x</code>: due May 3</figcaption></figure>
+      <span class="op" aria-hidden="true">+</span>
+      <figure class="stamp-drop d2"><svg class="char sm" data-char="duecard" data-title="y" data-label="MAY 10"></svg><figcaption><code>y</code>: due May 10</figcaption></figure>
+      <span class="op arrow" aria-hidden="true">&rarr;</span>
+      <figure class="stamp-drop d3"><svg class="char" data-char="duecard" data-title="result" data-label="MAY 3"></svg><figcaption>the result: due May 3, the earlier</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a card for x stamped May 3, plus a card for y stamped May 10, gives a result card stamped May 3.</p>
+    <p class="caption">In Rust you write it by giving all three the <b>same</b> stamp, <code>'a</code>. "Same stamp" means: the Compiler picks one stretch that both inputs cover, which is the shorter one, and the result is good only for that stretch.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: longest with a stamp">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <span class="file-tab">longest.rs</span>
+    <pre class="code" data-src="longest.rs"></pre>
+    <pre class="term" data-run="longest.rs"></pre>
+    <div class="anatomy" data-anatomy>
+      <p class="anat-line" aria-hidden="true"><span class="part" data-p="fn">fn longest</span><span class="part" data-p="decl">&lt;'a&gt;</span>(<span class="part" data-p="x">x: &amp;'a str</span>, <span class="part" data-p="y">y: &amp;'a str</span>) <span class="part" data-p="ret">-&gt; &amp;'a str</span></p>
+      <ul class="anat-keys" aria-label="Tap a part of the signature">
+        <li><button type="button" data-part="decl" aria-pressed="false"><b>&lt;'a&gt;</b>Declares a lifetime name, "there's a stretch of code I'll call 'a". Same angle brackets as a type blank (Chapter 17); lifetimes start with an apostrophe.</button></li>
+        <li><button type="button" data-part="x" aria-pressed="false"><b>x: &amp;'a str</b>"x must be valid for at least the whole of 'a."</button></li>
+        <li><button type="button" data-part="y" aria-pressed="false"><b>y: &amp;'a str</b>"y must be valid for at least the whole of 'a too." So 'a can't be longer than the shorter of the two.</button></li>
+        <li><button type="button" data-part="ret" aria-pressed="false"><b>-&gt; &amp;'a str</b>"The result is valid for 'a." Callers may use it only while <b>both</b> inputs are still alive.</button></li>
+        <li><button type="button" data-part="fn" aria-pressed="false"><b>fn longest</b>The body didn't change at all. Only the signature gained stamps.</button></li>
+      </ul>
+      <p class="sr-only" aria-live="polite"></p>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Lines 12–13</b>: <code>winner</code> borrows from <code>a</code> or <code>b</code>. Both live to the end of <code>main</code>, so it's fine.</span></li>
+      <li><span><b>Lines 14–15</b>: text in quotes lives for the whole program (Part 5), so any stamp fits. Look at line 15: "Emma" and "Dune" both have 4 letters, so <code>x.len() &gt; y.len()</code> is false and <code>y</code> wins.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 12: a stamp nobody declared">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="E0261!" data-seed="12"></svg>
+    <p class="caption">A classic slip: writing the stamps but forgetting to declare the name.</p>
+    <span class="file-tab">undeclared.rs</span>
+    <pre class="code" data-src="undeclared.rs"></pre>
+    <details><summary>Show the Compiler's full answer (three errors)</summary><pre class="term" data-run="undeclared.rs" data-exit></pre></details>
+    <ol class="readlist">
+      <li><span><code>error[E0261]: use of undeclared lifetime name `'a`</code>, once for each of the three <code>'a</code>s: the Compiler doesn't know that name.</span></li>
+      <li><span><code>help: consider introducing lifetime `'a` here</code>, with <code>++++</code> after <code>fn longest</code>: add <code>&lt;'a&gt;</code>. It's like using a variable you never made with <code>let</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-shortest-m" id="ex-shortest"></div>
+  <script type="application/json" id="ex-shortest-m">{"program": "fill_shortest.rs", "prompt": "Now the <b>shorter</b> title. Stamp the signature on line 1: declare the lifetime, then put it on both inputs and on the result.", "blanks": [{"line": 1, "text": "<'a>"}, {"line": 1, "text": "'a", "nth": 2}, {"line": 1, "text": "'a", "nth": 3}, {"line": 1, "text": "'a", "nth": 4}], "explain": "<code>fn shortest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>: the same shape as <code>longest</code>, because the result could again be either input. Any name works (<code>'b</code>, <code>'book</code>) as long as all four match, but <code>'a</code> is what most Rust code uses. Output: <samp>Emma</samp>, then <samp>Dune</samp>."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 13: the longest machine" data-machine="m-longest">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The <code>longest</code> machine. Two borrowed titles go in; a loan to the longer comes out, stamped with the earlier due date. Each example is a real line from <code>machine_longest.rs</code>. The last one jams before anything runs.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-longest">{"label": "longest", "program": "machine_longest.rs", "examples": [
+      {"in": "\"Dune\", \"Beloved\"", "out": "Beloved", "expectLine": "longest(\"Dune\", \"Beloved\") = Beloved", "outKind": "&str", "note": "7 letters beat 4: you get back a reference to <code>\"Beloved\"</code>, not a copy."},
+      {"in": "\"Persuasion\", \"Emma\"", "out": "Persuasion", "expectLine": "longest(\"Persuasion\", \"Emma\") = Persuasion", "outKind": "&str", "note": "This time <code>x</code> wins. The caller can't know in advance which one comes back, which is why both inputs share the stamp."},
+      {"in": "\"Emma\", \"Dune\"", "out": "Dune", "expectLine": "longest(\"Emma\", \"Dune\") = Dune", "outKind": "&str", "note": "A tie: 4 and 4. <code>x.len() &gt; y.len()</code> is false, so the <code>else</code> hands back <code>y</code>."},
+      {"in": "\"\", \"Ulysses\"", "out": "Ulysses", "expectLine": "longest(\"\", \"Ulysses\") = Ulysses", "outKind": "&str", "note": "An empty text has length 0, so anything else wins."},
+      {"in": "&a, &b, with b in a block", "error": "error[E0597]: `b` does not live long enough", "program": "call_inner_bad.rs", "note": "<code>b</code> is dropped at the end of an inner block, but the result is used after it. The result carries <code>b</code>'s earlier due date, so it's overdue. The machine refuses before anything runs (panel 15 draws it)."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-plong-m" id="ex-plong"></div>
+  <script type="application/json" id="ex-plong-m">{"program": "predict_longest.rs", "prompt": "Three calls to <code>longest</code>, one fed by the other two. What does it print?", "hint": "Count the letters. On a tie, <code>longest</code> returns its <b>second</b> argument.", "explain": "<code>longest(\"Emma\", \"Dune\")</code>: 4 and 4, a tie, so <samp>Dune</samp>. <code>longest(\"Ulysses\", \"Beloved\")</code>: 7 and 7, another tie: <samp>Beloved</samp>. Then <code>longest(\"Dune\", \"Beloved\")</code>: 7 beats 4: <samp>Beloved</samp>. Every result is a reference into the same <code>shelf</code> array, which lives to the end of <code>main</code>, so all the stamps are fine."}</script>
+
+  <div data-ex="trace" data-model="ex-tlong-m" id="ex-tlong"></div>
+  <script type="application/json" id="ex-tlong-m">{"program": "trace_longest.rs", "columns": ["t", "best"], "given": [0], "prompt": "<code>best</code> starts empty and keeps the longest title so far, as a loan. Fill in the <b>best</b> column after each trip around the loop.", "explain": "\"\" vs Emma: Emma. Emma vs Ulysses: Ulysses (7 &gt; 4). Ulysses vs Dune: 7 &gt; 4, Ulysses stays. Ulysses vs Middlemarch: Middlemarch (11). Middlemarch vs Beloved: Middlemarch stays. <code>best</code> is reassigned to a new loan each time, always pointing into <code>titles</code>, which outlives the loop."}</script>
+
+  <section class="panel clean" aria-label="Panel 14: two call sites">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">The stamp moves the question to every <b>call</b>. Same function, two calls. In both, <code>b</code> lives only inside an inner block. The difference is where the result is used.</p>
+    <div class="runs2">
+      <div><h3>USED INSIDE THE BLOCK</h3><span class="file-tab">call_inner_ok.rs</span><pre class="code" data-src="call_inner_ok.rs"></pre><pre class="term" data-run="call_inner_ok.rs"></pre></div>
+      <div><h3>USED AFTER THE BLOCK</h3><span class="file-tab">call_inner_bad.rs</span><pre class="code" data-src="call_inner_bad.rs"></pre><pre class="term" data-run="call_inner_bad.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Used inside the block</b> (<code>call_inner_ok.rs</code>): <code>w</code> is last used on line 14, before <code>b</code> is dropped on line 15. Fine.</span></li>
+      <li><span><b>Used after the block</b> (<code>call_inner_bad.rs</code>): <code>w</code> is used on line 16, after <code>b</code> is dropped on line 15. E0597 blames <code>&amp;b</code> on line 14, the argument with the earlier due date.</span></li>
+      <li><span>Notice: the Compiler never looked inside <code>longest</code>. And "Dune" vs "Emma" is a tie, so at run time the answer <em>would</em> be <code>b</code>. But even if it were <code>a</code>, the signature promises only "valid while both are", and that promise is what's checked.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-literal-m" id="ex-literal"></div>
+  <script type="application/json" id="ex-literal-m">{"q": "One small change from the failing call: <code>b</code> is now text in quotes, <code>\"Ulysses\"</code>, instead of a String. Does it compile?", "program": "call_literal.rs", "options": [
+    {"t": "Yes, and it prints <samp>Ulysses</samp>.", "why": "Right. <code>b</code> is a reference to text baked into the program, which lives for the whole run and is never dropped. The variable <code>b</code> goes away at line 15, but the <b>text</b> it points at doesn't. So only <code>a</code> limits the stamp 'a, and <code>a</code> lives to the end. And \"Ulysses\" (7 letters) beats \"Dune\" (4).", "correct": true},
+    {"t": "No: E0597, <code>b</code> does not live long enough.", "why": "That's what happened with <code>String::from(\"Emma\")</code>, because that String's owner was dropped at the brace. The quoted text \"Ulysses\" has no owner to drop."},
+    {"t": "No: E0106, the Compiler can't tell which input the result borrows from.", "why": "The signature already says: both, with stamp 'a. E0106 is about a missing stamp in the signature, not about the call."},
+    {"t": "Yes, but it prints <samp>Dune</samp>, the first argument.", "why": "\"Ulysses\" has 7 letters and \"Dune\" has 4, so <code>y</code> wins."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 15: call sites on the timeline" data-life="life-calls" id="life-calls-box">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">The calls on the loan timeline. <code>w</code> might be a loan of <code>a</code> or of <code>b</code>, so it carries the <b>earlier</b> due date. The timeline draws it as a loan of <code>b</code>, the owner that leaves first. The third program is the one from the quick check.</p>
+    <ul class="life-legend" aria-label="How to read the timeline">
+      <li><span class="sw" aria-hidden="true"></span> owner, <b>✕</b> where dropped</li>
+      <li><span class="sw loan" aria-hidden="true"></span> loan</li>
+      <li><span class="sw over" aria-hidden="true"></span> overdue (<b>!</b>)</li>
+    </ul>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">PROGRAM:</span></div>
+    <div class="life-grid"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step of the chosen program</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Who is alive</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="life-calls">{"paths": [
+      {"id": "c1", "label": "1 · used inside", "program": "call_inner_ok.rs", "from": 9, "to": 16,
+       "bars": [{"n": "a", "kind": "owner", "from": 10, "to": 16}, {"n": "b", "kind": "owner", "from": 12, "to": 15}, {"n": "w", "kind": "loan", "from": 13, "to": 14, "owner": "b"}],
+       "expect": {"exit": 0},
+       "steps": [
+        {"line": 10, "output": [], "note": "<code>a</code> is born in <code>main</code>'s block: it lives to line 16."},
+        {"line": 12, "output": [], "note": "<code>b</code> is born in the inner block: it lives only to line 15."},
+        {"line": 13, "output": [], "note": "<code>longest(&amp;a, &amp;b)</code>: the result <code>w</code> is stamped 'a, the stretch both <code>a</code> and <code>b</code> cover. That's <code>b</code>'s, the shorter."},
+        {"line": 14, "output": ["Emma"], "note": "<code>w</code>'s last use. Its bar ends here, inside <code>b</code>'s bar."},
+        {"line": 15, "output": ["Emma"], "note": "<code>b</code> is dropped (✕). No loan of it is still open."},
+        {"line": 16, "output": ["Emma"], "note": "<code>a</code> is dropped. It compiles and prints <samp>Emma</samp> (the tie goes to <code>y</code>)."}]},
+      {"id": "c2", "label": "2 · used after", "program": "call_inner_bad.rs", "from": 9, "to": 17,
+       "bars": [{"n": "a", "kind": "owner", "from": 10, "to": 17}, {"n": "b", "kind": "owner", "from": 13, "to": 15}, {"n": "w", "kind": "loan", "from": 14, "to": 16, "owner": "b"}],
+       "expect": {"exit": 101, "code": "E0597", "labels": {"borrowed value does not live long enough": 14, "dropped here while still borrowed": 15, "borrow later used here": 16}},
+       "steps": [
+        {"line": 10, "output": [], "note": "<code>a</code> is born; it lives to line 17."},
+        {"line": 11, "output": [], "note": "<code>let w;</code> is just a name for now."},
+        {"line": 13, "output": [], "note": "<code>b</code> is born inside the block, so it's dropped at line 15."},
+        {"line": 14, "output": [], "note": "<code>w = longest(&amp;a, &amp;b)</code>: <code>w</code> carries the earlier due date, <code>b</code>'s."},
+        {"line": 15, "output": [], "note": "<code>b</code> is dropped (✕)…"},
+        {"line": 16, "output": [], "error": "error[E0597]: `b` does not live long enough", "note": "…and <code>w</code> is used on line 16: overdue (!). The Compiler blames <code>&amp;b</code> on line 14, the loan with the earlier due date."}]},
+      {"id": "c3", "label": "3 · text in quotes", "program": "call_literal.rs", "from": 9, "to": 17,
+       "bars": [{"n": "a", "kind": "owner", "from": 10, "to": 17}, {"n": "b", "kind": "loan", "from": 13, "to": 14}, {"n": "w", "kind": "loan", "from": 14, "to": 16, "owner": "a"}],
+       "expect": {"exit": 0},
+       "steps": [
+        {"line": 10, "output": [], "note": "<code>a</code> is born; it lives to line 17."},
+        {"line": 13, "output": [], "note": "<code>b</code> is a loan of the quoted text \"Ulysses\". That text's owner is the program itself: it is never dropped, so <code>b</code> has no owner bar here to run past."},
+        {"line": 14, "output": [], "note": "<code>w = longest(&amp;a, b)</code>: the stretch both cover is just <code>a</code>'s life. <code>b</code>'s own bar can end here: copying a reference into the call is its last use."},
+        {"line": 16, "output": ["Ulysses"], "note": "<code>w</code> is used after the block. Still inside <code>a</code>'s bar: fine. It prints <samp>Ulysses</samp>."},
+        {"line": 17, "output": ["Ulysses"], "note": "<code>a</code> is dropped. Nothing was overdue."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: stamp only what is related">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Don't stamp everything out of habit. Here the title always comes from <code>book</code>, never from <code>reader</code>. So only <code>book</code> shares the result's stamp.</p>
+    <span class="file-tab">one_stamp.rs</span>
+    <pre class="code" data-src="one_stamp.rs"></pre>
+    <pre class="term" data-run="one_stamp.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>book: &amp;'a str</code> and <code>-&gt; &amp;'a str</code> are linked; <code>reader: &amp;str</code> has no stamp, so it's free to have any shorter life.</span></li>
+      <li><span><b>Lines 9–12</b>: <code>reader</code> is dropped at line 12, yet <code>title</code> is used on line 13. Fine, because the signature says the title borrows only from <code>book</code>. With <code>'a</code> on <code>reader</code> too, this exact call is refused: try it in the next check.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The reader just asks; the title comes off the book. So the card shares the book's due date, not the reader's. Catchphrase: <b>say whose due date the book shares</b>, and no one else's.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-both-m" id="ex-both"></div>
+  <script type="application/json" id="ex-both-m">{"program": "one_stamp_both.rs", "expect": "error", "answer": "E0597", "ask": "It doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "The same program, but out of habit Mabel stamped <code>reader</code> with <code>'a</code> too (line 1). The body didn't change at all.", "hint": "With <code>'a</code> on both inputs, the result must be good only while <b>both</b> are alive. Who leaves at line 12?", "explain": "<samp>error[E0597]: `reader` does not live long enough</samp>: <code>&amp;reader</code> on line 11, dropped at line 12, <samp>borrow later used here</samp> under <code>title</code> on line 13. The body never returns anything of the reader's, but callers only see the signature, and the signature now says the title may borrow from the reader. Over-stamping turned a correct program into a refused one."}</script>
+
+  <div data-ex="spot" data-model="ex-wrong-m" id="ex-wrong"></div>
+  <script type="application/json" id="ex-wrong-m">{"program": "wrong_param.rs", "bug": 3, "prompt": "The signature says the result shares <code>x</code>'s stamp only. The body disagrees somewhere. Click the line the Compiler points at.", "explain": "<samp>error[E0621]: explicit lifetime required in the type of `y`</samp> at line 3, <samp>lifetime `'a` required</samp>: the body can return <code>y</code>, but the signature promised the result comes from <code>x</code> ('a), and <code>y</code> has no stamp. The <samp>help:</samp> adds <code>'a</code> to <code>y</code>. The signature has to tell the truth about the body, because callers trust only the signature."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 17: no stamp can save a shredded book">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="E0515!" data-seed="17"></svg>
+    <p class="caption">Now Mabel wants "Dune &amp; Emma": both titles joined. She makes a new String inside the function and hands back a reference to it, stamps and all.</p>
+    <div class="runs2">
+      <div><h3>A LOAN OF A LOCAL</h3><span class="file-tab">return_local.rs</span><pre class="code" data-src="return_local.rs"></pre><pre class="term" data-run="return_local.rs" data-exit></pre></div>
+      <div><h3>HAND OVER THE BOOK ITSELF</h3><span class="file-tab">return_owned.rs</span><pre class="code" data-src="return_owned.rs"></pre><pre class="term" data-run="return_owned.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>error[E0515]: cannot return reference to local variable `joined`</code>. <code>joined</code> is made inside <code>both</code> and dropped at its closing brace, line 4. Its owner leaves before the caller even gets the card.</span></li>
+      <li><span>No stamp can fix this. <code>'a</code> describes loans of <code>x</code> and <code>y</code>; <code>joined</code> is neither. The fix is to return the String itself: <b>ownership moves out</b> to the caller (Chapter 7), and nothing is borrowed.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>If a book is being shredded at closing time, a due date on its card doesn't help. Give the reader the book to keep.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-local-m" id="ex-local"></div>
+  <script type="application/json" id="ex-local-m">{"q": "A function builds a new <code>String</code> and wants to give it to the caller. Which signature works?", "options": [
+    {"t": "<code>fn label(n: u32) -&gt; String</code>, returning the String.", "why": "Right. The caller becomes the owner. Nothing is borrowed, so there's nothing to stamp.", "correct": true},
+    {"t": "<code>fn label&lt;'a&gt;(n: u32) -&gt; &amp;'a str</code>, returning <code>&amp;s</code>.", "why": "A stamp with nothing to borrow from: the String is dropped at the function's end. That's E0515 (panel 17)."},
+    {"t": "<code>fn label(n: u32) -&gt; &amp;'static str</code>, returning <code>&amp;s</code>.", "why": "Chapter 9's trap: <code>'static</code> promises the text lives for the whole program, which a local String doesn't. E0515 again."},
+    {"t": "<code>fn label(n: u32) -&gt; &amp;str</code>, returning <code>&amp;s</code>.", "why": "No input reference to borrow from: E0106, with a help that suggests returning an owned value."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · STAMPS YOU DON'T HAVE TO WRITE<small>lifetime elision: three rules the Compiler applies for you, a map of them, and methods (rule 3)</small></h2>
+
+  <section class="panel clean" aria-label="Panel 18: the stamp was there all along">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Since Chapter 9 you've written functions like <code>first_word(s: &amp;str) -&gt; &amp;str</code>: a reference goes in, a reference comes out, no stamps. Why didn't those need <code>'a</code>? Because the Compiler wrote it in for you. Both programs below are the same program to the Compiler.</p>
+    <div class="runs2">
+      <div><h3>WHAT YOU WRITE</h3><span class="file-tab">first_word.rs</span><pre class="code" data-src="first_word.rs"></pre><pre class="term" data-run="first_word.rs"></pre></div>
+      <div><h3>WHAT THE COMPILER READS</h3><span class="file-tab">first_word_full.rs</span><pre class="code" data-src="first_word_full.rs"></pre><pre class="term" data-run="first_word_full.rs"></pre></div>
+    </div>
+    <p class="caption">Leaving stamps out is called <b>lifetime elision</b> ("elide" means to leave out). Early Rust needed every stamp written. The team noticed the same few patterns again and again, and turned them into three rules. If the rules give every output a stamp, you write none. If they don't, you get E0106.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 19: the three elision rules">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">The Compiler's three rules, in order. Inputs are the parameters; the output is the return type.</p>
+    <ol class="rules">
+      <li><b>RULE 1 · INPUTS</b><span>Every reference in the inputs gets its <b>own</b> stamp.</span><pre><span class="lbl">you write:</span>
+fn f(x: &amp;str, y: &amp;str)
+<span class="lbl">the Compiler reads:</span>
+fn f&lt;'a, 'b&gt;(x: &amp;'a str, y: &amp;'b str)</pre></li>
+      <li><b>RULE 2 · ONE IN</b><span>If there is exactly <b>one</b> input stamp, every output reference gets it.</span><pre><span class="lbl">you write:</span>
+fn f(s: &amp;str) -&gt; &amp;str
+<span class="lbl">the Compiler reads:</span>
+fn f&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str</pre></li>
+      <li><b>RULE 3 · METHODS</b><span>If one input is <code>&amp;self</code> or <code>&amp;mut self</code>, every output reference gets <b>self's</b> stamp.</span><pre><span class="lbl">you write:</span>
+fn f(&amp;self, s: &amp;str) -&gt; &amp;str
+<span class="lbl">the Compiler reads:</span>
+fn f&lt;'a, 'b&gt;(&amp;'a self, s: &amp;'b str) -&gt; &amp;'a str</pre></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>One book comes in, so a returned book must be that one: rule 2. At a method, a returned book is probably mine, from <code>self</code>: rule 3. Any other case, the Compiler won't guess. Catchphrase: <b>three rules write most stamps for you</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 20: the elision map" data-map="map-elide">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">The rules as a map. Each road is a real program from this chapter. Pick one and follow Mabel as the Compiler fills in the stamps.</p>
+    <div class="paths" role="group" aria-label="Choose a run"><span class="label">FOLLOW:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mape-t mape-d"><title id="mape-t">The lifetime elision rules as a map</title><desc id="mape-d">Down the left: your signature, rule 1 (each input reference gets a stamp), then the question "output has a reference?". If no, a road goes right to "nothing to stamp". If yes, down to "exactly one input stamp?". If yes, right to rule 2. If no, down to "is one of them self?". If yes, right to rule 3. If no, down to the error E0106.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-elide">{"seed": 19, "size": [690, 690], "start": [[150, 2], [150, 36]],
+      "states": [
+        {"id": "SIG", "x": 20, "y": 40, "w": 260, "h": 74, "label": "your signature", "sub": "references, no stamps"},
+        {"id": "R1", "x": 20, "y": 150, "w": 260, "h": 74, "label": "rule 1", "sub": "a stamp per input &"},
+        {"id": "OUT", "x": 20, "y": 260, "w": 260, "h": 74, "label": "output has a &?", "sub": "look after the ->"},
+        {"id": "NONE", "x": 410, "y": 260, "w": 260, "h": 74, "label": "nothing to stamp", "sub": "compiles as written", "kind": "end"},
+        {"id": "ONE", "x": 20, "y": 370, "w": 260, "h": 74, "label": "one input stamp?", "sub": "count them"},
+        {"id": "R2", "x": 410, "y": 370, "w": 260, "h": 74, "label": "rule 2", "sub": "output gets that stamp", "kind": "end"},
+        {"id": "SELF", "x": 20, "y": 480, "w": 260, "h": 74, "label": "one is &self?", "sub": "it's a method"},
+        {"id": "R3", "x": 410, "y": 480, "w": 260, "h": 74, "label": "rule 3", "sub": "output gets self's", "kind": "end"},
+        {"id": "E106", "x": 20, "y": 596, "w": 260, "h": 74, "label": "E0106", "sub": "you write the stamps", "kind": "error"}],
+      "transitions": [
+        {"id": "t1", "from": "SIG", "to": "R1", "pts": [[150, 118], [150, 146]], "label": "always", "lx": 164, "ly": 138},
+        {"id": "t2", "from": "R1", "to": "OUT", "pts": [[150, 228], [150, 256]], "label": "then", "lx": 164, "ly": 248},
+        {"id": "t3", "from": "OUT", "to": "NONE", "pts": [[284, 297], [406, 297]], "label": "no", "lx": 345, "ly": 286, "anchor": "middle"},
+        {"id": "t4", "from": "OUT", "to": "ONE", "pts": [[150, 338], [150, 366]], "label": "yes", "lx": 164, "ly": 358},
+        {"id": "t5", "from": "ONE", "to": "R2", "pts": [[284, 407], [406, 407]], "label": "yes", "lx": 345, "ly": 396, "anchor": "middle"},
+        {"id": "t6", "from": "ONE", "to": "SELF", "pts": [[150, 448], [150, 476]], "label": "no", "lx": 164, "ly": 468},
+        {"id": "t7", "from": "SELF", "to": "R3", "pts": [[284, 517], [406, 517]], "label": "yes", "lx": 345, "ly": 506, "anchor": "middle"},
+        {"id": "t8", "from": "SELF", "to": "E106", "pts": [[150, 558], [150, 592]], "label": "no", "lx": 164, "ly": 580}],
+      "paths": [
+        {"id": "e1", "label": "1 · first_word", "program": "first_word.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SIG"], "output": [], "note": "<code>fn first_word(s: &amp;str) -&gt; &amp;str</code>: one reference in, one out."},
+          {"on": ["R1"], "via": ["t1"], "output": [], "note": "Rule 1 stamps the input: <code>s: &amp;'a str</code>."},
+          {"on": ["OUT"], "via": ["t2"], "output": [], "note": "The output is <code>&amp;str</code>: yes, it needs a stamp."},
+          {"on": ["ONE"], "via": ["t4"], "output": [], "note": "How many input stamps? Exactly one, <code>'a</code>."},
+          {"on": ["R2"], "via": ["t5"], "output": ["War"], "note": "Rule 2: the output gets <code>'a</code> too. The full signature is the one under WHAT THE COMPILER READS in panel 18, and the program prints <samp>War</samp>."}]},
+        {"id": "e2", "label": "2 · a method", "program": "method_elided.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SIG"], "output": [], "note": "<code>fn name_for(&amp;self, reader: &amp;str) -&gt; &amp;str</code>, inside <code>impl Shelf</code>."},
+          {"on": ["R1"], "via": ["t1"], "output": [], "note": "Rule 1: two input references, two stamps: <code>&amp;'a self</code> and <code>reader: &amp;'b str</code>."},
+          {"on": ["OUT"], "via": ["t2"], "output": [], "note": "The output is a reference: it needs a stamp."},
+          {"on": ["ONE"], "via": ["t4"], "output": [], "note": "Exactly one input stamp? No, two. Rule 2 can't help."},
+          {"on": ["SELF"], "via": ["t6"], "output": [], "note": "Is one of them <code>&amp;self</code>? Yes: it's a method."},
+          {"on": ["R3"], "via": ["t7"], "output": ["Ana asks which shelf", "shelf: Poetry"], "note": "Rule 3: the output gets self's stamp, <code>'a</code>. That matches the body, which returns <code>&amp;self.name</code>. It compiles and runs."}]},
+        {"id": "e3", "label": "3 · longest", "program": "longest_nolife.rs", "expect": {"exit": 101, "stderrContains": "error[E0106]"}, "steps": [
+          {"on": ["SIG"], "output": [], "note": "<code>fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str</code>."},
+          {"on": ["R1"], "via": ["t1"], "output": [], "note": "Rule 1: <code>x: &amp;'a str</code>, <code>y: &amp;'b str</code>. Two different stamps."},
+          {"on": ["OUT"], "via": ["t2"], "output": [], "note": "A reference comes out: it needs a stamp. <code>'a</code> or <code>'b</code>?"},
+          {"on": ["ONE"], "via": ["t4"], "output": [], "note": "Two input stamps, so rule 2 doesn't apply."},
+          {"on": ["SELF"], "via": ["t6"], "output": [], "note": "Not a method: no <code>&amp;self</code>, so rule 3 doesn't apply either."},
+          {"on": ["E106"], "via": ["t8"], "output": [], "error": "error[E0106]: missing lifetime specifier", "note": "The rules ran out with an unstamped output. The Compiler won't guess: you write the stamps (panel 11)."}]},
+        {"id": "e4", "label": "4 · no & out", "program": "no_ref_out.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SIG"], "output": [], "note": "<code>fn count_both(x: &amp;str, y: &amp;str) -&gt; usize</code>: two references in, a number out."},
+          {"on": ["R1"], "via": ["t1"], "output": [], "note": "Rule 1 stamps both inputs, <code>'a</code> and <code>'b</code>, as always."},
+          {"on": ["NONE"], "via": ["t3"], "output": ["8 letters"], "note": "<code>usize</code> is not a reference. Nothing comes out that could dangle, so no stamp is needed at all."}]}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 21: when rule 3 guesses wrong">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="21"></svg>
+    <p class="caption">Rule 3 is a guess: "a method returns something of self's". Usually right. Here the method returns the <em>reader's</em> text instead. First the full program from the map's road 2, then the same program with lines 7 and 8 changed.</p>
+    <div class="runs2">
+      <div><h3>RETURNS SELF'S</h3><span class="file-tab">method_elided.rs</span><pre class="code" data-src="method_elided.rs"></pre><pre class="term" data-run="method_elided.rs"></pre></div>
+      <div><h3>RETURNS THE READER'S</h3><span class="file-tab">method_wrong.rs</span><pre class="code" data-src="method_wrong.rs"></pre><pre class="term" data-run="method_wrong.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>error: lifetime may not live long enough</code>. No code number this time; this message comes from the borrow checker itself.</span></li>
+      <li><span>The labels give the two stamps temporary names: <code>let's call the lifetime of this reference `'1`</code> (the reader's) and <code>`'2`</code> (self's). Then: <code>method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`</code>. Rule 3 promised self's; the body hands back the reader's.</span></li>
+      <li><span>The <code>help:</code> writes the honest signature: <code>fn name_for&lt;'a&gt;(&amp;self, reader: &amp;'a str) -&gt; &amp;'a str</code>. When the rules guess wrong, you write the stamps.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-elide-m" id="ex-elide"></div>
+  <script type="application/json" id="ex-elide-m">{"q": "Which of these signatures does <b>not</b> compile as written, because the rules leave the output without a stamp?", "options": [
+    {"t": "<code>fn pick(a: &amp;str, b: &amp;str, first: bool) -&gt; &amp;str</code>", "why": "Right: two input stamps (rule 2 is out) and no <code>&amp;self</code> (rule 3 is out). E0106; you'd write <code>&lt;'a&gt;</code> on <code>a</code>, <code>b</code> and the result.", "correct": true},
+    {"t": "<code>fn trim_end(s: &amp;str) -&gt; &amp;str</code>", "why": "One input stamp: rule 2 gives it to the output."},
+    {"t": "<code>fn title(&amp;self, prefix: &amp;str) -&gt; &amp;str</code> inside an impl", "why": "Rule 3: the output gets self's stamp. (It compiles, as long as the body really returns something of self's.)"},
+    {"t": "<code>fn same_length(a: &amp;str, b: &amp;str) -&gt; bool</code>", "why": "The output is a <code>bool</code>, not a reference: nothing to stamp."}]}</script>
+
+  <div data-ex="predict" data-model="ex-pmethod-m" id="ex-pmethod"></div>
+  <script type="application/json" id="ex-pmethod-m">{"program": "predict_method.rs", "prompt": "Two desks, two methods. <code>sign_or</code> is stamped by hand; <code>first</code> uses rule 3. What does it print?", "hint": "<code>String::new()</code> is empty. <code>&amp;self.sign[..1]</code> is a slice of the first byte.", "explain": "The help desk's sign isn't empty, so <code>sign_or</code> returns <code>&amp;self.sign</code>: <samp>Help</samp>. The blank desk's sign is empty, so it returns <code>other</code>: <samp>closed</samp>. <code>first</code> slices the first letter of self's sign: <samp>H</samp>. <code>sign_or</code> needed hand-written stamps because it may return <code>other</code>, which rule 3 alone would not allow (panel 21)."}</script>
+
+  <div data-ex="fill" data-model="ex-four-m" id="ex-four"></div>
+  <script type="application/json" id="ex-four-m">{"program": "fill_four.rs", "prompt": "Four signatures, all beyond the elision rules. Fill in the missing stamps. In <code>title_of</code>, the result always comes from <code>book</code>.", "blanks": [{"line": 1, "text": "'a", "nth": 4}, {"line": 5, "text": "'a", "nth": 2}, {"line": 10, "text": "<'a>"}, {"line": 14, "text": "'a", "nth": 3}], "explain": "<code>longer</code>: the result could be either input, so the return type shares their <code>'a</code>. <code>title_of</code>: only <code>book</code> gets <code>'a</code>, because the title comes from it (panel 16). <code>pick</code>: the number <code>n</code> isn't a reference, but <code>a</code> and <code>b</code> are two, so <code>&lt;'a&gt;</code> must be declared. <code>first_or</code>: the result is either the list's first item or the spare, so both share <code>'a</code>; the last line of output shows the spare coming back for an empty list."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · BOOKMARKS IN A BOOK<small>structs holding references (E0106 again, paid off), a stack-and-heap view, E0597 with a struct, impl&lt;'a&gt; and E0726, borrow or own?</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 22: Chapter 10's mystery">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <svg class="sfx tr" data-sfx="E0106!" data-seed="22"></svg>
+    <p class="caption">Back in Chapter 10, a form with a <code>&amp;str</code> field wouldn't compile, and Mabel said "use <code>String</code> for now". Now you can read that error. Mabel wants an <code>Excerpt</code>: a struct that remembers the first sentence of a story without copying it.</p>
+    <span class="file-tab">struct_nolife.rs</span>
+    <pre class="code" data-src="struct_nolife.rs"></pre>
+    <pre class="term" data-run="struct_nolife.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0106]: missing lifetime specifier</code> under the <code>&amp;</code> of <code>part: &amp;str</code>, line 2. A struct field that is a reference needs a due date, and no elision rule covers fields.</span></li>
+      <li><span><code>help: consider introducing a named lifetime parameter</code>, with <code>~</code> marking two changed lines: <code>struct Excerpt&lt;'a&gt;</code> and <code>part: &amp;'a str</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: a struct with a stamp">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <span class="file-tab">excerpt.rs</span>
+    <pre class="code" data-src="excerpt.rs"></pre>
+    <pre class="term" data-run="excerpt.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>struct Excerpt&lt;'a&gt;</code> declares a lifetime for the struct, like a type blank. <b>Line 2</b>: the field is stamped with it.</span></li>
+      <li><span>Read it as: "an <code>Excerpt</code> can't outlive whatever its <code>part</code> borrows from". Every Excerpt carries the due date of the text it points into.</span></li>
+      <li><span><b>Line 7</b>: <code>split('.')</code> cuts the story at full stops; <code>next()</code> takes the first piece, "Moon", as a <code>&amp;str</code> window into <code>story</code> (Chapter 12). <b>Line 8</b> puts that window in the struct. No letters are copied.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 24: a bookmark can't outlive its book">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">A struct with a reference is a <b>bookmark</b>. It marks a place in a book, and it's only useful while the book is around.</p>
+    <svg class="fig fig-wide" viewBox="0 0 560 230" role="img" aria-label="Drawing: an open book labelled story, with the word Moon underlined on its left page. A ribbon bookmark labelled Excerpt tick a hangs from the top of the book, its end pointing at Moon. To the right, a dashed empty outline where a book used to be, with a loose bookmark floating beside it and a red dashed stamp: NOT ALLOWED.">
+      <path d="M40 60 Q120 36 200 60 L200 200 Q120 176 40 200 Z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M200 60 Q280 36 360 60 L360 200 Q280 176 200 200 Z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text class="m" x="64" y="146">Moon.</text>
+      <path d="M62 154 H122" stroke="#111" stroke-width="3"/>
+      <text class="m" x="132" y="146">Tide.</text>
+      <path d="M62 176 H178 M222 92 H340 M222 116 H330 M222 140 H340 M222 164 H300" style="stroke: var(--rule)" stroke-width="2"/>
+      <path d="M96 20 V118 L84 106 L72 118 V20 Z" fill="#7FB2FF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <text class="mid s" x="200" y="226">story, with a bookmark</text>
+      <rect x="96" y="2" width="128" height="26" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="2.5"/>
+      <text class="m mid" x="160" y="21" style="font-size:15px">Excerpt&lt;'a&gt;</text>
+      <path d="M420 60 Q460 48 500 60 L500 190 Q460 178 420 190 Z" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <text class="mid" x="460" y="132" style="font-size:30px">?</text>
+      <path d="M392 70 V160 L382 150 L372 160 V70 Z" fill="#7FB2FF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <g transform="rotate(-8 460 214)"><rect x="390" y="196" width="140" height="34" rx="6" fill="#FFFFFF" stroke="#B00020" stroke-width="3" stroke-dasharray="7 4"/><text x="460" y="220" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="20" fill="#B00020">NOT ALLOWED</text></g>
+    </svg>
+    <svg class="fig fig-narrow" viewBox="0 0 360 420" role="img" aria-label="Drawing: an open book labelled story, with the word Moon underlined. A ribbon bookmark labelled Excerpt tick a hangs from the top, its end pointing at Moon. Below, a dashed empty outline where a book used to be, with a loose bookmark beside it and a red dashed stamp: NOT ALLOWED.">
+      <path d="M20 80 Q100 56 180 80 L180 220 Q100 196 20 220 Z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M180 80 Q260 56 340 80 L340 220 Q260 196 180 220 Z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text class="m" x="40" y="166">Moon.</text>
+      <path d="M38 174 H98" stroke="#111" stroke-width="3"/>
+      <text class="m" x="106" y="166">Tide.</text>
+      <path d="M38 194 H160 M202 112 H320 M202 136 H310 M202 160 H320 M202 184 H280" style="stroke: var(--rule)" stroke-width="2"/>
+      <path d="M72 36 V138 L60 126 L48 138 V36 Z" fill="#7FB2FF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="80" y="18" width="128" height="26" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="2.5"/>
+      <text class="m mid" x="144" y="37" style="font-size:15px">Excerpt&lt;'a&gt;</text>
+      <text class="mid s" x="180" y="250">story, with a bookmark</text>
+      <path d="M120 290 Q160 278 200 290 L200 400 Q160 388 120 400 Z" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <text class="mid" x="160" y="352" style="font-size:30px">?</text>
+      <path d="M100 296 V378 L90 368 L80 378 V296 Z" fill="#7FB2FF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <g transform="rotate(-8 280 346)"><rect x="212" y="328" width="140" height="36" rx="6" fill="#FFFFFF" stroke="#B00020" stroke-width="3" stroke-dasharray="7 4"/><text x="282" y="353" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="21" fill="#B00020">NOT ALLOWED</text></g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A bookmark left behind when the book goes back on the shelf marks nothing at all. Catchphrase: <b>a bookmark can't outlive its book</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 25: the bookmark on the stack, the letters on the heap" data-mem="mem-excerpt" data-heap-label="the coat-check room" id="mem-excerpt-box">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Step through <code>excerpt.rs</code> with Chapter 7's plates and coat-check room. Watch three tickets end up pointing at the same letters, and only one of them owns them.</p>
+    <ul class="mem-legend" aria-label="How to read the diagram">
+      <li><span class="sw" aria-hidden="true"></span> a plate (one frame) with its slots</li>
+      <li><span class="sw ptr" aria-hidden="true"></span> a pointer: a ticket number like #1 and an arrow</li>
+      <li><span class="sw dash" aria-hidden="true"></span> dashed and striped: freed</li>
+    </ul>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-excerpt">{"program": "excerpt.rs", "steps": [
+      {"line": 6, "note": "<code>main</code> starts: one empty plate.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 7, "note": "Line 6 makes <code>story</code>: a String's ticket (<code>len</code>, <code>cap</code>, <code>ptr</code>) on the plate, and its 11 letters in the coat-check room. <code>story</code> is the <b>owner</b>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "story", "type": "String", "ptr": "H1", "len": 11, "cap": 11}]}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes"}}, "changed": ["story", "H1"]},
+      {"line": 8, "note": "Line 7: <code>first</code> is a <code>&amp;str</code>, a window with just two fields: where it starts (ticket #1, the same letters) and how long it is, 4. It owns nothing: it's a loan.", "output": [], "frames": [{"name": "main", "slots": [{"n": "story", "type": "String", "ptr": "H1", "len": 11, "cap": 11}, {"n": "first", "type": "&str", "ptr": "H1", "len": 4}]}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes"}}, "changed": ["first"]},
+      {"line": 9, "note": "Line 8 builds the <code>Excerpt</code>. Its one field, <code>e.part</code>, is a copy of the window: another ticket #1, length 4. The struct is just a bookmark into <code>story</code>'s letters; that's what <code>Excerpt&lt;'a&gt;</code> records.", "output": [], "frames": [{"name": "main", "slots": [{"n": "story", "type": "String", "ptr": "H1", "len": 11, "cap": 11}, {"n": "first", "type": "&str", "ptr": "H1", "len": 4}, {"n": "e.part", "type": "&str", "ptr": "H1", "len": 4}]}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes"}}, "changed": ["e.part"]},
+      {"line": 10, "note": "Line 9 follows <code>e.part</code>'s ticket and reads 4 letters: <samp>Moon</samp>.", "output": ["excerpt: Moon"], "frames": [{"name": "main", "slots": [{"n": "story", "type": "String", "ptr": "H1", "len": 11, "cap": 11}, {"n": "first", "type": "&str", "ptr": "H1", "len": 4}, {"n": "e.part", "type": "&str", "ptr": "H1", "len": 4}]}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes"}}},
+      {"line": 11, "note": "Line 10 prints the whole story through its owner: reading while there are loans is fine (many readers, Chapter 8).", "output": ["excerpt: Moon", "story: Moon. Tide."], "frames": [{"name": "main", "slots": [{"n": "story", "type": "String", "ptr": "H1", "len": 11, "cap": 11}, {"n": "first", "type": "&str", "ptr": "H1", "len": 4}, {"n": "e.part", "type": "&str", "ptr": "H1", "len": 4}]}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes"}}},
+      {"line": null, "note": "The closing brace clears the plate. The windows own nothing, so dropping them frees nothing. Only the owner, <code>story</code>, frees the letters. Because the bookmarks were already done, nobody points at freed memory: exactly what the stamp <code>'a</code> guarantees.", "output": ["excerpt: Moon", "story: Moon. Tide."], "frames": [{"name": "main", "slots": []}], "heap": {"H1": {"cells": ["M", "o", "o", "n", ".", " ", "T", "i", "d", "e", "."], "cap": 11, "label": "String bytes", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: the bookmark outlives the book">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="E0597!" data-seed="26"></svg>
+    <p class="caption">Now the story lives in an inner block, and the Excerpt is used after it.</p>
+    <span class="file-tab">excerpt_late.rs</span>
+    <pre class="code" data-src="excerpt_late.rs"></pre>
+    <pre class="term" data-run="excerpt_late.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0597]: `story` does not live long enough</code>. Panel 4's error again, now with a struct in the middle.</span></li>
+      <li><span>The loan starts at <code>story.split</code>, line 9, the <code>^^^^^</code>. The owner leaves at line 11. The loan is still needed at line 12, through <code>e.part</code>: <code>- borrow later used here</code> sits under <code>e.part</code>.</span></li>
+      <li><span>The Compiler followed the chain: <code>e</code> holds <code>first</code>'s window, <code>first</code> borrows <code>story</code>. The <code>'a</code> on <code>Excerpt</code> is what lets it follow that chain through the struct.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-marks-m" id="ex-marks"></div>
+  <script type="application/json" id="ex-marks-m">{"program": "spot_bookmarks.rs", "bug": 9, "prompt": "Mabel collects bookmarks in a Vec, one per page, making each label inside the loop. Click the line where the overdue loan starts.", "explain": "<samp>error[E0597]: `label` does not live long enough</samp> at line 9's <code>&amp;label</code>. Each <code>label</code> is born on line 8 and dropped at line 10, the end of the loop's body. But the bookmarks are kept in <code>marks</code>, which is used on line 11. Each bookmark would outlive its book. Panel 28 shows the fix: let the bookmark <b>own</b> its label."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: methods on a stamped struct">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Methods for a struct with a lifetime. The <code>impl</code> line has to declare the lifetime, just as Chapter 17's <code>impl&lt;T&gt;</code> declared a type blank.</p>
+    <span class="file-tab">impl_excerpt.rs</span>
+    <pre class="code" data-src="impl_excerpt.rs"></pre>
+    <pre class="term" data-run="impl_excerpt.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>impl&lt;'a&gt; Excerpt&lt;'a&gt;</code>. The first <code>&lt;'a&gt;</code> declares the name; the second says "for an Excerpt with that stamp".</span></li>
+      <li><span><b>Line 6</b>: <code>new(text: &amp;'a str) -&gt; Excerpt&lt;'a&gt;</code>: the new Excerpt shares <code>text</code>'s due date. Here the stamp is written out, because <code>'a</code> already has a name in this impl.</span></li>
+      <li><span><b>Lines 11 and 15</b>: no stamps needed. <code>words</code> returns a number. <code>announce</code> has <code>&amp;self</code> and <code>msg</code>, so rule 3 gives the result self's stamp, which is correct: it returns <code>self.part</code>.</span></li>
+    </ol>
+    <p class="caption">What if the <code>impl</code> line leaves the stamp out completely, <code>impl Excerpt</code>? A new error code:</p>
+    <span class="file-tab">impl_missing.rs</span>
+    <pre class="code" data-src="impl_missing.rs"></pre>
+    <pre class="term" data-run="impl_missing.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0726]: implicit elided lifetime not allowed here</code>, with <code>^^^^^^^ expected lifetime parameter</code> under <code>Excerpt</code> on line 5. <code>Excerpt</code> has a lifetime, so naming it without one is incomplete: like saying "a loan card" without a due date.</span></li>
+      <li><span><code>help: indicate the anonymous lifetime</code>, with <code>++++</code> under <code>&lt;'_&gt;</code>: <code>impl Excerpt&lt;'_&gt;</code>. <code>'_</code> is the <b>anonymous lifetime</b>, "some stamp; I don't need its name". It works here because no method names the stamp. <code>impl&lt;'a&gt; Excerpt&lt;'a&gt;</code>, as above, works too.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-e0726-m" id="ex-e0726"></div>
+  <script type="application/json" id="ex-e0726-m">{"program": "quote_missing.rs", "expect": "error", "answer": "E0726", "ask": "This doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "A different struct, <code>Quote&lt;'a&gt;</code>, and a different method. But look closely at the <code>impl</code> line (line 5).", "hint": "Does <code>Quote</code> have a lifetime? Is it written on the impl line? Panel 27 met the same slip.", "explain": "<samp>error[E0726]: implicit elided lifetime not allowed here</samp>, <samp>expected lifetime parameter</samp> under <code>Quote</code> on line 5: the same slip as panel 27's <code>impl Excerpt</code>. The <code>help:</code> suggests <code>impl Quote&lt;'_&gt;</code>. <code>impl&lt;'a&gt; Quote&lt;'a&gt;</code> works too, and the next puzzle uses it."}</script>
+
+  <div data-ex="parsons" data-model="ex-quote-m" id="ex-quote"></div>
+  <script type="application/json" id="ex-quote-m">{"program": "parsons_excerpt.rs", "seed": 19, "pin": [1, 2, 3, 8, 9, 11, 16], "prompt": "Put the lines of a <code>Quote</code> struct, its impl and <code>main</code> in order, so it prints the goal output.", "explain": "The impl line comes before its method, and the method's body inside it. In <code>main</code>, the String must exist before the Quote can borrow it, then the shout prints before the plain text. <code>shout</code> returns a new <code>String</code>, so it needs no stamp at all."}</script>
+
+  <section class="panel sketch" aria-label="Panel 28: bookmark or photocopy">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">So should a struct hold a <code>&amp;str</code> or a <code>String</code>? A bookmark is cheap but tied to its book. A photocopy costs a little, and you can keep it forever.</p>
+    <div class="choose2">
+      <div><h3>BORROW: A BOOKMARK</h3><svg class="char" data-char="duecard" data-title="&amp;'a str" data-label="'a"></svg>
+        <ul><li>The struct is short-lived: made, used and dropped while the owner is clearly still around.</li><li>You're reading through big text and don't want copies (a parser, a search).</li><li>Price: a <code>&lt;'a&gt;</code> on the struct, its impls and everything that holds it.</li></ul></div>
+      <div class="own"><h3>OWN: A PHOTOCOPY</h3><svg class="char" data-char="duecard" data-title="String" data-label="MINE" data-state="forever"></svg>
+        <ul><li>The struct is stored: in a Vec, a HashMap, returned from a function, kept for later.</li><li>The data is made inside a loop or function (like <code>format!</code>).</li><li>Price: a copy (<code>.to_string()</code>, <code>.clone()</code>). Usually tiny.</li></ul></div>
+    </div>
+    <p class="sr-only">Picture: two loan cards. The borrow card is titled ampersand tick a str and stamped tick a. The own card is titled String and stamped MINE, with an infinity sign.</p>
+    <span class="file-tab">owned_bookmarks.rs</span>
+    <pre class="code" data-src="owned_bookmarks.rs"></pre>
+    <pre class="term" data-run="owned_bookmarks.rs"></pre>
+    <ol class="readlist">
+      <li><span>The spot-the-bug program, fixed by owning: <code>page: String</code> (line 2) and <code>page: label</code> (line 9) <b>moves</b> each label into its bookmark. No stamps anywhere, and the bookmarks survive the loop.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>When you're fighting the stamps, ask: does this struct really need to borrow? <b>When in doubt, own it.</b> You can always switch to borrowing later, when you know you need the speed.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-own-m" id="ex-own"></div>
+  <script type="application/json" id="ex-own-m">{"q": "Mabel's catalog program reads one line of a file at a time into a String called <code>line</code>, which is replaced on every loop. From each line it makes a <code>Book</code> and pushes it into <code>catalog: Vec&lt;Book&gt;</code>, which is printed at the end. What should <code>Book</code>'s title field be?", "options": [
+    {"t": "<code>title: String</code>, copying each title with <code>.to_string()</code>.", "why": "Right. The books are kept long after each <code>line</code> is replaced, so they must own their titles. It's panel 28's bookmark fix.", "correct": true},
+    {"t": "<code>title: &amp;'a str</code>, pointing into <code>line</code>.", "why": "Each <code>line</code> is gone by the next trip around the loop, but the catalog keeps the books: E0597, as in the spot-the-bug exercise."},
+    {"t": "<code>title: &amp;'static str</code>, so it lives forever.", "why": "<code>'static</code> doesn't make text live forever; it demands text that already does (Part 5). Text read from a file doesn't."},
+    {"t": "<code>title: &amp;str</code> with no stamp; the Compiler will work it out.", "why": "Struct fields have no elision rule: E0106 (panel 22)."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · FOREVER STAMPS AND FINE PRINT<small>'static and its trap, the bound T: 'static, edition 2024's impl Trait rule, and a cheat sheet</small></h2>
+
+  <section class="panel clean" aria-label="Panel 29: the forever stamp">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">One lifetime has a built-in name: <code>'static</code>, "valid for the whole time the program runs". Text in quotes has it, because it's baked into the program file and is never dropped (Chapter 9).</p>
+    <span class="file-tab">static_literal.rs</span>
+    <pre class="code" data-src="static_literal.rs"></pre>
+    <pre class="term" data-run="static_literal.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>motto</code> returns <code>&amp;'static str</code> with no inputs. That's honest: the text is in the program file. (No stamp at all would be E0106.)</span></li>
+      <li><span><b>Lines 6–11</b>: <code>s</code>, the variable, ends at line 10, but the <b>text</b> it points at doesn't, so <code>sign</code> can still read it on line 11. Same trick as the quick check in Part 2.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 30: static makes nothing live longer">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="30"></svg>
+    <p class="caption">A tempting "fix": stamp the result <code>'static</code>, so it can be kept forever.</p>
+    <span class="file-tab">static_wrong.rs</span>
+    <pre class="code" data-src="static_wrong.rs"></pre>
+    <pre class="term" data-run="static_wrong.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error: lifetime may not live long enough</code>. The input <code>s</code> is called <code>'1</code>; the result borrows from it, and <code>returning this value requires that `'1` must outlive `'static`</code>.</span></li>
+      <li><span>In plain words: you promised a forever loan of a book that's only borrowed for a while. The title comes from a String that will be dropped. Writing <code>'static</code> doesn't keep it.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A forever stamp is for books that really stay forever. Catchphrase: <b><code>'static</code> means "could live forever", not "make it live forever"</b>. When a <code>help:</code> suggests <code>'static</code>, it's usually a clue that something else is wrong.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-static-m" id="ex-static"></div>
+  <script type="application/json" id="ex-static-m">{"q": "Which statement about <code>'static</code> is true?", "options": [
+    {"t": "<code>\"Quiet, please.\"</code> has type <code>&amp;'static str</code>, because the text is stored in the program itself.", "why": "Right. Every string literal is a <code>&amp;'static str</code>.", "correct": true},
+    {"t": "Writing <code>&amp;'static str</code> on a return type keeps the returned text alive until the program ends.", "why": "A stamp describes, it never extends (panel 7). Panel 30 shows the Compiler refusing exactly that."},
+    {"t": "Adding <code>'static</code> everywhere is the safe way to avoid lifetime errors.", "why": "It makes most borrowing impossible, because almost nothing you borrow lives forever. Fix the real problem, or own the data."},
+    {"t": "A <code>&amp;'static str</code> can never be stored in a variable that is dropped.", "why": "The variable can be dropped any time (panel 29's <code>s</code>). It's the text it points at that lives forever."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 31: the bound T: 'static">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Sometimes a function demands that a type be <code>'static</code>: <code>T: 'static</code>, a <b>lifetime bound</b>. It reads "T holds no loans shorter than the whole program". You'll meet it for real with threads in Chapter 26, which may outlive the code that started them. A first look:</p>
+    <div class="runs2">
+      <div><h3>A LOCAL LOAN</h3><span class="file-tab">static_bound.rs</span><pre class="code" data-src="static_bound.rs"></pre><pre class="term" data-run="static_bound.rs" data-exit></pre></div>
+      <div><h3>OWNED VALUES</h3><span class="file-tab">static_bound_ok.rs</span><pre class="code" data-src="static_bound_ok.rs"></pre><pre class="term" data-run="static_bound_ok.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Line 8</b>: a <code>String</code> passes, even though it certainly doesn't live forever. It holds no loans at all, so nothing in it can dangle. "<code>'static</code>" in a bound means "contains nothing that could expire".</span></li>
+      <li><span><b>Line 9</b>: a <code>&amp;'static str</code> passes. <b>Line 11</b> of <code>static_bound.rs</code>: a loan of a local, <code>&amp;local</code>, does not: <code>argument requires that `local` is borrowed for `'static`</code>, and a <code>note:</code> points at the bound on line 3.</span></li>
+      <li><span>The general form is <code>T: 'a</code>: "every loan inside T lasts at least as long as 'a". You rarely write it; the Compiler works most of them out itself.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: edition 2024 and impl Trait">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Fine print for <code>-&gt; impl Trait</code> (Chapter 17): what does the hidden type borrow? Since <b>edition 2024</b>, the answer is "maybe any input loan", so the result counts as a loan of <code>text</code>. The same source, built under two editions, behaves differently.</p>
+    <div class="runs2">
+      <div><h3>EDITION 2024</h3><span class="file-tab">rpit_2024.rs</span><pre class="code" data-src="rpit_2024.rs"></pre><pre class="term" data-run="rpit_2024.rs" data-exit></pre></div>
+      <div><h3>EDITION 2021, SAME SOURCE</h3><span class="file-tab">rpit_2021.rs</span><pre class="code" data-src="rpit_2021.rs"></pre><pre class="term" data-run="rpit_2021.rs"></pre><span class="parity" data-same-src="rpit_2024.rs,rpit_2021.rs"></span></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Edition 2024</b> (this book's): <code>error[E0502]: cannot borrow `notes` as mutable because it is also borrowed as immutable</code>. <code>n</code> counts as a reading loan of <code>notes</code>, still used on line 11, so line 10 may not change <code>notes</code> (Chapter 8's rule).</span></li>
+      <li><span>The <code>note:</code> says why: <code>Rust 2024 has adjusted the `impl Trait` lifetime capture rules</code>. In edition 2021 the hidden type only captured loans you named, so the same code compiled. (The project's <code>Cargo.toml</code> says <code>edition = "2021"</code>.)</span></li>
+      <li><span>The <code>help:</code> gives the 2024 way to say "this result borrows nothing": <code>impl Display + use&lt;&gt;</code>, below. <code>use&lt;…&gt;</code> lists exactly which loans the hidden type may hold; empty means none.</span></li>
+    </ol>
+    <span class="file-tab">rpit_use.rs</span>
+    <pre class="code" data-src="rpit_use.rs"></pre>
+    <pre class="term" data-run="rpit_use.rs"></pre>
+  </section>
+
+  <div data-ex="choice" data-model="ex-edition-m" id="ex-edition"></div>
+  <script type="application/json" id="ex-edition-m">{"q": "In edition 2024, <code>fn count(text: &amp;str) -&gt; impl Display</code> returns a number. Why does the Compiler treat its result as still borrowing <code>text</code>?", "options": [
+    {"t": "It may hold any loan in scope, unless <code>use&lt;&gt;</code> says it holds none.", "why": "Right. A returned <code>impl Trait</code> may capture every lifetime in scope, so by default the Compiler assumes it does. The caller sees only \"some type that wears Display\", not that it's a <code>usize</code>, so it must assume the worst: it might hold the loan. <code>use&lt;&gt;</code> says otherwise.", "correct": true},
+    {"t": "Because a number counted from a <code>&amp;str</code> is always a loan of it.", "why": "A <code>usize</code> is a plain Copy value. The problem is that the caller can't see it's a <code>usize</code>."},
+    {"t": "Because <code>&amp;str</code> parameters always need a <code>'static</code> bound.", "why": "Nothing here asks for <code>'static</code>."},
+    {"t": "It doesn't: that rule belongs to edition 2021, and 2024 removed it.", "why": "It's the other way round: the 2024 edition made capturing every lifetime the default (panel 32)."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: the stamp desk cheat sheet">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">Mabel's stamp-desk cheat sheet: every lifetime error in this chapter, what it means in library words, and the usual fix.</p>
+    <div class="ops-wrap"><table class="ops stack">
+      <caption class="sr-only">Cheat sheet: error, meaning and usual fix</caption>
+      <thead><tr><th scope="col">ERROR</th><th scope="col">IN LIBRARY WORDS</th><th scope="col">USUAL FIX</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">E0597</th><td data-h="Means">A loan is still needed after its owner left (panels 4, 15, 26).</td><td data-h="Fix">Make the owner live longer, use the loan sooner, or own a copy.</td></tr>
+        <tr><th scope="row">E0106</th><td data-h="Means">A returned reference or a struct field has no due date the rules can work out (panels 9, 22).</td><td data-h="Fix">Add <code>&lt;'a&gt;</code> and stamp what's related, or return an owned value.</td></tr>
+        <tr><th scope="row">E0261</th><td data-h="Means">A stamp name used but never declared (panel 12).</td><td data-h="Fix">Add <code>&lt;'a&gt;</code> after the function, struct or <code>impl</code>.</td></tr>
+        <tr><th scope="row">E0621</th><td data-h="Means">The body returns a loan the signature didn't stamp (exercise after panel 16).</td><td data-h="Fix">Stamp that parameter too, so the signature tells the truth.</td></tr>
+        <tr><th scope="row">E0515</th><td data-h="Means">Lending out something made inside the function (panel 17).</td><td data-h="Fix">Return it owned: <code>String</code>, not <code>&amp;str</code>.</td></tr>
+        <tr><th scope="row">E0726</th><td data-h="Means">A stamped struct named without its stamp in an <code>impl</code> line (panel 27).</td><td data-h="Fix"><code>impl&lt;'a&gt; Excerpt&lt;'a&gt;</code> or <code>impl Excerpt&lt;'_&gt;</code>.</td></tr>
+        <tr><th scope="row">lifetime may not live long enough</th><td data-h="Means">Returning a loan with a shorter stamp than promised (panels 21, 30).</td><td data-h="Fix">Write the honest stamps the <code>help:</code> shows; drop a wrong <code>'static</code>.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>stamps, call sites, bookmarks and owners, all together, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 34: boss level">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="34"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Due dates are places in the code. Stamps describe, they never extend. Bookmarks can't outlive their books. Six rounds. Ready?</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>I'll be checking every signature.</p></div>
+      <svg class="char" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. The Compiler waits at its checkpoint. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. A stamped struct with a method that compares its own title with another. What does it print?", "hint": "<code>words</code> is <code>[\"Emma\", \"Ulysses\", \"Dune\"]</code>. On a tie, <code>longer</code> keeps its own title.", "explain": "The card's title is <samp>Emma</samp> (4 letters). Against Ulysses (7): <samp>Ulysses</samp>. Against Dune (4): a tie, and <code>other.len() &gt; self.title.len()</code> is false, so <samp>Emma</samp>. Against Beloved (7): <samp>Beloved</samp>. The method stamps <code>other</code> with the struct's <code>'a</code>, because it may return either; rule 3 alone would have given the result self's stamp only, and returning <code>other</code> would be refused."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.rs", "bug": 8, "prompt": "Boss 2. A method wants to hand back a label like \"1 books\". It won't compile. Click the line the Compiler points at.", "explain": "<samp>error[E0515]: cannot return reference to local variable `text`</samp> at line 8. Rule 3 stamps the result with self's lifetime, but <code>text</code> isn't part of self: it's made on line 7 and dropped at line 9. No stamp can fix it. Return <code>String</code> and write just <code>text</code> on line 8."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. <code>word</code> is used after <code>label</code> is dropped, yet it compiles. Fill in the stamps: the struct's declaration, both parts of the impl line, and the method's return type, which must be the <b>text's</b> stamp, not self's.", "blanks": [{"line": 1, "text": "<'a>"}, {"line": 5, "text": "<'a>"}, {"line": 5, "text": "<'a>", "nth": 2}, {"line": 6, "text": "'a"}], "explain": "<code>-&gt; &amp;'a str</code> says the word borrows from the sign's text, not from the label. The label is only a bookmark; the sign lives to the end of <code>main</code>, so <code>word</code> is fine on line 18. With an elided <code>-&gt; &amp;str</code>, rule 3 would tie the word to <code>&amp;self</code>, the label, and the real run of that version is <samp>error[E0597]: `label` does not live long enough</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 23, "pin": [1, 2, 3, 5, 6, 12], "prompt": "Boss 4. Find the longest line of a poem, as a loan. The poem is in place; put the rest of <code>main</code> in order.", "explain": "The poem (the owner) is pinned first; then comes an empty <code>best</code>. Loop over the lines, keeping the longer each time, close the loop, then print. Every loan points into <code>poem</code>, which outlives them all: <samp>The owls are reading late</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.rs", "columns": ["t", "best"], "given": [0], "prompt": "Boss 5. <code>Record</code> keeps a loan of the alphabetically <b>first</b> title offered so far (<code>&lt;</code> on text compares like a dictionary). It starts at <code>\"zzz\"</code>. Fill in the <b>best</b> column.", "explain": "Capital letters come before lower-case ones, so <samp>Moby</samp> beats \"zzz\". Emma comes before Moby: <samp>Emma</samp>. Dune before Emma: <samp>Dune</samp>. Ulysses comes after Dune: still <samp>Dune</samp>. Beloved before Dune: <samp>Beloved</samp>. <code>offer</code> stamps <code>title</code> with the struct's <code>'a</code>, so each new loan has the same due date as the record."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A friend's program won't compile: E0597, a struct holding a <code>&amp;str</code> outlives the String it points into. The struct is kept in a HashMap for the whole run. What's the best fix?", "options": [
+    {"t": "Make the field a <code>String</code>, so the struct owns a copy.", "why": "Right. A struct kept for the whole run should own its text (panel 28). No stamps, no overdue loans.", "correct": true},
+    {"t": "Add more <code>'a</code> annotations until it compiles.", "why": "Stamps describe, they never extend. The String really is dropped too early; no annotation changes that."},
+    {"t": "Change the field to <code>&amp;'static str</code> so it lives forever.", "why": "Then only text that lives forever can go in. A String read at run time can't, so the error just moves."},
+    {"t": "Turn off the borrow checker for that one struct.", "why": "There's no such switch in safe Rust, and the error is real: the struct would point at freed memory."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 35: what you learned">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">What you learned in Chapter 19</p>
+    <ul class="recap">
+      <li><b>A DUE DATE IS A PLACE IN THE CODE</b>A lifetime is the stretch of code where a reference is valid: from the borrow to its last use. It must fit inside the owner's life, or you get E0597 ("bring it back before the owner leaves").</li>
+      <li><b>A STAMP DESCRIBES; IT NEVER EXTENDS</b><code>'a</code> names a stretch so the Compiler can compare stretches. It never makes anything live longer.</li>
+      <li><b>SAY WHOSE DUE DATE THE BOOK SHARES</b><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>: the result is good while both inputs are. Missing: E0106; undeclared: E0261; body disagrees: E0621. Stamp only what's related. A loan of a local can't be stamped (E0515): return it owned.</li>
+      <li><b>THREE RULES WRITE MOST STAMPS FOR YOU</b>Each input gets a stamp; one input stamp goes to the outputs; a method's outputs get self's. Otherwise you write them. When rule 3 guesses wrong: "lifetime may not live long enough".</li>
+      <li><b>A BOOKMARK CAN'T OUTLIVE ITS BOOK</b><code>struct Excerpt&lt;'a&gt; { part: &amp;'a str }</code>, <code>impl&lt;'a&gt; Excerpt&lt;'a&gt;</code> (or E0726). Kept for long? When in doubt, own it.</li>
+      <li><b>'STATIC MEANS "COULD LIVE FOREVER", NOT "MAKE IT LIVE FOREVER"</b>Literals are <code>&amp;'static str</code>. <code>T: 'static</code> means "holds no short loans". In edition 2024, <code>-&gt; impl Trait</code> captures every lifetime in scope unless you write <code>use&lt;&gt;</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>For eighteen chapters the Compiler stamped every card silently. Now you can read the stamps, and write the few it can't.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: next time, backpacks and conveyor belts">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">Coming up in Chapter 20: Backpacks and Conveyor Belts…</p>
+    <div class="teaser">
+      <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 540 230" role="img" aria-label="Teaser picture: on the left, a backpack with two sticky notes on it, each with a dashed arrow pointing back to a little house. On the right, a conveyor belt with three boxes riding on it toward a packer at the end, passing under two stations labelled map and filter.">
+        <path d="M40 80 Q40 50 80 50 Q120 50 120 80 L126 196 Q80 210 34 196 Z" fill="#7FB2FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M62 52 Q80 26 98 52" fill="none" stroke="#111" stroke-width="4"/>
+        <rect x="52" y="110" width="56" height="44" rx="6" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+        <g transform="rotate(-6 70 92)"><rect x="48" y="78" width="40" height="30" fill="#FFF6CC" stroke="#111" stroke-width="2.5"/></g>
+        <g transform="rotate(8 104 170)"><rect x="86" y="158" width="38" height="28" fill="#FFF6CC" stroke="#111" stroke-width="2.5"/></g>
+        <path d="M70 80 C 110 20, 170 20, 186 46" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="7 5"/>
+        <path d="M168 60 l16 -16 l16 16 v24 h-32 z" fill="#FFE1E1" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+        <rect x="236" y="168" width="290" height="22" rx="11" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <g fill="#FFFFFF" stroke="#111" stroke-width="3"><circle cx="256" cy="179" r="6"/><circle cx="316" cy="179" r="6"/><circle cx="376" cy="179" r="6"/><circle cx="436" cy="179" r="6"/><circle cx="496" cy="179" r="6"/></g>
+        <g stroke="#111" stroke-width="3"><rect x="250" y="134" width="32" height="32" rx="4" fill="#C9F2D9"/><rect x="342" y="134" width="32" height="32" rx="4" fill="#FFF6CC"/><rect x="434" y="134" width="32" height="32" rx="4" fill="#DDE8FF"/></g>
+        <g stroke="#111" stroke-width="4" fill="#FFFFFF"><path d="M290 60 h56 v40 h-56 z"/><path d="M382 60 h56 v40 h-56 z"/></g>
+        <path d="M318 100 v24 M410 100 v24" stroke="#111" stroke-width="4"/>
+        <text x="318" y="86" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">map</text><text x="410" y="86" font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle">filter</text>
+        <path d="M506 120 l14 -8 v50 l-14 -8 z" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      </svg></div>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Next time: little functions without names that can carry things from home in a backpack, sometimes the items themselves, sometimes just notes pointing back (loans, with due dates!). Then a conveyor belt where nothing moves until somebody at the end pulls it: <b>closures</b> and <b>iterators</b>.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch18.html">← Ch 18 · The Universal Adapter Kit</a><a class="next" href="ch20.html">Ch 20 · Backpacks and Conveyor Belts →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what the borrow checker really computes</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Lifetimes are entirely a compile-time idea. Here's roughly what the Compiler does with them.</p></div>
+      </div>
+      <h3>Regions, not braces</h3>
+      <p>Inside a function, the borrow checker treats each loan's lifetime as a set of points in the code: everywhere the reference may still be used later. That's why panel 5's <code>last_use.rs</code> compiles: the loan's region stops at its last use, even though the variable <code>card</code> stays in scope until the brace. This behaviour, called <b>non-lexical lifetimes</b> (NLL), arrived with the 2018 edition. Before it, a loan lasted to the end of the variable's block, and many programs that are clearly safe were refused. Older tutorials sometimes show those old errors.</p>
+      <h3>Two jobs: inside functions and at their edges</h3>
+      <p>Inside one function body, the Compiler works out every region itself; you never write lifetimes for local variables. At the <b>edges</b> of a function (its signature) and inside type definitions (struct fields), it does not look at bodies, so the relationships must be written down, or follow from the elision rules. This is a design choice: changing a function's body can never break its callers, as long as the signature stays the same.</p>
+      <h3>How <code>'a</code> is chosen at a call</h3>
+      <p>At <code>longest(&amp;a, &amp;b)</code> the Compiler must pick one region for <code>'a</code> that satisfies every requirement: <code>&amp;a</code> must be valid for all of it, <code>&amp;b</code> must be valid for all of it, and the result must be valid wherever it's used. If the uses of the result reach past the end of <code>b</code>'s life, no region works, and you get E0597 naming <code>b</code>. That's why "the result lives as long as the shorter input" is the right picture.</p>
+      <h3>The anonymous lifetime <code>'_</code></h3>
+      <p><code>'_</code> means "a lifetime I don't need to name; work it out by the elision rules". You saw it in E0726's help (<code>impl Excerpt&lt;'_&gt;</code>). It's also handy in signatures: <code>fn first(e: &amp;Excerpt&lt;'_&gt;) -&gt; &amp;str</code>. Writing it shows a reader that the type carries a loan, without adding a name.</p>
+      <h3>Edition 2024 and <code>use&lt;…&gt;</code></h3>
+      <p>Before edition 2024, a returned <code>impl Trait</code> from a plain function captured only lifetimes that appeared in its bounds, which surprised people in the opposite direction: code that needed to return a loan had to add awkward bounds. Edition 2024 makes it capture every lifetime in scope, matching <code>async fn</code> and trait methods, and adds <code>use&lt;…&gt;</code> ("precise capturing", stable since Rust 1.82) to say exactly which ones. <code>cargo fix --edition</code> adds <code>use&lt;&gt;</code> automatically where the old meaning is needed, which is why panel 32's help shows exactly that.</p>
+      <h3>Lifetimes leave no trace</h3>
+      <p>After checking, every lifetime is erased. The machine code for <code>longest</code> is the same with or without stamps, and there's no run-time cost or check. A reference in the finished program is just an address (and, for <code>&amp;str</code>, a length).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where stamps show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The standard library is full of them, mostly elided.</b> <code>str::trim</code> is <code>fn trim(&amp;self) -&gt; &amp;str</code>: rule 3. <code>str::split</code> returns a <code>Split&lt;'a, P&gt;</code>, a struct holding a loan of your text, exactly like <code>Excerpt</code>. That's why the pieces can't outlive the String you split.</li>
+        <li><b>Zero-copy parsers.</b> Programs that read big files, such as log analyzers or config readers, often hand out <code>&amp;str</code> pieces of one big String instead of copying each piece. The structs that hold those pieces carry a <code>'a</code>.</li>
+        <li><b>Short-lived "views".</b> A struct made just to work on some data for a moment, like a tokenizer over a line or a cursor over a slice, often borrows. Long-lived "records" (a catalog entry, a user, a saved setting) almost always own.</li>
+        <li><b>Serialization libraries</b> such as serde (Chapter 28) can deserialize into structs with <code>&amp;'a str</code> fields that point straight into the input text, avoiding copies, at the price of keeping the input alive.</li>
+        <li><b>Threads</b> (Chapter 26) need <code>'static</code> data, because a thread may outlive the function that started it. That's the <code>T: 'static</code> bound from panel 31, met in the wild.</li>
+        <li><b>Advice from experienced Rust programmers</b>: start with owned data in your structs, and add borrowing only where measurements show copies matter. Many real programs have few or no hand-written lifetimes outside library code.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Lifetime annotations make values live longer."</b> They describe; they never extend (panel 7). The owner is dropped at its brace no matter what you write.</li>
+        <li><b>"Every reference needs an annotation."</b> Locals never do, and the elision rules cover most signatures. You write stamps only where a signature or a struct can't be worked out.</li>
+        <li><b>"A lifetime lasts until the closing brace."</b> A loan's lifetime ends at its last use (NLL). The owner's life ends at the brace.</li>
+        <li><b>"<code>'a</code> is the lifetime of <code>x</code>."</b> It's a region that the Compiler picks at each call, one that every reference stamped <code>'a</code> covers. With two inputs, that's the shorter one.</li>
+        <li><b>"Give every parameter the same <code>'a</code>, to be safe."</b> Over-stamping ties lives together that needn't be (panel 16). Stamp only what the result can actually borrow from.</li>
+        <li><b>"<code>'static</code> means the value lives forever."</b> As a reference, <code>&amp;'static T</code> points at something that will live until the end. As a bound, <code>T: 'static</code> means "contains no short loans", and an owned <code>String</code> qualifies even though it's dropped normally.</li>
+        <li><b>"When the Compiler suggests <code>'static</code>, take it."</b> Chapter 9's trap and panel 30: that suggestion is usually a hint that you're returning a loan of something short-lived. Return an owned value instead.</li>
+        <li><b>"Lifetimes are checked while the program runs."</b> They're compile-time only and erased afterwards.</li>
+        <li><b>"Structs with references are more advanced, so better."</b> They're more restrictive. Owning is simpler and usually fast enough.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>0. Have Rust</h3>
+      <p>If you haven't installed it yet: on <b>Windows</b>, download and run <code>rustup-init.exe</code> from rustup.rs (it may ask you to install the Visual Studio C++ build tools first). On <b>macOS</b> and <b>Linux</b>, run <code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code> in a terminal. Then <code>rustc --version</code> shows your version; this book used 1.99.1, and <code>rustup update</code> gets the newest.</p>
+      <h3>1. Make a loan overdue</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new stamps</code> and <code>cd stamps</code>. Paste <code>due_too_late.rs</code> into <code>src/main.rs</code> and run <code>cargo run</code>. Find the three labels. Then fix it both ways from panel 6. Finally try <code>last_use.rs</code>, and add one more <code>println!("{card}")</code> as its last line: now the loan is open while <code>push_str</code> writes, and you'll meet Chapter 8's E0502.</p>
+      <h3>2. Stamp a function</h3>
+      <p>Paste <code>longest_nolife.rs</code> and read the E0106. Apply the <code>help:</code> by hand. Then write <code>shortest</code>, and a function <code>fn first_two&lt;'a&gt;(list: &amp;'a [String]) -&gt; (&amp;'a String, &amp;'a String)</code>. Delete its stamps: does it still compile? (Rule 2: yes.)</p>
+      <h3>3. Bookmarks</h3>
+      <p>Paste <code>impl_excerpt.rs</code>. Add a method <code>fn last_word(&amp;self) -&gt; &amp;str</code> using <code>split_whitespace().last()</code>. Then try storing several Excerpts in a <code>Vec</code> built inside a loop from <code>format!</code> strings, read the E0597, and switch the field to <code>String</code>.</p>
+      <h3>4. Editions side by side</h3>
+      <p>Paste <code>rpit_2024.rs</code> and run it. Then open <code>Cargo.toml</code>, change <code>edition = "2024"</code> to <code>"2021"</code>, and run again. Now try <code>cargo fix --edition --allow-dirty</code> while the project is still set to 2021. It <b>rewrites your code</b> where 2024 means something different (here it adds <code>+ use&lt;&gt;</code> to <code>word_count</code>'s return type), and lists the files it fixed. It doesn't change <code>Cargo.toml</code>: then you set <code>edition = "2024"</code> yourself. (<code>--allow-dirty</code> is needed because it edits files that version control hasn't saved yet. Make a copy first if you want to keep the original.)</p>
+      <h3>5. Ask the Compiler for more</h3>
+      <p><code>rustc --explain E0106</code>, <code>rustc --explain E0597</code>, <code>rustc --explain E0621</code> and <code>rustc --explain E0726</code> print the long explanations with examples. In VS Code with rust-analyzer, you can turn on "inlay hints" for elided lifetimes (the setting is called <code>rust-analyzer.inlayHints.lifetimeElisionHints.enable</code>); the editor then shows the stamps the elision rules filled in, right in your code.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>lifetime</dt><dd>The stretch of code in which a reference is valid: from where it's made to its last use.</dd>
+        <dt>lifetime annotation (stamp)</dt><dd>A name for a lifetime, written <code>'a</code> ("tick a") after the <code>&amp;</code>: <code>&amp;'a str</code>. It describes relationships; it never changes how long anything lives.</dd>
+        <dt>lifetime parameter</dt><dd>Declaring a lifetime name in angle brackets: <code>fn f&lt;'a&gt;</code>, <code>struct S&lt;'a&gt;</code>, <code>impl&lt;'a&gt;</code>.</dd>
+        <dt>owner / loan</dt><dd>The variable that owns a value (dropped at its brace) / a reference to it.</dd>
+        <dt>dangling reference</dt><dd>A reference to a value that's gone. Rust refuses to compile one.</dd>
+        <dt>borrow checker</dt><dd>The part of the Compiler that checks every loan against its owner's life and the borrowing rules.</dd>
+        <dt>non-lexical lifetimes (NLL)</dt><dd>The rule that a loan ends at its last use, not at the end of its block.</dd>
+        <dt>lifetime elision</dt><dd>Leaving stamps out where the Compiler's three rules fill them in.</dd>
+        <dt>input / output lifetimes</dt><dd>Stamps on a function's parameters / on its return type.</dd>
+        <dt>anonymous lifetime <code>'_</code></dt><dd>"Some lifetime; I don't need its name."</dd>
+        <dt><code>'static</code></dt><dd>The lifetime of the whole program run. String literals are <code>&amp;'static str</code>.</dd>
+        <dt>lifetime bound</dt><dd><code>T: 'a</code>: every loan inside T lasts at least as long as <code>'a</code>. <code>T: 'static</code>: T holds no short loans.</dd>
+        <dt>local variable</dt><dd>A variable made inside a function; dropped when the function ends.</dd>
+        <dt>edition</dt><dd>A set of language rules chosen per project in <code>Cargo.toml</code> (2015, 2018, 2021, 2024). This book uses 2024.</dd>
+        <dt>precise capturing, <code>use&lt;…&gt;</code></dt><dd>Listing exactly which lifetimes a returned <code>impl Trait</code> may hold.</dd>
+        <dt>E0597 / E0106 / E0261</dt><dd>A value doesn't live long enough for its loan; a missing lifetime; an undeclared lifetime name.</dd>
+        <dt>E0621 / E0515 / E0726 / E0502</dt><dd>A parameter needs the stamp the result has; returning a reference to a local; a struct's lifetime left out of an impl line; a reading loan still open during a write.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li>The Rust Programming Language: <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html">10.3 Validating References with Lifetimes</a>: the borrow checker, <code>longest</code>, structs, the elision rules, <code>'static</code>.</li>
+        <li><a href="https://doc.rust-lang.org/rust-by-example/scope/lifetime.html">Rust by Example: Lifetimes</a>: nine small pages (explicit annotation, functions, methods, structs, traits, bounds, coercion, static, elision).</li>
+        <li>The Rust Reference: <a href="https://doc.rust-lang.org/reference/lifetime-elision.html">Lifetime elision</a>, the exact rules, including those for <code>impl</code> headers and trait objects.</li>
+        <li>The Edition Guide: <a href="https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html">RPIT lifetime capture rules</a> (edition 2024 and <code>use&lt;…&gt;</code>).</li>
+        <li><a href="https://doc.rust-lang.org/error_codes/">The error index</a>: <a href="https://doc.rust-lang.org/error_codes/E0597.html">E0597</a>, <a href="https://doc.rust-lang.org/error_codes/E0106.html">E0106</a>, <a href="https://doc.rust-lang.org/error_codes/E0261.html">E0261</a>, <a href="https://doc.rust-lang.org/error_codes/E0621.html">E0621</a>, <a href="https://doc.rust-lang.org/error_codes/E0515.html">E0515</a>, <a href="https://doc.rust-lang.org/error_codes/E0726.html">E0726</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://rust-book.cs.brown.edu/">The Brown University interactive edition</a> of the book: its lifetimes section and the "Ownership Inventory" quizzes, with diagrams of permissions over time.</li>
+        <li><a href="https://rustlings.rust-lang.org/">Rustlings</a>: the <code>lifetimes</code> exercise folder, three small programs to fix.</li>
+        <li><a href="https://google.github.io/comprehensive-rust/">Comprehensive Rust</a>: the "Lifetimes" segment (about an hour), with slides on elision and structs.</li>
+        <li><a href="https://github.com/pretzelhammer/rust-blog/blob/master/posts/common-rust-lifetime-misconceptions.md">Common Rust Lifetime Misconceptions</a>, a long free article for later, once this chapter feels comfortable.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch19</code>. Each of the 50 programs was built as its own cargo project and run with <code>cargo run -q</code> (a debug build). One project, <code>rpit_2021.rs</code>, was generated with <code>edition = "2021"</code> in its <code>Cargo.toml</code> to show the edition difference; its source is byte-for-byte the same as <code>rpit_2024.rs</code>, as the badge in panel 32 checks. Compile errors are shown exactly as cargo printed them, with their real exit code, 101.</p>
+  <p>Version differences: none. Every program, including every compiler message, printed the same on Rust 1.99.1 and Rust 1.97.0.</p>
+  <p>The loan timelines, the longest machine, the elision map and the stack-and-heap stepper are teaching models; each checks itself against those runs and shows a badge. The timelines also check that each E0597 path's bars end on the very lines rustc labels "dropped here while still borrowed" and "borrow later used here". The bars show the regions the borrow checker reasons about, simplified to whole lines; the map's order of questions follows the elision rules as the Rust book states them. The due-date cards, the bookmark drawing, the stamp-desk cheat sheet and the teaser are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, 10.3 (dangling references, the borrow checker, <code>longest</code> and its call sites, stamping only related parameters, returning a local, structs holding references, the three elision rules, methods, <code>'static</code> and its warning about suggested <code>'static</code>); the Edition Guide's page on RPIT lifetime capture rules in Rust 2024 and precise capturing; the Rust Reference on lifetime elision; Rust by Example's lifetime pages; the error index; and the course research map's row I4, which also lists the Brown interactive book (10.3 and Ownership Inventory #3), Rustlings (lifetimes), Comprehensive Rust (Lifetimes), 100 Exercises to Learn Rust (6.6), Effective Rust (item 14) and Tour of Rust (chapter 5).</p>
+  <p>Mabel, the Professor, the Compiler, the due-date cards and every picture here are original characters and drawings made in code. Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
