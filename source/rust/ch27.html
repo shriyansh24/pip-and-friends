@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One Waiter, Many Stamps</title>
+<meta name="description" content="Chapter 27 of the Pip &amp; Friends Rust book, a comic course: async Rust with Tokio (why async helps when programs wait, async fn and .await, futures are lazy and the unused-Future warning, runtimes and #[tokio::main], E0752 and E0728, join!, tokio::spawn and JoinHandle, select! and cancellation, async channels, blocking the runtime with std::thread::sleep and the spawn_blocking fix, async versus threads, async closures, streams) and macros (macros versus functions, the standard macros, the missing-! mistake, derive and attribute macros as code generators, the real expansion of vec!, #[derive(Debug)] and #[tokio::main], macro_rules! with $x:expr, $name:ident and $(...),* repetition, a hashmap! macro, and why a macro must be defined before it is used).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch27.css">
+<script defer src="../data/rs-ch27.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/rs-ch27.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch26.html">&larr; Ch 26</a><span aria-current="page">Ch 27 of 29</span><a href="ch28.html">Ch 28 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 27</p>
+    <h1 id="cover-h">ONE WAITER, MANY STAMPS</h1>
+    <div class="cover-pair">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char lead" data-char="asyncwaiter" data-pose="run"></svg>
+      <svg class="char" data-char="codestamp" data-label="vec!" data-state="press"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Next to her a waiter in a blue waistcoat hurries along with a tray, speed lines behind him: Tokio, the waiter. Beside him, a big rubber stamp labelled vec! presses onto a sheet of paper and leaves three printed lines.</p>
+    <p class="caption blurb">Mabel's library café is open, and it's busy. Last chapter every job got its own cook, a <b>thread</b>. Today you meet a cheaper trick for jobs that mostly <b>wait</b>: one waiter who never stands still, called <b>async</b>. Then Mabel opens her drawer of <b>rubber stamps</b>, the macros that print whole paragraphs of code wherever you press them, and she carves a few of her own. About 150 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One waiter: why async, async fn, .await, lazy futures</a></li>
+      <li><a href="#part-2">Hiring the waiter: runtimes, Tokio, E0752 and E0728</a></li>
+      <li><a href="#part-3">Many tables at once: join!, spawn, select!, channels</a></li>
+      <li><a href="#part-4">Never freeze the waiter: blocking, spawn_blocking, async or threads</a></li>
+      <li><a href="#part-5">The rubber stamp: macros you already use, and what they print</a></li>
+      <li><a href="#part-6">Carve your own stamp: macro_rules!</a></li>
+      <li><a href="#part-7">Boss level, recap and what's next</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE WAITER<small>programs that mostly wait; async fn and .await; a future is an order slip that does nothing until someone hands it in; the unused-Future warning</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: forty tables, one café">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">The library has opened a café in the reading room. Forty little tables. Mabel remembers last chapter's kitchen, where every job got its own cook.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="worried" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Forty tables means forty waiters? They'd spend all day standing at the kitchen hatch, waiting for food. And each one needs a uniform, a locker, a salary…</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Most of a waiter's day is <b>waiting</b>. One good waiter can serve every table, as long as they never stand still while the kitchen cooks. First catchphrase: <b>waiting isn't working</b>.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel shrugs, worried. The Professor answers from the right.</p>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 2: the frozen waiter and the busy waiter">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Two ways to wait for the soup.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <div class="pics"><svg class="char" data-char="asyncwaiter" data-pose="frozen" data-label="BOB"></svg></div>
+        <h3>Blocking<small>the frozen waiter</small></h3>
+        <p>Bob takes table 1's order and stands at the kitchen hatch until the soup is ready. Tables 2 to 40 wave at him. He can't move: he's <b>blocked</b>.</p>
+      </div>
+      <div class="duo-card">
+        <div class="pics"><svg class="char" data-char="asyncwaiter" data-pose="run"></svg></div>
+        <h3>Async<small>the busy waiter</small></h3>
+        <p>Tokio hands the order to the kitchen and says "ring the bell when it's ready". Meanwhile he takes table 2's order, then table 3's. When a bell rings, he goes back to <b>that</b> table.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: in the Blocking card, a waiter labelled BOB stands stiff with his arms down, frost marks around him. In the Async card, a waiter labelled TOKIO hurries with a tray, speed lines behind him.</p>
+    <p class="caption">Nobody cooks faster. The soup still takes as long as it takes. What changes is that the waiting <b>overlaps</b>: while one table waits, the waiter is busy somewhere else. Doing several jobs in overlapping stretches of time is called <b>concurrency</b>.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: what programs wait for">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Programs wait far more than you'd think. A computer can do billions of steps per second, but asking another computer for a web page, reading from a disk or waiting for a timer takes thousands or millions of those steps. Waiting on input and output is called waiting on <b>I/O</b>.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>a thread<small>Chapter 26: one cook</small></h3><p>The operating system runs it. Each one gets its own stack (a Rust thread's default is 2 MiB on the major platforms), and switching between thousands of them gets expensive.</p></div>
+      <div class="duo-card"><h3>a task<small>one table on the waiter's list</small></h3><p>The async runtime runs it, not the operating system. Tokio's docs call tasks "light weight": tens of thousands are fine on a few threads.</p></div>
+      <div class="duo-card"><h3>a future<small>an order slip</small></h3><p>A value that stands for work that will finish <b>later</b>. Every <code>async fn</code> hands one back. Nothing happens until someone hands it in.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>So async is for jobs that mostly <b>wait</b>, like a server talking to thousands of slow phones. For jobs that mostly <b>think</b>, like resizing photos, the cooks from Chapter 26 are still the right tool.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-why-m" id="ex-why"></div>
+  <script type="application/json" id="ex-why-m">{"q": "Which of these programs gains the most from async?", "options": [
+    {"t": "A chat server holding 10,000 mostly silent phone connections", "why": "Yes. Each connection is open but silent most of the time. Almost every connection is waiting at any moment. One waiter (or a few threads) can look after all of them, where 10,000 threads would each need their own stack.", "correct": true},
+    {"t": "A program that computes the first million digits of pi on one core", "why": "That's pure thinking: no waiting at all. Async gives the waiter nothing to overlap. Spread the work over threads (Chapter 26) to use several cores."},
+    {"t": "A program that reads one small settings file when it starts", "why": "One short wait, once. Async would only add a runtime and new rules. Plain <code>std::fs</code> (Chapter 25) is simpler."},
+    {"t": "Any program, because async makes code run faster", "why": "Async doesn't speed up a single job. It lets <b>waiting</b> overlap. A program that never waits gets nothing from it."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: the first async program">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Mabel's first async program. It uses <b>Tokio</b>, the most widely used async runtime for Rust: a crate (Chapter 24) that provides the waiter. The project's <code>Cargo.toml</code> has <code>tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "time", "sync"] }</code> under <code>[dependencies]</code>. (<code>cargo add tokio --features macros,rt-multi-thread,time,sync</code> writes a line like it for you.)</p>
+    <span class="file-tab">first_async.rs</span>
+    <pre class="code" data-src="first_async.rs"></pre>
+    <pre class="term" data-run="first_async.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>async fn</code> marks a function that may <b>pause</b> partway. It still says <code>-&gt; String</code>, but calling it hands back a future that will produce a String later.</span></li>
+      <li><span><b>Line 6</b>: <code>tokio::time::sleep</code> is a timer. <code>.await</code> means: "if this isn't ready yet, pause me here and let the waiter serve someone else; come back when it is." The timer is the kitchen bell.</span></li>
+      <li><span><b>Line 12</b>: <code>make_tea(4).await</code> hands in the order and waits for the String. The type of <code>cup</code> is <code>String</code>, not a future: <code>.await</code> unwraps it.</span></li>
+      <li><span><b>Lines 10–11</b>: <code>#[tokio::main]</code> hires the waiter so that <code>main</code> may be async. Part 2 explains it, and Part 5 shows the code it really writes.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 5: a future is an order slip">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">Here's the surprise of async Rust. Calling an <code>async fn</code> does <b>not</b> run it. It only writes an <b>order slip</b>: a future, describing the work. The slip sits in your pocket, doing nothing, until you hand it to the waiter with <code>.await</code> (or <code>tokio::spawn</code>, Part 3).</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 640 230" role="img" aria-label="Drawing in three steps. Step one, labelled ring_bell(): a hand writes an order slip that reads ring_bell, with a stamp NOT STARTED. Step two, labelled let bell: the slip sits in a pocket; a note says nothing happens. Step three, labelled bell.await: the slip goes onto the waiter's spike and a bell rings DING.">
+      <text class="h" x="20" y="30">1 · CALL IT</text>
+      <rect x="30" y="56" width="150" height="110" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <text class="ms" x="44" y="88">ring_bell()</text>
+      <path d="M44 106 h110 M44 124 h90" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      <rect x="54" y="134" width="118" height="26" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="3" transform="rotate(-6 113 147)"/>
+      <text class="ms mid" x="113" y="153" transform="rotate(-6 113 147)">NOT STARTED</text>
+      <path d="M200 110 h30 M220 100 l12 10 l-12 10" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="h" x="244" y="30">2 · KEEP IT</text>
+      <path d="M262 70 h130 v90 q-65 40 -130 0 z" fill="#B5D3FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="290" y="46" width="74" height="54" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text class="ms mid" x="327" y="78">bell</text>
+      <text class="s mid" x="327" y="210">nothing happens</text>
+      <path d="M408 110 h30 M428 100 l12 10 l-12 10" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="h" x="452" y="30">3 · HAND IT IN</text>
+      <path d="M520 170 v-96" stroke="#111" stroke-width="5" stroke-linecap="round"/><rect x="490" y="168" width="60" height="12" rx="3" fill="#2B2B2B"/>
+      <g class="thump"><rect x="490" y="84" width="60" height="44" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text class="ms mid" x="520" y="112">bell</text></g>
+      <text class="ms mid" x="520" y="210">.await</text>
+      <path d="M574 76 q16 -24 32 0 z" fill="#FFD60A" stroke="#111" stroke-width="3"/><path d="M570 60 l-8 -8 M610 60 l8 -8 M590 50 v-10" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      <text class="h" x="568" y="104">DING!</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase number two: <b>a future is an order slip. Nothing cooks until someone hands it in.</b> People say futures are <b>lazy</b>: like an iterator (Chapter 20), they do nothing until asked.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: walk Mabel through a lazy future" data-walk="walk-lazy">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Walk Mabel through it. Watch <b>when</b> <samp>DING!</samp> appears: not at line 7, where <code>ring_bell()</code> is called, but at line 9, where its slip is handed in.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">lazy_order.rs</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-lazy">{"program": "lazy_order.rs", "steps": [
+      {"line": 7, "output": [], "mood": "focus", "arms": "point", "note": "<code>#[tokio::main]</code> has started the runtime, and the runtime starts <code>main</code>. Line 7 is next."},
+      {"line": 8, "output": [], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 7 called <code>ring_bell()</code>, and… nothing printed. Its body did <b>not</b> run. <code>bell</code> now holds a future: an order slip for \"print DING!\"."},
+      {"line": 9, "output": ["the order slip is written"], "mood": "happy", "arms": "point", "note": "Line 8 printed. The slip is still in <code>main</code>'s pocket."},
+      {"line": 2, "output": ["the order slip is written"], "mood": "focus", "arms": "point", "note": "Line 9: <code>bell.await</code> hands the slip in. Only <b>now</b> does the body of <code>ring_bell</code> start, at line 2."},
+      {"line": 3, "output": ["the order slip is written", "DING!"], "mood": "happy", "mouth": "shout", "arms": "point", "note": "Line 2 printed <samp>DING!</samp>. There's nothing to wait for inside, so the future is finished at once."},
+      {"line": 10, "output": ["the order slip is written", "DING!"], "mood": "happy", "arms": "point", "note": "<code>ring_bell</code> is done, so <code>.await</code> hands back its result (here <code>()</code>, nothing) and <code>main</code> carries on at line 10."},
+      {"line": null, "output": ["the order slip is written", "DING!", "served"], "mood": "happy", "arms": "cheer", "note": "Line 10 printed <samp>served</samp>. The order of the screen follows the <code>.await</code>, not the call."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-lazy-m" id="ex-lazy"></div>
+  <script type="application/json" id="ex-lazy-m">{"program": "predict_lazy.rs", "prompt": "Two slips are written, then handed in <b>in the opposite order</b>. What does the program print?", "hint": "Calling <code>pour(...)</code> prints nothing. The body runs at the <code>.await</code>. Which slip is handed in first?", "explain": "Lines 8 and 9 only write slips, so <samp>two slips written</samp> comes first. Line 11 hands in <code>b</code> first: <samp>pouring lemonade</samp>. Then line 12 hands in <code>a</code>: <samp>pouring cocoa</samp>. The names in the last line follow the variables, so <samp>served cocoa and lemonade</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 7: the slip nobody handed in">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <svg class="sfx tr" data-sfx="WARNING" data-seed="7"></svg>
+    <p class="caption">The classic async mistake: calling an async function and forgetting the <code>.await</code>.</p>
+    <span class="file-tab">lazy_warn.rs</span>
+    <pre class="code" data-src="lazy_warn.rs"></pre>
+    <pre class="term" data-run="lazy_warn.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read it like a detective. The headline: <code>warning: unused implementer of `Future` that must be used</code>. "Implementer of Future" means "a value whose type has the <code>Future</code> trait": our slip. It's a <b>warning</b>, so the program still built and ran.</span></li>
+      <li><span><b>Where</b>: <code>src/main.rs:8:5</code>, with carets under <code>ring_bell()</code>.</span></li>
+      <li><span><b>Why</b>: the note says it plainly: <code>futures do nothing unless you `.await` or poll them</code>. The slip was written and thrown away at the end of line 8.</span></li>
+      <li><span>The run proves it: no <samp>DING!</samp>, and exit code 0. Nothing crashed, nothing complained at run time. <b>Never ignore this warning.</b> The fix is <code>ring_bell().await;</code></span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · HIRING THE WAITER<small>Rust ships no runtime; E0752 for an async main without one; Tokio's Runtime and block_on; what #[tokio::main] does; E0728 for .await outside async; the life of a future</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 8: E0752, an async main with no waiter">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="E0752!" data-seed="8"></svg>
+    <p class="caption">Mabel tries async without Tokio: no dependency, no attribute, just <code>async fn main</code>.</p>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>An async <code>main</code> would only hand back an order slip. Who would hand it in? Nobody runs before <code>main</code>.</p></div>
+    </div>
+    <span class="file-tab">e0752.rs</span>
+    <pre class="code" data-src="e0752.rs"></pre>
+    <pre class="term" data-run="e0752.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>error[E0752]: `main` function is not allowed to be `async`</code>.</span></li>
+      <li><span><b>Where</b>: line 5, the carets under the whole <code>async fn main()</code>.</span></li>
+      <li><span><b>Why</b>: <code>main</code> is where the program starts. An async <code>main</code> would return a future, and there'd be no waiter yet to run it. Rust's standard library deliberately comes <b>without</b> a waiter, so you can pick the one that suits you: Tokio for most servers and tools, smaller ones for tiny devices.</span></li>
+      <li><span><b>Fix</b>: add a runtime and let it start <code>main</code>: Tokio in <code>Cargo.toml</code>, and <code>#[tokio::main]</code> above <code>async fn main</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 9: what a runtime is">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">An async <b>runtime</b> is the waiter plus the restaurant's bell board. Tokio provides three parts.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>the executor<small>the waiter</small></h3><p>Keeps the list of tasks. Runs each one until it reaches an <code>.await</code> that isn't ready, then moves on to the next task that <b>is</b> ready.</p></div>
+      <div class="duo-card"><h3>the timers and I/O<small>the bell board</small></h3><p>Watches every timer, network socket and file the tasks are waiting for. When one is ready, it rings that task's bell (the task is <b>woken</b>).</p></div>
+      <div class="duo-card"><h3>the threads<small>how many waiters</small></h3><p><code>#[tokio::main]</code> starts one worker thread per CPU core, by default. <code>flavor = "current_thread"</code> asks for exactly <b>one</b> waiter, on <code>main</code>'s own thread.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="asyncwaiter" data-pose="note"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The waiter says: </span>I never interrupt a table. I only switch at an <code>.await</code>. That's called <b>cooperative</b> scheduling: every table has to let go of me now and then.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: hiring the waiter by hand">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Before using the shortcut, hire the waiter by hand. An ordinary (not async) <code>main</code> builds a runtime and gives it one order slip to finish.</p>
+    <span class="file-tab">manual_runtime.rs</span>
+    <pre class="code" data-src="manual_runtime.rs"></pre>
+    <pre class="term" data-run="manual_runtime.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8</b>: <code>Runtime::new()</code> starts Tokio: the executor, the bell board and the worker threads. It can fail (for example, if the system won't give it threads), so it hands back a <code>Result</code>.</span></li>
+      <li><span><b>Line 9</b>: <code>block_on(future)</code> is the bridge from ordinary code into async code: "run this slip, and don't come back until it's finished". <code>main</code>'s thread really does wait here, and that's fine, because there's nothing else for it to do.</span></li>
+      <li><span><code>#[tokio::main]</code> writes almost exactly these two lines for you. In Part 5 you'll see the real code it writes.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 11: E0728, .await outside async">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tr" data-sfx="E0728!" data-seed="11"></svg>
+    <p class="caption">Only async code can pause. A plain function that tries to <code>.await</code> is stopped at the gate.</p>
+    <span class="file-tab">await_outside.rs</span>
+    <pre class="code" data-src="await_outside.rs"></pre>
+    <pre class="term" data-run="await_outside.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>error[E0728]: `await` is only allowed inside `async` functions and blocks</code>.</span></li>
+      <li><span><b>Where</b>: two labels. The <b>primary</b> carets sit under <code>await</code> on line 6. The <b>secondary</b> dashes under line 5 explain why: <code>this is not `async`</code>.</span></li>
+      <li><span><b>Fix</b>: make the function async (and <code>.await</code> it where it's called), or, from an ordinary <code>main</code>, hand the slip to a runtime with <code>block_on</code> as in Panel 10. An <code>async { ... }</code> <b>block</b> is a slip written on the spot; <code>.await</code> works inside one too.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-main-m" id="ex-main"></div>
+  <script type="application/json" id="ex-main-m">{"program": "fill_main.rs", "prompt": "Make toast the async way. Fill in the attribute that hires the waiter, the word that lets <code>main</code> pause, and the word that hands in the order.", "blanks": [{"line": 9, "text": "#[tokio::main]"}, {"line": 10, "text": "async"}, {"line": 11, "text": ".await"}], "explain": "<code>#[tokio::main]</code> starts the runtime and lets <code>main</code> be <code>async</code>. <code>toast(3)</code> only writes a slip; <code>.await</code> hands it in and gives back the u32. After a 20 ms timer: <samp>6 toast halves</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-e0728-m" id="ex-e0728"></div>
+  <script type="application/json" id="ex-e0728-m">{"program": "ex_err_await.rs", "expect": "error", "answer": "E0728", "ask": "This one doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "<code>main</code> is async and has Tokio. Look at <code>count_dishes</code>.", "hint": "Which function contains the <code>.await</code>, and does it say <code>async</code>?", "explain": "<samp>error[E0728]: `await` is only allowed inside `async` functions and blocks</samp>, pointing at line 6, with <samp>this is not `async`</samp> under line 5. <code>main</code> being async doesn't help: each function decides for itself. Fix: <code>async fn count_dishes()</code>, then <code>count_dishes().await</code> in <code>main</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 12: the life of a future" data-map="map-future">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Every future lives the same short life. Pick a road. Each road is a real run, followed from the point of view of one order slip.</p>
+    <div class="paths" role="group" aria-label="Choose a run"><span class="label">FOLLOW:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapf-t mapf-d"><title id="mapf-t">The life of a future</title><desc id="mapf-d">Five places. Top left: written, the future exists but nothing runs. From written, a road down labelled .await or spawn leads to running, where its code runs. From running, a road right labelled Pending leads to waiting, parked at an .await. From waiting, a road back labelled woken leads to running. From running, a road down labelled Ready leads to ready, the value is handed back. From written, a road right labelled never handed in leads to dropped, thrown away, at the top right. From waiting, a road up labelled lost a race leads to dropped.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-future">{"seed": 27, "size": [690, 430], "start": [[170, 4], [170, 24]],
+      "states": [
+        {"id": "WRITTEN", "x": 30, "y": 30, "w": 280, "h": 74, "label": "written", "sub": "a slip: nothing runs"},
+        {"id": "RUNNING", "x": 30, "y": 180, "w": 280, "h": 74, "label": "running", "sub": "polled: its code runs"},
+        {"id": "WAITING", "x": 400, "y": 180, "w": 270, "h": 74, "label": "waiting", "sub": "Pending, at an .await"},
+        {"id": "READY", "x": 30, "y": 336, "w": 280, "h": 74, "label": "ready", "sub": "value handed back", "kind": "end"},
+        {"id": "DROPPED", "x": 400, "y": 30, "w": 270, "h": 74, "label": "dropped", "sub": "thrown away unfinished", "kind": "error"}],
+      "transitions": [
+        {"id": "tpoll", "from": "WRITTEN", "to": "RUNNING", "pts": [[170, 108], [170, 174]], "label": "`.await` or spawn", "lx": 182, "ly": 146},
+        {"id": "tpark", "from": "RUNNING", "to": "WAITING", "pts": [[314, 198], [394, 198]], "label": "Pending", "lx": 320, "ly": 188},
+        {"id": "twake", "from": "WAITING", "to": "RUNNING", "pts": [[394, 238], [314, 238]], "label": "woken", "lx": 326, "ly": 266},
+        {"id": "tready", "from": "RUNNING", "to": "READY", "pts": [[170, 258], [170, 330]], "label": "Ready(value)", "lx": 182, "ly": 300},
+        {"id": "tnever", "from": "WRITTEN", "to": "DROPPED", "pts": [[314, 67], [394, 67]], "label": ["never", "handed in"], "lx": 318, "ly": 120},
+        {"id": "tlost", "from": "WAITING", "to": "DROPPED", "pts": [[535, 174], [535, 108]], "label": "lost a race", "lx": 547, "ly": 146}],
+      "paths": [
+        {"id": "pawait", "label": "first_async.rs", "program": "first_async.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["WRITTEN"], "output": [], "note": "Line 12 calls <code>make_tea(4)</code>: a slip is written. Nothing has printed."},
+          {"on": ["RUNNING"], "via": ["tpoll"], "output": ["table 4: kettle on"], "note": "<code>.await</code> hands it in. The runtime <b>polls</b> it (asks it to make progress), so its code runs: line 5 prints."},
+          {"on": ["WAITING"], "via": ["tpark"], "output": ["table 4: kettle on"], "note": "Line 6: the 30 ms timer isn't done, so the future answers <b>Pending</b> and parks. The waiter is free to serve any other task (there are none here)."},
+          {"on": ["RUNNING"], "via": ["twake"], "output": ["table 4: kettle on"], "note": "The timer rings: the task is <b>woken</b>, and the runtime polls it again. It carries on right after the <code>.await</code>, at line 7."},
+          {"on": ["READY"], "via": ["tready"], "output": ["table 4: kettle on", "tea for table 4"], "note": "The function returns: <b>Ready</b>, with the String. <code>main</code> gets it from <code>.await</code> and prints it."}]},
+        {"id": "pnever", "label": "lazy_warn.rs", "program": "lazy_warn.rs", "expect": {"exit": 0, "stdoutExact": true, "stderrContains": "futures do nothing unless you `.await` or poll them"}, "steps": [
+          {"on": ["WRITTEN"], "output": ["Mabel calls ring_bell()..."], "note": "Line 8 writes a slip for <code>ring_bell</code>. It's never stored in a variable, never awaited."},
+          {"on": ["DROPPED"], "via": ["tnever"], "output": ["Mabel calls ring_bell()...", "...and nothing rang."], "note": "At the end of line 8 the slip is dropped (Chapter 7: values are dropped when nothing owns them). It was never polled, so <samp>DING!</samp> never prints. The Compiler warned about exactly this."}]},
+        {"id": "plost", "label": "select_race.rs (pancakes)", "program": "select_race.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["WRITTEN"], "output": [], "note": "Part 3's race. <code>select!</code> writes two slips: pancakes (300 ms) and toast (100 ms). We follow the pancakes."},
+          {"on": ["RUNNING"], "via": ["tpoll"], "output": ["pancakes: started"], "note": "<code>select!</code> polls the pancakes first, so its first line runs."},
+          {"on": ["WAITING"], "via": ["tpark"], "output": ["pancakes: started", "toast: started"], "note": "The pancakes park at their 300 ms timer. The toast starts and parks at 100 ms."},
+          {"on": ["DROPPED"], "via": ["tlost"], "output": ["pancakes: started", "toast: started", "toast: done", "first out: toast"], "note": "At 100 ms the toast is <b>Ready</b>. <code>select!</code> takes the winner and <b>drops</b> the pancakes while they're still waiting. Their <samp>done</samp> line will never print."},
+          {"on": ["DROPPED"], "output": ["pancakes: started", "toast: started", "toast: done", "first out: toast", "stew: started", "too slow: stew cancelled", "closing: nothing else finished"], "note": "The rest of the run: a stew loses to a timer and is dropped the same way. Even after waiting 400 ms more, no <samp>pancakes: done</samp> and no <samp>stew: done</samp>: dropped slips are gone for good."}]}]}</script>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · MANY TABLES AT ONCE<small>awaiting one after another; join! to wait for several at once; tokio::spawn and JoinHandle; the task main forgot; output order on many threads; select! and cancellation; async channels</small></h2>
+
+  <section class="panel clean" aria-label="Panel 13: one table after another">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Three orders: soup takes 300 ms (milliseconds, thousandths of a second), toast 100 ms, tea 200 ms. Mabel awaits each one before starting the next.</p>
+    <span class="file-tab">one_by_one.rs</span>
+    <pre class="code" data-src="one_by_one.rs"></pre>
+    <pre class="term" data-run="one_by_one.rs"></pre>
+    <ol class="readlist">
+      <li><span>It's async, it's correct, and it's <b>no faster than ordinary code</b>. Line 13 waits for the soup to finish before line 14 even writes the toast's slip. Total waiting: 300 + 100 + 200 = 600 ms.</span></li>
+      <li><span><code>.await</code> lets <b>other tasks</b> run while this one waits. Here there are no other tasks, so the waiter just stands there politely. To overlap the waits, hand in all three slips <b>before</b> waiting.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: join!, all the orders at once">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption"><code>tokio::join!</code> takes several slips, runs them all <b>concurrently</b>, and finishes when <b>every one</b> is done. It hands back their results as a tuple, in the order you wrote them.</p>
+    <span class="file-tab">join_orders.rs</span>
+    <pre class="code" data-src="join_orders.rs"></pre>
+    <pre class="term" data-run="join_orders.rs"></pre>
+    <ol class="readlist">
+      <li><span>All three <samp>order in</samp> lines come first: the waiter takes every order before any food is ready.</span></li>
+      <li><span>Then the dishes are ready in order of <b>cooking time</b>: toast (100), tea (200), soup (300). The whole meal takes about 300 ms, the longest single wait, instead of 600.</span></li>
+      <li><span>The last line follows the order you <b>wrote</b>: <code>(a, b, c)</code> is soup, toast, tea, whatever finished first. Catchphrase: <b>take all the orders, then wait</b>.</span></li>
+      <li><span><code>join!</code> is a macro (Part 5), so it needs the <code>!</code>. Everything it runs shares <b>one</b> task: one waiter, switching at each <code>.await</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 15: the one-waiter timeline for join!" data-waitline="wl-join" id="wl-join-box">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Step through Panel 14's run and watch who is busy. The clock is a <b>teaching model</b> worked out from the sleep lengths in the code; the printed lines are the real run.</p>
+    <div class="wl-stage" aria-hidden="true"></div>
+    <ul class="wl-key" aria-label="Key">
+      <li><span class="sw run">▶</span> code running (it takes almost no time)</li>
+      <li><span class="sw wait">zz</span> waiting at an <code>.await</code>; the waiter is free</li>
+      <li><span class="sw blocked">!</span> stuck</li>
+    </ul>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Clock</th><th>What happens</th><th>Waiter and orders</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="wl-join">{"program": "join_orders.rs", "max": 300, "unit": "ms", "quote": ["cook(\"soup\", 300)", "cook(\"toast\", 100)", "cook(\"tea\", 200)", "sleep(Duration::from_millis(ms)).await"],
+      "tasks": [{"id": "soup", "label": "soup slip"}, {"id": "toast", "label": "toast slip"}, {"id": "tea", "label": "tea slip"}],
+      "steps": [
+        {"t": 0, "waiter": {"kind": "main", "text": "runs main: join! gets three slips"}, "states": {}, "note": "<code>join!</code> receives three order slips. None has started."},
+        {"t": 0, "waiter": {"kind": "serve", "text": "polls the soup"}, "states": {"soup": "run"}, "print": "soup: order in", "note": "The waiter polls the soup: it prints, then reaches its 300 ms timer and answers Pending."},
+        {"t": 0, "waiter": {"kind": "serve", "text": "polls the toast"}, "states": {"soup": "wait", "toast": "run"}, "print": "toast: order in", "note": "The soup is parked, so the waiter moves on <b>at once</b> to the toast, which prints and parks at 100 ms."},
+        {"t": 0, "waiter": {"kind": "serve", "text": "polls the tea"}, "states": {"soup": "wait", "toast": "wait", "tea": "run"}, "print": "tea: order in", "note": "Same for the tea: it prints and parks at 200 ms. All three orders are in, and almost no time has passed."},
+        {"t": 0, "waiter": {"kind": "idle", "text": "nothing ready: waits for a bell"}, "states": {"soup": "wait", "toast": "wait", "tea": "wait"}, "note": "Every slip is waiting. The waiter has nothing to do, so the thread sleeps until the first bell."},
+        {"t": 100, "waiter": {"kind": "serve", "text": "the toast's bell rang"}, "states": {"soup": "wait", "toast": "run", "tea": "wait"}, "print": "toast: ready", "note": "100 ms: the toast's timer rings. The waiter polls it again; it carries on after its <code>.await</code>, prints, and returns <code>\"toast served\"</code>."},
+        {"t": 100, "waiter": {"kind": "idle", "text": "waits for the next bell"}, "states": {"soup": "wait", "toast": "done", "tea": "wait"}, "note": "Toast finished. <code>join!</code> keeps its result and keeps waiting for the other two."},
+        {"t": 200, "waiter": {"kind": "serve", "text": "the tea's bell rang"}, "states": {"soup": "wait", "toast": "done", "tea": "run"}, "print": "tea: ready", "note": "200 ms: the tea."},
+        {"t": 200, "waiter": {"kind": "idle", "text": "waits for the last bell"}, "states": {"soup": "wait", "toast": "done", "tea": "done"}, "note": "Only the soup is left."},
+        {"t": 300, "waiter": {"kind": "serve", "text": "the soup's bell rang"}, "states": {"soup": "run", "toast": "done", "tea": "done"}, "print": "soup: ready", "note": "300 ms: the soup."},
+        {"t": 300, "waiter": {"kind": "main", "text": "join! has all three: back in main"}, "states": {"soup": "done", "toast": "done", "tea": "done"}, "print": "soup served, toast served, tea served", "note": "Every slip is done, so <code>join!</code> hands back the tuple in the order written. About 300 ms in all: the three waits overlapped."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-join-m" id="ex-join"></div>
+  <script type="application/json" id="ex-join-m">{"program": "predict_join.rs", "prompt": "The milk takes 200 ms and the bread 100 ms. What does the program print?", "hint": "Each <code>fetch</code> prints when its own timer is done. The tuple keeps the order the slips were <b>written</b> in.", "explain": "Both slips start together. The bread's 100 ms timer rings first: <samp>got the bread</samp>, then <samp>got the milk</samp>. But <code>(x, y)</code> matches <code>join!(milk, bread)</code>, so the last line is <samp>milk then bread</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-joinp-m" id="ex-joinp"></div>
+  <script type="application/json" id="ex-joinp-m">{"program": "parsons_join.rs", "seed": 27, "pin": [1, 2, 9, 15], "prompt": "Put the lines in order: an async <code>cook</code> that announces the order, waits, announces the dish and returns a String, then a <code>main</code> that cooks pie and tea <b>at the same time</b>.", "explain": "Inside <code>cook</code>: announce, <code>sleep(...).await</code>, announce again, then the <code>format!</code> as the last expression (the return value). In <code>main</code>, <code>#[tokio::main]</code> goes right above <code>async fn main</code>, then <code>join!</code>, then the print. Both orders go in first; the tea (100 ms) is ready before the pie (200 ms)."}</script>
+
+  <section class="panel clean" aria-label="Panel 16: tokio::spawn, a table on the waiter's list">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption"><code>join!</code> keeps everything inside one task. <code>tokio::spawn</code> hands a slip to the runtime as a <b>new task</b>, a table of its own, and gives you a <b>JoinHandle</b>: a receipt you can <code>.await</code> later for the result. This program asks for a single waiter (<code>current_thread</code>), so every run comes out the same.</p>
+    <span class="file-tab">spawn_tables.rs</span>
+    <pre class="code" data-src="spawn_tables.rs"></pre>
+    <pre class="term" data-run="spawn_tables.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 15</b>: three tasks are spawned. A spawned task starts on its own, <b>without</b> anyone awaiting it: spawning counts as handing the slip in.</span></li>
+      <li><span>But <samp>all orders handed to the runtime</samp> prints <b>first</b>. With one waiter, the new tasks only get a turn when <code>main</code> lets go of him, at its first <code>.await</code> (line 19).</span></li>
+      <li><span>Then all three take their orders, and they're served in order of cooking time: 2, 3, 1.</span></li>
+      <li><span><b>Line 19</b>: <code>handle.await</code> gives a <code>Result</code>: <code>Ok(value)</code>, or an <code>Err</code> if the task panicked. Table 1's tip is collected first because it's first in the Vec; the other two were already finished and waiting.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 17: the table main forgot">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="CLOSED!" data-seed="17"></svg>
+    <p class="caption">Table 9 orders just before closing time. In <b>Forgot the receipt</b>, <code>main</code> spawns the task and leaves. In <b>Waited for it</b>, it keeps the receipt and waits for it.</p>
+    <div class="runs2">
+      <div><h3>FORGOT THE RECEIPT</h3><span class="file-tab">spawn_forgot.rs</span><pre class="code" data-src="spawn_forgot.rs"></pre><pre class="term" data-run="spawn_forgot.rs" data-exit></pre></div>
+      <div><h3>WAITED FOR IT</h3><span class="file-tab">spawn_fixed.rs</span><pre class="code" data-src="spawn_fixed.rs"></pre><pre class="term" data-run="spawn_fixed.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Forgot the receipt</b> (<code>spawn_forgot.rs</code>): when <code>main</code> returns, the runtime <b>shuts down</b>, and Tokio drops every task that hasn't finished. With one waiter, table 9 never even got a turn: not one line. No error, exit code 0. (Chapter 26's threads had the same trap when you forgot <code>join</code>.)</span></li>
+      <li><span><b>Waited for it</b> (<code>spawn_fixed.rs</code>): <code>table9.await</code> on line 12 keeps the runtime alive until the task is done.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Keep the receipts. If a task's work matters, <code>.await</code> its JoinHandle before <code>main</code> ends.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: many waiters, any order">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">With the default runtime there are <b>several</b> waiters, one per CPU core, and spawned tasks may run on any of them at the same moment. Then the order of printed lines is up to the operating system, just like Chapter 26's threads. This program spawns four tasks, three times over, and waits for each round. This is <b>one possible run</b>: yours will likely differ.</p>
+    <span class="file-tab">multi_rounds.rs</span>
+    <pre class="code" data-src="multi_rounds.rs"></pre>
+    <pre class="term" data-run="multi_rounds.rs"></pre>
+    <ol class="readlist">
+      <li><span>Within a round the tables come out in whatever order the waiters reached them. Between rounds, order is kept, because each round awaits all four handles before the next one starts.</span></li>
+      <li><span><b>Line 6</b>: <code>async move</code> makes the slip <b>own</b> <code>round</code> and <code>table</code>, as <code>move</code> closures did for threads. A spawned task may outlive the code that spawned it, so it can't borrow local variables. It must also be <code>Send</code> (Chapter 26), because it might move to another waiter's thread.</span></li>
+      <li><span>For answer keys in this book, programs whose order matters use <code>current_thread</code>, or print only after joining.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trace-m" id="ex-trace"></div>
+  <script type="application/json" id="ex-trace-m">{"program": "trace_tasks.rs", "columns": ["cook", "dish", "at (ms)"], "given": [], "prompt": "One waiter, two spawned cooks. Ana finishes a dish every 200 ms (soup, pie, jam); Ben every 270 ms (tea, toast). Each prints its name, the dish and the planned time when it finishes. Fill in every row, in the order they print.", "explain": "Both tasks start together, so it's a race of clocks: Ana at 200, 400, 600 and Ben at 270, 540. Sorted by time: <samp>ana soup 200</samp>, <samp>ben tea 270</samp>, <samp>ana pie 400</samp>, <samp>ben toast 540</samp>, <samp>ana jam 600</samp>. The program prints the <b>planned</b> time (worked out from the loop), never a measured one, so every run prints the same numbers."}</script>
+
+  <section class="panel clean" aria-label="Panel 19: select!, whoever is first">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption"><code>tokio::select!</code> also takes several slips, but it finishes as soon as <b>one</b> of them is ready, and runs that branch's code. The other slips are <b>dropped</b>, unfinished. That makes timeouts easy: race the job against a timer.</p>
+    <span class="file-tab">select_race.rs</span>
+    <pre class="code" data-src="select_race.rs"></pre>
+    <pre class="term" data-run="select_race.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 15–16</b>: each branch reads <code>pattern = future =&gt; code</code>. The toast is ready first, so its branch runs: <samp>first out: toast</samp>.</span></li>
+      <li><span>The pancakes printed <samp>started</samp> but never <samp>done</samp>, even though line 23 waits another 400 ms afterwards. <code>select!</code> dropped the pancake slip, and a dropped future never runs again. This is <b>cancellation</b>.</span></li>
+      <li><span><b>Lines 18–22</b>: a timeout. A 200 ms timer beats the 500 ms stew, so the stew is cancelled.</span></li>
+      <li><span><b>Lines 14 and 19</b>: <code>biased;</code> tells <code>select!</code> to poll branches from top to bottom. Without it, <code>select!</code> picks a random branch to poll first (so that a branch that is always ready can't hog it), and the two <samp>started</samp> lines could swap places between runs.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-select-m" id="ex-select"></div>
+  <script type="application/json" id="ex-select-m">{"q": "Mabel races a book search (it takes 2 seconds) against a 1-second timer in <code>select!</code>. The timer wins. What happens to the search?", "options": [
+    {"t": "It is dropped where it stood, at its .await. Its remaining code never runs.", "why": "Yes. <code>select!</code> cancels the losers by dropping their futures. Anything the search would have printed or saved after that <code>.await</code> never happens.", "correct": true},
+    {"t": "It keeps running in the background and prints its result a second later", "why": "That's what a <b>spawned</b> task would do. Inside <code>select!</code> the loser is just a future, and it's thrown away."},
+    {"t": "select! waits for the search too, then picks the faster result", "why": "That's closer to <code>join!</code>. <code>select!</code> finishes as soon as one branch is ready."},
+    {"t": "The program panics, because a future was left unfinished", "why": "Dropping an unfinished future is normal and quiet. It's how timeouts work."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 20: an order rail between tasks">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Chapter 26's order-ticket rail, async edition: <code>tokio::sync::mpsc</code> (many producers, single consumer). <code>send(...).await</code> and <code>recv().await</code> <b>wait politely</b> instead of blocking a thread, so the waiter can serve other tables meanwhile.</p>
+    <span class="file-tab">async_channel.rs</span>
+    <pre class="code" data-src="async_channel.rs"></pre>
+    <pre class="term" data-run="async_channel.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>mpsc::channel(8)</code> makes a rail with room for 8 tickets. When it's full, <code>send</code> waits until there's room. (Tokio's channels always have a size limit, or say <code>unbounded_channel</code> on purpose.)</span></li>
+      <li><span><b>Line 7</b>: each table task gets its own clone of the sender, as with threads.</span></li>
+      <li><span><b>Line 15</b>: <code>recv().await</code> gives <code>Some(ticket)</code>, or <code>None</code> once every sender is gone and the rail is empty. That's why line 14 drops <code>main</code>'s own sender: otherwise the loop would wait forever.</span></li>
+      <li><span>One waiter: table 1's task sends both tickets before table 2's gets a turn, because <code>send</code> never had to wait.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-chan-m" id="ex-chan"></div>
+  <script type="application/json" id="ex-chan-m">{"program": "predict_channel.rs", "prompt": "Three tasks each send the length of one bird's name. One waiter (<code>current_thread</code>). What does the program print?", "hint": "Spawned tasks get their first turn only when <code>main</code> reaches an <code>.await</code>. They then run in the order they were spawned.", "explain": "<code>main</code> prints <samp>waiting for letters</samp> before its first <code>.await</code>, so it comes first. Then the three tasks run in spawn order and send 3 (owl), 4 (wren) and 5 (heron). The loop adds them up: <samp>+3 = 3</samp>, <samp>+4 = 7</samp>, <samp>+5 = 12</samp>. After the last task drops its sender, <code>recv</code> gives <code>None</code> and the loop ends."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · NEVER FREEZE THE WAITER<small>std::thread::sleep and heavy work inside async code; the frozen timeline; spawn_blocking; async or threads?; async closures; streams</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 21: the waiter who fell asleep">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="ZZZ!" data-seed="21"></svg>
+    <p class="caption">Panel 14's program with <b>one</b> real change: <code>std::thread::sleep</code> (line 5) instead of Tokio's <code>sleep(...).await</code>, and the now-unused <code>use tokio::time::sleep;</code> line removed. It compiles without a single warning.</p>
+    <span class="file-tab">blocking.rs</span>
+    <pre class="code" data-src="blocking.rs"></pre>
+    <pre class="term" data-run="blocking.rs"></pre>
+    <ol class="readlist">
+      <li><span>Look at the order: each dish is cooked from start to finish before the next order is even taken. Adding up the sleeps, that's about 600 ms, like Panel 13, though it uses <code>join!</code>. (Worked out from the code: this book never prints measured times.)</span></li>
+      <li><span><code>std::thread::sleep</code> knows nothing about the waiter. It puts the <b>whole thread</b> to sleep, and the waiter <b>is</b> that thread. No <code>.await</code>, no switching: tables 2 and 3 wait in silence.</span></li>
+      <li><span>The same goes for anything slow that isn't async: reading a big file with <code>std::fs</code>, a long calculation, a network library that isn't async. Code between two <code>.await</code>s should finish quickly.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="asyncwaiter" data-pose="frozen" data-label="TOKIO"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The waiter says: </span>I can't be in two places. If a table holds on to me, every other table waits. Catchphrase: <b>never freeze the waiter</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: the frozen timeline" data-waitline="wl-block" id="wl-block-box">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The same timeline as Panel 15, for the blocking version. Hatched bars mean <b>stuck</b>. (Clock: teaching model. Printed lines: the real run.)</p>
+    <div class="wl-stage" aria-hidden="true"></div>
+    <ul class="wl-key" aria-label="Key">
+      <li><span class="sw run">▶</span> code running (holding the waiter)</li>
+      <li><span class="sw wait">zz</span> waiting politely</li>
+      <li><span class="sw blocked">!</span> frozen, or stuck behind a frozen waiter</li>
+    </ul>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Clock</th><th>What happens</th><th>Waiter and orders</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="wl-block">{"program": "blocking.rs", "max": 600, "unit": "ms", "quote": ["std::thread::sleep(Duration::from_millis(ms));", "cook(\"soup\", 300)", "cook(\"toast\", 100)", "cook(\"tea\", 200)"],
+      "tasks": [{"id": "soup", "label": "soup slip"}, {"id": "toast", "label": "toast slip"}, {"id": "tea", "label": "tea slip"}],
+      "steps": [
+        {"t": 0, "waiter": {"kind": "main", "text": "runs main: join! gets three slips"}, "states": {}, "note": "Same start as Panel 15."},
+        {"t": 0, "waiter": {"kind": "serve", "text": "polls the soup"}, "states": {"soup": "run"}, "print": "soup: order in", "note": "The soup prints, then calls <code>std::thread::sleep(300 ms)</code>. There's no <code>.await</code>, so it never hands the waiter back."},
+        {"t": 0, "waiter": {"kind": "frozen", "text": "frozen inside std::thread::sleep"}, "states": {"soup": "run", "toast": "blocked", "tea": "blocked"}, "note": "For 300 ms the whole thread sleeps. The toast and the tea can't even take their orders."},
+        {"t": 300, "waiter": {"kind": "serve", "text": "the soup wakes up"}, "states": {"soup": "run", "toast": "blocked", "tea": "blocked"}, "print": "soup: ready", "note": "300 ms: the sleep ends, the soup prints and finishes."},
+        {"t": 300, "waiter": {"kind": "serve", "text": "polls the toast, at last"}, "states": {"soup": "done", "toast": "run", "tea": "blocked"}, "print": "toast: order in", "note": "Only now does the toast get its first turn."},
+        {"t": 300, "waiter": {"kind": "frozen", "text": "frozen again"}, "states": {"soup": "done", "toast": "run", "tea": "blocked"}, "note": "Another 100 ms frozen."},
+        {"t": 400, "waiter": {"kind": "serve", "text": "the toast wakes up"}, "states": {"soup": "done", "toast": "run", "tea": "blocked"}, "print": "toast: ready", "note": "400 ms: toast done."},
+        {"t": 400, "waiter": {"kind": "serve", "text": "polls the tea"}, "states": {"soup": "done", "toast": "done", "tea": "run"}, "print": "tea: order in", "note": "The tea's turn."},
+        {"t": 400, "waiter": {"kind": "frozen", "text": "frozen for 200 ms"}, "states": {"soup": "done", "toast": "done", "tea": "run"}, "note": "And frozen once more."},
+        {"t": 600, "waiter": {"kind": "serve", "text": "the tea wakes up"}, "states": {"soup": "done", "toast": "done", "tea": "run"}, "print": "tea: ready", "note": "600 ms: tea done."},
+        {"t": 600, "waiter": {"kind": "main", "text": "back in main"}, "states": {"soup": "done", "toast": "done", "tea": "done"}, "print": "soup served, toast served, tea served", "note": "600 ms, as slow as one after another, and no error or warning says why. Only the order of the lines (or a stopwatch) gives it away."}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="ex-block-m" id="ex-block"></div>
+  <script type="application/json" id="ex-block-m">{"program": "spot_block.rs", "bug": 5, "prompt": "Mabel asks the bakery and the dairy <b>at the same time</b>, so both <samp>asking</samp> lines should come first. Instead, the bakery is asked and answers before the dairy is even asked. Click the line that freezes the waiter.", "explain": "Line 5: <code>std::thread::sleep</code> blocks the whole thread, so <code>join!</code> can't switch to the dairy until the bakery is done. Inside async code, wait with <code>tokio::time::sleep(...).await</code>. For slow work that really isn't async, use <code>tokio::task::spawn_blocking</code> (next panel)."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: spawn_blocking, send a helper to the hatch">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Sometimes a job really must block: an old library, a big calculation, a slow file. <code>tokio::task::spawn_blocking</code> sends it to a <b>separate pool of helper threads</b> kept for exactly this, and gives back a JoinHandle to <code>.await</code>. The waiter stays free.</p>
+    <span class="file-tab">spawn_blocking.rs</span>
+    <pre class="code" data-src="spawn_blocking.rs"></pre>
+    <pre class="term" data-run="spawn_blocking.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 4–7</b>: an ordinary function that blocks for 300 ms, standing in for slow work.</span></li>
+      <li><span><b>Line 11</b>: <code>spawn_blocking(count_stock)</code> runs it on a helper thread, starting right away.</span></li>
+      <li><span><b>Lines 12–15</b>: meanwhile the waiter serves three rounds, 60 ms apart. Nothing is frozen.</span></li>
+      <li><span><b>Line 16</b>: <code>stock.await</code> politely waits for the helper's answer.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-blockfill-m" id="ex-blockfill"></div>
+  <script type="application/json" id="ex-blockfill-m">{"program": "fill_blocking.rs", "prompt": "Shrinking 40 photos is slow, ordinary work. Send it to a helper thread, keep serving, then collect the result.", "blanks": [{"line": 11, "text": "spawn_blocking"}, {"line": 14, "text": ".await"}], "explain": "<code>tokio::task::spawn_blocking(|| shrink_photos(40))</code> runs the closure on Tokio's blocking pool. The waiter keeps working (<samp>tables still being served</samp> after 50 ms), and <code>job.await</code> collects the answer: <samp>40 photos shrunk</samp>. <code>.unwrap()</code> opens the Result, which would be an <code>Err</code> only if the helper panicked."}</script>
+
+  <section class="panel sketch" aria-label="Panel 24: async or threads?">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Both are tools for doing several things at once. Pick by asking: <b>does the job mostly wait, or mostly think?</b></p>
+    <div class="ops-wrap"><table class="ops ref-table">
+      <thead><tr><th>Question</th><th>Threads (Ch 26)</th><th>Async tasks</th></tr></thead>
+      <tbody>
+        <tr><td>Best for</td><td>work that <b>thinks</b>: calculations on several cores</td><td>work that <b>waits</b>: network, timers, many connections</td></tr>
+        <tr><td>Who switches</td><td>the operating system, at any moment</td><td>the runtime, only at <code>.await</code></td></tr>
+        <tr><td>Cost of one more</td><td>its own stack (2 MiB by default) and a system thread</td><td>a small heap allocation</td></tr>
+        <tr><td>How many is fine</td><td>dozens to a few thousand</td><td>tens of thousands and more</td></tr>
+        <tr><td>Needs</td><td>only the standard library</td><td>a runtime crate (Tokio), <code>async</code>/<code>.await</code> all the way up</td></tr>
+        <tr><td>Classic trap</td><td>deadlocks, forgetting to join</td><td>blocking the waiter, forgetting <code>.await</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Real programs mix them. A web server runs async for its thousands of connections and hands heavy work to threads with <code>spawn_blocking</code>. And a program with no waiting at all needs neither.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pick-m" id="ex-pick"></div>
+  <script type="application/json" id="ex-pick-m">{"q": "Mabel's async chat server must also make a thumbnail of every uploaded photo, which takes about a second of hard calculation each. What should she do?", "options": [
+    {"t": "Keep the chat async; send each thumbnail to spawn_blocking", "why": "Yes. (A thread pool of her own would do too.) The chat mostly waits, so it suits the waiter. The thumbnails mostly think, so they go to threads, where they can't freeze the waiter.", "correct": true},
+    {"t": "Make the thumbnail function an async fn, and .await it", "why": "Marking it <code>async</code> doesn't add any <code>.await</code> points inside the calculation. It would hold the waiter for a whole second each time."},
+    {"t": "Spawn a tokio::spawn task for each thumbnail", "why": "A spawned task still runs on the waiters' threads. A second of solid calculation freezes that waiter, and every task queued behind it."},
+    {"t": "Put std::thread::sleep between the steps so other tables get a turn", "why": "<code>std::thread::sleep</code> freezes the waiter too. Only an <code>.await</code> hands him back."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 25: async closures, and a word about streams">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Two last pieces. An <b>async closure</b> (stable since Rust 1.85) is a closure (Chapter 20) whose call hands back a slip.</p>
+    <span class="file-tab">async_closure.rs</span>
+    <pre class="code" data-src="async_closure.rs"></pre>
+    <pre class="term" data-run="async_closure.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: <code>async |name: &amp;str| { ... }</code>. Calling <code>greet("Ada")</code> writes a slip, and <code>.await</code> hands it in, exactly like an <code>async fn</code>.</span></li>
+      <li><span>A <b>stream</b> is the async cousin of an iterator: a series of values that arrive <b>over time</b>, like messages on a connection. Instead of a <code>for</code> loop you write <code>while let Some(x) = stream.next().await</code>. Panel 20's <code>while let Some(…) = rx.recv().await</code> loop has exactly that shape, though Tokio's receiver isn't a stream itself; the <code>tokio-stream</code> crate can wrap it as one. Streams live in crates such as <code>tokio-stream</code> and <code>futures</code>. Chapter 29's Tokio server doesn't need one: it loops on <code>listener.accept().await</code> in the same style.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE RUBBER STAMP<small>macros versus functions; the standard macros you already use; dbg!, todo! and assert_eq! messages; include_str!; the missing-! mistake; the real code behind vec!, assert!, matches!, println!, #[derive(Debug)] and #[tokio::main]</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 26: Mabel's rubber stamps">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Back at the front desk. Every new book needs the same block of text on its first page: library name, address, "please return by…". Mabel doesn't write it out forty times a day.</p>
+    <div class="boxes">
+      <figure><svg class="char" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg><figcaption>Mabel</figcaption></figure>
+      <figure><svg class="char thump" data-char="codestamp" data-label="vec!" data-state="press"></svg><figcaption>a stamp that prints code</figcaption></figure>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>One press, one paragraph. A <b>macro</b> is a stamp for code: wherever you press it, it prints a chunk of Rust into your program, and <b>then</b> the Compiler reads the result. Catchphrase: <b>a macro is a stamp: it prints code before the Compiler reads it</b>.</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel points at a big rubber stamp labelled vec!, which thumps down onto a sheet of paper and leaves three printed lines.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: a stamp is not a machine">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">You've used macros since Chapter 1: <code>println!</code>. The <code>!</code> is how you tell a stamp from a machine (a function, Chapter 4).</p>
+    <div class="duo">
+      <div class="duo-card">
+        <div class="pics"><svg class="char small" data-char="machine" data-label="len()"></svg></div>
+        <h3>A function<small>a machine</small></h3>
+        <p>Runs while the program runs. Takes <b>values</b>, a fixed number of them, each of a fixed type. Can be written anywhere in the file, even below the code that calls it.</p>
+      </div>
+      <div class="duo-card">
+        <div class="pics"><svg class="char small" data-char="codestamp" data-label="println!"></svg></div>
+        <h3>A macro<small>a stamp</small></h3>
+        <p>Works before the program is compiled. Takes <b>code</b>, in any amount and shape it was built to accept, and prints code back. Called with <code>!</code>. Must be defined <b>above</b> where it's used in the file.</p>
+      </div>
+    </div>
+    <p class="caption">That's how <code>println!</code> can take one argument or ten, and how it checks your <code>{}</code> placeholders against the arguments <b>at compile time</b>. No function could do either. The price: macros are harder to read and write, so reach for a function first.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: the stamps in the standard library">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">A tour of the standard stamps, in one program.</p>
+    <span class="file-tab">std_macros.rs</span>
+    <pre class="code" data-src="std_macros.rs"></pre>
+    <pre class="term" data-run="std_macros.rs"></pre>
+    <div class="ops-wrap"><table class="ops ref-table">
+      <thead><tr><th>Macro</th><th>What it prints into your code</th></tr></thead>
+      <tbody>
+        <tr><td><code>vec![3, 5, 8]</code></td><td>a new Vec holding those values (line 4)</td></tr>
+        <tr><td><code>format!(...)</code></td><td>builds a String, like <code>println!</code> but without printing (line 5)</td></tr>
+        <tr><td><code>write!(w, ...)</code> / <code>writeln!</code></td><td>formats into any writer: a String (with <code>std::fmt::Write</code>, line 7) or a file (Chapter 25)</td></tr>
+        <tr><td><code>println!</code> / <code>eprintln!</code></td><td>formats and prints to stdout / stderr</td></tr>
+        <tr><td><code>assert!(cond)</code></td><td>panics if the condition is false (line 9)</td></tr>
+        <tr><td><code>assert_eq!(a, b, msg)</code></td><td>panics if <code>a != b</code>, showing both values (line 10)</td></tr>
+        <tr><td><code>matches!(x, pattern)</code></td><td>a <code>bool</code>: does <code>x</code> fit the pattern? (line 11; patterns, Chapter 21)</td></tr>
+        <tr><td><code>dbg!(expr)</code></td><td>prints the file, line, expression and value to stderr, and hands the value back</td></tr>
+        <tr><td><code>todo!()</code> / <code>unimplemented!()</code></td><td>"not written yet" / "won't be written": panics if reached</td></tr>
+        <tr><td><code>unreachable!()</code></td><td>"this can't happen": panics if it does</td></tr>
+        <tr><td><code>include_str!("file")</code></td><td>pastes a file's whole text into the program, as a <code>&amp;'static str</code></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: dbg!, the magnifying stamp">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption"><code>dbg!</code> is the quickest way to peek at a value in the middle of an expression.</p>
+    <span class="file-tab">dbg_demo.rs</span>
+    <pre class="code" data-src="dbg_demo.rs"></pre>
+    <pre class="term" data-run="dbg_demo.rs"></pre>
+    <ol class="readlist">
+      <li><span>The first line came from <code>dbg!</code>, on <b>stderr</b> (error style here): <code>[src/main.rs:3:17]</code> is the file, line and column; then the expression <b>as you wrote it</b>, <code>pages * 3</code>, and its value, 288.</span></li>
+      <li><span>Then <code>dbg!</code> handed 288 back, so line 3 went on to add 12: <samp>total = 300</samp>.</span></li>
+      <li><span>A function can't know your file name, line number or the text of its argument. A stamp can, because it's pressed right there in your source. Delete the <code>dbg!</code> calls when you're done.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: stamps that stop the program">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Two stamps that panic on purpose, read like a detective. Both panics print <samp>thread 'main' (1)</samp>: the number is the thread's id, and it will be a different number on your machine.</p>
+    <div class="runs2">
+      <div><h3><code>todo!</code></h3><span class="file-tab">todo_panic.rs</span><pre class="code" data-src="todo_panic.rs"></pre><pre class="term" data-run="todo_panic.rs" data-exit></pre></div>
+      <div><h3><code>assert_eq!</code></h3><span class="file-tab">assert_fail.rs</span><pre class="code" data-src="assert_fail.rs"></pre><pre class="term" data-run="assert_fail.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>todo!</code> lets the program <b>compile</b> before a function is finished: it fits any return type. If it's ever reached: <samp>not yet implemented:</samp> plus your note, at line 2, exit code 101.</span></li>
+      <li><span><code>assert_eq!</code> reports <b>both sides</b>: <samp>left: 16</samp> is <code>total</code>, <samp>right: 15</samp> is what we claimed. 3 + 5 + 8 really is 16: the claim was wrong, and the stamp caught it. The message after the comma helps you find which assert failed.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-macfn-m" id="ex-macfn"></div>
+  <script type="application/json" id="ex-macfn-m">{"q": "Why is <code>println!</code> a macro and not an ordinary function?", "options": [
+    {"t": "It takes any number of arguments and checks {} placeholders when compiling", "why": "Yes. It must accept any number of arguments, and check the placeholders against them before the program runs. A Rust function has a fixed list of parameters. A macro sees the code itself, so it can count the arguments and reject <code>println!(\"{} {}\", x)</code> at compile time.", "correct": true},
+    {"t": "Macros run faster than functions, and printing must be quick", "why": "Speed isn't the reason. The code a macro prints is compiled like any other code."},
+    {"t": "Ordinary functions aren't allowed to write text to the screen", "why": "They are: <code>std::io::stdout().write_all(...)</code> is an ordinary method call. <code>println!</code> itself expands into a call to a function that prints."},
+    {"t": "Because any name that ends in ! is a macro by definition", "why": "The <code>!</code> is how you <b>call</b> a macro, not the reason it is one."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 31: include_str!, a file stamped into the program">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption"><code>include_str!</code> reads a file <b>while compiling</b> and stamps its text into the program. The finished program doesn't need the file any more. The path is relative to the source file, <code>src/main.rs</code>, so <code>"../notes.txt"</code> is the file next to <code>Cargo.toml</code>.</p>
+    <span class="file-tab">include_demo.rs</span>
+    <pre class="code" data-src="include_demo.rs"></pre>
+    <pre class="term" data-run="include_demo.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> a small helper script, <code>mk.sh</code>, made the cargo project <code>~/rust-ch27/include_demo</code> from <code>include_demo.rs</code> (copied into <code>src/main.rs</code>) and put <code>notes.txt</code> beside <code>Cargo.toml</code>, as you would set it up by hand. Then exactly the command shown ran in that folder.</p>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: a <code>const</code>: the text is part of the program itself, known before it runs. A missing file is a <b>compile</b> error, not a run-time one.</span></li>
+      <li><span>Handy for small things that never change: a help text, a template, test data. For files a user may edit, read them at run time with <code>fs::read_to_string</code> (Chapter 25).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 32: the stamp pressed without its handle">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="NO BANG!" data-seed="32"></svg>
+    <p class="caption">The most common macro mistake: forgetting the <code>!</code>. Two versions, two quite different messages.</p>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Without the <code>!</code>, I look for a function or a variable by that name. There's a <b>macro</b> called that, though. Here's the fix.</p></div>
+    </div>
+    <div class="runs2">
+      <div><h3><code>println</code> without <code>!</code></h3><span class="file-tab">println_nobang.rs</span><pre class="code" data-src="println_nobang.rs"></pre><pre class="term" data-run="println_nobang.rs" data-exit></pre></div>
+      <div><h3><code>vec</code> without <code>!</code></h3><span class="file-tab">no_bang.rs</span><pre class="code" data-src="no_bang.rs"></pre><pre class="term" data-run="no_bang.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>println(...)</code> looks like a function call, so: <code>error[E0423]: cannot find function `println` in this scope</code>. The note is the clue: <code>a macro named `println` exists in another namespace</code> (macros have their own list of names). The <code>help:</code> shows the <code>!</code> to add, with a <code>+</code> under it.</span></li>
+      <li><span><code>vec[3, 5, 8]</code> looks like <b>indexing</b> a variable called <code>vec</code>, as in <code>v[2]</code>, so the Compiler trips over the first comma: <code>expected one of `.`, `?`, `]`, or an operator, found `,`</code>. This time there's no error code, because it fails while reading the text, before names are even looked up. Still, the <code>help:</code> guesses right: <code>you might have meant to call a macro</code>.</span></li>
+    </ol>
+    <p class="caption">Rust 1.97, the comparison toolchain, worded both of these differently: it said <samp>expected function, found macro `println`</samp>, and it gave the <code>vec</code> mistake no <code>help:</code> at all. Messages keep improving between releases.</p>
+    <div class="runs2">
+      <div><p class="verlabel">Rust 1.97.0</p><pre class="term" data-run="println_nobang.rs" data-alt data-exit></pre></div>
+      <div><p class="verlabel">Rust 1.97.0</p><pre class="term" data-run="no_bang.rs" data-alt data-exit></pre></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-bang-m" id="ex-bang"></div>
+  <script type="application/json" id="ex-bang-m">{"program": "spot_bang.rs", "bug": 4, "prompt": "Mabel wants the message <samp>16 books on the shelves</samp>. The program doesn't compile. Click the line with the bug.", "explain": "Line 4: <code>format(...)</code> is missing its <code>!</code>: <samp>error[E0423]: cannot find function `format` in this scope</samp>. The first <code>help:</code> is the right one: <code>format!(...)</code>. The second, <samp>consider importing this function instead</samp>, points at <code>std::fmt::format</code>, a real function that takes already-prepared arguments, not a string with <code>{total}</code> in it. Don't follow that one."}</script>
+
+  <section class="panel clean" aria-label="Panel 33: what the stamps really print" data-stamppress="sp-std">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">What does a stamp actually print? The Compiler can show you: the command below asks it for the program <b>after</b> every macro has been expanded. (It uses an option meant for Rust's own developers; the notebook's lab explains it and the usual tool, <code>cargo expand</code>.) Press the stamp on each call. Every expansion shown is cut from that real output, word for word.</p>
+    <span class="file-tab">peek_std.rs</span>
+    <pre class="code" data-src="peek_std.rs"></pre>
+    <div class="chips"></div>
+    <div class="press-stage"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every expansion</summary><div class="press-text"></div></details>
+    <details><summary>The real terminal: the run, then the whole expanded program</summary><pre class="term wrap" data-run="peek_std.rs"></pre></details>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 31, <code>mk.sh</code> made the cargo project <code>~/rust-ch27/peek_std</code> from <code>peek_std.rs</code>; then exactly the two commands shown ran in that folder, each in a fresh shell. Panels 34 and 40 were made the same way.</p>
+    <script type="application/json" id="sp-std">{"label": "macro!", "examples": [
+      {"in": "vec![3, 5, 8]", "program": "peek_std.rs", "from": "let shelves =", "to": "[3, 5, 8]));", "note": "<code>vec!</code> prints a call into the standard library's allocation code: make room for the array <code>[3, 5, 8]</code> on the heap, move it in, and turn it into a Vec. These are internal functions you'd never write yourself (some are unstable), which is exactly why a stamp writes them for you."},
+      {"in": "assert!(shelves.len() == 3);", "program": "peek_std.rs", "from": "if !(shelves.len() == 3) {", "to": "};", "note": "<code>assert!</code> is just an <code>if</code>: if the condition is <b>not</b> true, panic. The panic message <samp>assertion failed: shelves.len() == 3</samp> is your own condition, turned into text by the stamp."},
+      {"in": "matches!(shelves[1], 5)", "program": "peek_std.rs", "from": "let five =", "to": "};", "note": "<code>matches!</code> becomes a <code>match</code> (Chapter 21) with two arms: your pattern gives <code>true</code>, anything else <code>false</code>."},
+      {"in": "println!(\"{shelves:?} {five}\");", "program": "peek_std.rs", "from": "{ ::std::io::_print(format_args!(\"{0:?} {1}\\n\", shelves, five)); };", "to": "{ ::std::io::_print(format_args!(\"{0:?} {1}\\n\", shelves, five)); };", "note": "<code>println!</code> numbers the placeholders (<code>{0:?}</code>, <code>{1}</code>), adds the <code>\\n</code>, moves the names out as arguments, and hands it all to <code>format_args!</code> and a printing function. The checking of placeholders against arguments happened before this line was written."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: stamps that write whole blocks" data-stamppress="sp-gen">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Two more kinds of macro look different but are also stamps. A <b>derive macro</b> (<code>#[derive(Debug)]</code>, Chapter 18) writes a whole trait <code>impl</code> for your type. An <b>attribute macro</b> such as <code>#[tokio::main]</code> or <code>#[test]</code> takes the item under it and <b>rewrites</b> it. Both are built in Rust code inside a crate (procedural macros, beyond this book). Here is what they really printed for two small programs.</p>
+    <div class="runs2">
+      <div><span class="file-tab">peek_derive.rs</span><pre class="code" data-src="peek_derive.rs"></pre></div>
+      <div><span class="file-tab">peek_tokio.rs</span><pre class="code" data-src="peek_tokio.rs"></pre></div>
+    </div>
+    <div class="chips"></div>
+    <div class="press-stage"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every expansion</summary><div class="press-text"></div></details>
+    <details><summary>The real terminals: each run, then the whole expanded program</summary><pre class="term wrap" data-run="peek_derive.rs"></pre><pre class="term wrap" data-run="peek_tokio.rs"></pre></details>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 33, <code>mk.sh</code> made the cargo projects <code>~/rust-ch27/peek_derive</code> and <code>~/rust-ch27/peek_tokio</code> (the second with Tokio 1.54.1 in its <code>Cargo.toml</code>); then exactly the commands shown ran in each folder.</p>
+    <script type="application/json" id="sp-gen">{"label": "#[...]", "examples": [
+      {"in": "#[derive(Debug)]\nstruct Book { title: String, pages: u32 }", "program": "peek_derive.rs", "from": "#[automatically_derived]", "to": "}", "skip": 1, "note": "The derive wrote <code>impl Debug for Book</code> with a <code>fmt</code> method that lists the struct's name and each field. That's the code you'd have typed by hand in Chapter 18. <code>#[automatically_derived]</code> marks it as stamped, not hand-written."},
+      {"in": "#[tokio::main]\nasync fn main() { … }", "program": "peek_tokio.rs", "from": "fn main() {", "to": "}", "skip": 2, "note": "The attribute rewrote <code>main</code>: it is no longer async. Your body became an <code>async</code> block called <code>body</code> (a slip), and the last lines build a multi-thread runtime and <code>block_on(body)</code>, almost exactly Panel 10's hand-made version. The <code>if false</code> part never runs; it only makes the Compiler check that <code>body</code> is a future."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-derive-m" id="ex-derive"></div>
+  <script type="application/json" id="ex-derive-m">{"q": "What does <code>#[derive(Debug)]</code> on a struct do?", "options": [
+    {"t": "Before compiling, it writes an impl Debug block for the struct, so {:?} can print it", "why": "Yes. Panel 34 shows the exact impl it wrote: a <code>fmt</code> method listing the struct's name and fields.", "correct": true},
+    {"t": "It asks the program, while running, to work out how to print the struct", "why": "Nothing happens at run time. The impl is written into the program before it's compiled."},
+    {"t": "It makes the struct exist only in debug builds", "why": "\"Debug\" here is the name of the formatting trait behind <code>{:?}</code>, not the debug build profile."},
+    {"t": "It turns on a debugger for that struct", "why": "No debugger is involved. It's a code stamp for one trait."}]}</script>
+
+  <div data-ex="fill" data-model="ex-vec-m" id="ex-vec"></div>
+  <script type="application/json" id="ex-vec-m">{"program": "fill_vec.rs", "prompt": "Be the stamp: write by hand what <code>vec![10, 20, 30]</code> means, the simple way (the way The Rust Programming Language's own example <code>vec!</code> does it). Fill in the empty Vec, the first push, and the block's last line.", "blanks": [{"line": 4, "text": "Vec::new()", "accept": ["Vec::with_capacity(3)"]}, {"line": 5, "text": "temp.push(10);"}, {"line": 8, "text": "temp"}], "explain": "Start with <code>Vec::new()</code>, push each value in order, and end the block with <code>temp</code> (no semicolon) so the block's value is the Vec. Both Vecs hold the same numbers, so <samp>true</samp>, then <samp>[10, 20, 30]</samp>. The real <code>vec!</code> (Panel 33) does the same job more cleverly, with a single allocation."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · CARVE YOUR OWN STAMP<small>macro_rules! with $x:expr; the parts of a rule; $name:ident to name new functions; repetition with $(...),*; the sum! machine and "no rules expected"; a hashmap! macro and its real expansion; defined before use; an argument pasted twice</small></h2>
+
+  <section class="panel clean" aria-label="Panel 35: shout!, a first stamp">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption"><code>macro_rules!</code> carves a new stamp. This one takes any expression that gives text and prints it in capitals with a <code>!</code>.</p>
+    <span class="file-tab">first_macro.rs</span>
+    <pre class="code" data-src="first_macro.rs"></pre>
+    <pre class="term" data-run="first_macro.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>macro_rules! shout</code> names the stamp. You call it <code>shout!</code>.</span></li>
+      <li><span><b>Line 2</b>: <code>($text:expr)</code> is the <b>matcher</b>: "one Rust expression; call it <code>$text</code>". A literal, a variable and a whole <code>format!(...)</code> call all count as expressions.</span></li>
+      <li><span><b>Line 3</b>: the <b>transcriber</b>: the code to print, with <code>$text</code> pasted in wherever it appears.</span></li>
+      <li><span>So line 10, <code>shout!(room)</code>, is stamped into <code>println!("{}!", room.to_uppercase())</code> before compiling.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: the parts of a stamp">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">Every <code>macro_rules!</code> is a list of <b>rules</b>. Each rule is <code>(matcher) =&gt; { transcriber };</code>. When you call the macro, Rust tries the rules from top to bottom and uses the first matcher that fits.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 640 280" role="img" aria-label="Diagram of a macro_rules! definition. Line one, macro_rules! shout, is labelled the stamp's name. On line two, the part in brackets, dollar text colon expr, is labelled the matcher: what a call must look like; the dollar text part is labelled a name for the captured code, and colon expr is labelled what kind of code: an expression. The arrow is labelled then print. Line three, println with dollar text, is labelled the transcriber: the code it prints, with dollar text pasted in.">
+      <rect x="20" y="20" width="400" height="170" rx="10" fill="#F3F3F3" stroke="#111" stroke-width="3"/>
+      <text class="ms" x="36" y="54">macro_rules! shout {</text>
+      <text class="ms" x="72" y="88">($text:expr) =&gt; {</text>
+      <text class="ms" x="108" y="122">println!("{}!", $text…)</text>
+      <text class="ms" x="72" y="156">};</text>
+      <text class="ms" x="36" y="180">}</text>
+      <rect x="80" y="70" width="95" height="26" rx="5" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/>
+      <rect x="102" y="104" width="222" height="26" rx="5" fill="none" stroke="#111" stroke-width="3"/>
+      <path d="M226 48 H440" stroke="#111" stroke-width="3"/><text class="s" x="448" y="54">the stamp's name</text>
+      <path d="M92 96 V222" stroke="#111" stroke-width="3"/>
+      <text class="s" x="20" y="242">matcher: what a call must look like</text>
+      <text class="ms" x="20" y="268">$text = a name · :expr = an expression</text>
+      <path d="M236 82 H440" stroke="#111" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/><text class="s" x="448" y="88">=&gt; then print…</text>
+      <path d="M324 117 H440" stroke="#111" stroke-width="3"/><text class="s" x="448" y="122">transcriber: the</text><text class="s" x="448" y="144">code it prints, with</text><text class="s" x="448" y="166">$text pasted in</text>
+    </svg></div>
+    <div class="ops-wrap"><table class="ops ref-table">
+      <thead><tr><th>Fragment</th><th>Matches</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>$x:expr</code></td><td>an expression</td><td><code>2 + 3</code>, <code>room</code>, <code>f(1)</code></td></tr>
+        <tr><td><code>$n:ident</code></td><td>a name (identifier)</td><td><code>books_on_loan</code></td></tr>
+        <tr><td><code>$t:ty</code></td><td>a type</td><td><code>Vec&lt;u32&gt;</code></td></tr>
+        <tr><td><code>$l:literal</code></td><td>a literal value</td><td><code>42</code>, <code>"hi"</code></td></tr>
+        <tr><td><code>$p:pat</code></td><td>a pattern</td><td><code>Some(x)</code>, <code>1..=4</code></td></tr>
+        <tr><td><code>$t:tt</code></td><td>any single token, or a bracketed group</td><td><code>+</code>, <code>(a, b)</code></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 37: a stamp that writes functions">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">With <code>$name:ident</code>, a stamp can invent <b>names</b>: here, whole functions. A function can't do this; only a macro can.</p>
+    <span class="file-tab">ident_macro.rs</span>
+    <pre class="code" data-src="ident_macro.rs"></pre>
+    <pre class="term" data-run="ident_macro.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>fn $name()</code> becomes <code>fn books_on_loan()</code> for the first call and <code>fn late_returns()</code> for the second.</span></li>
+      <li><span><b>Lines 9–10</b>: a macro can be pressed <b>outside</b> any function, if what it prints belongs there (here: function definitions).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 38: repetition, and the sum! machine" data-machine="m-sum">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">A stamp that takes <b>any number</b> of values. <code>$( ... ),+</code> means "this part, one or more times, separated by commas"; with <code>*</code> instead of <code>+</code>, zero or more. In the transcriber, <code>$( ... )+</code> prints its inside once for each value caught.</p>
+    <span class="file-tab">sum_macro.rs</span>
+    <pre class="code" data-src="sum_macro.rs"></pre>
+    <pre class="term" data-run="sum_macro.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b>: the first rule matches an empty call and prints <code>0</code>.</span></li>
+      <li><span><b>Line 3</b>: the second catches one or more expressions as <code>$x</code>. <code>$(,)?</code> allows one optional trailing comma (line 10). <code>sum!(1, 2, 3)</code> is stamped as <code>0 + 1 + 2 + 3</code>.</span></li>
+    </ol>
+    <p class="caption soft">Feed the machine. The last call has the wrong shape, so no rule matches and the stamp jams.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-sum">{"label": "sum!", "program": "sum_macro.rs", "examples": [
+      {"in": "sum!()", "out": "0", "outKind": "i32", "note": "The first rule, <code>() =&gt; { 0 }</code>, fits an empty call."},
+      {"in": "sum!(4)", "out": "4", "outKind": "i32", "note": "The second rule with one value: <code>0 + 4</code>."},
+      {"in": "sum!(1, 2, 3)", "out": "6", "outKind": "i32", "note": "Three values caught by <code>$($x:expr),+</code>, printed as <code>0 + 1 + 2 + 3</code>."},
+      {"in": "sum!(10, 20, 30, 40,)", "out": "100", "outKind": "i32", "note": "The trailing comma is allowed by <code>$(,)?</code>."},
+      {"in": "sum!(1; 2)", "error": "no rules expected `;`", "program": "macro_nomatch.rs", "note": "A semicolon isn't a comma. Neither rule fits, so the Compiler stops: <samp>no rules expected `;`</samp>, with <samp>when calling this macro</samp> under the definition and <samp>no rules expected this token in macro call</samp> under the <code>;</code> (line 7)."}]}</script>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 39: no rules expected this token">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <svg class="sfx tr" data-sfx="JAM!" data-seed="39"></svg>
+    <p class="caption">The jammed call from the machine, as the Compiler reports it.</p>
+    <span class="file-tab">macro_nomatch.rs</span>
+    <pre class="code" data-src="macro_nomatch.rs"></pre>
+    <pre class="term" data-run="macro_nomatch.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>error: no rules expected `;`</code>: the stamp was tried, and no matcher accepts that token.</span></li>
+      <li><span><b>Where</b>: two places. The dashes under line 1 say which macro (<code>when calling this macro</code>); the caret under line 7 points at the exact token that broke the match.</span></li>
+      <li><span>The note, <code>while trying to match sequence start</code>, says it was in the middle of the <code>$( ... )</code> repetition. Compare your call with the matcher, one token at a time.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-repeat-m" id="ex-repeat"></div>
+  <script type="application/json" id="ex-repeat-m">{"program": "fill_repeat.rs", "prompt": "<code>shelf_list!</code> takes any number of titles and makes a Vec of them. Fill in the matcher that catches each title as <code>$title</code> (zero or more, separated by commas), and the transcriber line that pushes each one.", "blanks": [{"line": 2, "text": "$($title:expr),*"}, {"line": 4, "text": "$( list.push($title); )*", "accept": ["$(list.push($title);)*"]}], "explain": "<code>$($title:expr),*</code> catches zero or more comma-separated expressions. In the transcriber, <code>$( list.push($title); )*</code> prints one <code>push</code> per title caught. Three titles, so <samp>3 poems: [\"Owl\", \"Heron\", \"Wren\"]</samp>. This is The Rust Programming Language's simplified <code>vec!</code> under another name."}</script>
+
+  <section class="panel clean" aria-label="Panel 40: hashmap!, a stamp the standard library doesn't have" data-stamppress="sp-map">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">There's <code>vec!</code>, but no <code>hashmap!</code> in the standard library. Mabel carves one, with pairs written <code>key =&gt; value</code>, and asks the Compiler what it stamped.</p>
+    <span class="file-tab">peek_hashmap.rs</span>
+    <pre class="code" data-src="peek_hashmap.rs"></pre>
+    <div class="chips"></div>
+    <div class="press-stage"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the expansion</summary><div class="press-text"></div></details>
+    <pre class="term wrap" data-run="peek_hashmap.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 33, <code>mk.sh</code> made the cargo project <code>~/rust-ch27/peek_hashmap</code>; then exactly the two commands shown ran in that folder.</p>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: each repetition catches <b>two</b> expressions with a literal <code>=&gt;</code> between them. Anything that isn't a fragment, like <code>=&gt;</code> or the comma, must appear in the call exactly as written.</span></li>
+      <li><span><b>Line 4</b>, the double braces <code>{{ ... }}</code>: the outer pair belongs to the rule; the inner pair is a real <b>block</b> in the printed code, so <code>map</code> lives inside it and the block's value is the finished map.</span></li>
+      <li><span>The terminal: first the run (<samp>Ada has 2 books</samp>), then the whole expanded program. The definition is still there, reformatted, but <code>main</code> no longer contains <code>hashmap!</code>: just a block with one <code>insert</code> per pair.</span></li>
+    </ol>
+    <script type="application/json" id="sp-map">{"label": "hashmap!", "examples": [
+      {"in": "hashmap! { \"Ada\" => 2, \"Ben\" => 1 }", "program": "peek_hashmap.rs", "from": "let loans =", "to": "};", "note": "Two pairs, so two <code>insert</code> lines: the repetition <code>$( map.insert($key, $value); )*</code> printed its inside once per pair."}]}</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-mapp-m" id="ex-mapp"></div>
+  <script type="application/json" id="ex-mapp-m">{"program": "parsons_hashmap.rs", "seed": 40, "pin": [1, 9, 14], "prompt": "Carve the <code>hashmap!</code> stamp and use it: the rule's matcher, a block that makes the map, inserts each pair and hands the map back, then a <code>main</code> that stamps a map of fines.", "explain": "The <code>macro_rules!</code> line opens the definition, then the rule: matcher <code>=&gt; {{</code>, the three lines of the block (make, insert each pair, hand back <code>map</code>), and <code>}};</code> to close the rule. In <code>main</code>: stamp the map, then read Ben's fine: <samp>Ben owes 3</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 41: the stamp kept in the wrong drawer">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <svg class="sfx tr" data-sfx="WHERE?" data-seed="41"></svg>
+    <p class="caption">Functions may be defined anywhere in a file. <code>macro_rules!</code> stamps may not: they're read in order, from top to bottom, and a stamp can only be pressed <b>below</b> its definition.</p>
+    <span class="file-tab">macro_late.rs</span>
+    <pre class="code" data-src="macro_late.rs"></pre>
+    <pre class="term" data-run="macro_late.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>error: cannot find macro `greet` in this scope</code>.</span></li>
+      <li><span><b>Where and why</b>: the label under line 2 already suggests the fix: <code>consider moving the definition of `greet` before this call</code>. The <code>note:</code> points at line 5: a macro by that name exists, but it appears later.</span></li>
+      <li><span>There's also a <b>warning</b>, <code>unused macro definition</code>: from the Compiler's point of view, nothing ever used the stamp. Fix: move the <code>macro_rules!</code> block above <code>main</code>. (To share a stamp with other files or crates, mark it <code>#[macro_export]</code>.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-late-m" id="ex-late"></div>
+  <script type="application/json" id="ex-late-m">{"program": "ex_macro_late.rs", "expect": "error", "answer": "cannot find macro", "ask": "This one doesn't compile. Which words start the error message? (Type the first three words after <code>error:</code>.)", "prompt": "A report function prints a row of stars, using a stamp.", "hint": "Read from the top, as the Compiler does. When it reaches line 2, has it seen <code>stars!</code> yet?", "explain": "<samp>error: cannot find macro `stars` in this scope</samp> on line 2, with <samp>consider moving the definition of `stars` before this call</samp>. It doesn't matter that <code>report</code> only <b>runs</b> later: stamps are pressed while reading the file, from top to bottom. Move <code>macro_rules! stars</code> to the top."}</script>
+
+  <div data-ex="predict" data-model="ex-twice-m" id="ex-twice"></div>
+  <script type="application/json" id="ex-twice-m">{"program": "predict_twice.rs", "prompt": "A <code>square!</code> stamp, used twice. What does the program print?", "hint": "Two questions. Is <code>$x</code> pasted as one whole expression, or as loose text? And how many times does <code>$x</code> appear in the transcriber?", "explain": "<code>square!(2 + 3)</code> prints <samp>25</samp>: an <code>expr</code> fragment is pasted as <b>one unit</b>, like <code>(2 + 3) * (2 + 3)</code>, never <code>2 + 3 * 2 + 3</code> (which would be 11). But the transcriber says <code>$x * $x</code>, so the expression is pasted, and <b>run</b>, twice: <samp>ticket 1 handed out</samp>, <samp>ticket 2 handed out</samp>, and the result is 1 × 2 = <samp>2</samp>, not a square at all. Fix: <code>{ let v = $x; v * v }</code>, which runs the argument once. Or simply use a function."}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL AND RECAP<small>six harder checks mixing waiters and stamps; what you learned; what's next</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 42: boss level">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="42"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Slips, waiters and stamps, all mixed together. Watch where the <code>.await</code>s are, count the tickets, and read the matcher one token at a time.</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. A <code>join!</code>, then a <code>select!</code>. What does the program print?", "hint": "Each <code>step</code> prints only after its own timer. <code>join!</code> waits for both; <code>select!</code> waits for the first and drops the other.", "explain": "In the <code>join!</code>, the toast (100 ms) prints before the kettle (200 ms): <samp>toast done</samp>, <samp>kettle done</samp>. The tuple follows the written order: <samp>kettle + toast</samp>. In the <code>select!</code>, the jam (60 ms) beats the eggs (300 ms): <samp>jam done</samp>, <samp>jam won</samp>. The eggs are dropped and never print. Then <samp>end</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.rs", "columns": ["table", "dish", "count"], "given": [2], "prompt": "Boss 2. One waiter. Three table tasks send <code>(table, dish number)</code> tickets on a rail: table 1 sends 2 dishes, table 2 sends 1, table 3 sends 2. The kitchen prints each ticket and a running count. Fill in the table and dish for each row.", "explain": "The rail has room for 10 tickets, so no <code>send</code> ever has to wait. With one waiter, each task runs to the end in the order spawned: table 1 sends (1, 1) and (1, 2), table 2 sends (2, 1), table 3 sends (3, 1) and (3, 2). The kitchen prints them in that order, counting 1 to 5."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. A stamp that writes greeting functions. Fill in the word that starts a stamp definition, the fragment that catches a <b>name</b>, and the start of the function it prints.", "blanks": [{"line": 1, "text": "macro_rules!"}, {"line": 2, "text": "$name:ident"}, {"line": 3, "text": "fn $name"}], "explain": "<code>macro_rules! make_greeter</code> carves the stamp. <code>$name:ident</code> catches a name, and <code>fn $name(who: &amp;str)</code> uses it as the new function's name, so lines 9 and 10 write <code>fn morning</code> and <code>fn goodnight</code>: <samp>Good morning, Ada!</samp> and <samp>Sleep well, Ben!</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 44, "pin": [1, 2, 7, 9, 12, 14], "prompt": "Boss 4. A task pours cups of tea onto an async rail; <code>main</code> adds them up until the rail is empty. Put the moving lines in order.", "explain": "Make the channel first (the task needs <code>tx</code>). Spawn the task with <code>async move</code> so it owns <code>tx</code>; inside, loop over the cups and <code>send(...).await</code> each one; <code>});</code> closes the task. Then <code>main</code> receives with <code>while let Some(cups) = rx.recv().await</code>, adds each, and prints after the loop ends: <samp>5 cups of tea poured</samp>. The loop ends because the task's <code>tx</code> is dropped when the task finishes."}</script>
+
+  <div data-ex="spot" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_spot.rs", "bug": 8, "prompt": "Boss 5. Three books should be stamped, one line each. The program only prints <samp>all books stamped?</samp>. Click the line with the bug.", "explain": "Line 8 writes a slip for <code>stamp(book)</code> and throws it away, three times. Nothing was handed in, so nothing printed. The Compiler even warned: <samp>unused implementer of `Future` that must be used</samp>. Fix: <code>stamp(book).await;</code>"}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_error.rs", "expect": "error", "answer": "no rules expected", "ask": "This one doesn't compile. Which three words start the error message after <code>error:</code>?", "prompt": "Boss 6. Mabel stamps a map of loans, the way she'd write it in JSON.", "hint": "Compare the call with the matcher on line 4, token by token. What must come between a key and its value?", "explain": "<samp>error: no rules expected `:`</samp>. The matcher wants a literal <code>=&gt;</code> between key and value, and the note says so: <samp>while trying to match `=&gt;`</samp>, pointing at line 4. Fix: <code>hashmap! { \"Ada\" =&gt; 2, \"Ben\" =&gt; 1 }</code>, or change the matcher to <code>$key:expr : $value:expr</code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 43: what you learned">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">What you learned in Chapter 27</p>
+    <ul class="recap">
+      <li><b>WAITING ISN'T WORKING</b>Async lets the waits of many jobs overlap on a few threads: perfect for programs that mostly wait on I/O (servers, network clients, timers), no help for programs that mostly think. <code>async fn</code> may pause; <code>.await</code> pauses until a value is ready and lets the waiter serve others meanwhile.</li>
+      <li><b>A FUTURE IS AN ORDER SLIP: NOTHING COOKS UNTIL SOMEONE HANDS IT IN</b>Calling an <code>async fn</code> only makes a future. It runs when it's <code>.await</code>ed or spawned. Forgetting gives <code>warning: unused implementer of `Future` that must be used</code>, and the work silently never happens. A dropped future never runs again.</li>
+      <li><b>NO WAITER, NO SERVICE</b>Rust has no built-in runtime. <code>async fn main</code> alone is E0752; <code>#[tokio::main]</code> builds a Tokio runtime and calls <code>block_on</code> for you; <code>.await</code> in a non-async function is E0728. <code>flavor = "current_thread"</code> means exactly one waiter.</li>
+      <li><b>TAKE ALL THE ORDERS, THEN WAIT</b><code>join!</code> runs several futures together and waits for all (results in written order); <code>tokio::spawn</code> makes a task and a JoinHandle to <code>.await</code> (tasks still running when <code>main</code> ends are dropped); <code>select!</code> takes the first and drops the rest (<code>biased;</code> for a fixed order); <code>tokio::sync::mpsc</code> is the async rail. On many threads, output order varies.</li>
+      <li><b>NEVER FREEZE THE WAITER</b><code>std::thread::sleep</code> or long calculations inside async code block every task on that thread, silently. Use <code>tokio::time::sleep(...).await</code>, async libraries, and <code>spawn_blocking</code> for work that must block. Async closures: <code>async |x| { ... }</code>. Streams: values over time, <code>while let Some(x) = s.next().await</code>.</li>
+      <li><b>A MACRO IS A STAMP: IT PRINTS CODE BEFORE THE COMPILER READS IT</b>Call with <code>!</code> (without it: E0423, or a parse error). Standard stamps: <code>vec!</code>, <code>format!</code>, <code>write!</code>, <code>assert!</code>, <code>assert_eq!</code>, <code>matches!</code>, <code>dbg!</code>, <code>todo!</code>, <code>unreachable!</code>, <code>include_str!</code>. Derive and attribute macros write whole impls and rewrite items. <code>macro_rules!</code>: <code>$x:expr</code>, <code>$n:ident</code>, <code>$( ... ),*</code>; define it above its first use; an argument used twice runs twice.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>One waiter for forty tables, and a drawer full of stamps. The café has never been tidier.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 44: next time, handles, race cars and hardware">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption soft">Coming up in Chapter 28: Handles, Race Cars, Hardware…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 540 230" role="img" aria-label="Teaser picture: on the left, a toolbox with a smooth, well-shaped handle. In the middle, two race cars: a heavy one labelled debug carrying a toolbox, and a sleek, low one labelled release. On the right, a shelf of boxes in a hardware-store aisle, labelled crates.">
+        <rect x="20" y="120" width="120" height="70" rx="8" fill="#FF5A4E" stroke="#111" stroke-width="4"/>
+        <path d="M50 120 q30 -46 60 0" fill="none" stroke="#111" stroke-width="10" stroke-linecap="round"/><path d="M50 120 q30 -46 60 0" fill="none" stroke="#FFD60A" stroke-width="4" stroke-linecap="round"/>
+        <text class="s mid" x="80" y="216">API design</text>
+        <g><rect x="170" y="140" width="120" height="34" rx="12" fill="#DDE8FF" stroke="#111" stroke-width="4"/><rect x="200" y="112" width="50" height="30" rx="5" fill="#E8D3B0" stroke="#111" stroke-width="3"/><circle cx="196" cy="180" r="13" fill="#2B2B2B"/><circle cx="264" cy="180" r="13" fill="#2B2B2B"/><text class="ms mid" x="230" y="163">debug</text></g>
+        <g><path d="M300 170 q10 -30 60 -32 h40 q30 2 36 32 z" fill="#FFD60A" stroke="#111" stroke-width="4" stroke-linejoin="round"/><circle cx="326" cy="180" r="13" fill="#2B2B2B"/><circle cx="410" cy="180" r="13" fill="#2B2B2B"/><text class="ms mid" x="366" y="163">release</text></g>
+        <text class="s mid" x="300" y="216">debug vs release</text>
+        <g fill="#FFF6CC" stroke="#111" stroke-width="3"><rect x="452" y="60" width="34" height="30"/><rect x="490" y="60" width="34" height="30"/><rect x="452" y="96" width="34" height="30"/><rect x="490" y="96" width="34" height="30"/><rect x="452" y="132" width="34" height="30"/><rect x="490" y="132" width="34" height="30"/></g>
+        <path d="M444 166 H532" stroke="#111" stroke-width="4"/>
+        <text class="s mid" x="488" y="216">crates</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Next: <b>craft</b>. Handles that are easy to grip the right way (good API design), the stripped-down <code>--release</code> race car versus the debug car full of checks, and a walk down the hardware aisle of crates: <code>serde</code>, <code>rand</code>, <code>clap</code>… and the Tokio you met today.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch26.html">← Ch 26 · The Busy Kitchen</a><a class="next" href="ch28.html">Ch 28 · Handles, Race Cars, Hardware →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: poll, Pending, wakers, state machines, and how stamps are pressed</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Let's open the order slip and look at the machinery.</p></div>
+      </div>
+      <h3>A future is something you can poll</h3>
+      <p>Every future implements the <code>Future</code> trait, which has one method, <code>poll</code>. The runtime calls <code>poll</code> to say "make as much progress as you can". The future answers <code>Poll::Ready(value)</code> when it's finished, or <code>Poll::Pending</code> when it's stuck waiting. Before answering Pending, it hands a <b>waker</b> to whatever it's waiting for (a timer, a socket). When that thing is ready, it calls the waker, and the runtime knows to poll that task again. That's the bell in the comic. Nobody polls a future that hasn't been handed in, which is why futures are lazy.</p>
+      <h3>async fn becomes a state machine</h3>
+      <p>The Compiler turns each <code>async fn</code> into an enum-like <b>state machine</b>: one state per <code>.await</code>, holding the local variables that must survive across that pause. Polling runs from the current state to the next <code>.await</code>. That's why futures are values you can store, pass around and drop, and why no extra thread is needed. It's also why some futures must not move in memory once started (they may point into themselves); the <code>Pin</code> type handles that. You rarely see <code>Pin</code> unless you write futures by hand, which is beyond this book.</p>
+      <h3>Why main can't be async</h3>
+      <p>An async <code>main</code> would only return a future, and something must poll it. The operating system knows nothing about futures. So a runtime must start first: <code>#[tokio::main]</code> keeps your code in an async block and wraps it in an ordinary <code>fn main</code> that builds the runtime and calls <code>block_on</code>, as Panel 34's real expansion shows.</p>
+      <h3>How many waiters?</h3>
+      <p>Tokio's default (multi-thread) runtime starts one worker thread per CPU core and lets idle workers <b>steal</b> tasks from busy ones. <code>current_thread</code> runs everything on the thread that called <code>block_on</code>. <code>spawn_blocking</code> uses a separate pool of threads that grows when needed. Because tasks may move between workers at an <code>.await</code>, a spawned task must be <code>Send</code>; holding an <code>Rc</code> or a <code>std::sync::MutexGuard</code> across an <code>.await</code> makes it not Send, and the Compiler refuses the spawn.</p>
+      <h3>How a stamp is pressed</h3>
+      <p>The Compiler first splits your source into <b>tokens</b> (names, numbers, symbols, brackets). When it meets <code>name!(...)</code>, it hands the tokens inside the brackets to the macro, which matches them against its rules and produces new tokens. Those are parsed as if you had typed them, and expansion repeats until no macro calls are left; only then are types checked. <code>macro_rules!</code> macros are also <b>hygienic</b> for local variables: a <code>let map</code> inside the stamp can't clash with a <code>map</code> in your own code. And an <code>expr</code> fragment is pasted as a single unit, which is why <code>square!(2 + 3)</code> is 25.</p>
+      <h3>The three kinds of procedural macro</h3>
+      <p>Derive macros (<code>#[derive(Serialize)]</code>), attribute macros (<code>#[tokio::main]</code>, <code>#[test]</code>) and function-like ones (<code>sqlx::query!</code>) are written as Rust functions that take tokens and return tokens. They live in a special crate type (<code>proc-macro = true</code>) and usually use the <code>syn</code> and <code>quote</code> crates. Tokio's macros come from a companion crate, <code>tokio-macros</code>, which the <code>macros</code> feature switches on.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where you'll meet waiters and stamps</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Web servers and clients</b>: <code>axum</code>, <code>hyper</code> and <code>reqwest</code> are built on Tokio. A handler is an <code>async fn</code>; every incoming connection becomes a task. Chapter 29's server builds a small version of this idea.</li>
+        <li><b>Timeouts everywhere</b>: real network code wraps every request in <code>tokio::time::timeout(duration, future)</code> (a ready-made <code>select!</code> against a timer), so one slow partner can't hang the program.</li>
+        <li><b>Graceful shutdown</b>: servers often <code>select!</code> between "the next connection" and "Ctrl+C was pressed" (<code>tokio::signal::ctrl_c()</code>), then let running tasks finish.</li>
+        <li><b>Async in tests</b>: <code>#[tokio::test]</code> is the attribute macro for tests that are <code>async fn</code>.</li>
+        <li><b>Derive macros you'll use constantly</b>: <code>serde</code>'s <code>#[derive(Serialize, Deserialize)]</code> (Chapter 28), <code>clap</code>'s <code>#[derive(Parser)]</code> (Chapter 25), <code>thiserror</code>'s <code>#[derive(Error)]</code> (Chapter 21).</li>
+        <li><b>Function-like macros in crates</b>: <code>anyhow!</code> and <code>bail!</code> for errors, <code>tracing::info!</code> for logs, <code>serde_json::json!</code> to write JSON inline.</li>
+        <li><b>macro_rules! in the wild</b>: mostly to remove repetition, such as implementing the same trait for ten number types, or writing many similar test cases.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Calling an async function starts it."</b> It only makes a future. <code>.await</code> it or spawn it.</li>
+        <li><b>"async makes my code faster."</b> It lets waiting overlap. A single job takes just as long, and code that never waits gains nothing.</li>
+        <li><b>"async means parallel."</b> With <code>current_thread</code> everything runs on one thread, yet waits still overlap: that's concurrency. Parallelism (several things at the same instant) needs several threads.</li>
+        <li><b>"<code>.await</code> blocks the thread."</b> It pauses this <b>task</b> and frees the thread for other tasks. <code>std::thread::sleep</code> is the one that blocks the thread.</li>
+        <li><b>"A spawned task always finishes."</b> If <code>main</code> returns first, the runtime shuts down and drops it.</li>
+        <li><b>"select! lets the losers finish quietly."</b> It drops them at their current <code>.await</code>; their remaining code never runs.</li>
+        <li><b>"Rust comes with an async runtime."</b> It provides the <code>async</code>/<code>.await</code> syntax and the <code>Future</code> trait. The runtime is a crate you choose.</li>
+        <li><b>"Macros are just functions with a <code>!</code>."</b> They work on code, before compiling, and can take any number of arguments or invent names.</li>
+        <li><b>"I can define a macro_rules! anywhere, like a function."</b> It must come before its first use in the file.</li>
+        <li><b>"A macro argument is evaluated once, like a function argument."</b> It's pasted wherever the transcriber mentions it, and runs each time.</li>
+        <li><b>"Writing a macro is the best way to avoid repetition."</b> Try a function, a generic or a trait first. Macros are harder to read, and their error messages are harder to follow.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. A Tokio project</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new cafe</code>, then <code>cd cafe</code>, then <code>cargo add tokio --features macros,rt-multi-thread,time,sync</code>. That needs the internet once, to download Tokio. Paste <code>first_async.rs</code> into <code>src/main.rs</code> and run <code>cargo run -q</code>. The first build compiles Tokio and takes a little while; later builds are quick. No Rust yet? Install it from rustup.rs: on Windows, run the installer it offers (it may ask for the Visual Studio C++ build tools); on macOS and Linux, paste the one-line command shown there. This book used Rust 1.99.1 and Tokio 1.54.1. Many tutorials write <code>features = ["full"]</code>, which switches on everything Tokio has; it works, but it compiles more than you need.</p>
+      <h3>2. Experiments with the waiter</h3>
+      <ol>
+        <li>Paste <code>join_orders.rs</code>. Change the times, predict the order, run it.</li>
+        <li>Paste <code>blocking.rs</code> and put a stopwatch on it: add <code>let start = std::time::Instant::now();</code> at the top of <code>main</code> and <code>println!("{:?}", start.elapsed());</code> at the end. Then switch line 5 back to <code>tokio::time::sleep(Duration::from_millis(ms)).await;</code> (with <code>use tokio::time::sleep;</code>) and compare. Your times will differ a little from run to run; that's why this book never prints them.</li>
+        <li>In <code>select_race.rs</code>, delete both <code>biased;</code> lines and run it several times. Do the <samp>started</samp> lines ever swap?</li>
+        <li>In <code>multi_rounds.rs</code>, change the flavor to <code>"current_thread"</code> (and remove <code>worker_threads = 4</code>). Is the order fixed now?</li>
+        <li>In <code>spawn_forgot.rs</code>, remove <code>flavor = "current_thread"</code>. With several waiters, table 9 sometimes gets to print its first line before the runtime shuts down. Run it a few times.</li>
+      </ol>
+      <h3>3. Peek inside the stamps</h3>
+      <p>The usual tool is <code>cargo expand</code>: <code>cargo install cargo-expand</code> (older versions also needed a nightly toolchain installed; check its README, which describes it as a wrapper around the compiler option below). It relies on a compiler option that stable Rust keeps for its own developers. This page used that option directly on stable: <code>RUSTC_BOOTSTRAP=1 cargo rustc -q -- -Zunpretty=expanded</code>. <code>RUSTC_BOOTSTRAP=1</code> unlocks unstable options, so use it only to peek, never in real builds. In PowerShell, set it with <code>$env:RUSTC_BOOTSTRAP = "1"</code> first, then run <code>cargo rustc -q -- -Zunpretty=expanded</code>. The expanded output is for reading; it isn't always valid Rust you could compile again.</p>
+      <h3>4. Carve some stamps</h3>
+      <ol>
+        <li>Add a rule to <code>shout!</code> that takes two expressions and shouts both.</li>
+        <li>Make <code>hashmap!</code> accept a trailing comma, as <code>sum!</code> does with <code>$(,)?</code>.</li>
+        <li>Fix <code>square!</code> so the argument runs once: <code>{ let v = $x; v * v }</code>. Run <code>predict_twice.rs</code> again.</li>
+        <li>Write <code>max!</code> with two rules: one value gives that value; one value followed by more gives <code>std::cmp::max($x, max!($($rest),+))</code>. A macro may call itself.</li>
+      </ol>
+      <p><b>On your machine:</b> a panic shows a thread id like <samp>thread 'main' (1)</samp>, and yours will differ. Programs marked "one possible run" print in a different order on different runs and machines. Windows paths in messages use <code>\</code>.</p>
+      <h3>5. Explain the errors</h3>
+      <p>Run <code>rustc --explain E0752</code>, and the same for E0728 and E0423.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>concurrency / parallelism</dt><dd>Several jobs in overlapping stretches of time / several jobs at the very same instant, on several cores.</dd>
+        <dt>I/O</dt><dd>Input and output: network, disk, keyboard, timers. Most of a program's waiting.</dd>
+        <dt>blocking</dt><dd>Making a whole thread wait, so it can do nothing else meanwhile.</dd>
+        <dt>async / <code>async fn</code></dt><dd>A function that may pause at <code>.await</code>; calling it gives a future.</dd>
+        <dt>future</dt><dd>A value standing for work that finishes later. Lazy: it does nothing until polled.</dd>
+        <dt><code>.await</code></dt><dd>Pause this task until the future is ready, letting the runtime run others; gives the future's value.</dd>
+        <dt>poll, Pending, Ready</dt><dd>The runtime asks a future to make progress; it answers "not yet" or "done, here's the value".</dd>
+        <dt>waker</dt><dd>The bell a future leaves behind, so the runtime knows when to poll it again.</dd>
+        <dt>runtime / executor</dt><dd>The library that polls futures, watches timers and I/O, and owns the worker threads. Tokio is one.</dd>
+        <dt><code>#[tokio::main]</code></dt><dd>An attribute macro that turns <code>async fn main</code> into a normal <code>main</code> that builds a runtime and calls <code>block_on</code>.</dd>
+        <dt><code>block_on</code></dt><dd>Run one future to completion from ordinary code, blocking the current thread.</dd>
+        <dt>task / <code>tokio::spawn</code></dt><dd>A future handed to the runtime to run on its own; spawning gives a <code>JoinHandle</code> to await its result.</dd>
+        <dt><code>join!</code> / <code>select!</code></dt><dd>Wait for all of several futures / for the first, dropping the rest.</dd>
+        <dt>cancellation</dt><dd>Stopping a future by dropping it; its remaining code never runs.</dd>
+        <dt>cooperative scheduling</dt><dd>Tasks switch only where they choose to (at <code>.await</code>), never in the middle of other code.</dd>
+        <dt><code>spawn_blocking</code></dt><dd>Run blocking code on a separate pool of threads, so the async workers stay free.</dd>
+        <dt>async closure</dt><dd><code>async |x| { ... }</code>: a closure whose call gives a future (stable since Rust 1.85).</dd>
+        <dt>stream</dt><dd>An async series of values arriving over time.</dd>
+        <dt>macro</dt><dd>Code that writes code before compiling; called with <code>!</code>.</dd>
+        <dt>expansion</dt><dd>The code a macro call is replaced with.</dd>
+        <dt>derive macro / attribute macro</dt><dd><code>#[derive(...)]</code> writes trait impls for a type / <code>#[name]</code> rewrites the item under it.</dd>
+        <dt><code>macro_rules!</code></dt><dd>Defines a macro by example, as rules of the form <code>(matcher) =&gt; { transcriber };</code>.</dd>
+        <dt>matcher / transcriber</dt><dd>The shape a call must have / the code printed for it.</dd>
+        <dt>fragment (<code>$x:expr</code>, <code>$n:ident</code>…)</dt><dd>A named piece of the call, with the kind of code it must be.</dd>
+        <dt>repetition (<code>$( ... ),*</code>)</dt><dd>Match or print a part zero or more (<code>*</code>), one or more (<code>+</code>) or zero or one (<code>?</code>) times.</dd>
+        <dt>hygiene</dt><dd>Names a macro creates for itself can't clash with your own variables.</dd>
+        <dt>E0752 / E0728 / E0423</dt><dd>async <code>main</code> / <code>.await</code> outside async / a name used as a function that isn't one (here: a macro called without <code>!</code>).</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li><a href="https://doc.rust-lang.org/book/ch17-00-async-await.html">The Rust Programming Language, chapter 17</a>: async and await, starting with <a href="https://doc.rust-lang.org/book/ch17-01-futures-and-syntax.html">Futures and the Async Syntax</a>.</li>
+        <li><a href="https://doc.rust-lang.org/book/ch20-05-macros.html">The Rust Programming Language, 20.5: Macros</a>, with its simplified <code>vec!</code>.</li>
+        <li><a href="https://doc.rust-lang.org/rust-by-example/macros.html">Rust by Example: macro_rules!</a>, including designators and repetition.</li>
+        <li><a href="https://doc.rust-lang.org/reference/macros-by-example.html">The Rust Reference: Macros by example</a>, the full rules.</li>
+        <li>std: <a href="https://doc.rust-lang.org/std/future/trait.Future.html">Future</a>, <a href="https://doc.rust-lang.org/std/macro.dbg.html">dbg!</a>, <a href="https://doc.rust-lang.org/std/macro.include_str.html">include_str!</a>. Error index: <a href="https://doc.rust-lang.org/error_codes/E0752.html">E0752</a>, <a href="https://doc.rust-lang.org/error_codes/E0728.html">E0728</a>, <a href="https://doc.rust-lang.org/error_codes/E0423.html">E0423</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://tokio.rs/tokio/tutorial">The Tokio tutorial</a>: spawning, channels, select! and more, building a small server.</li>
+        <li><a href="https://docs.rs/tokio/latest/tokio/">Tokio's API documentation</a> on docs.rs, especially <code>task</code>, <code>select!</code> and <code>spawn_blocking</code>.</li>
+        <li><a href="https://rust-lang.github.io/async-book/">Asynchronous Programming in Rust</a> (the Async Book).</li>
+        <li><a href="https://veykril.github.io/tlborm/">The Little Book of Rust Macros</a>, for when you want to go far with <code>macro_rules!</code>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch27</code>. Each program was built and run as its own cargo project with <code>cargo run -q</code>, a debug build. The async programs used Tokio 1.54.1 with the features <code>macros</code>, <code>rt-multi-thread</code>, <code>time</code> and <code>sync</code>. The expansion panels ran each program, then <code>RUSTC_BOOTSTRAP=1 cargo rustc -q -- -Zunpretty=expanded</code>, through a small script that first copies the program (and, for <code>include_demo.rs</code>, <code>notes.txt</code>) into its project folder (the chapter's <code>mk.sh</code>); the commands shown are the commands that ran. The panic's thread id, <samp>(1)</samp>, comes from running each program in its own fresh process namespace, where the main thread really is number 1.</p>
+  <p>Programs whose output depends on timers use sleeps at least 40 ms apart and never print measured times, so their output was identical on every run. <code>multi_rounds.rs</code> really does vary between runs: it is shown as one possible run and is never an answer key. The two versions printed the same output for every other program, except for three compiler messages that Rust 1.99.1 words better than 1.97.0: <code>println_nobang.rs</code> and <code>spot_bang.rs</code> (1.97 said <samp>expected function, found macro</samp>) and <code>no_bang.rs</code> (1.97 gave no <code>help:</code>). Panel 32 shows both runs.</p>
+  <p>The walker, the two timelines, the map, the three stamp presses and the <code>sum!</code> machine are teaching models; each checks itself against those runs and shows a badge. The timelines' clocks are worked out from the sleep lengths quoted from the source, and every line they print must be the next line of the real output. Each stamp-press expansion is cut, unchanged, from the compiler's real expanded output. The waiter, the stamps, the order slips, the anatomy diagram and the teaser are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, chapter 17.1 (futures are lazy; a runtime is required; E0752; the warning for an unused future) and section 20.5 (macros versus functions, defining before use, the simplified <code>vec!</code>, <code>$x:expr</code> and <code>$( ),*</code>, the three kinds of procedural macro); Tokio's documentation for the <code>task</code> module (tasks as light-weight, cooperatively scheduled units; not blocking; <code>spawn_blocking</code>; <code>yield_now</code>), <code>tokio::spawn</code> (Send and 'static; unfinished tasks are dropped at shutdown; a task runs whether or not its handle is awaited) and <code>select!</code> (losing branches are cancelled; random polling order unless <code>biased;</code>); Rust by Example's macro pages; and, fetched on 2026-11-08 for this revision, the cargo-expand README (it now asks only for <code>cargo install cargo-expand</code>) and Rust's release notes (async closures stabilised in 1.85.0); and the course research map's rows I18 and I19, which also list Rustlings, Comprehensive Rust, 100 Exercises to Learn Rust, the Async Book, UPenn CIS 1905 and Easy Rust (not fetched for this chapter).</p>
+  <p>Mabel, the Professor, the Compiler, the waiter, the code stamp and every picture here are original characters and drawings made in code; Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
