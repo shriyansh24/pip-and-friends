@@ -1,0 +1,101 @@
+[
+{"file": "go/ch27.html", "panel": "29", "width": "1280, 390", "lens": "visual", "severity": "high",
+ "what": "The pit crew's text version (the only text equivalent of the widget) squeezes the 'Real output' column to about 4 characters, so go vet / staticcheck / go fix / govulncheck output is broken into fragments ('Vulne / rabil / ity', 'main. / go:14 / :3:') and the table runs to roughly 4,000px tall at 390.",
+ "evidence": "Crops a27/w1280-052-p29.png (y 1500-4500) and a27/w390-052-p29.png (5862px tall, mostly this table) in /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-go-26-28/ (deleted after review; regenerate with tools/review/visual-scripts/audit.js). Cause: assets/ext/go-ch27.css:83 `.pc-tt { font: 600 0.8rem/1.35 var(--f-code); white-space: pre-wrap; overflow-wrap: anywhere; }` inside a 5-column auto-layout table: overflow-wrap:anywhere lets the column shrink to almost nothing.",
+ "fix": "`.pc-tt { white-space: pre-wrap; overflow-wrap: anywhere }` → `.pc-tt { white-space: pre; overflow-wrap: normal; overflow-x: auto; max-width: 60ch }` plus `.pitcrew .transcript td:nth-child(4) { min-width: 30ch }` (why: a min-content of one glyph lets the table crush the column; keep tool output in its real lines and let the cell scroll). Better still: render each member's output as a full-width row under its summary row."},
+
+{"file": "go/ch27.html", "panel": "34", "width": "390", "lens": "visual", "severity": "medium",
+ "what": "golangci-lint prints compiler-style carets, but the chapter's unscoped `.term` rule wraps the source line the caret points into, so `f.WriteString(\"parcel 42:` / `Lisbon\\n\")` breaks over two lines and the `^` sits under the wrapped tail instead of directly under the code it marks.",
+ "evidence": "Crop a27/w390-058-p34.png (y 1250-1650). Captured step `go tool golangci-lint run` (data/go-ch27.json): `main.go:14:15: Error return value of ... (errcheck)\\n\\tf.WriteString(\"parcel 42: Lisbon\\n\")\\n\\t             ^`. assets/ext/go-ch27.css:25-27 says 'long lines wrap like a real terminal' with `.term { white-space: pre-wrap; overflow-wrap: anywhere; }`; the go-ch26/28 copies even say 'its messages have no carets', which is no longer true in ch27.",
+ "fix": "Delete `.term { white-space: pre-wrap; overflow-wrap: anywhere; }` (go-ch27.css:27) and put `class=\"term wrap\"` on the terminals that should wrap → the engine keeps caret-pointed source lines (`.tl-src`) unwrapped with the markers under them and wraps everything else with a hanging indent (why: the engine rule exists exactly for this; the chapter rule bypasses it)."},
+
+{"file": "go/ch26.html, go/ch27.html, go/ch28.html", "panel": "all terminals", "width": "390", "lens": "visual", "severity": "medium",
+ "what": "Every Go chapter CSS (go-ch1 … go-ch28, plus js-ch15) carries an unscoped `.term { white-space: pre-wrap; overflow-wrap: anywhere; }`, which makes every terminal wrap without the engine's hanging indent and lets tokens break mid-word; it is not on the engine-refresh clean-up list, which only lists the `.term.wrap` copies.",
+ "evidence": "go-ch26.css:23, go-ch27.css:27, go-ch28.css:23 (grep finds the identical line in all 28 go-chN.css files). At 390, wrapped continuation lines start at column 0 (e.g. ch27 p16 `you@laptop:~/go-ch27$ go run` / `dock.go ship -to Porto -kg 3`, ch28 p6 `redcapgreenjacketsatchelofletters` / `!`), and ch27 p34 loses caret alignment (finding above). ch28 needed a counter-rule `.term.wide-term { white-space: pre; ... }` (go-ch28.css:138) to undo it.",
+ "fix": "`.term { white-space: pre-wrap; overflow-wrap: anywhere }` → delete in all go-chN.css; add `wrap` to the terminals that should wrap (`<pre class=\"term wrap\" data-run=…>`), and drop `.term.wide-term` in go-ch28.css (why: one engine rule, hanging indent, carets kept aligned, file names never split). Add these 28 files to engine-refresh-chapter-todo.md §1."},
+
+{"file": "go/ch26.html", "panel": "14", "width": "1280, 390", "lens": "visual", "severity": "medium",
+ "what": "The cancellation stepper's ABORT stamp animates for 500ms from scale(0.4) with no opacity, on three links in the same step; it breaks the 300ms UI budget and the 'never from near-nothing' rule, and under reduced motion it is switched off instead of becoming the engine's 150ms fade.",
+ "evidence": "assets/ext/go-ch26.css:129-131 `.motion .rc-link.abort .w { animation: rcZap 0.5s ease-out; } @keyframes rcZap { from { transform: scale(0.4) rotate(-20deg); } ... }`. document.getAnimations() at step 12 of 17 (both widths): three rcZap animations, duration 500. Motion walk-through log motion/motion.log in the scratch folder.",
+ "fix": "`animation: rcZap 0.5s ease-out` from `scale(0.4) rotate(-20deg)` → `animation: rcZap var(--dur-ui) var(--ease-out) both` from `opacity: 0; transform: scale(0.9) rotate(-12deg)` (why: a state-change entrance on every Next press; ≤300ms, strong ease-out, start visible). Under `prefers-reduced-motion` use the engine's 150ms opacity fade instead of `animation: none`."},
+
+{"file": "go/ch28.html", "panel": "5", "width": "390", "lens": "visual", "severity": "medium",
+ "what": "On phones the allocation race is a fixed 600px drawing in a ~330px scroller with no swipe hint: the finish line, the right half of every lane and the 'finished 1st/2nd/3rd' results are off-screen, so pressing Start shows runners running out of view.",
+ "evidence": "Shots motion/motion-w390-ch28-race0-mid.png and -done.png (scratch folder): no 'finished' label visible after the race; go-ch28.css:139-143 `.allocrace .race-svg { width: 600px; max-width: none; }`; go-ch28.js:57 `X0 = 190, X1 = 640` (the label column takes the first 190 units). Same for the second race (race-labels).",
+ "fix": "Phone layout for the race: put each lane's label above its track (X0 → 16, lane height +24) so the viewBox can be ~420 wide and fit the box at ≥12px text; or at least add the 'Swipe sideways' hint and scroll the stage to the finish line when the race ends (why: an explanatory animation the reader can't see explains nothing)."},
+
+{"file": "go/ch27.html", "panel": "29", "width": "390", "lens": "visual", "severity": "medium",
+ "what": "The pit-crew terminal (`.pc-out pre`) wraps with pre-wrap + overflow-wrap:anywhere, so go fix's diff loses its shape at 390 (context lines such as `slog.Error(\"bad` / `language list\", \"err\")` and `fmt.Println(\"stop\", i)` wrap to column 0, away from their -/+ columns).",
+ "evidence": "Shot motion/motion-w390-ch27-pc-step3.png (scratch folder), go-ch27.css:81 `.pc-out pre { ... white-space: pre-wrap; overflow-wrap: anywhere; }`. The stage also hand-rolls a terminal (`.pc-cmd` with raw `#111` / `#fff`, go-ch27.css:79-80) instead of the engine `.term`.",
+ "fix": "`.pc-out pre { white-space: pre-wrap; overflow-wrap: anywhere }` → `white-space: pre; overflow-x: auto` (or render it as `<pre class=\"term wrap\">` and call `L.hangLines` on its lines) (why: a diff is read by column; wrapping without a hanging indent destroys it)."},
+
+{"file": "go/ch27.html", "panel": "29", "width": "1280, 390", "lens": "visual", "severity": "medium",
+ "what": "The flagged code line in the pit crew is pink (#FFE1E1) behind syntax-highlighted code, so the green string token `\"bad language list\"` is 6.41:1, under the book's 7:1 rule.",
+ "evidence": "Audit contrast check: panel p29, fg rgb(27,94,32) on rgb(255,225,225) = 6.41:1 (a27/audit.json, both widths). go-ch27.css:76 `.pc-code li.pc-flag { background: var(--pink); border: 2px dashed var(--ink); }`.",
+ "fix": "`.pc-code li.pc-flag { background: var(--pink) }` → `background: var(--paper)` and keep the dashed border plus the ✗ tag (state is already shown by mark and border), or add `.pc-flag .tok-str { color: var(--ink) }` (why: --destructive/green tokens only reach 7:1 on paper)."},
+
+{"file": "go/ch26.html", "panel": "cover, 2, 20", "width": "390 (cover: both)", "lens": "visual", "severity": "low",
+ "what": "SVG labels drop under 12px: the cover walkie-talkie's 'HQ' screen label is 10.4px at both widths; in the panel 2 network drawing 'Background()' and 'ABORT' are 11.5px and in panel 20 the step digits '1', '2' are 10.5px at 390.",
+ "evidence": "a26/audit.json small-text list: main-after-p0-panel 'HQ' 10.4px (1280 and 390); p2 'Background()' 11.5, 'ABORT' 11.5; p20 '1', '2' 10.5 (390). Cause: `.picscroll` pins the 680-unit drawing at 560px (scale 0.82), so any font-size under 14.6 units falls below 12px; the radioset draws its label at 13 units (go-ch26.js:148) inside a ~62px character.",
+ "fix": "In the panel 2 and 20 SVGs raise text font-size to ≥15 units; on the cover draw the radio at `.char` default width or pass a shorter label at 16 units (why: 12px floor on phones)."},
+
+{"file": "go/ch27.html", "panel": "8, 15, 20, 27", "width": "390", "lens": "visual", "severity": "low",
+ "what": "The chapter hand-rolls `.pic-scroll` + `.swipe-hint` instead of the engine's `.picscroll`; the scroll boxes aren't keyboard-focusable, and labels in these drawings fall to 10.7-11.5px at 390 ('level', 'msg', 'key=value'; '-to ____'; 'linux', 'amd64', 'windows', 'darwin', 'arm64', 'this computer'; 'vet', 'staticcheck', 'go fix', 'govulncheck').",
+ "evidence": "go-ch27.css:42-45 and :94-96 (`.pic-scroll .pic-wide { min-width: 560px }`), markup go/ch27.html:209, 337, 441, 607 (`<div class=\"pic-scroll\"><svg class=\"pic-wide\" …>` with no tabindex). a27/audit.json small-text list for p8, p15, p20, p27 at 390.",
+ "fix": "`<div class=\"pic-scroll\"><svg class=\"pic-wide\">` → `<div class=\"picscroll\"><svg class=\"fig pic-wide\" tabindex=\"0\">` and delete `.pic-scroll`/`.swipe-hint` (keep the hint text if the engine adds one); raise SVG label font-size from 14 to ≥15 units (why: one shared component; 15 units × 560/680 = 12.4px)."},
+
+{"file": "go/ch28.html", "panel": "13, 16", "width": "390", "lens": "visual", "severity": "low",
+ "what": "The mark/sweep/reuse drawing (panel 16, `.pic-mid` 460 units) shrinks to ~0.68 on phones: 'free' is 8.9px and the legend 'ticked = reachable: kept · dashed = nobody's: cleared' 11px; in panel 13 \"nobody's\" is 10.7px.",
+ "evidence": "a28/audit.json small-text list (390): p16 'free' 8.9px ×2, legend 11px; p13 \"nobody's\" 10.7px. Sources: go/ch28.html:368-390 (`font-size=\"13\"` for 'free', 16 for the legend).",
+ "fix": "Panel 16: 'free' 13 → 18 units and legend 16 → 18 units, or move the legend into HTML under the drawing; panel 13: raise the small labels to ≥15 units (why: 12px floor at 390)."},
+
+{"file": "go/ch27.html", "panel": "29", "width": "390", "lens": "visual", "severity": "low",
+ "what": "The pit-crew stage is 568px inside a 310px box with no swipe hint; on each step it jumps sideways to centre the current member, so earlier members are cut off at the left edge ('heck' for staticcheck).",
+ "evidence": "Shot motion/motion-w390-ch27-pc-step3.png; measured stage scrollWidth 568 / clientWidth 310 (motion.log). go-ch27.css:64-65 `.pc-svg { min-width: 560px }`, go-ch27.js:116.",
+ "fix": "On phones lay the crew out 2×2 (W=150 per member, two rows → viewBox ~310 wide, text stays ≥13px) instead of one 610-unit row; otherwise add the engine's 'Swipe sideways' hint (why: no hidden content without an affordance)."},
+
+{"file": "go/ch26.html", "panel": "14", "width": "390", "lens": "visual", "severity": "low",
+ "what": "The stepper's code list is `white-space: pre` in a 14em-tall box, so on phones it scrolls both ways: about 7 lines show and long lines (`fmt.Println(\"scout: stopping:\", ctx.Err())`) are cut at the right edge of the highlighted 'next' line.",
+ "evidence": "Shots motion/motion-w390-ch26-rc-step12.png / step13.png; go-ch26.css:104-105 `.rc-code { … overflow: auto; max-height: 17.5em }`, `.rc-code li { white-space: pre }`, phone `max-height: 14em`.",
+ "fix": "Call `L.hangLines(lis)` in mountChain (go-ch26.js:201) and drop `white-space: pre` under 640px, so lines wrap with a hanging indent and the box scrolls vertically only (why: two-axis scroll boxes inside a page scroll are hard to use on touch)."},
+
+{"file": "go/ch28.html", "panel": "34", "width": "1280, 390", "lens": "visual", "severity": "low",
+ "what": "The PR review board hand-rolls its tab buttons: they have no press feedback, no `touch-action: manipulation`/`user-select: none`, a 2px focus offset (the engine uses 3px), and raw radius/shadow values instead of tokens.",
+ "evidence": "go-ch28.css:93-97 (`border-radius: 8px`, `box-shadow: 3px 3px 0 var(--ink)`, `outline-offset: 2px`). Measured: `:active` transform none, touch-action auto, user-select auto (motion.log). Tabs are on DESIGN_SYSTEM.md §3's 'optional, not built' list, so a chapter version is allowed but should follow §4 states.",
+ "fix": "`.prb-tabs [role=tab] { border-radius: 8px; box-shadow: 3px 3px 0 var(--ink) }` → `border-radius: var(--radius-md); box-shadow: var(--shadow-hard)`, add `touch-action: manipulation; user-select: none; transition: transform var(--dur-release) var(--ease-out)` and `:active { transform: translateY(1px); transition-duration: var(--dur-press) }`, and delete the local `:focus-visible` rule so the engine ring applies (why: every pressable thing answers the finger; one focus style site-wide)."},
+
+{"file": "go/ch28.html", "panel": "5", "width": "1280, 390", "lens": "visual", "severity": "low",
+ "what": "While the race runs (about 5 s), the button reads 'Running...' but stays enabled with no aria-disabled, and clicks are silently ignored; there is no way to skip or stop.",
+ "evidence": "motion.log: mid-race state 'Running... / running disabled=false aria-disabled=null'; go-ch28.js:113 `if (btn.getAttribute(\"data-state\") === \"running\") return;`.",
+ "fix": "While running, either set `aria-disabled=\"true\"` (gets the engine's disabled look) or relabel the button 'Skip to the finish' and call done() on click (why: a control that looks live but does nothing feels broken)."},
+
+{"file": "go/ch26.html, go/ch27.html, go/ch28.html", "panel": "various", "width": "1280, 390", "lens": "visual", "severity": "low",
+ "what": "Several chapter cards and badges use raw radii and hard-coded colours instead of the design tokens: `.stamp` (6px), `.slip`/`.family`/`.sym`/`.rules` (10px), `.rc-node` (12px), `.logline li` (8px), `.pc-stage` (12px), `.pc-svg text { fill: #111 }`, `.prb-pane`/`.pr-card`/`.review-note` (12px), `.journey li` (10px), `.diploma` (14px).",
+ "evidence": "go-ch26.css:36, 41, 81, 91, 99, 110; go-ch27.css:47, 55, 64, 66; go-ch28.css:36, 41, 98, 107, 110, 117, 122. AUTHORING.md 'Design tokens (engine note, 2026-11-08)' asks chapter CSS to use them.",
+ "fix": "`border-radius: 6px` → `var(--radius-sm)`; `8px/10px` → `var(--radius-md)`; `12px/14px` → `var(--radius-lg)`; `box-shadow: 3px 3px 0 var(--ink)` → `var(--shadow-hard)`; `#111` → `var(--ink)` (why: one system; a later token change reaches every chapter)."},
+
+{"file": "go/ch26.html", "panel": "14", "width": "1280, 390", "lens": "visual", "severity": "low",
+ "what": "A closed link's arrow is drawn at 55% opacity, which takes the ink arrow below the 7:1 text-pair rule (the 'Done closed' word beside it is full strength).",
+ "evidence": "go-ch26.css:127 `.rc-link.closed .arr { opacity: 0.55; }`; visible in motion/motion-w390-ch26-rc-step13.png.",
+ "fix": "`.rc-link.closed .arr { opacity: 0.55 }` → `.rc-link.closed .arr { opacity: 1 }` with a dashed/hollow arrow glyph (e.g. '⇣' or a dashed border) to show 'closed' by shape (why: state by shape and word, never by fading text)."},
+
+{"file": "engine (assets/comic*.css, comic.js)", "panel": "all exercises", "width": "390", "lens": "visual-engine", "severity": "medium",
+ "what": "Many engine controls are below the 44px tap-target minimum on phones: parsons arrows `.pz` 40×34, spot-the-bug lines `.spot-line` 40px tall, `<summary>` triggers (hints, text versions, notebook pages) 32px, fill blanks `.ex-blank` and trace cells `.ex-cell` 28px tall.",
+ "evidence": "Audit tap-size pass at 390 (a26/a27/a28 audit.json `taps`): ch26 55 spot-lines at 40px, 42 `.pz` at 34px, 18 `.ex-cell` and 9 `.ex-blank` at 28px, 10 summaries at 32px; same pattern in ch27 and ch28. REVIEW_BRIEF and Emil's mobile-native ask for ≥44px.",
+ "fix": "`.pz { height: 34px }` (phones) → `min-height: 44px; min-width: 44px`; `.spot-line { min-height: 40px }` → `44px`; `summary { padding-block: 6px }` → `min-height: 44px; display: flex; align-items: center`; `.ex-blank, .ex-cell` → `min-height: 44px` on `(pointer: coarse)` (why: a finger is ~44px; misses on spot-the-bug lines pick the wrong answer)."},
+
+{"file": "engine (assets/comic.js L.hangLines)", "panel": "ch28 boss 5 (after p36), ch27 after p7", "width": "390", "lens": "visual-engine", "severity": "low",
+ "what": "Hanging-indent breaks after '.' strand a lone receiver on short parsons lines at 390: `b.` / `WriteString(\"\\n\"` / `)` takes three lines in ch28 Boss 5, and `return errors.` / `New(\"crate 7 is` / `leaking\")` in ch27's parsons.",
+ "evidence": "a28/w390-068-main-after-p36-ex-card.png (line 15), a27/w390-012-main-after-p7-ex-card.png (line 16).",
+ "fix": "In hangLines, don't add a break opportunity after '.' when the part before it is shorter than ~4 characters (or prefer '(' and spaces first), so `b.WriteString(` stays whole (why: break where a reader would, not after one letter)."},
+
+{"file": "engine (assets/comic-widgets.css .picscroll)", "panel": "ch26 p2/p12, ch28 p13/p17", "width": "390", "lens": "visual-engine", "severity": "low",
+ "what": "`.picscroll` scrolls a 560px drawing sideways with no visible hint (the tracer and memory stepper say 'Swipe sideways to see the whole picture →'), so chapters either leave it unsignalled (ch26, ch28) or hand-roll their own (`.pic-scroll` + `.swipe-hint` in go-ch27.css); the 560px width also puts any SVG label under 14.6 units below 12px.",
+ "evidence": "comic-widgets.css:302-305; ch28 p17 flame graph cut at the right edge at 390 with no hint (a28/w390-028-p17.png).",
+ "fix": "Add the same 'Swipe sideways' line under `.picscroll` when `scrollWidth > clientWidth` (comic.js already measures this for tracers), and document a 15-unit minimum label size for drawings in a picscroll (why: hidden content needs an affordance; one rule instead of per-chapter copies)."},
+
+{"file": "engine (assets/comic-cast.js, Compiler character)", "panel": "ch26 p17, ch27 p27, ch28 p14 and p39", "width": "1280, 390", "lens": "visual-engine", "severity": "low",
+ "what": "The Compiler robot's 'go build' badge text scales with the character and renders at 4.6-8.1px (ch27 p27 6.2px, ch28 p39 4.6px), unreadable at both widths.",
+ "evidence": "Audit small-text lists: ch26 p17 8.1px, ch27 p27 6.2px, ch28 p14 8.1px, ch28 p39 5.8/4.6px.",
+ "fix": "Drop the badge text when the character is drawn under ~120px wide (keep the badge shape), or enlarge it to 22+ units (why: decorative text that can't be read is noise; text under 12px fails the phone floor)."}
+]
