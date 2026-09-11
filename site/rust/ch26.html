@@ -1,0 +1,1144 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Busy Kitchen</title>
+<meta name="description" content="Chapter 26 of the Pip &amp; Friends Rust book, a comic course: threads as cooks in a busy kitchen. thread::spawn and join (and what happens when you forget to join), why output order changes from run to run, move closures and E0373, scoped threads with thread::scope, data races caught at compile time (E0499), channels as order tickets on a rail (mpsc, several senders, the receiver as a loop, sync_channel), Arc as a shared recipe book with a reader counter (Rc and E0277, E0596), Mutex as the one knife everyone must ask for (lock guards, E0382 in a loop, poisoning), deadlock, RwLock, atomics, and the Send and Sync badges.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch26.css">
+<script defer src="../data/rs-ch26.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/rs-ch26.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch25.html">&larr; Ch 25</a><span aria-current="page">Ch 26 of 29</span><a href="ch27.html">Ch 27 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 26</p>
+    <h1 id="cover-h">THE BUSY KITCHEN</h1>
+    <div class="cover-pair">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave" data-prop="none"></svg>
+      <div class="cook-row">
+        <svg class="char" data-char="linecook" data-variant="a" data-pose="ticket"></svg>
+        <svg class="char" data-char="linecook" data-variant="b" data-pose="knife"></svg>
+        <svg class="char" data-char="linecook" data-variant="c" data-pose="work"></svg>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Next to her stand three cooks in tall white hats with name badges: Ana holds an order ticket, Ben holds a kitchen knife, and Cy holds a frying pan.</p>
+    <p class="caption blurb">Lunch rush at the library café, and one cook can't keep up. Today Mabel hires a <b>kitchen crew</b>: each cook is a <b>thread</b>, a line of work running at the same time as the others. Cooks need their own ingredients (<code>move</code>), a shift that ends only when everyone is done (<code>join</code> and <code>thread::scope</code>), <b>order tickets on a rail</b> to pass work along (channels), a <b>shared recipe book</b> with a counter of readers (<code>Arc</code>), and <b>one knife</b> they must take turns with (<code>Mutex</code>). On the way: runs that print in a different order every time, two cooks frozen forever, and eight compiler errors and three panics, read like a detective. About 150 minutes, with 30 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">More cooks: spawn, join and who goes first</a></li>
+      <li><a href="#part-2">Give the cook the ingredients: move and scoped threads</a></li>
+      <li><a href="#part-3">Order tickets on a rail: channels</a></li>
+      <li><a href="#part-4">The recipe book and the one knife: Arc and Mutex</a></li>
+      <li><a href="#part-5">Kitchen trouble: poisoning, deadlock, RwLock, atomics, Send and Sync</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · MORE COOKS<small>a thread is a cook; thread::spawn hires one and join waits for them; output order is up to the operating system; forgetting to join, getting a result back, and a cook who panics</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: one cook, forty orders">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="DING!" data-seed="26"></svg>
+    <p class="caption">Noon at the library café. Forty lunch orders, one stove, one cook: Mabel. Every program in this book so far has worked like that: one line of work, doing one step after another, from the top of <code>main</code> to the bottom.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="worried" data-mouth="o" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>While the soup simmers, I just stand there waiting. The salad could be getting made! I need more cooks working <b>at the same time</b>.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>In a program, a cook is called a <b>thread</b>. Your <code>main</code> function already runs on one: the <b>main thread</b>. Rust lets you start more. Fair warning: a kitchen with several cooks needs rules, and Rust checks most of them before anyone lights a stove.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel, worried, shrugs at a pile of order tickets. The Professor answers from the right.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the kitchen crew">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">A <b>thread</b> is one line of work inside a running program. All the threads of a program share the same kitchen (its memory), and each has its own little worktop (its own stack, Chapter 7). Running several at once is called <b>concurrency</b>.</p>
+    <div class="boxes">
+      <figure><svg class="char" data-char="linecook" data-variant="a" data-label="MAIN" data-pose="ticket"></svg><figcaption>the <b>main thread</b>: every program starts with this one</figcaption></figure>
+      <figure><svg class="char" data-char="linecook" data-variant="b" data-pose="work"></svg><figcaption>a <b>spawned</b> thread: a helper you start</figcaption></figure>
+      <figure><svg class="char" data-char="linecook" data-variant="c" data-pose="work"></svg><figcaption>another helper, working at the same time</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: three cooks side by side. The first wears a MAIN badge and holds an order ticket; the other two, Ben and Cy, each hold a frying pan.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Who decides which cook works at each moment? Not me, and not you. The <b>operating system</b> (Windows, macOS, Linux) is the shift manager. It hands out turns on the computer's cores, and it doesn't promise any order.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: spawn a helper and join">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Hiring a cook takes one call: <code>thread::spawn</code>. You hand it a closure (Chapter 20's backpack of code): the job the new thread should do.</p>
+    <span class="file-tab">spawn_basic.rs</span>
+    <pre class="code" data-src="spawn_basic.rs"></pre>
+    <pre class="term" data-run="spawn_basic.rs" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: threads live in <code>std::thread</code>.</span></li>
+      <li><span><b>Line 5</b>: <code>thread::spawn(|| { … })</code> starts a new thread that runs the closure. <code>spawn</code> doesn't wait: it returns at once, while the helper gets going.</span></li>
+      <li><span>What it returns is a <code>JoinHandle</code>: a claim ticket for that thread. We call ours <code>helper</code>.</span></li>
+      <li><span><b>Line 10</b>: <code>helper.join()</code> means "wait here until that thread has finished". <code>main</code> doesn't print its last line until the helper's three dishes are done. (<code>.unwrap()</code> is there because <code>join</code> returns a <code>Result</code>; panel 7 shows why.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: who goes first?">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Now both cooks work at once: the helper chops while <code>main</code> stirs, and nobody waits until the end. <code>thread::sleep</code> pauses a thread for a moment (here 1 millisecond), which gives the other cook a chance to get a turn.</p>
+    <span class="file-tab">interleave.rs</span>
+    <pre class="code" data-src="interleave.rs"></pre>
+    <div class="runs2">
+      <div><h3><code>interleave.rs</code> · one possible run</h3><pre class="term" data-run="interleave.rs"></pre></div>
+      <div><h3><code>many_runs.rs</code> · one possible run</h3><pre class="term" data-run="many_runs.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span>The <code>interleave.rs</code> run shows one way the two cooks' lines can mix. Run it again and the mix can change. The lines <em>within</em> each cook always stay in order: chop 1, 2, 3 and stir 1, 2, 3.</span></li>
+      <li><span><code>many_runs.rs</code> (its code is on the notebook's Under the hood page) starts 4 cooks, 200 times over. Each cook rings a bell (sends its number) as soon as it starts. The table counts which order the bells rang in. Nothing promises the hiring order, <code>0 1 2 3</code>, and the counts can change on every run.</span></li>
+      <li><span>That's why this page labels these terminals <b>one possible run</b>. Your computer will print something a little different. The exercises never ask you to predict a run like this; they ask what <em>could</em> happen.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>each cook keeps their own order; nobody promises the mix</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean cooklanes" aria-label="Panel 5: the kitchen swimlanes" data-cooklanes="lanes-mix" id="lanes-mix-box">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">The kitchen swimlanes. Each lane is one thread, and each row is one moment. The first run is the real capture from panel 4: one possible run. The others are runs that <em>could</em> happen with the same program, plus one that can't. Pick a run and step through it.</p>
+    <div class="kl-runs" role="group" aria-label="Choose a run"><span class="label">RUN:</span></div>
+    <p class="kl-story"></p>
+    <div class="kl-split">
+      <div class="kl-grid" data-reserve aria-label="Swimlanes: one column per thread. The text version below lists every step."></div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step of the chosen run</summary><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Thread</th><th>What happens</th><th>Screen so far</th></tr></thead><tbody></tbody></table></details>
+    <p class="gal-h">ALL RUNS SIDE BY SIDE</p>
+    <div class="kl-gallery"></div>
+    <script type="application/json" id="lanes-mix">{"program": "interleave.rs",
+      "lanes": [{"id": "main", "label": "main thread", "prefix": "main:", "cook": "a", "badge": "MAIN"},
+                {"id": "helper", "label": "helper thread", "prefix": "helper:", "cook": "b", "badge": "HELP", "helper": true}],
+      "pre": [{"lane": "main", "act": "thread::spawn starts the helper"}],
+      "waitAfter": {"lane": "main", "act": "join(): waits for the helper"},
+      "post": [{"lane": "main", "act": "join() returns; main ends"}],
+      "realNote": "Look for two lines in a row from the same cook: there, the shift manager gave that cook two turns in a row.",
+      "runs": [
+        {"id": "real", "label": "Captured run", "real": true},
+        {"id": "helperfirst", "label": "Helper races ahead", "lines": ["helper: chop 1", "helper: chop 2", "helper: chop 3", "main:   stir 1", "main:   stir 2", "main:   stir 3"]},
+        {"id": "mainfirst", "label": "Main goes first", "lines": ["main:   stir 1", "main:   stir 2", "main:   stir 3", "helper: chop 1", "helper: chop 2", "helper: chop 3"]},
+        {"id": "turns", "label": "Perfect turns", "lines": ["helper: chop 1", "main:   stir 1", "helper: chop 2", "main:   stir 2", "helper: chop 3", "main:   stir 3"]},
+        {"id": "bad", "label": "Chop 2 before chop 1?", "impossible": true, "why": "The helper's loop prints chop 1, then chop 2, then chop 3. Other threads can squeeze in <em>between</em> its lines, but nothing can make one thread run its own lines out of order.", "lines": ["main:   stir 1", "helper: chop 2", "helper: chop 1", "main:   stir 2", "helper: chop 3", "main:   stir 3"]}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-poss-m" id="ex-poss"></div>
+  <script type="application/json" id="ex-poss-m">{"program": "two_cooks.rs", "q": "Ana washes and dries; <code>main</code> plates, waits for Ana with <code>join</code>, then serves. Here are four outputs, with their lines written in order, left to right:<br>Run 1: plate · wash · dry · serve<br>Run 2: wash · plate · dry · serve<br>Run 3: wash · dry · serve · plate<br>Run 4: wash · dry · plate · serve<br>(<i>plate</i> and <i>serve</i> are main's lines; <i>wash</i> and <i>dry</i> are Ana's.) Which of them are possible?", "options": [
+    {"t": "Runs 1, 2 and 4", "why": "Right. <samp>main: plate</samp> can land before, between or after Ana's two lines, because both threads are working at once. But <samp>main: serve</samp> comes after <code>join</code>, which waits for Ana to finish, so it's always last. Run 3 also breaks main's own order: plate comes before serve in the code.", "correct": true},
+    {"t": "Only run 1", "why": "Run 1 is what the capture happened to print, but it isn't the only possibility. Ana's thread may get its turn before <code>main</code> reaches line 8."},
+    {"t": "Runs 1, 2, 3 and 4", "why": "Run 3 prints <samp>main: serve</samp> before <samp>main: plate</samp>. One thread always runs its own lines in order, so that can't happen."},
+    {"t": "Only runs 1 and 4", "why": "Run 2 is fine too: Ana can wash, then <code>main</code> plates, then Ana dries. Threads can take turns in the middle of each other's work."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 6: main leaves without waiting">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="CLICK!" data-seed="6"></svg>
+    <p class="caption">What if <code>main</code> never calls <code>join</code>? The helper needs 100 milliseconds to finish dessert.</p>
+    <span class="file-tab">forgot_join.rs</span>
+    <pre class="code" data-src="forgot_join.rs"></pre>
+    <pre class="term" data-run="forgot_join.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>No error, no warning, and exit code 0. And no dessert: <samp>helper: dessert is ready!</samp> never appears.</span></li>
+      <li><span>When <code>main</code> returns, the whole program ends, and every other thread is stopped right where it is, finished or not. The helper was still asleep on line 6.</span></li>
+      <li><span>Here the handle that <code>spawn</code> returned was thrown away, so nobody could even ask to wait. Keep the handle, and <code>join</code> it before <code>main</code> ends.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The head cook locked up and turned off the lights while a helper was still at the oven. Catchphrase: <b>don't lock up the kitchen until every cook has clocked out</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: join hands back the result">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A thread's closure can <b>return</b> a value, like any closure. <code>join</code> waits for the thread and hands that value back.</p>
+    <span class="file-tab">join_value.rs</span>
+    <pre class="code" data-src="join_value.rs"></pre>
+    <pre class="term" data-run="join_value.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: the closure's last expression, <code>loaves</code>, is what the thread returns. So <code>baker</code> is a <code>JoinHandle&lt;i32&gt;</code>.</span></li>
+      <li><span><b>Line 9</b>: <code>join()</code> gives a <code>Result</code>: <samp>Ok(12)</samp> if the thread finished normally, or <code>Err</code> if it panicked (next panel).</span></li>
+      <li><span><b>Line 11</b>: <code>unwrap()</code> takes the 12 out of the <code>Ok</code> (Chapter 13). Main's three lines come out in a fixed order, because only <code>main</code> prints.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pjoin-m" id="ex-pjoin"></div>
+  <script type="application/json" id="ex-pjoin-m">{"program": "predict_join.rs", "prompt": "Two cooks, two results. Only <code>main</code> prints, so this output never changes. What does it print?", "hint": "<code>.len()</code> counts letters. The soup thread returns its whole <code>pot</code>. Joining the toast thread first doesn't change any values.", "explain": "The soup thread pushes the lengths of <code>leek</code>, <code>bean</code>, <code>pea</code>: <samp>[4, 4, 3]</samp>. The toast thread returns 3 + 1: <samp>toast: 4 slices</samp>. The order of the <code>join</code> calls only decides who <code>main</code> waits for first. Total: 4 + 11 = <samp>15</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 8: a helper panics">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="CRACK!" data-seed="8"></svg>
+    <p class="caption">A helper reaches for an egg in an empty box.</p>
+    <span class="file-tab">thread_panic.rs</span>
+    <pre class="code" data-src="thread_panic.rs"></pre>
+    <pre class="term" data-run="thread_panic.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read the panic like a detective. <code>thread '&lt;unnamed&gt;' (…) panicked</code>: <b>who</b>. Threads you spawn have no name unless you give one, so Rust says <code>&lt;unnamed&gt;</code>. The number in brackets is the thread's id from the operating system. It changes from run to run and will be different on your computer (the main thread's won't always be <code>(1)</code> either). That's fine.</span></li>
+      <li><span><code>at src/main.rs:7:13</code>: <b>where</b>, line 7, <code>eggs[0]</code>. Then <b>what</b>: <code>index out of bounds: the len is 0 but the index is 0</code> (Chapter 5).</span></li>
+      <li><span>Only the helper's thread stops. <code>join()</code> returns <code>Err</code>, the <code>match</code> on line 9 picks the second arm, and <code>main</code> carries on: <samp>exit code 0</samp>. Had line 9 said <code>helper.join().unwrap()</code>, <code>main</code> would have panicked too (not run here; Chapter 13 showed <code>unwrap()</code> on an <code>Err</code>).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>One cook dropping the eggs doesn't burn down the kitchen. The head cook hears about it at <code>join</code> and decides what to do.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · GIVE THE COOK THE INGREDIENTS<small>a spawned thread may outlive main, so it can't borrow (E0373); move hands values over (and E0382 after); a crew in a loop; thread::scope lets threads borrow; two writers caught at compile time (E0499)</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 9: closure may outlive the current function">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="E0373!" data-seed="9"></svg>
+    <p class="caption">Mabel writes the order on a list and asks a cook to read it.</p>
+    <span class="file-tab">borrow_error.rs</span>
+    <pre class="code" data-src="borrow_error.rs"></pre>
+    <pre class="term" data-run="borrow_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0373]: closure may outlive the current function, but it borrows `order`</code>. <b>What</b>: the closure only <em>borrows</em> <code>order</code> (Chapter 20: a closure borrows what it uses, unless told otherwise), but the thread running it might still be going after <code>main</code> has finished.</span></li>
+      <li><span>Two labels: <code>^^ may outlive borrowed value `order`</code> under the closure, and <code>----- `order` is borrowed here</code> on line 6.</span></li>
+      <li><span><code>note: function requires argument type to outlive `'static`</code>: <code>spawn</code> only accepts closures that don't borrow anything short-lived. <code>'static</code> (Chapter 19) means "can live as long as the whole program".</span></li>
+      <li><span><code>help: … use the `move` keyword</code>, with <code>++++</code> showing exactly where to type it.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>You saw in panel 6 that I can't know when a spawned thread finishes. It might still be reading after <code>order</code> is dropped. I won't let a loan outlive its owner.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 10: give, don't lend">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption soft">Mabel's lending rule from Chapter 8 (and again in Chapter 19): <b>bring it back before the owner leaves</b>. A spawned cook can't promise that. So instead of lending the order list, Mabel <b>gives</b> it away.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:600px" viewBox="0 0 480 220" role="img" aria-label="Drawing in two halves. Left, crossed out: main's worktop holds a list; a dashed arrow labelled borrow runs to a cook, but main is walking out the door, so the list would vanish. Right, ticked: the list is now in the cook's own hands, labelled move, and main walks away with nothing to worry about.">
+      <rect x="8" y="10" width="222" height="200" rx="14" fill="#FFE1E1" stroke="#111" stroke-width="4" stroke-dasharray="10 7"/>
+      <text class="h" x="20" y="40">BORROW</text>
+      <rect x="22" y="58" width="76" height="92" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <path d="M32 76 h56 M32 92 h44 M32 108 h52 M32 124 h38" stroke="#111" stroke-width="3"/>
+      <text class="s" x="22" y="172">main's list</text>
+      <path d="M100 100 C 130 80, 150 80, 178 100" fill="none" stroke="#111" stroke-width="3.5" stroke-dasharray="8 6"/>
+      <path d="M168 92 l12 9 l-14 4" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="198" cy="96" r="18" fill="#F3C9A1" stroke="#111" stroke-width="3.5"/>
+      <path d="M182 82 q-8 -22 16 -24 q24 2 16 24 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <path d="M186 116 l-4 46 h32 l-4 -46 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text class="s" x="22" y="196">main leaves: list gone!</text>
+      <path d="M196 22 l22 22 M218 22 l-22 22" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <rect x="250" y="10" width="222" height="200" rx="14" fill="#C9F2D9" stroke="#111" stroke-width="4"/>
+      <text class="h" x="262" y="40">MOVE</text>
+      <circle cx="382" cy="96" r="18" fill="#F3C9A1" stroke="#111" stroke-width="3.5"/>
+      <path d="M366 82 q-8 -22 16 -24 q24 2 16 24 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <path d="M370 116 l-4 46 h32 l-4 -46 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <rect x="404" y="104" width="46" height="56" rx="5" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <path d="M412 118 h30 M412 130 h24 M412 142 h28" stroke="#111" stroke-width="2.5"/>
+      <text class="s" x="262" y="172">the cook owns the list</text>
+      <text class="s" x="262" y="196">main can leave any time</text>
+      <path d="M270 60 l14 14 l26 -30" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>a cook might outlive you, so give, don't lend</b>. <code>move ||</code> makes the closure take ownership of everything it uses.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: move, and after the move">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">The fix from the <code>help:</code> is one word. Then Mabel tries to read the list herself, after giving it away.</p>
+    <div class="runs2">
+      <div><span class="file-tab">move_fix.rs</span><pre class="code" data-src="move_fix.rs"></pre><pre class="term" data-run="move_fix.rs"></pre></div>
+      <div><span class="file-tab">clone_first.rs</span><pre class="code" data-src="clone_first.rs"></pre><pre class="term" data-run="clone_first.rs"></pre></div>
+    </div>
+    <span class="file-tab">move_then_use.rs</span>
+    <pre class="code" data-src="move_then_use.rs"></pre>
+    <pre class="term" data-run="move_then_use.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>move_fix.rs</code>, <b>line 5</b>: <code>move ||</code>. The Vec now belongs to the closure, and the closure belongs to the new thread. Nothing is borrowed, so nothing can outlive its owner.</span></li>
+      <li><span><code>move_then_use.rs</code>: <code>error[E0382]: borrow of moved value: `order`</code> (Chapter 7's move error), with a label made for threads: <code>value moved into closure here</code> on line 5. <code>move</code> doesn't make a second owner; it changes who the owner is.</span></li>
+      <li><span>The <code>help:</code> suggests a clone. <code>clone_first.rs</code> does just that, <b>line 5</b>: the cook gets its own copy (<code>for_cook</code>), and <code>main</code> keeps the original. (Part 4 shows how to <em>share</em> one list instead of copying it.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotb-m" id="ex-spotb"></div>
+  <script type="application/json" id="ex-spotb-m">{"program": "spot_borrow.rs", "bug": 9, "prompt": "A helper thread counts the items on the menu. The Compiler refuses with E0373. Click the line that needs fixing.", "explain": "<samp>error[E0373]: closure may outlive the current function, but it borrows `menu`</samp>, pointing at line 9. <code>count_words(&amp;menu)</code> inside the closure borrows <code>menu</code>, and the spawned thread might outlive <code>main</code>. The <samp>help:</samp> writes the fix: <code>thread::spawn(move || count_words(&amp;menu))</code>. The thread then owns the String and lends it to <code>count_words</code> itself."}</script>
+
+  <div data-ex="fill" data-model="ex-fmove-m" id="ex-fmove"></div>
+  <script type="application/json" id="ex-fmove-m">{"program": "fill_move.rs", "prompt": "A waiter thread writes a greeting and hands it back. Fill in the word that gives the closure its own <code>guest</code> (line 6), and the call that waits for the thread and gets its result (line 9).", "blanks": [{"line": 6, "text": "move"}, {"line": 9, "text": "join()"}], "explain": "<code>move ||</code> moves <code>guest</code> (a String) and copies <code>table</code> (an i32 is Copy) into the closure. <code>waiter.join()</code> waits and returns <code>Ok(the String)</code>; <code>unwrap()</code> takes it out: <samp>table 7: welcome, Ada!</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: a crew in a loop">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Three cooks at once: spawn in a loop, keep every handle in a Vec, then join them all.</p>
+    <span class="file-tab">crew.rs</span>
+    <pre class="code" data-src="crew.rs"></pre>
+    <pre class="term" data-run="crew.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: <code>move</code> again. Each closure gets its own copy of that round's <code>cook</code> number. Without <code>move</code>, it would borrow the loop variable, which is gone by the next round: E0373 again.</span></li>
+      <li><span><b>Line 9</b>: all three handles go into <code>crew</code>. All three cooks are now working at the same time.</span></li>
+      <li><span><b>Lines 11–12</b>: join them in hiring order and print each result. The cooks may <em>finish</em> in any order, but <code>main</code> prints in the order it joins, so the output is always the same. This is the trick for steady output: <b>let threads return results, and let main do the printing</b>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tcrew-m" id="ex-tcrew"></div>
+  <script type="application/json" id="ex-tcrew-m">{"program": "trace_crew.rs", "columns": ["cook", "made", "total"], "given": [0], "prompt": "Four cooks each make <code>cook × cook</code> dishes. <code>main</code> joins them in order and keeps a running total. Fill in each row.", "explain": "The handles are joined in hiring order, so the rows are steady even though the cooks ran at the same time. Cook 1 makes 1 (total 1), cook 2 makes <samp>4</samp> (total <samp>5</samp>), cook 3 makes <samp>9</samp> (<samp>14</samp>), cook 4 makes <samp>16</samp> (<samp>30</samp>)."}</script>
+
+  <section class="panel sketch" aria-label="Panel 13: a shift with a locked door">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">Sometimes you <em>want</em> to lend. Rust 1.63 added <b>scoped threads</b>: <code>thread::scope</code> opens a shift, and the kitchen door stays shut until every cook hired during that shift has finished. Rust joins them all for you at the closing brace. Because nobody can leave early, borrowing is safe again.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:620px" viewBox="0 0 520 220" role="img" aria-label="Drawing: a big rounded box labelled thread scope, with a door in its right wall. Inside, two small cooks, A and B, both reach up to one pantry shelf labelled ampersand pantry, borrowed. Outside the box on the left, a clock: main waits at the closing brace.">
+      <rect x="130" y="14" width="370" height="192" rx="18" fill="#F4F1EA" stroke="#111" stroke-width="4"/>
+      <text class="h" x="146" y="44">thread::scope</text>
+      <rect x="170" y="58" width="230" height="40" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="182" y="84">&amp;pantry</text>
+      <text class="s" x="290" y="84">(borrowed)</text>
+      <path d="M220 114 V100 M340 114 V100" stroke="#111" stroke-width="3" stroke-dasharray="5 4"/>
+      <path d="M206 138 q-6 -20 14 -22 q20 2 14 22 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/><circle cx="220" cy="150" r="16" fill="#F3C9A1" stroke="#111" stroke-width="3"/>
+      <path d="M326 138 q-6 -20 14 -22 q20 2 14 22 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/><circle cx="340" cy="150" r="16" fill="#C68E5F" stroke="#111" stroke-width="3"/>
+      <text class="s mid" x="220" y="192">cook A</text><text class="s mid" x="340" y="192">cook B</text>
+      <rect x="484" y="80" width="30" height="96" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <circle cx="492" cy="128" r="4" fill="#111"/>
+      <text class="s" x="476" y="72" text-anchor="end">door</text>
+      <circle cx="58" cy="86" r="34" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M58 86 V64 M58 86 L74 94" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+      <text class="s" x="8" y="150">main waits</text>
+      <text class="s" x="8" y="172">at the brace</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Everyone hands the books back before the doors open. That's exactly my lending rule, so the Compiler is happy with loans.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: scoped threads borrow">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <span class="file-tab">scoped.rs</span>
+    <pre class="code" data-src="scoped.rs"></pre>
+    <pre class="term" data-run="scoped.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: <code>thread::scope(|s| { … })</code>. <code>s</code> is the shift; <code>s.spawn</code> hires a cook for it. No <code>move</code>, no <code>'static</code> rule.</span></li>
+      <li><span><b>Line 8</b>: cook A <b>reads</b> <code>pantry</code> through a shared borrow. <b>Line 12</b>: cook B <b>writes</b> <code>total</code> through a mutable borrow. Many readers of <code>pantry</code>, one writer of <code>total</code>: Chapter 8's rule, checked by the Compiler as usual.</span></li>
+      <li><span><b>Line 14</b>: the closing brace joins both cooks. Only then does <code>main</code> go on, and the loans are over, so <b>lines 15–16</b> can use <code>pantry</code> and <code>total</code> again. Only cook A prints, so the output is steady.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 15: two cooks write one number">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="E0499!" data-seed="15"></svg>
+    <p class="caption">Two cooks each add a plate to the same count, at the same time.</p>
+    <span class="file-tab">scope_race.rs</span>
+    <pre class="code" data-src="scope_race.rs"></pre>
+    <pre class="term" data-run="scope_race.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0499]: cannot borrow `plates` as mutable more than once at a time</code>: Chapter 8's "one writer" rule. The labels show <code>first mutable borrow occurs here</code> (line 6) and <code>second mutable borrow occurs here</code> (line 7).</span></li>
+      <li><span>Why this matters: <code>plates += 1</code> is really three steps: read the number, add one, write it back. Two threads doing that at the same instant can both read 0 and both write 1. One plate disappears. Two threads touching the same memory at once, at least one of them writing, with nothing to keep them in turn, is a <b>data race</b>. In many languages it compiles and gives wrong answers now and then.</span></li>
+      <li><span>This is also why Chapter 25's <code>set_var</code> needs <code>unsafe</code>. The environment is one shared table for the whole program, and outside Windows the operating system offers no thread-safe way to read it, so a thread changing it while another reads it is a data race that the Compiler can't see.</span></li>
+      <li><span>The last note points into the standard library's source, at a path with the compiler's build id; that line differs between Rust versions (see the footer).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>A data race doesn't get past me. The same borrowing rules you've used since Chapter 8 cover threads too. Need many writers? Part 4 has the tools.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pscope-m" id="ex-pscope"></div>
+  <script type="application/json" id="ex-pscope-m">{"program": "predict_scope.rs", "prompt": "Two scoped cooks add up the two halves of a price list. What does it print?", "hint": "<code>split_at(3)</code> makes two slices: the first 3 prices and the rest. Each cook writes a different variable.", "explain": "Left: 4 + 8 + 15 = <samp>27</samp>. Right: 16 + 23 + 42 = <samp>81</samp>. The scope's brace waits for both, so <code>a</code> and <code>b</code> are ready: <samp>all 108</samp>. The slices were only borrowed, so <code>prices</code> is still there: <samp>6</samp>. Two writers, but of <em>different</em> variables: no E0499."}</script>
+
+  <div data-ex="parsons" data-model="ex-pscope2-m" id="ex-pscope2"></div>
+  <script type="application/json" id="ex-pscope2-m">{"program": "parsons_scope.rs", "seed": 26, "pin": [1, 3, 4, 12], "prompt": "A scoped cook finds the longest spice name while borrowing the list. Put the middle lines in order.", "explain": "<code>longest</code> must exist before the scope; the cook is spawned inside the scope and writes it; the two closing lines close the cook's closure, then the scope (the deeper <code>});</code> comes first). Only after the scope's brace can <code>main</code> read <code>longest</code> again."}</script>
+
+  <div data-ex="choice" data-model="ex-whichspawn-m" id="ex-whichspawn"></div>
+  <script type="application/json" id="ex-whichspawn-m">{"q": "Four threads must each count the words in one quarter of a big <code>Vec&lt;String&gt;</code> that <code>main</code> owns, and <code>main</code> needs the Vec again afterwards. What's the simplest choice?", "options": [
+    {"t": "<code>thread::scope</code>, with each thread borrowing its quarter as a slice", "why": "Right. The scope guarantees every thread is done before the brace, so they may borrow, and <code>main</code> gets the Vec back untouched. No copies, no extra tools.", "correct": true},
+    {"t": "<code>thread::spawn</code> with closures that borrow the slices", "why": "That's E0373: a spawned thread might outlive <code>main</code>, so it can't borrow."},
+    {"t": "<code>thread::spawn(move || …)</code>, moving the whole Vec into the first thread", "why": "Only one thread can own it, the others would get E0382, and <code>main</code> loses it too."},
+    {"t": "Clone the Vec four times and move one clone into each spawned thread", "why": "It works, but it copies every String four times. Scoped threads do the same job with no copies."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · ORDER TICKETS ON A RAIL<small>channels: send and recv, the receiver as a loop that ends when every sender is gone, several senders with clone, the rail machine, a sent value is gone (E0382), waiting forever, and short rails (sync_channel)</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 16: the ticket rail">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">Real kitchens don't shout across the room. They clip <b>order tickets</b> onto a rail, and the cook at the end takes them off in the order they arrived. Rust's version is a <b>channel</b>: one end to send with, one end to receive with.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:620px" viewBox="0 0 500 220" role="img" aria-label="Drawing: two waiters on the left, each labelled tx, clip tickets onto a long rail. Three tickets hang on the rail, labelled soup, salad and pie, with an arrow pointing right. At the right end, one cook labelled rx takes the first ticket. Under the rail: mpsc means many senders, one receiver.">
+      <path d="M90 60 H430" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+      <path d="M90 52 V68 M430 52 V68" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3">
+        <path d="M150 62 h56 v58 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 z" fill="#FFF6CC"/>
+        <path d="M230 62 h56 v58 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 z" fill="#FFF6CC"/>
+        <path d="M310 62 h56 v58 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-7 5 z" fill="#FFF6CC"/>
+      </g>
+      <text class="m mid" x="178" y="96">pie</text><text class="m mid" x="258" y="96">salad</text><text class="m mid" x="338" y="96">soup</text>
+      <path d="M190 30 H330" stroke="#111" stroke-width="3.5"/><path d="M320 22 l12 8 l-12 8" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="s" x="200" y="22">first in, first out</text>
+      <g stroke="#111" stroke-width="3">
+        <circle cx="40" cy="58" r="14" fill="#F3C9A1"/><rect x="28" y="74" width="24" height="26" rx="6" fill="#7FB2FF"/>
+        <circle cx="40" cy="128" r="14" fill="#C68E5F"/><rect x="28" y="144" width="24" height="26" rx="6" fill="#FFD60A"/>
+      </g>
+      <text class="m" x="62" y="92">tx</text><text class="m" x="62" y="162">tx</text>
+      <path d="M66 140 C 100 130, 110 90, 120 70" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 5"/>
+      <g stroke="#111" stroke-width="3">
+        <circle cx="462" cy="70" r="16" fill="#E8B38A"/><path d="M448 58 q-6 -20 14 -22 q20 2 14 22 z" fill="#FFFFFF"/>
+        <rect x="448" y="88" width="28" height="40" rx="6" fill="#C9F2D9"/>
+      </g>
+      <text class="m" x="452" y="150">rx</text>
+      <text class="s" x="90" y="196">mpsc: multiple producers (senders),</text>
+      <text class="s" x="90" y="216">single consumer (one receiver)</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The waiter doesn't keep the ticket after clipping it on. It's on the rail now, then in the cook's hand. Catchphrase: <b>clip it on, let it go</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: a channel">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <span class="file-tab">channel_basic.rs</span>
+    <pre class="code" data-src="channel_basic.rs"></pre>
+    <pre class="term" data-run="channel_basic.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>mpsc::channel()</code> returns a pair, unpacked into <code>tx</code> (the transmitter, or sender) and <code>rx</code> (the receiver). Rust works out the ticket type, <code>&amp;str</code>, from line 8.</span></li>
+      <li><span><b>Line 6</b>: <code>move</code> gives the sender to the helper thread. <b>Line 8</b>: <code>tx.send(dish)</code> clips a ticket on. It returns a <code>Result</code>, because sending fails if the receiver is gone.</span></li>
+      <li><span><b>Line 11</b>: <code>for ticket in rx</code> takes tickets one at a time, <b>waiting</b> whenever the rail is empty. With one sender, they come out in the order they were sent.</span></li>
+      <li><span>When does the loop stop? When the rail is empty <b>and every sender has been dropped</b>. The helper's closure ends after <code>pie</code>, its <code>tx</code> is dropped, and the loop knows no more tickets can ever come. That's how <samp>rail empty, kitchen closed</samp> gets printed, with no <code>join</code> needed.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: several senders">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Three waiters, one rail. A sender can be cloned; every clone clips onto the same rail.</p>
+    <span class="file-tab">multi_producer.rs</span>
+    <pre class="code" data-src="multi_producer.rs"></pre>
+    <div class="runs2">
+      <div><h3><code>multi_producer.rs</code> (sorted)</h3><pre class="term" data-run="multi_producer.rs"></pre></div>
+      <div><h3><code>multi_live.rs</code> · one possible run</h3><pre class="term" data-run="multi_live.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Line 7</b>: <code>let tx = tx.clone();</code> makes a new sender for this round, with the same name, so <code>move</code> takes the clone and the original stays behind for the next round.</span></li>
+      <li><span><b>Line 13</b>: <code>drop(tx)</code> drops the <b>original</b>. Without it, <code>main</code> itself would still hold a sender, and the receiver would wait for it forever (panel 21).</span></li>
+      <li><span><b>Line 14</b>: <code>rx.iter().collect()</code> gathers every ticket until the senders are all gone. Then <b>line 16</b> sorts them, so the output is steady.</span></li>
+      <li><span><code>multi_live.rs</code> is the same program, but it prints each ticket the moment it arrives, without sorting. Each cook's soup still comes before that cook's pie; the cooks can come in any order.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 19: the rail machine" data-machine="m-rail">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">The rail machine. Feed it a request and see what comes back. The first six are lines of <code>rail_machine.rs</code>. The last one comes from a program that does only that request, with <code>unwrap()</code>, and it jams with the real panic.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-rail">{"label": "channel", "program": "rail_machine.rs", "examples": [
+      {"in": "send(\"soup\"), then recv()", "out": "Ok(\"soup\")", "expectLine": "send, then recv: Ok(\"soup\")", "outKind": "Result", "note": "A ticket on the rail: <code>recv</code> takes it off and gives <code>Ok</code>."},
+      {"in": "try_recv() on an empty rail", "out": "Err(Empty)", "expectLine": "try_recv on an empty rail: Err(Empty)", "outKind": "Result", "note": "<code>recv</code> would wait. <code>try_recv</code> never waits: it says \"nothing yet\" right away."},
+      {"in": "recv() after every sender is gone", "out": "Err(RecvError)", "expectLine": "recv after every sender is gone: Err(RecvError)", "outKind": "Result", "note": "Nobody can ever send again, so waiting would be pointless. This <code>Err</code> is what ends a <code>for ticket in rx</code> loop."},
+      {"in": "send(\"pie\") after the receiver is gone", "out": "Err(SendError { .. })", "expectLine": "send after the receiver is gone: Err(SendError { .. })", "outKind": "Result", "note": "No cook at the end of the rail. The ticket comes back inside the error."},
+      {"in": "try_send(\"tea\") on sync_channel(1)", "out": "Ok(())", "expectLine": "try_send, room for 1: Ok(())", "outKind": "Result", "note": "A short rail with room for one ticket (panel 22). There's room, so it's clipped on."},
+      {"in": "try_send(\"cake\") on that full rail", "out": "Err(TrySendError::Full(..))", "expectLine": "try_send on a full rail: Err(TrySendError::Full(..))", "outKind": "Result", "note": "The rail is full. <code>send</code> would wait for room; <code>try_send</code> refuses at once."},
+      {"in": "send(\"pie\").unwrap() with no receiver", "error": "called `Result::unwrap()` on an `Err` value: SendError { .. }", "program": "rail_panic.rs", "note": "Same <code>SendError</code>, but <code>unwrap()</code> turns it into a panic (Chapter 13)."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pchan-m" id="ex-pchan"></div>
+  <script type="application/json" id="ex-pchan-m">{"program": "predict_channel.rs", "prompt": "One cook sends three tickets, then returns a message. <code>main</code> takes one ticket, then the rest. What does it print?", "hint": "One sender means tickets arrive in the order sent. <code>rx.iter()</code> collects whatever is left, until the sender is dropped.", "explain": "The cook sends 30, 10, 20 in that order. <code>recv()</code> takes the first: <samp>first: 30</samp>. <code>rx.iter().collect()</code> takes the rest and stops when the cook's <code>tx</code> is dropped at the end of its closure: <samp>rest: [10, 20]</samp>. <code>join</code> hands back the closure's value: <samp>cook: all sent</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-tchan-m" id="ex-tchan"></div>
+  <script type="application/json" id="ex-tchan-m">{"program": "trace_channel.rs", "columns": ["bill", "total"], "given": [0], "prompt": "A waiter thread sends four bills down the rail; <code>main</code> adds them up as they arrive. Fill in the running total after each bill.", "explain": "One sender, so the bills arrive in order: 12 (total <samp>12</samp>), 5 (<samp>17</samp>), 8 (<samp>25</samp>), 20 (<samp>45</samp>). The loop ends when the waiter's closure finishes and drops its sender."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 20: a sent ticket is gone">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="E0382!" data-seed="20"></svg>
+    <p class="caption">A cook sends an order and then tries to read it out loud.</p>
+    <span class="file-tab">send_moves.rs</span>
+    <pre class="code" data-src="send_moves.rs"></pre>
+    <pre class="term" data-run="send_moves.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0382]: borrow of moved value: `order`</code>. The labels tell the story: <code>value moved here</code> under <code>tx.send(order)</code> on line 8, then <code>value borrowed here after move</code> on line 9.</span></li>
+      <li><span><code>send</code> takes its argument by value, so the String now belongs to the channel, and soon to whoever receives it. If the sender could still use it, two threads could touch the same String at once.</span></li>
+      <li><span>Fix: print before sending, or send a clone. (Numbers like <code>i32</code> are Copy, so sending one leaves a copy behind.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spots-m" id="ex-spots"></div>
+  <script type="application/json" id="ex-spots-m">{"program": "spot_send.rs", "bug": 9, "prompt": "A cook sends the soup vegetables to <code>main</code>. The Compiler refuses. Click the line it complains about.", "explain": "<samp>error[E0382]: borrow of moved value: `soup`</samp>, <samp>value moved here</samp> on line 8 and <samp>value borrowed here after move</samp> on line 9. The Vec went down the rail on line 8. Swap lines 8 and 9, or save <code>soup.len()</code> in a variable before sending."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 21: waiting forever">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="ZZZ..." data-seed="21"></svg>
+    <p class="caption">This is panel 18 without the <code>drop(tx)</code>. With a plain <code>for n in rx</code> loop, it would never end: no error, no output, just a program that hangs. So this version waits with <code>recv_timeout</code>, which gives up after 300 milliseconds, to show what's going on.</p>
+    <span class="file-tab">forgot_drop.rs</span>
+    <pre class="code" data-src="forgot_drop.rs"></pre>
+    <pre class="term" data-run="forgot_drop.rs"></pre>
+    <ol class="readlist">
+      <li><span>Both tickets arrived. Then the rail stayed empty, and <code>recv_timeout</code> gave up with <samp>Timeout</samp>, not <code>Disconnected</code>: as far as the channel knows, someone could still send.</span></li>
+      <li><span>That someone is <code>main</code>: the original <code>tx</code> from line 6 is still alive, because only the clones were moved into threads. A receiver can't know that <code>main</code> will never use it.</span></li>
+      <li><span>The fix is line 11 without the <code>//</code>: <code>drop(tx);</code>. Tip: if a channel program seems frozen, look for a sender that is still alive.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="linecook" data-variant="c" data-pose="wait"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cy the cook says: </span>The head cook is still standing by the rail with a pen. Maybe another ticket is coming? I'll wait. And wait.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-hang-m" id="ex-hang"></div>
+  <script type="application/json" id="ex-hang-m">{"q": "A program clones <code>tx</code> for each of three worker threads, and ends with <code>for msg in rx { println!(\"{msg}\"); }</code>. It prints all the workers' messages and then hangs. Why?", "options": [
+    {"t": "<code>main</code> still holds the original <code>tx</code>, so the receiver keeps waiting for it.", "why": "Right. A receiver's loop ends only when <b>every</b> sender is dropped, and the original counts too. Add <code>drop(tx);</code> before the loop.", "correct": true},
+    {"t": "The workers were never joined.", "why": "Joining isn't what ends the loop. Each worker's clone is dropped when its closure finishes, joined or not. The one still alive is <code>main</code>'s original."},
+    {"t": "Channels can only carry one message per sender.", "why": "A sender can send as many messages as it likes (panel 17 sent three)."},
+    {"t": "The messages arrived out of order, and the receiver is waiting for the missing first one.", "why": "A channel never waits to sort messages. It hands them over in arrival order."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pchan2-m" id="ex-pchan2"></div>
+  <script type="application/json" id="ex-pchan2-m">{"program": "parsons_channel.rs", "seed": 7, "pin": [1, 2, 4, 9, 10, 13, 14, 16], "prompt": "A breakfast cook sends two dishes down the rail. Put the unpinned lines in order so it prints the goal output.", "explain": "Make the channel; spawn the cook with <code>move</code>; inside its loop, send each dish. <code>main</code> loops over <code>rx</code> and prints, the loop ends when the cook's sender is dropped, then <code>join</code>, then the closing message."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: a short rail">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The rail from <code>mpsc::channel()</code> has no end: a fast waiter can clip on a million tickets while the cook falls behind. <code>mpsc::sync_channel(n)</code> makes a <b>short rail</b> with room for <code>n</code> tickets. When it's full, <code>send</code> waits for room, so a fast sender is slowed down to the cook's pace.</p>
+    <span class="file-tab">sync_rail.rs</span>
+    <pre class="code" data-src="sync_rail.rs"></pre>
+    <pre class="term" data-run="sync_rail.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: room for 2. <b>Line 6</b> uses <code>try_send</code>, which refuses instead of waiting, so this one-thread demo can't get stuck. Tickets 3 and 4: <samp>sending on a full channel</samp> (that's the error's Display text).</span></li>
+      <li><span><b>Line 11</b>: the cook takes ticket 1, which makes room: ticket 5 gets <samp>Ok(())</samp>.</span></li>
+      <li><span><code>sync_channel(0)</code> has no room at all: every <code>send</code> waits until a receiver takes the ticket from the waiter's hand, a hand-to-hand delivery.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE RECIPE BOOK AND THE ONE KNIFE<small>Rc can't cross threads (E0277); Arc shares one value with a thread-safe counter, read-only (E0596); Mutex gives one thread at a time the right to change it; the lock guard; a Mutex moved in a loop (E0382); Arc&lt;Mutex&lt;T&gt;&gt;</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 23: Rc cannot be sent between threads">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <svg class="sfx tr" data-sfx="E0277!" data-seed="23"></svg>
+    <p class="caption">Chapter 23 gave one value several owners with <code>Rc</code>. Mabel tries it with a thread, and gets the error Chapter 23 promised.</p>
+    <span class="file-tab">rc_thread.rs</span>
+    <pre class="code" data-src="rc_thread.rs"></pre>
+    <pre class="term" data-run="rc_thread.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0277]: `Rc&lt;Vec&lt;&amp;str&gt;&gt;` cannot be sent between threads safely</code>: <b>what</b>, in plain words. The long underline covers the closure, lines 7 to 9, which carries the Rc into the thread.</span></li>
+      <li><span><code>= help: … the trait `Send` is not implemented for `Rc&lt;Vec&lt;&amp;str&gt;&gt;`</code>. <code>Send</code> is a badge (Chapter 17) for types that are safe to hand to another thread. <code>spawn</code> demands it: <code>note: required by a bound in `spawn`</code>.</span></li>
+      <li><span>Why no badge? Rc's counter is changed with plain arithmetic. Two threads cloning at the same instant could both read 2 and both write 3: the same lost update as panel 15. A wrong count means the value is freed too early, or never.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 24: the shared recipe book">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft"><code>Arc&lt;T&gt;</code> is the thread-safe twin: <b>A</b>tomically <b>R</b>eference <b>C</b>ounted. Picture one recipe book on a stand with a clicker counter. Every cook who wants to read it clicks in; when they're done they click out. When the counter reaches 0, the book is put away. The clicker is <b>atomic</b>: each click happens as one step that can't be cut in half, even if two cooks click at the same instant.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:560px" viewBox="0 0 440 220" role="img" aria-label="Drawing: an open recipe book on a stand, labelled one Vec on the heap. On the stand, a clicker counter shows 4. Four arrows come into the book from four name tags: book in main, and my_copy in cook 1, cook 2 and cook 3.">
+      <path d="M150 70 q60 -20 70 0 q10 -20 70 0 v80 q-60 -16 -70 4 q-10 -20 -70 -4 z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M220 70 v84" stroke="#111" stroke-width="3"/>
+      <path d="M164 88 h40 M164 102 h34 M164 116 h42 M236 88 h40 M236 102 h30 M236 116 h38" stroke="#111" stroke-width="2.5"/>
+      <path d="M200 160 l-16 40 h72 l-16 -40" fill="#E8D3B0" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="196" y="172" width="48" height="26" rx="5" fill="#C9F2D9" stroke="#111" stroke-width="3"/>
+      <text x="220" y="192" font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle">4</text>
+      <text class="s" x="148" y="40">one Vec on the heap</text>
+      <g stroke="#111" stroke-width="3">
+        <path d="M14 70 h70 l12 14 l-12 14 h-70 z" fill="#FFF6CC"/>
+        <path d="M14 150 h70 l12 14 l-12 14 h-70 z" fill="#FFF6CC"/>
+        <path d="M426 70 h-80 l-12 14 l12 14 h80 z" fill="#FFF6CC"/>
+        <path d="M426 150 h-80 l-12 14 l12 14 h80 z" fill="#FFF6CC"/>
+      </g>
+      <text class="m" x="22" y="90">book</text><text class="m" x="20" y="170">copy 1</text>
+      <text class="m" x="350" y="90">copy 2</text><text class="m" x="350" y="170">copy 3</text>
+      <g fill="none" stroke="#111" stroke-width="3" stroke-dasharray="7 5"><path d="M98 84 H146"/><path d="M98 164 Q130 150 156 140"/><path d="M332 84 H294"/><path d="M332 164 Q310 150 286 140"/></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Same idea as Rc: <code>Arc::clone</code> clicks the counter, it doesn't copy the book. Atomic clicks cost a tiny bit more than plain ones, which is why Rust gives you both and lets you pick.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: Arc shares the book">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <span class="file-tab">arc_share.rs</span>
+    <pre class="code" data-src="arc_share.rs"></pre>
+    <pre class="term" data-run="arc_share.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>Arc</code> lives in <code>std::sync</code>, the module for sharing between threads.</span></li>
+      <li><span><b>Line 8</b>: each round makes its own key, <code>my_copy</code>, and <b>line 9</b>'s <code>move</code> gives that key to the new thread. One book, four keys: <code>book</code> plus three copies.</span></li>
+      <li><span><b>Line 10</b>: <code>my_copy[id - 1]</code> reads through the Arc as if it were the Vec (Deref, Chapter 23).</span></li>
+      <li><span><b>Line 16</b>: each cook's key was dropped when its thread finished, so after the joins only <code>book</code> is left: <samp>readers left: 1</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: Arc is read-only">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="E0596!" data-seed="26"></svg>
+    <p class="caption">A cook tries to write a new recipe into the shared book.</p>
+    <span class="file-tab">arc_mut_error.rs</span>
+    <pre class="code" data-src="arc_mut_error.rs"></pre>
+    <pre class="term" data-run="arc_mut_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0596]: cannot borrow data in an `Arc` as mutable</code>: the same message Rc gave in Chapter 23, word for word apart from the name.</span></li>
+      <li><span><code>= help: trait `DerefMut` is required … but it is not implemented for `Arc&lt;Vec&lt;&amp;str&gt;&gt;`</code>. An Arc hands out only shared <code>&amp;</code> loans. Other cooks may be reading at this very moment.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>In Chapter 23, the fix for one thread was a whiteboard with a sign-out sheet, RefCell. For many threads we need something stronger: a lock.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: the one knife">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">The kitchen has <b>one good knife</b>, and the rule is: nobody touches the chopping board without holding it. That's a <code>Mutex&lt;T&gt;</code> (<b>mut</b>ual <b>ex</b>clusion): a lock wrapped around a value, so only one thread at a time can get at it.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:640px" viewBox="0 0 520 190" role="img" aria-label="Drawing in four steps, left to right. 1, lock: a cook reaches for the knife on its hook. 2, wait: a second cook stands with arms folded because the hook is empty. 3, hold: the first cook chops with the knife, labelled MutexGuard. 4, put back: the knife is back on the hook, labelled drop unlocks.">
+      <g stroke="#111" stroke-width="3.5">
+        <rect x="8" y="16" width="118" height="140" rx="12" fill="#FFFFFF"/>
+        <rect x="138" y="16" width="118" height="140" rx="12" fill="#FFF6CC"/>
+        <rect x="268" y="16" width="118" height="140" rx="12" fill="#C9F2D9"/>
+        <rect x="398" y="16" width="118" height="140" rx="12" fill="#FFFFFF"/>
+      </g>
+      <text class="h" x="20" y="44">1 LOCK</text><text class="h" x="150" y="44">2 WAIT</text><text class="h" x="280" y="44">3 HOLD</text><text class="h" x="410" y="44">4 BACK</text>
+      <g stroke="#111" stroke-width="3">
+        <path d="M40 66 h60" /><path d="M70 66 v8"/>
+        <path d="M66 76 l-6 46 l10 -2 l6 -44 z" fill="#DDE8FF"/>
+        <path d="M30 140 q20 -30 34 -24" fill="none" stroke-dasharray="5 4"/>
+        <path d="M170 66 h60"/><path d="M200 66 v8" stroke-dasharray="4 4"/>
+        <circle cx="198" cy="112" r="14" fill="#C68E5F"/><path d="M182 132 q16 10 32 0" fill="none"/>
+        <path d="M296 120 h70 v14 h-70 z" fill="#E8D3B0"/>
+        <path d="M330 70 l22 44 l-8 4 l-22 -44 z" fill="#DDE8FF"/>
+        <path d="M430 66 h60"/><path d="M460 66 v8"/>
+        <path d="M456 76 l-6 46 l10 -2 l6 -44 z" fill="#DDE8FF"/>
+      </g>
+      <text class="s" x="14" y="178">lock()</text>
+      <text class="s" x="144" y="178">blocks</text>
+      <text class="s" x="274" y="178">MutexGuard</text>
+      <text class="s" x="404" y="178">drop unlocks</text>
+    </svg></div>
+    <ol class="readlist">
+      <li><span><b>Lock</b>: <code>m.lock()</code> asks for the knife. If it's on the hook, you get it at once.</span></li>
+      <li><span><b>Wait</b>: if another thread holds it, <code>lock()</code> <b>blocks</b>: your thread stops and waits until the knife comes back.</span></li>
+      <li><span><b>Hold</b>: what you get back is a <code>MutexGuard</code>, the knife in your hand. It derefs to the value inside (Chapter 23), so you can read and change it.</span></li>
+      <li><span><b>Put back</b>: when the guard is dropped, usually at a closing brace, the lock opens by itself. You can't forget to unlock: that's Drop doing its job (RAII, Chapter 23).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: lock and the guard">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">One thread first, to watch the knife. <code>try_lock()</code> is the polite version of <code>lock()</code>: it never waits, it just answers whether the knife is free right now.</p>
+    <span class="file-tab">mutex_basic.rs</span>
+    <pre class="code" data-src="mutex_basic.rs"></pre>
+    <pre class="term" data-run="mutex_basic.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: the Vec goes <em>inside</em> the Mutex. There's no way to reach it except through <code>lock()</code>. Notice <code>board</code> isn't <code>mut</code>: like RefCell, a Mutex allows changes through a shared reference.</span></li>
+      <li><span><b>Line 6</b>: <code>lock()</code> returns a <code>Result</code> (panel 32 explains why), so <code>unwrap()</code>; <code>chopped</code> is the guard. <b>Line 8</b>: while it's alive, <code>try_lock()</code> fails: <samp>false</samp>.</span></li>
+      <li><span><b>Line 9</b>: the brace drops <code>chopped</code>, and the knife goes back on the hook. <b>Line 10</b>: <samp>true</samp>. <b>Line 11</b>: printing a Mutex with <code>{:?}</code> shows the data and a <samp>poisoned</samp> flag.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 29: watch the counter and the knife" data-tracer="tr-arc" id="tr-arc-box">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Now with a thread. Step through <code>arc_guard.rs</code>: one <code>Arc&lt;Mutex&lt;Vec&gt;&gt;</code>, its <b>strong count</b> (how many Arc keys keep it alive), who holds the lock, and the guard. The cook's thread is drawn as a second frame under <code>main</code>.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-arc-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-arc">{"program": "arc_guard.rs", "steps": [
+      {"line": 5, "note": "<code>main</code> starts on the main thread.", "output": [], "frames": [{"name": "main thread", "vars": []}], "objects": {}, "changed": []},
+      {"line": 6, "note": "Line 5: one allocation holds the counter (1), the Mutex's lock (free) and, inside the lock, the Vec. <code>shelf</code> is the first key.", "output": [], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}]}}, "changed": ["shelf"]},
+      {"line": 7, "note": "Line 6: <code>Arc::clone</code> clicks the counter to 2 and makes a second key to the <b>same</b> allocation. Nothing is copied.", "output": [], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "helper", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}]}}, "changed": ["helper"]},
+      {"line": 8, "note": "Line 7 prints the count.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "helper", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}]}}, "changed": []},
+      {"line": 9, "note": "Line 8: <code>spawn</code> with <code>move</code>. The key <code>helper</code> moves into the new thread (still strong 2: a move doesn't click). <code>main</code> keeps the handle <code>cook</code>. From here, both threads run at once; this model follows the cook first, which is what <code>main</code>'s <code>join</code> waits for anyway.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "cook", "ref": "H1"}]}, {"name": "cook thread", "vars": [{"n": "helper", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}]}, "H1": {"kind": "JoinHandle", "value": "the cook's thread"}}, "changed": ["helper", "cook"]},
+      {"line": 10, "note": "Line 9: the cook calls <code>lock()</code>. The knife was free, so the cook gets a guard, <code>dishes</code>, that opens the Vec. The lock now says who holds it.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "cook", "ref": "H1"}]}, {"name": "cook thread", "vars": [{"n": "helper", "ref": "A1"}, {"n": "dishes", "ref": "G1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "held by the cook"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}]}, "H1": {"kind": "JoinHandle", "value": "the cook's thread"}, "G1": {"kind": "MutexGuard", "label": "MutexGuard · the knife", "pairs": [{"k": "opens", "ref": "V1"}]}}, "changed": ["dishes"]},
+      {"line": 11, "note": "Line 10: <code>dishes.push(\"pie\")</code> changes the Vec through the guard.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "cook", "ref": "H1"}]}, {"name": "cook thread", "vars": [{"n": "helper", "ref": "A1"}, {"n": "dishes", "ref": "G1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "held by the cook"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}, "H1": {"kind": "JoinHandle", "value": "the cook's thread"}, "G1": {"kind": "MutexGuard", "label": "MutexGuard · the knife", "pairs": [{"k": "opens", "ref": "V1"}]}}, "changed": []},
+      {"line": 12, "note": "Line 11, the closure's closing brace: <code>dishes</code> is dropped first, so the lock is <b>free</b> again; then <code>helper</code> is dropped, so the count goes down to 1. The cook's thread is finished.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "cook", "ref": "H1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}, "H1": {"kind": "JoinHandle", "value": "the cook's thread (finished)"}}, "changed": []},
+      {"line": 13, "note": "Line 12: <code>cook.join()</code> uses up the handle and returns. Even if <code>main</code> had arrived here earlier, it would have waited right here for the cook.", "output": ["owners: 2"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}}, "changed": ["cook"]},
+      {"line": 14, "note": "Line 13: <samp>owners: 1</samp>.", "output": ["owners: 2", "owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}}, "changed": []},
+      {"line": 15, "note": "Line 14: now <code>main</code> takes the knife: a new guard, also called <code>dishes</code>.", "output": ["owners: 2", "owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "shelf", "ref": "A1"}, {"n": "dishes", "ref": "G2"}]}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "held by main"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (inside the Mutex)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}, "G2": {"kind": "MutexGuard", "label": "MutexGuard · the knife", "pairs": [{"k": "opens", "ref": "V1"}]}}, "changed": ["dishes"]},
+      {"line": null, "note": "Line 15 prints the Vec through the guard. At <code>main</code>'s closing brace, <code>dishes</code> unlocks, then <code>shelf</code>, the last key, takes the count to <b>0</b>: the Mutex and the Vec are dropped and the allocation is freed (drawn faded).", "output": ["owners: 2", "owners: 1", "[\"soup\", \"pie\"]"], "frames": [{"name": "main thread", "vars": []}], "objects": {"A1": {"kind": "Arc", "label": "Arc allocation · strong 0 · freed", "pairs": [{"k": "strong", "val": "0"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "V1"}]}, "V1": {"kind": "Vec", "label": "Vec (dropped)", "items": [{"val": "\"soup\""}, {"val": "\"pie\""}]}}, "changed": []}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 30: moved into closure in previous iteration of loop">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="E0382!" data-seed="30"></svg>
+    <p class="caption">Three cooks, one tally of dishes done, all in a loop. Mabel tries a Mutex on its own.</p>
+    <span class="file-tab">mutex_loop_error.rs</span>
+    <pre class="code" data-src="mutex_loop_error.rs"></pre>
+    <pre class="term" data-run="mutex_loop_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0382]: borrow of moved value: `done`</code>, and a label written for exactly this mistake: <code>value moved into closure here, in previous iteration of loop</code> on line 8, with <code>inside of this loop</code> under the <code>for</code>.</span></li>
+      <li><span>The first round's <code>move</code> gave the Mutex to cook 1. There's only one Mutex, and it can't be moved again in round 2, or read on line 15. A Mutex needs <b>several owners</b>, and you already know the type for that.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: Arc around Mutex">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The fix: put the Mutex inside an Arc, and clone the Arc once per cook. Four cooks, a thousand dishes each.</p>
+    <span class="file-tab">arc_mutex.rs</span>
+    <pre class="code" data-src="arc_mutex.rs"></pre>
+    <pre class="term" data-run="arc_mutex.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>Arc&lt;Mutex&lt;i32&gt;&gt;</code>. <b>Line 8</b>: a new key per cook, shadowing the name so <code>move</code> takes the clone.</span></li>
+      <li><span><b>Line 11</b>: <code>*done.lock().unwrap() += 1</code> takes the knife, adds one through the guard, and drops the guard at the semicolon. Each cook holds the knife for one tiny step at a time, so the cooks take turns 4000 times.</span></li>
+      <li><span>The answer is <samp>4000</samp> on every run. The <em>order</em> of the turns changes from run to run; the total can't, because no two additions ever overlap. That's why steady totals make good answer keys.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Chapter 23 said: Rc to share, RefCell to change. Across threads, the twins: <b>Arc to share, Mutex to change</b>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pmutex-m" id="ex-pmutex"></div>
+  <script type="application/json" id="ex-pmutex-m">{"program": "predict_mutex.rs", "prompt": "Three cooks drop coins into a shared jar, in whatever order they get the knife. <code>main</code> joins them, then sorts. What does it print?", "hint": "The push order changes from run to run, but the sort fixes that. How many Arc keys are left after every thread has finished?", "explain": "Cooks 1, 2, 3 push 2, 4, 6 in some order; sorting gives <samp>[2, 4, 6]</samp> on every run. <samp>sum 12</samp>. Each cook's key was dropped when its thread finished, so only <code>jar</code> remains: <samp>owners 1</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-farc-m" id="ex-farc"></div>
+  <script type="application/json" id="ex-farc-m">{"program": "fill_arc.rs", "prompt": "Two cooks add their dish to a shared menu. Fill in how each round gets its own key (line 8) and how a cook takes the knife (line 10).", "blanks": [{"line": 8, "text": "Arc::clone(&menu)", "accept": ["menu.clone()", "Arc::clone( &menu )"]}, {"line": 10, "text": "lock()"}], "explain": "<code>Arc::clone(&amp;menu)</code> clicks the counter and makes a key for this cook (<code>menu.clone()</code> does the same, but the long form shows it's the cheap kind of clone). <code>lock()</code> gives a guard; <code>unwrap()</code> takes it out of the <code>Result</code>; <code>push</code> works through it. Sorted: <samp>[\"pie\", \"soup\"]</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-sloop-m" id="ex-sloop"></div>
+  <script type="application/json" id="ex-sloop-m">{"program": "spot_loop.rs", "bug": 8, "prompt": "Three waiters add their tips to a shared jar. It uses Arc, yet the Compiler still says E0382. Click the line where the Arc is moved away for good.", "explain": "<samp>value moved into closure here, in previous iteration of loop</samp>, on line 8. Wrapping the Mutex in an Arc isn't enough: you also have to <b>clone</b> it each round. The Compiler even says so: <samp>this move could be avoided by cloning the original `Arc`, which is inexpensive</samp>. Fix: <code>let tips = Arc::clone(&amp;tips);</code> as the first line inside the loop."}</script>
+
+  <div data-ex="trace" data-model="ex-tarc-m" id="ex-tarc"></div>
+  <script type="application/json" id="ex-tarc-m">{"program": "trace_arc.rs", "columns": ["joined", "strong"], "given": [0], "prompt": "Each cook takes a key to the recipe book and <b>hands it back</b> as its result. <code>main</code> joins each cook, drops the returned key, and prints the strong count. Fill in the counts.", "explain": "Before any join: <code>book</code> plus 3 keys alive inside the threads' results: <samp>4</samp>. A key returned by a thread lives on until <code>main</code> drops it, so each join and drop takes one off: <samp>3</samp>, <samp>2</samp>, <samp>1</samp>. (If the cooks didn't return their keys, each would drop it when its thread ended, at a moment nobody can predict.)"}</script>
+
+  <div data-ex="predict" data-model="ex-psend-m" id="ex-psend"></div>
+  <script type="application/json" id="ex-psend-m">{"program": "predict_send.rs", "expect": "error", "answer": "E0277", "ask": "Does it compile? If not, type the error code the Compiler gives (like <code>E0123</code>).", "prompt": "One worker gets an Arc, another gets an Rc.", "hint": "Which of the two has the Send badge?", "explain": "<samp>error[E0277]: `Rc&lt;i32&gt;` cannot be sent between threads safely</samp>, pointing at the closure on line 12. Nothing runs, not even the first worker: the Compiler checks the whole program first. The Arc on line 9 is fine."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · KITCHEN TROUBLE<small>a cook panics holding the knife (poisoning); two cooks frozen forever (deadlock) and the map of it; RwLock for many readers or one writer; atomics for counters; the Send and Sync badges (E0277); which tool when</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 32: a poisoned lock">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="CLANG!" data-seed="32"></svg>
+    <p class="caption">A clumsy cook takes the knife, salts the soup, and drops the pot, all while holding the lock.</p>
+    <span class="file-tab">poison.rs</span>
+    <pre class="code" data-src="poison.rs"></pre>
+    <pre class="term" data-run="poison.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>The cook's thread panics on line 10 (its id number will differ on your computer). Its guard is dropped as the thread unwinds, so the lock opens, but the Mutex is marked <b>poisoned</b>: "someone panicked in the middle of changing this, so it may be half-done".</span></li>
+      <li><span><b>Line 13</b>: <samp>poisoned? true</samp>. <b>Line 14</b>: from now on <code>lock()</code> returns <code>Err(PoisonError)</code> instead of <code>Ok</code>. That's why every <code>lock()</code> so far was followed by <code>unwrap()</code>: unwrap means "if the data might be broken, stop".</span></li>
+      <li><span><b>Line 17</b>: if you know the data is still fine, <code>into_inner()</code> on the error gives you the guard anyway: <samp>["water", "salt"]</samp>. The salt went in before the panic.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spoison-m" id="ex-spoison"></div>
+  <script type="application/json" id="ex-spoison-m">{"program": "poison_spot.rs", "bug": 9, "prompt": "Two panics come out of this program: one in the cook's thread and one in <code>main</code>. Click the line that causes the trouble in the first place.", "explain": "First panic: <samp>index out of bounds: the len is 2 but the index is 2</samp> at line 9, while the cook holds <code>list</code>, the guard. That poisons the Mutex. Second panic: <code>main</code>'s <code>lock().unwrap()</code> on line 12 gets <samp>PoisonError { .. }</samp> and unwraps it. Line 12 is only the messenger. Fix line 9 (orders 0 and 1 exist; there's no order 2)."}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: two cooks, two tools, frozen">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">Ana needs the knife <em>and</em> the cutting board. So does Ben. Ana grabs the knife; at the same moment, Ben grabs the board. Now Ana waits for the board, and Ben waits for the knife. Neither will ever let go. That's a <b>deadlock</b>.</p>
+    <div class="picscroll"><svg class="fig pic-wide" style="max-width:600px" viewBox="0 0 480 220" role="img" aria-label="Drawing: Ana on the left holds a knife; a thought bubble above her shows a board with a question mark. Ben on the right holds a cutting board; his thought bubble shows a knife with a question mark. Two curved arrows form a circle between them, labelled waits for. Below: nobody lets go, so nobody moves.">
+      <g stroke="#111" stroke-width="3.5">
+        <circle cx="90" cy="110" r="24" fill="#F3C9A1"/><path d="M68 92 q-10 -30 22 -32 q32 2 22 32 z" fill="#FFFFFF"/>
+        <path d="M70 136 l-6 60 h52 l-6 -60 z" fill="#7FB2FF"/>
+        <path d="M120 150 l30 -26 l6 6 l-30 26 z" fill="#DDE8FF"/>
+        <circle cx="390" cy="110" r="24" fill="#C68E5F"/><path d="M368 92 q-10 -30 22 -32 q32 2 22 32 z" fill="#FFFFFF"/>
+        <path d="M370 136 l-6 60 h52 l-6 -60 z" fill="#FFD60A"/>
+        <rect x="316" y="140" width="50" height="30" rx="4" fill="#E8D3B0"/>
+        <ellipse cx="150" cy="40" rx="44" ry="26" fill="#FFFFFF"/>
+        <ellipse cx="330" cy="40" rx="44" ry="26" fill="#FFFFFF"/>
+        <rect x="128" y="30" width="34" height="20" rx="3" fill="#E8D3B0"/>
+        <path d="M312 48 l24 -20 l4 4 l-24 20 z" fill="#DDE8FF"/>
+      </g>
+      <text class="m" x="168" y="48">?</text><text class="m" x="346" y="50">?</text>
+      <path d="M180 100 C 230 70, 260 70, 300 100" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M290 92 l12 9 l-14 4" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M300 170 C 260 196, 220 196, 180 170" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M190 178 l-12 -9 l4 14" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="s" x="200" y="66">waits for</text>
+      <text class="s" x="200" y="214">waits for</text>
+      <text class="s" x="20" y="214">Ana</text><text class="s" x="420" y="214">Ben</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The Compiler can't catch this one: it's a mistake in <em>when</em> things happen, not in who owns what. A deadlocked program doesn't crash. It just stops, forever, using no effort at all.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 34: the map of a deadlock" data-map="map-dead">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">The map. A real deadlock would never finish, so it can't be run and captured. Instead, <code>deadlock_try.rs</code> uses a <b>barrier</b> (<code>Barrier::new(2)</code>: a gate that opens only when both cooks have arrived) so that each cook surely holds one tool, and then asks for the other with <code>try_lock()</code>, which reports instead of waiting. <code>same_order.rs</code> is the fix.</p>
+    <div class="paths" role="group" aria-label="Choose a run"><span class="label">RUN:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapd-t mapd-d"><title id="mapd-t">Who holds which tool</title><desc id="mapd-d">Six places. Top row: tools free, Ana has the knife, Ana has both. Bottom row: deadlock, one tool each, both chopped. Ana locks the knife: from tools free to Ana has the knife. From there, either Ana locks the board too (to Ana has both, then she lets go and Ben takes both, ending at both chopped), or Ben locks the board (to one tool each), and then each asks for the other's tool, ending at deadlock.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-dead">{"seed": 26, "size": [690, 320], "start": [[89, 14], [89, 54]],
+      "states": [
+        {"id": "FREE", "x": 14, "y": 60, "w": 150, "h": 70, "label": "tools free", "sub": "no locks held"},
+        {"id": "A1", "x": 262, "y": 60, "w": 166, "h": 70, "label": "Ana: knife", "sub": "Ben: nothing yet"},
+        {"id": "ABOTH", "x": 510, "y": 60, "w": 166, "h": 70, "label": "Ana: both", "sub": "Ben waits"},
+        {"id": "STUCK", "x": 14, "y": 230, "w": 166, "h": 70, "label": "deadlock", "sub": "both wait forever", "kind": "error"},
+        {"id": "SPLIT", "x": 262, "y": 230, "w": 166, "h": 70, "label": "one tool each", "sub": "knife | board"},
+        {"id": "DONE", "x": 510, "y": 230, "w": 166, "h": 70, "label": "both chopped", "sub": "locks released", "kind": "end"}],
+      "transitions": [
+        {"id": "a1", "from": "FREE", "to": "A1", "pts": [[168, 95], [256, 95]], "label": ["Ana locks", "`knife`"], "lx": 174, "ly": 124},
+        {"id": "a2", "from": "A1", "to": "ABOTH", "pts": [[432, 95], [504, 95]], "label": ["Ana locks", "`board`"], "lx": 434, "ly": 124},
+        {"id": "fin", "from": "ABOTH", "to": "DONE", "pts": [[593, 134], [593, 224]], "label": ["Ana unlocks;", "Ben locks both"], "lx": 584, "ly": 172, "anchor": "end"},
+        {"id": "split", "from": "A1", "to": "SPLIT", "pts": [[345, 134], [345, 224]], "label": ["Ben locks", "`board`"], "lx": 354, "ly": 172, "bug": true},
+        {"id": "stuck", "from": "SPLIT", "to": "STUCK", "pts": [[258, 265], [184, 265]], "label": ["each asks for", "the other's"], "lx": 176, "ly": 186, "bug": true}],
+      "paths": [
+        {"id": "opp", "label": "Opposite order: deadlock_try.rs", "bug": true, "program": "deadlock_try.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["FREE"], "output": [], "note": "Two Mutexes, <code>knife</code> and <code>board</code>, and two cooks. Ana's code takes the knife first; Ben's takes the board first."},
+          {"on": ["A1"], "via": ["a1"], "output": [], "note": "Line 11: Ana locks the knife."},
+          {"on": ["SPLIT"], "via": ["split"], "output": [], "note": "Line 20: at the same time, Ben locks the board. The barrier (lines 12 and 21) holds each cook until both have their first tool."},
+          {"on": ["STUCK"], "via": ["stuck"], "output": [], "note": "Lines 13 and 22: each asks for the other's tool. With <code>lock()</code>, both would now wait forever, and the program would hang. <code>try_lock()</code> answers \"busy\" instead."},
+          {"on": ["STUCK"], "output": ["Ana: has the knife, waiting for the board...", "Ben: has the board, waiting for the knife...", "deadlock: with lock() instead of try_lock(), both would wait forever"], "note": "Both report back, and <code>main</code> prints what they found. Because of the barrier, this happens on every run."}]},
+        {"id": "same", "label": "Same order: same_order.rs", "program": "same_order.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["FREE"], "output": [], "note": "The fix: both cooks take the knife first, then the board."},
+          {"on": ["A1"], "via": ["a1"], "output": [], "note": "Ana gets the knife. Ben asks for the knife too, so Ben waits <em>before</em> holding anything. (In another run Ben might win the knife; the story is the same with names swapped.)"},
+          {"on": ["ABOTH"], "via": ["a2"], "output": [], "note": "Nobody is holding the board, so Ana gets it. She chops."},
+          {"on": ["DONE"], "via": ["fin"], "output": ["Ana: knife, then board. Chopped!", "Ben: knife, then board. Chopped!"], "note": "Ana's guards are dropped at her closing brace; Ben takes the knife, then the board, and chops. <code>main</code> prints both results in join order."}]}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sdead-m" id="ex-sdead"></div>
+  <script type="application/json" id="ex-sdead-m">{"program": "spot_deadlock.rs", "bug": 18, "prompt": "Ana and Ben both need the pan and the lid. With <code>lock()</code> everywhere this program would hang forever; with <code>try_lock()</code> it reports that neither cook got both. Click the line that sets up the deadlock.", "explain": "Ana locks <code>p</code> (the pan) first, on line 10. Ben locks <code>l</code> (the lid) first, on line 18: the opposite order. With the barrier, each holds one and wants the other: <samp>Ana got both: false</samp>, <samp>Ben got both: false</samp>. Fix: Ben locks the pan first too (swap <code>l</code> and <code>p</code> on lines 18 and 20)."}</script>
+
+  <div data-ex="choice" data-model="ex-fixdead-m" id="ex-fixdead"></div>
+  <script type="application/json" id="ex-fixdead-m">{"q": "Every thread in a program needs two locks, <code>accounts</code> and <code>log</code>. It sometimes freezes. Which rule prevents that kind of freeze?", "options": [
+    {"t": "All threads lock them in one agreed order: <code>accounts</code>, then <code>log</code>", "why": "Right. For example, always <code>accounts</code> before <code>log</code>. If everybody queues for the first lock before touching the second, nobody can be holding the second while waiting for the first, so the waiting can never form a circle.", "correct": true},
+    {"t": "Clone the Arc more often, so every thread has its own key", "why": "Clones only add owners. Deadlock is about who is <em>waiting</em> for whom."},
+    {"t": "Call <code>unwrap()</code> on every <code>lock()</code> to catch the freeze", "why": "<code>unwrap</code> handles poisoning, not waiting. A deadlocked <code>lock()</code> never returns at all, so there's nothing to unwrap."},
+    {"t": "Nothing: the Compiler rejects programs that can deadlock.", "why": "It doesn't. The Compiler stops data races, but a deadlock is about timing, and it compiles fine (panel 33)."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 35: RwLock, many readers or one writer">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">A Mutex lets only one thread in, even if all of them just want to <em>read</em>. For data that's read often and changed rarely, like the day's menu, there's <code>RwLock</code> (a reader-writer lock): <code>read()</code> lets many readers in at once, <code>write()</code> lets in one writer and nobody else.</p>
+    <span class="file-tab">rwlock.rs</span>
+    <pre class="code" data-src="rwlock.rs"></pre>
+    <pre class="term" data-run="rwlock.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 5–6</b>: two read guards at the same time: <samp>1 and 1</samp>. A Mutex would have blocked the second.</span></li>
+      <li><span><b>Line 8</b>: while readers are in, <code>try_write()</code> fails: <samp>false</samp>. (A plain <code>write()</code> would never get in here: this thread itself holds the read locks, so it would wait forever, or panic, which the standard library's docs allow.)</span></li>
+      <li><span><b>Lines 9–11</b>: readers leave, and the writer gets in. <code>menu.write().unwrap().push("pie")</code> holds the write guard only until the semicolon.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>That's my oldest rule, now guarding threads: <b>lend it to many readers, or to one writer, never both at once</b>. The Compiler checks it for <code>&amp;</code> and <code>&amp;mut</code>; RwLock checks it while the program runs.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-prw-m" id="ex-prw"></div>
+  <script type="application/json" id="ex-prw-m">{"program": "predict_rwlock.rs", "prompt": "Readers, a writer, and a reader asking politely while another reader is in. What does it print?", "hint": "<code>try_write()</code> while two readers are in: does it fail? <code>try_read()</code> while one reader is in: does it work?", "explain": "Two readers at once: <samp>1 1</samp>. A writer can't join them, so <code>try_write().is_err()</code> is <samp>true</samp>. The block ends, both readers leave, the writer pushes. Then <code>r</code> is a reader, and another reader is welcome: <samp>true</samp>. Last line: <samp>[\"soup\", \"pie\"]</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: an atomic tally counter">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">For a plain number that many threads add to, a whole lock is more than you need. <b>Atomic</b> types, like <code>AtomicUsize</code>, are numbers whose operations happen in one uncuttable step, like the clicker on the recipe book.</p>
+    <span class="file-tab">atomic.rs</span>
+    <pre class="code" data-src="atomic.rs"></pre>
+    <pre class="term" data-run="atomic.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>AtomicUsize::new(0)</code>, not <code>mut</code>: atomics, like Mutex, change through a shared reference.</span></li>
+      <li><span><b>Line 10</b>: <code>fetch_add(1, …)</code> reads, adds and writes as <b>one</b> step, so no update is lost: always <samp>4000</samp>. Scoped threads borrow <code>plates</code> directly, so no Arc is needed here.</span></li>
+      <li><span><code>Ordering::Relaxed</code> says how this operation lines up with other memory operations. For a counter that nothing else depends on, <code>Relaxed</code> is enough. The other orderings are an advanced topic beyond this book (see the notebook's go-deeper page).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fatom-m" id="ex-fatom-x"></div>
+  <script type="application/json" id="ex-fatom-m">{"program": "fill_atomic.rs", "prompt": "Three waiters each take 10 orders and click a shared atomic counter. Fill in the method that adds one in a single step (line 10), and the one that reads the final value (line 15).", "blanks": [{"line": 10, "text": "fetch_add"}, {"line": 15, "text": "load"}], "explain": "<code>fetch_add(1, Ordering::Relaxed)</code> adds one atomically (and returns the old value, which we ignore). After the scope's brace every waiter is done, and <code>load</code> reads the total: 3 × 10 = <samp>30</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 37: the Send and Sync badges">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">How does the Compiler know Rc can't cross threads but Arc can? Two <b>marker traits</b>: badges with no methods, which a type wears or doesn't (Chapter 17's badges). Rust pins them on automatically: a type gets a badge when everything inside it has that badge.</p>
+    <div class="duo">
+      <div class="duo-card"><h3>Send<small>"can be handed to another thread"</small></h3><p>Moving it into a thread is safe. Almost everything: <code>i32</code>, <code>String</code>, <code>Vec&lt;T&gt;</code>, <code>Arc&lt;T&gt;</code>, <code>Mutex&lt;T&gt;</code>. <b>Not</b>: <code>Rc&lt;T&gt;</code> (its counter isn't atomic) and a <code>MutexGuard</code> (a lock must be opened by the thread that closed it).</p></div>
+      <div class="duo-card dashed"><h3>Sync<small>"can be shared between threads"</small></h3><p>Several threads may hold <code>&amp;</code> to it at once. <code>T</code> is Sync exactly when <code>&amp;T</code> is Send. Yes: <code>i32</code>, <code>Mutex&lt;T&gt;</code>, <code>RwLock&lt;T&gt;</code>, atomics. <b>Not</b>: <code>Cell</code> and <code>RefCell</code>, whose unguarded changes through <code>&amp;</code> would race.</p></div>
+    </div>
+    <span class="file-tab">sync_error.rs</span>
+    <pre class="code" data-src="sync_error.rs"></pre>
+    <pre class="term" data-run="sync_error.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0277]: `Cell&lt;i32&gt;` cannot be shared between threads safely</code>. This time it's <b>Sync</b> that's missing: the scoped thread only borrows <code>count</code>, and <code>note: required for `&amp;Cell&lt;i32&gt;` to implement `Send`</code> connects the two badges.</span></li>
+      <li><span>The <code>note:</code> even names the fixes: <code>std::sync::RwLock</code> or <code>std::sync::atomic::AtomicI32</code>, the thread-safe versions of this whiteboard.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>I check the badges every time a value crosses into a thread. That's how a data race becomes a compile error instead of a bug that shows up on a Tuesday. Rust's own name for this is <b>fearless concurrency</b>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-badge-m" id="ex-badge"></div>
+  <script type="application/json" id="ex-badge-m">{"q": "Why is <code>Arc&lt;Mutex&lt;Vec&lt;String&gt;&gt;&gt;</code> fine to give to many threads, while <code>Rc&lt;RefCell&lt;Vec&lt;String&gt;&gt;&gt;</code> is refused?", "options": [
+    {"t": "Arc and Mutex work safely across threads; Rc and RefCell don't, so they lack Send and Sync", "why": "Right. Arc's counter and Mutex's lock stay correct when threads use them at the same instant; Rc's counter and RefCell's sign-out sheet don't. Same shapes, different machinery: atomic counting and a real lock, versus plain arithmetic that only one thread may touch.", "correct": true},
+    {"t": "Arc gives each thread its own copy of the Vec, while Rc makes them share one", "why": "Neither copies the Vec. Both share one Vec and count the owners."},
+    {"t": "RefCell can't hold a Vec of Strings, so the Rc version never compiles", "why": "It can (Chapter 23 did exactly that). The problem is only threads."},
+    {"t": "Rc is from an older edition of Rust, and spawn wants edition 2024 types", "why": "Rc is current and is the right choice for one thread: it's a little cheaper than Arc."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 38: which kitchen tool?">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">The kitchen toolbox, all in one place.</p>
+    <ul class="places">
+      <li><b><code>thread::spawn</code> + <code>move</code></b><span>A cook with its own ingredients. Keep the <code>JoinHandle</code> and <code>join</code> it to wait and get the result.</span></li>
+      <li><b><code>thread::scope</code></b><span>A shift that ends only when every cook is done, so cooks may borrow your locals.</span></li>
+      <li><b><code>mpsc::channel</code></b><span>Order tickets: pass values from thread to thread. Clone the sender for more waiters; drop them all to end the receiver's loop.</span></li>
+      <li><b><code>Arc&lt;T&gt;</code></b><span>One read-only value, many owners on many threads. Clone per thread.</span></li>
+      <li><b><code>Arc&lt;Mutex&lt;T&gt;&gt;</code></b><span>One value that many threads change, one at a time. Hold the guard briefly; take several locks in one fixed order.</span></li>
+      <li><b><code>RwLock&lt;T&gt;</code></b><span>Many readers or one writer.</span></li>
+      <li class="dash"><b><code>AtomicUsize</code> &amp; friends</b><span>A single number or flag shared by many threads, with no lock.</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>When you can, pass tickets instead of sharing a board. A value with one owner at a time can't be fought over.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>tickets, knives, recipe books and shifts, all together, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 39: boss level">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="39"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Dinner service. A pantry with a lock, a rail of bills, a guard that tries to leave the room, a shared log, and a crew that splits the work. Six rounds.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Some of these I'll stop at the gate. For the others, remember: when threads print, nobody promises the order, so look for what can't change.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. The Compiler, with a yellow beacon, looks on. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. Three cooks each take eggs from a locked pantry and send a ticket. <code>main</code> joins them, adds up the tickets, and checks the pantry. The cooks finish in any order. What does it print?", "hint": "Addition doesn't care about order. Who still holds a sender when <code>main</code> calls <code>recv()</code> at the end?", "explain": "The cooks take 1, 2 and 3 eggs (in some order) and send 10, 20 and 30: <samp>dishes worth 60</samp> and <samp>eggs left 4</samp> on every run. Every cook's Arc key is gone: <samp>owners 1</samp>. <code>main</code> dropped its sender and every clone went with its thread, so the last <code>recv()</code> gets <code>Err</code>: <samp>rail open? false</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.rs", "bug": 7, "prompt": "Boss 2. Mabel locks the shelf, then hands the guard to a scoped cook to add honey. The Compiler refuses with E0277. Click the line that should move <em>inside</em> the cook's closure.", "explain": "<samp>`std::sync::MutexGuard&lt;'_, Vec&lt;&amp;str&gt;&gt;` cannot be sent between threads safely</samp>. The guard was made on line 7 by the scope's thread, and a guard must be dropped by the thread that locked it, so MutexGuard has no Send badge. Fix: drop line 7 and write <code>shelf.lock().unwrap().push(\"honey\");</code> inside the closure, so the cook takes the knife itself."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. Three tables send their bills down one rail. Fill in: a sender for each table (line 7), the line that lets the receiver's loop end (line 12), and how <code>main</code> gathers every bill (line 13).", "blanks": [{"line": 7, "text": "tx.clone()", "accept": ["mpsc::Sender::clone(&tx)"]}, {"line": 12, "text": "drop(tx)", "accept": ["drop( tx )"]}, {"line": 13, "text": "rx.iter()", "accept": ["rx.into_iter()"]}], "explain": "<code>tx.clone()</code> gives each table its own sender. <code>drop(tx)</code> drops main's original, so once the three tables' clones are gone the channel knows nothing more is coming. <code>rx.iter().collect()</code> gathers until then. The bills arrive in any order; the sort makes it <samp>[100, 200, 300]</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 39, "pin": [1, 2, 4, 13], "prompt": "Boss 4. A shared log: the cook writes <code>chopped</code>, then <code>main</code> writes <code>served</code>. Put <code>main</code>'s body in order so the log always reads in that order.", "explain": "Make the log; clone a key for the helper; spawn the cook with <code>move</code> (its three lines go together); <code>join</code> <b>before</b> <code>main</code> writes, so <samp>chopped</samp> is always first; then print. If <code>join</code> came after <code>served</code>, the order would depend on the shift manager."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.rs", "columns": ["cook", "total", "running"], "given": [0], "prompt": "Boss 5. Three scoped cooks each add up two orders and write into their <b>own</b> slot of <code>totals</code>. Afterwards, <code>main</code> prints each slot and a running total. Fill in the rows.", "explain": "<code>iter_mut()</code> gives each cook a <code>&amp;mut</code> to a different slot, so three writers never touch the same memory: no E0499. Cook 0 adds 5 + 3 = <samp>8</samp> (running <samp>8</samp>), cook 1 adds 8 + 2 = <samp>10</samp> (<samp>18</samp>), cook 2 adds 7 + 1 = <samp>8</samp> (<samp>26</samp>). Only <code>main</code> prints, after the scope, so the rows never change."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A web server has 8 worker threads. Every request must add 1 to a visitor counter, and once an hour a reporting thread reads it. What's the best fit for the counter?", "options": [
+    {"t": "An <code>Arc&lt;AtomicU64&gt;</code>: <code>fetch_add</code> to count, <code>load</code> to report", "why": "Right. The workers call <code>fetch_add</code> and the reporter calls <code>load</code>. One number, many threads adding, no lock to wait for. (In a <code>thread::scope</code> you could even skip the Arc.)", "correct": true},
+    {"t": "An <code>Rc&lt;Cell&lt;u64&gt;&gt;</code> shared by all eight workers", "why": "Neither part has the badges: E0277, Send for the Rc and Sync for the Cell."},
+    {"t": "A plain <code>static mut</code> number that every thread adds to", "why": "That's exactly a data race. Rust only allows touching a <code>static mut</code> inside <code>unsafe</code> code, because the Compiler can't protect it."},
+    {"t": "Send each visit down a channel to the reporter, which adds them up once an hour", "why": "It works, but it's a lot of machinery for a number, and the rail grows by one ticket per visit until the reporter wakes up. An atomic is simpler."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 40: what you learned">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">What you learned in Chapter 26</p>
+    <ul class="recap">
+      <li><b>EACH COOK KEEPS THEIR OWN ORDER; NOBODY PROMISES THE MIX</b>A thread is a line of work. <code>thread::spawn</code> starts one, <code>join</code> waits and returns its result (<code>Err</code> if it panicked). Output from several threads can mix differently on every run: predict what <em>could</em> happen, and let <code>main</code> print joined results for steady output.</li>
+      <li><b>DON'T LOCK UP UNTIL EVERY COOK HAS CLOCKED OUT</b>When <code>main</code> ends, every thread stops. Keep the handles and join them, or use <code>thread::scope</code>, which joins for you at its brace.</li>
+      <li><b>A COOK MIGHT OUTLIVE YOU, SO GIVE, DON'T LEND</b>Spawned threads can't borrow locals (E0373): use <code>move</code>, and the value is gone from <code>main</code> (E0382). Scoped threads may borrow. Two writers at once is a data race, stopped by the Compiler (E0499).</li>
+      <li><b>CLIP IT ON, LET IT GO</b>Channels: <code>tx.send</code> moves the value (E0382 after). Clone senders for more producers; the receiver's loop ends when every sender is dropped (forget one and it waits forever). <code>sync_channel(n)</code> is a short rail.</li>
+      <li><b>ARC TO SHARE, MUTEX TO CHANGE</b>Rc isn't Send (E0277), Arc is, and it's read-only (E0596). <code>Mutex</code>: <code>lock()</code> gives a guard that unlocks when dropped. Clone the Arc per thread (or E0382 "in previous iteration of loop"). A panic while locked poisons the Mutex.</li>
+      <li><b>ALWAYS ASK FOR THE TOOLS IN THE SAME ORDER</b>Deadlock: two threads each hold what the other needs. It compiles; agree on one lock order. <code>RwLock</code>: many readers or one writer. Atomics: lock-free counters. Send and Sync are the badges behind it all.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Forty lunches out, nobody fought over the knife, and every cook clocked out before I locked up.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 41: next time, one waiter, many stamps">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">Coming up in Chapter 27: One Waiter, Many Stamps…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 540 220" role="img" aria-label="Teaser picture: on the left, one waiter with a tray moves between three tables, with dotted lines showing a path from table to table, each table labelled await. On the right, a big rubber stamp pressing down on a page, which shows several printed lines of code.">
+        <g stroke="#111" stroke-width="3.5">
+          <ellipse cx="60" cy="170" rx="40" ry="12" fill="#E8D3B0"/><ellipse cx="160" cy="70" rx="40" ry="12" fill="#E8D3B0"/><ellipse cx="250" cy="170" rx="40" ry="12" fill="#E8D3B0"/>
+          <circle cx="156" cy="140" r="16" fill="#F3C9A1"/><path d="M140 160 l-4 40 h40 l-4 -40 z" fill="#FFFFFF"/>
+          <ellipse cx="198" cy="170" rx="22" ry="5" fill="#DDE8FF"/>
+        </g>
+        <path d="M80 160 Q120 110 140 90 M180 90 Q220 120 236 156" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 6"/>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle"><text x="60" y="210">.await</text><text x="160" y="40">.await</text><text x="250" y="210">.await</text></g>
+        <rect x="350" y="120" width="170" height="90" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+        <path d="M366 140 h120 M366 158 h96 M366 176 h132 M366 194 h80" stroke="#111" stroke-width="3"/>
+        <rect x="394" y="64" width="84" height="26" rx="6" fill="#FF5A4E" stroke="#111" stroke-width="4"/>
+        <rect x="426" y="16" width="20" height="48" rx="6" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <circle cx="436" cy="14" r="12" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <text x="436" y="112" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111" text-anchor="middle">macro!</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Hiring a cook for every order gets expensive. Next time, a different kind of kitchen: one clever waiter who takes an order, and while the kitchen cooks, serves the other tables instead of standing frozen at the door. That's <code>async</code> and <code>.await</code>. And we'll open the rubber stamps you've pressed since Chapter 1, like <code>println!</code> and <code>vec!</code>, and carve our own.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch25.html">← Ch 25 · Pipes and Exchange Booths</a><a class="next" href="ch27.html">Ch 27 · One Waiter, Many Stamps →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what a thread, a lock and an atomic really are</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Rust's <code>std::thread</code> threads are the operating system's own threads. Rust adds no scheduler of its own, only rules about what may cross between them.</p></div>
+      </div>
+      <h3>Threads and cores</h3>
+      <p>Each <code>thread::spawn</code> asks the operating system for a new thread with its own stack (2 MiB by default for spawned threads on most platforms; <code>thread::Builder::stack_size</code> changes it). The OS scheduler gives threads turns on the CPU cores, switching many times a second. On a 2-core machine, two threads can truly run at the same instant (<b>parallelism</b>); with more threads than cores they take turns (<b>concurrency</b>). That's why the order in panel 4 changes: it depends on what else your computer is doing.</p>
+      <h3>Why <code>'static</code> and <code>Send</code></h3>
+      <p><code>spawn</code>'s signature is roughly <code>fn spawn&lt;F, T&gt;(f: F) -&gt; JoinHandle&lt;T&gt; where F: FnOnce() -&gt; T + Send + 'static, T: Send + 'static</code>. <code>'static</code> rules out borrowing locals (E0373); <code>Send</code> rules out Rc and friends (E0277). <code>thread::scope</code>'s spawn only needs the closure to live as long as the scope, which is why it can borrow.</p>
+      <h3>Mutex</h3>
+      <p>On Linux, today's <code>std::sync::Mutex</code> is a small integer in memory plus the kernel's <i>futex</i> system call: an uncontended lock is one atomic instruction, and only a thread that must wait asks the kernel to put it to sleep. The lock isn't re-entrant: locking it again on the thread that already holds it is never allowed to succeed, and it may deadlock or panic (the docs leave it unspecified). Poisoning is a flag set when a guard is dropped during a panic.</p>
+      <h3>Atomics and orderings</h3>
+      <p>An atomic operation like <code>fetch_add</code> compiles to a special CPU instruction (on x86-64, <code>lock xadd</code>) that no other core can interrupt halfway. <code>Ordering</code> controls something subtler: whether other memory writes made around it are seen by other threads in the same order. <code>Relaxed</code> promises only that the counter itself is never torn or lost; <code>Acquire</code>/<code>Release</code> and <code>SeqCst</code> add ordering guarantees needed when an atomic flag protects other data. Mara Bos's free book <i>Rust Atomics and Locks</i> explains all of it.</p>
+      <h3>Channels</h3>
+      <p>Since Rust 1.67, <code>std::sync::mpsc</code> is built on the same design as the <code>crossbeam-channel</code> crate. <code>channel()</code> is unbounded (it grows as needed); <code>sync_channel(n)</code> is bounded, and <code>sync_channel(0)</code> is a rendezvous channel. The standard library also has an unstable <code>mpmc</code> (many receivers) module, usable only on nightly Rust; for many receivers, the <code>crossbeam-channel</code> crate is the usual choice.</p>
+      <h3>The 200-round experiment</h3>
+      <p>Here is <code>many_runs.rs</code> from panel 4. The <code>BTreeMap</code> (Chapters 13 and 22) keeps the orders sorted, so only the counts vary.</p>
+      <span class="file-tab">many_runs.rs</span>
+      <pre class="code" data-src="many_runs.rs"></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where threads turn up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Worker pools</b>: servers keep a fixed number of threads and hand them jobs through a channel. Chapter 29 builds one, as the Rust book's final project does.</li>
+        <li><b>Rayon</b>: the <code>rayon</code> crate turns <code>.iter()</code> into <code>.par_iter()</code> and splits the work across all cores, using the same Send and Sync rules to stay safe.</li>
+        <li><b>Shared configuration</b>: <code>Arc&lt;Config&gt;</code> handed to every worker, read-only, is one of the most common patterns in Rust services; <code>Arc&lt;RwLock&lt;Cache&gt;&gt;</code> for data that changes now and then.</li>
+        <li><b>Background work in desktop and game programs</b>: a thread loads files or computes while the main thread keeps the window responsive, and sends results back over a channel.</li>
+        <li><b>Atomics</b> count requests, hand out unique IDs (<code>AtomicU64::fetch_add</code>), and hold "please stop" flags (<code>AtomicBool</code>) that a long-running thread checks.</li>
+        <li><b>Lots of waiting, little computing</b> (thousands of network connections): there, one thread per connection gets expensive, and programs use <code>async</code> instead. That's Chapter 27.</li>
+        <li><b>parking_lot</b> and <b>crossbeam</b> are popular crates with alternative Mutex, RwLock and channel types.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Threads run in the order I spawn them."</b> Usually close, never promised (panel 4's table).</li>
+        <li><b>"A sleep makes the order safe."</b> Sleeping only makes a particular order likely. Use <code>join</code>, a channel or a lock when the order matters.</li>
+        <li><b>"Spawned threads finish before the program exits."</b> Only if someone joins them (panel 6).</li>
+        <li><b>"<code>move</code> copies the values."</b> It moves them. Only Copy types like <code>i32</code> leave a copy behind.</li>
+        <li><b>"Arc makes the value changeable from every thread."</b> Arc only shares. Changing needs a Mutex, an RwLock or an atomic inside.</li>
+        <li><b>"Safe Rust can't deadlock."</b> It prevents data races, not deadlocks (or leaks, or logic bugs).</li>
+        <li><b>"I must remember to unlock."</b> The guard unlocks when dropped. The real risk is holding it <em>too long</em>: keep locked sections short, and don't call <code>lock()</code> on the same Mutex again while you hold it.</li>
+        <li><b>"More threads is always faster."</b> Beyond the number of cores, threads take turns, and every lock they share makes them wait for each other.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>0. Have Rust</h3>
+      <p>If you haven't installed it yet: on <b>Windows</b>, download and run <code>rustup-init.exe</code> from rustup.rs (it may ask you to install the Visual Studio C++ build tools first). On <b>macOS</b> and <b>Linux</b>, run <code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code> in a terminal. <code>rustc --version</code> shows your version; this book used 1.99.1, and <code>rustup update</code> gets the newest. Everything here is in the standard library: no crates needed.</p>
+      <h3>1. See your own mix</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new kitchen</code> and <code>cd kitchen</code>. Paste <code>interleave.rs</code> into <code>src/main.rs</code> and run <code>cargo run -q</code> five times. Then remove the two <code>thread::sleep</code> lines and try again: does the helper still get a word in? Move <code>helper.join().unwrap();</code> to just after the spawn and see the mixing stop.</p>
+      <h3>2. Count your cores</h3>
+      <p>Add <code>println!("{:?}", std::thread::available_parallelism());</code> to any program. It prints how many threads can truly run at once on your machine.</p>
+      <h3>3. Make a real deadlock (then stop it)</h3>
+      <p>Paste <code>deadlock_try.rs</code> and change both <code>try_lock().is_ok()</code> calls to <code>lock().is_ok()</code>. Run it: it hangs. Stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd> (the same on all three systems). Then make Ben take the knife first and watch it finish.</p>
+      <h3>4. Break the rules on purpose</h3>
+      <p>Remove a <code>move</code> (E0373), swap an <code>Arc</code> for an <code>Rc</code> (E0277), and delete the <code>let done = Arc::clone(&amp;done);</code> line from <code>arc_mutex.rs</code> (E0382). <code>rustc --explain E0373</code>, <code>E0277</code>, <code>E0382</code> and <code>E0499</code> print longer explanations with examples.</p>
+      <h3>5. Watch the threads</h3>
+      <p>Put a long <code>thread::sleep</code> in each cook and look at the running program: on Windows in Task Manager (Details tab, add the "Threads" column), on macOS in Activity Monitor (the Threads column), on Linux with <code>top -H</code> or <code>ps -T -p</code> followed by the program's process id.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>thread</dt><dd>One line of work inside a running program; all of a program's threads share its memory.</dd>
+        <dt>main thread</dt><dd>The thread <code>main</code> runs on. When it ends, the program ends.</dd>
+        <dt>concurrency / parallelism</dt><dd>Several things in progress at once (taking turns or not) / truly running at the same instant on different cores.</dd>
+        <dt>scheduler</dt><dd>The part of the operating system that decides which thread runs when.</dd>
+        <dt><code>thread::spawn</code> / <code>JoinHandle</code></dt><dd>Starts a thread running a closure / the claim ticket it returns.</dd>
+        <dt><code>join</code></dt><dd>Wait for a thread to finish; returns <code>Ok(its result)</code> or <code>Err</code> if it panicked.</dd>
+        <dt><code>move</code> closure</dt><dd>A closure that takes ownership of the values it uses.</dd>
+        <dt>scoped thread / <code>thread::scope</code></dt><dd>A thread that must finish before the scope's closing brace, so it may borrow locals.</dd>
+        <dt>interleaving</dt><dd>One particular way several threads' steps got mixed in a run.</dd>
+        <dt>data race</dt><dd>Two threads touching the same memory at the same time, at least one writing, with nothing to order them. Safe Rust forbids it.</dd>
+        <dt>channel / <code>mpsc</code></dt><dd>A one-way queue between threads: senders (<code>tx</code>) and one receiver (<code>rx</code>); "multiple producer, single consumer".</dd>
+        <dt>bounded channel</dt><dd><code>sync_channel(n)</code>: room for <code>n</code> messages; a full one makes <code>send</code> wait.</dd>
+        <dt><code>Arc&lt;T&gt;</code></dt><dd>Atomically reference-counted pointer: several owners on several threads, read-only.</dd>
+        <dt>atomic</dt><dd>Done as one uncuttable step that no other thread can see half-finished.</dd>
+        <dt><code>Mutex&lt;T&gt;</code></dt><dd>Mutual exclusion: a lock around a value, so one thread at a time can use it.</dd>
+        <dt>lock guard / <code>MutexGuard</code></dt><dd>What <code>lock()</code> returns; gives access to the value, and unlocks when dropped.</dd>
+        <dt>block</dt><dd>When a thread stops and waits (for a lock, a message or a join).</dd>
+        <dt>poisoning</dt><dd>The mark a Mutex gets when a thread panics while holding it; <code>lock()</code> then returns <code>Err(PoisonError)</code>.</dd>
+        <dt>deadlock</dt><dd>Threads waiting for each other in a circle, forever.</dd>
+        <dt><code>Barrier</code></dt><dd>A gate that opens only when a set number of threads have reached it.</dd>
+        <dt><code>RwLock&lt;T&gt;</code></dt><dd>A lock that lets in many readers or one writer.</dd>
+        <dt><code>Send</code> / <code>Sync</code></dt><dd>Marker traits: safe to hand to another thread / safe to share by <code>&amp;</code> between threads.</dd>
+        <dt>E0373 / E0499 / E0382</dt><dd>Closure may outlive the current function (it borrows); two mutable borrows at once; use of a moved value (including "in previous iteration of loop").</dd>
+        <dt>E0277 / E0596</dt><dd>A missing trait, here Send or Sync ("cannot be sent / shared between threads safely"); cannot borrow data in an <code>Arc</code> as mutable.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li>The Rust Programming Language, chapter 16, Fearless Concurrency: <a href="https://doc.rust-lang.org/book/ch16-01-threads.html">Using Threads to Run Code Simultaneously</a>, <a href="https://doc.rust-lang.org/book/ch16-02-message-passing.html">Message Passing</a>, <a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html">Shared-State Concurrency</a> and <a href="https://doc.rust-lang.org/book/ch16-04-extensible-concurrency-sync-and-send.html">Send and Sync</a>.</li>
+        <li>Standard library docs: <a href="https://doc.rust-lang.org/std/thread/index.html"><code>std::thread</code></a> (and <a href="https://doc.rust-lang.org/std/thread/fn.scope.html"><code>thread::scope</code></a>), <a href="https://doc.rust-lang.org/std/sync/mpsc/index.html"><code>std::sync::mpsc</code></a>, <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html"><code>Mutex</code></a> (with a section on poisoning), <a href="https://doc.rust-lang.org/std/sync/atomic/index.html"><code>std::sync::atomic</code></a>.</li>
+        <li>The Rustonomicon: <a href="https://doc.rust-lang.org/nomicon/send-and-sync.html">Send and Sync</a> and <a href="https://doc.rust-lang.org/nomicon/races.html">Data Races and Race Conditions</a> (advanced).</li>
+        <li>The error index: <a href="https://doc.rust-lang.org/error_codes/E0373.html">E0373</a>, <a href="https://doc.rust-lang.org/error_codes/E0277.html">E0277</a>, <a href="https://doc.rust-lang.org/error_codes/E0499.html">E0499</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://marabos.nl/atomics/">Rust Atomics and Locks</a> by Mara Bos, free online: chapter 1 is a gentle tour of everything in this chapter; later chapters build your own Mutex and channel.</li>
+        <li><a href="https://google.github.io/comprehensive-rust/">Comprehensive Rust</a>: the "Concurrency" morning (threads, scoped threads, channels, Send and Sync, shared state) with exercises.</li>
+        <li><a href="https://rustlings.rust-lang.org/">Rustlings</a>: the <code>threads</code> exercises.</li>
+        <li><a href="https://rust-exercises.com/100-exercises/">100 Exercises to Learn Rust</a>: chapter 7, "Threads", builds a small ticket system step by step.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch26</code>. Each of the 59 programs was built as its own cargo project and run with <code>cargo run -q</code> on 64-bit Linux, inside a fresh process namespace; that's why the main thread's id is <code>(1)</code>. A spawned thread's id is whatever number the system hands out, so it can differ between the terminal on the page and the exercise that shows the same program's error output. Compile errors are shown exactly as cargo printed them, with their real exit code, 101; panics in <code>main</code> also exit with 101.</p>
+  <p>Four programs print in an order chosen by the operating system's scheduler: <code>interleave.rs</code>, <code>many_runs.rs</code>, <code>multi_live.rs</code> and <code>two_cooks.rs</code>. They have <code>.nondet</code> sidecars and are marked as nondeterministic in the captures; they are labelled "one possible run" on the page (or, for <code>two_cooks.rs</code>, used only to ask what <em>could</em> happen), and are never used as an answer key. Every other program gives the same output on every run (checked by running each twice): threads return results and <code>main</code> prints them, or results are sorted, or only a total is printed. No program here actually deadlocks; <code>deadlock_try.rs</code> and <code>spot_deadlock.rs</code> use a <code>Barrier</code> and <code>try_lock</code> to show the deadlock without hanging.</p>
+  <p>Version differences: 10 programs printed differently on the comparison run. <code>interleave.rs</code> and <code>many_runs.rs</code> printed different orders, as expected of scheduler-dependent programs (<code>multi_live.rs</code> and <code>two_cooks.rs</code> happened to match this time). The three thread panics (<code>thread_panic.rs</code>, <code>poison.rs</code>, <code>poison_spot.rs</code>) differ only in the spawned thread's id number (one higher on 1.97.0). Five compile errors (<code>rc_thread.rs</code>, <code>predict_send.rs</code>, <code>scope_race.rs</code>, <code>sync_error.rs</code>, <code>boss_spot.rs</code>) differ only in their last note, which points into the standard library's source at a path containing each compiler's build id. Every other message printed the same on both versions. The two runs that print to both streams (<code>thread_panic.rs</code> and <code>poison.rs</code>; <code>poison_spot.rs</code> prints only to stderr) also have a merged view from a second run of the same program, which shows the panic and the normal lines in the order the terminal really printed them; that second run's thread id can differ by one, so the capture compares the two runs with digits ignored.</p>
+  <p>The kitchen swimlanes are an extension (<code>assets/ext/rs-ch26.js</code>): its first run is built from the real capture of <code>interleave.rs</code>, and it checks that every other run uses exactly the captured lines and keeps each thread's own order, and that the run marked impossible really breaks it. The Arc tracer, the rail machine and the deadlock map are teaching models that check themselves against the runs and show a badge; the tracer follows the cook's thread before <code>main</code>'s <code>join</code>, one possible order that gives the same result. The kitchen, rail, recipe book, knife, scoped-shift and deadlock drawings and the teaser are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, chapter 16 (sections 16.1 and 16.3 read for this chapter: main ending stops spawned threads, where <code>join</code> goes, <code>move</code> and E0373, the Mutex moved in a loop, Rc and E0277, Arc, and the deadlock warning); the standard library docs for <code>thread::scope</code> (automatic joining and borrowing); and, fetched on 2026-11-08 for this revision, the docs for <code>RwLock</code> (<code>read</code> and <code>write</code> may panic if this thread already holds the lock), <code>std::env::set_var</code> (its safety section) and Rust's release notes (<code>thread::scope</code> in 1.63.0; <code>crossbeam-channel</code> merged into <code>std::sync::mpsc</code> in 1.67.0); and the course research map's row I17, which also lists Rustlings (threads), Comprehensive Rust's Concurrency morning, 100 Exercises to Learn Rust chapter 7, Rust Atomics and Locks chapter 1, UPenn CIS 1905 and Stanford CS110L (cited from the map, not fetched).</p>
+  <p>Mabel, the Professor, the Compiler, the line cooks and every picture here are original characters and drawings made in code. Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

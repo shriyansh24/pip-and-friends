@@ -1,0 +1,974 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch23",
+  "versionDifferences": [
+   "rc_thread.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): rc_thread.rs."
+ },
+ "programs": {
+  "bare_trait.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn make_shape(side: f64) -> Box<Shape> {\n    Box::new(Square { side })\n}\n\nfn main() {\n    println!(\"{}\", make_shape(2.0).area());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0782]: expected a type, found a trait\n  --> src/main.rs:15:33\n   |\n15 | fn make_shape(side: f64) -> Box<Shape> {\n   |                                 ^^^^^\n   |\nhelp: you can add the `dyn` keyword if you want a trait object\n   |\n15 | fn make_shape(side: f64) -> Box<dyn Shape> {\n   |                                 +++\n\nFor more information about this error, try `rustc --explain E0782`.\nerror: could not compile `bare_trait` (bin \"bare_trait\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0782]: expected a type, found a trait\n  --> src/main.rs:15:33\n   |\n15 | fn make_shape(side: f64) -> Box<Shape> {\n   |                                 ^^^^^\n   |\nhelp: you can add the `dyn` keyword if you want a trait object\n   |\n15 | fn make_shape(side: f64) -> Box<dyn Shape> {\n   |                                 +++\n\nFor more information about this error, try `rustc --explain E0782`.\nerror: could not compile `bare_trait` (bin \"bare_trait\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/bare_trait"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::{Rc, Weak};\n\nstruct Team {\n    name: &'static str,\n}\n\nstruct Player {\n    team: RefCell<Weak<Team>>,\n}\n\nfn main() {\n    let player = Player { team: RefCell::new(Weak::new()) };\n    {\n        let reds = Rc::new(Team { name: \"Reds\" });\n        *player.team.borrow_mut() = Rc::downgrade(&reds);\n        match player.team.borrow().upgrade() {\n            Some(t) => println!(\"plays for {}\", t.name),\n            None => println!(\"no team\"),\n        }\n    }\n    match player.team.borrow().upgrade() {\n        Some(t) => println!(\"plays for {}\", t.name),\n        None => println!(\"no team\"),\n    }\n}\n",
+   "stdout": "plays for Reds\nno team\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "plays for Reds\nno team\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::Rc;\n\nfn main() {\n    let s = Rc::new(RefCell::new(vec![\"Dune\"]));\n    println!(\"{:?}, owners: {}\", s.borrow(), Rc::strong_count(&s));\n    let helper = Rc::clone(&s);\n    helper.borrow_mut().push(\"Emma\");\n    println!(\"{:?}, owners: {}\", s.borrow(), Rc::strong_count(&s));\n    drop(helper);\n    println!(\"{:?}, owners: {}\", s.borrow(), Rc::strong_count(&s));\n}\n",
+   "stdout": "[\"Dune\"], owners: 1\n[\"Dune\", \"Emma\"], owners: 2\n[\"Dune\", \"Emma\"], owners: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[\"Dune\"], owners: 1\n[\"Dune\", \"Emma\"], owners: 2\n[\"Dune\", \"Emma\"], owners: 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::Rc;\n\ntrait Device {\n    fn press(&self, log: &RefCell<Vec<String>>);\n}\n\nstruct Tv;\nstruct Fan {\n    speed: u32,\n}\n\nimpl Device for Tv {\n    fn press(&self, log: &RefCell<Vec<String>>) {\n        log.borrow_mut().push(\"tv on\".to_string());\n    }\n}\n\nimpl Device for Fan {\n    fn press(&self, log: &RefCell<Vec<String>>) {\n        log.borrow_mut().push(format!(\"fan {}\", self.speed));\n    }\n}\n\nimpl Drop for Fan {\n    fn drop(&mut self) {\n        println!(\"fan unplugged\");\n    }\n}\n\nfn main() {\n    let log = Rc::new(RefCell::new(Vec::new()));\n    let copy = Rc::clone(&log);\n    {\n        let remote: Vec<Box<dyn Device>> =\n            vec![Box::new(Fan { speed: 2 }), Box::new(Tv)];\n        for d in remote.iter().rev() {\n            d.press(&copy);\n        }\n        println!(\"pressed {}\", log.borrow().len());\n    }\n    println!(\"{:?}\", copy.borrow());\n    println!(\"owners {}\", Rc::strong_count(&log));\n}\n",
+   "stdout": "pressed 2\nfan unplugged\n[\"tv on\", \"fan 2\"]\nowners 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "pressed 2\nfan unplugged\n[\"tv on\", \"fan 2\"]\nowners 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "use std::cell::RefCell;\n\nstruct Basket {\n    items: RefCell<Vec<u32>>,\n}\n\nimpl Basket {\n    fn total(&self) -> u32 {\n        self.items.borrow().iter().sum()\n    }\n    fn add(&self, weight: u32) {\n        let mut items = self.items.borrow_mut();\n        if self.total() + weight <= 10 {\n            items.push(weight);\n        }\n    }\n}\n\nfn main() {\n    let b = Basket { items: RefCell::new(vec![3]) };\n    b.add(4);\n    println!(\"total {}\", b.total());\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:9:20:\nRefCell already mutably borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:9:20:\nRefCell already mutably borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "use std::rc::{Rc, Weak};\n\nfn main() {\n    let book = Rc::new(\"Dune\");\n    let mut readers: Vec<Rc<&str>> = Vec::new();\n    let mut bookmarks: Vec<Weak<&str>> = Vec::new();\n    for step in 1..=4 {\n        if step % 2 == 1 {\n            readers.push(Rc::clone(&book));\n        } else {\n            bookmarks.push(Rc::downgrade(&book));\n        }\n        let strong = Rc::strong_count(&book);\n        println!(\"{step} {strong} {}\", Rc::weak_count(&book));\n    }\n}\n",
+   "stdout": "1 2 0\n2 2 1\n3 3 1\n4 3 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 2 0\n2 2 1\n3 3 1\n4 3 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/boss_trace"
+    }
+   ]
+  },
+  "box_basics.rs": {
+   "src": "fn main() {\n    let count = 5;\n    let boxed = Box::new(5);\n    println!(\"count = {count}, boxed = {boxed}\");\n    let sum = count + *boxed;\n    println!(\"sum = {sum}\");\n    let moved = boxed;\n    println!(\"moved = {moved}\");\n}\n",
+   "stdout": "count = 5, boxed = 5\nsum = 10\nmoved = 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "count = 5, boxed = 5\nsum = 10\nmoved = 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/box_basics"
+    }
+   ]
+  },
+  "box_big.rs": {
+   "src": "use std::mem::size_of_val;\n\nfn weigh(crate_of_books: Box<[u32; 100_000]>) -> usize {\n    crate_of_books.len()\n}\n\nfn main() {\n    let books = Box::new([7u32; 100_000]);\n    println!(\"size of the key: {} bytes\", size_of_val(&books));\n    println!(\"size of what it opens: {} bytes\", size_of_val(&*books));\n    println!(\"books handed over: {}\", weigh(books));\n}\n",
+   "stdout": "size of the key: 8 bytes\nsize of what it opens: 400000 bytes\nbooks handed over: 100000\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "size of the key: 8 bytes\nsize of what it opens: 400000 bytes\nbooks handed over: 100000\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/box_big"
+    }
+   ]
+  },
+  "box_list.rs": {
+   "src": "#[derive(Debug)]\nenum List {\n    Cons(i32, Box<List>),\n    Nil,\n}\n\nuse List::{Cons, Nil};\n\nfn sum(list: &List) -> i32 {\n    match list {\n        Cons(value, rest) => value + sum(rest),\n        Nil => 0,\n    }\n}\n\nfn main() {\n    let list = Cons(1, Box::new(Cons(2, Box::new(Nil))));\n    println!(\"{list:?}\");\n    println!(\"sum = {}\", sum(&list));\n}\n",
+   "stdout": "Cons(1, Cons(2, Nil))\nsum = 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Cons(1, Cons(2, Nil))\nsum = 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/box_list"
+    }
+   ]
+  },
+  "box_predict.rs": {
+   "src": "fn main() {\n    let a = Box::new(10);\n    let b = Box::new(*a + 5);\n    let c = a;\n    println!(\"{}\", *b * 2);\n    println!(\"{}\", c);\n    let boxes = vec![Box::new(1), Box::new(2), Box::new(3)];\n    let total: i32 = boxes.iter().map(|b| **b).sum();\n    println!(\"{total}\");\n}\n",
+   "stdout": "30\n10\n6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "30\n10\n6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/box_predict"
+    }
+   ]
+  },
+  "cell.rs": {
+   "src": "use std::cell::Cell;\n\nstruct Book {\n    title: String,\n    times_opened: Cell<u32>,\n}\n\nimpl Book {\n    fn open(&self) -> &str {\n        self.times_opened.set(self.times_opened.get() + 1);\n        &self.title\n    }\n}\n\nfn main() {\n    let book = Book {\n        title: String::from(\"Dune\"),\n        times_opened: Cell::new(0),\n    };\n    for _ in 0..3 {\n        println!(\"reading {}\", book.open());\n    }\n    println!(\"opened {} times\", book.times_opened.get());\n}\n",
+   "stdout": "reading Dune\nreading Dune\nreading Dune\nopened 3 times\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading Dune\nreading Dune\nreading Dune\nopened 3 times\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/cell"
+    }
+   ]
+  },
+  "composition.rs": {
+   "src": "trait Describe {\n    fn name(&self) -> String;\n    fn describe(&self) -> String {\n        format!(\"[{}]\", self.name())\n    }\n}\n\nstruct Lamp {\n    watts: u32,\n}\n\nstruct Desk {\n    lamp: Lamp,\n    drawers: u32,\n}\n\nimpl Describe for Lamp {\n    fn name(&self) -> String {\n        format!(\"lamp {}W\", self.watts)\n    }\n}\n\nimpl Describe for Desk {\n    fn name(&self) -> String {\n        format!(\"desk, {} drawers, {}\", self.drawers, self.lamp.name())\n    }\n}\n\nfn main() {\n    let desk = Desk { lamp: Lamp { watts: 40 }, drawers: 3 };\n    println!(\"{}\", desk.describe());\n    println!(\"{}\", desk.lamp.describe());\n}\n",
+   "stdout": "[desk, 3 drawers, lamp 40W]\n[lamp 40W]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[desk, 3 drawers, lamp 40W]\n[lamp 40W]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/composition"
+    }
+   ]
+  },
+  "cycle_leak.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::Rc;\n\nstruct Member {\n    name: &'static str,\n    buddy: RefCell<Option<Rc<Member>>>,\n}\n\nimpl Drop for Member {\n    fn drop(&mut self) {\n        println!(\"{} leaves\", self.name);\n    }\n}\n\nfn member(name: &'static str) -> Rc<Member> {\n    Rc::new(Member { name, buddy: RefCell::new(None) })\n}\n\nfn main() {\n    let ana = member(\"Ana\");\n    let raj = member(\"Raj\");\n    *ana.buddy.borrow_mut() = Some(Rc::clone(&raj));\n    *raj.buddy.borrow_mut() = Some(Rc::clone(&ana));\n    println!(\"Ana count: {}\", Rc::strong_count(&ana));\n    println!(\"Raj count: {}\", Rc::strong_count(&raj));\n    println!(\"end of main\");\n}\n",
+   "stdout": "Ana count: 2\nRaj count: 2\nend of main\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ana count: 2\nRaj count: 2\nend of main\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/cycle_leak"
+    }
+   ]
+  },
+  "cycle_weak.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::{Rc, Weak};\n\nstruct Member {\n    name: &'static str,\n    buddy: RefCell<Weak<Member>>,\n}\n\nimpl Drop for Member {\n    fn drop(&mut self) {\n        println!(\"{} leaves\", self.name);\n    }\n}\n\nfn member(name: &'static str) -> Rc<Member> {\n    Rc::new(Member { name, buddy: RefCell::new(Weak::new()) })\n}\n\nfn main() {\n    let ana = member(\"Ana\");\n    let raj = member(\"Raj\");\n    *ana.buddy.borrow_mut() = Rc::downgrade(&raj);\n    *raj.buddy.borrow_mut() = Rc::downgrade(&ana);\n    println!(\"Ana count: {}\", Rc::strong_count(&ana));\n    println!(\"Raj count: {}\", Rc::strong_count(&raj));\n    println!(\"end of main\");\n}\n",
+   "stdout": "Ana count: 1\nRaj count: 1\nend of main\nRaj leaves\nAna leaves\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ana count: 1\nRaj count: 1\nend of main\nRaj leaves\nAna leaves\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/cycle_weak"
+    }
+   ]
+  },
+  "deref_coercion.rs": {
+   "src": "fn greet(name: &str) {\n    println!(\"Hello, {name}!\");\n}\n\nfn main() {\n    let literal: &str = \"Ana\";\n    let owned: String = String::from(\"Raj\");\n    let boxed: Box<String> = Box::new(String::from(\"Li\"));\n    greet(literal);\n    greet(&owned);\n    greet(&boxed);\n    greet(&**boxed);\n    println!(\"{} letters\", boxed.len());\n}\n",
+   "stdout": "Hello, Ana!\nHello, Raj!\nHello, Li!\nHello, Li!\n2 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hello, Ana!\nHello, Raj!\nHello, Li!\nHello, Li!\n2 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/deref_coercion"
+    }
+   ]
+  },
+  "dyn_box_ref.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n    fn name(&self) -> String;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n    fn name(&self) -> String {\n        format!(\"circle r={}\", self.r)\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n    fn name(&self) -> String {\n        format!(\"square {}x{}\", self.side, self.side)\n    }\n}\n\nfn describe(s: &dyn Shape) {\n    println!(\"{} has area {:.2}\", s.name(), s.area());\n}\n\nfn main() {\n    let shapes: Vec<Box<dyn Shape>> = vec![\n        Box::new(Circle { r: 1.0 }),\n        Box::new(Square { side: 2.0 }),\n        Box::new(Circle { r: 2.0 }),\n    ];\n    for s in &shapes {\n        describe(s);\n    }\n    let total: f64 = shapes.iter().map(|s| s.area()).sum();\n    println!(\"total area {total:.2}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the trait bound `Box<dyn Shape>: Shape` is not satisfied\n  --> src/main.rs:43:18\n   |\n43 |         describe(s);\n   |                  ^ the trait `Shape` is not implemented for `Box<dyn Shape>`\n   |\nhelp: the following other types implement trait `Shape`\n  --> src/main.rs:14:1\n   |\n14 | impl Shape for Circle {\n   | ^^^^^^^^^^^^^^^^^^^^^ `Circle`\n...\n23 | impl Shape for Square {\n   | ^^^^^^^^^^^^^^^^^^^^^ `Square`\n   = note: required for the cast from `&Box<dyn Shape>` to `&dyn Shape`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `dyn_box_ref` (bin \"dyn_box_ref\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the trait bound `Box<dyn Shape>: Shape` is not satisfied\n  --> src/main.rs:43:18\n   |\n43 |         describe(s);\n   |                  ^ the trait `Shape` is not implemented for `Box<dyn Shape>`\n   |\nhelp: the following other types implement trait `Shape`\n  --> src/main.rs:14:1\n   |\n14 | impl Shape for Circle {\n   | ^^^^^^^^^^^^^^^^^^^^^ `Circle`\n...\n23 | impl Shape for Square {\n   | ^^^^^^^^^^^^^^^^^^^^^ `Square`\n   = note: required for the cast from `&Box<dyn Shape>` to `&dyn Shape`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `dyn_box_ref` (bin \"dyn_box_ref\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/dyn_box_ref"
+    }
+   ]
+  },
+  "dyn_fix.rs": {
+   "src": "trait Shape {\n    fn new(size: f64) -> Self\n    where\n        Self: Sized;\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Square {\n    fn new(size: f64) -> Self {\n        Square { side: size }\n    }\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn main() {\n    let shapes: Vec<Box<dyn Shape>> = vec![Box::new(Square::new(2.0))];\n    println!(\"{}\", shapes[0].area());\n}\n",
+   "stdout": "4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/dyn_fix"
+    }
+   ]
+  },
+  "dyn_incompatible.rs": {
+   "src": "trait Shape {\n    fn new(size: f64) -> Self;\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Square {\n    fn new(size: f64) -> Self {\n        Square { side: size }\n    }\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn main() {\n    let shapes: Vec<Box<dyn Shape>> = vec![Box::new(Square::new(2.0))];\n    println!(\"{}\", shapes[0].area());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0038]: the trait `Shape` is not dyn compatible\n  --> src/main.rs:20:29\n   |\n20 |     let shapes: Vec<Box<dyn Shape>> = vec![Box::new(Square::new(2.0))];\n   |                             ^^^^^ `Shape` is not dyn compatible\n   |\nnote: for a trait to be dyn compatible it needs to allow building a vtable\n      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>\n  --> src/main.rs:2:8\n   |\n 1 | trait Shape {\n   |       ----- this trait is not dyn compatible...\n 2 |     fn new(size: f64) -> Self;\n   |        ^^^ ...because associated function `new` has no `self` parameter\n   = help: only type `Square` implements `Shape`; consider using it directly instead.\nhelp: consider turning `new` into a method by giving it a `&self` argument\n   |\n 2 |     fn new(&self, size: f64) -> Self;\n   |            ++++++\nhelp: alternatively, consider constraining `new` so it does not apply to trait objects\n   |\n 2 |     fn new(size: f64) -> Self where Self: Sized;\n   |                               +++++++++++++++++\n\nFor more information about this error, try `rustc --explain E0038`.\nerror: could not compile `dyn_incompatible` (bin \"dyn_incompatible\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0038]: the trait `Shape` is not dyn compatible\n  --> src/main.rs:20:29\n   |\n20 |     let shapes: Vec<Box<dyn Shape>> = vec![Box::new(Square::new(2.0))];\n   |                             ^^^^^ `Shape` is not dyn compatible\n   |\nnote: for a trait to be dyn compatible it needs to allow building a vtable\n      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>\n  --> src/main.rs:2:8\n   |\n 1 | trait Shape {\n   |       ----- this trait is not dyn compatible...\n 2 |     fn new(size: f64) -> Self;\n   |        ^^^ ...because associated function `new` has no `self` parameter\n   = help: only type `Square` implements `Shape`; consider using it directly instead.\nhelp: consider turning `new` into a method by giving it a `&self` argument\n   |\n 2 |     fn new(&self, size: f64) -> Self;\n   |            ++++++\nhelp: alternatively, consider constraining `new` so it does not apply to trait objects\n   |\n 2 |     fn new(size: f64) -> Self where Self: Sized;\n   |                               +++++++++++++++++\n\nFor more information about this error, try `rustc --explain E0038`.\nerror: could not compile `dyn_incompatible` (bin \"dyn_incompatible\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/dyn_incompatible"
+    }
+   ]
+  },
+  "dyn_machine.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nstruct Triangle {\n    b: f64,\n    h: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nimpl Shape for Triangle {\n    fn area(&self) -> f64 {\n        self.b * self.h / 2.0\n    }\n}\n\nfn press(label: &str, s: &dyn Shape) {\n    println!(\"{label} -> {:.2}\", s.area());\n}\n\nfn main() {\n    press(\"Circle { r: 1.0 }\", &Circle { r: 1.0 });\n    press(\"Circle { r: 2.0 }\", &Circle { r: 2.0 });\n    press(\"Square { side: 3.0 }\", &Square { side: 3.0 });\n    press(\"Triangle { b: 4.0, h: 3.0 }\", &Triangle { b: 4.0, h: 3.0 });\n}\n",
+   "stdout": "Circle { r: 1.0 } -> 3.14\nCircle { r: 2.0 } -> 12.56\nSquare { side: 3.0 } -> 9.00\nTriangle { b: 4.0, h: 3.0 } -> 6.00\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Circle { r: 1.0 } -> 3.14\nCircle { r: 2.0 } -> 12.56\nSquare { side: 3.0 } -> 9.00\nTriangle { b: 4.0, h: 3.0 } -> 6.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/dyn_machine"
+    }
+   ]
+  },
+  "dyn_no_method.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nimpl Circle {\n    fn radius(&self) -> f64 {\n        self.r\n    }\n}\n\nfn main() {\n    let s: &dyn Shape = &Circle { r: 1.0 };\n    println!(\"{}\", s.radius());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0599]: no method named `radius` found for reference `&dyn Shape` in the current scope\n  --> src/main.rs:33:22\n   |\n33 |     println!(\"{}\", s.radius());\n   |                      ^^^^^^ method not found in `&dyn Shape`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `dyn_no_method` (bin \"dyn_no_method\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0599]: no method named `radius` found for reference `&dyn Shape` in the current scope\n  --> src/main.rs:33:22\n   |\n33 |     println!(\"{}\", s.radius());\n   |                      ^^^^^^ method not found in `&dyn Shape`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `dyn_no_method` (bin \"dyn_no_method\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/dyn_no_method"
+    }
+   ]
+  },
+  "dyn_shapes.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n    fn name(&self) -> String;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n    fn name(&self) -> String {\n        format!(\"circle r={}\", self.r)\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n    fn name(&self) -> String {\n        format!(\"square {}x{}\", self.side, self.side)\n    }\n}\n\nfn describe(s: &dyn Shape) {\n    println!(\"{} has area {:.2}\", s.name(), s.area());\n}\n\nfn main() {\n    let shapes: Vec<Box<dyn Shape>> = vec![\n        Box::new(Circle { r: 1.0 }),\n        Box::new(Square { side: 2.0 }),\n        Box::new(Circle { r: 2.0 }),\n    ];\n    for s in &shapes {\n        describe(s.as_ref());\n    }\n    let total: f64 = shapes.iter().map(|s| s.area()).sum();\n    println!(\"total area {total:.2}\");\n}\n",
+   "stdout": "circle r=1 has area 3.14\nsquare 2x2 has area 4.00\ncircle r=2 has area 12.56\ntotal area 19.70\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "circle r=1 has area 3.14\nsquare 2x2 has area 4.00\ncircle r=2 has area 12.56\ntotal area 19.70\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/dyn_shapes"
+    }
+   ]
+  },
+  "enum_shapes.rs": {
+   "src": "enum Shape {\n    Circle { r: f64 },\n    Square { side: f64 },\n}\n\nimpl Shape {\n    fn area(&self) -> f64 {\n        match self {\n            Shape::Circle { r } => 3.14 * r * r,\n            Shape::Square { side } => side * side,\n        }\n    }\n}\n\nfn main() {\n    let shapes = vec![\n        Shape::Circle { r: 1.0 },\n        Shape::Square { side: 2.0 },\n    ];\n    for s in &shapes {\n        println!(\"{:.2}\", s.area());\n    }\n    println!(\"each Shape is {} bytes\", std::mem::size_of::<Shape>());\n}\n",
+   "stdout": "3.14\n4.00\neach Shape is 16 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3.14\n4.00\neach Shape is 16 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/enum_shapes"
+    }
+   ]
+  },
+  "fat_pointer.rs": {
+   "src": "use std::mem::size_of;\n\ntrait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn main() {\n    println!(\"&Square:        {} bytes\", size_of::<&Square>());\n    println!(\"&dyn Shape:     {} bytes\", size_of::<&dyn Shape>());\n    println!(\"Box<Square>:    {} bytes\", size_of::<Box<Square>>());\n    println!(\"Box<dyn Shape>: {} bytes\", size_of::<Box<dyn Shape>>());\n    let s: &dyn Shape = &Square { side: 3.0 };\n    println!(\"area through the table: {}\", s.area());\n}\n",
+   "stdout": "&Square:        8 bytes\n&dyn Shape:     16 bytes\nBox<Square>:    8 bytes\nBox<dyn Shape>: 16 bytes\narea through the table: 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "&Square:        8 bytes\n&dyn Shape:     16 bytes\nBox<Square>:    8 bytes\nBox<dyn Shape>: 16 bytes\narea through the table: 9\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/fat_pointer"
+    }
+   ]
+  },
+  "fill_box_list.rs": {
+   "src": "enum Chain {\n    Link(String, Box<Chain>),\n    End,\n}\n\nfn count(c: &Chain) -> usize {\n    match c {\n        Chain::Link(title, next) => {\n            println!(\"{title}\");\n            1 + count(next)\n        }\n        Chain::End => 0,\n    }\n}\n\nfn main() {\n    let tail = Chain::Link(String::from(\"Emma\"), Box::new(Chain::End));\n    let chain = Chain::Link(String::from(\"Dune\"), Box::new(tail));\n    println!(\"{} books in the chain\", count(&chain));\n}\n",
+   "stdout": "Dune\nEmma\n2 books in the chain\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune\nEmma\n2 books in the chain\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/fill_box_list"
+    }
+   ]
+  },
+  "fill_deref.rs": {
+   "src": "use std::ops::Deref;\n\nstruct Title(String);\n\nimpl Deref for Title {\n    type Target = String;\n    fn deref(&self) -> &String {\n        &self.0\n    }\n}\n\nfn main() {\n    let t = Title(String::from(\"Kindred\"));\n    println!(\"{} has {} letters\", *t, t.len());\n}\n",
+   "stdout": "Kindred has 7 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Kindred has 7 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/fill_deref"
+    }
+   ]
+  },
+  "fill_dyn.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nstruct Rect {\n    w: f64,\n    h: f64,\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nimpl Shape for Rect {\n    fn area(&self) -> f64 {\n        self.w * self.h\n    }\n}\n\nfn biggest(shapes: &[Box<dyn Shape>]) -> f64 {\n    shapes.iter().map(|s| s.area()).fold(0.0, f64::max)\n}\n\nfn main() {\n    let shapes: Vec<Box<dyn Shape>> = vec![\n        Box::new(Square { side: 3.0 }),\n        Box::new(Rect { w: 2.0, h: 5.0 }),\n    ];\n    println!(\"biggest area: {}\", biggest(&shapes));\n}\n",
+   "stdout": "biggest area: 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "biggest area: 10\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/fill_dyn"
+    }
+   ]
+  },
+  "fill_shared.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::Rc;\n\nfn main() {\n    let score = Rc::new(RefCell::new(0));\n    let player1 = Rc::clone(&score);\n    let player2 = Rc::clone(&score);\n    *player1.borrow_mut() += 10;\n    *player2.borrow_mut() += 5;\n    println!(\"score {}\", score.borrow());\n}\n",
+   "stdout": "score 15\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "score 15\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/fill_shared"
+    }
+   ]
+  },
+  "hetero_error.rs": {
+   "src": "struct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nfn main() {\n    let shapes = vec![Circle { r: 1.0 }, Square { side: 2.0 }];\n    println!(\"{} shapes\", shapes.len());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n  --> src/main.rs:10:42\n   |\n10 |     let shapes = vec![Circle { r: 1.0 }, Square { side: 2.0 }];\n   |                                          ^^^^^^^^^^^^^^^^^^^^ expected `Circle`, found `Square`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `hetero_error` (bin \"hetero_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n  --> src/main.rs:10:42\n   |\n10 |     let shapes = vec![Circle { r: 1.0 }, Square { side: 2.0 }];\n   |                                          ^^^^^^^^^^^^^^^^^^^^ expected `Circle`, found `Square`\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `hetero_error` (bin \"hetero_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/hetero_error"
+    }
+   ]
+  },
+  "impl_two.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn pick(round: bool, size: f64) -> impl Shape {\n    if round {\n        Circle { r: size }\n    } else {\n        Square { side: size }\n    }\n}\n\nfn main() {\n    println!(\"{:.2}\", pick(true, 1.0).area());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: `if` and `else` have incompatible types\n  --> src/main.rs:29:9\n   |\n26 | /     if round {\n27 | |         Circle { r: size }\n   | |         ------------------ expected because of this\n28 | |     } else {\n29 | |         Square { side: size }\n   | |         ^^^^^^^^^^^^^^^^^^^^^ expected `Circle`, found `Square`\n30 | |     }\n   | |_____- `if` and `else` have incompatible types\n   |\nhelp: you could change the return type to be a boxed trait object\n   |\n25 - fn pick(round: bool, size: f64) -> impl Shape {\n25 + fn pick(round: bool, size: f64) -> Box<dyn Shape> {\n   |\nhelp: if you change the return type to expect trait objects, box the returned expressions\n   |\n27 ~         Box::new(Circle { r: size })\n28 |     } else {\n29 ~         Box::new(Square { side: size })\n   |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `impl_two` (bin \"impl_two\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: `if` and `else` have incompatible types\n  --> src/main.rs:29:9\n   |\n26 | /     if round {\n27 | |         Circle { r: size }\n   | |         ------------------ expected because of this\n28 | |     } else {\n29 | |         Square { side: size }\n   | |         ^^^^^^^^^^^^^^^^^^^^^ expected `Circle`, found `Square`\n30 | |     }\n   | |_____- `if` and `else` have incompatible types\n   |\nhelp: you could change the return type to be a boxed trait object\n   |\n25 - fn pick(round: bool, size: f64) -> impl Shape {\n25 + fn pick(round: bool, size: f64) -> Box<dyn Shape> {\n   |\nhelp: if you change the return type to expect trait objects, box the returned expressions\n   |\n27 ~         Box::new(Circle { r: size })\n28 |     } else {\n29 ~         Box::new(Square { side: size })\n   |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `impl_two` (bin \"impl_two\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/impl_two"
+    }
+   ]
+  },
+  "list_infinite.rs": {
+   "src": "#[derive(Debug)]\nenum List {\n    Cons(i32, List),\n    Nil,\n}\n\nuse List::{Cons, Nil};\n\nfn main() {\n    let list = Cons(1, Cons(2, Nil));\n    println!(\"{list:?}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0072]: recursive type `List` has infinite size\n --> src/main.rs:2:1\n  |\n2 | enum List {\n  | ^^^^^^^^^\n3 |     Cons(i32, List),\n  |               ---- recursive without indirection\n  |\nhelp: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle\n  |\n3 |     Cons(i32, Box<List>),\n  |               ++++    +\n\nFor more information about this error, try `rustc --explain E0072`.\nerror: could not compile `list_infinite` (bin \"list_infinite\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0072]: recursive type `List` has infinite size\n --> src/main.rs:2:1\n  |\n2 | enum List {\n  | ^^^^^^^^^\n3 |     Cons(i32, List),\n  |               ---- recursive without indirection\n  |\nhelp: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle\n  |\n3 |     Cons(i32, Box<List>),\n  |               ++++    +\n\nFor more information about this error, try `rustc --explain E0072`.\nerror: could not compile `list_infinite` (bin \"list_infinite\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/list_infinite"
+    }
+   ]
+  },
+  "my_box.rs": {
+   "src": "use std::ops::Deref;\n\nstruct Locker<T>(T);\n\nimpl<T> Deref for Locker<T> {\n    type Target = T;\n    fn deref(&self) -> &T {\n        &self.0\n    }\n}\n\nfn shout(word: &str) {\n    println!(\"{}!\", word.to_uppercase());\n}\n\nfn main() {\n    let x = Locker(7);\n    println!(\"{}\", *x + 1);\n    let w = Locker(String::from(\"quiet\"));\n    shout(&w);\n    println!(\"{} letters\", w.len());\n}\n",
+   "stdout": "8\nQUIET!\n5 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "8\nQUIET!\n5 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/my_box"
+    }
+   ]
+  },
+  "my_box_noderef.rs": {
+   "src": "struct Locker<T>(T);\n\nfn main() {\n    let x = Locker(7);\n    println!(\"{}\", *x + 1);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0614]: type `Locker<{integer}>` cannot be dereferenced\n --> src/main.rs:5:20\n  |\n5 |     println!(\"{}\", *x + 1);\n  |                    ^^ can't be dereferenced\n\nFor more information about this error, try `rustc --explain E0614`.\nerror: could not compile `my_box_noderef` (bin \"my_box_noderef\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0614]: type `Locker<{integer}>` cannot be dereferenced\n --> src/main.rs:5:20\n  |\n5 |     println!(\"{}\", *x + 1);\n  |                    ^^ can't be dereferenced\n\nFor more information about this error, try `rustc --explain E0614`.\nerror: could not compile `my_box_noderef` (bin \"my_box_noderef\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/my_box_noderef"
+    }
+   ]
+  },
+  "parsons_rc.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let book = Rc::new(String::from(\"Dune\"));\n    println!(\"alone: {}\", Rc::strong_count(&book));\n    let friend = Rc::clone(&book);\n    println!(\"shared: {}\", Rc::strong_count(&book));\n    drop(friend);\n    println!(\"alone again: {} ({book})\", Rc::strong_count(&book));\n}\n",
+   "stdout": "alone: 1\nshared: 2\nalone again: 1 (Dune)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "alone: 1\nshared: 2\nalone again: 1 (Dune)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/parsons_rc"
+    }
+   ]
+  },
+  "predict_borrow.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let tally = RefCell::new(0);\n    {\n        let mut t = tally.borrow_mut();\n        *t += 5;\n    }\n    let seen = *tally.borrow();\n    *tally.borrow_mut() += 1;\n    println!(\"{seen} then {}\", tally.borrow());\n    let r = tally.borrow();\n    println!(\"{}\", tally.try_borrow_mut().is_ok());\n    drop(r);\n    println!(\"{}\", tally.try_borrow_mut().is_ok());\n}\n",
+   "stdout": "5 then 6\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "5 then 6\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/predict_borrow"
+    }
+   ]
+  },
+  "predict_drop.rs": {
+   "src": "struct Tag(&'static str);\n\nimpl Drop for Tag {\n    fn drop(&mut self) {\n        println!(\"bye {}\", self.0);\n    }\n}\n\nfn main() {\n    let _a = Tag(\"a\");\n    let _b = Tag(\"b\");\n    {\n        let _c = Tag(\"c\");\n        println!(\"inside\");\n    }\n    let _ = Tag(\"d\");\n    println!(\"end of main\");\n}\n",
+   "stdout": "inside\nbye c\nbye d\nend of main\nbye b\nbye a\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "inside\nbye c\nbye d\nend of main\nbye b\nbye a\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/predict_drop"
+    }
+   ]
+  },
+  "predict_dyn.rs": {
+   "src": "trait Speak {\n    fn word(&self) -> String;\n    fn twice(&self) -> String {\n        format!(\"{} {}\", self.word(), self.word())\n    }\n}\n\nstruct Owl;\nstruct Parrot;\n\nimpl Speak for Owl {\n    fn word(&self) -> String {\n        \"hoo\".to_string()\n    }\n}\n\nimpl Speak for Parrot {\n    fn word(&self) -> String {\n        \"hello\".to_string()\n    }\n    fn twice(&self) -> String {\n        \"HELLO HELLO HELLO\".to_string()\n    }\n}\n\nfn main() {\n    let birds: Vec<Box<dyn Speak>> =\n        vec![Box::new(Owl), Box::new(Parrot), Box::new(Owl)];\n    for b in &birds {\n        println!(\"{}\", b.twice());\n    }\n    println!(\"{}\", birds.len());\n}\n",
+   "stdout": "hoo hoo\nHELLO HELLO HELLO\nhoo hoo\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hoo hoo\nHELLO HELLO HELLO\nhoo hoo\n3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/predict_dyn"
+    }
+   ]
+  },
+  "predict_panic.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let shelf = RefCell::new(vec![\"Dune\"]);\n    let first = shelf.borrow();\n    println!(\"first: {}\", first[0]);\n    shelf.borrow_mut().push(\"Emma\");\n    println!(\"done\");\n}\n",
+   "stdout": "first: Dune\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "first: Dune\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/predict_panic",
+     "merged": "first: Dune\n\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "predict_rc.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let list = Rc::new(vec![1, 2, 3]);\n    let x = Rc::clone(&list);\n    let y = list.clone();\n    println!(\"{}\", Rc::strong_count(&list));\n    {\n        let _z = Rc::clone(&x);\n        println!(\"{}\", Rc::strong_count(&y));\n    }\n    drop(x);\n    println!(\"{}\", Rc::strong_count(&list));\n    println!(\"{}\", y.len());\n}\n",
+   "stdout": "3\n4\n2\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3\n4\n2\n3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/predict_rc"
+    }
+   ]
+  },
+  "predict_weak.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let strong = Rc::new(String::from(\"Dune\"));\n    let weak = Rc::downgrade(&strong);\n    println!(\"{}\", Rc::strong_count(&strong));\n    println!(\"{}\", Rc::weak_count(&strong));\n    println!(\"{:?}\", weak.upgrade());\n    drop(strong);\n    println!(\"{:?}\", weak.upgrade());\n}\n",
+   "stdout": "1\n1\nSome(\"Dune\")\nNone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1\n1\nSome(\"Dune\")\nNone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/predict_weak"
+    }
+   ]
+  },
+  "raii.rs": {
+   "src": "struct Card(&'static str);\n\nimpl Drop for Card {\n    fn drop(&mut self) {\n        println!(\"  {} returns the card\", self.0);\n    }\n}\n\nfn main() {\n    let ana = Card(\"Ana\");\n    {\n        let _raj = Card(\"Raj\");\n        println!(\"Raj reads in the corner\");\n    }\n    let _li = Card(\"Li\");\n    drop(ana);\n    println!(\"closing time\");\n}\n",
+   "stdout": "Raj reads in the corner\n  Raj returns the card\n  Ana returns the card\nclosing time\n  Li returns the card\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Raj reads in the corner\n  Raj returns the card\n  Ana returns the card\nclosing time\n  Li returns the card\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/raii"
+    }
+   ]
+  },
+  "rc_counts.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let a = Rc::new(String::from(\"Dune\"));\n    println!(\"a: {}\", Rc::strong_count(&a));\n    let b = Rc::clone(&a);\n    println!(\"b: {}\", Rc::strong_count(&a));\n    {\n        let c = Rc::clone(&a);\n        println!(\"c: {}\", Rc::strong_count(&c));\n    }\n    println!(\"c gone: {}\", Rc::strong_count(&a));\n    drop(b);\n    println!(\"b gone: {}\", Rc::strong_count(&a));\n}\n",
+   "stdout": "a: 1\nb: 2\nc: 3\nc gone: 2\nb gone: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "a: 1\nb: 2\nc: 3\nc gone: 2\nb gone: 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/rc_counts"
+    }
+   ]
+  },
+  "rc_mut_error.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let shared = Rc::new(vec![String::from(\"Dune\")]);\n    let other = Rc::clone(&shared);\n    other.push(String::from(\"Emma\"));\n    println!(\"{:?}\", shared);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0596]: cannot borrow data in an `Rc` as mutable\n --> src/main.rs:6:5\n  |\n6 |     other.push(String::from(\"Emma\"));\n  |     ^^^^^ cannot borrow as mutable\n  |\n  = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Vec<String>>`\n\nFor more information about this error, try `rustc --explain E0596`.\nerror: could not compile `rc_mut_error` (bin \"rc_mut_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0596]: cannot borrow data in an `Rc` as mutable\n --> src/main.rs:6:5\n  |\n6 |     other.push(String::from(\"Emma\"));\n  |     ^^^^^ cannot borrow as mutable\n  |\n  = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Vec<String>>`\n\nFor more information about this error, try `rustc --explain E0596`.\nerror: could not compile `rc_mut_error` (bin \"rc_mut_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/rc_mut_error"
+    }
+   ]
+  },
+  "rc_need.rs": {
+   "src": "struct Book {\n    title: String,\n}\n\nstruct Club {\n    name: &'static str,\n    book: Book,\n}\n\nfn main() {\n    let dune = Book { title: String::from(\"Dune\") };\n    let mon = Club { name: \"Monday\", book: dune };\n    let fri = Club { name: \"Friday\", book: dune };\n    println!(\"{} and {} read {}\", mon.name, fri.name, fri.book.title);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: use of moved value: `dune`\n  --> src/main.rs:13:44\n   |\n11 |     let dune = Book { title: String::from(\"Dune\") };\n   |         ---- move occurs because `dune` has type `Book`, which does not implement the `Copy` trait\n12 |     let mon = Club { name: \"Monday\", book: dune };\n   |                                            ---- value moved here\n13 |     let fri = Club { name: \"Friday\", book: dune };\n   |                                            ^^^^ value used here after move\n   |\nnote: if `Book` implemented `Clone`, you could clone the value\n  --> src/main.rs:1:1\n   |\n 1 | struct Book {\n   | ^^^^^^^^^^^ consider implementing `Clone` for this type\n...\n12 |     let mon = Club { name: \"Monday\", book: dune };\n   |                                            ---- you could clone this value\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `rc_need` (bin \"rc_need\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: use of moved value: `dune`\n  --> src/main.rs:13:44\n   |\n11 |     let dune = Book { title: String::from(\"Dune\") };\n   |         ---- move occurs because `dune` has type `Book`, which does not implement the `Copy` trait\n12 |     let mon = Club { name: \"Monday\", book: dune };\n   |                                            ---- value moved here\n13 |     let fri = Club { name: \"Friday\", book: dune };\n   |                                            ^^^^ value used here after move\n   |\nnote: if `Book` implemented `Clone`, you could clone the value\n  --> src/main.rs:1:1\n   |\n 1 | struct Book {\n   | ^^^^^^^^^^^ consider implementing `Clone` for this type\n...\n12 |     let mon = Club { name: \"Monday\", book: dune };\n   |                                            ---- you could clone this value\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `rc_need` (bin \"rc_need\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/rc_need"
+    }
+   ]
+  },
+  "rc_share.rs": {
+   "src": "use std::rc::Rc;\n\nstruct Book {\n    title: String,\n}\n\nstruct Club {\n    name: &'static str,\n    book: Rc<Book>,\n}\n\nfn main() {\n    let dune = Rc::new(Book { title: String::from(\"Dune\") });\n    let mon = Club { name: \"Monday\", book: Rc::clone(&dune) };\n    let fri = Club { name: \"Friday\", book: Rc::clone(&dune) };\n    println!(\"{} and {} read {}\", mon.name, fri.name, dune.title);\n    println!(\"same book? {}\", Rc::ptr_eq(&mon.book, &fri.book));\n    println!(\"owners: {}\", Rc::strong_count(&dune));\n}\n",
+   "stdout": "Monday and Friday read Dune\nsame book? true\nowners: 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Monday and Friday read Dune\nsame book? true\nowners: 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/rc_share"
+    }
+   ]
+  },
+  "rc_thread.rs": {
+   "src": "use std::rc::Rc;\nuse std::thread;\n\nfn main() {\n    let count = Rc::new(5);\n    let handle = thread::spawn(move || {\n        println!(\"{count}\");\n    });\n    handle.join().unwrap();\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: `Rc<i32>` cannot be sent between threads safely\n --> src/main.rs:6:32\n  |\n6 |       let handle = thread::spawn(move || {\n  |                    ------------- ^------\n  |                    |             |\n  |  __________________|_____________within this `{closure@src/main.rs:6:32: 6:39}`\n  | |                  |\n  | |                  required by a bound introduced by this call\n7 | |         println!(\"{count}\");\n8 | |     });\n  | |_____^ `Rc<i32>` cannot be sent between threads safely\n  |\n  = help: within `{closure@src/main.rs:6:32: 6:39}`, the trait `Send` is not implemented for `Rc<i32>`\nnote: required because it's used within this closure\n --> src/main.rs:6:32\n  |\n6 |     let handle = thread::spawn(move || {\n  |                                ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/functions.rs:125:0\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `rc_thread` (bin \"rc_thread\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: `Rc<i32>` cannot be sent between threads safely\n --> src/main.rs:6:32\n  |\n6 |       let handle = thread::spawn(move || {\n  |                    ------------- ^------\n  |                    |             |\n  |  __________________|_____________within this `{closure@src/main.rs:6:32: 6:39}`\n  | |                  |\n  | |                  required by a bound introduced by this call\n7 | |         println!(\"{count}\");\n8 | |     });\n  | |_____^ `Rc<i32>` cannot be sent between threads safely\n  |\n  = help: within `{closure@src/main.rs:6:32: 6:39}`, the trait `Send` is not implemented for `Rc<i32>`\nnote: required because it's used within this closure\n --> src/main.rs:6:32\n  |\n6 |     let handle = thread::spawn(move || {\n  |                                ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/functions.rs:125:0\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `rc_thread` (bin \"rc_thread\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/rc_thread"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: `Rc<i32>` cannot be sent between threads safely\n --> src/main.rs:6:32\n  |\n6 |       let handle = thread::spawn(move || {\n  |                    ------------- ^------\n  |                    |             |\n  |  __________________|_____________within this `{closure@src/main.rs:6:32: 6:39}`\n  | |                  |\n  | |                  required by a bound introduced by this call\n7 | |         println!(\"{count}\");\n8 | |     });\n  | |_____^ `Rc<i32>` cannot be sent between threads safely\n  |\n  = help: within `{closure@src/main.rs:6:32: 6:39}`, the trait `Send` is not implemented for `Rc<i32>`\nnote: required because it's used within this closure\n --> src/main.rs:6:32\n  |\n6 |     let handle = thread::spawn(move || {\n  |                                ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/thread/functions.rs:125:0\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `rc_thread` (bin \"rc_thread\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: `Rc<i32>` cannot be sent between threads safely\n --> src/main.rs:6:32\n  |\n6 |       let handle = thread::spawn(move || {\n  |                    ------------- ^------\n  |                    |             |\n  |  __________________|_____________within this `{closure@src/main.rs:6:32: 6:39}`\n  | |                  |\n  | |                  required by a bound introduced by this call\n7 | |         println!(\"{count}\");\n8 | |     });\n  | |_____^ `Rc<i32>` cannot be sent between threads safely\n  |\n  = help: within `{closure@src/main.rs:6:32: 6:39}`, the trait `Send` is not implemented for `Rc<i32>`\nnote: required because it's used within this closure\n --> src/main.rs:6:32\n  |\n6 |     let handle = thread::spawn(move || {\n  |                                ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/thread/functions.rs:125:0\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `rc_thread` (bin \"rc_thread\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch23/rc_thread"
+     }
+    ]
+   }
+  },
+  "refcell_basics.rs": {
+   "src": "use std::cell::RefCell;\n\nstruct Whiteboard {\n    notes: RefCell<Vec<String>>,\n}\n\nimpl Whiteboard {\n    fn write(&self, note: &str) {\n        self.notes.borrow_mut().push(note.to_string());\n    }\n    fn count(&self) -> usize {\n        self.notes.borrow().len()\n    }\n}\n\nfn main() {\n    let board = Whiteboard { notes: RefCell::new(Vec::new()) };\n    board.write(\"Dune is back\");\n    board.write(\"Quiet please\");\n    println!(\"{} notes\", board.count());\n    println!(\"{:?}\", board.notes.borrow());\n}\n",
+   "stdout": "2 notes\n[\"Dune is back\", \"Quiet please\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "2 notes\n[\"Dune is back\", \"Quiet please\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/refcell_basics"
+    }
+   ]
+  },
+  "refcell_machine.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let board = RefCell::new(vec![1, 2]);\n    {\n        let r = board.borrow();\n        println!(\"borrow(): {:?}\", *r);\n    }\n    {\n        let mut w = board.borrow_mut();\n        w.push(3);\n        println!(\"borrow_mut(): {:?}\", *w);\n    }\n    {\n        let r1 = board.borrow();\n        let r2 = board.borrow();\n        println!(\"borrow() twice: {} and {}\", r1.len(), r2.len());\n    }\n    {\n        let _r = board.borrow();\n        let tried = board.try_borrow_mut().map(|_| ());\n        println!(\"try_borrow_mut() while reading: {tried:?}\");\n    }\n}\n",
+   "stdout": "borrow(): [1, 2]\nborrow_mut(): [1, 2, 3]\nborrow() twice: 3 and 3\ntry_borrow_mut() while reading: Err(BorrowMutError)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "borrow(): [1, 2]\nborrow_mut(): [1, 2, 3]\nborrow() twice: 3 and 3\ntry_borrow_mut() while reading: Err(BorrowMutError)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/refcell_machine"
+    }
+   ]
+  },
+  "refcell_panic.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let board = RefCell::new(vec![String::from(\"Dune\")]);\n    let mut pen1 = board.borrow_mut();\n    let mut pen2 = board.borrow_mut();\n    pen1.push(String::from(\"Emma\"));\n    pen2.push(String::from(\"Kim\"));\n    println!(\"{:?}\", board.borrow());\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:6:26:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:6:26:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/refcell_panic"
+    }
+   ]
+  },
+  "refcell_read_write.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let board = RefCell::new(vec![1, 2, 3]);\n    let reader = board.borrow();\n    println!(\"reading {} notes\", reader.len());\n    board.borrow_mut().push(4);\n    println!(\"{}\", reader.len());\n}\n",
+   "stdout": "reading 3 notes\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading 3 notes\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/refcell_read_write",
+     "merged": "reading 3 notes\n\nthread 'main' (1) panicked at src/main.rs:7:11:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "refcell_write_read.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let board = RefCell::new(vec![1, 2, 3]);\n    let writer = board.borrow_mut();\n    println!(\"writing\");\n    println!(\"{}\", board.borrow().len());\n    drop(writer);\n}\n",
+   "stdout": "writing\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:7:26:\nRefCell already mutably borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "writing\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:7:26:\nRefCell already mutably borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/refcell_write_read",
+     "merged": "writing\n\nthread 'main' (1) panicked at src/main.rs:7:26:\nRefCell already mutably borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "return_box.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn make_square(side: f64) -> impl Shape {\n    Square { side }\n}\n\nfn pick(round: bool, size: f64) -> Box<dyn Shape> {\n    if round {\n        Box::new(Circle { r: size })\n    } else {\n        Box::new(Square { side: size })\n    }\n}\n\nfn main() {\n    println!(\"impl Shape: {}\", make_square(2.0).area());\n    println!(\"Box, round: {:.2}\", pick(true, 1.0).area());\n    println!(\"Box, square: {:.2}\", pick(false, 1.0).area());\n}\n",
+   "stdout": "impl Shape: 4\nBox, round: 3.14\nBox, square: 1.00\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "impl Shape: 4\nBox, round: 3.14\nBox, square: 1.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/return_box"
+    }
+   ]
+  },
+  "return_dyn.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn make_shape(side: f64) -> dyn Shape {\n    Square { side }\n}\n\nfn main() {\n    println!(\"{}\", make_shape(2.0).area());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0746]: return type cannot be a trait object without pointer indirection\n  --> src/main.rs:15:29\n   |\n15 | fn make_shape(side: f64) -> dyn Shape {\n   |                             ^^^^^^^^^ doesn't have a size known at compile-time\n   |\nhelp: consider returning an `impl Trait` instead of a `dyn Trait`\n   |\n15 - fn make_shape(side: f64) -> dyn Shape {\n15 + fn make_shape(side: f64) -> impl Shape {\n   |\nhelp: alternatively, box the return type, and wrap all of the returned values in `Box::new`\n   |\n15 ~ fn make_shape(side: f64) -> Box<dyn Shape> {\n16 ~     Box::new(Square { side })\n   |\n\nerror[E0277]: the size for values of type `(dyn Shape + 'static)` cannot be known at compilation time\n  --> src/main.rs:20:20\n   |\n20 |     println!(\"{}\", make_shape(2.0).area());\n   |                    ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time\n   |\n   = help: the trait `Sized` is not implemented for `(dyn Shape + 'static)`\n   = note: the return type of a function must have a statically known size\n\nSome errors have detailed explanations: E0277, E0746.\nFor more information about an error, try `rustc --explain E0277`.\nerror: could not compile `return_dyn` (bin \"return_dyn\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0746]: return type cannot be a trait object without pointer indirection\n  --> src/main.rs:15:29\n   |\n15 | fn make_shape(side: f64) -> dyn Shape {\n   |                             ^^^^^^^^^ doesn't have a size known at compile-time\n   |\nhelp: consider returning an `impl Trait` instead of a `dyn Trait`\n   |\n15 - fn make_shape(side: f64) -> dyn Shape {\n15 + fn make_shape(side: f64) -> impl Shape {\n   |\nhelp: alternatively, box the return type, and wrap all of the returned values in `Box::new`\n   |\n15 ~ fn make_shape(side: f64) -> Box<dyn Shape> {\n16 ~     Box::new(Square { side })\n   |\n\nerror[E0277]: the size for values of type `(dyn Shape + 'static)` cannot be known at compilation time\n  --> src/main.rs:20:20\n   |\n20 |     println!(\"{}\", make_shape(2.0).area());\n   |                    ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time\n   |\n   = help: the trait `Sized` is not implemented for `(dyn Shape + 'static)`\n   = note: the return type of a function must have a statically known size\n\nSome errors have detailed explanations: E0277, E0746.\nFor more information about an error, try `rustc --explain E0277`.\nerror: could not compile `return_dyn` (bin \"return_dyn\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/return_dyn"
+    }
+   ]
+  },
+  "shared_list.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::Rc;\n\nstruct Club {\n    name: &'static str,\n    reading: Rc<RefCell<Vec<String>>>,\n}\n\nimpl Club {\n    fn suggest(&self, title: &str) {\n        let entry = format!(\"{title} (from {})\", self.name);\n        self.reading.borrow_mut().push(entry);\n    }\n}\n\nfn main() {\n    let list = Rc::new(RefCell::new(Vec::new()));\n    let monday = Club { name: \"Monday\", reading: Rc::clone(&list) };\n    let friday = Club { name: \"Friday\", reading: Rc::clone(&list) };\n    monday.suggest(\"Dune\");\n    friday.suggest(\"Emma\");\n    monday.suggest(\"Kindred\");\n    for title in list.borrow().iter() {\n        println!(\"{title}\");\n    }\n    println!(\"{} owners of one list\", Rc::strong_count(&list));\n}\n",
+   "stdout": "Dune (from Monday)\nEmma (from Friday)\nKindred (from Monday)\n3 owners of one list\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune (from Monday)\nEmma (from Friday)\nKindred (from Monday)\n3 owners of one list\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/shared_list"
+    }
+   ]
+  },
+  "spot_borrow.rs": {
+   "src": "use std::cell::RefCell;\n\nfn main() {\n    let q = RefCell::new(vec![\"Ana\", \"Raj\"]);\n    for name in q.borrow().iter() {\n        println!(\"serving {name}\");\n        if *name == \"Raj\" {\n            q.borrow_mut().push(\"Li\");\n        }\n    }\n}\n",
+   "stdout": "serving Ana\nserving Raj\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:8:15:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "serving Ana\nserving Raj\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:8:15:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/spot_borrow",
+     "merged": "serving Ana\nserving Raj\n\nthread 'main' (1) panicked at src/main.rs:8:15:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "spot_dyn.rs": {
+   "src": "trait Gadget {\n    fn name(&self) -> String;\n    fn duplicate(&self) -> Self;\n    fn power(&self) -> u32;\n}\n\nstruct Lamp;\n\nimpl Gadget for Lamp {\n    fn name(&self) -> String {\n        \"lamp\".to_string()\n    }\n    fn duplicate(&self) -> Self {\n        Lamp\n    }\n    fn power(&self) -> u32 {\n        40\n    }\n}\n\nfn main() {\n    let g: Box<dyn Gadget> = Box::new(Lamp);\n    println!(\"{} uses {}W\", g.name(), g.power());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0038]: the trait `Gadget` is not dyn compatible\n  --> src/main.rs:22:20\n   |\n22 |     let g: Box<dyn Gadget> = Box::new(Lamp);\n   |                    ^^^^^^ `Gadget` is not dyn compatible\n   |\nnote: for a trait to be dyn compatible it needs to allow building a vtable\n      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>\n  --> src/main.rs:3:28\n   |\n 1 | trait Gadget {\n   |       ------ this trait is not dyn compatible...\n 2 |     fn name(&self) -> String;\n 3 |     fn duplicate(&self) -> Self;\n   |                            ^^^^ ...because method `duplicate` references the `Self` type in its return type\n   = help: consider moving `duplicate` to another trait\n   = help: only type `Lamp` implements `Gadget`; consider using it directly instead.\n\nFor more information about this error, try `rustc --explain E0038`.\nerror: could not compile `spot_dyn` (bin \"spot_dyn\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0038]: the trait `Gadget` is not dyn compatible\n  --> src/main.rs:22:20\n   |\n22 |     let g: Box<dyn Gadget> = Box::new(Lamp);\n   |                    ^^^^^^ `Gadget` is not dyn compatible\n   |\nnote: for a trait to be dyn compatible it needs to allow building a vtable\n      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>\n  --> src/main.rs:3:28\n   |\n 1 | trait Gadget {\n   |       ------ this trait is not dyn compatible...\n 2 |     fn name(&self) -> String;\n 3 |     fn duplicate(&self) -> Self;\n   |                            ^^^^ ...because method `duplicate` references the `Self` type in its return type\n   = help: consider moving `duplicate` to another trait\n   = help: only type `Lamp` implements `Gadget`; consider using it directly instead.\n\nFor more information about this error, try `rustc --explain E0038`.\nerror: could not compile `spot_dyn` (bin \"spot_dyn\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/spot_dyn"
+    }
+   ]
+  },
+  "spot_recursive.rs": {
+   "src": "struct Shelf {\n    label: String,\n    next: Option<Shelf>,\n}\n\nfn main() {\n    let s = Shelf { label: String::from(\"A\"), next: None };\n    println!(\"{}\", s.label);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0072]: recursive type `Shelf` has infinite size\n --> src/main.rs:1:1\n  |\n1 | struct Shelf {\n  | ^^^^^^^^^^^^\n2 |     label: String,\n3 |     next: Option<Shelf>,\n  |                  ----- recursive without indirection\n  |\nhelp: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle\n  |\n3 |     next: Option<Box<Shelf>>,\n  |                  ++++     +\n\nFor more information about this error, try `rustc --explain E0072`.\nerror: could not compile `spot_recursive` (bin \"spot_recursive\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0072]: recursive type `Shelf` has infinite size\n --> src/main.rs:1:1\n  |\n1 | struct Shelf {\n  | ^^^^^^^^^^^^\n2 |     label: String,\n3 |     next: Option<Shelf>,\n  |                  ----- recursive without indirection\n  |\nhelp: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle\n  |\n3 |     next: Option<Box<Shelf>>,\n  |                  ++++     +\n\nFor more information about this error, try `rustc --explain E0072`.\nerror: could not compile `spot_recursive` (bin \"spot_recursive\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch23/spot_recursive"
+    }
+   ]
+  },
+  "state_early.rs": {
+   "src": "trait State {\n    fn name(&self) -> &'static str;\n    fn arrive(self: Box<Self>) -> Box<dyn State>;\n    fn collect(self: Box<Self>) -> Box<dyn State>;\n}\n\nstruct Requested;\nstruct OnHoldShelf;\nstruct Collected;\n\nimpl State for Requested {\n    fn name(&self) -> &'static str {\n        \"requested\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        Box::new(OnHoldShelf)\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n}\n\nimpl State for OnHoldShelf {\n    fn name(&self) -> &'static str {\n        \"on the hold shelf\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        Box::new(Collected)\n    }\n}\n\nimpl State for Collected {\n    fn name(&self) -> &'static str {\n        \"collected\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n}\n\nstruct Hold {\n    title: &'static str,\n    state: Option<Box<dyn State>>,\n}\n\nimpl Hold {\n    fn new(title: &'static str) -> Hold {\n        Hold { title, state: Some(Box::new(Requested)) }\n    }\n    fn status(&self) -> String {\n        let stage = self.state.as_ref().unwrap();\n        format!(\"{}: {}\", self.title, stage.name())\n    }\n    fn arrive(&mut self) {\n        if let Some(s) = self.state.take() {\n            self.state = Some(s.arrive());\n        }\n    }\n    fn collect(&mut self) {\n        if let Some(s) = self.state.take() {\n            self.state = Some(s.collect());\n        }\n    }\n}\n\nfn main() {\n    let mut hold = Hold::new(\"Emma\");\n    println!(\"{}\", hold.status());\n    hold.collect();\n    println!(\"{}\", hold.status());\n    hold.arrive();\n    println!(\"{}\", hold.status());\n    hold.collect();\n    println!(\"{}\", hold.status());\n}\n",
+   "stdout": "Emma: requested\nEmma: requested\nEmma: on the hold shelf\nEmma: collected\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Emma: requested\nEmma: requested\nEmma: on the hold shelf\nEmma: collected\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/state_early"
+    }
+   ]
+  },
+  "state_enum.rs": {
+   "src": "#[derive(Debug, Clone, Copy)]\nenum State {\n    Requested,\n    OnHoldShelf,\n    Collected,\n}\n\nfn arrive(s: State) -> State {\n    match s {\n        State::Requested => State::OnHoldShelf,\n        other => other,\n    }\n}\n\nfn collect(s: State) -> State {\n    match s {\n        State::OnHoldShelf => State::Collected,\n        other => other,\n    }\n}\n\nfn main() {\n    let mut s = State::Requested;\n    println!(\"{s:?}\");\n    s = collect(s);\n    println!(\"{s:?}\");\n    s = arrive(s);\n    println!(\"{s:?}\");\n    s = collect(s);\n    println!(\"{s:?}\");\n}\n",
+   "stdout": "Requested\nRequested\nOnHoldShelf\nCollected\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Requested\nRequested\nOnHoldShelf\nCollected\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/state_enum"
+    }
+   ]
+  },
+  "state_happy.rs": {
+   "src": "trait State {\n    fn name(&self) -> &'static str;\n    fn arrive(self: Box<Self>) -> Box<dyn State>;\n    fn collect(self: Box<Self>) -> Box<dyn State>;\n}\n\nstruct Requested;\nstruct OnHoldShelf;\nstruct Collected;\n\nimpl State for Requested {\n    fn name(&self) -> &'static str {\n        \"requested\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        Box::new(OnHoldShelf)\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n}\n\nimpl State for OnHoldShelf {\n    fn name(&self) -> &'static str {\n        \"on the hold shelf\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        Box::new(Collected)\n    }\n}\n\nimpl State for Collected {\n    fn name(&self) -> &'static str {\n        \"collected\"\n    }\n    fn arrive(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n    fn collect(self: Box<Self>) -> Box<dyn State> {\n        self\n    }\n}\n\nstruct Hold {\n    title: &'static str,\n    state: Option<Box<dyn State>>,\n}\n\nimpl Hold {\n    fn new(title: &'static str) -> Hold {\n        Hold { title, state: Some(Box::new(Requested)) }\n    }\n    fn status(&self) -> String {\n        let stage = self.state.as_ref().unwrap();\n        format!(\"{}: {}\", self.title, stage.name())\n    }\n    fn arrive(&mut self) {\n        if let Some(s) = self.state.take() {\n            self.state = Some(s.arrive());\n        }\n    }\n    fn collect(&mut self) {\n        if let Some(s) = self.state.take() {\n            self.state = Some(s.collect());\n        }\n    }\n}\n\nfn main() {\n    let mut hold = Hold::new(\"Dune\");\n    println!(\"{}\", hold.status());\n    hold.arrive();\n    println!(\"{}\", hold.status());\n    hold.collect();\n    println!(\"{}\", hold.status());\n}\n",
+   "stdout": "Dune: requested\nDune: on the hold shelf\nDune: collected\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune: requested\nDune: on the hold shelf\nDune: collected\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/state_happy"
+    }
+   ]
+  },
+  "static_dyn.rs": {
+   "src": "trait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Circle {\n    r: f64,\n}\n\nstruct Square {\n    side: f64,\n}\n\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14 * self.r * self.r\n    }\n}\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.side * self.side\n    }\n}\n\nfn total_static<T: Shape>(items: &[T]) -> f64 {\n    items.iter().map(|s| s.area()).sum()\n}\n\nfn total_dynamic(items: &[Box<dyn Shape>]) -> f64 {\n    items.iter().map(|s| s.area()).sum()\n}\n\nfn main() {\n    let squares = [Square { side: 1.0 }, Square { side: 2.0 }];\n    let circles = [Circle { r: 1.0 }];\n    println!(\"static, squares only: {:.2}\", total_static(&squares));\n    println!(\"static, circles only: {:.2}\", total_static(&circles));\n    let mixed: Vec<Box<dyn Shape>> = vec![\n        Box::new(Square { side: 1.0 }),\n        Box::new(Circle { r: 1.0 }),\n    ];\n    println!(\"dynamic, mixed: {:.2}\", total_dynamic(&mixed));\n}\n",
+   "stdout": "static, squares only: 5.00\nstatic, circles only: 3.14\ndynamic, mixed: 4.14\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "static, squares only: 5.00\nstatic, circles only: 3.14\ndynamic, mixed: 4.14\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/static_dyn"
+    }
+   ]
+  },
+  "trace_rc.rs": {
+   "src": "use std::rc::Rc;\n\nfn main() {\n    let plan = Rc::new(\"family plan\");\n    let mut members = Vec::new();\n    for round in 1..=3 {\n        members.push(Rc::clone(&plan));\n        println!(\"join{} {}\", round, Rc::strong_count(&plan));\n    }\n    while let Some(m) = members.pop() {\n        drop(m);\n        println!(\"leave {}\", Rc::strong_count(&plan));\n    }\n}\n",
+   "stdout": "join1 2\njoin2 3\njoin3 4\nleave 3\nleave 2\nleave 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "join1 2\njoin2 3\njoin3 4\nleave 3\nleave 2\nleave 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/trace_rc"
+    }
+   ]
+  },
+  "weak_tree.rs": {
+   "src": "use std::cell::RefCell;\nuse std::rc::{Rc, Weak};\n\nstruct Shelf {\n    label: &'static str,\n    books: RefCell<Vec<Rc<Book>>>,\n}\n\nstruct Book {\n    title: &'static str,\n    shelf: RefCell<Weak<Shelf>>,\n}\n\nimpl Drop for Shelf {\n    fn drop(&mut self) {\n        println!(\"shelf {} taken down\", self.label);\n    }\n}\n\nfn main() {\n    let dune = Rc::new(Book {\n        title: \"Dune\",\n        shelf: RefCell::new(Weak::new()),\n    });\n    {\n        let s = Rc::new(Shelf {\n            label: \"D\",\n            books: RefCell::new(vec![]),\n        });\n        s.books.borrow_mut().push(Rc::clone(&dune));\n        *dune.shelf.borrow_mut() = Rc::downgrade(&s);\n        let found = dune.shelf.borrow().upgrade();\n        let label = found.map(|sh| sh.label).unwrap_or(\"?\");\n        println!(\"{} is on shelf {label}\", dune.title);\n        let (st, wk) = (Rc::strong_count(&s), Rc::weak_count(&s));\n        println!(\"shelf: strong {st}, weak {wk}\");\n        println!(\"Dune: strong {}\", Rc::strong_count(&dune));\n    }\n    let gone = dune.shelf.borrow().upgrade();\n    let label = gone.map(|sh| sh.label);\n    println!(\"{} is on shelf {label:?}\", dune.title);\n    println!(\"Dune: strong {}\", Rc::strong_count(&dune));\n}\n",
+   "stdout": "Dune is on shelf D\nshelf: strong 1, weak 1\nDune: strong 2\nshelf D taken down\nDune is on shelf None\nDune: strong 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune is on shelf D\nshelf: strong 1, weak 1\nDune: strong 2\nshelf D taken down\nDune is on shelf None\nDune: strong 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch23/weak_tree"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

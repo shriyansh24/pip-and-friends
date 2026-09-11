@@ -1,0 +1,1569 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch24",
+  "versionDifferences": [
+   "bin_doc.rs",
+   "ci_lint.rs",
+   "common_file.rs",
+   "doc_fail.rs",
+   "fill_ignore.rs",
+   "filter.rs",
+   "filter_doc.rs",
+   "flaky.rs",
+   "full.rs",
+   "glob_clash.rs",
+   "ignore.rs",
+   "ignore_run.rs",
+   "map_doc.rs",
+   "map_pass.rs",
+   "map_unit.rs",
+   "matches.rs",
+   "msrv.rs",
+   "nocapture.rs",
+   "nofailfast.rs",
+   "only.rs",
+   "parsons_it.rs",
+   "show_output.rs",
+   "spot_doc.rs",
+   "unit.rs",
+   "unit_fail.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bin_doc.rs, ci_lint.rs, common_file.rs, doc_fail.rs, fill_ignore.rs, filter.rs, filter_doc.rs, flaky.rs, full.rs, glob_clash.rs, ignore.rs, ignore_run.rs, map_doc.rs, map_pass.rs, map_unit.rs, matches.rs, msrv.rs, nocapture.rs, nofailfast.rs, only.rs, parsons_it.rs, show_output.rs, spot_doc.rs, unit.rs, unit_fail.rs."
+ },
+ "programs": {
+  "bin_doc.rs": {
+   "src": "/// Prints a few fees.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 999);\n/// ```\nfn main() {\n    for days in [0, 2, 30] {\n        println!(\"{days} days late: {} cents\", overdue::fee(days));\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/bin_doc"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/bin_doc"
+     }
+    ]
+   }
+  },
+  "bins.rs": {
+   "src": "use desk::{fee, loans};\n\nfn main() {\n    for loan in loans() {\n        if loan.days_late > 0 {\n            println!(\"{:<18} {:>4} cents\", loan.title, fee(loan.days_late));\n        }\n    }\n}\n",
+   "stdout": "Owls of the North    75 cents\nKnots               300 cents\n",
+   "stderr": "error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.\navailable binaries: desk, report\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "ls src src/bin",
+     "out": "src:\nbin\nlib.rs\nmain.rs\n\nsrc/bin:\nreport.rs\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/desk"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.\navailable binaries: desk, report\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/desk"
+    },
+    {
+     "cmd": "cargo run -q --bin report",
+     "out": "Owls of the North    75 cents\nKnots               300 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/desk"
+    }
+   ]
+  },
+  "tpl/desk/src/lib.rs": {
+   "src": "pub struct Loan {\n    pub title: &'static str,\n    pub days_late: u32,\n}\n\npub fn loans() -> Vec<Loan> {\n    vec![\n        Loan { title: \"Owls of the North\", days_late: 3 },\n        Loan { title: \"Moon Atlas\", days_late: 0 },\n        Loan { title: \"Knots\", days_late: 12 },\n    ]\n}\n\npub fn fee(days_late: u32) -> u32 {\n    days_late * rate()\n}\n\npub(crate) fn rate() -> u32 {\n    25\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/desk/src/main.rs": {
+   "src": "fn main() {\n    let all = desk::loans();\n    println!(\"Front desk open. {} books out.\", all.len());\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "boss_error.rs": {
+   "src": "fn main() {\n    let cents = fees::fee(2);\n    println!(\"Paid {cents} cents.\");\n    println!(\"{}\", fees::cheer());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find function `cheer` in crate `fees`\n  --> desk/src/main.rs:4:26\n   |\n 4 |     println!(\"{}\", fees::cheer());\n   |                          ^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:15:8\n   |\n14 | #[cfg(feature = \"party\")]\n   |       ----------------- the item is gated behind the `party` feature\n15 | pub fn cheer() -> String {\n   |        ^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q -p desk",
+     "out": "",
+     "err": "error[E0425]: cannot find function `cheer` in crate `fees`\n  --> desk/src/main.rs:4:26\n   |\n 4 |     println!(\"{}\", fees::cheer());\n   |                          ^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:15:8\n   |\n14 | #[cfg(feature = \"party\")]\n   |       ----------------- the item is gated behind the `party` feature\n15 | pub fn cheer() -> String {\n   |        ^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/boss_error"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "pub fn fee(days_late: u32) -> u32 {\n    days_late * 25\n}\n\n#[cfg(feature = \"weekend\")]\npub fn weekend_fee(days_late: u32) -> u32 {\n    days_late * 10\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn weekday_fee() {\n        assert_eq!(fee(2), 50);\n    }\n\n    #[test]\n    #[cfg(feature = \"weekend\")]\n    fn weekend_is_cheaper() {\n        assert!(weekend_fee(2) < fee(2));\n    }\n}\n",
+   "stdout": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -q --features weekend 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "pub fn is_blocked(days_late: u32) -> bool {\n    days_late > 60\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn two_months_is_still_ok() {\n        assert!(!is_blocked(60));\n    }\n}\n",
+   "stdout": "\nrunning 1 test\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -q 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "\nrunning 1 test\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "use stacks::loans::Card;\nuse stacks::prelude::*;\n\nfn main() {\n    let a = find(\"Atlas\");\n    let b = stacks::catalog::cards::find(\"Owls\");\n    let card: Card = issue(\"Bo\");\n    println!(\"{} {}\", a.title, a.shelf);\n    println!(\"{} {}\", b.title, b.shelf);\n    println!(\"{} borrows\", card.reader);\n}\n",
+   "stdout": "Atlas 6\nOwls 5\nBo borrows\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Atlas 6\nOwls 5\nBo borrows\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "pub fn fee(days_late: u32) -> u32 {\n    days_late * 25\n}\n\npub fn where_to_return(title: &str) -> String {\n    format!(\"Return {title} to shelf {}\", catalog::shelf_of(title))\n}\n\n#[cfg(feature = \"weeknd\")]\npub fn weekend_fee(days_late: u32) -> u32 {\n    days_late * 10\n}\n\n#[cfg(feature = \"party\")]\npub fn cheer() -> String {\n    confetti::burst(\"all fees paid\")\n}\n",
+   "stdout": "",
+   "stderr": "warning: unexpected `cfg` condition value: `weeknd`\n --> fees/src/lib.rs:9:7\n  |\n9 | #[cfg(feature = \"weeknd\")]\n  |       ^^^^^^^^^^--------\n  |                 |\n  |                 help: there is a expected value with a similar name: `\"weekend\"`\n  |\n  = note: expected values for `feature` are: `party` and `weekend`\n  = help: consider adding `weeknd` as a feature in `Cargo.toml`\n  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration\n  = note: `#[warn(unexpected_cfgs)]` on by default\n\nerror[E0425]: cannot find function `weekend_fee` in crate `fees`\n  --> desk/src/main.rs:3:49\n   |\n 3 |     println!(\"Weekend, 3 days: {} cents\", fees::weekend_fee(3));\n   |                                                 ^^^^^^^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:10:8\n   |\n 9 | #[cfg(feature = \"weeknd\")]\n   |       ------------------ the item is gated behind the `weeknd` feature\n10 | pub fn weekend_fee(days_late: u32) -> u32 {\n   |        ^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q -p desk --features fees/weekend",
+     "out": "",
+     "err": "warning: unexpected `cfg` condition value: `weeknd`\n --> fees/src/lib.rs:9:7\n  |\n9 | #[cfg(feature = \"weeknd\")]\n  |       ^^^^^^^^^^--------\n  |                 |\n  |                 help: there is a expected value with a similar name: `\"weekend\"`\n  |\n  = note: expected values for `feature` are: `party` and `weekend`\n  = help: consider adding `weeknd` as a feature in `Cargo.toml`\n  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration\n  = note: `#[warn(unexpected_cfgs)]` on by default\n\nerror[E0425]: cannot find function `weekend_fee` in crate `fees`\n  --> desk/src/main.rs:3:49\n   |\n 3 |     println!(\"Weekend, 3 days: {} cents\", fees::weekend_fee(3));\n   |                                                 ^^^^^^^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:10:8\n   |\n 9 | #[cfg(feature = \"weeknd\")]\n   |       ------------------ the item is gated behind the `weeknd` feature\n10 | pub fn weekend_fee(days_late: u32) -> u32 {\n   |        ^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/boss_spot"
+    }
+   ]
+  },
+  "bump.rs": {
+   "src": "fn bump(v: (u32, u32, u32), change: &str) -> (u32, u32, u32) {\n    match change {\n        \"fix\" => (v.0, v.1, v.2 + 1),\n        \"feature\" => (v.0, v.1 + 1, 0),\n        \"breaking\" => (v.0 + 1, 0, 0),\n        _ => v,\n    }\n}\n\nfn main() {\n    let mut v = (1, 4, 2);\n    for change in [\"fix\", \"feature\", \"fix\", \"breaking\", \"feature\"] {\n        v = bump(v, change);\n        println!(\"{change} {}.{}.{}\", v.0, v.1, v.2);\n    }\n}\n",
+   "stdout": "fix 1.4.3\nfeature 1.5.0\nfix 1.5.1\nbreaking 2.0.0\nfeature 2.1.0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "fix 1.4.3\nfeature 1.5.0\nfix 1.5.1\nbreaking 2.0.0\nfeature 2.1.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/bump"
+    }
+   ]
+  },
+  "caret.rs": {
+   "src": "// The rule behind \"^1.2\": same major number, and at least 1.2.0.\nfn caret_allows(req: (u32, u32), v: (u32, u32, u32)) -> bool {\n    v.0 == req.0 && (v.1, v.2) >= (req.1, 0)\n}\n\nfn main() {\n    let shelf = [(1, 1, 9), (1, 2, 0), (1, 2, 7), (1, 9, 3), (2, 0, 0)];\n    for v in shelf {\n        let ok = if caret_allows((1, 2), v) { \"yes\" } else { \"no\" };\n        println!(\"{}.{}.{} {ok}\", v.0, v.1, v.2);\n    }\n}\n",
+   "stdout": "1.1.9 no\n1.2.0 yes\n1.2.7 yes\n1.9.3 yes\n2.0.0 no\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1.1.9 no\n1.2.0 yes\n1.2.7 yes\n1.9.3 yes\n2.0.0 no\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/caret"
+    }
+   ]
+  },
+  "census.rs": {
+   "src": "fn main() {\n    let books = desk::loans().len() as u32;\n    println!(\"{books} books, {} cents a day each\", desk::rate());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0603]: function `rate` is private\n  --> src/bin/census.rs:3:58\n   |\n 3 |     println!(\"{books} books, {} cents a day each\", desk::rate());\n   |                                                          ^^^^ private function\n   |\nnote: the function `rate` is defined here\n  --> src/lib.rs:18:1\n   |\n18 | pub(crate) fn rate() -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `desk` (bin \"census\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q --bin census",
+     "out": "",
+     "err": "error[E0603]: function `rate` is private\n  --> src/bin/census.rs:3:58\n   |\n 3 |     println!(\"{books} books, {} cents a day each\", desk::rate());\n   |                                                          ^^^^ private function\n   |\nnote: the function `rate` is defined here\n  --> src/lib.rs:18:1\n   |\n18 | pub(crate) fn rate() -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `desk` (bin \"census\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/census"
+    }
+   ]
+  },
+  "ci_lint.rs": {
+   "src": "pub fn may_borrow(fees_paid: bool, blocked: bool) -> bool {\n    if fees_paid == true && !blocked {\n        return true;\n    }\n    false\n}\n",
+   "stdout": "",
+   "stderr": "error: equality checks against true are unnecessary\n --> src/lib.rs:2:8\n  |\n2 |     if fees_paid == true && !blocked {\n  |        ^^^^^^^^^^^^^^^^^ help: try: `fees_paid`\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#bool_comparison\n  = note: `-D clippy::bool-comparison` implied by `-D warnings`\n  = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`\n\nerror: could not compile `lintme` (lib) due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo clippy -q -- -D warnings",
+     "out": "",
+     "err": "error: equality checks against true are unnecessary\n --> src/lib.rs:2:8\n  |\n2 |     if fees_paid == true && !blocked {\n  |        ^^^^^^^^^^^^^^^^^ help: try: `fees_paid`\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#bool_comparison\n  = note: `-D clippy::bool-comparison` implied by `-D warnings`\n  = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`\n\nerror: could not compile `lintme` (lib) due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/lintme"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error: equality checks against true are unnecessary\n --> src/lib.rs:2:8\n  |\n2 |     if fees_paid == true && !blocked {\n  |        ^^^^^^^^^^^^^^^^^ help: try: `fees_paid`\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#bool_comparison\n  = note: `-D clippy::bool-comparison` implied by `-D warnings`\n  = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`\n\nerror: could not compile `lintme` (lib) due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo clippy -q -- -D warnings",
+      "out": "",
+      "err": "error: equality checks against true are unnecessary\n --> src/lib.rs:2:8\n  |\n2 |     if fees_paid == true && !blocked {\n  |        ^^^^^^^^^^^^^^^^^ help: try: `fees_paid`\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#bool_comparison\n  = note: `-D clippy::bool-comparison` implied by `-D warnings`\n  = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`\n\nerror: could not compile `lintme` (lib) due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch24/lintme"
+     }
+    ]
+   }
+  },
+  "common_file.rs": {
+   "src": "/// Days late for a stack of returned books, shared by every test file.\npub fn stack() -> Vec<u32> {\n    vec![0, 2, 30, 7]\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/common.rs (target/debug/deps/common-91852f5246108682)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "ls tests",
+     "out": "checkout.rs\ncommon.rs\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/common_file"
+    },
+    {
+     "cmd": "cargo test --tests -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/common.rs (target/debug/deps/common-91852f5246108682)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/common_file"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/common.rs (target/debug/deps/common-ca0d844c3125ce8d)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "ls tests",
+      "out": "checkout.rs\ncommon.rs\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/common_file"
+     },
+     {
+      "cmd": "cargo test --tests -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/common.rs (target/debug/deps/common-ca0d844c3125ce8d)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/common_file"
+     }
+    ]
+   }
+  },
+  "doc_fail.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 75);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (27) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 50\n right: 75\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test --doc 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g; s/rustdoctest\\w+/rustdoctest…/'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (27) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 50\n right: 75\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/doc_fail"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (30) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 50\n right: 75\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test --doc 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g; s/rustdoctest\\w+/rustdoctest…/'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (30) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 50\n right: 75\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/doc_fail"
+     }
+    ]
+   }
+  },
+  "fill_feature.rs": {
+   "src": "pub fn fee(days_late: u32) -> u32 {\n    days_late * 25\n}\n\npub fn where_to_return(title: &str) -> String {\n    format!(\"Return {title} to shelf {}\", catalog::shelf_of(title))\n}\n\n#[cfg(feature = \"weekend\")]\npub fn weekend_fee(days_late: u32) -> u32 {\n    days_late * 10\n}\n\n#[cfg(feature = \"party\")]\npub fn cheer() -> String {\n    confetti::burst(\"all fees paid\")\n}\n",
+   "stdout": "Weekday, 3 days: 75 cents\nWeekend, 3 days: 30 cents\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q -p desk --features fees/weekend",
+     "out": "Weekday, 3 days: 75 cents\nWeekend, 3 days: 30 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/fill_feature"
+    }
+   ]
+  },
+  "fill_ignore.rs": {
+   "src": "#[test]\nfn two_days() {\n    assert_eq!(overdue::fee(2), 25);\n}\n\n#[test]\n#[ignore = \"slow: checks a whole century\"]\nfn a_century_of_days() {\n    for days in 0..36_500 {\n        assert!(overdue::fee(days) <= 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 2 tests\ntest a_century_of_days ... ignored, slow: checks a whole century\ntest two_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test slow -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 2 tests\ntest a_century_of_days ... ignored, slow: checks a whole century\ntest two_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/fill_ignore"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 2 tests\ntest a_century_of_days ... ignored, slow: checks a whole century\ntest two_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test slow -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 2 tests\ntest a_century_of_days ... ignored, slow: checks a whole century\ntest two_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/fill_ignore"
+     }
+    ]
+   }
+  },
+  "fill_matches.rs": {
+   "src": "pub enum Verdict {\n    Clear,\n    Owes(u32),\n    Blocked { reason: &'static str },\n}\n\npub fn check(days_late: u32) -> Verdict {\n    match days_late {\n        0 => Verdict::Clear,\n        1..=60 => Verdict::Owes(days_late * 25),\n        _ => Verdict::Blocked { reason: \"over two months late\" },\n    }\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn two_days_owes_fifty() {\n        assert!(matches!(check(2), Verdict::Owes(50)));\n    }\n\n    #[test]\n    fn a_year_is_blocked() {\n        assert!(matches!(check(365), Verdict::Blocked { .. }));\n    }\n}\n",
+   "stdout": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -q 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/fill_matches"
+    }
+   ]
+  },
+  "fill_vis.rs": {
+   "src": "pub struct Loan {\n    pub title: &'static str,\n    pub days_late: u32,\n}\n\npub fn loans() -> Vec<Loan> {\n    vec![\n        Loan { title: \"Owls of the North\", days_late: 3 },\n        Loan { title: \"Moon Atlas\", days_late: 0 },\n        Loan { title: \"Knots\", days_late: 12 },\n    ]\n}\n\npub fn fee(days_late: u32) -> u32 {\n    days_late * rate()\n}\n\npub(crate) fn rate() -> u32 {\n    25\n}\n",
+   "stdout": "Owls of the North    75 cents\nKnots               300 cents\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q --bin report",
+     "out": "Owls of the North    75 cents\nKnots               300 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/fill_vis"
+    }
+   ]
+  },
+  "filter.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn a_late_week() {\n        assert_eq!(fee(7), 150);\n    }\n\n    #[test]\n    fn late_month_is_capped() {\n        assert_eq!(fee(31), 500);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::a_late_week ... ok\ntest tests::late_month_is_capped ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 1 test\ntest a_week_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test late -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::a_late_week ... ok\ntest tests::late_month_is_capped ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 1 test\ntest a_week_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/filter"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::a_late_week ... ok\ntest tests::late_month_is_capped ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 1 test\ntest a_week_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test late -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::a_late_week ... ok\ntest tests::late_month_is_capped ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 1 test\ntest a_week_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/filter"
+     }
+    ]
+   }
+  },
+  "filter_doc.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn a_late_week() {\n        assert_eq!(fee(7), 150);\n    }\n\n    #[test]\n    fn late_month_is_capped() {\n        assert_eq!(fee(31), 500);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test fee -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/filter_doc"
+    },
+    {
+     "cmd": "cargo test --doc fee 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/filter_doc"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test fee -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/filter_doc"
+     },
+     {
+      "cmd": "cargo test --doc fee 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/filter_doc"
+     }
+    ]
+   }
+  },
+  "flaky.rs": {
+   "src": "use std::fs;\nuse std::sync::Barrier;\n\n// Only here to make the unlucky timing happen on every run.\nstatic BOTH_HERE: Barrier = Barrier::new(2);\n\n#[test]\nfn saves_a_reader() {\n    fs::write(\"readers.txt\", \"Ada\").unwrap();\n    BOTH_HERE.wait();\n    BOTH_HERE.wait();\n    let saved = fs::read_to_string(\"readers.txt\").unwrap();\n    assert_eq!(saved, \"Ada\");\n}\n\n#[test]\nfn clears_the_list() {\n    BOTH_HERE.wait();\n    fs::write(\"readers.txt\", \"\").unwrap();\n    BOTH_HERE.wait();\n}\n",
+   "stdout": "\nrunning 2 tests\n. 1/2\nsaves_a_reader --- FAILED\n\nfailures:\n\n---- saves_a_reader stdout ----\n\nthread 'saves_a_reader' (15) panicked at tests/readers.rs:13:5:\nassertion `left == right` failed\n  left: \"\"\n right: \"Ada\"\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    saves_a_reader\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--test readers`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test -q --test readers 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "\nrunning 2 tests\n. 1/2\nsaves_a_reader --- FAILED\n\nfailures:\n\n---- saves_a_reader stdout ----\n\nthread 'saves_a_reader' (15) panicked at tests/readers.rs:13:5:\nassertion `left == right` failed\n  left: \"\"\n right: \"Ada\"\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    saves_a_reader\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--test readers`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/flaky"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "\nrunning 2 tests\n. 1/2\nsaves_a_reader --- FAILED\n\nfailures:\n\n---- saves_a_reader stdout ----\n\nthread 'saves_a_reader' (16) panicked at tests/readers.rs:13:5:\nassertion `left == right` failed\n  left: \"\"\n right: \"Ada\"\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    saves_a_reader\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--test readers`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test -q --test readers 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "\nrunning 2 tests\n. 1/2\nsaves_a_reader --- FAILED\n\nfailures:\n\n---- saves_a_reader stdout ----\n\nthread 'saves_a_reader' (16) panicked at tests/readers.rs:13:5:\nassertion `left == right` failed\n  left: \"\"\n right: \"Ada\"\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    saves_a_reader\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--test readers`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/flaky"
+     }
+    ]
+   }
+  },
+  "flaky_fixed.rs": {
+   "src": "use std::fs;\nuse std::path::PathBuf;\nuse std::sync::Barrier;\n\n// Only here to make the unlucky timing happen on every run.\nstatic BOTH_HERE: Barrier = Barrier::new(2);\n\n/// A fixture: a fresh, empty file that belongs to one test.\nfn fresh_file(test: &str) -> PathBuf {\n    let path = std::env::temp_dir().join(format!(\"readers-{test}.txt\"));\n    fs::write(&path, \"\").unwrap();\n    path\n}\n\n#[test]\nfn saves_a_reader() {\n    let file = fresh_file(\"saves_a_reader\");\n    fs::write(&file, \"Ada\").unwrap();\n    BOTH_HERE.wait();\n    BOTH_HERE.wait();\n    let saved = fs::read_to_string(&file).unwrap();\n    assert_eq!(saved, \"Ada\");\n}\n\n#[test]\nfn clears_the_list() {\n    let file = fresh_file(\"clears_the_list\");\n    BOTH_HERE.wait();\n    fs::write(&file, \"\").unwrap();\n    BOTH_HERE.wait();\n}\n",
+   "stdout": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -q --test readers 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/flaky_fixed"
+    }
+   ]
+  },
+  "full.rs": {
+   "src": "mod common;\n\n#[test]\nfn a_week_late() {\n    assert_eq!(overdue::fee(7), 150);\n}\n\n#[test]\nfn a_whole_stack() {\n    let total: u32 = common::stack().iter().map(|&d| overdue::fee(d)).sum();\n    assert_eq!(total, 675);\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/overdue"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/overdue"
+     }
+    ]
+   }
+  },
+  "tpl/overdue/src/main.rs": {
+   "src": "fn main() {\n    for days in [0, 2, 30] {\n        println!(\"{days} days late: {} cents\", overdue::fee(days));\n    }\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/it_common/tests/common/mod.rs": {
+   "src": "/// Days late for a stack of returned books, shared by every test file.\npub fn stack() -> Vec<u32> {\n    vec![0, 2, 30, 7]\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "glob_clash.rs": {
+   "src": "use stacks::catalog::cards::*;\nuse stacks::loans::*;\n\nfn main() {\n    let book = find(\"Knots\");\n    let mine: Card = issue(\"Ada\");\n    println!(\"{} has {}\", mine.reader, book.title);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0659]: `Card` is ambiguous\n --> src/main.rs:6:15\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ^^^^ ambiguous name\n  |\n  = note: ambiguous because of multiple glob imports of a name in the same module\nnote: `Card` could refer to the struct imported here\n --> src/main.rs:1:5\n  |\n1 | use stacks::catalog::cards::*;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\nnote: `Card` could also refer to the struct imported here\n --> src/main.rs:2:5\n  |\n2 | use stacks::loans::*;\n  |     ^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\n\nerror[E0308]: mismatched types\n --> src/main.rs:6:22\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ----   ^^^^^^^^^^^^ expected `stacks::prelude::Card`, found `stacks::loans::Card`\n  |               |\n  |               expected due to this\n\nerror[E0609]: no field `reader` on type `stacks::prelude::Card`\n --> src/main.rs:7:32\n  |\n7 |     println!(\"{} has {}\", mine.reader, book.title);\n  |                                ^^^^^^ unknown field\n  |\n  = note: available fields are: `title`, `shelf`\n\nSome errors have detailed explanations: E0308, E0609, E0659.\nFor more information about an error, try `rustc --explain E0308`.\nerror: could not compile `stacks` (bin \"stacks\") due to 3 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0659]: `Card` is ambiguous\n --> src/main.rs:6:15\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ^^^^ ambiguous name\n  |\n  = note: ambiguous because of multiple glob imports of a name in the same module\nnote: `Card` could refer to the struct imported here\n --> src/main.rs:1:5\n  |\n1 | use stacks::catalog::cards::*;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\nnote: `Card` could also refer to the struct imported here\n --> src/main.rs:2:5\n  |\n2 | use stacks::loans::*;\n  |     ^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\n\nerror[E0308]: mismatched types\n --> src/main.rs:6:22\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ----   ^^^^^^^^^^^^ expected `stacks::prelude::Card`, found `stacks::loans::Card`\n  |               |\n  |               expected due to this\n\nerror[E0609]: no field `reader` on type `stacks::prelude::Card`\n --> src/main.rs:7:32\n  |\n7 |     println!(\"{} has {}\", mine.reader, book.title);\n  |                                ^^^^^^ unknown field\n  |\n  = note: available fields are: `title`, `shelf`\n\nSome errors have detailed explanations: E0308, E0609, E0659.\nFor more information about an error, try `rustc --explain E0308`.\nerror: could not compile `stacks` (bin \"stacks\") due to 3 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/glob_clash"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error: `Card` is ambiguous\n --> src/main.rs:6:15\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ^^^^ ambiguous name\n  |\n  = note: ambiguous because of multiple glob imports of a name in the same module\nnote: `Card` could refer to the struct imported here\n --> src/main.rs:1:5\n  |\n1 | use stacks::catalog::cards::*;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\nnote: `Card` could also refer to the struct imported here\n --> src/main.rs:2:5\n  |\n2 | use stacks::loans::*;\n  |     ^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\n  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!\n  = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>\n  = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default\n\nerror[E0308]: mismatched types\n --> src/main.rs:6:22\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ----   ^^^^^^^^^^^^ expected `stacks::prelude::Card`, found `stacks::loans::Card`\n  |               |\n  |               expected due to this\n\nerror[E0609]: no field `reader` on type `stacks::prelude::Card`\n --> src/main.rs:7:32\n  |\n7 |     println!(\"{} has {}\", mine.reader, book.title);\n  |                                ^^^^^^ unknown field\n  |\n  = note: available fields are: `title`, `shelf`\n\nSome errors have detailed explanations: E0308, E0609.\nFor more information about an error, try `rustc --explain E0308`.\nerror: could not compile `stacks` (bin \"stacks\") due to 4 previous errors\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error: `Card` is ambiguous\n --> src/main.rs:6:15\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ^^^^ ambiguous name\n  |\n  = note: ambiguous because of multiple glob imports of a name in the same module\nnote: `Card` could refer to the struct imported here\n --> src/main.rs:1:5\n  |\n1 | use stacks::catalog::cards::*;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\nnote: `Card` could also refer to the struct imported here\n --> src/main.rs:2:5\n  |\n2 | use stacks::loans::*;\n  |     ^^^^^^^^^^^^^^^^\n  = help: consider adding an explicit import of `Card` to disambiguate\n  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!\n  = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>\n  = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default\n\nerror[E0308]: mismatched types\n --> src/main.rs:6:22\n  |\n6 |     let mine: Card = issue(\"Ada\");\n  |               ----   ^^^^^^^^^^^^ expected `stacks::prelude::Card`, found `stacks::loans::Card`\n  |               |\n  |               expected due to this\n\nerror[E0609]: no field `reader` on type `stacks::prelude::Card`\n --> src/main.rs:7:32\n  |\n7 |     println!(\"{} has {}\", mine.reader, book.title);\n  |                                ^^^^^^ unknown field\n  |\n  = note: available fields are: `title`, `shelf`\n\nSome errors have detailed explanations: E0308, E0609.\nFor more information about an error, try `rustc --explain E0308`.\nerror: could not compile `stacks` (bin \"stacks\") due to 4 previous errors\n",
+      "exit": 101,
+      "dir": "~/rust-ch24/glob_clash"
+     }
+    ]
+   }
+  },
+  "glob_fixed.rs": {
+   "src": "use stacks::catalog::cards::*;\nuse stacks::loans::{Card, issue};\n\nfn main() {\n    let book = find(\"Knots\");\n    let mine: Card = issue(\"Ada\");\n    println!(\"{} has {}\", mine.reader, book.title);\n}\n",
+   "stdout": "Ada has Knots\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada has Knots\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/glob_fixed"
+    }
+   ]
+  },
+  "ignore.rs": {
+   "src": "#[test]\nfn one_book() {\n    assert_eq!(overdue::fee(2), 25);\n}\n\n#[test]\n#[ignore = \"slow: checks every day for ten years\"]\nfn ten_years_of_days() {\n    for days in 0..3650 {\n        assert!(overdue::fee(days) <= 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 2 tests\ntest one_book ... ok\ntest ten_years_of_days ... ignored, slow: checks every day for ten years\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test slow -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 2 tests\ntest one_book ... ok\ntest ten_years_of_days ... ignored, slow: checks every day for ten years\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/ignore"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 2 tests\ntest one_book ... ok\ntest ten_years_of_days ... ignored, slow: checks every day for ten years\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test slow -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 2 tests\ntest one_book ... ok\ntest ten_years_of_days ... ignored, slow: checks every day for ten years\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/ignore"
+     }
+    ]
+   }
+  },
+  "ignore_run.rs": {
+   "src": "#[test]\nfn one_book() {\n    assert_eq!(overdue::fee(2), 25);\n}\n\n#[test]\n#[ignore = \"slow: checks every day for ten years\"]\nfn ten_years_of_days() {\n    for days in 0..3650 {\n        assert!(overdue::fee(days) <= 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 1 test\ntest ten_years_of_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test slow -- --ignored 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-432957481c7099cb)\n\nrunning 1 test\ntest ten_years_of_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/ignore"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 1 test\ntest ten_years_of_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test slow -- --ignored 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/slow.rs (target/debug/deps/slow-caf47f96823a1d11)\n\nrunning 1 test\ntest ten_years_of_days ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/ignore"
+     }
+    ]
+   }
+  },
+  "latefee.rs": {
+   "src": "use latefee::receipt;\n\nfn main() {\n    println!(\"{}\", receipt(\"Owls of the North\", 3));\n    println!(\"{}\", receipt(\"Moon Atlas\", 0));\n}\n",
+   "stdout": "Owls of the North: 3 days late, fee $0.75\nMoon Atlas: 0 days late, fee $0.00\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "ls src",
+     "out": "lib.rs\nmain.rs\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/latefee"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "Owls of the North: 3 days late, fee $0.75\nMoon Atlas: 0 days late, fee $0.00\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/latefee"
+    }
+   ]
+  },
+  "tpl/latefee/src/lib.rs": {
+   "src": "//! Late fees for Mabel's library.\n\n/// Cents charged for each day a book is late.\nconst DAILY: u32 = 25;\n\npub fn fee(days_late: u32) -> u32 {\n    days_late * DAILY\n}\n\npub fn receipt(title: &str, days_late: u32) -> String {\n    format!(\"{title}: {days_late} days late, fee {}\", dollars(fee(days_late)))\n}\n\nfn dollars(cents: u32) -> String {\n    format!(\"${}.{:02}\", cents / 100, cents % 100)\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/latefee/Cargo.toml": {
+   "src": "[package]\nname = \"latefee\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "map_build.rs": {
+   "src": "#[test]\nfn cap_from_outside() {\n    assert_eq!(overdue::capped(9000), 500);\n}\n",
+   "stdout": "error[E0603]: function `capped` is private\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `overdue` (test \"peek\") due to 1 previous error\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "error[E0603]: function `capped` is private\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `overdue` (test \"peek\") due to 1 previous error\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/private_it"
+    }
+   ]
+  },
+  "map_doc.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 75);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/doc_fail"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/doc_fail"
+     }
+    ]
+   }
+  },
+  "map_pass.rs": {
+   "src": "mod common;\n\n#[test]\nfn a_week_late() {\n    assert_eq!(overdue::fee(7), 150);\n}\n\n#[test]\nfn a_whole_stack() {\n    let total: u32 = common::stack().iter().map(|&d| overdue::fee(d)).sum();\n    assert_eq!(total, 675);\n}\n",
+   "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/overdue"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n   Doc-tests overdue\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/overdue"
+     }
+    ]
+   }
+  },
+  "map_unit.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late;\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/unit_fail"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test 2>&1 | grep -E 'Running|Doc-tests|test result|error' | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/unit_fail"
+     }
+    ]
+   }
+  },
+  "matches.rs": {
+   "src": "pub enum Verdict {\n    Clear,\n    Owes(u32),\n    Blocked { reason: &'static str },\n}\n\npub fn check(days_late: u32) -> Verdict {\n    match days_late {\n        0 => Verdict::Clear,\n        1..=60 => Verdict::Owes(days_late * 25),\n        _ => Verdict::Blocked { reason: \"over two months late\" },\n    }\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn on_time_is_clear() {\n        assert!(matches!(check(0), Verdict::Clear));\n    }\n\n    #[test]\n    fn a_week_owes_something() {\n        assert!(matches!(check(7), Verdict::Owes(cents) if cents > 100));\n    }\n\n    #[test]\n    fn very_late_is_blocked() {\n        assert!(matches!(check(90), Verdict::Blocked { .. }));\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/verdict-ae95e52d0fc9872a)\n\nrunning 3 tests\ntest tests::a_week_owes_something ... ok\ntest tests::on_time_is_clear ... ok\ntest tests::very_late_is_blocked ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests verdict\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/verdict-ae95e52d0fc9872a)\n\nrunning 3 tests\ntest tests::a_week_owes_something ... ok\ntest tests::on_time_is_clear ... ok\ntest tests::very_late_is_blocked ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests verdict\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/verdict"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/verdict-5d9a7a1c85ad5790)\n\nrunning 3 tests\ntest tests::a_week_owes_something ... ok\ntest tests::on_time_is_clear ... ok\ntest tests::very_late_is_blocked ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests verdict\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/verdict-5d9a7a1c85ad5790)\n\nrunning 3 tests\ntest tests::a_week_owes_something ... ok\ntest tests::on_time_is_clear ... ok\ntest tests::very_late_is_blocked ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n   Doc-tests verdict\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/verdict"
+     }
+    ]
+   }
+  },
+  "msrv.rs": {
+   "src": "fn main() {\n    println!(\"Built with a Rust new enough for this package.\");\n}\n",
+   "stdout": "Built with a Rust new enough for this package.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "grep rust-version Cargo.toml",
+     "out": "rust-version = \"1.98\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/msrv"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "Built with a Rust new enough for this package.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/msrv"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error: rustc 1.97.0 is not supported by the following package:\n  msrv@0.1.0 requires rustc 1.98\n\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "grep rust-version Cargo.toml",
+      "out": "rust-version = \"1.98\"\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/msrv"
+     },
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error: rustc 1.97.0 is not supported by the following package:\n  msrv@0.1.0 requires rustc 1.98\n\n",
+      "exit": 101,
+      "dir": "~/rust-ch24/msrv"
+     }
+    ]
+   }
+  },
+  "nocapture.rs": {
+   "src": "#[test]\nfn fees_for_a_stack() {\n    for days in [2, 7] {\n        let cents = overdue::fee(days);\n        println!(\"{days} days late: {cents} cents\");\n        assert!(cents > 0);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-8e42629166972bfd)\n\nrunning 1 test\n2 days late: 25 cents\n7 days late: 150 cents\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test noisy -- --nocapture 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-8e42629166972bfd)\n\nrunning 1 test\n2 days late: 25 cents\n7 days late: 150 cents\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/noisy"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-3291a391b95f1c4e)\n\nrunning 1 test\n2 days late: 25 cents\n7 days late: 150 cents\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test noisy -- --nocapture 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-3291a391b95f1c4e)\n\nrunning 1 test\n2 days late: 25 cents\n7 days late: 150 cents\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/noisy"
+     }
+    ]
+   }
+  },
+  "nofailfast.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late;\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--test checkout`\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\nerror: 3 targets failed:\n    `--lib`\n    `--test checkout`\n    `--doc`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test --no-fail-fast 2>&1 | grep -E 'Running|Doc-tests|test result|error|^ +`' | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n     Running unittests src/main.rs (target/debug/deps/overdue-8cf0b6d1318cafd3)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\ntest result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--test checkout`\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\nerror: 3 targets failed:\n    `--lib`\n    `--test checkout`\n    `--doc`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/unit_fail"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--test checkout`\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\nerror: 3 targets failed:\n    `--lib`\n    `--test checkout`\n    `--doc`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test --no-fail-fast 2>&1 | grep -E 'Running|Doc-tests|test result|error|^ +`' | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--lib`\n     Running unittests src/main.rs (target/debug/deps/overdue-e0a729a648e37a41)\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\ntest result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: test failed, to rerun pass `--test checkout`\n   Doc-tests overdue\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\nerror: doctest failed, to rerun pass `--doc`\nerror: 3 targets failed:\n    `--lib`\n    `--test checkout`\n    `--doc`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/unit_fail"
+     }
+    ]
+   }
+  },
+  "only.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn a_late_week() {\n        assert_eq!(fee(7), 150);\n    }\n\n    #[test]\n    fn late_month_is_capped() {\n        assert_eq!(fee(31), 500);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test checkout -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-a66d6982ba1ebcdd)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/filter"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test checkout -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/checkout.rs (target/debug/deps/checkout-b25081bfbc60caee)\n\nrunning 2 tests\ntest a_week_late ... ok\ntest a_whole_stack ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/filter"
+     }
+    ]
+   }
+  },
+  "parsons_it.rs": {
+   "src": "use overdue::fee;\n\n#[test]\nfn ten_days_late() {\n    let cents = fee(10);\n    assert_eq!(cents, 225);\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/late.rs (target/debug/deps/late-369da45dc361ac4c)\n\nrunning 1 test\ntest ten_days_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test late 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/late.rs (target/debug/deps/late-369da45dc361ac4c)\n\nrunning 1 test\ntest ten_days_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/parsons_it"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/late.rs (target/debug/deps/late-c857793cb8e1365d)\n\nrunning 1 test\ntest ten_days_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test late 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/late.rs (target/debug/deps/late-c857793cb8e1365d)\n\nrunning 1 test\ntest ten_days_late ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/parsons_it"
+     }
+    ]
+   }
+  },
+  "parsons_main.rs": {
+   "src": "use desk::{fee, loans};\n\nfn main() {\n    let all = loans();\n    let owed: u32 = all.iter().map(|l| fee(l.days_late)).sum();\n    println!(\"{} loans, {} cents owed\", all.len(), owed);\n}\n",
+   "stdout": "3 loans, 375 cents owed\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q --bin desk",
+     "out": "3 loans, 375 cents owed\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/parsons_main"
+    }
+   ]
+  },
+  "prelude.rs": {
+   "src": "use stacks::prelude::*;\n\nfn main() {\n    let card: Card = find(\"Owls\");\n    let loan = issue(\"Ada\");\n    println!(\"{} borrows {} from shelf {}\", loan.reader, card.title, card.shelf);\n}\n",
+   "stdout": "Ada borrows Owls from shelf 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada borrows Owls from shelf 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/prelude"
+    }
+   ]
+  },
+  "private_doc.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\n/// Never more than five dollars.\n///\n/// ```\n/// assert_eq!(overdue::capped(9000), 500);\n/// ```\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 2 tests\ntest src/lib.rs - capped (line 18) ... FAILED\ntest src/lib.rs - fee (line 8) ... ok\n\nfailures:\n\n---- src/lib.rs - capped (line 18) stdout ----\nerror[E0603]: function `capped` is private\n  --> src/lib.rs:20:21\n   |\n20 | assert_eq!(overdue::capped(9000), 500);\n   |                     ^^^^^^ private function\n   |\nnote: the function `capped` is defined here\n  --> src/lib.rs:21:1\n   |\n21 | fn capped(cents: u32) -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0603`.\nCouldn't compile the test.\n\nfailures:\n    src/lib.rs - capped (line 18)\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test --doc 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 2 tests\ntest src/lib.rs - capped (line 18) ... FAILED\ntest src/lib.rs - fee (line 8) ... ok\n\nfailures:\n\n---- src/lib.rs - capped (line 18) stdout ----\nerror[E0603]: function `capped` is private\n  --> src/lib.rs:20:21\n   |\n20 | assert_eq!(overdue::capped(9000), 500);\n   |                     ^^^^^^ private function\n   |\nnote: the function `capped` is defined here\n  --> src/lib.rs:21:1\n   |\n21 | fn capped(cents: u32) -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0603`.\nCouldn't compile the test.\n\nfailures:\n    src/lib.rs - capped (line 18)\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/private_doc"
+    }
+   ]
+  },
+  "private_it.rs": {
+   "src": "#[test]\nfn cap_from_outside() {\n    assert_eq!(overdue::capped(9000), 500);\n}\n",
+   "stdout": "",
+   "stderr": "   Compiling overdue v0.1.0 (/home/you/rust-ch24/private_it)\nerror[E0603]: function `capped` is private\n  --> tests/peek.rs:3:25\n   |\n 3 |     assert_eq!(overdue::capped(9000), 500);\n   |                         ^^^^^^ private function\n   |\nnote: the function `capped` is defined here\n  --> src/lib.rs:16:1\n   |\n16 | fn capped(cents: u32) -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `overdue` (test \"peek\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo test --test peek",
+     "out": "",
+     "err": "   Compiling overdue v0.1.0 (/home/you/rust-ch24/private_it)\nerror[E0603]: function `capped` is private\n  --> tests/peek.rs:3:25\n   |\n 3 |     assert_eq!(overdue::capped(9000), 500);\n   |                         ^^^^^^ private function\n   |\nnote: the function `capped` is defined here\n  --> src/lib.rs:16:1\n   |\n16 | fn capped(cents: u32) -> u32 {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `overdue` (test \"peek\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/private_it"
+    }
+   ]
+  },
+  "reexport.rs": {
+   "src": "fn main() {\n    let a = stacks::catalog::cards::find(\"Knots\");\n    let b = stacks::find(\"Moon Atlas\");\n    println!(\"{} is on shelf {}\", a.title, a.shelf);\n    println!(\"{} is on shelf {}\", b.title, b.shelf);\n}\n",
+   "stdout": "Knots is on shelf 6\nMoon Atlas is on shelf 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Knots is on shelf 6\nMoon Atlas is on shelf 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/stacks"
+    }
+   ]
+  },
+  "tpl/stacks/src/lib.rs": {
+   "src": "pub mod catalog {\n    pub mod cards {\n        pub struct Card {\n            pub title: &'static str,\n            pub shelf: usize,\n        }\n\n        pub fn find(title: &'static str) -> Card {\n            Card { title, shelf: title.len() % 9 + 1 }\n        }\n    }\n}\n\npub mod loans {\n    pub struct Card {\n        pub reader: &'static str,\n    }\n\n    pub fn issue(reader: &'static str) -> Card {\n        Card { reader }\n    }\n}\n\npub use catalog::cards::find;\n\npub mod prelude {\n    pub use crate::catalog::cards::{Card, find};\n    pub use crate::loans::issue;\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "show_output.rs": {
+   "src": "#[test]\nfn fees_for_a_stack() {\n    for days in [2, 7] {\n        let cents = overdue::fee(days);\n        println!(\"{days} days late: {cents} cents\");\n        assert!(cents > 0);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-8e42629166972bfd)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\nsuccesses:\n\n---- fees_for_a_stack stdout ----\n2 days late: 25 cents\n7 days late: 150 cents\n\n\nsuccesses:\n    fees_for_a_stack\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --test noisy 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-8e42629166972bfd)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/noisy"
+    },
+    {
+     "cmd": "cargo test --test noisy -- --show-output 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-8e42629166972bfd)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\nsuccesses:\n\n---- fees_for_a_stack stdout ----\n2 days late: 25 cents\n7 days late: 150 cents\n\n\nsuccesses:\n    fees_for_a_stack\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/noisy"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-3291a391b95f1c4e)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\nsuccesses:\n\n---- fees_for_a_stack stdout ----\n2 days late: 25 cents\n7 days late: 150 cents\n\n\nsuccesses:\n    fees_for_a_stack\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --test noisy 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-3291a391b95f1c4e)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/noisy"
+     },
+     {
+      "cmd": "cargo test --test noisy -- --show-output 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running tests/noisy.rs (target/debug/deps/noisy-3291a391b95f1c4e)\n\nrunning 1 test\ntest fees_for_a_stack ... ok\n\nsuccesses:\n\n---- fees_for_a_stack stdout ----\n2 days late: 25 cents\n7 days late: 150 cents\n\n\nsuccesses:\n    fees_for_a_stack\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/noisy"
+     }
+    ]
+   }
+  },
+  "spot_doc.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(30), 725);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (27) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 500\n right: 725\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test --doc 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g; s/rustdoctest\\w+/rustdoctest…/'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (27) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 500\n right: 725\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/spot_doc"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (30) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 500\n right: 725\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test --doc 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g; s/rustdoctest\\w+/rustdoctest…/'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n   Doc-tests overdue\n\nrunning 1 test\ntest src/lib.rs - fee (line 8) ... FAILED\n\nfailures:\n\n---- src/lib.rs - fee (line 8) stdout ----\nTest executable failed (exit status: 101).\n\nstderr:\n\nthread 'main' (30) panicked at /tmp/rustdoctest…/doctest_bundle_2024.rs:6:1:\nassertion `left == right` failed\n  left: 500\n right: 725\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\n\nfailures:\n    src/lib.rs - fee (line 8)\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nall doctests ran in …s; merged doctests compilation took …s\nerror: doctest failed, to rerun pass `--doc`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/spot_doc"
+     }
+    ]
+   }
+  },
+  "sv_bare.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "using bricks 1.5.0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"1.2\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_bare/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "using bricks 1.5.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_bare/app"
+    }
+   ]
+  },
+  "sv_caret.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "using bricks 1.5.0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"^1.2\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_caret/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "using bricks 1.5.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_caret/app"
+    }
+   ]
+  },
+  "sv_exact.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "using bricks 1.5.0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"=1.5.0\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_exact/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "using bricks 1.5.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_exact/app"
+    }
+   ]
+  },
+  "sv_major.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "",
+   "stderr": "error: failed to select a version for the requirement `bricks = \"^2\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_major/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_major/app)`\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"^2\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_major/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: failed to select a version for the requirement `bricks = \"^2\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_major/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_major/app)`\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/sv_major/app"
+    }
+   ]
+  },
+  "sv_old.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "",
+   "stderr": "error: failed to select a version for the requirement `bricks = \"^0.9\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_old/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_old/app)`\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"0.9\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_old/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: failed to select a version for the requirement `bricks = \"^0.9\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_old/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_old/app)`\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/sv_old/app"
+    }
+   ]
+  },
+  "sv_tilde.rs": {
+   "src": "fn main() {\n    println!(\"using bricks {}\", bricks::VERSION);\n}\n",
+   "stdout": "",
+   "stderr": "error: failed to select a version for the requirement `bricks = \"~1.2\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_tilde/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_tilde/app)`\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "grep bricks Cargo.toml",
+     "out": "bricks = { path = \"../bricks\", version = \"~1.2\" }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/sv_tilde/app"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: failed to select a version for the requirement `bricks = \"~1.2\"`\ncandidate versions found which didn't match: 1.5.0\nlocation searched: /home/you/rust-ch24/sv_tilde/bricks\nrequired by package `app v0.1.0 (/home/you/rust-ch24/sv_tilde/app)`\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/sv_tilde/app"
+    }
+   ]
+  },
+  "town.rs": {
+   "src": "fn main() {\n    let books: u32 = catalog::count();\n    println!(\"Books in the library: {books}\");\n    println!(\"{}\", fees::where_to_return(\"Knots\"));\n    println!(\"Fee for 3 days late: {} cents\", fees::fee(3));\n}\n",
+   "stdout": "Books in the library: 1200\nReturn Knots to shelf 6\nFee for 3 days late: 75 cents\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cat Cargo.toml",
+     "out": "[workspace]\nmembers = [\"catalog\", \"fees\", \"desk\", \"confetti\"]\nresolver = \"3\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    },
+    {
+     "cmd": "cargo run -q -p desk",
+     "out": "Books in the library: 1200\nReturn Knots to shelf 6\nFee for 3 days late: 75 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    }
+   ]
+  },
+  "tpl/town/catalog/Cargo.toml": {
+   "src": "[package]\nname = \"catalog\"\nversion = \"1.4.0\"\nedition = \"2024\"\n\n[dependencies]\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/town/catalog/src/lib.rs": {
+   "src": "/// How many books the library owns.\npub fn count() -> u32 {\n    1200\n}\n\n/// The shelf a title lives on.\npub fn shelf_of(title: &str) -> usize {\n    title.len() % 9 + 1\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/town/fees/Cargo.toml": {
+   "src": "[package]\nname = \"fees\"\nversion = \"0.3.0\"\nedition = \"2024\"\n\n[dependencies]\ncatalog = { path = \"../catalog\" }\nconfetti = { path = \"../confetti\", optional = true }\n\n[features]\nweekend = []\nparty = [\"dep:confetti\"]\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/town/fees/src/lib.rs": {
+   "src": "pub fn fee(days_late: u32) -> u32 {\n    days_late * 25\n}\n\npub fn where_to_return(title: &str) -> String {\n    format!(\"Return {title} to shelf {}\", catalog::shelf_of(title))\n}\n\n#[cfg(feature = \"weekend\")]\npub fn weekend_fee(days_late: u32) -> u32 {\n    days_late * 10\n}\n\n#[cfg(feature = \"party\")]\npub fn cheer() -> String {\n    confetti::burst(\"all fees paid\")\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/town/desk/Cargo.toml": {
+   "src": "[package]\nname = \"desk\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\ncatalog = { path = \"../catalog\" }\nfees = { path = \"../fees\" }\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/town/confetti/src/lib.rs": {
+   "src": "pub fn burst(message: &str) -> String {\n    format!(\"*~*~ {message} ~*~*\")\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "town_break.rs": {
+   "src": "/// How many books the library owns.\npub fn count() -> u64 {\n    1200\n}\n\n/// The shelf a title lives on.\npub fn shelf_of(title: &str) -> usize {\n    title.len() % 9 + 1\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> desk/src/main.rs:2:22\n  |\n2 |     let books: u32 = catalog::count();\n  |                ---   ^^^^^^^^^^^^^^^^ expected `u32`, found `u64`\n  |                |\n  |                expected due to this\n  |\nhelp: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit\n  |\n2 |     let books: u32 = catalog::count().try_into().unwrap();\n  |                                      ++++++++++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "grep version catalog/Cargo.toml",
+     "out": "version = \"1.5.0\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town_break"
+    },
+    {
+     "cmd": "cargo run -q -p desk",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> desk/src/main.rs:2:22\n  |\n2 |     let books: u32 = catalog::count();\n  |                ---   ^^^^^^^^^^^^^^^^ expected `u32`, found `u64`\n  |                |\n  |                expected due to this\n  |\nhelp: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit\n  |\n2 |     let books: u32 = catalog::count().try_into().unwrap();\n  |                                      ++++++++++++++++++++\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/town_break"
+    }
+   ]
+  },
+  "town_inverse.rs": {
+   "src": "fn main() {\n    let books: u32 = catalog::count();\n    println!(\"Books in the library: {books}\");\n    println!(\"{}\", fees::where_to_return(\"Knots\"));\n    println!(\"Fee for 3 days late: {} cents\", fees::fee(3));\n}\n",
+   "stdout": "catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n├── desk v0.1.0 (/home/you/rust-ch24/town/desk)\n└── fees v0.3.0 (/home/you/rust-ch24/town/fees)\n    └── desk v0.1.0 (/home/you/rust-ch24/town/desk)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo tree -i catalog",
+     "out": "catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n├── desk v0.1.0 (/home/you/rust-ch24/town/desk)\n└── fees v0.3.0 (/home/you/rust-ch24/town/fees)\n    └── desk v0.1.0 (/home/you/rust-ch24/town/desk)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    }
+   ]
+  },
+  "town_ls.rs": {
+   "src": "fn main() {\n    let books: u32 = catalog::count();\n    println!(\"Books in the library: {books}\");\n    println!(\"{}\", fees::where_to_return(\"Knots\"));\n    println!(\"Fee for 3 days late: {} cents\", fees::fee(3));\n}\n",
+   "stdout": "Cargo.toml\nsrc\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo build -q",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    },
+    {
+     "cmd": "ls",
+     "out": "Cargo.lock\nCargo.toml\ncatalog\nconfetti\ndesk\nfees\ntarget\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    },
+    {
+     "cmd": "ls desk",
+     "out": "Cargo.toml\nsrc\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    }
+   ]
+  },
+  "town_party.rs": {
+   "src": "fn main() {\n    println!(\"Fee for 3 days late: {} cents\", fees::fee(3));\n    println!(\"{}\", fees::cheer());\n}\n",
+   "stdout": "Fee for 3 days late: 75 cents\n*~*~ all fees paid ~*~*\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo tree -p desk",
+     "out": "desk v0.1.0 (/home/you/rust-ch24/town_party/desk)\n├── catalog v1.4.0 (/home/you/rust-ch24/town_party/catalog)\n└── fees v0.3.0 (/home/you/rust-ch24/town_party/fees)\n    └── catalog v1.4.0 (/home/you/rust-ch24/town_party/catalog)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town_party"
+    },
+    {
+     "cmd": "cargo tree -p desk --features fees/party",
+     "out": "desk v0.1.0 (/home/you/rust-ch24/town_party/desk)\n├── catalog v1.4.0 (/home/you/rust-ch24/town_party/catalog)\n└── fees v0.3.0 (/home/you/rust-ch24/town_party/fees)\n    ├── catalog v1.4.0 (/home/you/rust-ch24/town_party/catalog)\n    └── confetti v0.2.0 (/home/you/rust-ch24/town_party/confetti)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town_party"
+    },
+    {
+     "cmd": "cargo run -q -p desk --features fees/party",
+     "out": "Fee for 3 days late: 75 cents\n*~*~ all fees paid ~*~*\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town_party"
+    }
+   ]
+  },
+  "town_tree.rs": {
+   "src": "fn main() {\n    let books: u32 = catalog::count();\n    println!(\"Books in the library: {books}\");\n    println!(\"{}\", fees::where_to_return(\"Knots\"));\n    println!(\"Fee for 3 days late: {} cents\", fees::fee(3));\n}\n",
+   "stdout": "catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n\nconfetti v0.2.0 (/home/you/rust-ch24/town/confetti)\n\ndesk v0.1.0 (/home/you/rust-ch24/town/desk)\n├── catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n└── fees v0.3.0 (/home/you/rust-ch24/town/fees)\n    └── catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n\nfees v0.3.0 (/home/you/rust-ch24/town/fees) (*)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo tree",
+     "out": "catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n\nconfetti v0.2.0 (/home/you/rust-ch24/town/confetti)\n\ndesk v0.1.0 (/home/you/rust-ch24/town/desk)\n├── catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n└── fees v0.3.0 (/home/you/rust-ch24/town/fees)\n    └── catalog v1.4.0 (/home/you/rust-ch24/town/catalog)\n\nfees v0.3.0 (/home/you/rust-ch24/town/fees) (*)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town"
+    }
+   ]
+  },
+  "town_weekend.rs": {
+   "src": "fn main() {\n    println!(\"Weekday, 3 days: {} cents\", fees::fee(3));\n    println!(\"Weekend, 3 days: {} cents\", fees::weekend_fee(3));\n}\n",
+   "stdout": "Weekday, 3 days: 75 cents\nWeekend, 3 days: 30 cents\n",
+   "stderr": "error[E0425]: cannot find function `weekend_fee` in crate `fees`\n  --> desk/src/main.rs:3:49\n   |\n 3 |     println!(\"Weekend, 3 days: {} cents\", fees::weekend_fee(3));\n   |                                                 ^^^^^^^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:10:8\n   |\n 9 | #[cfg(feature = \"weekend\")]\n   |       ------------------- the item is gated behind the `weekend` feature\n10 | pub fn weekend_fee(days_late: u32) -> u32 {\n   |        ^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q -p desk",
+     "out": "",
+     "err": "error[E0425]: cannot find function `weekend_fee` in crate `fees`\n  --> desk/src/main.rs:3:49\n   |\n 3 |     println!(\"Weekend, 3 days: {} cents\", fees::weekend_fee(3));\n   |                                                 ^^^^^^^^^^^ not found in `fees`\n   |\nnote: found an item that was configured out\n  --> fees/src/lib.rs:10:8\n   |\n 9 | #[cfg(feature = \"weekend\")]\n   |       ------------------- the item is gated behind the `weekend` feature\n10 | pub fn weekend_fee(days_late: u32) -> u32 {\n   |        ^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `desk` (bin \"desk\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch24/town_weekend"
+    },
+    {
+     "cmd": "cargo run -q -p desk --features fees/weekend",
+     "out": "Weekday, 3 days: 75 cents\nWeekend, 3 days: 30 cents\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/town_weekend"
+    }
+   ]
+  },
+  "unit.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late.saturating_sub(1);\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo test --lib -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch24/unit"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo test --lib -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch24/unit"
+     }
+    ]
+   }
+  },
+  "unit_fail.rs": {
+   "src": "//! Overdue fees for Mabel's library.\n\nconst DAILY: u32 = 25;\n\n/// The fee in cents for a book returned `days_late` days late.\n/// The first day is free, then 25 cents a day, never more than 500.\n///\n/// ```\n/// assert_eq!(overdue::fee(3), 50);\n/// ```\npub fn fee(days_late: u32) -> u32 {\n    let charged = days_late;\n    capped(charged * DAILY)\n}\n\nfn capped(cents: u32) -> u32 {\n    cents.min(500)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn first_day_is_free() {\n        assert_eq!(fee(1), 0);\n    }\n\n    #[test]\n    fn cap_is_five_dollars() {\n        assert_eq!(capped(9000), 500);\n    }\n}\n",
+   "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... FAILED\n\nfailures:\n\n---- tests::first_day_is_free stdout ----\n\nthread 'tests::first_day_is_free' (8) panicked at src/lib.rs:26:9:\nassertion `left == right` failed\n  left: 25\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::first_day_is_free\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--lib`\n",
+   "stderr": "",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "set -o pipefail; cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+     "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-1390698c04b366c2)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... FAILED\n\nfailures:\n\n---- tests::first_day_is_free stdout ----\n\nthread 'tests::first_day_is_free' (8) panicked at src/lib.rs:26:9:\nassertion `left == right` failed\n  left: 25\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::first_day_is_free\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--lib`\n",
+     "err": "",
+     "exit": 101,
+     "dir": "~/rust-ch24/unit_fail"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... FAILED\n\nfailures:\n\n---- tests::first_day_is_free stdout ----\n\nthread 'tests::first_day_is_free' (8) panicked at src/lib.rs:26:9:\nassertion `left == right` failed\n  left: 25\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::first_day_is_free\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--lib`\n",
+    "stderr": "",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "set -o pipefail; cargo test -- --test-threads=1 2>&1 | sed -E 's/[0-9.]+s\\b/…s/g'",
+      "out": "    Finished `test` profile [unoptimized + debuginfo] target(s) in …s\n     Running unittests src/lib.rs (target/debug/deps/overdue-419727328f007bfb)\n\nrunning 2 tests\ntest tests::cap_is_five_dollars ... ok\ntest tests::first_day_is_free ... FAILED\n\nfailures:\n\n---- tests::first_day_is_free stdout ----\n\nthread 'tests::first_day_is_free' (8) panicked at src/lib.rs:26:9:\nassertion `left == right` failed\n  left: 25\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::first_day_is_free\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in …s\n\nerror: test failed, to rerun pass `--lib`\n",
+      "err": "",
+      "exit": 101,
+      "dir": "~/rust-ch24/unit_fail"
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

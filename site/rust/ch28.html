@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Handles, Race Cars, Hardware</title>
+<meta name="description" content="Chapter 28 of the Pip &amp; Friends Rust book, a comic course: the craft of Rust. Function signatures that are easy to use (&amp;str and &amp;[T] in, owned values out, impl Into&lt;String&gt;, Option&lt;&amp;T&gt;), fewer clones, iterators, Clippy's advice (needless_return, ptr_arg, redundant_clone, needless_range_loop), newtypes, builders, Default, RAII guards and private fields; debug vs release builds (overflow panics vs wraps, release profile settings, never benchmark a debug build); allocations counted by a real program (Vec growth, with_capacity, reused buffers, clone cost); and the crate ecosystem: judging crates, serde and serde_json, rand, regex, chrono, clap, cargo tree, features, and two versions of one crate.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch28.css">
+<script defer src="../data/rs-ch28.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/rs-ch28.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch27.html">&larr; Ch 27</a><span aria-current="page">Ch 28 of 29</span><a href="ch29.html">Ch 29 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 28</p>
+    <h1 id="cover-h">HANDLES, RACE CARS, HARDWARE</h1>
+    <div class="cover-trio">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave" data-prop="none"></svg>
+      <svg class="char tg" data-char="trailguide" data-mood="happy" data-arms="point" data-sign="CRAFT"></svg>
+      <svg class="char lg" data-char="compiler" data-mood="happy" data-label="rustc"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Beside her the Trail Guide, a hiker in a wide hat, points ahead next to a trail sign that says CRAFT. The Compiler robot stands with its gate up and a green beacon.</p>
+    <p class="caption blurb">Your programs work. Now let's make them <b>good</b>. Three trips today. First the <b>toolbox</b>: functions and types with handles that are easy to grip the right way and impossible to grip the wrong way (signatures, builders, newtypes, guards, and the Trail Guide's advice from <code>cargo clippy</code>). Then the <b>race track</b>: why the same program is ten times faster with <code>--release</code>, why it also stops checking for overflow, and how a real program counts every trip to the heap. Last, the <b>hardware store</b>: how to pick crates by reputation and fit, turn a struct into JSON and back with <code>serde</code>, and what happens when two versions of one crate end up in your project. About 150 minutes, with 29 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">A good handle: what a function asks for and hands back</a></li>
+      <li><a href="#part-2">Handles that can't slip: newtypes, builders, Default, guards, privacy</a></li>
+      <li><a href="#part-3">Two race cars: debug and release</a></li>
+      <li><a href="#part-4">Pack light: counting trips to the heap</a></li>
+      <li><a href="#part-5">The hardware store: crates, serde, features and versions</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · A GOOD HANDLE<small>borrow what you read (&amp;str, &amp;[T]), return what you make; impl Into&lt;String&gt;; the clone tax; Option&lt;&amp;T&gt;; iterators; and the Trail Guide's advice from cargo clippy</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: two handles">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="GRIP!" data-seed="28"></svg>
+    <p class="caption">Mabel is choosing a new toolbox for the library's repair cupboard. Two boxes, the same tools inside. One handle has a shaped grip that fits every hand. The other is a thin wire that fits one kind of hand and pinches everyone else.</p>
+    <div class="handles2">
+      <svg class="fig" viewBox="0 30 300 210" role="img" aria-label="The first toolbox has a thick, shaped handle with finger grooves, labelled: fits any hand, ampersand str and ampersand slice.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+          <rect x="40" y="110" width="220" height="90" rx="10" fill="#FF5A4E"/>
+          <rect x="40" y="110" width="220" height="26" rx="8" fill="#FFD60A"/>
+          <path d="M100 110 v-34 q0 -26 26 -26 h48 q26 0 26 26 v34 h-22 v-30 q0 -8 -8 -8 h-40 q-8 0 -8 8 v30 z" fill="#C9F2D9"/>
+          <path d="M128 52 v6 M140 50 v6 M152 50 v6 M164 50 v6 M176 52 v6" fill="none" stroke-width="3"/>
+        </g>
+        <text class="m mid" x="150" y="166">&amp;str · &amp;[T]</text>
+        <text class="mid" x="150" y="228">fits any hand</text>
+      </svg>
+      <svg class="fig" viewBox="340 30 300 210" role="img" aria-label="The second toolbox has a thin wire handle with a pinch mark, drawn with a dashed outline, labelled: fits only one hand, ampersand String and ampersand Vec.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+          <rect x="380" y="110" width="220" height="90" rx="10" fill="#FF5A4E"/>
+          <rect x="380" y="110" width="220" height="26" rx="8" fill="#FFD60A"/>
+          <path d="M450 110 q0 -66 40 -66 q40 0 40 66" fill="none" stroke-width="5" stroke-dasharray="10 6"/>
+          <path d="M478 40 l8 10 l8 -10 M506 40 l-6 12" fill="none" stroke-width="3"/>
+        </g>
+        <text class="m mid" x="490" y="166">&amp;String · &amp;Vec</text>
+        <text class="mid" x="490" y="228">fits only one hand</text>
+      </svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Code has handles too: the first line of every function, the <b>signature</b>, is the handle other code grabs. This chapter's first motto: <b>easy to grip the right way, impossible to grip the wrong way</b>.</p></div>
+    </div>
+    <p class="caption soft">The people who'll call your functions include you, next month. A good handle saves them clones, conversions and surprises. The Compiler checks that your code is <em>correct</em>; this chapter is about code that's also <em>pleasant</em>, <em>fast</em> and <em>well-chosen</em>. Words for it: <b>idiomatic</b> code (written the way experienced Rust programmers write it) and <b>API design</b> (an API, "application programming interface", is the set of functions and types others use).</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 2: a handle that pinches">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <svg class="sfx tr" data-sfx="E0308!" data-seed="2"></svg>
+    <p class="caption">A function that shouts a name. It asks for <code>&amp;String</code>: "lend me a String". Mabel lends it one, then tries a plain string literal.</p>
+    <span class="file-tab">greet_string.rs</span>
+    <pre class="code" data-src="greet_string.rs"></pre>
+    <pre class="term" data-run="greet_string.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read it like a detective, last line first: <samp>could not compile</samp>, so nothing ran, not even line 7. The headline: <code>error[E0308]: mismatched types</code>.</span></li>
+      <li><span>Where: <code>src/main.rs:8:26</code>, under <code>"Pip"</code>. The primary label: <samp>expected `&amp;String`, found `&amp;str`</samp>. The secondary label under <code>shout</code>: <samp>arguments to this function are incorrect</samp>.</span></li>
+      <li><span>The <code>note: function defined here</code> points at line 1. That's where the real problem lives: the handle asks for more than it needs. A literal like <code>"Pip"</code> is a <code>&amp;str</code> (Chapter 12), and there's no String to lend. To call this, you'd have to build a String first, an allocation just to read some letters.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: ask for &amp;str instead">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">One change, on line 1: ask for <code>&amp;str</code>, a borrowed view of <em>any</em> text. Now every kind of text fits the handle.</p>
+    <span class="file-tab">greet_str.rs</span>
+    <pre class="code" data-src="greet_str.rs"></pre>
+    <pre class="term" data-run="greet_str.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8</b>: <code>&amp;owner</code> is a <code>&amp;String</code>, and Rust turns it into a <code>&amp;str</code> by itself (<b>deref coercion</b>, Chapter 12). So asking for <code>&amp;str</code> loses nothing.</span></li>
+      <li><span><b>Lines 9 and 10</b>: a literal and a slice of a longer text fit too. None of the three calls copies any letters to get in.</span></li>
+      <li><span><b>Line 1</b> also promises to <b>return</b> an owned <code>String</code>. The shouted name is brand new text, so the function makes it and hands it over. The caller owns it and can keep it as long as they like.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>borrow what you read, return what you make</b>. Only reading? Ask to borrow the most general thing: <code>&amp;str</code>, not <code>&amp;String</code>. Making something new? Hand back an owned value.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: the same rule for lists">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Lists follow the same rule. <code>&amp;[u32]</code> is a <b>slice</b> (Chapter 9): a borrowed view of some numbers in a row, wherever they live.</p>
+    <span class="file-tab">slices.rs</span>
+    <pre class="code" data-src="slices.rs"></pre>
+    <pre class="term" data-run="slices.rs"></pre>
+    <div class="duo three sigs">
+      <div class="duo-card grip"><h3>Grips well</h3><p><code>fn total(prices: &amp;[u32])</code></p><p>takes a Vec, an array, part of either, or nothing at all</p></div>
+      <div class="duo-card dashed slip"><h3>Pinches</h3><p><code>fn total(prices: &amp;Vec&lt;u32&gt;)</code></p><p>takes only a whole Vec; an array or a part won't fit</p></div>
+      <div class="duo-card dashed slip"><h3>Grabs too hard</h3><p><code>fn total(prices: Vec&lt;u32&gt;)</code></p><p>takes the Vec away from the caller just to add it up</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sig-m" id="ex-sig"></div>
+  <script type="application/json" id="ex-sig-m">{"program": "ex_signature.rs", "bug": 1, "prompt": "The week's scores work; the weekend's scores, kept in an array, don't. Don't touch <code>main</code>. Click the line you should change so that both calls work.", "explain": "The Compiler underlines line 10 (<samp>expected `&amp;Vec&lt;u32&gt;`, found `&amp;[{integer}; 2]`</samp>), but its note points at the cause: line 1 asks for a whole Vec. Change it to <code>fn average(scores: &amp;[u32]) -&gt; u32</code>, the same handle as <code>total</code> in panel 4's <code>slices.rs</code>, which took a Vec and an array in that real run."}</script>
+
+  <div data-ex="choice" data-model="ex-sigpick-m" id="ex-sigpick"></div>
+  <script type="application/json" id="ex-sigpick-m">{"q": "A function counts the vowels in a word. It only reads the word. Which signature is the best handle?", "options": [
+    {"t": "<code>fn vowels(word: &amp;str) -&gt; usize</code>", "why": "Right. It borrows, so the caller keeps their text, and it takes a literal, a <code>&amp;String</code> or a slice without any conversion.", "correct": true},
+    {"t": "<code>fn vowels(word: &amp;String) -&gt; usize</code>", "why": "It works with Strings only. A caller holding <code>\"banana\"</code> has to build a String first. Clippy even warns about this one (<code>ptr_arg</code>, panel 9)."},
+    {"t": "<code>fn vowels(word: String) -&gt; usize</code>", "why": "It takes the caller's String away (or forces them to clone it) just to count letters. Part 4 counts what that costs: one allocation per call."},
+    {"t": "<code>fn vowels(word: &amp;mut String) -&gt; usize</code>", "why": "<code>&amp;mut</code> says \"I might change this\". Counting doesn't change anything, and the caller now needs a <code>mut</code> String that nobody else is reading."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 5: impl Into&lt;String&gt;">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">What if a function <b>keeps</b> the text, say a name badge that stores the name? Then it needs an owned <code>String</code> anyway. <code>impl Into&lt;String&gt;</code> means "anything that can turn into a String" (Chapter 18's <code>From</code>/<code>Into</code>).</p>
+    <span class="file-tab">into_string.rs</span>
+    <pre class="code" data-src="into_string.rs"></pre>
+    <pre class="term" data-run="into_string.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: the parameter's type is "some type that has <code>Into&lt;String&gt;</code>". <b>Line 7</b>: <code>name.into()</code> does the turning.</span></li>
+      <li><span><b>Line 12</b> passes a <code>&amp;str</code>: <code>into()</code> copies its letters into a new String. <b>Line 13</b> passes a String the caller doesn't need any more: it's simply moved in, nothing copied. <b>Line 14</b>: even a <code>char</code> converts.</span></li>
+      <li><span>The caller writes neither <code>.to_string()</code> nor <code>String::from</code>. Use this when you will store the value; for read-only parameters, plain <code>&amp;str</code> stays the simplest handle.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-into-m" id="ex-into"></div>
+  <script type="application/json" id="ex-into-m">{"program": "predict_into.rs", "prompt": "One function stores its text (<code>impl Into&lt;String&gt;</code>), the other only reads it (<code>&amp;str</code>). What does this print?", "hint": "<code>initials</code> takes the first letter of each word. <code>split_whitespace</code> splits at spaces.", "explain": "<samp>Dune @ shelf 4</samp> from a literal and <samp>Jane Eyre @ shelf 7</samp> from a clone of the String (the clone keeps <code>owned</code> usable for line 15). <code>initials(&amp;owned)</code> borrows: <samp>JE</samp>. A literal works as well: <samp>tlhod</samp>, one letter per word."}</script>
+
+  <section class="panel sketch" aria-label="Panel 6: the clone tax">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">When the Compiler says "value moved", it's tempting to sprinkle <code>.clone()</code> until it's quiet. Each clone of a String or Vec is a photocopy: new memory, every letter copied. Here's the same search written twice.</p>
+    <div class="runs2">
+      <div><h3><code>clone_heavy.rs</code></h3><pre class="code" data-src="clone_heavy.rs"></pre><pre class="term" data-run="clone_heavy.rs"></pre></div>
+      <div><h3><code>clone_free.rs</code></h3><pre class="code" data-src="clone_free.rs"></pre><pre class="term" data-run="clone_free.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span>Identical output. <code>clone_heavy.rs</code> clones the whole shelf to call the function (line 13), clones it again to loop (line 3), and photocopies each new winner (line 5).</span></li>
+      <li><span><code>clone_free.rs</code> borrows the shelf (<code>&amp;[String]</code>), loops over references, and returns a <code>&amp;str</code> that points <em>into</em> the shelf: no copies at all. Returning a borrow is fine when it points into something the caller lent you (Chapter 19's lifetimes check it).</span></li>
+      <li><span>You can't see the difference in the output. Part 4 has a program that counts it: <b>10</b> trips to the heap against <b>0</b>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fclone-m" id="ex-fclone"></div>
+  <script type="application/json" id="ex-fclone-m">{"program": "clone_free.rs", "prompt": "Refactor the clone-heavy search into a borrowing one. Fill in what the function asks for (line 1), where <code>best</code> starts (line 2) and what <code>main</code> passes (line 13).", "blanks": [{"line": 1, "text": "&[String]"}, {"line": 2, "text": "\"\""}, {"line": 13, "text": "&shelf"}], "sets": [["&[String]", "\"\"", "shelf.as_slice()"], ["&[String]", "\"\"", "&shelf[..]"], ["&Vec<String>", "\"\"", "&shelf"]], "explain": "Borrow the shelf as <code>&amp;[String]</code>; <code>main</code> can then lend <code>&amp;shelf</code>, <code>&amp;shelf[..]</code> or <code>shelf.as_slice()</code>. A <code>&amp;Vec&lt;String&gt;</code> parameter also compiles with <code>&amp;shelf</code>, but pinches (panel 4): it refuses the other two. <code>best</code> starts as the empty <code>&amp;str</code> <code>\"\"</code>, and <code>best = t</code> just points it at a title on the shelf. <code>main</code> lends with <code>&amp;shelf</code> and can still use the shelf afterwards: <samp>the shelf still has 3 books</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 7: Option of a reference">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A member may have a nickname: <code>Option&lt;String&gt;</code> (Chapter 11's gift box). A method that lets others look at it can hand back two different shapes.</p>
+    <span class="file-tab">opt_ref.rs</span>
+    <pre class="code" data-src="opt_ref.rs"></pre>
+    <pre class="term" data-run="opt_ref.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8</b>, <code>&amp;Option&lt;String&gt;</code>: "here's a look at my box". The caller learns how you store it, and to get at the text they must dig: <code>.as_ref()</code>, then a <code>&amp;String</code>.</span></li>
+      <li><span><b>Line 13</b>, <code>Option&lt;&amp;str&gt;</code>: "maybe some text, have a look". <code>as_deref()</code> turns <code>&amp;Option&lt;String&gt;</code> into exactly that. The printout looks the same, but the shape is friendlier: <b>line 23</b> can use <code>unwrap_or</code> straight away.</span></li>
+      <li><span>If you later store the nickname differently, <code>Option&lt;&amp;str&gt;</code> doesn't have to change. Prefer <b><code>Option&lt;&amp;T&gt;</code></b> over <code>&amp;Option&lt;T&gt;</code> in what you hand out.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-optpick-m" id="ex-optpick"></div>
+  <script type="application/json" id="ex-optpick-m">{"q": "A <code>Library</code> keeps its books in a <code>Vec&lt;Book&gt;</code>. You're writing a method to find a book by title. It might not be there, and callers only want to look at it. Which return type is the best handle?", "options": [
+    {"t": "<code>fn find(&amp;self, title: &amp;str) -&gt; Option&lt;&amp;Book&gt;</code>", "why": "Right. Maybe a book, lent for looking. No copy, and \"not found\" is a plain <code>None</code>. It's the same shape as <code>Vec::first</code> and <code>HashMap::get</code>.", "correct": true},
+    {"t": "<code>fn find(&amp;self, title: &amp;str) -&gt; Book</code>", "why": "There's no way to say \"not found\" except panicking, and returning an owned Book means cloning it out of the Vec."},
+    {"t": "<code>fn find(&amp;self, title: String) -&gt; &amp;Option&lt;Book&gt;</code>", "why": "Two slips: the title should be <code>&amp;str</code>, and there's no stored <code>Option&lt;Book&gt;</code> to point at; the method would have to make one, and you can't return a reference to something made inside the function."},
+    {"t": "<code>fn find(&amp;self, title: &amp;str) -&gt; Option&lt;Book&gt;</code>", "why": "Close, but it hands out an owned Book, so it must clone (or remove) the one on the shelf. Callers who just want to look pay for a copy."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 8: say what, not how">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Adding up the long chapters, two ways. Then the Trail Guide (Chapter 15's <code>cargo clippy</code>, a checker that reads your code and suggests better habits) takes a look.</p>
+    <span class="file-tab">iter_vs_index.rs</span>
+    <pre class="code" data-src="iter_vs_index.rs"></pre>
+    <pre class="term" data-run="iter_vs_index.rs"></pre>
+    <p class="caption soft"><b>How this run was really made:</b> both commands are exactly what ran, in a cargo project folder called <code>pages</code> that a small script, <code>mk.sh</code>, made from <code>iter_vs_index.rs</code> just before: a plain <code>Cargo.toml</code> with no dependencies, and this file as <code>src/main.rs</code>.</p>
+    <ol class="readlist">
+      <li><span>Same answer, <samp>420</samp>. The loop on lines 6 to 10 juggles an index <code>i</code>: start, end, and <code>pages[i]</code> twice, each checked against the length. The chain on line 13 says the idea: keep the pages over 100, add them up.</span></li>
+      <li><span>Clippy's warning has a name, <code>needless_range_loop</code>, and a <code>help:</code> with the fix: loop over <code>&amp;pages</code> directly. <code>&lt;item&gt;</code> is a placeholder for a name you choose.</span></li>
+      <li><span>Is the chain slower? Part 3 puts both on a stopwatch. The reason not to worry: in a release build, the compiler turns the chain into the same kind of machine code a hand-written loop gets. That's called a <b>zero-cost abstraction</b>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="trailguide" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Trail Guide says: </span>No need to count your steps along the shelf. Just say which books you want, and the iterator walks you there.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-titer-m" id="ex-titer"></div>
+  <script type="application/json" id="ex-titer-m">{"program": "trace_iter.rs", "columns": ["index", "pages", "running"], "given": [0], "prompt": "<code>enumerate</code> numbers the chapters from 0, and <code>filter</code> keeps only those over 50 pages. Fill in each kept chapter's pages and the running total.", "explain": "Chapter 1 (30 pages) and chapter 4 (45) are filtered out, but the numbers from <code>enumerate</code> stay attached to the others, which is why the indexes jump: 0, 2, 3. Running total: <samp>120</samp>, <samp>200</samp>, <samp>500</samp>. (<code>**p</code>: the filter sees a reference to the pair's reference.)"}</script>
+
+  <section class="panel pop" aria-label="Panel 9: the Trail Guide reads your code">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">A short program with three habits that work, but slip. The Trail Guide checks it. The extra part, <code>-- -W clippy::redundant_clone</code>, asks for one more lint (a <b>lint</b> is one named check) that's switched off by default.</p>
+    <span class="file-tab">lint_me.rs</span>
+    <pre class="code" data-src="lint_me.rs"></pre>
+    <pre class="term" data-run="lint_me.rs" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> the command is exactly what ran, in a cargo project folder called <code>shelf</code> that a small script, <code>mk.sh</code>, made from <code>lint_me.rs</code> just before: a plain <code>Cargo.toml</code> with no dependencies, and this file as <code>src/main.rs</code>.</p>
+    <ol class="readlist">
+      <li><span>Each warning reads like a compiler message: what (<samp>unneeded `return` statement</samp>), where (<code>src/main.rs:3:5</code>), and a <code>help:</code> with the exact edit, lines marked <code>-</code> (remove) and <code>+</code> (add). The last expression of a function is already its value.</span></li>
+      <li><span><code>ptr_arg</code> is panel 2's slip: <samp>writing `&amp;String` instead of `&amp;str` involves a new object where a slice will do</samp>.</span></li>
+      <li><span><code>redundant_clone</code> spots that <code>copy</code> on line 8 is a photocopy of <code>title</code>, which is never used again. Its note says why it ran: <samp>requested on the command line</samp>. The other two say <samp>on by default</samp>. It's off by default because it sometimes cries wolf, so check its advice.</span></li>
+      <li><span>The <code>help: for further information visit</code> links lead to each lint's page, with examples of the slip and the fix. Exit code 0: warnings don't stop the build.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Trail Guide says: </span>I don't block the road like the Compiler. I point out the smoother path, and most of my advice comes with the exact steps. Catchphrase: <b>when the Trail Guide points, look</b>.</p></div>
+      <svg class="char" data-char="trailguide" data-mood="focus" data-arms="point" data-sign="SHORTCUT"></svg>
+    </div>
+    <p class="sr-only">Picture: the Trail Guide, looking focused, points ahead beside a trail sign that says SHORTCUT.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: the clean trail">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">All three suggestions taken: <code>&amp;str</code>, no <code>return</code>, no clone. Clippy now prints nothing at all, which is its way of saying "all clear".</p>
+    <span class="file-tab">lint_fixed.rs</span>
+    <pre class="code" data-src="lint_fixed.rs"></pre>
+    <pre class="term" data-run="lint_fixed.rs"></pre>
+    <p class="caption soft"><b>How this run was really made:</b> both commands are exactly what ran, in a cargo project folder called <code>shelf_fixed</code> that a small script, <code>mk.sh</code>, made from <code>lint_fixed.rs</code> just before: a plain <code>Cargo.toml</code> with no dependencies, and this file as <code>src/main.rs</code>.</p>
+    <ol class="readlist">
+      <li><span>Run <code>cargo clippy</code> the way you run <code>cargo build</code>: often. Many projects run it in their automatic checks with <code>-- -D warnings</code>, which Chapter 24's checklist describes: every warning then counts as an error, so the check fails. (Not run in this chapter.)</span></li>
+      <li><span>If a lint is wrong for one spot, Clippy lets you switch it off right there with an attribute such as <code>#[allow(clippy::needless_range_loop)]</code> above the function, ideally with a comment saying why. (Also not run here.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-clippy-m" id="ex-clippy"></div>
+  <script type="application/json" id="ex-clippy-m">{"q": "Clippy prints <samp>warning: unneeded `return` statement</samp> with a <code>help:</code> that removes <code>return</code> and the semicolon. What should you do?", "options": [
+    {"t": "Take the suggestion: the last expression of a function is already its return value.", "why": "Right. The fix changes how the code reads, not what it does, and it matches what other Rust programmers expect to see. Keep <code>return</code> for leaving a function early.", "correct": true},
+    {"t": "Ignore it: warnings don't stop the program from running.", "why": "True, the program runs, but the warning list grows until real problems hide among old ones. Fix it, or <code>#[allow(...)]</code> it on purpose with a reason."},
+    {"t": "Add <code>#![allow(clippy::all)]</code> at the top of the file so Clippy stops complaining.", "why": "That silences every lint, including the ones that catch real bugs. Switch off a single lint in a single place, and only when you have a reason."},
+    {"t": "Rewrite the function with a loop instead.", "why": "The lint is only about the word <code>return</code> on the last line, not about the rest of the function."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · HANDLES THAT CAN'T SLIP<small>newtypes that won't mix (E0308 with "swap these arguments"); a builder machine and the builder used twice (E0382); Default; guards that clean up by themselves, and the let _ trap; private fields (E0616) and the handle checklist</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 11: two numbers that look alike">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">The library's running club times its laps. A distance and a time are both just <code>f64</code>, so nothing stops you passing them the wrong way round. Unless each gets its own wrapper type: a <b>newtype</b> (Chapter 25), a struct with one field whose only job is to give the number a name.</p>
+    <span class="file-tab">newtype_mixup.rs</span>
+    <pre class="code" data-src="newtype_mixup.rs"></pre>
+    <pre class="term" data-run="newtype_mixup.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0308]: arguments to this function are incorrect</code>, and two labels under line 11: <samp>expected `Meters`, found `Seconds`</samp> and the reverse.</span></li>
+      <li><span>The <code>help: swap these arguments</code> section even shows the fixed line. With two bare <code>f64</code>s, both arguments would have had the same type, so the Compiler would have had no labels to compare.</span></li>
+      <li><span>Wrapping costs nothing when the program runs: a <code>Meters</code> is stored exactly like an <code>f64</code>. The type exists only for the Compiler to check.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Two jars with labels can't be swapped by accident. I read the labels.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: the newtype, fixed">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Fixed, and a little friendlier: the function now borrows both values, and <code>Meters</code> has its own <code>Display</code> (Chapter 18), so it prints with its unit.</p>
+    <span class="file-tab">newtype_ok.rs</span>
+    <pre class="code" data-src="newtype_ok.rs"></pre>
+    <pre class="term" data-run="newtype_ok.rs"></pre>
+    <ol class="readlist">
+      <li><span><code>clock.0</code> on line 19 reaches inside to the number (and <code>distance.0</code> and <code>time.0</code> on line 13). Outside code can do that here because everything is in one file; Panel 20 shows how a module can hide the inside, so that the only way to make a value is through a function that checks it.</span></li>
+      <li><span>Newtypes are good for anything with a unit or a rule: <code>Meters</code>, <code>Cents</code>, <code>UserId</code>, <code>Email</code>. Each one makes a whole family of mix-ups impossible.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotnew-m" id="ex-spotnew"></div>
+  <script type="application/json" id="ex-spotnew-m">{"program": "ex_newtype_spot.rs", "bug": 12, "prompt": "Two temperatures, two newtypes. The Compiler refuses. Click the line it complains about.", "explain": "<samp>expected `Celsius`, found `Fahrenheit`</samp> on line 12: <code>outside</code> is already in Fahrenheit, and <code>to_fahrenheit</code> only accepts Celsius. There's nothing to convert. With plain <code>f64</code>s, the Compiler couldn't have told the two temperatures apart."}</script>
+
+  <section class="panel clean" aria-label="Panel 13: a builder">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The library café makes tea with four choices: flavor, size, sugar, and "to go". A function with four parameters, <code>Tea::new("chai", Size::Large, 2, false)</code>, is a handle nobody can read: which number was the sugar? A <b>builder</b> is a helper you fill in one named choice at a time, then call <code>build()</code>.</p>
+    <span class="file-tab">builder.rs</span>
+    <pre class="code" data-src="builder.rs"></pre>
+    <pre class="term" data-run="builder.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 35</b>: <code>Tea::order</code> takes the one required choice and returns a <code>TeaBuilder</code> with sensible defaults for the rest (line 36).</span></li>
+      <li><span><b>Lines 41 to 52</b>: each choice method takes the builder by value (<code>mut self</code>), changes one field and hands the builder back. That's what lets you chain calls with dots, in any order, skipping any you like (line 67, line 68).</span></li>
+      <li><span><b>Line 53</b>: <code>build(self)</code> uses up the builder and makes the finished <code>Tea</code>.</span></li>
+      <li><span><b>Lines 10, 18 to 24 and 33 to 34</b> are <b>doc comments</b>: <code>///</code> lines that <code>cargo doc</code> turns into web pages (Chapter 15). The <code># Examples</code> section is a habit worth copying: in a library crate, <code>cargo test</code> even runs those examples to check that they still work (Chapter 24). In this one-file program it's documentation only.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 14: the builder machine" data-machine="m-builder">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">The builder machine: a chain of calls goes in, a finished <code>Tea</code> comes out. The first three are the lines of <code>builder.rs</code>; the last jams with a real compiler error from <code>builder_twice.rs</code> (next panel).</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-builder">{"label": "TeaBuilder", "program": "builder.rs", "examples": [
+      {"in": "Tea::order(\"mint\").build()", "out": "Medium mint tea, sugar 0, for here", "outKind": "Tea", "note": "No choices made: every field keeps the default that <code>order</code> filled in."},
+      {"in": "Tea::order(\"chai\").size(Size::Large).sugar(2).build()", "out": "Large chai tea, sugar 2, for here", "outKind": "Tea", "note": "Each call changes one field and passes the builder along. Every choice is named, so the 2 can only mean sugar."},
+      {"in": "Tea::order(\"lemon\").to_go().size(Size::Small).build()", "out": "Small lemon tea, sugar 0, to go", "outKind": "Tea", "note": "Any order, any subset: <code>to_go</code> before <code>size</code> works just as well."},
+      {"in": "order.build(), then order.build() again", "error": "error[E0382]: use of moved value: `order`", "program": "builder_twice.rs", "note": "<code>build(self)</code> uses the builder up. A second <code>build</code> is caught before the program runs."}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 15: the builder used twice">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="E0382!" data-seed="15"></svg>
+    <p class="caption">Mabel fills in one order and tries to brew it twice.</p>
+    <span class="file-tab">builder_twice.rs</span>
+    <pre class="code" data-src="builder_twice.rs"></pre>
+    <pre class="term" data-run="builder_twice.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Three labels tell the story in order: line 22, <samp>move occurs because `order` has type `TeaBuilder`</samp>; line 23, <samp>`order` moved due to this method call</samp>; line 24, <samp>value used here after move</samp>.</span></li>
+      <li><span>The <code>note:</code> names the reason: <samp>`TeaBuilder::build` takes ownership of the receiver `self`</samp>. <b>Receiver</b> is the word for the value before the dot.</span></li>
+      <li><span>Is that a bug in the builder? No, it's the design. The builder hands its String over to the Tea without copying it. Want two teas? Start two orders. (Another way, not run here: add <code>#[derive(Clone)]</code> to the builder and write <code>order.clone().build()</code> for the first one, paying for the copy on purpose.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pbuild-m" id="ex-pbuild"></div>
+  <script type="application/json" id="ex-pbuild-m">{"program": "parsons_builder.rs", "seed": 13, "pin": [1, 2, 3, 4, 6, 7, 8, 9, 11, 22, 24, 25, 26, 27], "prompt": "Design a builder for cinema tickets. Put the lines of the <code>impl</code> in order, with the methods in the order they're used: <code>new</code>, then <code>seats</code>, then <code>build</code>.", "explain": "<code>new</code> takes the required film and starts with 1 seat. <code>seats(mut self, n)</code> changes the field and then returns <code>self</code>, so the chain can carry on (returning before the change would lose it). <code>build(self)</code> moves the fields into the finished <code>Ticket</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 16: Default">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">A search box with four settings, where most people change one. <code>Default</code> (Chapter 18) gives a struct its standard values, and <code>..Default::default()</code> means "everything I didn't mention: use the defaults".</p>
+    <span class="file-tab">default_demo.rs</span>
+    <pre class="code" data-src="default_demo.rs"></pre>
+    <pre class="term" data-run="default_demo.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 8 to 12</b> write <code>Default</code> by hand, because 10 results and ebooks on are better defaults than 0 and <code>false</code>. <code>#[derive(Default)]</code> would give each field its own type's default instead: <code>0</code>, <code>false</code>, <code>""</code>, <code>None</code>.</span></li>
+      <li><span><b>Line 15</b>: set the words, keep the rest. <b>Lines 16 to 21</b>: set three things; <code>ebooks</code> still comes from the default. The <code>..</code> part must come last.</span></li>
+      <li><span>Builders and <code>Default</code> solve the same problem, many settings with a few changes. A builder can also check the choices in <code>build()</code> and refuse bad ones by returning a <code>Result</code>; struct update syntax is quicker when every combination is fine.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fdef-m" id="ex-fdef"></div>
+  <script type="application/json" id="ex-fdef-m">{"program": "fill_default.rs", "prompt": "Let the Compiler write the defaults (line 1), then set only the font size and take the rest from the defaults (line 9).", "blanks": [{"line": 1, "text": "Default"}, {"line": 9, "text": "..Default::default()", "accept": ["..Settings::default()"]}], "explain": "<code>#[derive(Default)]</code> works because every field's type has a default: <code>0</code>, <code>false</code> and an empty String. Then <code>..Default::default()</code> (or <code>..Settings::default()</code>) fills <code>dark_mode</code> and <code>name</code>: <samp>18 false \"\"</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 17: a guard that turns the lamp off">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Reading lamps at the library desks. Mabel's rule: a lamp must never be left on. Instead of remembering to switch each one off, she makes the lamp switch itself off when its owner leaves. A value whose <code>Drop</code> (Chapter 18) undoes what its creation did is called a <b>guard</b>. The pattern is called <b>RAII</b>: "resource acquisition is initialization", a clumsy name for "get it when you make the value, give it back when the value is dropped".</p>
+    <span class="file-tab">guard.rs</span>
+    <pre class="code" data-src="guard.rs"></pre>
+    <pre class="term" data-run="guard.rs"></pre>
+    <ol class="readlist">
+      <li><span>Nobody calls a "switch off" function. <code>_reading</code> leaves at the brace on line 23: lamp 2 goes off. <code>drop(early)</code> on line 26 ends lamp 3 early, by hand. <code>_hall</code> lives until the end of <code>main</code>, so lamp 1 is switched off last.</span></li>
+      <li><span>The names start with <code>_</code> to say "I won't use this name, I only need the value alive", which keeps the unused-variable warning quiet.</span></li>
+      <li><span>You've already met guards: the <code>MutexGuard</code> from Chapter 26 unlocks when dropped, and a <code>File</code> closes itself. Even an early <code>return</code>, a <code>?</code> or a panic (with the default panic setting; panel 25 shows the other one) can't skip the clean-up.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>When the owner leaves, the book goes back on the shelf, and the lamp goes off. Same rule, new use.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: walk Mabel through the lamps" data-walk="walk-guard">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Walk Mabel through <code>main</code>. Watch for the moments where a line "runs" that you never wrote: a closing brace.</p>
+    <div class="walk wide-code">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">src/main.rs</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-guard">{"program": "guard.rs", "steps": [
+      {"line": 19, "output": [], "mood": "focus", "arms": "point", "note": "The program starts at <code>main</code>. Line 19 is next."},
+      {"line": 20, "output": ["desk 1: lamp ON"], "mood": "happy", "arms": "point", "note": "<code>switch_on(1)</code> prints and returns a <code>Lamp</code>, which <code>_hall</code> now owns."},
+      {"line": 21, "output": ["desk 1: lamp ON"], "mood": "happy", "arms": "point", "note": "An opening brace starts a smaller block. Whatever is made inside it leaves at its closing brace."},
+      {"line": 22, "output": ["desk 1: lamp ON", "desk 2: lamp ON"], "mood": "happy", "arms": "point", "note": "Lamp 2 is on, owned by <code>_reading</code>."},
+      {"line": 23, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2..."], "mood": "happy", "arms": "point", "note": "Reading. Next comes the block's closing brace."},
+      {"line": 24, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "The brace on line 23 ends <code>_reading</code>'s block, so Rust drops it: the <code>drop</code> method on line 13 runs and prints <samp>desk 2: lamp off</samp>. No line of <code>main</code> asked for it."},
+      {"line": 25, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off", "back in the hall"], "mood": "happy", "arms": "point", "note": "Lamp 1 is still on: <code>_hall</code> belongs to all of <code>main</code>."},
+      {"line": 26, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off", "back in the hall", "desk 3: lamp ON"], "mood": "happy", "arms": "point", "note": "Lamp 3, owned by <code>early</code>."},
+      {"line": 27, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off", "back in the hall", "desk 3: lamp ON", "desk 3: lamp off"], "mood": "happy", "arms": "point", "note": "<code>drop(early)</code> moves the lamp into <code>drop</code>, which ends it on the spot. Handy when a guard should end before its block does."},
+      {"line": 28, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off", "back in the hall", "desk 3: lamp ON", "desk 3: lamp off", "closing time"], "mood": "happy", "arms": "point", "note": "Closing time. One lamp is still on."},
+      {"line": null, "output": ["desk 1: lamp ON", "desk 2: lamp ON", "reading at desk 2...", "desk 2: lamp off", "back in the hall", "desk 3: lamp ON", "desk 3: lamp off", "closing time", "desk 1: lamp off"], "mood": "happy", "arms": "cheer", "note": "<code>main</code>'s closing brace drops <code>_hall</code>: <samp>desk 1: lamp off</samp>, the very last line. Every lamp went off, and no line said so."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pguard-m" id="ex-pguard"></div>
+  <script type="application/json" id="ex-pguard-m">{"program": "predict_guard.rs", "prompt": "Four noisy books, each announcing when it's put away. In what order does everything print?", "hint": "A block's values leave at its closing brace. At the end of a function, values leave in the <em>reverse</em> order they were made, like plates coming off a stack.", "explain": "<samp>reading</samp>, then the inner block ends: <samp>put away comic</samp>. <code>drop(d)</code>: <samp>put away diary</samp>, then <samp>closing</samp>. At the end of <code>main</code>, the remaining values leave newest first: <samp>put away bible</samp>, then <samp>put away atlas</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 19: the lamp that went straight off">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="CLICK!" data-seed="19"></svg>
+    <p class="caption">Same lamp, one character different: <code>let _ =</code> instead of <code>let _lamp =</code>.</p>
+    <span class="file-tab">guard_underscore.rs</span>
+    <pre class="code" data-src="guard_underscore.rs"></pre>
+    <pre class="term" data-run="guard_underscore.rs"></pre>
+    <ol class="readlist">
+      <li><span>No error, no warning, and the lamp goes off <em>before</em> the reading starts.</span></li>
+      <li><span><code>_lamp</code> is a real name that just happens to start with an underscore; it owns the value until the end of the block. A bare <code>_</code> is not a name at all. It means "don't keep this", so the new <code>Lamp</code> is dropped at the end of line 19.</span></li>
+      <li><span>With a lamp it's a dark desk, and no tool warns you. With a lock guard (Chapter 26) the Compiler steps in, as the next run shows.</span></li>
+    </ol>
+    <span class="file-tab">guard_lock.rs</span>
+    <pre class="code" data-src="guard_lock.rs"></pre>
+    <pre class="term" data-run="guard_lock.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>error: non-binding let on a synchronization lock</samp>, under the <code>_</code> on line 5: <samp>this lock is not assigned to a binding and is immediately dropped</samp>. A lock that unlocks at once protects nothing, so Rust refuses to build it.</span></li>
+      <li><span>Read the <code>note:</code>: this check is a <b>lint</b> (a named check) called <code>let_underscore_lock</code>, set to <b>deny</b>, so it stops the build like an error. Its <code>help:</code> lines give both fixes: a name like <code>_unused</code> keeps the guard, or <code>drop(...)</code> says "unlock now" on purpose.</span></li>
+      <li><span>That check knows Rust's own locks. Lamps and other guards you write get no such help, so give every guard a name.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotlet-m" id="ex-spotlet"></div>
+  <script type="application/json" id="ex-spotlet-m">{"program": "guard_underscore.rs", "bug": 19, "prompt": "This compiles and runs, but the lamp is off while Mabel reads. Click the line to fix.", "explain": "Line 19, <code>let _ = Lamp::switch_on(7);</code>: <code>_</code> keeps nothing, so the lamp is dropped at once and <samp>desk 7: lamp off</samp> appears before the reading. Write <code>let _lamp = Lamp::switch_on(7);</code> and it stays on until the end of <code>main</code>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 20: a drawer that stays locked">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="E0616!" data-seed="20"></svg>
+    <p class="caption">A library card keeps its fines in a private field. The card's module offers methods to read and add fines, and nothing else. Ada tries to wipe her own fines.</p>
+    <span class="file-tab">private_field.rs</span>
+    <pre class="code" data-src="private_field.rs"></pre>
+    <pre class="term" data-run="private_field.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0616]: field `fines` of struct `Card` is private</code>, under <code>card.fines</code> on line 23. <code>holder</code> on line 3 is marked <code>pub</code>; <code>fines</code> isn't, so only code inside <code>mod library</code> can touch it (Chapter 14).</span></li>
+      <li><span>Reading still works through the method <code>fines()</code> on line 11. Changing goes only through <code>add_fine</code>, so the card can keep its own rules. A rule like "fines never go below zero" can then never be broken from outside.</span></li>
+      <li><span>Make things <code>pub</code> one at a time, when someone outside really needs them. Hiding fields also means you can change how the card stores fines later without breaking any code that uses it.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Readers can ask what they owe, and they can pay. Nobody but me writes in the ledger.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 21: the handle checklist">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Mabel pins a checklist inside the toolbox lid. Before you call a function or type "done", run down the list.</p>
+    <ol class="checklist">
+      <li><b>Parameters:</b> borrow what you only read (<code>&amp;str</code>, <code>&amp;[T]</code>, <code>&amp;T</code>); take ownership (or <code>impl Into&lt;String&gt;</code>) only when you keep the value.</li>
+      <li><b>Results:</b> return owned values you made; return borrows only when they point into an argument; hand out <code>Option&lt;&amp;T&gt;</code>, not <code>&amp;Option&lt;T&gt;</code>.</li>
+      <li><b>Clones:</b> each <code>.clone()</code> of a String or Vec should be a decision, not a way to silence the Compiler.</li>
+      <li><b>Types that carry meaning:</b> a newtype for units and ids; a builder or <code>Default</code> for many settings; a guard for anything that must be undone.</li>
+      <li><b>Privacy:</b> fields private unless there's a reason; <code>pub</code> is a promise you have to keep.</li>
+      <li><b>Imports:</b> name what you use (<code>use std::fmt::Display;</code>) instead of <code>use some_crate::*;</code>. A wildcard (<code>*</code>) import hides where names come from, and two of them can clash (Chapter 24).</li>
+      <li><b>Docs:</b> a <code>///</code> comment on everything <code>pub</code>, with a short <code># Examples</code> section.</li>
+      <li><b>Clippy:</b> <code>cargo clippy</code> prints nothing.</li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>One more idea for later, called <b>typestate</b>: a type for each stage, such as <code>Draft</code> and <code>Sent</code>, where only <code>Draft</code> has a <code>send</code> method. Sending twice then isn't a bug you test for. It's a program that doesn't compile. Panel 15 was a small taste of it.</p></div>
+      <svg class="char sm" data-char="professor"></svg>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · TWO RACE CARS<small>debug and release builds; overflow panics in one and wraps in the other, and the map of both; release profile settings in Cargo.toml; never time a debug build; zero-cost abstractions; measure before you optimize, and why unsafe isn't a turbo button</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 22: two race cars">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <svg class="sfx tr" data-sfx="VROOM!" data-seed="22"></svg>
+    <p class="caption">Cargo can build the same program into two different cars. Every <code>cargo run</code> so far built the <b>debug</b> car. Add <code>--release</code> and you get the <b>release</b> car.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 270" role="img" aria-label="Two race cars. On the left, the debug car: a boxy, heavier car carrying a mechanic in overalls and a red toolbox in the back, with a sign: checks on, quick to build, slower to run. On the right, the release car: a low, sleek, stripped-down car with speed lines, with a sign: optimized, slower to build, fast to run, overflow wraps.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M30 170 v-40 q0 -14 14 -14 h60 l20 -30 h90 q16 0 22 14 l14 30 h20 q14 0 14 14 v26 z" fill="#7FB2FF"/>
+        <rect x="132" y="92" width="70" height="30" rx="4" fill="#DDE8FF"/>
+        <circle cx="80" cy="176" r="24" fill="#2B2B2B"/><circle cx="80" cy="176" r="9" fill="#FFFFFF"/>
+        <circle cx="236" cy="176" r="24" fill="#2B2B2B"/><circle cx="236" cy="176" r="9" fill="#FFFFFF"/>
+        <rect x="44" y="96" width="44" height="22" rx="3" fill="#FF5A4E"/><path d="M56 96 v-6 h20 v6" fill="none"/>
+        <circle cx="166" cy="70" r="15" fill="#F3C9A1"/><path d="M151 64 q15 -18 30 0 z" fill="#FFD60A"/>
+        <path d="M188 82 l24 -16 M212 66 l8 -4" fill="none"/>
+        <path d="M400 176 q-6 -26 30 -34 l70 -12 q30 -22 70 -22 q40 0 60 34 l26 6 q10 4 8 16 l-4 12 z" fill="#FFD60A"/>
+        <path d="M520 112 q24 -4 40 18 h-52 z" fill="#DDE8FF"/>
+        <circle cx="452" cy="178" r="22" fill="#2B2B2B"/><circle cx="452" cy="178" r="8" fill="#FFFFFF"/>
+        <circle cx="610" cy="178" r="22" fill="#2B2B2B"/><circle cx="610" cy="178" r="8" fill="#FFFFFF"/>
+        <path d="M372 132 h-40 M380 150 h-56 M372 168 h-36" fill="none" stroke-width="3"/>
+        <text class="h" x="540" y="164" text-anchor="middle" stroke="none">28</text>
+      </g>
+      <text class="h mid" x="160" y="226">DEBUG</text>
+      <text class="m mid" x="160" y="250">cargo run</text>
+      <text class="h mid" x="520" y="226">RELEASE</text>
+      <text class="m mid" x="520" y="250">cargo run --release</text>
+    </svg></div>
+    <table class="ref-table cheat">
+      <thead><tr><th>compare</th><th>debug car (<code>cargo run</code>)</th><th>release car (<code>cargo run --release</code>)</th></tr></thead>
+      <tbody>
+        <tr><td>carries</td><td>a mechanic: overflow checks, extra information for debuggers</td><td>nothing extra: the compiler rearranges and shrinks the machine code</td></tr>
+        <tr><td>build time</td><td>quick, so you can try things often</td><td>slower: optimizing takes work</td></tr>
+        <tr><td>running speed</td><td>often many times slower (panel 26 times one run)</td><td>fast: what users should get</td></tr>
+        <tr><td>number too big?</td><td>panics (panel 23)</td><td>wraps around, silently</td></tr>
+        <tr><td>where it goes</td><td><code>target/debug/</code></td><td><code>target/release/</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: one program, two cars">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">The visitor counter is a <code>u8</code>: it holds 0 to 255 (Chapter 3). It starts at 250 and adds one visitor an hour. The same file, built both ways.</p>
+    <span class="file-tab">overflow.rs</span>
+    <pre class="code" data-src="overflow.rs"></pre>
+    <p><span class="parity" data-same-src="overflow.rs,overflow_release.rs"></span></p>
+    <div class="runs2">
+      <div><h3>debug</h3><pre class="term" data-run="overflow.rs" data-exit></pre></div>
+      <div><h3>release</h3><pre class="term" data-run="overflow_release.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Debug</b>: at hour 6, <code>255 + 1</code> doesn't fit, and the program stops: <samp>attempt to add with overflow</samp> at <code>src/main.rs:4:9</code>, exit code 101. (The <code>(1)</code> after <code>'main'</code> is the thread's id number. It will be different on your computer.)</span></li>
+      <li><span><b>Release</b>: no check. The number wraps around like a car's odometer rolling past 999999: 255, then <samp>0</samp>, <samp>1</samp>, <samp>2</samp>. Exit code 0, and three hours of wrong visitor counts.</span></li>
+      <li><span>When wrapping is what you want, say so: <code>wrapping_add</code>. When it isn't, <code>checked_add</code> returns <code>None</code> instead of a wrong number (Chapter 3). Then both cars behave the same.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-prel-m" id="ex-prel"></div>
+  <script type="application/json" id="ex-prel-m">{"program": "predict_release.rs", "prompt": "This one runs with <code>cargo run -q --release</code>. What does it print?", "hint": "In a release build, <code>u8</code> arithmetic wraps: one past 255 is 0. <code>wrapping_sub</code> wraps in every build: one below 0 is 255.", "explain": "254 + 1 = <samp>255</samp>, then 255 + 1 wraps to <samp>0</samp>, then <samp>1</samp>. <code>1.wrapping_sub(2)</code> goes one below 0, which wraps to <samp>255</samp>. In a debug build the loop would panic on its second pass, but <code>wrapping_sub</code> would still give 255, because it asks for wrapping on purpose."}</script>
+
+  <section class="panel sketch" aria-label="Panel 24: the map of an overflow" data-map="map-overflow">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">The map of hour 6. Each road is a real run of the same code: the debug build, the release build, and a release build whose profile switches the checks back on (next panel).</p>
+    <div class="paths" role="group" aria-label="Choose a build"><span class="label">BUILD:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapo-t mapo-d"><title id="mapo-t">The roads at hour 6</title><desc id="mapo-d">Four places. At the top, visitors plus-equals 1, for hours 1 to 5. A road labelled each hour leads down to: hour 6, 255 plus 1, too big for a u8. From there, a road labelled overflow checks on leads down to: panic, attempt to add with overflow, exit code 101. A road labelled overflow checks off leads right and down to: wraps around to 0, then 1 and 2, exit code 0.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-overflow">{"seed": 24, "size": [690, 470], "start": [[190, 6], [190, 34]],
+      "states": [
+        {"id": "ADD", "x": 40, "y": 40, "w": 300, "h": 76, "label": "visitors += 1", "sub": "hours 1 to 5: 251 ... 255"},
+        {"id": "SIX", "x": 40, "y": 206, "w": 300, "h": 76, "label": "hour 6: 255 + 1", "sub": "too big for a u8!"},
+        {"id": "PANIC", "x": 14, "y": 380, "w": 310, "h": 76, "label": "panic: overflow", "sub": "exit code 101", "kind": "error"},
+        {"id": "WRAP", "x": 384, "y": 380, "w": 292, "h": 76, "label": "wraps around to 0", "sub": "then 1, 2 · exit code 0", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "ADD", "to": "SIX", "pts": [[190, 120], [190, 200]], "label": "each hour", "lx": 202, "ly": 166},
+        {"id": "tp", "from": "SIX", "to": "PANIC", "pts": [[120, 286], [120, 374]], "label": "overflow checks on", "lx": 132, "ly": 336},
+        {"id": "tw", "from": "SIX", "to": "WRAP", "pts": [[344, 244], [530, 244], [530, 374]], "label": "overflow checks off", "lx": 380, "ly": 232}],
+      "paths": [
+        {"id": "pd", "label": "debug", "program": "overflow.rs", "expect": {"exit": 101, "stderrContains": "attempt to add with overflow"}, "steps": [
+          {"on": ["ADD"], "output": [], "note": "<code>cargo run</code>: the debug car. <code>visitors</code> starts at 250."},
+          {"on": ["ADD"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "Five hours, five additions that fit. 255 is the biggest number a <code>u8</code> holds."},
+          {"on": ["SIX"], "via": ["t1"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "Hour 6: <code>255 + 1</code>. The debug build carries the mechanic, who checks every addition."},
+          {"on": ["PANIC"], "via": ["tp"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "error": "attempt to add with overflow", "note": "The check fails and the program panics before printing a wrong number. Exit code 101."}]},
+        {"id": "pr", "label": "release", "program": "overflow_release.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["ADD"], "output": [], "note": "<code>cargo run --release</code>: the same source, the stripped-down car."},
+          {"on": ["ADD"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "The first five hours look exactly the same."},
+          {"on": ["SIX"], "via": ["t1"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "Hour 6: <code>255 + 1</code>. No mechanic on board, so nobody checks."},
+          {"on": ["WRAP"], "via": ["tw"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors", "hour 6: 0 visitors", "hour 7: 1 visitors", "hour 8: 2 visitors"], "note": "The number wraps to 0 and the program carries on happily with wrong counts. Exit code 0: nothing says anything went wrong."}]},
+        {"id": "pc", "label": "release + overflow-checks", "program": "profile_checks.rs", "expect": {"exit": 101, "stderrContains": "attempt to add with overflow"}, "steps": [
+          {"on": ["ADD"], "output": [], "note": "<code>cargo run --release</code> again, in a project whose <code>Cargo.toml</code> says <code>overflow-checks = true</code> for the release profile."},
+          {"on": ["ADD"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "Fast and optimized, like any release build."},
+          {"on": ["SIX"], "via": ["t1"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "note": "Hour 6. This time the release car kept one mechanic: the overflow check."},
+          {"on": ["PANIC"], "via": ["tp"], "output": ["hour 1: 251 visitors", "hour 2: 252 visitors", "hour 3: 253 visitors", "hour 4: 254 visitors", "hour 5: 255 visitors"], "error": "attempt to add with overflow", "note": "So it panics, exactly like the debug build. The profile decides the road, not the word \"release\"."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: tuning the car in Cargo.toml">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Each car is built from a <b>profile</b>: a set of compiler settings. <code>dev</code> is used by <code>cargo run</code> and <code>cargo build</code>; <code>release</code> by <code>--release</code>. You can change either in <code>Cargo.toml</code> (Chapter 24 showed where).</p>
+    <span class="file-tab">visitors/Cargo.toml</span>
+    <pre class="code" data-src="tpl/visitors/Cargo.toml"></pre>
+    <span class="file-tab">visitors/src/main.rs (the same visitor counter)</span>
+    <pre class="term" data-run="profile_checks.rs" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> the command is exactly what ran, in the folder <code>visitors</code>. Just before, a small script, <code>stage.sh</code>, laid out that folder (the <code>Cargo.toml</code> above, and <code>overflow.rs</code> again as <code>src/main.rs</code>). A second script, <code>run.sh</code>, then built the project once with <code>cargo build -q --release</code>, throwing that build's messages away, so the shown run starts from a built project the way your second run would; it ran the command inside a fresh process namespace, like every run in this book, so the thread id stays <code>(1)</code>.</p>
+    <table class="ref-table cheat">
+      <thead><tr><th>setting under <code>[profile.release]</code></th><th>what it changes</th></tr></thead>
+      <tbody>
+        <tr><td><code>overflow-checks = true</code></td><td>keep the overflow panic in release builds (above)</td></tr>
+        <tr><td><code>opt-level = 3</code></td><td>how hard to optimize: 0 (none, the debug default) to 3 (the release default); <code>"s"</code> and <code>"z"</code> aim for small programs</td></tr>
+        <tr><td><code>lto = true</code></td><td>"link-time optimization": optimize across all crates together; slower builds, sometimes faster programs</td></tr>
+        <tr><td><code>codegen-units = 1</code></td><td>compile as one piece, which allows more optimization but builds more slowly</td></tr>
+        <tr><td><code>debug = true</code></td><td>keep debugger information in the release program (useful with profilers)</td></tr>
+        <tr><td><code>panic = "abort"</code></td><td>on a panic, stop at once instead of unwinding (smaller programs, no clean-up)</td></tr>
+      </tbody>
+    </table>
+    <p class="caption soft">The defaults are good. Change one setting at a time, and only when a measurement says it helps.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: never time the debug car">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="TICK TOCK" data-seed="26"></svg>
+    <p class="caption">Mabel wants to know which is faster, the index loop or the iterator chain from panel 8, so she times them over three million books with <code>std::time::Instant</code>, a stopwatch: <code>Instant::now()</code> starts it and <code>.elapsed()</code> reads it.</p>
+    <span class="file-tab">bench_debug.rs (and bench_release.rs, the same file)</span>
+    <pre class="code" data-src="bench_debug.rs"></pre>
+    <p><span class="parity" data-same-src="bench_debug.rs,bench_release.rs"></span></p>
+    <div class="runs2 wide">
+      <div><h3>debug · one possible run</h3><pre class="term" data-run="bench_debug.rs"></pre></div>
+      <div><h3>release · one possible run</h3><pre class="term" data-run="bench_release.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span>Timings change on every run, so these are <b>one possible run on the computer that made this comic</b> (a busy 2-core machine), not answers. On yours, the numbers will be different. Compare the two terminals yourself rather than trusting any one number.</span></li>
+      <li><span>Compare the two terminals: in this run the release car did the same work in less time. Any conclusion drawn from the debug numbers, such as "chains are faster" or "loops are faster", is a conclusion about the mechanic, not about your code.</span></li>
+      <li><span>Why loop and chain should keep pace in release: they compile to about the same machine code. That's the zero-cost promise from panel 8: nicer code, no speed penalty. To check it properly, time many runs, not one.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>race the car you'll drive</b>. Time release builds, on real-sized data, more than once.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-bench-m" id="ex-bench"></div>
+  <script type="application/json" id="ex-bench-m">{"q": "A classmate times two versions of a function with plain <code>cargo run</code>. Version A takes 80 ms, version B 20 ms. \"B is four times faster!\" What should you say?", "options": [
+    {"t": "Time both again with <code>cargo run --release</code>, a few runs each.", "why": "Right. Debug builds leave out the optimizations that decide real speed, and the checks they add cost more in some code than in other code. The gap can shrink, grow or flip in release. Several runs show how much the numbers wobble.", "correct": true},
+    {"t": "Agree: a four-times gap is far too big to be noise, so B is faster.", "why": "It may be real, but it was measured on the debug car. Panel 26's run shows how far apart the two builds of the very same code can be."},
+    {"t": "Rewrite A with <code>unsafe</code> code so that it runs as fast as B.", "why": "Nothing says A is slow in release yet. And <code>unsafe</code> isn't a speed switch; it only lets you do things the Compiler can't check (panel 27)."},
+    {"t": "Time both again with <code>cargo check</code>, which builds faster.", "why": "<code>cargo check</code> only checks the code. It doesn't build a program, so there's nothing to time."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 27: measure before you tune">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">The Professor's pit-stop rules for speed.</p>
+    <ol class="checklist">
+      <li><b>Measure first.</b> Most of a program's time is usually spent in a small part of it, and it's rarely the part you'd guess. Find it before changing anything.</li>
+      <li><b>Use the right stopwatch.</b> <code>Instant</code> is fine for a first look. For careful comparisons, the <b>Criterion</b> crate runs a piece of code many times and reports the average and how much it varies (a <b>benchmark</b>). A <b>profiler</b>, such as <code>cargo flamegraph</code>, draws a picture of where all the time went.</li>
+      <li><b>Write clear code first.</b> Iterators, slices and small functions are zero-cost: in release they compile to the same machine code a hand-written loop would get, so clarity isn't the thing slowing you down.</li>
+      <li><b>Look at what the code asks for.</b> Copies and trips to the heap (Part 4) cost more than a few extra lines of code. Removing them usually beats clever tricks.</li>
+      <li><b><code>unsafe</code> is not a turbo button.</b> It switches off some of the Compiler's checks; it doesn't make anything faster by itself. Code like <code>get_unchecked(i)</code> skips a bounds check that the optimizer usually removes anyway, and a wrong index then reads whatever memory happens to be there, with no panic to tell you. Reach for it only with a measurement in hand, and then usually don't.</li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Donald Knuth wrote in 1974: "We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil." Make it correct, make it clear, measure, then make it fast where the measurement points.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · PACK LIGHT<small>what lives on the stack and what on the heap; how a Vec grows; with_capacity; a real program that counts every trip to the heap: growing, cloning, reusing, borrowing</small></h2>
+
+  <section class="panel clean" aria-label="Panel 28: what fits on a plate">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Chapter 7's two kinds of memory, with real sizes. The <b>stack</b> is the pile of plates: one per function call, set and cleared in no time. The <b>heap</b> is the coat-check room: room for things whose size can change, but every new spot means asking the attendant, waiting, and getting a ticket back. Each ask is an <b>allocation</b>. <code>size_of</code> tells you how many bytes a value takes on its plate.</p>
+    <span class="file-tab">stack_heap.rs</span>
+    <pre class="code" data-src="stack_heap.rs"></pre>
+    <pre class="term" data-run="stack_heap.rs"></pre>
+    <ol class="readlist">
+      <li><span>A <code>String</code> is always 24 bytes on the plate, a pointer, a length and a capacity, however long the text. The letters themselves are in the coat-check room. A <code>&amp;str</code> is only 16 bytes, a pointer and a length, and it never asks for anything new.</span></li>
+      <li><span>A <code>Box</code> puts its whole value on the heap and keeps only an 8-byte ticket on the plate.</span></li>
+      <li><span>The stack is fast because it's simple: no asking, no waiting. Each heap allocation is a small errand. Programs that run millions of errands spend real time on them. That's what the rest of this part counts.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: how a Vec grows">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">A Vec has a <b>length</b> (items in use) and a <b>capacity</b> (room it has already asked for). Watch both while nine books go on the shelf. Each line prints length, then capacity.</p>
+    <span class="file-tab">vec_growth.rs</span>
+    <pre class="code" data-src="vec_growth.rs"></pre>
+    <pre class="term" data-run="vec_growth.rs"></pre>
+    <ol class="readlist">
+      <li><span><code>Vec::new()</code> asks for nothing: capacity 0. The first push asks for room for 4.</span></li>
+      <li><span>When the room is full, the next push asks for <b>twice</b> as much (8, then 16), copies everything across and gives the old room back. Doubling means a Vec of a million items has moved only about 20 times.</span></li>
+      <li><span>The exact numbers (4 first, then doubling) are how this version of Rust happens to do it, not a promise. What is promised: <code>len()</code> is exact, and pushing never loses anything.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tgrow-m" id="ex-tgrow"></div>
+  <script type="application/json" id="ex-tgrow-m">{"program": "vec_growth.rs", "columns": ["len", "capacity"], "given": [0], "prompt": "Fill in the capacity after each push. The first row is before any push.", "explain": "0 before the first push, then <samp>4</samp> for lengths 1 to 4, <samp>8</samp> for 5 to 8, and <samp>16</samp> at length 9. The capacity only changes when a push finds the room full."}</script>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 30: watch the shelf move" data-mem="mem-grow" data-heap-label="the coat-check room" id="mem-grow-box">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The same story in Chapter 7's stack-and-heap picture, with five books, and then a shelf that asks for the right room up front: <code>Vec::with_capacity(5)</code>.</p>
+    <ul class="mem-legend" aria-label="How to read the diagram">
+      <li><span class="sw" aria-hidden="true"></span> a plate (one frame) with its slots</li>
+      <li><span class="sw ptr" aria-hidden="true"></span> a pointer: a ticket number like #1 and an arrow</li>
+      <li><span class="sw dash" aria-hidden="true"></span> dashed and striped: freed</li>
+    </ul>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-grow">{"program": "grow_small.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts: one empty plate.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>Vec::new()</code>: a shelf with no room at all yet. Length 0, capacity 0, and no trip to the heap.", "output": [], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "val": "len 0, cap 0, no block"}]}], "heap": {}, "changed": ["shelf"]},
+      {"line": 5, "note": "The first <code>push(10)</code> needs room, so the Vec asks the heap for space for 4 numbers: allocation number 1, ticket #1. Three spare cells are dotted.", "output": [], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H1", "len": 1, "cap": 4}]}], "heap": {"H1": {"cells": ["10"], "cap": 4, "label": "Vec items"}}, "changed": ["shelf", "H1"]},
+      {"line": 4, "note": "Printed: <samp>len 1, capacity 4</samp>. Back to the top of the loop.", "output": ["pushed 10: len 1, capacity 4"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H1", "len": 1, "cap": 4}]}], "heap": {"H1": {"cells": ["10"], "cap": 4, "label": "Vec items"}}},
+      {"line": 4, "note": "Three more rounds: 20, 30 and 40 drop into the spare cells. No new allocation, same ticket #1. Now the shelf is full: length 4, capacity 4.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H1", "len": 4, "cap": 4}]}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items"}}, "changed": ["shelf", "H1"]},
+      {"line": 5, "note": "<code>push(50)</code> finds no room. The Vec asks for a block twice as big (allocation number 2, ticket #2), copies the four numbers across, adds 50, and gives block #1 back. The ticket on the plate changes.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items", "freed": true}, "H2": {"cells": ["10", "20", "30", "40", "50"], "cap": 8, "label": "Vec items"}}, "changed": ["shelf", "H1", "H2"]},
+      {"line": 7, "note": "Printed: <samp>len 5, capacity 8</samp>. The loop is over: two allocations and one copy for five numbers.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4", "pushed 50: len 5, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H2", "len": 5, "cap": 8}]}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items", "freed": true}, "H2": {"cells": ["10", "20", "30", "40", "50"], "cap": 8, "label": "Vec items"}}},
+      {"line": 8, "note": "<code>Vec::with_capacity(5)</code>: we know five are coming, so we ask for room for exactly five, up front. One allocation, ticket #3, five dotted spare cells.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4", "pushed 50: len 5, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H2", "len": 5, "cap": 8}, {"n": "ready", "type": "Vec<i32>", "ptr": "H3", "len": 0, "cap": 5}]}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items", "freed": true}, "H2": {"cells": ["10", "20", "30", "40", "50"], "cap": 8, "label": "Vec items"}, "H3": {"cells": [], "cap": 5, "label": "Vec items"}}, "changed": ["ready", "H3"]},
+      {"line": 11, "note": "Five pushes, all into room that's already there: no new allocation, no copying, the same ticket #3 all along.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4", "pushed 50: len 5, capacity 8"], "frames": [{"name": "main", "slots": [{"n": "shelf", "type": "Vec<i32>", "ptr": "H2", "len": 5, "cap": 8}, {"n": "ready", "type": "Vec<i32>", "ptr": "H3", "len": 5, "cap": 5}]}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items", "freed": true}, "H2": {"cells": ["10", "20", "30", "40", "50"], "cap": 8, "label": "Vec items"}, "H3": {"cells": ["10", "20", "30", "40", "50"], "cap": 5, "label": "Vec items"}}, "changed": ["ready", "H3"]},
+      {"line": null, "note": "Printed: <samp>ready: len 5, capacity 5</samp>. Then <code>main</code>'s closing brace drops both Vecs and both blocks go back. Count the trips: 2 for <code>shelf</code>, 1 for <code>ready</code>.", "output": ["pushed 10: len 1, capacity 4", "pushed 20: len 2, capacity 4", "pushed 30: len 3, capacity 4", "pushed 40: len 4, capacity 4", "pushed 50: len 5, capacity 8", "ready: len 5, capacity 5"], "frames": [{"name": "main", "slots": []}], "heap": {"H1": {"cells": ["10", "20", "30", "40"], "cap": 4, "label": "Vec items", "freed": true}, "H2": {"cells": ["10", "20", "30", "40", "50"], "cap": 8, "label": "Vec items", "freed": true}, "H3": {"cells": ["10", "20", "30", "40", "50"], "cap": 5, "label": "Vec items", "freed": true}}, "changed": ["H2", "H3"]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pcap-m" id="ex-pcap"></div>
+  <script type="application/json" id="ex-pcap-m">{"program": "predict_cap.rs", "prompt": "A cart that asks for room for 3 up front. What do the three lines say?", "hint": "<code>with_capacity(3)</code> gives exactly 3 here. When a full Vec needs more room, this version of Rust doubles it.", "explain": "<samp>start: len 0, cap 3</samp>: room, but nothing in it. After three pushes, <samp>full:  len 3, cap 3</samp>, still the first block. The fourth push finds it full and doubles: <samp>more:  len 4, cap 6</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-allocq-m" id="ex-allocq"></div>
+  <script type="application/json" id="ex-allocq-m">{"q": "Guess before you look. Program A builds 100 shelf labels with <code>let label = format!(\"shelf {i}\");</code> inside the loop. Program B makes one <code>String</code> before the loop, and in the loop calls <code>label.clear()</code> and then writes the new label into it. About how many trips to the heap does each make?", "options": [
+    {"t": "A about 100, B about 1", "why": "Right, and the next panel counts it: 100 against 1. <code>format!</code> makes a brand-new String each time. <code>clear()</code> empties a String but keeps its room, so B asks once and reuses that room for every label.", "correct": true},
+    {"t": "Both about 100: every label is new text", "why": "New text doesn't need a new block if the old block is big enough. <code>clear()</code> sets the length to 0 and keeps the capacity."},
+    {"t": "Both 0: short text lives on the stack", "why": "A String's letters always live on the heap, however short (panel 28). Only the 24-byte pointer, length and capacity are on the plate."},
+    {"t": "A about 1, B about 100", "why": "The other way round: it's A that throws each String away and asks for a new one on the next pass."}]}</script>
+
+  <section class="panel clean allocbars" aria-label="Panel 31: counting trips to the heap" data-allocbars="ab-main">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The Professor wrote a program that counts every allocation. It replaces the heap's front desk with a tally counter (the <b>global allocator</b>, explained in the notebook) and runs each job between two readings of the counter. Counts, not timings: they come out the same on every run.</p>
+    <div class="ab-chart"></div>
+    <p><span class="parity"></span></p>
+    <details><summary>Text version: every count</summary><table class="transcript"><thead><tr><th>Job</th><th>Version</th><th>Allocations</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The program and its real output</summary>
+      <span class="file-tab">alloc_count.rs</span>
+      <pre class="code" data-src="alloc_count.rs"></pre>
+      <pre class="term" data-run="alloc_count.rs"></pre>
+    </details>
+    <script type="application/json" id="ab-main">{"program": "alloc_count.rs", "groups": [
+      {"title": "Growing a Vec to 1000 numbers", "bars": [{"label": "push 1000 numbers, no capacity", "name": "<code>Vec::new()</code>, then push"}, {"label": "push 1000 numbers, with_capacity", "name": "<code>with_capacity(1000)</code>"}], "note": "Room for 4, 8, 16 ... 1024: nine trips, each but the first with a copy. Knowing the size up front: one trip."},
+      {"title": "Finding the longest title (panel 6)", "bars": [{"label": "longest title, clone-heavy", "name": "clone-heavy"}, {"label": "longest title, borrowing", "name": "borrowing"}], "note": "Two copies of the shelf (a Vec and three Strings each time) plus a copy of each new winner, against none."},
+      {"title": "Making 100 labels", "bars": [{"label": "100 labels, a new String each", "name": "<code>format!</code> each time"}, {"label": "100 labels, one reused buffer", "name": "<code>clear()</code> and reuse"}], "note": "Reusing a <b>buffer</b> (a piece of memory kept for holding data on its way somewhere) turns 100 errands into 1."},
+      {"title": "Counting vowels 100 times", "bars": [{"label": "100 vowel counts, String parameter", "name": "<code>word: String</code>"}, {"label": "100 vowel counts, &str parameter", "name": "<code>word: &amp;str</code>"}], "note": "A <code>String</code> parameter makes every caller build one (<code>.to_string()</code>) just so the function can read it. <code>&amp;str</code>: nothing to build."}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>pack once, pack light</b>. Ask for the room you'll need, reuse it, and lend instead of photocopying.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fbuf-m" id="ex-fbuf"></div>
+  <script type="application/json" id="ex-fbuf-m">{"program": "fill_buffer.rs", "prompt": "One line buffer for the whole loop. Make it with room for 32 bytes up front (line 5), and empty it at the start of each pass without giving the room back (line 7).", "blanks": [{"line": 5, "text": "with_capacity(32)"}, {"line": 7, "text": "line.clear()"}], "explain": "<code>String::with_capacity(32)</code> asks once. <code>line.clear()</code> sets the length to 0 but keeps the 32 bytes, so every line is written into the same room: <samp>room for 32</samp> on all three. Without <code>clear()</code>, the lines would pile up one after another."}</script>
+
+  <section class="panel sketch" aria-label="Panel 32: packing list">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">The packing list, in the order to try things. Only where measuring (panel 27) shows the time is spent.</p>
+    <table class="ref-table cheat">
+      <thead><tr><th>instead of</th><th>try</th><th>why</th></tr></thead>
+      <tbody>
+        <tr><td><code>fn f(s: String)</code> to read</td><td><code>fn f(s: &amp;str)</code></td><td>callers don't build a String just to lend it</td></tr>
+        <tr><td><code>.clone()</code> to quiet the Compiler</td><td>borrow (<code>&amp;</code>), or move if you're done with it</td><td>a clone is a photocopy: new memory, every byte copied</td></tr>
+        <tr><td><code>Vec::new()</code> + many pushes</td><td><code>Vec::with_capacity(n)</code>, or <code>collect()</code></td><td>one trip instead of many, no copying; <code>collect</code> sizes the Vec itself when it can</td></tr>
+        <tr><td>a new String each pass</td><td>one buffer, <code>clear()</code> each pass</td><td>the room stays; only the length goes back to 0</td></tr>
+        <tr><td>collecting, then looping</td><td>one iterator chain</td><td>no in-between Vec at all</td></tr>
+        <tr><td>a huge array on the stack</td><td><code>Box</code> or <code>Vec</code></td><td>a thread's stack has a fixed size, a few megabytes at most, and a too-big value overflows it</td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="trailguide" data-mood="happy" data-arms="wave"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Trail Guide says: </span>Pack for the trip you're taking. And don't spend an afternoon shaving grams off a bag you carry once.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE HARDWARE STORE<small>judging a crate; serde and serde_json, the serde machine, and the missing derive feature; rand, regex, chrono and clap; a regex that won't parse; cargo tree; features; two versions of one crate; supply-chain care</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 33: the hardware store">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <svg class="sfx tr" data-sfx="DING-DONG" data-seed="33"></svg>
+    <p class="caption">Rust's standard library is a small, sturdy toolbox. For everything else there's the hardware store: <b>crates.io</b>, with more than 370,000 crates (its own count on 8 November 2026). Some are excellent, some are abandoned, a few are traps.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 280" role="img" aria-label="A hardware-store aisle with two shelves of boxes. Plain sturdy boxes carry labels: serde, rand, regex, chrono, clap, tokio. On the top shelf a shiny box with stars and a dashed outline says: SUPER-FAST, version 0.0.1, last update 2019, 1 download, no docs. Signs hang over the aisle: docs dot rs, downloads, last release, who else uses it.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="20" y="40" width="640" height="10" fill="#C9A26B"/><rect x="20" y="150" width="640" height="10" fill="#C9A26B"/><rect x="20" y="258" width="640" height="10" fill="#C9A26B"/>
+        <rect x="40" y="76" width="110" height="74" rx="4" fill="#FFF6CC"/><rect x="164" y="86" width="96" height="64" rx="4" fill="#DDE8FF"/>
+        <rect x="420" y="66" width="230" height="84" rx="4" fill="#FFE1E1" stroke-dasharray="9 6"/>
+        <rect x="40" y="186" width="96" height="72" rx="4" fill="#C9F2D9"/><rect x="150" y="196" width="104" height="62" rx="4" fill="#FFF6CC"/>
+        <rect x="268" y="190" width="104" height="68" rx="4" fill="#DDE8FF"/><rect x="386" y="200" width="96" height="58" rx="4" fill="#C9F2D9"/>
+        <rect x="496" y="186" width="144" height="72" rx="4" fill="#FFF6CC"/>
+        <path d="M432 84 l6 -12 l6 12 l-12 -7 h12 z M626 84 l6 -12 l6 12 l-12 -7 h12 z" fill="#FFD60A" stroke-width="2"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle">
+        <text x="95" y="120">serde</text><text x="212" y="124">rand</text>
+        <text x="88" y="228">regex</text><text x="202" y="232">chrono</text><text x="320" y="230">clap</text><text x="434" y="234">tokio</text><text x="568" y="228">anyhow</text>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="18" fill="#111" text-anchor="middle" letter-spacing="1">
+        <text x="535" y="92">SUPER-FAST!!</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="19" fill="#111" text-anchor="middle">
+        <text x="535" y="116" font-size="14">v0.0.1 · from 2019</text><text x="535" y="138" font-size="14">no docs · 1 download</text>
+        <text x="110" y="28">docs.rs</text><text x="250" y="28">downloads</text><text x="400" y="28">last release</text><text x="560" y="28">who uses it?</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="focus" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>pick tools by reputation and fit, not by the shiniest box</b>. Before adding a crate, I check six things on its labels.</p></div>
+    </div>
+    <ol class="checklist">
+      <li><b>Docs:</b> does <code>docs.rs/name</code> have real documentation with examples? (docs.rs builds docs for every crate published on crates.io.)</li>
+      <li><b>Use:</b> how many downloads, and how many other crates depend on it (the "Dependents" tab on crates.io)? Popular crates have had many eyes on them.</li>
+      <li><b>Care:</b> when was the last release? Are issues on its repository answered? A crate can be finished and stable, but "abandoned with open bugs" is a warning.</li>
+      <li><b>Fit:</b> does it do your job without a pile of things you don't need? Look at its own dependencies, and at its features (panel 41).</li>
+      <li><b>Version:</b> 1.0 or later promises fewer breaking changes; 0.x crates may change more between releases (Chapter 24's semver).</li>
+      <li><b>License:</b> crates say their license on their page; most Rust crates use MIT or Apache-2.0, which allow almost any use.</li>
+    </ol>
+    <p class="caption soft">Community lists such as <b>blessed.rs</b> collect the crates most Rust programmers reach for first. The ones in this part are among them.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: serde, struct to JSON and back">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The crate that more crates depend on than any other in this chapter: <b>serde</b> (about 139,000 crates on crates.io list it as a dependency, by crates.io's count on 8 November 2026). Its name is short for <b>ser</b>ialize and <b>de</b>serialize. To <b>serialize</b> is to turn a value into text or bytes you can save or send; to <b>deserialize</b> is to turn them back. <b>serde_json</b> does it in <b>JSON</b>, the text format most web services speak. The project asks for two crates, and for serde's <code>derive</code> feature:</p>
+    <span class="file-tab">booknotes/Cargo.toml</span>
+    <pre class="code" data-src="tpl/booknotes/Cargo.toml"></pre>
+    <span class="file-tab">serde_demo.rs</span>
+    <pre class="code" data-src="serde_demo.rs"></pre>
+    <pre class="term" data-run="serde_demo.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>#[derive(Serialize, Deserialize)]</code> asks serde to write the conversion code for <code>Book</code>, field by field, while compiling (Chapter 27's derive macros at work).</span></li>
+      <li><span><b>Line 19</b>: <code>to_string</code> gives compact JSON: the field names become keys, in the order the struct lists them. <b>Line 22</b>: <code>to_string_pretty</code> adds line breaks and indentation for people.</span></li>
+      <li><span><b>Line 25</b>: <code>from_str</code> reads JSON back. The type annotation <code>Book</code> tells serde what to build. Both functions return a <code>Result</code>, because a struct could hold something JSON can't express and text can be broken. <code>unwrap</code> is fine in a demo; the next panel shows the errors.</span></li>
+      <li><span><b>Line 27</b>: <samp>same book? true</samp>, the round trip lost nothing.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 35: the serde machine" data-machine="m-serde">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">The serde machine. The first two examples are lines of <code>serde_demo.rs</code>. The others feed bits of JSON to <code>from_str</code> for a smaller <code>Book</code> with just <code>title</code> and <code>pages</code>; they're lines of <code>serde_errors.rs</code> (its code is in the notebook), which prints <code>Ok</code> or <code>Err</code> for each. The last one uses <code>unwrap()</code> and jams with the real panic.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-serde">{"label": "serde_json", "program": "serde_demo.rs", "examples": [
+      {"in": "to_string(&book)", "out": "{\"title\":\"Dune\",\"pages\":412,\"tags\":[\"sci-fi\",\"desert\"],\"on_loan\":false}", "outKind": "String (JSON)", "note": "Struct in, JSON text out. The Vec became a JSON list in square brackets."},
+      {"in": "from_str::<Book>(that text)", "out": "Book { title: \"Dune\", pages: 412, tags: [\"sci-fi\", \"desert\"], on_loan: false }", "outKind": "Book", "note": "JSON text in, struct out (printed with <code>{:?}</code>)."},
+      {"in": "{\"title\": \"Emma\", \"pages\": 474, \"stars\": 5}", "out": "Ok: Emma has 474 pages", "program": "serde_errors.rs", "outKind": "Ok(Book)", "note": "An extra key, <code>stars</code>, is quietly ignored by default. (<code>#[serde(deny_unknown_fields)]</code> makes it an error.)"},
+      {"in": "{\"title\": \"Emma\"}", "out": "Err: missing field `pages` at line 1 column 17", "program": "serde_errors.rs", "outKind": "Err", "note": "A field is missing. The error names it and says where the reading stopped."},
+      {"in": "{\"title\": \"Emma\", \"pages\": \"lots\"}", "out": "Err: invalid type: string \"lots\", expected u32 at line 1 column 33", "program": "serde_errors.rs", "outKind": "Err", "note": "Wrong kind of value: the struct says <code>u32</code>, the JSON has text."},
+      {"in": "{\"title\": \"Emma\", \"pages\": -3}", "out": "Err: invalid value: integer `-3`, expected u32 at line 1 column 29", "program": "serde_errors.rs", "outKind": "Err", "note": "Right kind, impossible value: a <code>u32</code> can't be negative. The type does the checking for free."},
+      {"in": "{\"title\": \"Emma\", \"pages\": 474", "out": "Err: EOF while parsing an object at line 1 column 30", "program": "serde_errors.rs", "outKind": "Err", "note": "Broken JSON: the closing brace is missing. EOF means \"end of file\": the text ran out."},
+      {"in": "{\"title\": \"Emma\"} with unwrap()", "error": "called `Result::unwrap()` on an `Err` value: Error(\"missing field `pages`\", line: 1, column: 17)", "program": "serde_panic.rs", "note": "The same missing field, but <code>unwrap()</code> turns the <code>Err</code> into a panic. Text from outside your program can be anything: handle the <code>Err</code>."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pjson-m" id="ex-pjson"></div>
+  <script type="application/json" id="ex-pjson-m">{"program": "predict_json.rs", "prompt": "A loan goes out as JSON, and another comes back in with its keys in a different order. What does it print?", "hint": "Compact JSON has no spaces. Keys come out in the order the struct lists its fields; coming in, their order doesn't matter.", "explain": "<samp>{\"book\":\"Emma\",\"days\":14,\"renewed\":false}</samp>: field order, no spaces, <code>false</code> unquoted. Reading back, serde matches keys by name, so <code>days</code> first is fine: <samp>Dune for 21 days (renewed: true)</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pserde-m" id="ex-pserde"></div>
+  <script type="application/json" id="ex-pserde-m">{"program": "parsons_serde.rs", "seed": 34, "pin": [1, 9, 12, 15], "prompt": "A map pin travels as JSON and comes back. Put the lines in order: the struct with its derive, then <code>main</code>.", "explain": "The <code>#[derive(...)]</code> attribute goes directly above the struct it's for. In <code>main</code>: make the pin, serialize it to <code>text</code> (needed by the pinned print), then deserialize <code>back</code> from that text and print it."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 36: the box without the part">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="36"></svg>
+    <p class="caption">The same kind of program, but this <code>Cargo.toml</code> says only <code>serde = "=1.0.229"</code>, without <code>features = ["derive"]</code>.</p>
+    <span class="file-tab">serde_no_derive.rs</span>
+    <pre class="code" data-src="serde_no_derive.rs"></pre>
+    <pre class="term" data-run="serde_no_derive.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>First error: <samp>cannot find derive macro `Serialize` in this scope</samp>. The <code>note:</code> explains: <samp>`Serialize` is a trait, not a derive macro</samp>. The trait (the plug shape) is there; the code generator that writes it for you is a separate part, switched on by the feature.</span></li>
+      <li><span>Second error, E0277, is a knock-on effect: no derive, so <code>Book</code> has no <code>Serialize</code>, so <code>to_string</code> refuses it. Its notes point at the derive: <samp>for local types consider adding `#[derive(serde::Serialize)]` to your `Book` type</samp>. (The note about a <samp>`serde` feature flag</samp> is for types that come from other crates.) Fix the first error and the second disappears.</span></li>
+      <li><span>Some paths point into <code>/root/.cargo/registry/...</code>, where cargo keeps the downloaded crates' source. On your computer they start with your own home folder.</span></li>
+    </ol>
+    <p class="caption soft">A <b>feature</b> is an optional part of a crate that you switch on in <code>Cargo.toml</code>.</p>
+    <details><summary>Version difference: Rust 1.97 (the comparison toolchain) words the first note differently</summary>
+      <p>Instead of pointing into serde's source, it points at your own <code>use</code> line: <samp>`Serialize` is imported here, but it is only a trait, without a derive macro</samp>.</p>
+      <pre class="term" data-run="serde_no_derive.rs" data-alt data-exit></pre>
+    </details>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 37: rand and regex">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Two more shelf favourites. <b>rand</b> makes random numbers (Chapter 6's guessing game used it). <b>regex</b> finds patterns in text.</p>
+    <div class="runs2">
+      <div><h3><code>rand</code>: a seeded generator</h3><span class="file-tab">dice_seeded.rs</span><pre class="code" data-src="dice_seeded.rs"></pre><pre class="term" data-run="dice_seeded.rs"></pre></div>
+      <div><h3><code>regex</code>: find the due dates</h3><span class="file-tab">regex_dates.rs</span><pre class="code" data-src="regex_dates.rs"></pre><pre class="term" data-run="regex_dates.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>rand</b>: <code>StdRng::seed_from_u64(28)</code> makes a generator from a fixed starting number, a <b>seed</b>, so it gives the same "random" numbers every run. That's why this page can show real output. Games use <code>rand::rng()</code> instead, seeded from the operating system, so every run differs.</span></li>
+      <li><span><b>regex</b>: a <b>regular expression</b> is a small pattern language. <code>\w+</code> is a word, <code>\d{4}</code> four digits, and round brackets <b>capture</b> a part to read back as <code>caps[1]</code>, <code>caps[2]</code> and so on. The <code>r"..."</code> raw string (Chapter 12) keeps the backslashes as they are.</span></li>
+      <li><span><code>Regex::new</code> returns a <code>Result</code>: a pattern is a little program, and it can have mistakes (panel 39). Build a regex once and reuse it; building is the slow part.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 38: chrono and clap">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Dates and command lines. <b>chrono</b> handles calendars, leap years included. <b>clap</b> (Chapter 25) turns a struct into a full command-line parser.</p>
+    <div class="runs2">
+      <div><h3><code>chrono</code>: when is it due?</h3><span class="file-tab">dates.rs</span><pre class="code" data-src="dates.rs"></pre><pre class="term" data-run="dates.rs"></pre></div>
+      <div><h3><code>clap</code>: a library card</h3><span class="file-tab">clap_card.rs</span><pre class="code" data-src="clap_card.rs"></pre><pre class="term" data-run="clap_card.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>chrono</b>: a <code>NaiveDate</code> is a calendar date with no time zone. Adding <code>Days::new(21)</code> gives the due date, and <code>weekday()</code> knows that both are Sundays. <code>from_ymd_opt</code> returns <code>None</code> for days that don't exist. The dates are fixed on purpose: "today" changes on every run, so a page can't promise its output. (The <b>time</b> crate is the other popular choice for dates.)</span></li>
+      <li><span>This project switched chrono's default features off and asked only for <code>alloc</code>: no clock, no time-zone database. Panel 41 shows why fewer features can be better.</span></li>
+      <li><span><b>clap</b>: the run was <code>cargo run -q -- --name Ada</code>; everything after <code>--</code> goes to the program. <code>--books</code> wasn't given, so <code>default_value_t = 5</code> filled it in. The <code>///</code> comments become the text of <code>--help</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 39: a pattern that won't parse">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <svg class="sfx tr" data-sfx="SNAP!" data-seed="39"></svg>
+    <p class="caption">A date pattern with one bracket too few. It compiles fine: to the Compiler, a pattern is just a string. The mistake shows up when the program runs.</p>
+    <span class="file-tab">regex_bad.rs</span>
+    <pre class="code" data-src="regex_bad.rs"></pre>
+    <pre class="term" data-run="regex_bad.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Who and where: <code>thread 'main' (1) panicked at src/main.rs:6:52</code>, the <code>unwrap()</code> on line 6.</span></li>
+      <li><span>What: the regex crate draws its own little error report between the <code>~~~</code> lines: the pattern, a caret <code>^</code> under the bracket that never closes, and <samp>error: unclosed group</samp>. A <b>group</b> is a pair of round brackets.</span></li>
+      <li><span>Count the brackets: two open, one close. The fix (not run here) is to close the first group: <code>r"(\d{4})-(\d{2})-\d{2}"</code>. Patterns written into your code can safely use <code>unwrap()</code> or <code>expect("valid date pattern")</code>, since a test run catches them; patterns typed by users need real error handling.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotre-m" id="ex-spotre"></div>
+  <script type="application/json" id="ex-spotre-m">{"program": "regex_bad.rs", "bug": 6, "prompt": "The program prints its first line, then panics. Click the line with the mistake.", "explain": "Line 6: the pattern opens two groups and closes one, and <samp>error: unclosed group</samp> points its caret at the first <code>(</code>. Line 5 ran fine, which is why <samp>looking for dates...</samp> appears first: this mistake is only found while the program runs."}</script>
+
+  <div data-ex="choice" data-model="ex-crates-m" id="ex-crates"></div>
+  <script type="application/json" id="ex-crates-m">{"q": "A small library tool must (1) save its list of members to a file as JSON, (2) work out the date three weeks from a given date, and (3) read options like <code>--days 21</code> from the command line. Which crates fit?", "options": [
+    {"t": "(1) serde with serde_json, (2) chrono, (3) clap", "why": "Right: each is the well-known, well-documented choice for its job, used by thousands of other crates. (The time crate would also do for dates.)", "correct": true},
+    {"t": "(1) regex, (2) rand, (3) serde_json", "why": "Regex finds patterns but doesn't write JSON, rand makes random numbers rather than dates, and serde_json doesn't read command lines."},
+    {"t": "(1) a brand-new crate called super_fast_json, version 0.0.1, (2) chrono, (3) clap", "why": "Shiny box! One download and no docs means nobody has checked it, including for malicious code. serde_json is fast and tested by a huge number of users."},
+    {"t": "None: never use crates, write it all yourself", "why": "Writing your own JSON reader and calendar math means re-finding bugs others fixed years ago (leap years, time zones, escaping). Choose crates carefully rather than never."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 40: what's really in the box">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">You asked for two crates. How many did you get? <code>cargo tree</code> (Chapter 24) prints the whole family tree of a project's <b>dependencies</b> (crates it uses), and of theirs.</p>
+    <span class="file-tab">booknotes/Cargo.toml asks for serde and serde_json</span>
+    <pre class="term" data-run="tree.rs"></pre>
+    <p class="caption soft"><b>How this run was really made:</b> the command is exactly what ran, in the folder <code>booknotes</code>. Just before, a small script, <code>stage.sh</code>, laid out that folder: panel 34's <code>Cargo.toml</code>, and <code>tree.rs</code> as <code>src/main.rs</code>.</p>
+    <ol class="readlist">
+      <li><span>Two direct dependencies brought along nine more. <code>serde_derive</code> is marked <code>(proc-macro)</code>: it runs only while compiling, writing code, and isn't part of your finished program.</span></li>
+      <li><span><code>(*)</code> means "already shown above": <code>proc-macro2</code> is used by three crates but compiled once.</span></li>
+      <li><span>Every crate in this tree is code someone else wrote that runs with your program's permissions. Small trees are easier to trust, faster to build, and quicker to update.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 41: every feature or just the ones you need">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">Tokio (Chapter 27) has a feature called <code>full</code> that switches on all its other features: networking, files, timers, signals and more. Two projects with the same tiny async <code>main</code>: one asks for <code>full</code>, the other only for the two parts it uses. <code>grep</code> shows each project's line, and the long command counts the different crates in each tree.</p>
+    <span class="file-tab">features.rs (main.rs of both projects)</span>
+    <pre class="code" data-src="features.rs"></pre>
+    <pre class="term" data-run="features.rs"></pre>
+    <p class="caption soft"><b>How this run was really made:</b> each command is exactly what ran, in the folder its prompt shows. Before each one, a small script, <code>stage.sh</code>, laid out the two project folders: each one's <code>Cargo.toml</code> (the line <code>grep</code> prints is the only difference) and <code>features.rs</code> as <code>src/main.rs</code>. Each command ran in a fresh shell, so the screen shows no <code>cd</code> between them.</p>
+    <ol class="readlist">
+      <li><span>20 crates against 8 (each count includes the project itself), for a program that prints one line. The extra twelve are compiled, downloaded and trusted for nothing. (<code>--prefix none --no-dedupe</code> prints one crate per line; <code>sort -u</code> keeps one of each; <code>wc -l</code> counts lines.)</span></li>
+      <li><span><code>features = ["full"]</code> is handy while you're exploring. Before you share or ship, ask for what you use. Each crate's docs.rs page lists its features and what each one switches on.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 42: two StdRngs that don't match">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <svg class="sfx tr" data-sfx="E0308!" data-seed="42"></svg>
+    <p class="caption">Mabel's reading-list program uses a little helper crate, <code>shelf</code>, written a while ago. The program asks for rand 0.10. The helper still asks for rand 0.9. Both versions end up in the project.</p>
+    <div class="runs2">
+      <div><span class="file-tab">reading/Cargo.toml</span><pre class="code" data-src="tpl/reading/Cargo.toml"></pre></div>
+      <div><span class="file-tab">reading/shelf/Cargo.toml</span><pre class="code" data-src="tpl/reading/shelf/Cargo.toml"></pre></div>
+    </div>
+    <span class="file-tab">reading/shelf/src/lib.rs</span>
+    <pre class="code" data-src="tpl/reading/shelf/src/lib.rs"></pre>
+    <span class="file-tab">two_versions.rs (reading/src/main.rs)</span>
+    <pre class="code" data-src="two_versions.rs"></pre>
+    <pre class="term" data-run="two_versions.rs" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> the command is exactly what ran, in the folder <code>reading</code>. Just before, a small script, <code>stage.sh</code>, laid out that folder with the three files above, and <code>two_versions.rs</code> as <code>src/main.rs</code>. The next run, <code>cargo tree --duplicates</code>, was made the same way in the same folder.</p>
+    <ol class="readlist">
+      <li><span>The strangest error in this book: <samp>expected `rand::rngs::std::StdRng`, found `StdRng`</samp>. A StdRng where a StdRng was expected?</span></li>
+      <li><span>The note solves it: <samp>there are multiple different versions of crate `rand` in the dependency graph</samp>. It points at two files, <code>rand-0.9.5/...</code> (<samp>this is the expected type</samp>) and <code>rand-0.10.3/...</code> (<samp>this is the found type</samp>). Two versions mean two separate crates, and their types never match, even with the same name.</span></li>
+      <li><span>The <code>help:</code> suggests the detective's next step, and here it is:</span></li>
+    </ol>
+    <span class="file-tab">in the same project</span>
+    <pre class="term" data-run="two_versions_tree.rs"></pre>
+    <ol class="readlist">
+      <li><span><code>cargo tree --duplicates</code> lists only crates that appear in more than one version, and who pulled each one in: rand 0.9.5 comes through <code>shelf</code>, rand 0.10.3 straight from <code>reading</code>. Their helper crates are doubled too.</span></li>
+      <li><span>The fix is to agree on one version: change <code>shelf</code>'s line to <code>rand = "0.10"</code> (and update its code if the newer rand changed anything; not run here). If <code>shelf</code> were someone else's crate, you'd look for a newer release of it.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-twover-m" id="ex-twover"></div>
+  <script type="application/json" id="ex-twover-m">{"q": "Your program passes a <code>regex::Regex</code> to a function from another crate and gets <samp>expected `regex::Regex`, found `Regex`</samp>, with a note about multiple versions of crate <code>regex</code>. What's the most likely cause and fix?", "options": [
+    {"t": "Two versions of regex are in the build. Find them with <code>cargo tree --duplicates</code> and make both sides agree on one.", "why": "Right. Each version is compiled as its own crate, so a Regex from one isn't a Regex to the other, even though they're spelled the same.", "correct": true},
+    {"t": "You forgot to write <code>use regex::Regex;</code> at the top, so the name <code>Regex</code> means nothing.", "why": "A missing <code>use</code> gives a different error. <code>regex_no_use.rs</code> (on the notebook's \"Common wrong ideas\" page) forgets it, and its real run says <samp>error[E0425]: cannot find type `Regex` in this scope</samp>, not a mismatch between two Regex types."},
+    {"t": "A Regex can't be passed to another crate's function; pass the pattern as a <code>&amp;str</code> instead.", "why": "Regex values can be passed around like any other value. The mismatch is about versions, not about Regex."},
+    {"t": "The build cache is corrupted; run <code>cargo clean</code> and build everything again from scratch.", "why": "The build is fine. It faithfully compiled two different versions because the two Cargo.toml files asked for them."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 43: the rest of the shelf and safe shopping">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption soft">A few more crates you'll meet everywhere, and how to shop safely.</p>
+    <div class="duo three shelf">
+      <div class="duo-card"><h3><code>serde</code> + <code>serde_json</code></h3><p>turn structs into JSON and back (panels 34 and 35); other crates add more formats, such as TOML and CSV</p></div>
+      <div class="duo-card"><h3><code>tokio</code></h3><p>the async runtime (Chapter 27): tasks, timers, networking; ask only for the features you use</p></div>
+      <div class="duo-card"><h3><code>reqwest</code></h3><p>an HTTP client for fetching web pages and calling web services; builds on tokio. (Not run here: this book's programs never reach the internet.)</p></div>
+      <div class="duo-card"><h3><code>thiserror</code></h3><p>writes the <code>Display</code> and <code>Error</code> code for your own error enums, in libraries (Chapter 21)</p></div>
+      <div class="duo-card"><h3><code>anyhow</code></h3><p>one error type for applications, with <code>.context("what I was doing")</code> (Chapter 21)</p></div>
+      <div class="duo-card"><h3><code>rand</code> · <code>regex</code> · <code>chrono</code> · <code>clap</code></h3><p>random numbers, patterns, dates, command lines (panels 37 and 38)</p></div>
+      <div class="duo-card dashed shiny"><h3>a shiny box</h3><p>new name, no docs, one download, very close to a famous name (<code>serde_jsno</code>?): leave it on the shelf</p></div>
+    </div>
+    <ol class="checklist">
+      <li><b>Spell the name carefully.</b> Attackers publish crates with names one letter off from popular ones (<b>typosquatting</b>), hoping for a typo in someone's <code>Cargo.toml</code>.</li>
+      <li><b>Remember what a crate can do.</b> A dependency's code, and its build script (<code>build.rs</code>, run while compiling), can do anything your user account can do.</li>
+      <li><b>Keep <code>Cargo.lock</code></b> for programs (Chapter 24), so every build uses the exact versions you tested, and update on purpose with <code>cargo update</code>.</li>
+      <li><b>Fewer, better crates.</b> Before adding one for a ten-line job, consider the ten lines.</li>
+      <li><b>Check for known problems.</b> The free tools <code>cargo audit</code> (checks your lock file against a database of reported security problems) and <code>cargo deny</code> (also checks licenses and duplicate versions) are installed with <code>cargo install</code>.</li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>handles, race cars and hardware, all together, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 44: boss level">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="44"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The repair cupboard is open. A report builder, a card number with a locked drawer, two signatures to finish, a report to pack light, a buffer to watch, and a crate to judge. Six rounds.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Trail Guide says: </span>Read each signature before the body. The handle tells you most of the story.</p></div>
+      <svg class="char" data-char="trailguide" data-mood="focus" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. The Trail Guide points ahead. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. A report with a small builder, <code>Default</code>, and struct update syntax that copies the rest from another report. What does it print?", "hint": "<code>titled</code> sets 3 rows and leaves <code>sorted</code> at its default, <code>false</code>. On the last line, <code>..Report::titled(\"all\")</code> fills every field not written before it.", "explain": "<samp>as read: [40, 95, 12]</samp>: not sorted, first 3. <samp>top: [95, 77, 60]</samp>: <code>sorted()</code> sorts biggest first, then 3 rows. Last: <code>max_rows: 5</code> is given, and title and <code>sorted</code> come from <code>titled(\"all\")</code>: <samp>all: [40, 95, 12, 77, 60]</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.rs", "bug": 16, "prompt": "Boss 2. Card numbers must have four digits, so the <code>cards</code> module only hands them out through <code>new</code>. Someone tries to sneak past. Click the line the Compiler stops.", "explain": "<samp>error[E0603]: tuple struct constructor `CardNumber` is private</samp>, on line 16. The struct is <code>pub</code>, but its field isn't, and <samp>a constructor is private if any of the fields is private</samp>. That's the point: the only way to get a <code>CardNumber</code> is <code>new</code>, which checks the digits. Ignore the <code>help:</code> here; making the field <code>pub</code> would open the drawer it's meant to keep locked."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. Finish the handles: <code>count_long</code> should borrow any list of words (line 1); <code>shout_all</code> makes new text, so it returns owned Strings (line 5) by gathering the iterator's results (line 6).", "blanks": [{"line": 1, "text": "&[&str]"}, {"line": 5, "text": "Vec<String>"}, {"line": 6, "text": ".collect()", "accept": [".collect::<Vec<String>>()", ".collect::<Vec<_>>()"]}], "explain": "<code>&amp;[&amp;str]</code> borrows a slice of words, so it takes <code>&amp;words</code> (a <code>&amp;Vec&lt;&amp;str&gt;</code>) and <code>&amp;words[..2]</code> alike. <code>to_uppercase</code> makes new Strings, so the result is an owned <code>Vec&lt;String&gt;</code>, which <code>.collect()</code> builds from the return type. <samp>2</samp> words have 4 letters or more; the first two shouted: <samp>[\"TEA\", \"BISCUIT\"]</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 44, "pin": [10, 11, 12], "prompt": "Boss 4. A report that packs light: one String with room asked for up front, filled line by line. Put the function's lines in order.", "explain": "Borrow the titles (<code>&amp;[&amp;str]</code>), make the String with <code>with_capacity(64)</code> once, then for each title push the title and then the line break. The function's last expression, <code>out</code>, hands the owned String back. One allocation for the whole report."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.rs", "columns": ["word", "len", "capacity"], "given": [0], "prompt": "Boss 5. One buffer with room for 8 bytes, cleared and refilled with each word. Fill in its length and capacity after each word.", "explain": "<code>clear()</code> keeps the room, so the capacity stays <samp>8</samp> for <code>ox</code> (2), <code>zebra</code> (5), <code>aardvark</code> (exactly 8) and <code>emu</code> (3). <code>hippopotamus</code> needs 12 bytes: the String asks for a bigger block, twice the old room, <samp>16</samp>. From then on there'd be room for anything up to 16."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. You need to read CSV files. Search results show <code>csv</code> (version 1.3, millions of downloads, docs with many examples, updated this year, thousands of dependents) and <code>csv-turbo</code> (version 0.1.0, 40 downloads, no docs, \"10x faster!!!\" in its description, published last week). What's the sensible pick?", "options": [
+    {"t": "<code>csv</code>: docs, wide use, recent care and a 1.x version. Measure speed later if it ever matters.", "why": "Right. Reputation and fit first. A speed claim on an unknown crate is a claim nobody has checked, and brand-new crates with eye-catching names are exactly where malicious code tends to hide.", "correct": true},
+    {"t": "<code>csv-turbo</code>: a ten-times speed-up is too good to miss, and it's brand new.", "why": "Shiniest box. Nothing backs the claim, there are no docs to show how to use it, and almost nobody has looked at its code."},
+    {"t": "Both, each with <code>features = [\"full\"]</code>, then keep whichever runs faster.", "why": "Two crates for one job doubles what you must trust and build, and \"full\" switches on everything whether you need it or not (panel 41)."},
+    {"t": "Whichever crate has the shorter name, since that's easier to type correctly.", "why": "A name says nothing about quality. Careful spelling matters for another reason: typosquatters copy popular names (panel 43)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 45: what you learned">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption">What you learned in Chapter 28</p>
+    <ul class="recap">
+      <li><b>BORROW WHAT YOU READ, RETURN WHAT YOU MAKE</b>Parameters: <code>&amp;str</code> and <code>&amp;[T]</code>, not <code>&amp;String</code> and <code>&amp;Vec</code> (E0308, Clippy's <code>ptr_arg</code>); <code>impl Into&lt;String&gt;</code> when you keep it. Return owned values, and <code>Option&lt;&amp;T&gt;</code> rather than <code>&amp;Option&lt;T&gt;</code>. Clone on purpose, never to quiet the Compiler. Iterators say what, not how.</li>
+      <li><b>EASY TO GRIP THE RIGHT WAY, IMPOSSIBLE TO GRIP THE WRONG WAY</b>Newtypes stop mix-ups (E0308, "swap these arguments"). Builders and <code>Default</code> name the choices; <code>build(self)</code> is used up (E0382). Guards undo things when dropped (and <code>let _ =</code> drops at once). Private fields (E0616, E0603) keep the rules in one place.</li>
+      <li><b>WHEN THE TRAIL GUIDE POINTS, LOOK</b><code>cargo clippy</code>: each warning names its lint (<code>needless_return</code>, <code>ptr_arg</code>, <code>needless_range_loop</code>, <code>redundant_clone</code> on request) and shows the edit. Aim for no output.</li>
+      <li><b>RACE THE CAR YOU'LL DRIVE</b>Debug builds check overflow and run slowly; release builds are optimized and wrap. Profiles in <code>Cargo.toml</code> change that (<code>overflow-checks = true</code>). Time release builds only, measure before optimizing, and <code>unsafe</code> is not a turbo button.</li>
+      <li><b>PACK ONCE, PACK LIGHT</b>Every heap allocation is an errand. A Vec doubles when full; <code>with_capacity</code> asks once; <code>clear()</code> keeps the room; borrowing makes no copies. Count, then cut.</li>
+      <li><b>PICK TOOLS BY REPUTATION AND FIT, NOT BY THE SHINIEST BOX</b>Judge crates by docs, use, care, fit, version and license. serde with <code>features = ["derive"]</code>, then <code>to_string</code> and <code>from_str</code>. <code>cargo tree</code> shows what you really pulled in; ask only for the features you use; two versions of a crate have types that never match (<code>cargo tree --duplicates</code>).</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Good handles, an honest stopwatch, and a short shopping list. The repair cupboard has never looked better.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 46: next time, open the restaurant">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption soft">Coming up in Chapter 29, the last chapter: Open the Restaurant…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 560 230" role="img" aria-label="Teaser picture: a little restaurant with an OPEN sign on its door and an awning. Through the window, a ticket rail holds four order tickets, and four tall chef hats stand in a row behind it. Arrows labelled GET slash come in at the door from the left.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+          <rect x="120" y="70" width="320" height="150" fill="#FFF6CC"/>
+          <path d="M110 70 l20 -40 h300 l20 40 z" fill="#FF5A4E"/>
+          <path d="M150 30 v40 M190 30 v40 M230 30 v40 M270 30 v40 M310 30 v40 M350 30 v40 M390 30 v40" fill="none" stroke-width="3"/>
+          <rect x="146" y="112" width="70" height="108" fill="#DDE8FF"/>
+          <rect x="142" y="78" width="78" height="32" rx="4" fill="#C9F2D9"/>
+          <rect x="250" y="100" width="170" height="90" fill="#FFFFFF"/>
+          <path d="M262 122 h146" fill="none" stroke-width="3"/>
+          <path d="M270 122 v22 h20 v-22 M304 122 v22 h20 v-22 M338 122 v22 h20 v-22 M372 122 v22 h20 v-22" fill="#FFFFFF" stroke-width="2.5"/>
+          <path d="M268 176 q4 -18 14 -10 q6 -14 14 0 q10 -8 12 10 z M308 176 q4 -18 14 -10 q6 -14 14 0 q10 -8 12 10 z M348 176 q4 -18 14 -10 q6 -14 14 0 q10 -8 12 10 z M388 176 q2 -14 8 -10 q4 -10 10 0 q6 -6 8 10 z" fill="#FFFFFF" stroke-width="2.5"/>
+        </g>
+        <text x="181" y="103" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#111" text-anchor="middle" letter-spacing="1">OPEN</text>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="23" fill="#111"><text x="4" y="140">GET /</text><text x="6" y="188">GET /menu</text></g>
+        <path d="M8 150 h128 M126 142 l10 8 l-10 8 M8 198 h128 M126 190 l10 8 l-10 8" fill="none" stroke="#111" stroke-width="3"/>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Cooks, ticket rails, a waiter, good handles and a release build. Time to put everything together: a real web server that answers a browser, one request at a time at first, then with a crew of worker threads sharing a ticket rail, and a closing time where every cook clocks out properly.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch27.html">← Ch 27 · One Waiter, Many Stamps</a><a class="next" href="ch29.html">Ch 29 · Open the Restaurant →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: where the speed comes from, and how the tally counter works</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Most of what you saw today is the compiler doing the boring work, either while compiling (derives, generics, optimizing) or not at all (newtypes cost nothing).</p></div>
+      </div>
+      <h3>What the optimizer does</h3>
+      <p>Rust hands your code to <b>LLVM</b>, the same optimizer used by clang for C and C++. At <code>opt-level = 3</code> it <b>inlines</b> small functions (pastes their body where they're called, so a closure in an iterator chain disappears), removes bounds checks it can prove are never needed, keeps values in CPU registers instead of memory, and often handles several numbers per instruction (<b>vectorization</b>). At <code>opt-level = 0</code> it does almost none of this, so the debug build keeps every function call, every check and every temporary. That's the gap in panel 26.</p>
+      <h3>Why generics and newtypes are free</h3>
+      <p>A generic function such as <code>fn total&lt;T: Sum&gt;(...)</code> is compiled once for every type it's used with (<b>monomorphization</b>, Chapter 17), so each copy is as specific as hand-written code. A newtype like <code>struct Meters(f64)</code> has exactly the size and layout of an <code>f64</code>; the type exists only during compiling. The Rust book's chapter 13.4 times an iterator search against a loop over a whole novel and gets results within the margin of error. It quotes Bjarne Stroustrup's "zero-overhead principle": what you don't use, you don't pay for, and what you do use, you couldn't hand-code any better.</p>
+      <h3>How a Vec grows</h3>
+      <p>Doubling makes pushing cheap on average: each item gets copied at most about once more over the Vec's life, however long it grows (<b>amortized</b> constant time). The first capacity also depends on the item size: the runs here use 4-byte numbers and got room for 4. None of this is promised by the docs, which is why the page shows real runs. <code>shrink_to_fit()</code> gives spare room back; <code>reserve(n)</code> asks for room for <code>n</code> more ahead of a burst of pushes.</p>
+      <h3>The tally counter (panel 31)</h3>
+      <p>Every <code>Box</code>, <code>Vec</code> and <code>String</code> gets its memory from one place: the <b>global allocator</b>. By default it's the system's (on Linux, the C library's <code>malloc</code>). <code>#[global_allocator]</code> swaps in your own. <code>alloc_count.rs</code> wraps the system allocator: its <code>alloc</code> adds one to an atomic counter (Chapter 26) and then passes the request on. When a Vec grows, its <code>realloc</code> call isn't overridden here, and the default <code>realloc</code> calls <code>alloc</code> for the new block, so every growth is counted too. Implementing <code>GlobalAlloc</code> requires <code>unsafe</code>, because a wrong allocator could break every value in the program; real projects use ready-made, carefully reviewed allocator crates (for example <code>mimalloc</code> or <code>jemallocator</code>) when they want a different one, and crates like <code>dhat</code> to count allocations.</p>
+      <h3>How serde's derive works</h3>
+      <p><code>#[derive(Serialize)]</code> runs a <b>procedural macro</b> from the <code>serde_derive</code> crate while compiling. It reads your struct's fields and writes an <code>impl Serialize for Book</code> that hands each field, by name, to a <b>serializer</b>. serde itself knows nothing about JSON: serde_json is one serializer, and the same derive works with crates for TOML, YAML, CSV, MessagePack and many more. That split, one data model with many formats, is why serde is everywhere. Attributes such as <code>#[serde(rename = "pageCount")]</code>, <code>#[serde(default)]</code> and <code>#[serde(skip)]</code> adjust the generated code field by field.</p>
+      <h3>The error-feeding program from panel 35</h3>
+      <span class="file-tab">serde_errors.rs</span>
+      <pre class="code" data-src="serde_errors.rs"></pre>
+      <pre class="term" data-run="serde_errors.rs"></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where these habits show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The standard library's own handles</b>: <code>fs::read_to_string</code> takes <code>impl AsRef&lt;Path&gt;</code>, so you can pass a <code>&amp;str</code>, a <code>String</code> or a <code>PathBuf</code>; <code>HashMap::get</code> returns <code>Option&lt;&amp;V&gt;</code>; <code>Vec::with_capacity</code> and <code>String::with_capacity</code> exist for exactly the reasons in Part 4.</li>
+        <li><b>Builders</b>: <code>std::thread::Builder</code> (name and stack size for a thread), <code>std::process::Command</code> (<code>Command::new("ls").arg("-l").output()</code>), and HTTP clients like reqwest's request builder.</li>
+        <li><b>Guards</b>: <code>MutexGuard</code>, <code>File</code>, <code>TcpStream</code> (closes the connection), and temporary-directory crates that delete their folder on drop.</li>
+        <li><b>Newtypes</b>: ids in web services (<code>UserId(u64)</code> and <code>OrderId(u64)</code> can't be swapped), validated text (<code>Email</code>), and units in science and games.</li>
+        <li><b>serde</b>: configuration files, web APIs, saved games. Almost any Rust program that reads or writes structured data uses it.</li>
+        <li><b>Release profiles</b>: command-line tools often set <code>lto = true</code> and <code>codegen-units = 1</code> for their published builds; some services keep <code>overflow-checks = true</code> in release because a panic is safer than a silently wrong number.</li>
+        <li><b>Supply chain</b>: many companies run <code>cargo deny</code> or <code>cargo audit</code> on every change, and review new dependencies before adding them, just like code.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>&amp;String</code> and <code>&amp;str</code> are the same thing."</b> A <code>&amp;String</code> can turn into a <code>&amp;str</code>, but not the other way round. Ask for <code>&amp;str</code>.</li>
+        <li><b>"Cloning is how you fix borrow errors."</b> Sometimes it is the right fix, but first ask whether a borrow or a move says what you mean.</li>
+        <li><b>"Iterators are slower than loops."</b> In release builds they compile to about the same machine code. Panel 26 times one run; the Rust book's chapter 13.4 measures it properly.</li>
+        <li><b>"My program is slow, so Rust is slow."</b> First check that you built it with <code>--release</code>.</li>
+        <li><b>"Rust always panics on overflow."</b> Only when overflow checks are on: debug builds by default, release builds only if you ask.</li>
+        <li><b>"<code>unsafe</code> makes code faster."</b> It switches off checks. Speed comes from what the code does, and the optimizer usually removes the checks you'd want to skip.</li>
+        <li><b>"<code>let _guard</code> and <code>let _</code> mean the same."</b> The first keeps the value until the end of the block; the second drops it immediately.</li>
+        <li><b>"More downloads means safe."</b> It means many people use it, which helps, but popular crates can still have bugs. Keep your lock file, update on purpose, and run <code>cargo audit</code>.</li>
+        <li><b>"Two crates called rand are interchangeable."</b> Different versions are different crates, and their types never match (panel 42).</li>
+        <li><b>"A type mismatch between two <code>Regex</code>es means a missing <code>use</code>."</b> A missing <code>use</code> looks different. This file has regex in its <code>Cargo.toml</code> but forgets <code>use regex::Regex;</code>:</li>
+      </ul>
+      <span class="file-tab">regex_no_use.rs</span>
+      <pre class="code" data-src="regex_no_use.rs"></pre>
+      <pre class="term" data-run="regex_no_use.rs" data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>0. Have Rust and Clippy</h3>
+      <p>If you haven't installed Rust yet: on <b>Windows</b>, download and run <code>rustup-init.exe</code> from rustup.rs (it may ask you to install the Visual Studio C++ build tools first). On <b>macOS</b> and <b>Linux</b>, run <code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code> in a terminal. This book used Rust 1.99.1; <code>rustup update</code> gets the newest. Clippy comes with the default install; if <code>cargo clippy</code> says it's missing, run <code>rustup component add clippy</code>.</p>
+      <h3>1. Two race cars</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new visitors</code> and <code>cd visitors</code>. Paste <code>overflow.rs</code> into <code>src/main.rs</code>. Run <code>cargo run</code>, then <code>cargo run --release</code>. Look in the <code>target</code> folder: there's a <code>debug</code> and a <code>release</code> folder, each with its own program. Add the <code>[profile.release]</code> lines from panel 25 to <code>Cargo.toml</code> and run the release build again.</p>
+      <h3>2. Your own stopwatch</h3>
+      <p>Paste <code>bench_debug.rs</code> and run it both ways, three times each. How much do your numbers wobble? Change <code>3_000_000</code> to <code>30_000_000</code> and see whether the ratio stays about the same. For serious measurements, try Criterion: <code>cargo add criterion --dev</code>, then follow the "Getting Started" page of the Criterion book (benchmarks live in a <code>benches/</code> folder and run with <code>cargo bench</code>).</p>
+      <h3>3. Ask the Trail Guide</h3>
+      <p>Run <code>cargo clippy</code> on your own programs from earlier chapters. For more opinions, try <code>cargo clippy -- -W clippy::pedantic</code> (a strict, sometimes fussy group). <code>cargo clippy --fix</code> applies the suggestions it's sure about (it refuses to run if you have uncommitted changes in git, unless you add <code>--allow-dirty</code>).</p>
+      <h3>4. Add crates the quick way</h3>
+      <p><code>cargo add serde --features derive</code> and <code>cargo add serde_json</code> write the <code>[dependencies]</code> lines for you, with the newest versions. Then paste <code>serde_demo.rs</code> and run it. <code>cargo tree</code> shows what came along; <code>cargo tree -e features</code> also shows which features each crate switched on. Remove <code>--features derive</code> to meet panel 36's error.</p>
+      <h3>5. Count your own allocations</h3>
+      <p>Paste <code>alloc_count.rs</code> and add your own line: <code>results.push(("collect 1000 numbers", count(|| (0..1000).collect::&lt;Vec&lt;u32&gt;&gt;())));</code>. Guess the number before you run it.</p>
+      <h3>6. Check your dependencies</h3>
+      <p><code>cargo install cargo-audit</code> (a few minutes the first time), then <code>cargo audit</code> in any project with a <code>Cargo.lock</code>. It works the same on all three systems.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>idiomatic</dt><dd>Written the way experienced users of the language usually write it.</dd>
+        <dt>API (application programming interface)</dt><dd>The functions, types and methods other code can use; its design is how easy they are to use well.</dd>
+        <dt>signature</dt><dd>A function's first line: its name, what it takes and what it returns. The "handle" of the function.</dd>
+        <dt>deref coercion</dt><dd>Rust turning <code>&amp;String</code> into <code>&amp;str</code> (or <code>&amp;Vec&lt;T&gt;</code> into <code>&amp;[T]</code>) automatically where needed.</dd>
+        <dt><code>impl Into&lt;String&gt;</code></dt><dd>A parameter type meaning "anything that can turn into a String".</dd>
+        <dt>lint / Clippy</dt><dd>One named check of code style or correctness / the tool (<code>cargo clippy</code>) that runs hundreds of them.</dd>
+        <dt>zero-cost abstraction</dt><dd>A convenient way to write code (iterators, generics, newtypes) that compiles to code as fast as the hand-written version.</dd>
+        <dt>newtype</dt><dd>A struct with one field that gives a value its own type, such as <code>struct Meters(f64)</code>.</dd>
+        <dt>builder</dt><dd>A helper value you fill in one named choice at a time before <code>build()</code> makes the real thing.</dd>
+        <dt>receiver</dt><dd>The value before the dot in a method call; <code>self</code> inside the method.</dd>
+        <dt>guard / RAII</dt><dd>A value whose <code>Drop</code> undoes what its creation did / "resource acquisition is initialization", the pattern behind guards.</dd>
+        <dt>typestate</dt><dd>Using a different type for each stage of something, so wrong-stage actions don't compile.</dd>
+        <dt>wildcard import</dt><dd><code>use path::*;</code>, which brings in every public name at once.</dd>
+        <dt>debug build / release build</dt><dd>Built quickly with checks and no optimization / built slowly with optimization and (by default) no overflow checks.</dd>
+        <dt>profile</dt><dd>A named set of build settings in <code>Cargo.toml</code>: <code>dev</code> and <code>release</code>.</dd>
+        <dt>overflow / wrap around</dt><dd>A result too big (or small) for its type / continuing from the other end, like an odometer.</dd>
+        <dt>optimize / optimizer</dt><dd>Make a program faster or smaller without changing what it does / the part of the compiler that does it.</dd>
+        <dt>benchmark / profiler</dt><dd>A careful, repeated time measurement / a tool that shows where a program spends its time.</dd>
+        <dt>allocation</dt><dd>One request to the heap for memory.</dd>
+        <dt>capacity</dt><dd>How many items a Vec (or bytes a String) has room for without asking the heap again.</dd>
+        <dt>buffer</dt><dd>A piece of memory kept for holding data on its way somewhere, often reused.</dd>
+        <dt>global allocator</dt><dd>The one place every heap allocation in a program goes through.</dd>
+        <dt>crate registry / crates.io / docs.rs</dt><dd>Where published crates live / Rust's public registry / the site that builds and hosts every published crate's documentation.</dd>
+        <dt>serialize / deserialize</dt><dd>Turn a value into text or bytes / turn them back into a value.</dd>
+        <dt>JSON</dt><dd>"JavaScript Object Notation": a text format of keys, values, lists and nesting, used by most web services.</dd>
+        <dt>seed</dt><dd>The starting number of a random-number generator; the same seed gives the same sequence.</dd>
+        <dt>regular expression / capture group</dt><dd>A pattern for matching text / a bracketed part of the pattern you can read back.</dd>
+        <dt>dependency / dependency graph</dt><dd>A crate your project uses / every crate involved, and who uses whom (<code>cargo tree</code> prints it).</dd>
+        <dt>feature</dt><dd>An optional part of a crate, switched on in <code>Cargo.toml</code>.</dd>
+        <dt>supply chain / typosquatting</dt><dd>All the code you depend on and the people behind it / publishing a malicious crate under a name one typo away from a popular one.</dd>
+        <dt>E0308 / E0382 / E0616 / E0603</dt><dd>Mismatched types (here: wrong newtype, <code>&amp;Vec</code> vs array, two rand versions) / use of a moved value (the builder used twice) / private field / private item (a tuple struct's constructor).</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li><a href="https://rust-lang.github.io/api-guidelines/">The Rust API Guidelines</a> and their <a href="https://rust-lang.github.io/api-guidelines/checklist.html">checklist</a>: "caller decides where to copy and place data", builders, newtypes, private fields, common traits, examples on every item.</li>
+        <li>The Rust Programming Language: <a href="https://doc.rust-lang.org/book/ch13-04-performance.html">Comparing Performance: Loops vs. Iterators</a> (13.4) and <a href="https://doc.rust-lang.org/book/ch14-01-release-profiles.html">Customizing Builds with Release Profiles</a> (14.1).</li>
+        <li>The Cargo Book: <a href="https://doc.rust-lang.org/cargo/reference/profiles.html">Profiles</a> (every setting from panel 25) and <a href="https://doc.rust-lang.org/cargo/reference/features.html">Features</a>.</li>
+        <li><a href="https://rust-lang.github.io/rust-clippy/">The Clippy lint list</a>: every lint with its group, an example and the fix.</li>
+        <li>Standard library docs: <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#capacity-and-reallocation">Vec: capacity and reallocation</a>, <a href="https://doc.rust-lang.org/std/time/struct.Instant.html"><code>Instant</code></a>, <a href="https://doc.rust-lang.org/std/alloc/trait.GlobalAlloc.html"><code>GlobalAlloc</code></a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://effective-rust.com/">Effective Rust</a> by David Drysdale: items on newtypes, builders, iterator transforms, Clippy and managing dependencies.</li>
+        <li><a href="https://nnethercote.github.io/perf-book/">The Rust Performance Book</a> by Nicholas Nethercote: build settings, benchmarking, profiling, heap allocations, with many real examples.</li>
+        <li><a href="https://serde.rs/">serde.rs</a>: the serde guide, including every attribute (<code>rename</code>, <code>default</code>, <code>skip</code>) and the list of data formats.</li>
+        <li><a href="https://blessed.rs/crates">blessed.rs</a>: a community list of well-regarded crates by task; <a href="https://rustsec.org/">RustSec</a>: the advisory database behind <code>cargo audit</code>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch28</code>. Each of the 59 programs was built as its own cargo project (the data also holds 5 project files shown as source only: four <code>Cargo.toml</code>s and one <code>lib.rs</code>) and run with <code>cargo run -q</code> (or the cargo commands shown at the prompt: <code>clippy</code>, <code>tree</code>, <code>run --release</code>) on 64-bit Linux, inside a fresh process namespace; that's why the main thread's id is <code>(1)</code>. Compile errors are shown exactly as cargo printed them, with their real exit code, 101; panics in <code>main</code> also exit with 101. Crates were pinned to exact versions (serde 1.0.229, serde_json 1.0.154, rand 0.10.3, regex 1.13.1, chrono 0.4.45, clap 4.6.7, tokio 1.54.1; rand 0.9.5 in panel 42's helper crate) and each project kept its <code>Cargo.lock</code>. Projects with their own <code>Cargo.toml</code> or several files (panels 25, 40, 41, 42) were laid out by a small script, <code>stage.sh</code>, before cargo ran, and the Clippy runs (panels 8, 9, 10) ran in folders made by <code>mk.sh</code>. Panel 25's run went through a third script, <code>run.sh</code>, which built the project once beforehand (so that both capture runs started from a built project) and then ran the shown command in a fresh process namespace. None of the three scripts changes a line of output, and each such terminal says how its run was made.</p>
+  <p>Two programs print timings, which change on every run: <code>bench_debug.rs</code> and <code>bench_release.rs</code>. They are marked as nondeterministic in the captures, labelled "one run" on the page, and never used as an answer key. The allocation counts in panel 31 are counts, not timings, and came out the same on every run. Random numbers come from a seeded generator, and dates are fixed, never "now".</p>
+  <p>Version differences: besides the two timing programs, <code>iter_vs_index.rs</code> and <code>lint_me.rs</code> differ only in Clippy's web links, which name each toolchain's version (<code>rust-1.99.0</code> vs <code>rust-1.97.0</code>), and <code>serde_no_derive.rs</code> words its first note differently on 1.97.0, shown in panel 36. Every other message printed the same on both versions.</p>
+  <p>The allocation bars are an extension (<code>assets/ext/rs-ch28.js</code>): every bar's number is read from the real output of <code>alloc_count.rs</code>, and the page fails its check if a bar has no line or a line has no bar. The builder and serde machines, the overflow map, the lamp walk and the stack-and-heap stepper check themselves against the runs and show a badge. The toolbox, race-car, hardware-store and restaurant drawings are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust API Guidelines checklist (read for this chapter); The Rust Programming Language, section 13.4 (read for this chapter: the loop-versus-iterator benchmark and the zero-overhead quote) and section 14.1; and the course research map's rows I20, I21 and I22, which also list Effective Rust (items 1–9, 20, 22–23, 25–27, 29), Comprehensive Rust's Idiomatic Rust day, Rust for Rustaceans chapter 3, roadmap.sh/rust (ecosystem and performance nodes) and 100 Exercises to Learn Rust 5.12 (cited from the map, not fetched). Clippy's lint behaviour (which lints are on by default, and that <code>redundant_clone</code> is not) was checked by running it, as shown. The crate counts in panels 33 and 34 come from crates.io's own API (<code>/api/v1/summary</code> and each crate's <code>reverse_dependencies</code>), fetched on 2026-11-08.</p>
+  <p>Mabel, the Trail Guide, the Professor, the Compiler and every picture here are original characters and drawings made in code. Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

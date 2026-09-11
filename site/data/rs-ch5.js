@@ -1,0 +1,929 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch5",
+  "versionDifferences": [
+   "boss_error.rs",
+   "index_i32.rs",
+   "spot_index.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_error.rs, index_i32.rs, spot_index.rs."
+ },
+ "programs": {
+  "array_predict.rs": {
+   "src": "fn main() {\n    let scores = [7, 3, 9, 4];\n    let n = scores.len();\n    println!(\"{}\", scores[n - 1]);\n    println!(\"{}\", scores[1] + scores[2]);\n    let zeros = [0; 3];\n    println!(\"{zeros:?} {}\", zeros.len());\n}\n",
+   "stdout": "4\n12\n[0, 0, 0] 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\n12\n[0, 0, 0] 3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/array_predict"
+    }
+   ]
+  },
+  "arrays.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    println!(\"Slot 0: {} g\", eggs[0]);\n    println!(\"Slot 2: {} g\", eggs[2]);\n    println!(\"Slots: {}\", eggs.len());\n    println!(\"Last slot: {} g\", eggs[eggs.len() - 1]);\n    let empty: [u8; 4] = [0; 4];\n    println!(\"{eggs:?}\");\n    println!(\"{empty:?}\");\n}\n",
+   "stdout": "Slot 0: 52 g\nSlot 2: 58 g\nSlots: 6\nLast slot: 55 g\n[52, 61, 58, 49, 63, 55]\n[0, 0, 0, 0]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Slot 0: 52 g\nSlot 2: 58 g\nSlots: 6\nLast slot: 55 g\n[52, 61, 58, 49, 63, 55]\n[0, 0, 0, 0]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/arrays"
+    }
+   ]
+  },
+  "biggest.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63];\n    let mut biggest = eggs[0];\n    for egg in eggs {\n        if egg > biggest {\n            biggest = egg;\n        }\n        println!(\"{egg} {biggest}\");\n    }\n}\n",
+   "stdout": "52 52\n61 61\n58 61\n49 61\n63 63\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "52 52\n61 61\n58 61\n49 61\n63 63\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/biggest"
+    }
+   ]
+  },
+  "boss_error.rs": {
+   "src": "fn main() {\n    let tiles = ['R', 'U', 'S', 'T'];\n    let mut pos = 0;\n    for _ in 0..3 {\n        pos += 1;\n    }\n    let step: i32 = pos;\n    println!(\"{}\", tiles[step]);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the type `[char]` cannot be indexed by `i32`\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", tiles[step]);\n  |                          ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[char]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[char]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the type `[char]` cannot be indexed by `i32`\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", tiles[step]);\n  |                          ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[char]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[char]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/boss_error"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the type `[char]` cannot be indexed by `i32`\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", tiles[step]);\n  |                          ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[char]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[char]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[char; 4]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the type `[char]` cannot be indexed by `i32`\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", tiles[step]);\n  |                          ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[char]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[char]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[char; 4]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch5/boss_error"
+     }
+    ]
+   }
+  },
+  "boss_fill.rs": {
+   "src": "fn main() {\n    let shelves = [[3, 8, 2], [5, 0, 7], [1, 4, 6]];\n    'search: for r in 0..shelves.len() {\n        for c in 0..shelves[r].len() {\n            if shelves[r][c] == 0 {\n                println!(\"Empty slot at row {r}, column {c}\");\n                break 'search;\n            }\n        }\n    }\n    println!(\"Search over\");\n}\n",
+   "stdout": "Empty slot at row 1, column 1\nSearch over\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Empty slot at row 1, column 1\nSearch over\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    let temps = [14, 19, 23, 17];\n    for t in temps {\n        if t < 18 {\n            continue;\n        }\n        println!(\"{t} is warm\");\n    }\n    println!(\"checked {} days\", temps.len());\n}\n",
+   "stdout": "19 is warm\n23 is warm\nchecked 4 days\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "19 is warm\n23 is warm\nchecked 4 days\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "fn main() {\n    let mut steps = 0;\n    let mut n = 6;\n    let total = loop {\n        if n == 1 {\n            break steps;\n        }\n        if n % 2 == 0 {\n            n /= 2;\n        } else {\n            n = 3 * n + 1;\n        }\n        steps += 1;\n        print!(\"{n} \");\n    };\n    println!();\n    println!(\"{total} steps\");\n}\n",
+   "stdout": "3 10 5 16 8 4 2 1 \n8 steps\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3 10 5 16 8 4 2 1 \n8 steps\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "fn main() {\n    let week = [8, 12, 5, 9, 11, 7, 10];\n    let mut total = 0;\n    for day in 0..=week.len() {\n        total += week[day];\n    }\n    println!(\"Total: {total}\");\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:5:18:\nindex out of bounds: the len is 7 but the index is 7\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:5:18:\nindex out of bounds: the len is 7 but the index is 7\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let grid = [[2, 7, 4], [8, 3, 6], [5, 1, 10]];\n    let mut sum = 0;\n    'rows: for row in grid {\n        for cell in row {\n            if cell == 1 {\n                break 'rows;\n            }\n            if cell % 2 == 1 {\n                continue;\n            }\n            sum += cell;\n            println!(\"{cell} {sum}\");\n        }\n    }\n}\n",
+   "stdout": "2 2\n4 6\n8 14\n6 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "2 2\n4 6\n8 14\n6 20\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/boss_trace"
+    }
+   ]
+  },
+  "continue_trace.rs": {
+   "src": "fn main() {\n    let mut total = 0;\n    for n in 1..=6 {\n        if n % 3 == 0 {\n            continue;\n        }\n        total += n;\n        println!(\"{n} {total}\");\n    }\n}\n",
+   "stdout": "1 1\n2 3\n4 7\n5 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 1\n2 3\n4 7\n5 12\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/continue_trace"
+    }
+   ]
+  },
+  "countdown.rs": {
+   "src": "fn main() {\n    let mut n = 3;\n    while n > 0 {\n        println!(\"{n}...\");\n        n -= 1;\n    }\n    println!(\"LIFTOFF!\");\n}\n",
+   "stdout": "3...\n2...\n1...\nLIFTOFF!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3...\n2...\n1...\nLIFTOFF!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/countdown"
+    }
+   ]
+  },
+  "extras.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58];\n    for (slot, egg) in eggs.iter().enumerate() {\n        println!(\"slot {slot}: {egg} g\");\n    }\n    for n in (0..=20).step_by(5) {\n        print!(\"{n} \");\n    }\n    println!();\n    let r = 1..4;\n    println!(\"{r:?} has {} numbers\", r.len());\n}\n",
+   "stdout": "slot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\n0 5 10 15 20 \n1..4 has 3 numbers\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "slot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\n0 5 10 15 20 \n1..4 has 3 numbers\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/extras"
+    }
+   ]
+  },
+  "fill_array.rs": {
+   "src": "fn main() {\n    let mut board: [char; 5] = ['.'; 5];\n    board[2] = 'X';\n    for cell in board {\n        print!(\"{cell}\");\n    }\n    println!();\n    println!(\"{} cells\", board.len());\n}\n",
+   "stdout": "..X..\n5 cells\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "..X..\n5 cells\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/fill_array"
+    }
+   ]
+  },
+  "fill_break.rs": {
+   "src": "fn main() {\n    let mut height = 1;\n    let mut jumps = 0;\n    let jumps_needed = loop {\n        height *= 2;\n        jumps += 1;\n        if height >= 30 {\n            break jumps;\n        }\n    };\n    println!(\"{jumps_needed} jumps to reach {height} cm\");\n}\n",
+   "stdout": "5 jumps to reach 32 cm\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "5 jumps to reach 32 cm\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/fill_break"
+    }
+   ]
+  },
+  "fill_destructure.rs": {
+   "src": "fn main() {\n    let badge = (\"Mabel\", 42, 'M');\n    let (name, desk, initial) = badge;\n    println!(\"{name} sits at desk {desk}. Initial: {initial}\");\n}\n",
+   "stdout": "Mabel sits at desk 42. Initial: M\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Mabel sits at desk 42. Initial: M\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/fill_destructure"
+    }
+   ]
+  },
+  "fill_range.rs": {
+   "src": "fn main() {\n    let mut total = 0;\n    for n in 1..=10 {\n        total += n;\n    }\n    println!(\"1 + 2 + ... + 10 = {total}\");\n}\n",
+   "stdout": "1 + 2 + ... + 10 = 55\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 + 2 + ... + 10 = 55\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/fill_range"
+    }
+   ]
+  },
+  "float_range.rs": {
+   "src": "fn main() {\n    for x in 0.0..3.0 {\n        println!(\"{x}\");\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: `std::ops::Range<{float}>` is not an iterator\n --> src/main.rs:2:14\n  |\n2 |     for x in 0.0..3.0 {\n  |              ^^^^^^^^ `Range<{float}>` is not an iterator\n  |\n  = help: the nightly-only, unstable trait `Step` is not implemented for `{float}`\n  = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait\n  = help: the following other types implement trait `Step`:\n            i128\n            i16\n            i32\n            i64\n            i8\n            isize\n            u128\n            u16\n          and 4 others\n  = note: required for `std::ops::Range<{float}>` to implement `Iterator`\n  = note: required for `std::ops::Range<{float}>` to implement `IntoIterator`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `float_range` (bin \"float_range\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: `std::ops::Range<{float}>` is not an iterator\n --> src/main.rs:2:14\n  |\n2 |     for x in 0.0..3.0 {\n  |              ^^^^^^^^ `Range<{float}>` is not an iterator\n  |\n  = help: the nightly-only, unstable trait `Step` is not implemented for `{float}`\n  = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait\n  = help: the following other types implement trait `Step`:\n            i128\n            i16\n            i32\n            i64\n            i8\n            isize\n            u128\n            u16\n          and 4 others\n  = note: required for `std::ops::Range<{float}>` to implement `Iterator`\n  = note: required for `std::ops::Range<{float}>` to implement `IntoIterator`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `float_range` (bin \"float_range\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/float_range"
+    }
+   ]
+  },
+  "for_range.rs": {
+   "src": "fn main() {\n    print!(\"0..5  gives:\");\n    for i in 0..5 {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"0..=5 gives:\");\n    for i in 0..=5 {\n        print!(\" {i}\");\n    }\n    println!();\n}\n",
+   "stdout": "0..5  gives: 0 1 2 3 4\n0..=5 gives: 0 1 2 3 4 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0..5  gives: 0 1 2 3 4\n0..=5 gives: 0 1 2 3 4 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/for_range"
+    }
+   ]
+  },
+  "grid.rs": {
+   "src": "fn main() {\n    let seats: [[u8; 3]; 2] = [[1, 0, 1], [0, 0, 1]];\n    println!(\"Row 1, seat 2: {}\", seats[1][2]);\n    for row in seats {\n        for seat in row {\n            print!(\"{} \", if seat == 1 { \"X\" } else { \".\" });\n        }\n        println!();\n    }\n}\n",
+   "stdout": "Row 1, seat 2: 1\nX . X \n. . X \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Row 1, seat 2: 1\nX . X \n. . X \n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/grid"
+    }
+   ]
+  },
+  "index.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    println!(\"eggs[0] = {}\", eggs[0]);\n    println!(\"eggs[3] = {}\", eggs[3]);\n    println!(\"eggs[5] = {}\", eggs[5]);\n    println!(\"eggs.len() = {}\", eggs.len());\n    println!(\"eggs[eggs.len() - 1] = {}\", eggs[eggs.len() - 1]);\n}\n",
+   "stdout": "eggs[0] = 52\neggs[3] = 49\neggs[5] = 55\neggs.len() = 6\neggs[eggs.len() - 1] = 55\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "eggs[0] = 52\neggs[3] = 49\neggs[5] = 55\neggs.len() = 6\neggs[eggs.len() - 1] = 55\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/index"
+    }
+   ]
+  },
+  "index_const.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    println!(\"{}\", eggs[6]);\n}\n",
+   "stdout": "",
+   "stderr": "error: this operation will panic at runtime\n --> src/main.rs:3:20\n  |\n3 |     println!(\"{}\", eggs[6]);\n  |                    ^^^^^^^ index out of bounds: the length is 6 but the index is 6\n  |\n  = note: `#[deny(unconditional_panic)]` on by default\n\nerror: could not compile `index_const` (bin \"index_const\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: this operation will panic at runtime\n --> src/main.rs:3:20\n  |\n3 |     println!(\"{}\", eggs[6]);\n  |                    ^^^^^^^ index out of bounds: the length is 6 but the index is 6\n  |\n  = note: `#[deny(unconditional_panic)]` on by default\n\nerror: could not compile `index_const` (bin \"index_const\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/index_const"
+    }
+   ]
+  },
+  "index_i32.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    let slot: i32 = 2;\n    println!(\"Slot {slot}: {} g\", eggs[slot]);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:4:40\n  |\n4 |     println!(\"Slot {slot}: {} g\", eggs[slot]);\n  |                                        ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_i32` (bin \"index_i32\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:4:40\n  |\n4 |     println!(\"Slot {slot}: {} g\", eggs[slot]);\n  |                                        ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_i32` (bin \"index_i32\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/index_i32"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:4:40\n  |\n4 |     println!(\"Slot {slot}: {} g\", eggs[slot]);\n  |                                        ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[{integer}; 6]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_i32` (bin \"index_i32\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:4:40\n  |\n4 |     println!(\"Slot {slot}: {} g\", eggs[slot]);\n  |                                        ^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[{integer}; 6]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `index_i32` (bin \"index_i32\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch5/index_i32"
+     }
+    ]
+   }
+  },
+  "index_usize.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    let slot: usize = 2;\n    println!(\"Slot {slot}: {} g\", eggs[slot]);\n}\n",
+   "stdout": "Slot 2: 58 g\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Slot 2: 58 g\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/index_usize"
+    }
+   ]
+  },
+  "label_none.rs": {
+   "src": "fn main() {\n    let mut checks = 0;\n    'outer: for a in 1..=2 {\n        for b in 1..=3 {\n            checks += 1;\n            println!(\"{a} x {b} = {}\", a * b);\n            if a * b == 9 {\n                println!(\"Found 9!\");\n                break 'outer;\n            }\n        }\n    }\n    println!(\"Checked {checks} products\");\n}\n",
+   "stdout": "1 x 1 = 1\n1 x 2 = 2\n1 x 3 = 3\n2 x 1 = 2\n2 x 2 = 4\n2 x 3 = 6\nChecked 6 products\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 x 1 = 1\n1 x 2 = 2\n1 x 3 = 3\n2 x 1 = 2\n2 x 2 = 4\n2 x 3 = 6\nChecked 6 products\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/label_none"
+    }
+   ]
+  },
+  "label_outer.rs": {
+   "src": "fn main() {\n    let mut checks = 0;\n    'outer: for a in 1..=2 {\n        for b in 1..=3 {\n            checks += 1;\n            println!(\"{a} x {b} = {}\", a * b);\n            if a * b == 2 {\n                println!(\"Found 2!\");\n                break 'outer;\n            }\n        }\n    }\n    println!(\"Checked {checks} products\");\n}\n",
+   "stdout": "1 x 1 = 1\n1 x 2 = 2\nFound 2!\nChecked 2 products\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 x 1 = 1\n1 x 2 = 2\nFound 2!\nChecked 2 products\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/label_outer"
+    }
+   ]
+  },
+  "label_plain.rs": {
+   "src": "fn main() {\n    let mut checks = 0;\n    for a in 1..=2 {\n        for b in 1..=3 {\n            checks += 1;\n            println!(\"{a} x {b} = {}\", a * b);\n            if a * b == 2 {\n                println!(\"Found 2!\");\n                break;\n            }\n        }\n    }\n    println!(\"Checked {checks} products\");\n}\n",
+   "stdout": "1 x 1 = 1\n1 x 2 = 2\nFound 2!\n2 x 1 = 2\nFound 2!\nChecked 3 products\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 x 1 = 1\n1 x 2 = 2\nFound 2!\n2 x 1 = 2\nFound 2!\nChecked 3 products\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/label_plain"
+    }
+   ]
+  },
+  "label_typo.rs": {
+   "src": "fn main() {\n    'outer: for a in 1..=2 {\n        for b in 1..=3 {\n            if a * b == 2 {\n                break outer;\n            }\n        }\n    }\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find value `outer` in this scope\n --> src/main.rs:5:23\n  |\n2 |     'outer: for a in 1..=2 {\n  |     ------ a label with a similar name exists\n...\n5 |                 break outer;\n  |                       ^^^^^\n  |                       |\n  |                       not found in this scope\n  |                       help: use the similarly named label: `'outer`\n\nerror[E0571]: `break` with value from a `for` loop\n --> src/main.rs:5:17\n  |\n3 |         for b in 1..=3 {\n  |         -------------- you can't `break` with a value in a `for` loop\n4 |             if a * b == 2 {\n5 |                 break outer;\n  |                 ^^^^^^^^^^^ can only break with a value inside `loop` or breakable block\n  |\nhelp: use `break` on its own without a value inside this `for` loop\n  |\n5 -                 break outer;\n5 +                 break;\n  |\n\nSome errors have detailed explanations: E0425, E0571.\nFor more information about an error, try `rustc --explain E0425`.\nerror: could not compile `label_typo` (bin \"label_typo\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find value `outer` in this scope\n --> src/main.rs:5:23\n  |\n2 |     'outer: for a in 1..=2 {\n  |     ------ a label with a similar name exists\n...\n5 |                 break outer;\n  |                       ^^^^^\n  |                       |\n  |                       not found in this scope\n  |                       help: use the similarly named label: `'outer`\n\nerror[E0571]: `break` with value from a `for` loop\n --> src/main.rs:5:17\n  |\n3 |         for b in 1..=3 {\n  |         -------------- you can't `break` with a value in a `for` loop\n4 |             if a * b == 2 {\n5 |                 break outer;\n  |                 ^^^^^^^^^^^ can only break with a value inside `loop` or breakable block\n  |\nhelp: use `break` on its own without a value inside this `for` loop\n  |\n5 -                 break outer;\n5 +                 break;\n  |\n\nSome errors have detailed explanations: E0425, E0571.\nFor more information about an error, try `rustc --explain E0425`.\nerror: could not compile `label_typo` (bin \"label_typo\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/label_typo"
+    }
+   ]
+  },
+  "loop_break.rs": {
+   "src": "fn main() {\n    let mut lap = 1;\n    loop {\n        println!(\"Lap {lap}\");\n        if lap == 3 {\n            break;\n        }\n        lap += 1;\n    }\n    println!(\"Whistle! Done after {lap} laps.\");\n}\n",
+   "stdout": "Lap 1\nLap 2\nLap 3\nWhistle! Done after 3 laps.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Lap 1\nLap 2\nLap 3\nWhistle! Done after 3 laps.\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/loop_break"
+    }
+   ]
+  },
+  "loop_predict.rs": {
+   "src": "fn main() {\n    let mut n = 1;\n    loop {\n        n *= 3;\n        println!(\"{n}\");\n        if n > 20 {\n            break;\n        }\n    }\n    println!(\"stopped at {n}\");\n}\n",
+   "stdout": "3\n9\n27\nstopped at 27\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3\n9\n27\nstopped at 27\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/loop_predict"
+    }
+   ]
+  },
+  "loop_value.rs": {
+   "src": "fn main() {\n    let mut coins = 10;\n    let mut day = 0;\n    let days_needed = loop {\n        day += 1;\n        coins += 15;\n        if coins >= 100 {\n            break day;\n        }\n    };\n    println!(\"{coins} coins after {days_needed} days\");\n}\n",
+   "stdout": "100 coins after 6 days\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "100 coins after 6 days\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/loop_value"
+    }
+   ]
+  },
+  "mutate_array.rs": {
+   "src": "fn main() {\n    let mut eggs = [52, 61, 58, 49, 63, 55];\n    eggs[3] = 60;\n    println!(\"{eggs:?}\");\n    println!(\"Still {} slots\", eggs.len());\n}\n",
+   "stdout": "[52, 61, 58, 60, 63, 55]\nStill 6 slots\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[52, 61, 58, 60, 63, 55]\nStill 6 slots\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/mutate_array"
+    }
+   ]
+  },
+  "no_push.rs": {
+   "src": "fn main() {\n    let mut eggs = [52, 61, 58, 49, 63, 55];\n    eggs.push(60);\n    println!(\"{eggs:?}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0599]: no method named `push` found for array `[{integer}; 6]` in the current scope\n --> src/main.rs:3:10\n  |\n3 |     eggs.push(60);\n  |          ^^^^ method not found in `[{integer}; 6]`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `no_push` (bin \"no_push\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0599]: no method named `push` found for array `[{integer}; 6]` in the current scope\n --> src/main.rs:3:10\n  |\n3 |     eggs.push(60);\n  |          ^^^^ method not found in `[{integer}; 6]`\n\nFor more information about this error, try `rustc --explain E0599`.\nerror: could not compile `no_push` (bin \"no_push\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/no_push"
+    }
+   ]
+  },
+  "off_by_one.rs": {
+   "src": "fn main() {\n    // Goal: print the cones numbered 1 to 10\n    for cone in 1..10 {\n        print!(\"{cone} \");\n    }\n    println!();\n}\n",
+   "stdout": "1 2 3 4 5 6 7 8 9 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 2 3 4 5 6 7 8 9 \n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/off_by_one"
+    }
+   ]
+  },
+  "out_of_bounds.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    let mut i = 0;\n    while i <= eggs.len() {\n        println!(\"slot {i}: {} g\", eggs[i]);\n        i += 1;\n    }\n    println!(\"All eggs checked\");\n}\n",
+   "stdout": "slot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\nslot 3: 49 g\nslot 4: 63 g\nslot 5: 55 g\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:5:36:\nindex out of bounds: the len is 6 but the index is 6\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "slot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\nslot 3: 49 g\nslot 4: 63 g\nslot 5: 55 g\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:5:36:\nindex out of bounds: the len is 6 but the index is 6\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/out_of_bounds",
+     "merged": "slot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\nslot 3: 49 g\nslot 4: 63 g\nslot 5: 55 g\n\nthread 'main' (1) panicked at src/main.rs:5:36:\nindex out of bounds: the len is 6 but the index is 6\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "ranges.rs": {
+   "src": "fn main() {\n    print!(\"0..5 ->\");\n    for i in 0..5 {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"1..=5 ->\");\n    for i in 1..=5 {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"1..5 ->\");\n    for i in 1..5 {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"(1..=3).rev() ->\");\n    for i in (1..=3).rev() {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"5..5 ->\");\n    for i in 5..5 {\n        print!(\" {i}\");\n    }\n    println!();\n    print!(\"5..1 ->\");\n    for i in 5..1 {\n        print!(\" {i}\");\n    }\n    println!();\n}\n",
+   "stdout": "0..5 -> 0 1 2 3 4\n1..=5 -> 1 2 3 4 5\n1..5 -> 1 2 3 4\n(1..=3).rev() -> 3 2 1\n5..5 ->\n5..1 ->\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0..5 -> 0 1 2 3 4\n1..=5 -> 1 2 3 4 5\n1..5 -> 1 2 3 4\n(1..=3).rev() -> 3 2 1\n5..5 ->\n5..1 ->\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/ranges"
+    }
+   ]
+  },
+  "rev_countdown.rs": {
+   "src": "fn main() {\n    for n in (1..=3).rev() {\n        println!(\"{n}...\");\n    }\n    println!(\"LIFTOFF!\");\n}\n",
+   "stdout": "3...\n2...\n1...\nLIFTOFF!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "3...\n2...\n1...\nLIFTOFF!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/rev_countdown"
+    }
+   ]
+  },
+  "rev_predict.rs": {
+   "src": "fn main() {\n    for n in (2..=6).rev() {\n        if n % 2 == 0 {\n            println!(\"{n} is even\");\n        }\n    }\n    println!(\"done\");\n}\n",
+   "stdout": "6 is even\n4 is even\n2 is even\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "6 is even\n4 is even\n2 is even\ndone\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/rev_predict"
+    }
+   ]
+  },
+  "sizes.rs": {
+   "src": "use std::mem::size_of;\n\nfn main() {\n    println!(\"[i32; 6]  : {} bytes\", size_of::<[i32; 6]>());\n    println!(\"[u8; 4]   : {} bytes\", size_of::<[u8; 4]>());\n    println!(\"(u8, u32) : {} bytes\", size_of::<(u8, u32)>());\n    println!(\"()        : {} bytes\", size_of::<()>());\n}\n",
+   "stdout": "[i32; 6]  : 24 bytes\n[u8; 4]   : 4 bytes\n(u8, u32) : 8 bytes\n()        : 0 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[i32; 6]  : 24 bytes\n[u8; 4]   : 4 bytes\n(u8, u32) : 8 bytes\n()        : 0 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/sizes"
+    }
+   ]
+  },
+  "skip_puddle.rs": {
+   "src": "fn main() {\n    for lap in 1..=5 {\n        if lap == 3 {\n            println!(\"Lap 3: puddle! Skip it.\");\n            continue;\n        }\n        println!(\"Lap {lap}: run\");\n    }\n}\n",
+   "stdout": "Lap 1: run\nLap 2: run\nLap 3: puddle! Skip it.\nLap 4: run\nLap 5: run\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Lap 1: run\nLap 2: run\nLap 3: puddle! Skip it.\nLap 4: run\nLap 5: run\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/skip_puddle"
+    }
+   ]
+  },
+  "spot_index.rs": {
+   "src": "fn main() {\n    let days = [8, 12, 5, 9, 11, 7, 10];\n    let today: i32 = 4;\n    let tomorrow = today + 1;\n    println!(\"Today: {} steps\", days[today]);\n    println!(\"Tomorrow: {} steps\", days[tomorrow as usize]);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:5:38\n  |\n5 |     println!(\"Today: {} steps\", days[today]);\n  |                                      ^^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:5:38\n  |\n5 |     println!(\"Today: {} steps\", days[today]);\n  |                                      ^^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/slice/index.rs:179:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/spot_index"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:5:38\n  |\n5 |     println!(\"Today: {} steps\", days[today]);\n  |                                      ^^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[{integer}; 7]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error[E0277]: the type `[{integer}]` cannot be indexed by `i32`\n --> src/main.rs:5:38\n  |\n5 |     println!(\"Today: {} steps\", days[today]);\n  |                                      ^^^^^ slice indices are of type `usize` or ranges of `usize`\n  |\n  = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `[{integer}]` to implement `Index<i32>`\n  = note: 1 redundant requirement hidden\n  = note: required for `[{integer}; 7]` to implement `Index<i32>`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `spot_index` (bin \"spot_index\") due to 1 previous error\n",
+      "exit": 101,
+      "dir": "~/rust-ch5/spot_index"
+     }
+    ]
+   }
+  },
+  "spot_range.rs": {
+   "src": "fn main() {\n    // Count down from 5, then shout Go!\n    for n in (1..5).rev() {\n        println!(\"{n}\");\n    }\n    println!(\"Go!\");\n}\n",
+   "stdout": "4\n3\n2\n1\nGo!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "4\n3\n2\n1\nGo!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/spot_range"
+    }
+   ]
+  },
+  "spot_tuple.rs": {
+   "src": "fn main() {\n    let trip = (\"Oslo\", 3, 120.5);\n    let city = trip.0;\n    let nights = trip.1;\n    let cost = trip.3;\n    println!(\"{city}: {nights} nights, {cost} coins\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0609]: no field `3` on type `(&str, {integer}, {float})`\n --> src/main.rs:5:21\n  |\n5 |     let cost = trip.3;\n  |                     ^ unknown field\n  |\n  = note: available fields are: `0`, `1`, `2`\n\nFor more information about this error, try `rustc --explain E0609`.\nerror: could not compile `spot_tuple` (bin \"spot_tuple\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0609]: no field `3` on type `(&str, {integer}, {float})`\n --> src/main.rs:5:21\n  |\n5 |     let cost = trip.3;\n  |                     ^ unknown field\n  |\n  = note: available fields are: `0`, `1`, `2`\n\nFor more information about this error, try `rustc --explain E0609`.\nerror: could not compile `spot_tuple` (bin \"spot_tuple\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/spot_tuple"
+    }
+   ]
+  },
+  "spot_while.rs": {
+   "src": "fn main() {\n    let mut lap = 1;\n    while lap < 5 {\n        println!(\"Lap {lap}\");\n        lap += 1;\n    }\n    println!(\"Done!\");\n}\n",
+   "stdout": "Lap 1\nLap 2\nLap 3\nLap 4\nDone!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Lap 1\nLap 2\nLap 3\nLap 4\nDone!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/spot_while"
+    }
+   ]
+  },
+  "stars.rs": {
+   "src": "fn main() {\n    for row in 1..=3 {\n        for _ in 0..row {\n            print!(\"*\");\n        }\n        println!();\n    }\n}\n",
+   "stdout": "*\n**\n***\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "*\n**\n***\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/stars"
+    }
+   ]
+  },
+  "sum_while.rs": {
+   "src": "fn main() {\n    let mut count = 0;\n    let mut total = 0;\n    while total < 20 {\n        count += 1;\n        total += count * 2;\n        println!(\"{count} {total}\");\n    }\n}\n",
+   "stdout": "1 2\n2 6\n3 12\n4 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 2\n2 6\n3 12\n4 20\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/sum_while"
+    }
+   ]
+  },
+  "times_table.rs": {
+   "src": "fn main() {\n    for row in 1..=3 {\n        for col in 1..=4 {\n            print!(\"{:>4}\", row * col);\n        }\n        println!();\n    }\n}\n",
+   "stdout": "   1   2   3   4\n   2   4   6   8\n   3   6   9  12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "   1   2   3   4\n   2   4   6   8\n   3   6   9  12\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/times_table"
+    }
+   ]
+  },
+  "trace_nested.rs": {
+   "src": "fn main() {\n    for a in 1..=2 {\n        for b in 1..=3 {\n            println!(\"{a} {b} {}\", a * b);\n        }\n    }\n}\n",
+   "stdout": "1 1 1\n1 2 2\n1 3 3\n2 1 2\n2 2 4\n2 3 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1 1 1\n1 2 2\n1 3 3\n2 1 2\n2 2 4\n2 3 6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/trace_nested"
+    }
+   ]
+  },
+  "tracer_sum.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58];\n    let mut total = 0;\n    for egg in eggs {\n        total += egg;\n    }\n    println!(\"{total} g\");\n}\n",
+   "stdout": "171 g\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "171 g\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/tracer_sum"
+    }
+   ]
+  },
+  "tuple_field.rs": {
+   "src": "fn main() {\n    let lunch = (500, 6.4, 'z');\n    println!(\"{}\", lunch.3);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0609]: no field `3` on type `({integer}, {float}, char)`\n --> src/main.rs:3:26\n  |\n3 |     println!(\"{}\", lunch.3);\n  |                          ^ unknown field\n  |\n  = note: available fields are: `0`, `1`, `2`\n\nFor more information about this error, try `rustc --explain E0609`.\nerror: could not compile `tuple_field` (bin \"tuple_field\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0609]: no field `3` on type `({integer}, {float}, char)`\n --> src/main.rs:3:26\n  |\n3 |     println!(\"{}\", lunch.3);\n  |                          ^ unknown field\n  |\n  = note: available fields are: `0`, `1`, `2`\n\nFor more information about this error, try `rustc --explain E0609`.\nerror: could not compile `tuple_field` (bin \"tuple_field\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/tuple_field"
+    }
+   ]
+  },
+  "tuple_predict.rs": {
+   "src": "fn main() {\n    let point = (3, -2);\n    let (x, y) = point;\n    let moved = (x + 1, y * 2);\n    println!(\"{}\", moved.0 + moved.1);\n    println!(\"{moved:?}\");\n}\n",
+   "stdout": "0\n(4, -4)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0\n(4, -4)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/tuple_predict"
+    }
+   ]
+  },
+  "tuple_tracer.rs": {
+   "src": "fn main() {\n    let lunch = (2, 3.5, 'A');\n    let (sandwiches, price, sticker) = lunch;\n    let total = sandwiches as f64 * price;\n    println!(\"{sandwiches} x {price} = {total} ({sticker})\");\n}\n",
+   "stdout": "2 x 3.5 = 7 (A)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "2 x 3.5 = 7 (A)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/tuple_tracer"
+    }
+   ]
+  },
+  "tuples.rs": {
+   "src": "fn main() {\n    let lunch: (u32, f64, char) = (500, 6.4, 'z');\n    println!(\"Box .0: {}\", lunch.0);\n    println!(\"Box .1: {}\", lunch.1);\n    println!(\"Box .2: {}\", lunch.2);\n    let (grams, price, sticker) = lunch;\n    println!(\"{grams} g, {price} coins, sticker {sticker}\");\n    println!(\"The whole lunchbox: {lunch:?}\");\n}\n",
+   "stdout": "Box .0: 500\nBox .1: 6.4\nBox .2: z\n500 g, 6.4 coins, sticker z\nThe whole lunchbox: (500, 6.4, 'z')\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Box .0: 500\nBox .1: 6.4\nBox .2: z\n500 g, 6.4 coins, sticker z\nThe whole lunchbox: (500, 6.4, 'z')\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/tuples"
+    }
+   ]
+  },
+  "unit.rs": {
+   "src": "fn wave() {\n    println!(\"Mabel waves\");\n}\n\nfn main() {\n    let result = wave();\n    println!(\"wave() gave back {result:?}\");\n    let pair = (1, 2);\n    let empty = ();\n    println!(\"{pair:?} {empty:?}\");\n}\n",
+   "stdout": "Mabel waves\nwave() gave back ()\n(1, 2) ()\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Mabel waves\nwave() gave back ()\n(1, 2) ()\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/unit"
+    }
+   ]
+  },
+  "walk_eggs.rs": {
+   "src": "fn main() {\n    let eggs = [52, 61, 58, 49, 63, 55];\n    let mut total = 0;\n    for egg in eggs {\n        total += egg;\n    }\n    println!(\"Total: {total} g\");\n    for egg in &eggs {\n        print!(\"{egg} \");\n    }\n    println!();\n    for i in 0..eggs.len() {\n        println!(\"slot {i}: {} g\", eggs[i]);\n    }\n}\n",
+   "stdout": "Total: 338 g\n52 61 58 49 63 55 \nslot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\nslot 3: 49 g\nslot 4: 63 g\nslot 5: 55 g\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Total: 338 g\n52 61 58 49 63 55 \nslot 0: 52 g\nslot 1: 61 g\nslot 2: 58 g\nslot 3: 49 g\nslot 4: 63 g\nslot 5: 55 g\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/walk_eggs"
+    }
+   ]
+  },
+  "while_true.rs": {
+   "src": "fn main() {\n    let mut lap = 0;\n    while true {\n        lap += 1;\n        if lap == 2 {\n            break;\n        }\n    }\n    println!(\"Stopped after {lap} laps\");\n}\n",
+   "stdout": "Stopped after 2 laps\n",
+   "stderr": "warning: denote infinite loops with `loop { ... }`\n --> src/main.rs:3:5\n  |\n3 |     while true {\n  |     ^^^^^^^^^^ help: use `loop`\n  |\n  = note: `#[warn(while_true)]` on by default\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Stopped after 2 laps\n",
+     "err": "warning: denote infinite loops with `loop { ... }`\n --> src/main.rs:3:5\n  |\n3 |     while true {\n  |     ^^^^^^^^^^ help: use `loop`\n  |\n  = note: `#[warn(while_true)]` on by default\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch5/while_true",
+     "merged": "warning: denote infinite loops with `loop { ... }`\n --> src/main.rs:3:5\n  |\n3 |     while true {\n  |     ^^^^^^^^^^ help: use `loop`\n  |\n  = note: `#[warn(while_true)]` on by default\n\nStopped after 2 laps\n"
+    }
+   ]
+  },
+  "while_value.rs": {
+   "src": "fn main() {\n    let mut day = 0;\n    let found = while true {\n        day += 1;\n        if day == 3 {\n            break day;\n        }\n    };\n    println!(\"{found:?}\");\n}\n",
+   "stdout": "",
+   "stderr": "warning: denote infinite loops with `loop { ... }`\n --> src/main.rs:3:17\n  |\n3 |     let found = while true {\n  |                 ^^^^^^^^^^ help: use `loop`\n  |\n  = note: `#[warn(while_true)]` on by default\n\nerror[E0571]: `break` with value from a `while` loop\n --> src/main.rs:6:13\n  |\n3 |     let found = while true {\n  |                 ---------- you can't `break` with a value in a `while` loop\n...\n6 |             break day;\n  |             ^^^^^^^^^ can only break with a value inside `loop` or breakable block\n  |\nhelp: use `break` on its own without a value inside this `while` loop\n  |\n6 -             break day;\n6 +             break;\n  |\n\nFor more information about this error, try `rustc --explain E0571`.\nerror: could not compile `while_value` (bin \"while_value\") due to 1 previous error; 1 warning emitted\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "warning: denote infinite loops with `loop { ... }`\n --> src/main.rs:3:17\n  |\n3 |     let found = while true {\n  |                 ^^^^^^^^^^ help: use `loop`\n  |\n  = note: `#[warn(while_true)]` on by default\n\nerror[E0571]: `break` with value from a `while` loop\n --> src/main.rs:6:13\n  |\n3 |     let found = while true {\n  |                 ---------- you can't `break` with a value in a `while` loop\n...\n6 |             break day;\n  |             ^^^^^^^^^ can only break with a value inside `loop` or breakable block\n  |\nhelp: use `break` on its own without a value inside this `while` loop\n  |\n6 -             break day;\n6 +             break;\n  |\n\nFor more information about this error, try `rustc --explain E0571`.\nerror: could not compile `while_value` (bin \"while_value\") due to 1 previous error; 1 warning emitted\n",
+     "exit": 101,
+     "dir": "~/rust-ch5/while_value"
+    }
+   ]
+  },
+  "zero_laps.rs": {
+   "src": "fn main() {\n    let mut fuel = 0;\n    println!(\"Start\");\n    while fuel > 0 {\n        println!(\"Driving with {fuel}\");\n        fuel -= 1;\n    }\n    println!(\"Fuel: {fuel}\");\n}\n",
+   "stdout": "Start\nFuel: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Start\nFuel: 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch5/zero_laps"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

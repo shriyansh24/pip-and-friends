@@ -1,0 +1,820 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch9",
+  "versionDifferences": [],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. Outputs were identical."
+ },
+ "programs": {
+  "array_slice.rs": {
+   "src": "fn main() {\n    let days = [3, 5, 8, 13, 21];\n    let middle = &days[1..4];\n    println!(\"{:?}\", middle);\n    println!(\"{} numbers\", middle.len());\n    let v = vec![10, 20, 30, 40];\n    let start = &v[..2];\n    println!(\"{:?}\", start);\n}\n",
+   "stdout": "[5, 8, 13]\n3 numbers\n[10, 20]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[5, 8, 13]\n3 numbers\n[10, 20]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/array_slice"
+    }
+   ]
+  },
+  "boss_error.rs": {
+   "src": "fn pick() -> &str {\n    let choice = String::from(\"Dune\");\n    &choice[..]\n}\n\nfn main() {\n    println!(\"{}\", pick());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:14\n  |\n1 | fn pick() -> &str {\n  |              ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn pick() -> &'static str {\n  |               +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn pick() -> &str {\n1 + fn pick() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:14\n  |\n1 | fn pick() -> &str {\n  |              ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn pick() -> &'static str {\n  |               +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn pick() -> &str {\n1 + fn pick() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `boss_error` (bin \"boss_error\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/boss_error"
+    }
+   ]
+  },
+  "boss_fill.rs": {
+   "src": "fn last_n(s: &str, n: usize) -> &str {\n    let len = s.len();\n    &s[len - n..]\n}\n\nfn main() {\n    let book = String::from(\"Pride and Prejudice\");\n    println!(\"{}\", last_n(&book, 9));\n    println!(\"{}\", last_n(\"Emma\", 2));\n}\n",
+   "stdout": "Prejudice\nma\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Prejudice\nma\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn main() {\n    let mut queue = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let first = queue.remove(0);\n    let short = &first[..2];\n    println!(\"{short} leaves\");\n    queue.push(first);\n    println!(\"{} waiting\", queue.len());\n}\n",
+   "stdout": "An leaves\n2 waiting\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "An leaves\n2 waiting\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "fn middle(s: &str) -> &str {\n    let n = s.len();\n    &s[1..n - 1]\n}\n\nfn main() {\n    let mut shelf = vec![String::from(\"[Emma]\"), String::from(\"<Dune>\")];\n    let taken = shelf.remove(0);\n    let inner = middle(&taken);\n    println!(\"{inner} {}\", inner.len());\n    println!(\"{}\", middle(&shelf[0]));\n    println!(\"{}\", middle(\"((ok))\"));\n}\n",
+   "stdout": "Emma 4\nDune\n(ok)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Emma 4\nDune\n(ok)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/boss_predict"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let mut shelf = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    shelf.push(String::from(\"Ivanhoe\"));\n    let mut i = 0;\n    while i < shelf.len() {\n        let book = &shelf[i];\n        println!(\"{} {} {}\", i, &book[..2], shelf.len());\n        if book.len() == 4 {\n            shelf.remove(i);\n        } else {\n            i += 1;\n        }\n    }\n}\n",
+   "stdout": "0 Em 3\n0 Du 2\n0 Iv 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 Em 3\n0 Du 2\n0 Iv 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/boss_trace"
+    }
+   ]
+  },
+  "caps.rs": {
+   "src": "fn main() {\n    let label = String::from(\"Case 1\");\n    println!(\"{label}: len {}, capacity {}\", label.len(), label.capacity());\n    let mut s = String::from(\"hello world\");\n    println!(\"{s}: len {}, capacity {}\", s.len(), s.capacity());\n    s.clear();\n    println!(\"after clear: len {}, capacity {}\", s.len(), s.capacity());\n}\n",
+   "stdout": "Case 1: len 6, capacity 6\nhello world: len 11, capacity 11\nafter clear: len 0, capacity 11\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Case 1: len 6, capacity 6\nhello world: len 11, capacity 11\nafter clear: len 0, capacity 11\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/caps"
+    }
+   ]
+  },
+  "case_boundary.rs": {
+   "src": "fn first_bytes(s: &str, n: usize) -> &str {\n    &s[..n]\n}\n\nfn main() {\n    let word = String::from(\"héllo\");\n    println!(\"{} bytes\", word.len());\n    println!(\"{}\", first_bytes(&word, 1));\n    println!(\"{}\", first_bytes(&word, 2));\n}\n",
+   "stdout": "6 bytes\nh\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:2:7:\nend byte index 2 is not a char boundary; it is inside 'é' (bytes 1..3 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "6 bytes\nh\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:2:7:\nend byte index 2 is not a char boundary; it is inside 'é' (bytes 1..3 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_boundary",
+     "merged": "6 bytes\nh\n\nthread 'main' (1) panicked at src/main.rs:2:7:\nend byte index 2 is not a char boundary; it is inside 'é' (bytes 1..3 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "case_clear.rs": {
+   "src": "fn first_word(s: &str) -> &str {\n    let bytes = s.as_bytes();\n    for i in 0..bytes.len() {\n        if bytes[i] == b' ' {\n            return &s[0..i];\n        }\n    }\n    &s[..]\n}\n\nfn main() {\n    let mut s = String::from(\"hello world\");\n    let word = first_word(&s);\n    s.clear();\n    println!(\"the first word is: {word}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable\n  --> src/main.rs:14:5\n   |\n13 |     let word = first_word(&s);\n   |                           -- immutable borrow occurs here\n14 |     s.clear();\n   |     ^^^^^^^^^ mutable borrow occurs here\n15 |     println!(\"the first word is: {word}\");\n   |                                   ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `case_clear` (bin \"case_clear\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable\n  --> src/main.rs:14:5\n   |\n13 |     let word = first_word(&s);\n   |                           -- immutable borrow occurs here\n14 |     s.clear();\n   |     ^^^^^^^^^ mutable borrow occurs here\n15 |     println!(\"the first word is: {word}\");\n   |                                   ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `case_clear` (bin \"case_clear\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_clear"
+    }
+   ]
+  },
+  "case_kept.rs": {
+   "src": "fn count(text: String) -> usize {\n    text.len()\n}\n\nfn main() {\n    let note = String::from(\"hello\");\n    let n = count(note);\n    println!(\"{note} has {n} letters\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: borrow of moved value: `note`\n --> src/main.rs:8:16\n  |\n6 |     let note = String::from(\"hello\");\n  |         ---- move occurs because `note` has type `String`, which does not implement the `Copy` trait\n7 |     let n = count(note);\n  |                   ---- value moved here\n8 |     println!(\"{note} has {n} letters\");\n  |                ^^^^ value borrowed here after move\n  |\nnote: consider changing this parameter type in function `count` to borrow instead if owning the value isn't necessary\n --> src/main.rs:1:16\n  |\n1 | fn count(text: String) -> usize {\n  |    -----       ^^^^^^ this parameter takes ownership of the value\n  |    |\n  |    in this function\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n7 |     let n = count(note.clone());\n  |                       ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `case_kept` (bin \"case_kept\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: borrow of moved value: `note`\n --> src/main.rs:8:16\n  |\n6 |     let note = String::from(\"hello\");\n  |         ---- move occurs because `note` has type `String`, which does not implement the `Copy` trait\n7 |     let n = count(note);\n  |                   ---- value moved here\n8 |     println!(\"{note} has {n} letters\");\n  |                ^^^^ value borrowed here after move\n  |\nnote: consider changing this parameter type in function `count` to borrow instead if owning the value isn't necessary\n --> src/main.rs:1:16\n  |\n1 | fn count(text: String) -> usize {\n  |    -----       ^^^^^^ this parameter takes ownership of the value\n  |    |\n  |    in this function\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n7 |     let n = count(note.clone());\n  |                       ++++++++\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `case_kept` (bin \"case_kept\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_kept"
+    }
+   ]
+  },
+  "case_move_out.rs": {
+   "src": "fn main() {\n    let shelf = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    let book = shelf[0];\n    println!(\"I took {book}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:3:16\n  |\n3 |     let book = shelf[0];\n  |                ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n3 |     let book = &shelf[0];\n  |                +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n3 |     let book = shelf[0].clone();\n  |                        ++++++++\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `case_move_out` (bin \"case_move_out\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:3:16\n  |\n3 |     let book = shelf[0];\n  |                ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n3 |     let book = &shelf[0];\n  |                +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n3 |     let book = shelf[0].clone();\n  |                        ++++++++\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `case_move_out` (bin \"case_move_out\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_move_out"
+    }
+   ]
+  },
+  "case_queue.rs": {
+   "src": "fn main() {\n    let mut queue = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let next = &queue[0];\n    queue.push(String::from(\"Cal\"));\n    println!(\"next up: {next}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0502]: cannot borrow `queue` as mutable because it is also borrowed as immutable\n --> src/main.rs:4:5\n  |\n3 |     let next = &queue[0];\n  |                 ----- immutable borrow occurs here\n4 |     queue.push(String::from(\"Cal\"));\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here\n5 |     println!(\"next up: {next}\");\n  |                         ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `case_queue` (bin \"case_queue\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0502]: cannot borrow `queue` as mutable because it is also borrowed as immutable\n --> src/main.rs:4:5\n  |\n3 |     let next = &queue[0];\n  |                 ----- immutable borrow occurs here\n4 |     queue.push(String::from(\"Cal\"));\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here\n5 |     println!(\"next up: {next}\");\n  |                         ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `case_queue` (bin \"case_queue\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_queue"
+    }
+   ]
+  },
+  "case_static_trap.rs": {
+   "src": "fn make_label() -> &'static String {\n    let label = String::from(\"Case 1\");\n    &label\n}\n\nfn main() {\n    let tag = make_label();\n    println!(\"{tag}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0515]: cannot return reference to local variable `label`\n --> src/main.rs:3:5\n  |\n3 |     &label\n  |     ^^^^^^ returns a reference to data owned by the current function\n\nFor more information about this error, try `rustc --explain E0515`.\nerror: could not compile `case_static_trap` (bin \"case_static_trap\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0515]: cannot return reference to local variable `label`\n --> src/main.rs:3:5\n  |\n3 |     &label\n  |     ^^^^^^ returns a reference to data owned by the current function\n\nFor more information about this error, try `rustc --explain E0515`.\nerror: could not compile `case_static_trap` (bin \"case_static_trap\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_static_trap"
+    }
+   ]
+  },
+  "case_string_param.rs": {
+   "src": "fn shout(s: &String) -> usize {\n    s.len()\n}\n\nfn main() {\n    println!(\"{}\", shout(\"hello\"));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:6:26\n  |\n6 |     println!(\"{}\", shout(\"hello\"));\n  |                    ----- ^^^^^^^ expected `&String`, found `&str`\n  |                    |\n  |                    arguments to this function are incorrect\n  |\n  = note: expected reference `&String`\n             found reference `&'static str`\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn shout(s: &String) -> usize {\n  |    ^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `case_string_param` (bin \"case_string_param\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:6:26\n  |\n6 |     println!(\"{}\", shout(\"hello\"));\n  |                    ----- ^^^^^^^ expected `&String`, found `&str`\n  |                    |\n  |                    arguments to this function are incorrect\n  |\n  = note: expected reference `&String`\n             found reference `&'static str`\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn shout(s: &String) -> usize {\n  |    ^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `case_string_param` (bin \"case_string_param\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_string_param"
+    }
+   ]
+  },
+  "case_swap.rs": {
+   "src": "fn main() {\n    let mut shelf = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    let first = shelf[0];\n    shelf[0] = shelf[1];\n    shelf[1] = first;\n    println!(\"{:?}\", shelf);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:3:17\n  |\n3 |     let first = shelf[0];\n  |                 ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n3 |     let first = &shelf[0];\n  |                 +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n3 |     let first = shelf[0].clone();\n  |                         ++++++++\n\nerror[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:4:16\n  |\n4 |     shelf[0] = shelf[1];\n  |                ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: you can `clone` the value and consume it, but this might not be your desired behavior\n  |\n4 |     shelf[0] = <String as Clone>::clone(&shelf[1]);\n  |                ++++++++++++++++++++++++++        +\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `case_swap` (bin \"case_swap\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:3:17\n  |\n3 |     let first = shelf[0];\n  |                 ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n3 |     let first = &shelf[0];\n  |                 +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n3 |     let first = shelf[0].clone();\n  |                         ++++++++\n\nerror[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:4:16\n  |\n4 |     shelf[0] = shelf[1];\n  |                ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: you can `clone` the value and consume it, but this might not be your desired behavior\n  |\n4 |     shelf[0] = <String as Clone>::clone(&shelf[1]);\n  |                ++++++++++++++++++++++++++        +\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `case_swap` (bin \"case_swap\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_swap"
+    }
+   ]
+  },
+  "case_two_slots.rs": {
+   "src": "fn main() {\n    let mut scores = vec![10, 20, 30];\n    let a = &mut scores[0];\n    let b = &mut scores[1];\n    *a += 1;\n    *b += 1;\n    println!(\"{:?}\", scores);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0499]: cannot borrow `scores` as mutable more than once at a time\n --> src/main.rs:4:18\n  |\n3 |     let a = &mut scores[0];\n  |                  ------ first mutable borrow occurs here\n4 |     let b = &mut scores[1];\n  |                  ^^^^^^ second mutable borrow occurs here\n5 |     *a += 1;\n  |     ------- first borrow later used here\n  |\n  = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices\n\nFor more information about this error, try `rustc --explain E0499`.\nerror: could not compile `case_two_slots` (bin \"case_two_slots\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0499]: cannot borrow `scores` as mutable more than once at a time\n --> src/main.rs:4:18\n  |\n3 |     let a = &mut scores[0];\n  |                  ------ first mutable borrow occurs here\n4 |     let b = &mut scores[1];\n  |                  ^^^^^^ second mutable borrow occurs here\n5 |     *a += 1;\n  |     ------- first borrow later used here\n  |\n  = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices\n\nFor more information about this error, try `rustc --explain E0499`.\nerror: could not compile `case_two_slots` (bin \"case_two_slots\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_two_slots"
+    }
+   ]
+  },
+  "case_vanishing.rs": {
+   "src": "fn make_label() -> &String {\n    let label = String::from(\"Case 1\");\n    &label\n}\n\nfn main() {\n    let tag = make_label();\n    println!(\"{tag}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:20\n  |\n1 | fn make_label() -> &String {\n  |                    ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn make_label() -> &'static String {\n  |                     +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn make_label() -> &String {\n1 + fn make_label() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `case_vanishing` (bin \"case_vanishing\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0106]: missing lifetime specifier\n --> src/main.rs:1:20\n  |\n1 | fn make_label() -> &String {\n  |                    ^ expected named lifetime parameter\n  |\n  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from\nhelp: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`\n  |\n1 | fn make_label() -> &'static String {\n  |                     +++++++\nhelp: instead, you are more likely to want to return an owned value\n  |\n1 - fn make_label() -> &String {\n1 + fn make_label() -> String {\n  |\n\nFor more information about this error, try `rustc --explain E0106`.\nerror: could not compile `case_vanishing` (bin \"case_vanishing\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/case_vanishing"
+    }
+   ]
+  },
+  "copy_out.rs": {
+   "src": "fn main() {\n    let pages = vec![120, 300];\n    let p = pages[0];\n    println!(\"{p}\");\n    println!(\"{:?}\", pages);\n}\n",
+   "stdout": "120\n[120, 300]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "120\n[120, 300]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/copy_out"
+    }
+   ]
+  },
+  "draft.rs": {
+   "src": "fn main() {\n    let original = String::from(\"Chapter 1\");\n    let mut draft = original.clone();\n    draft.push_str(\" (edited)\");\n    println!(\"{original}\");\n    println!(\"{draft}\");\n}\n",
+   "stdout": "Chapter 1\nChapter 1 (edited)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Chapter 1\nChapter 1 (edited)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/draft"
+    }
+   ]
+  },
+  "fill_clone.rs": {
+   "src": "fn main() {\n    let team = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let captain = team[0].clone();\n    println!(\"captain: {captain}\");\n    println!(\"team size: {}\", team.len());\n}\n",
+   "stdout": "captain: Ana\nteam size: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "captain: Ana\nteam size: 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fill_clone"
+    }
+   ]
+  },
+  "fill_owned.rs": {
+   "src": "fn greeting(name: &String) -> String {\n    let mut text = String::from(\"Hello, \");\n    text.push_str(name);\n    text\n}\n\nfn main() {\n    let name = String::from(\"Mabel\");\n    let g = greeting(&name);\n    println!(\"{g}\");\n    println!(\"{name} is still here\");\n}\n",
+   "stdout": "Hello, Mabel\nMabel is still here\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Hello, Mabel\nMabel is still here\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fill_owned"
+    }
+   ]
+  },
+  "fill_world.rs": {
+   "src": "fn main() {\n    let s = String::from(\"hello world\");\n    let w = &s[6..11];\n    println!(\"{w}\");\n}\n",
+   "stdout": "world\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "world\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fill_world"
+    }
+   ]
+  },
+  "first_word.rs": {
+   "src": "fn first_word(s: &str) -> &str {\n    let bytes = s.as_bytes();\n    for i in 0..bytes.len() {\n        if bytes[i] == b' ' {\n            return &s[0..i];\n        }\n    }\n    &s[..]\n}\n\nfn main() {\n    let title = String::from(\"Pride and Prejudice\");\n    println!(\"{}\", first_word(&title));\n    println!(\"{}\", first_word(\"Little Women\"));\n    println!(\"{}\", first_word(&title[6..]));\n    println!(\"{}\", first_word(\"Emma\"));\n}\n",
+   "stdout": "Pride\nLittle\nand\nEmma\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Pride\nLittle\nand\nEmma\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/first_word"
+    }
+   ]
+  },
+  "fix_borrow_book.rs": {
+   "src": "fn main() {\n    let shelf = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    let book = &shelf[0];\n    println!(\"I took {book}\");\n}\n",
+   "stdout": "I took Emma\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "I took Emma\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_borrow_book"
+    }
+   ]
+  },
+  "fix_boundary.rs": {
+   "src": "fn first_bytes(s: &str, n: usize) -> &str {\n    &s[..n]\n}\n\nfn main() {\n    let word = String::from(\"héllo\");\n    println!(\"{}\", first_bytes(&word, 1));\n    println!(\"{}\", first_bytes(&word, 3));\n}\n",
+   "stdout": "h\nhé\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "h\nhé\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_boundary"
+    }
+   ]
+  },
+  "fix_clear.rs": {
+   "src": "fn first_word(s: &str) -> &str {\n    let bytes = s.as_bytes();\n    for i in 0..bytes.len() {\n        if bytes[i] == b' ' {\n            return &s[0..i];\n        }\n    }\n    &s[..]\n}\n\nfn main() {\n    let mut s = String::from(\"hello world\");\n    let word = first_word(&s);\n    println!(\"the first word is: {word}\");\n    s.clear();\n    println!(\"after clear: {} letters\", s.len());\n}\n",
+   "stdout": "the first word is: hello\nafter clear: 0 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "the first word is: hello\nafter clear: 0 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_clear"
+    }
+   ]
+  },
+  "fix_kept.rs": {
+   "src": "fn count(text: &String) -> usize {\n    text.len()\n}\n\nfn main() {\n    let note = String::from(\"hello\");\n    let n = count(&note);\n    println!(\"{note} has {n} letters\");\n}\n",
+   "stdout": "hello has 5 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hello has 5 letters\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_kept"
+    }
+   ]
+  },
+  "fix_queue_clone.rs": {
+   "src": "fn main() {\n    let mut queue = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let next = queue[0].clone();\n    queue.push(String::from(\"Cal\"));\n    println!(\"next up: {next}\");\n}\n",
+   "stdout": "next up: Ana\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "next up: Ana\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_queue_clone"
+    }
+   ]
+  },
+  "fix_queue_index.rs": {
+   "src": "fn main() {\n    let mut queue = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let next = 0;\n    queue.push(String::from(\"Cal\"));\n    println!(\"next up: {}\", queue[next]);\n}\n",
+   "stdout": "next up: Ana\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "next up: Ana\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_queue_index"
+    }
+   ]
+  },
+  "fix_queue_shorten.rs": {
+   "src": "fn main() {\n    let mut queue = vec![String::from(\"Ana\"), String::from(\"Ben\")];\n    let next = &queue[0];\n    println!(\"next up: {next}\");\n    queue.push(String::from(\"Cal\"));\n    println!(\"{} waiting\", queue.len());\n}\n",
+   "stdout": "next up: Ana\n3 waiting\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "next up: Ana\n3 waiting\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_queue_shorten"
+    }
+   ]
+  },
+  "fix_return_owned.rs": {
+   "src": "fn make_label() -> String {\n    let label = String::from(\"Case 1\");\n    label\n}\n\nfn main() {\n    let tag = make_label();\n    println!(\"{tag}\");\n}\n",
+   "stdout": "Case 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Case 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_return_owned"
+    }
+   ]
+  },
+  "fix_split_at_mut.rs": {
+   "src": "fn main() {\n    let mut scores = vec![10, 20, 30];\n    let (left, right) = scores.split_at_mut(1);\n    let a = &mut left[0];\n    let b = &mut right[0];\n    *a += 1;\n    *b += 1;\n    println!(\"{:?}\", scores);\n}\n",
+   "stdout": "[11, 21, 30]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[11, 21, 30]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_split_at_mut"
+    }
+   ]
+  },
+  "fix_swap.rs": {
+   "src": "fn main() {\n    let mut shelf = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    shelf.swap(0, 1);\n    println!(\"{:?}\", shelf);\n}\n",
+   "stdout": "[\"Dune\", \"Emma\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[\"Dune\", \"Emma\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/fix_swap"
+    }
+   ]
+  },
+  "in_real.rs": {
+   "src": "fn average(readings: &[f64]) -> f64 {\n    let mut sum = 0.0;\n    for r in readings {\n        sum += *r;\n    }\n    sum / readings.len() as f64\n}\n\nfn main() {\n    let week = vec![18.0, 21.0, 19.5, 22.5, 24.0, 20.0, 23.0];\n    println!(\"whole week: {:.1}\", average(&week));\n    println!(\"weekend:    {:.1}\", average(&week[5..]));\n    println!(\"first 3:    {:.1}\", average(&week[..3]));\n}\n",
+   "stdout": "whole week: 21.1\nweekend:    21.5\nfirst 3:    19.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "whole week: 21.1\nweekend:    21.5\nfirst 3:    19.5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/in_real"
+    }
+   ]
+  },
+  "literal.rs": {
+   "src": "fn main() {\n    let motto: &'static str = \"Every book has one owner\";\n    let first = &motto[..5];\n    println!(\"{motto}\");\n    println!(\"{first}\");\n}\n",
+   "stdout": "Every book has one owner\nEvery\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Every book has one owner\nEvery\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/literal"
+    }
+   ]
+  },
+  "parsons_initial.rs": {
+   "src": "fn initial(name: &str) -> &str {\n    &name[..1]\n}\nfn main() {\n    let first = String::from(\"Mabel\");\n    let mut tag = String::from(initial(&first));\n    tag.push_str(initial(\"Quill\"));\n    println!(\"{tag}\");\n}\n",
+   "stdout": "MQ\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "MQ\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/parsons_initial"
+    }
+   ]
+  },
+  "parsons_shorten.rs": {
+   "src": "fn main() {\n    let mut list = vec![String::from(\"tea\")];\n    let last = &list[list.len() - 1];\n    println!(\"last: {last}\");\n    list.push(String::from(\"jam\"));\n    println!(\"items: {}\", list.len());\n}\n",
+   "stdout": "last: tea\nitems: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "last: tea\nitems: 2\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/parsons_shorten"
+    }
+   ]
+  },
+  "past_end.rs": {
+   "src": "fn main() {\n    let s = String::from(\"hello world\");\n    let empty = &s[4..4];\n    println!(\"empty window: '{empty}' has length {}\", empty.len());\n    let end = s.len() + 9;\n    println!(\"{}\", &s[6..end]);\n}\n",
+   "stdout": "empty window: '' has length 0\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:6:22:\nend byte index 20 is out of bounds for string of length 11\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "empty window: '' has length 0\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:6:22:\nend byte index 20 is out of bounds for string of length 11\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/past_end",
+     "merged": "empty window: '' has length 0\n\nthread 'main' (1) panicked at src/main.rs:6:22:\nend byte index 20 is out of bounds for string of length 11\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "predict_bytes.rs": {
+   "src": "fn main() {\n    let word = String::from(\"café\");\n    println!(\"{}\", word.len());\n    println!(\"{}\", &word[..3]);\n}\n",
+   "stdout": "5\ncaf\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "5\ncaf\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/predict_bytes"
+    }
+   ]
+  },
+  "predict_e0507.rs": {
+   "src": "fn main() {\n    let words = vec![String::from(\"red\"), String::from(\"blue\")];\n    let n = words[0].len();\n    let w = words[1];\n    println!(\"{n} {w}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:4:13\n  |\n4 |     let w = words[1];\n  |             ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n4 |     let w = &words[1];\n  |             +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n4 |     let w = words[1].clone();\n  |                     ++++++++\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `predict_e0507` (bin \"predict_e0507\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0507]: cannot move out of index of `Vec<String>`\n --> src/main.rs:4:13\n  |\n4 |     let w = words[1];\n  |             ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n  |\nhelp: consider borrowing here\n  |\n4 |     let w = &words[1];\n  |             +\nhelp: consider cloning the value if the performance cost is acceptable\n  |\n4 |     let w = words[1].clone();\n  |                     ++++++++\n\nFor more information about this error, try `rustc --explain E0507`.\nerror: could not compile `predict_e0507` (bin \"predict_e0507\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/predict_e0507"
+    }
+   ]
+  },
+  "predict_owned.rs": {
+   "src": "fn shout(word: &String) -> String {\n    let mut loud = word.clone();\n    loud.push_str(\"!!\");\n    loud\n}\n\nfn main() {\n    let w = String::from(\"help\");\n    let a = shout(&w);\n    let b = shout(&a);\n    println!(\"{w} {a} {b}\");\n}\n",
+   "stdout": "help help!! help!!!!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "help help!! help!!!!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/predict_owned"
+    }
+   ]
+  },
+  "predict_slices.rs": {
+   "src": "fn main() {\n    let s = String::from(\"rustacean\");\n    let a = &s[..4];\n    let b = &s[4..];\n    let c = &s[2..6];\n    println!(\"{a} {b} {c}\");\n    println!(\"{}\", a.len() + b.len());\n}\n",
+   "stdout": "rust acean stac\n9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "rust acean stac\n9\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/predict_slices"
+    }
+   ]
+  },
+  "sizes.rs": {
+   "src": "use std::mem::size_of;\n\nfn main() {\n    println!(\"String:  {} bytes\", size_of::<String>());\n    println!(\"&String: {} bytes\", size_of::<&String>());\n    println!(\"&str:    {} bytes\", size_of::<&str>());\n    println!(\"&[i32]:  {} bytes\", size_of::<&[i32]>());\n}\n",
+   "stdout": "String:  24 bytes\n&String: 8 bytes\n&str:    16 bytes\n&[i32]:  16 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "String:  24 bytes\n&String: 8 bytes\n&str:    16 bytes\n&[i32]:  16 bytes\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/sizes"
+    }
+   ]
+  },
+  "slice_basics.rs": {
+   "src": "fn main() {\n    let s = String::from(\"hello world\");\n    let hello = &s[0..5];\n    let world = &s[6..11];\n    println!(\"{hello}\");\n    println!(\"{world}\");\n    println!(\"{s}\");\n}\n",
+   "stdout": "hello\nworld\nhello world\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hello\nworld\nhello world\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/slice_basics"
+    }
+   ]
+  },
+  "split_fields.rs": {
+   "src": "fn main() {\n    let mut pair = (String::from(\"Ana\"), String::from(\"Ben\"));\n    let a = &mut pair.0;\n    let b = &mut pair.1;\n    a.push_str(\" writes\");\n    b.push_str(\" draws\");\n    println!(\"{} / {}\", pair.0, pair.1);\n}\n",
+   "stdout": "Ana writes / Ben draws\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ana writes / Ben draws\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/split_fields"
+    }
+   ]
+  },
+  "spot_clear.rs": {
+   "src": "fn main() {\n    let mut title = String::from(\"Emma Woodhouse\");\n    let first = &title[..4];\n    println!(\"{first}\");\n    title.push_str(\" (novel)\");\n    println!(\"{title}\");\n    println!(\"first: {first}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0502]: cannot borrow `title` as mutable because it is also borrowed as immutable\n --> src/main.rs:5:5\n  |\n3 |     let first = &title[..4];\n  |                  ----- immutable borrow occurs here\n4 |     println!(\"{first}\");\n5 |     title.push_str(\" (novel)\");\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here\n6 |     println!(\"{title}\");\n7 |     println!(\"first: {first}\");\n  |                       ----- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `spot_clear` (bin \"spot_clear\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0502]: cannot borrow `title` as mutable because it is also borrowed as immutable\n --> src/main.rs:5:5\n  |\n3 |     let first = &title[..4];\n  |                  ----- immutable borrow occurs here\n4 |     println!(\"{first}\");\n5 |     title.push_str(\" (novel)\");\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here\n6 |     println!(\"{title}\");\n7 |     println!(\"first: {first}\");\n  |                       ----- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `spot_clear` (bin \"spot_clear\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/spot_clear"
+    }
+   ]
+  },
+  "spot_suspect.rs": {
+   "src": "fn main() {\n    let mut scores = vec![3, 8, 5];\n    let best = &scores[1];\n    println!(\"best so far: {best}\");\n    scores.push(9);\n    println!(\"{} scores now\", scores.len());\n    println!(\"best was {best}\");\n}\n",
+   "stdout": "",
+   "stderr": "error[E0502]: cannot borrow `scores` as mutable because it is also borrowed as immutable\n --> src/main.rs:5:5\n  |\n3 |     let best = &scores[1];\n  |                 ------ immutable borrow occurs here\n4 |     println!(\"best so far: {best}\");\n5 |     scores.push(9);\n  |     ^^^^^^^^^^^^^^ mutable borrow occurs here\n6 |     println!(\"{} scores now\", scores.len());\n7 |     println!(\"best was {best}\");\n  |                         ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `spot_suspect` (bin \"spot_suspect\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0502]: cannot borrow `scores` as mutable because it is also borrowed as immutable\n --> src/main.rs:5:5\n  |\n3 |     let best = &scores[1];\n  |                 ------ immutable borrow occurs here\n4 |     println!(\"best so far: {best}\");\n5 |     scores.push(9);\n  |     ^^^^^^^^^^^^^^ mutable borrow occurs here\n6 |     println!(\"{} scores now\", scores.len());\n7 |     println!(\"best was {best}\");\n  |                         ---- immutable borrow later used here\n\nFor more information about this error, try `rustc --explain E0502`.\nerror: could not compile `spot_suspect` (bin \"spot_suspect\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch9/spot_suspect"
+    }
+   ]
+  },
+  "sum_slice.rs": {
+   "src": "fn total(nums: &[i32]) -> i32 {\n    let mut sum = 0;\n    for n in nums {\n        sum += *n;\n    }\n    sum\n}\n\nfn main() {\n    let week = [2, 4, 6];\n    let more = vec![1, 1, 1, 1];\n    println!(\"{}\", total(&week));\n    println!(\"{}\", total(&more));\n    println!(\"{}\", total(&more[1..]));\n}\n",
+   "stdout": "12\n4\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "12\n4\n3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/sum_slice"
+    }
+   ]
+  },
+  "take_out.rs": {
+   "src": "fn main() {\n    let mut shelf = vec![String::from(\"Emma\"), String::from(\"Dune\"), String::from(\"Heidi\")];\n    let look = &shelf[0];\n    println!(\"borrow &shelf[0]: {look}\");\n    let copy = shelf[1].clone();\n    println!(\"clone shelf[1]: {copy}\");\n    let taken = shelf.remove(2);\n    println!(\"remove(2): {taken}\");\n    println!(\"left on the shelf: {:?}\", shelf);\n}\n",
+   "stdout": "borrow &shelf[0]: Emma\nclone shelf[1]: Dune\nremove(2): Heidi\nleft on the shelf: [\"Emma\", \"Dune\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "borrow &shelf[0]: Emma\nclone shelf[1]: Dune\nremove(2): Heidi\nleft on the shelf: [\"Emma\", \"Dune\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/take_out"
+    }
+   ]
+  },
+  "trace_remove.rs": {
+   "src": "fn main() {\n    let mut pile = vec![String::from(\"Emma\"), String::from(\"Dune\")];\n    pile.push(String::from(\"Heidi\"));\n    pile.push(String::from(\"Ivanhoe\"));\n    while pile.len() > 1 {\n        let book = pile.remove(pile.len() / 2);\n        println!(\"{} {}\", book, pile.len());\n    }\n}\n",
+   "stdout": "Heidi 3\nDune 2\nIvanhoe 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Heidi 3\nDune 2\nIvanhoe 1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/trace_remove"
+    }
+   ]
+  },
+  "trace_window.rs": {
+   "src": "fn main() {\n    let s = String::from(\"borrow\");\n    for start in 0..4 {\n        let end = start + 3;\n        println!(\"{} {}\", start, &s[start..end]);\n    }\n}\n",
+   "stdout": "0 bor\n1 orr\n2 rro\n3 row\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 bor\n1 orr\n2 rro\n3 row\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/trace_window"
+    }
+   ]
+  },
+  "window_tracer.rs": {
+   "src": "fn main() {\n    let mut s = String::from(\"hello world\");\n    let world = &s[6..];\n    println!(\"{world}\");\n    s.clear();\n    println!(\"len now {}\", s.len());\n}\n",
+   "stdout": "world\nlen now 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "world\nlen now 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/window_tracer"
+    }
+   ]
+  },
+  "windows.rs": {
+   "src": "fn main() {\n    let s = String::from(\"hello world\");\n    println!(\"[0..5] {}\", &s[0..5]);\n    println!(\"[6..11] {}\", &s[6..11]);\n    println!(\"[..5] {}\", &s[..5]);\n    println!(\"[6..] {}\", &s[6..]);\n    println!(\"[3..8] {}\", &s[3..8]);\n    println!(\"[..] {}\", &s[..]);\n}\n",
+   "stdout": "[0..5] hello\n[6..11] world\n[..5] hello\n[6..] world\n[3..8] lo wo\n[..] hello world\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "[0..5] hello\n[6..11] world\n[..5] hello\n[6..] world\n[3..8] lo wo\n[..] hello world\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch9/windows"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

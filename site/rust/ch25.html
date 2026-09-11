@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipes and Exchange Booths</title>
+<meta name="description" content="Chapter 25 of the Pip &amp; Friends Rust book, a comic course: files, I/O and command-line programs (stdin, stdout and stderr as pipes, reading stdin to the end and line by line, exit codes with ExitCode and process::exit, fs::read_to_string and fs::write, File::open, File::create and OpenOptions, io::Error kinds, Path and PathBuf, the unused-Result warning, BufReader and lines, BufWriter and flush, the Read and Write traits, env::args, env::var, why set_var is unsafe in edition 2024, and clap's derive parser) and conversions, numeric safety and newtypes (as casts and their silent surprises, From and Into, TryFrom and TryInto, checked and overflowing arithmetic, E0308 between i64 and i32, type aliases, the newtype pattern, Default), ending with a line-counting tool that turns its --top flag into a validated newtype.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch25.css">
+<script defer src="../data/rs-ch25.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch24.html">&larr; Ch 24</a><span aria-current="page">Ch 25 of 29</span><a href="ch26.html">Ch 26 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 25</p>
+    <h1 id="cover-h">PIPES AND EXCHANGE BOOTHS</h1>
+    <div class="cover-pair">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave"></svg>
+      <svg class="fig" viewBox="0 0 340 260" aria-hidden="true">
+        <path d="M20 40 H96 V70" fill="none" stroke="#111" stroke-width="14" stroke-linecap="round"/>
+        <path d="M20 40 H96 V70" fill="none" stroke="#DDE8FF" stroke-width="7" stroke-linecap="round"/>
+        <rect x="52" y="70" width="96" height="70" rx="10" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+        <text class="ms mid" x="100" y="102">your</text><text class="ms mid" x="100" y="122">program</text>
+        <path d="M148 96 H186 V128" fill="none" stroke="#111" stroke-width="14" stroke-linecap="round"/>
+        <path d="M148 96 H186 V128" fill="none" stroke="#DDE8FF" stroke-width="7" stroke-linecap="round"/>
+        <path d="M78 140 V176" fill="none" stroke="#111" stroke-width="14" stroke-linecap="round"/>
+        <path d="M78 140 V176" fill="none" stroke="#FFE1E1" stroke-width="7" stroke-linecap="round"/>
+        <path class="flow" d="M186 136 V160 M78 182 V200" fill="none" stroke="#7FB2FF" stroke-width="6" stroke-dasharray="8 6"/>
+        <text class="s" x="16" y="28">stdin</text><text class="s" x="194" y="122">stdout</text><text class="s" x="14" y="222">stderr</text>
+        <g class="drop-in"><rect x="230" y="150" width="96" height="96" rx="6" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <path d="M222 150 L278 118 L334 150 Z" fill="#FFF6CC" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="246" y="174" width="64" height="38" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+        <text class="ms mid" x="278" y="199">From</text>
+        <circle cx="262" cy="232" r="9" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="294" cy="232" r="9" fill="#FFD60A" stroke="#111" stroke-width="3"/></g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Beside her, a pipe labelled stdin runs into a yellow box labelled your program; out of the box come two pipes, stdout and stderr, with water flowing out. To the right stands a little wooden exchange booth with a window labelled From and two coins in front.</p>
+    <p class="caption blurb">The library is getting a <b>plumbing room</b> and an <b>exchange office</b>. In the plumbing room, programs take text in through one pipe, send results out through another, keep a third for trouble, read and write files on the shelves, and listen to switches on the command line. In the exchange office, numbers change from one type to another: some booths are fair, some may refuse, and one shortchanges you without a word. At the end, a real line-counting tool. About 150 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The plumbing: stdin, stdout, stderr and exit codes</a></li>
+      <li><a href="#part-2">Books on the shelf: reading and writing files, paths</a></li>
+      <li><a href="#part-3">Buckets: BufReader, BufWriter and the vanishing report</a></li>
+      <li><a href="#part-4">The switchboard: arguments, environment variables, clap</a></li>
+      <li><a href="#part-5">The exchange booths: as, From, TryFrom, checked maths</a></li>
+      <li><a href="#part-6">Labels that can't be mixed up: newtypes and Default</a></li>
+      <li><a href="#part-7">The line counter, boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE PLUMBING<small>three pipes every program gets: stdin in, stdout out, stderr for trouble; pipes between programs; reading stdin to the end and line by line; exit codes</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: the robots want to talk to each other">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Back in Chapter 16, Mabel built a search robot. Now the library has a whole row of little tools: one counts words, one shouts, one sorts. She wants to hook them together like garden hoses.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="focus" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The counter should read whatever the search robot finds. And when something goes wrong, the warning must <b>not</b> end up mixed into the counted text.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Every program already comes with three pipes fitted, for free. Learn the pipes, and any program can feed any other. Today's first catchphrase: <b>data down the main pipe, trouble down the spout</b>.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel points at a row of tools. The Professor answers from the right.</p>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 2: the three pipes">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">The three <b>standard streams</b>. A <b>stream</b> is a pipe that carries bytes, one after another. The operating system connects all three to your terminal unless you tell it otherwise.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 640 325" role="img" aria-label="Drawing: on the left a tap labelled stdin, number 0, the inlet, pours into a big yellow box labelled your program. On the right a pipe labelled stdout, number 1, the main pipe, pours into a bucket labelled results. Underneath, a pink spout labelled stderr, number 2, the emergency spout, drips into a tray for warnings and errors. A little flag on the box shows the exit code: 0 means all went well.">
+      <path d="M20 60 H160 V100" fill="none" stroke="#111" stroke-width="20" stroke-linecap="round"/>
+      <path d="M20 60 H160 V100" fill="none" stroke="#DDE8FF" stroke-width="11" stroke-linecap="round"/>
+      <path class="flow" d="M40 60 H150" fill="none" stroke="#7FB2FF" stroke-width="5" stroke-dasharray="10 8"/>
+      <text class="h" x="16" y="34">STDIN (0)</text><text class="s" x="16" y="98">the inlet</text>
+      <rect x="160" y="100" width="260" height="110" rx="14" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+      <text class="m mid" x="290" y="150">your program</text><text class="s mid" x="290" y="182">reads, thinks, writes</text>
+      <path d="M420 136 H570 V180" fill="none" stroke="#111" stroke-width="20" stroke-linecap="round"/>
+      <path d="M420 136 H570 V180" fill="none" stroke="#DDE8FF" stroke-width="11" stroke-linecap="round"/>
+      <path class="flow" d="M570 190 V222" fill="none" stroke="#7FB2FF" stroke-width="6" stroke-dasharray="10 8"/>
+      <path d="M530 228 h80 l-10 56 h-60 z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text class="h" x="440" y="118">STDOUT (1)</text><text class="s" x="430" y="174">the main</text><text class="s" x="430" y="194">pipe</text>
+      <text class="s mid" x="570" y="306">results</text>
+      <path d="M220 210 V250" fill="none" stroke="#111" stroke-width="20" stroke-linecap="round"/>
+      <path d="M220 210 V250" fill="none" stroke="#FFE1E1" stroke-width="11" stroke-linecap="round" stroke-dasharray="10 6"/>
+      <rect x="170" y="262" width="100" height="22" rx="4" fill="#FFE1E1" stroke="#111" stroke-width="3"/>
+      <text class="h" x="284" y="258">STDERR (2)</text><text class="s" x="284" y="282">the emergency spout:</text><text class="s" x="284" y="304">warnings and errors</text>
+      <path d="M380 100 V58" stroke="#111" stroke-width="4"/><path d="M380 58 h42 l-8 12 l8 12 h-42 z" fill="#C9F2D9" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <text class="ms mid" x="398" y="76">0</text><text class="s" x="432" y="76">exit code</text>
+    </svg></div>
+    <div class="duo three">
+      <div class="duo-card"><h3>stdin<small>standard input, number 0</small></h3><p>Where a program <b>reads</b>. The keyboard, unless a file or another program is plugged in.</p></div>
+      <div class="duo-card"><h3>stdout<small>standard output, number 1</small></h3><p>Where <code>println!</code> writes. The <b>results</b>: the data someone might save or pass on.</p></div>
+      <div class="duo-card"><h3>stderr<small>standard error, number 2</small></h3><p>Where <code>eprintln!</code> writes. <b>Trouble</b>: warnings, errors, progress notes for a human.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: two pipes, one screen">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Two lines go down the main pipe and one down the spout. On a plain terminal both pipes end on the same screen, so they look alike. The shell can unplug either one.</p>
+    <span class="file-tab">streams.rs</span>
+    <pre class="code" data-src="streams.rs"></pre>
+    <pre class="term" data-run="streams.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> a small helper script, <code>mk.sh</code>, made the cargo project <code>~/rust-ch25/streams</code> from <code>streams.rs</code> (copied into <code>src/main.rs</code>) and put <code>notes.txt</code> beside <code>Cargo.toml</code>, as you would set it up by hand. Then exactly the commands shown ran in that folder, each in a fresh shell. Every run in this chapter that needs <code>notes.txt</code>, a pipe, words after <code>--</code> or an environment variable was made the same way, and says so underneath.</p>
+    <ol class="readlist">
+      <li><span><b>First run</b>: all three lines, in the order they were written. The middle one went down stderr, which this page shows in error style.</span></li>
+      <li><span><code>2&gt; /dev/null</code> sends pipe number 2 (stderr) to <code>/dev/null</code>, a special file on Linux and macOS that swallows everything. Only the two report lines are left.</span></li>
+      <li><span><code>&gt; /dev/null</code> (short for <code>1&gt;</code>) swallows stdout instead. Only the warning is left. That's the point: a program's <b>results</b> and its <b>complaints</b> can be sent to different places.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pipe-choice-m" id="ex-pipe-choice"></div>
+  <script type="application/json" id="ex-pipe-choice-m">{"q": "Mabel's counting tool can't open a file the user asked for. Someone runs it as <code>cargo run -q -- lost.txt &gt; counts.txt</code>. How should the tool report the problem?", "options": [
+    {"t": "<code>eprintln!(\"error: cannot open lost.txt\")</code>", "why": "Yes. It goes down stderr, so it still appears on the screen, and <code>counts.txt</code> stays free of junk that isn't a count.", "correct": true},
+    {"t": "<code>println!(\"error: cannot open lost.txt\")</code>", "why": "That goes down stdout, which is plugged into <code>counts.txt</code>. The user sees nothing on screen, and the file now holds an error message pretending to be a result."},
+    {"t": "<code>panic!(\"error: cannot open lost.txt\")</code>", "why": "A panic message does go to stderr, but a missing file is an ordinary problem, not a bug. It adds a noisy <samp>thread 'main' panicked</samp> line and exit code 101 (Chapter 13)."},
+    {"t": "Say nothing and print zero lines", "why": "Silent failure: the user thinks the file was empty. Always tell a human about trouble, on stderr."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: reading the inlet to the end">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Mabel's notes, and a counter that reads <b>everything</b> that arrives on stdin. The <code>|</code> sign (a <b>pipe</b>) plugs one program's stdout into the next program's stdin.</p>
+    <span class="file-tab">count_stdin.rs</span>
+    <pre class="code" data-src="count_stdin.rs"></pre>
+    <pre class="term" data-run="count_stdin.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/count_stdin</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: <code>Read</code> is a <b>trait</b> (Chapter 17): a set of methods that every readable thing shares. Its method <code>read_to_string</code> only works when the trait is imported.</span></li>
+      <li><span><b>Line 5</b>: <code>io::stdin()</code> is a handle to the inlet. <code>read_to_string(&amp;mut text)</code> keeps reading until the pipe says "no more" (<b>end of file</b>, or EOF), and appends it all to <code>text</code>. It hands back a parcel (<code>io::Result</code>), so <code>?</code> passes on any error.</span></li>
+      <li><span><code>cat notes.txt | cargo run -q</code>: <code>cat</code> prints the file to its stdout, and the pipe pours it into our program. 5 lines, 21 words, 111 bytes. <code>echo</code> adds a newline, which is why "one two three" is 14 bytes, not 13.</span></li>
+      <li><span>Typing instead of piping? Run <code>cargo run -q</code>, type some lines, then press <kbd>Ctrl</kbd>+<kbd>D</kbd> on Linux and macOS (<kbd>Ctrl</kbd>+<kbd>Z</kbd> then <kbd>Enter</kbd> on Windows) to say "end of input".</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: one line at a time">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Reading everything first is fine for small inputs. A tool in the middle of a pipeline usually handles <b>one line at a time</b>, so it can start answering before the input ends and never holds a huge file in memory.</p>
+    <span class="file-tab">shout.rs</span>
+    <pre class="code" data-src="shout.rs"></pre>
+    <pre class="term" data-run="shout.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/shout</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>io::stdin().lines()</code> gives one line at a time, <b>without</b> its newline. Each line comes in its own parcel, because reading can fail halfway (for example, bytes that aren't valid UTF-8 text).</span></li>
+      <li><span><b>Line 5</b>: <code>let line = line?;</code> opens the parcel, or leaves <code>main</code> with the error.</span></li>
+      <li><span>Second run: three programs in a row. <code>cat</code> pours, ours shouts, and <code>grep OWL</code> keeps only lines containing OWL. Small tools, joined by pipes: that's how command-line work is done.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-stdin-predict-m" id="ex-stdin-predict"></div>
+  <script type="application/json" id="ex-stdin-predict-m">{"program": "predict_stdin.rs", "prompt": "Four lines are piped in: <code>cat</code>, an empty line, <code>heron</code> and <code>owl</code> (the command is <code>printf 'cat\\n\\nheron\\nowl\\n' | cargo run -q</code>). What does the program print?", "hint": "<code>lines()</code> drops each newline, so the empty line has length 0. <code>max</code> keeps the bigger of two numbers.", "explain": "The lengths are 3, 0, 5 and 3 bytes, so <samp>longest: 5</samp> (heron). Exactly one line is empty: <samp>empty: 1</samp>. The newlines never count, because <code>lines()</code> removes them."}</script>
+  <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/predict_stdin</code>; then exactly the command in the question ran there.</p>
+
+  <section class="panel sketch" data-play aria-label="Panel 6: the exit-code flag">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">When a program ends, it raises a little flag for whoever started it: the <b>exit code</b>, a whole number. Scripts and other programs read the flag to decide what to do next. In a terminal, <code>echo $?</code> shows the last one.</p>
+    <div class="flags">
+      <div><b>0</b><span>All went well. The only "success" code.</span></div>
+      <div class="bad"><b>1</b><span>Something failed: a general "no". <code>ExitCode::FAILURE</code>, and what <code>main</code> gives when it returns <code>Err</code>.</span></div>
+      <div class="bad"><b>2</b><span>By custom: "you used me wrong" (bad arguments). clap uses it.</span></div>
+      <div class="bad"><b>101</b><span>Rust's code for a panic, and for a failed <code>cargo</code> build (Chapter 13).</span></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Anything that isn't 0 means "not OK". The number says what kind of not-OK, so pick it on purpose.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: choosing the flag with ExitCode">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">One program, three endings. These runs share one terminal session, so <code>echo $?</code> reports the run just before it.</p>
+    <span class="file-tab">exits.rs</span>
+    <pre class="code" data-src="exits.rs"></pre>
+    <pre class="term" data-run="exits.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/exits</code>; then exactly the commands shown ran there, one after another in one shell.</p>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>main</code> may return a <code>std::process::ExitCode</code>. Returning is the tidy way to end: everything still in scope is dropped first (Chapter 7), so open files are closed properly.</span></li>
+      <li><span><b>Lines 8, 12, 16</b>: <code>ExitCode::SUCCESS</code> is 0, <code>ExitCode::from(2)</code> is any code from 0 to 255, and <code>ExitCode::FAILURE</code> is 1 here.</span></li>
+      <li><span>The last command: <code>&amp;&amp;</code> runs the next command <b>only if</b> the first one's flag was 0. (<code>||</code> does the opposite: only on failure.) This is why honest exit codes matter: scripts trust them.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: process::exit, the emergency stop">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">There's also an emergency stop, <code>std::process::exit(code)</code>. It ends the program <b>on the spot</b>, from anywhere, without returning to <code>main</code>.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>On the spot means nobody tidies up: values aren't dropped, and anything waiting in a bucket is never poured out. Remember that for Part 3. Prefer returning an <code>ExitCode</code> from <code>main</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-exit-predict-m" id="ex-exit-predict"></div>
+  <script type="application/json" id="ex-exit-predict-m">{"program": "exit_predict.rs", "prompt": "What does this program print on <b>stdout</b>? (Its stderr line doesn't count here.)", "hint": "The loop checks each shelf before printing it. <code>process::exit</code> doesn't come back.", "explain": "Shelves 0 and 1 are printed. Shelf 2 holds 0 books, so the program prints <samp>shelf 2 is empty!</samp> on <b>stderr</b> and exits with code 3 at once. Shelf 3 and <samp>every shelf checked</samp> never happen."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · BOOKS ON THE SHELF<small>std::fs: read_to_string and write; File::create and OpenOptions for appending; io::Error and its kinds; Path and PathBuf; the unused-Result warning from remove_file</small></h2>
+
+  <section class="panel sketch" data-play aria-label="Panel 9: the stack room">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">Files are the library's <b>stack room</b>: shelves the operating system looks after. Rust's door to it is the module <code>std::fs</code> (file system). Here are the tools at the door, from simplest to most flexible.</p>
+    <div class="ops-wrap"><table class="ops tools ref-table">
+      <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>fs::read_to_string(path)</code></td><td>Reads a whole text file in one go.</td></tr>
+        <tr><td><code>fs::write(path, data)</code></td><td>Creates the file, or <b>wipes</b> an old one, and writes all of <code>data</code>.</td></tr>
+        <tr><td><code>File::open(path)</code></td><td>Opens an existing file for <b>reading</b>.</td></tr>
+        <tr><td><code>File::create(path)</code></td><td>Opens for <b>writing</b>: a new file, or an old one emptied.</td></tr>
+        <tr><td><code>OpenOptions::new()…</code></td><td>Any mix: append, read and write, create only if new…</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Every one of them hands back a parcel, an <code>io::Result</code>. The shelf might be missing, locked or full, and Rust makes you open the parcel and look.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: write a file, read it back">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The two one-liners. A relative path like <code>"loans.txt"</code> means "in the folder the program was started from"; <code>cargo run</code> starts it in the project folder, next to <code>Cargo.toml</code>.</p>
+    <span class="file-tab">write_read.rs</span>
+    <pre class="code" data-src="write_read.rs"></pre>
+    <pre class="term" data-run="write_read.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>fs::write</code> takes the path and anything that can be seen as bytes: a <code>&amp;str</code>, a <code>String</code>, or a byte array.</span></li>
+      <li><span><b>Line 6</b>: the text already ends with a newline, so <code>print!</code>, not <code>println!</code>.</span></li>
+      <li><span><b>Lines 7–9</b>: the second <code>fs::write</code> <b>replaced</b> the whole file. Ada and Ben are gone without a warning. <code>{again:?}</code> shows the hidden <code>\n</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: create, then append">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">A log should grow, not be wiped. <code>File::create</code> starts it; <code>OpenOptions</code> with <code>append(true)</code> adds to the end.</p>
+    <span class="file-tab">create_append.rs</span>
+    <pre class="code" data-src="create_append.rs"></pre>
+    <pre class="term" data-run="create_append.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b>: <code>writeln!</code> works on a <code>File</code> because <code>File</code> has the <code>Write</code> trait, and the trait must be imported. (<code>writeln!</code> is <code>println!</code> for any writer, and it hands back a parcel.)</span></li>
+      <li><span><b>Lines 8 and 12</b>: <code>drop(log)</code> closes the file now. When the owner leaves, the book goes back on the shelf (Chapter 7); here we send it back early.</span></li>
+      <li><span><b>Line 10</b>: <code>OpenOptions</code> is a little form you fill in: <code>.append(true)</code>, then <code>.open(path)</code>. Every write lands after what's already there, which is why the 08:30 line comes last.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-files-fill-m" id="ex-files-fill"></div>
+  <script type="application/json" id="ex-files-fill-m">{"program": "fill_files.rs", "prompt": "Fill in the two <code>fs</code> functions: one saves Mabel's wish to a file, the other reads the whole file back as a String.", "blanks": [{"line": 4, "text": "fs::write"}, {"line": 5, "text": "fs::read_to_string"}], "explain": "<code>fs::write(path, text)</code> creates <code>wish.txt</code> (or wipes an old one) and writes the line. <code>fs::read_to_string(path)</code> reads it all back. Both hand back an <code>io::Result</code>, opened with <code>?</code>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 12: the lost book">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="DIG!" data-seed="12"></svg>
+    <p class="caption">Digger goes looking for a file that isn't there. <code>main</code> returns <code>io::Result&lt;()&gt;</code>, so <code>?</code> hands the error straight out of <code>main</code>.</p>
+    <div class="boxes"><figure><svg class="char" data-char="digger"></svg><figcaption>Digger: "no such file here"</figcaption></figure></div>
+    <span class="file-tab">missing_file.rs</span>
+    <pre class="code" data-src="missing_file.rs"></pre>
+    <pre class="term" data-run="missing_file.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read it like a detective, last line first. <code>Error:</code> is what Rust prints when <code>main</code> returns <code>Err</code>: the error's debug form, on <b>stderr</b>, then exit code <b>1</b>. No panic, no 101.</span></li>
+      <li><span><code>kind: NotFound</code>: Rust's name for this kind of trouble. <code>code: 2</code> is the operating system's own number for it, and the <code>message</code> is the operating system's words.</span></li>
+      <li><span><b>Line 6</b> never ran. The first line did print, because it came before the <code>?</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: what kind of trouble?">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">A friendlier program asks the error what <b>kind</b> it is, with <code>e.kind()</code>, and decides what to say. Four paths: a real text file, a missing one, a folder, and a picture file that isn't text.</p>
+    <span class="file-tab">error_kinds.rs</span>
+    <pre class="code" data-src="error_kinds.rs"></pre>
+    <pre class="term" data-run="error_kinds.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/error_kinds</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then <code>cargo run -q</code> ran there. The program writes <code>pic.bin</code> itself (line 5), and <code>src</code> is the project's own source folder.</p>
+    <ol class="readlist">
+      <li><span><b>Line 9</b>: a match guard (Chapter 21) picks out <code>ErrorKind::NotFound</code> and says it in plain words.</span></li>
+      <li><span><b>Line 10</b>: everything else prints its kind and its message. <code>src</code> is a folder: <samp>IsADirectory</samp>. The three bytes in <code>pic.bin</code> aren't UTF-8 text, so <code>read_to_string</code> refuses with <samp>InvalidData</samp>. (For bytes, use <code>fs::read</code>, which gives a <code>Vec&lt;u8&gt;</code>.)</span></li>
+      <li><span><code>{e}</code> (Display) gives the human sentence; <code>{:?}</code> on the kind gives its name.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: Path and PathBuf">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">A path is an address on the shelves. Rust has a borrowed one, <code>&amp;Path</code> (like <code>&amp;str</code>), and an owned, growable one, <code>PathBuf</code> (like <code>String</code>). They know about folders and extensions, so you don't chop strings by hand.</p>
+    <span class="file-tab">paths.rs</span>
+    <pre class="code" data-src="paths.rs"></pre>
+    <pre class="term" data-run="paths.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 5–8</b>: each part comes in a gift box (<code>Option</code>, Chapter 11), because a path might not have it: <code>"/"</code> has no file name, <code>"README"</code> no extension.</span></li>
+      <li><span><b>Lines 10–12</b>: <code>push</code> adds one level, putting the right separator in between: <code>/</code> here, <code>\</code> on Windows.</span></li>
+      <li><span><b>Lines 13–15</b>: printing a path needs <code>.display()</code>. <code>with_extension</code> and <code>join</code> make new PathBufs and leave the old one alone.</span></li>
+      <li><span><b>Line 16</b>: <code>exists()</code> asks the real disk. No such folder here, so <samp>false</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 15: a path won't print with braces">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="E0277!" data-seed="15"></svg>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where, and here's a fix. Paths may hold bytes that aren't text, so I won't guess how to show one.</p></div>
+    </div>
+    <span class="file-tab">path_display.rs</span>
+    <pre class="code" data-src="path_display.rs"></pre>
+    <pre class="term" data-run="path_display.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>error[E0277]: `PathBuf` doesn't implement `std::fmt::Display`</code>. <code>{}</code> needs the Display trait (Chapter 18), and paths deliberately don't have it.</span></li>
+      <li><span><b>Where</b>: the carets under <code>out</code> on line 6, and the dashes under the <code>{}</code> that asked for Display.</span></li>
+      <li><span><b>Fix</b>: the label says it: <code>call `.display()` on it</code>. A file name on Linux may contain bytes that aren't valid UTF-8; <code>display()</code> shows such bytes as a replacement mark instead of failing.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-path-predict-m" id="ex-path-predict"></div>
+  <script type="application/json" id="ex-path-predict-m">{"program": "predict_path.rs", "prompt": "A file with two dots in its name. What does the program print?", "hint": "The extension is only the part after the <b>last</b> dot. <code>with_file_name</code> swaps the last part of the path; <code>parent</code> drops it.", "explain": "<code>file_stem</code> is everything before the last dot: <samp>owl.song</samp>. The extension is <samp>txt</samp>. <code>with_file_name(\"cat.txt\")</code> keeps the folders: <samp>shelf/poems/cat.txt</samp>. <code>parent()</code> is <code>shelf/poems</code>, and <code>join</code> adds <samp>index.md</samp>. <code>to_string_lossy()</code> turns an <code>OsStr</code> into text you can print."}</script>
+
+  <section class="panel clean alarm" aria-label="Panel 16: the parcel nobody opened">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <svg class="sfx tr" data-sfx="WARNING" data-seed="16"></svg>
+    <p class="caption">Mabel tidies up by deleting last month's report, which, as it happens, was already deleted.</p>
+    <div class="runs2">
+      <div><h3>THE WARNING</h3><span class="file-tab">remove_warn.rs</span><pre class="code" data-src="remove_warn.rs"></pre><pre class="term" data-run="remove_warn.rs" data-exit></pre></div>
+      <div><h3>THE FIX</h3><span class="file-tab">remove_fixed.rs</span><pre class="code" data-src="remove_fixed.rs"></pre><pre class="term" data-run="remove_fixed.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>warning: unused `Result` that must be used</code>: <code>fs::remove_file</code> handed back a parcel on line 4, and nobody opened it. It's a warning, not an error, so the program still ran…</span></li>
+      <li><span>…and it <b>lied</b>: <samp>old report removed!</samp> with exit code 0, although the file was never there. The error was in the unopened parcel.</span></li>
+      <li><span>The fix opens it: success prints one thing, failure goes to stderr with the real reason. If you truly don't care, write <code>let _ = fs::remove_file(…);</code> as the <code>help:</code> says, so readers know it was on purpose.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ignore-choice-m" id="ex-ignore-choice"></div>
+  <script type="application/json" id="ex-ignore-choice-m">{"q": "Which line deletes <code>a.txt</code> and <b>deliberately</b> ignores whether that worked, with no warning?", "options": [
+    {"t": "<code>let _ = fs::remove_file(\"a.txt\");</code>", "why": "Yes. Binding the parcel to <code>_</code> says \"I saw it and chose not to look inside\". No warning, and readers can tell it's on purpose.", "correct": true},
+    {"t": "<code>fs::remove_file(\"a.txt\");</code>", "why": "It compiles, but with <samp>warning: unused `Result` that must be used</samp>: Rust can't tell whether you forgot."},
+    {"t": "<code>fs::remove_file(\"a.txt\").unwrap();</code>", "why": "That doesn't ignore anything: if the file is missing, the program panics with exit code 101."},
+    {"t": "<code>fs::remove_file(\"a.txt\")?;</code>", "why": "That passes an error up to the caller, so a missing file stops the function. Not ignoring."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · BUCKETS<small>BufReader and lines() for files; E0599 when BufRead isn't imported; the Read and Write traits; BufWriter's bucket; flush; the report that vanished; errors swallowed on drop</small></h2>
+
+  <section class="panel sketch" data-play aria-label="Panel 17: the bucket brigade">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption soft">Every trip to the stack room costs time: the program has to ask the operating system, which is slow compared with anything inside your program. Carrying one teaspoon per trip would take forever. So Rust offers <b>buckets</b>.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 640 240" role="img" aria-label="Drawing in two rows. Top row, labelled one trip per teaspoon: a stick figure walks between a shelf and a desk many times, shown by six dashed arrows. Bottom row, labelled one trip per bucket: the figure carries a big bucket labelled BufReader, 8 KiB, with a single arrow from the shelf to the desk; next to the desk, a second bucket labelled BufWriter collects lines before pouring them into a file in one go.">
+      <text class="h" x="10" y="28">ONE TRIP PER TEASPOON</text>
+      <rect x="10" y="44" width="70" height="60" rx="4" fill="#E8D3B0" stroke="#111" stroke-width="4"/><text class="s mid" x="45" y="80">shelf</text>
+      <g fill="none" stroke="#111" stroke-width="3" stroke-dasharray="7 5"><path d="M90 54 H330"/><path d="M330 66 H90"/><path d="M90 78 H330"/><path d="M330 90 H90"/><path d="M90 100 H330"/></g>
+      <rect x="340" y="44" width="80" height="60" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="4"/><text class="s mid" x="380" y="80">desk</text>
+      <text class="s" x="436" y="80">slow: many trips</text>
+      <text class="h" x="10" y="140">ONE TRIP PER BUCKET</text>
+      <rect x="10" y="156" width="70" height="60" rx="4" fill="#E8D3B0" stroke="#111" stroke-width="4"/><text class="s mid" x="45" y="192">shelf</text>
+      <path d="M90 186 H230 M218 176 L230 186 L218 196" fill="none" stroke="#111" stroke-width="4"/>
+      <g class="drop-in"><path d="M120 156 h64 l-8 44 h-48 z" fill="#DDE8FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/></g>
+      <text class="ms mid" x="152" y="226">BufReader</text>
+      <rect x="240" y="156" width="80" height="60" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="4"/><text class="s mid" x="280" y="192">desk</text>
+      <path d="M330 186 H470 M458 176 L470 186 L458 196" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M368 156 h64 l-8 44 h-48 z" fill="#C9F2D9" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text class="ms mid" x="400" y="226">BufWriter</text>
+      <rect x="480" y="156" width="70" height="60" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="4"/><text class="s mid" x="515" y="192">file</text>
+      <text class="s" x="560" y="186">fast</text>
+    </svg></div>
+    <div class="duo">
+      <div class="duo-card"><h3>BufReader<small>a bucket for reading</small></h3><p>Fetches a big scoop (8 KiB by default) in one trip, then hands it out line by line. Gives you <code>.lines()</code>.</p></div>
+      <div class="duo-card"><h3>BufWriter<small>a bucket for writing</small></h3><p>Collects your little writes and pours them out in one trip when it's full, when you <b>flush</b> it, or when it's dropped.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: a file, line by line">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">The file version of Panel 5: open, wrap in a bucket, walk the lines.</p>
+    <span class="file-tab">numbered.rs</span>
+    <pre class="code" data-src="numbered.rs"></pre>
+    <pre class="term" data-run="numbered.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/numbered</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>File::open</code> hands back a <code>File</code>, the open book. Reading straight from it works too, but each small read would be a trip to the stack room.</span></li>
+      <li><span><b>Line 6</b>: <code>BufReader::new(file)</code> wraps the book in a bucket. The BufReader now <b>owns</b> the file, and closes it when the reader is dropped at the end of <code>main</code>.</span></li>
+      <li><span><b>Line 7</b>: <code>lines()</code> comes from the <code>BufRead</code> trait, imported on line 2. <code>enumerate()</code> numbers the lines from 0, hence <code>i + 1</code>. <code>{:&gt;3}</code> pads the number to 3 places (Chapter 22).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 19: E0599, the trait that wasn't imported">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="E0599!" data-seed="19"></svg>
+    <p class="caption">Same idea, but <code>BufRead</code> is missing from the <code>use</code> line.</p>
+    <span class="file-tab">forgot_bufread.rs</span>
+    <pre class="code" data-src="forgot_bufread.rs"></pre>
+    <pre class="term" data-run="forgot_bufread.rs" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>The method exists. You just haven't brought its trait into this file. My <code>help:</code> line even writes the <code>use</code> for you.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>no method named `lines` found for struct `BufReader&lt;R&gt;`</code>.</span></li>
+      <li><span><b>Why</b>: <code>items from traits can only be used if the trait is in scope</code>. A trait's methods are invisible until the trait is imported, even when the type has them.</span></li>
+      <li><span><b>Fix</b>: <code>1 + use std::io::BufRead;</code>, a line to add at the top. (The note pointing into <code>/rustc/…/library/…</code> is a spot inside the standard library's own source, and its line number differs between Rust versions.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: one Write trait, three destinations">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">The <code>Write</code> trait is a promise: "you can pour bytes into me". The screen, a file and a plain <code>Vec&lt;u8&gt;</code> in memory all keep that promise, so one function can write to any of them.</p>
+    <span class="file-tab">write_trait.rs</span>
+    <pre class="code" data-src="write_trait.rs"></pre>
+    <pre class="term" data-run="write_trait.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/write_trait</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>out: &amp;mut impl Write</code> means "a writer, any kind, lent to me for writing" (Chapter 17). The function doesn't know or care where the bytes go.</span></li>
+      <li><span><b>Lines 14, 16, 18</b>: the same <code>report</code>, three times: to stdout, to a file, into memory.</span></li>
+      <li><span><b>Lines 19–21</b>: the file and the Vec got exactly the same 31 bytes. That's how Rust programmers <b>test</b> output: write into a <code>Vec&lt;u8&gt;</code> in a test, then compare.</span></li>
+      <li><span><code>Read</code> is the mirror image: stdin, files and <code>&amp;[u8]</code> byte slices can all be read from.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 21: inside BufWriter's bucket" data-tracer="tr-bucket" id="tr-bucket-box">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Watch the bucket. This BufWriter holds only <b>8 bytes</b>, so it fills quickly, and it writes into a <code>Vec&lt;u8&gt;</code> so we can look at what has been "sent". <code>w.buffer()</code> shows what's waiting in the bucket; <code>w.get_ref()</code> shows the Vec behind it.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-bucket-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-bucket">{"program": "buffer_steps.rs", "steps": [
+      {"line": 10, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 11, "note": "A BufWriter with a bucket of 8 bytes, pouring into an empty <code>Vec&lt;u8&gt;</code>. Nothing waiting, nothing sent.", "output": [], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"\""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"\""}}, "changed": ["w"]},
+      {"line": 12, "note": "<code>write_all(b\"owl \")</code>: 4 bytes. They fit, so they wait in the bucket. Nothing is sent yet.", "output": [], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"owl \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"\""}}},
+      {"line": 13, "note": "The program prints what it sees.", "output": ["1 bucket \"owl \"  sent \"\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"owl \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"\""}}},
+      {"line": 14, "note": "<code>\"cat \"</code>: 4 more bytes. 4 + 4 = 8, exactly a bucketful, so they still wait.", "output": ["1 bucket \"owl \"  sent \"\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"owl cat \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"\""}}},
+      {"line": 15, "note": "Still nothing sent.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"owl cat \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"\""}}},
+      {"line": 16, "note": "<b>The bucket is full.</b> <code>\"heron \"</code> (6 bytes) won't fit, so the BufWriter first pours the whole bucket into the Vec (one trip), then puts heron in the empty bucket.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"heron \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat \""}}},
+      {"line": 17, "note": "The screen proves it.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\"", "3 bucket \"heron \"  sent \"owl cat \""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"heron \""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat \""}}},
+      {"line": 18, "note": "<code>\"albatross\"</code> is 9 bytes, bigger than the whole bucket. The BufWriter pours out heron, then sends albatross <b>straight through</b>: buffering it would gain nothing.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\"", "3 bucket \"heron \"  sent \"owl cat \""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"\""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat heron albatross\""}}},
+      {"line": 19, "note": "Empty bucket, everything sent.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\"", "3 bucket \"heron \"  sent \"owl cat \"", "4 bucket \"\"  sent \"owl cat heron albatross\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"\""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat heron albatross\""}}},
+      {"line": 20, "note": "<code>flush()</code> means \"pour out whatever is waiting, now, and tell me if that failed\". The bucket is already empty, so there's nothing to do this time.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\"", "3 bucket \"heron \"  sent \"owl cat \"", "4 bucket \"\"  sent \"owl cat heron albatross\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"\""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat heron albatross\""}}},
+      {"line": null, "note": "Done. A real BufWriter's bucket is 8 KiB (8192 bytes), so for small outputs <b>nothing at all</b> is sent until a flush or the drop at the end. Keep that in mind for the next panel.", "output": ["1 bucket \"owl \"  sent \"\"", "2 bucket \"owl cat \"  sent \"\"", "3 bucket \"heron \"  sent \"owl cat \"", "4 bucket \"\"  sent \"owl cat heron albatross\"", "5 bucket \"\"  sent \"owl cat heron albatross\""], "frames": [{"name": "main", "vars": [{"n": "w", "ref": "W"}]}], "objects": {"W": {"kind": "BufWriter", "label": "BufWriter · bucket 8 bytes", "pairs": [{"k": "bucket", "val": "\"\""}, {"k": "inner", "ref": "V"}]}, "V": {"kind": "Vec<u8>", "label": "sent", "value": "\"owl cat heron albatross\""}}}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-bucket-trace-m" id="ex-bucket-trace"></div>
+  <script type="application/json" id="ex-bucket-trace-m">{"program": "trace_buffer.rs", "columns": ["word", "waiting", "sent"], "given": [0], "prompt": "This bucket holds <b>10</b> bytes. After each word the program prints the word, how many bytes wait in the bucket, and how many have been sent. Fill in each row.", "hint": "If a word doesn't fit in the room left, the whole bucket is poured out first, then the word goes into the empty bucket.", "explain": "ink: 3 waiting. quill: 3 + 5 = 8, still fits. pen: 8 + 3 = 11 &gt; 10, so the 8 are sent, and pen waits (3 waiting, 8 sent). paper: 3 + 5 = 8 waiting. eraser: 8 + 6 = 14 &gt; 10, so 8 more are sent (16 in all), and eraser's 6 wait. Notice that eraser is still in the bucket at the end of the loop: without a flush or a drop, it never arrives."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 22: the report that vanished">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <svg class="sfx tr" data-sfx="POOF!" data-seed="22"></svg>
+    <p class="caption">Mabel's nightly report goes through a BufWriter, and the program ends with <code>process::exit(0)</code>.</p>
+    <div class="runs2">
+      <div><h3>THE BUG</h3><span class="file-tab">vanish.rs</span><pre class="code" data-src="vanish.rs"></pre><pre class="term" data-run="vanish.rs"></pre></div>
+      <div><h3>THE FIX</h3><span class="file-tab">vanish_fixed.rs</span><pre class="code" data-src="vanish_fixed.rs"></pre><pre class="term" data-run="vanish_fixed.rs"></pre></div>
+    </div>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo projects <code>~/rust-ch25/vanish</code> and <code>~/rust-ch25/vanish_fixed</code>; then exactly the three commands shown ran in each, one after another, so <code>cat</code> and <code>wc</code> looked at the <code>report.txt</code> the program had just written.</p>
+    <ol class="readlist">
+      <li><span>The bug run says <samp>report written!</samp>, but <code>cat</code> shows nothing and <code>wc -c</code> counts <samp>0</samp> bytes. Both lines were waiting in the 8 KiB bucket…</span></li>
+      <li><span>…and <code>process::exit</code> (line 11) ends the program on the spot. No drop runs, so nobody pours the bucket out. The 28 bytes are simply lost.</span></li>
+      <li><span>The fix, <b>line 10</b>: <code>out.flush()?;</code> pours the bucket out and reports any failure. Even better: <code>return Ok(())</code> from <code>main</code> instead of calling <code>process::exit</code>, so every drop runs.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>flush before you leave</b>. A bucket only empties when it's full, when you flush it, or when it's dropped.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: errors that drop swallows">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">There's a second reason to flush yourself. Linux has a special file, <code>/dev/full</code>, that always answers "the disk is full". Watch two programs write a report to it.</p>
+    <div class="runs2">
+      <div><h3>LEFT TO DROP</h3><span class="file-tab">full_drop.rs</span><pre class="code" data-src="full_drop.rs"></pre><pre class="term" data-run="full_drop.rs" data-exit></pre></div>
+      <div><h3>FLUSHED BY HAND</h3><span class="file-tab">full_flush.rs</span><pre class="code" data-src="full_flush.rs"></pre><pre class="term" data-run="full_flush.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Left to drop</b>: <code>writeln!</code> only filled the bucket, so it succeeded. At the end of <code>main</code> the BufWriter is dropped, tries to pour, fails… and the drop has nowhere to report the failure. <samp>saved!</samp>, exit 0, and nothing saved.</span></li>
+      <li><span><b>Flushed by hand</b>: <code>out.flush()?</code> pours <b>while you can still hear the answer</b>. <samp>StorageFull</samp>, <samp>No space left on device</samp>, exit 1. The truth.</span></li>
+      <li><span>The standard library's documentation for BufWriter says exactly this: dropping tries to flush, but any errors during the drop are ignored, so call <code>flush</code> yourself.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-flush-spot-m" id="ex-flush-spot"></div>
+  <script type="application/json" id="ex-flush-spot-m">{"program": "spot_flush.rs", "bug": 13, "prompt": "This loan report should print three lines and then end with exit code 1, because someone is late. It ends with exit code 1, but prints <b>nothing at all</b>. Click the line with the bug.", "explain": "Line 13: <code>process::exit(1)</code> ends the program on the spot, and the three lines are still waiting in the BufWriter's bucket (they're far smaller than 8 KiB). No drop, no pour. Fix: <code>out.flush()?;</code> before it, or better, make <code>main</code> return <code>ExitCode</code> and <code>return ExitCode::FAILURE</code> after flushing."}</script>
+
+  <section class="panel clean" aria-label="Panel 24: copying a file, and checking the copy">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">One more bucket trap. This copier checks the size of its copy <b>while the BufWriter is still alive</b>.</p>
+    <span class="file-tab">copy_noflush.rs</span>
+    <pre class="code" data-src="copy_noflush.rs"></pre>
+    <pre class="term" data-run="copy_noflush.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/copy_noflush</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><samp>copy.txt holds 0 bytes</samp>: when line 10 asks, all 111 bytes are still in the bucket. They'll arrive when <code>writer</code> is dropped at the end of <code>main</code>, too late for the message.</span></li>
+      <li><span>Put <code>writer.flush()?;</code> between the loop and the size check, and the copy holds 111 bytes. Try it in the next exercise.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-copy-parsons-m" id="ex-copy-parsons"></div>
+  <script type="application/json" id="ex-copy-parsons-m">{"program": "copy_file.rs", "seed": 25, "pin": [1, 2, 4, 5], "prompt": "Put the steps of the copier in order: open the copy through a bucket, copy each line, flush, then check the size and report it.", "explain": "The writer must exist before the loop writes to it; <code>writeln!</code> goes inside the loop; <code>flush()</code> comes after the loop and <b>before</b> the size check, or the check would see 0 bytes, as in Panel 24. Then print, then <code>Ok(())</code>."}</script>
+  <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/copy_file</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then <code>cargo run -q</code> ran there to make the goal output.</p>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE SWITCHBOARD<small>command-line arguments are always Strings; environment variables with env::var; why set_var needs unsafe in edition 2024 (E0133); clap's derive parser, its --help and its errors</small></h2>
+
+  <section class="panel clean" aria-label="Panel 25: arguments arrive as text">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">A quick reminder from Chapter 16: everything after <code>--</code> in <code>cargo run -q -- …</code> reaches the program through <code>std::env::args()</code>, and <b>every argument is a String</b>, even the ones that look like numbers.</p>
+    <span class="file-tab">args_strings.rs</span>
+    <pre class="code" data-src="args_strings.rs"></pre>
+    <pre class="term" data-run="args_strings.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>skip(1)</code> drops the program's own path, which <code>args()</code> always gives first.</span></li>
+      <li><span><b>Lines 6–7</b>: <code>"3"</code> is text. To do sums it must be <code>parse</code>d into a number, and that can fail. Here <code>unwrap()</code> would panic on <code>--top lots</code>, and <code>args[1]</code> would panic if there were fewer than two words. Part 7 does both jobs properly, and clap does them for you.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: environment variables">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">An <b>environment variable</b> is a named setting the shell passes to every program it starts, like a note pinned on the door. Write it in front of a command to set it for that one run.</p>
+    <span class="file-tab">env_var.rs</span>
+    <pre class="code" data-src="env_var.rs"></pre>
+    <pre class="term" data-run="env_var.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/env_var</code>; then exactly the commands shown ran there, each in a fresh shell, so a variable set in front of one command is gone for the next.</p>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>env::var(name)</code> hands back <code>Result&lt;String, VarError&gt;</code>. Not set: <code>Err</code>, whose message is <samp>environment variable not found</samp>.</span></li>
+      <li><span><b>Lines 8–11</b>: a chain for "use it if it's there and makes sense, otherwise 10". <code>ok()</code> turns the Result into an Option, <code>and_then</code> tries the parse, and <code>unwrap_or(10)</code> supplies the default.</span></li>
+      <li><span>Third run: <code>SHELVES=lots</code> doesn't parse, so it quietly falls back to 10. Quiet is fine for a setting like this; for a typed-in argument, tell the user (Part 7).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 27: E0133, set_var needs unsafe">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="E0133!" data-seed="27"></svg>
+    <p class="caption">Can a program change its own environment? Since edition 2024, not casually.</p>
+    <div class="runs2">
+      <div><h3>THE ERROR</h3><span class="file-tab">set_var_bad.rs</span><pre class="code" data-src="set_var_bad.rs"></pre><pre class="term" data-run="set_var_bad.rs" data-exit></pre></div>
+      <div><h3>THE ALLOWED WAY</h3><span class="file-tab">set_var_ok.rs</span><pre class="code" data-src="set_var_ok.rs"></pre><pre class="term" data-run="set_var_ok.rs"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>I can't check this one for you, so you must sign for it. That's what <code>unsafe</code> means.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>error[E0133]: call to unsafe function `set_var` is unsafe and requires unsafe block</code>. <code>set_var</code> is marked <code>unsafe</code>: it's only sound if no other thread reads or writes the environment at the same moment. Except on Windows, the operating system offers no thread-safe way to read the environment, and other code (the C library, even parts of std) may read it without telling you.</span></li>
+      <li><span>An <code>unsafe { … }</code> block is you promising "I checked what the compiler can't". The <code>// SAFETY:</code> comment says <b>why</b> the promise holds: this program has one thread.</span></li>
+      <li><span>Better still, don't change it at all: read settings once into a struct and pass that around. To give a setting to a <b>child</b> program you start, use <code>std::process::Command</code>'s <code>.env(…)</code>, which is safe. Threads arrive in Chapter 26.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-setvar-choice-m" id="ex-setvar-choice"></div>
+  <script type="application/json" id="ex-setvar-choice-m">{"q": "A program wants <code>SHELVES</code> to be 12 for the rest of its run. It has several threads. What's the best plan?", "options": [
+    {"t": "Keep it in a settings struct, set 12 there, and pass that around", "why": "Yes. Read the setting once at the start, change your own copy, and hand it to whoever needs it. No shared global state to race over, and it's easy to test. <code>set_var</code> is only sound when no other thread touches the environment.", "correct": true},
+    {"t": "Wrap <code>env::set_var</code> in <code>unsafe { }</code> so the E0133 goes away", "why": "That compiles, but the promise would be false: with other threads running, reading and writing the environment at once is undefined behaviour on Linux."},
+    {"t": "Call <code>env::var</code> with the new value to write it for everyone", "why": "<code>env::var</code> only reads; it takes a name and hands back the value."},
+    {"t": "Go back to edition 2021, where <code>set_var</code> is a safe call again", "why": "Older editions don't make the call any safer; they only stop asking you to say <code>unsafe</code>. The danger is the same."}]}</script>
+
+  <section class="panel sketch" data-play aria-label="Panel 28: clap, a form for your arguments">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Hand-parsing flags gets fiddly: <code>-t 3</code> or <code>--top=3</code>, flags in any order, help text, friendly errors. The crate <b>clap</b> (Command Line Argument Parser) does it all. You describe the arguments as a struct, like a form with labelled boxes, and <code>#[derive(Parser)]</code> writes the parser.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>a plain field<small><code>file: String</code></small></h3><p>A <b>positional</b> argument: required, matched by position.</p></div>
+      <div class="duo-card"><h3><code>#[arg(short, long)]</code><small>a named option</small></h3><p><code>top: u8</code> becomes <code>-t 3</code> or <code>--top 3</code>, parsed into a <code>u8</code> for you. A <code>bool</code> becomes an on/off flag.</p></div>
+      <div class="duo-card"><h3><code>///</code> comments<small>the help text</small></h3><p>Doc comments on the struct and fields become the lines of <code>--help</code>.</p></div>
+    </div>
+    <p class="caption soft">clap is an outside crate, so it goes in <code>Cargo.toml</code> with its <code>derive</code> feature (Chapter 24): <code>cargo add clap --features derive</code>. This page pins clap 4.6.7.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: tally, a clap program">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">For now it just prints what it understood. <code>--help</code> was never written by hand.</p>
+    <span class="file-tab">tally.rs</span>
+    <pre class="code" data-src="tally.rs"></pre>
+    <pre class="term" data-run="tally.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/tally</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>, and clap 4.6.7 with its <code>derive</code> feature in <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Line 3</b> became the help's first line, and <b>lines 7, 10 and 14</b> the descriptions of each argument. <b>Line 5</b> names the tool <code>tally</code> and adds <code>--version</code>.</span></li>
+      <li><span><b>Line 11</b>: <code>short, long</code> made both <code>-t</code> and <code>--top</code>; <code>default_value_t = 0</code> appears as <samp>[default: 0]</samp>.</span></li>
+      <li><span><b>Line 20</b>: <code>Args::parse()</code> reads <code>env::args()</code>, fills in the struct, and on any problem prints a message and <b>exits by itself</b>. Flags can come in any order: <code>notes.txt --top 3</code> worked.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: clap says no, politely">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The same program, three mistakes. These runs share one terminal session; the exit code shown at the end belongs to the last one, and all three end with 2, "used wrong".</p>
+    <span class="file-tab">tally_bad.rs</span><span class="parity" data-same-src="tally.rs,tally_bad.rs"></span>
+    <pre class="term" data-run="tally_bad.rs" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>tally_bad.rs</code> is a letter-for-letter copy of <code>tally.rs</code> (the badge above proves it). <code>mk.sh</code> put it into the same project, <code>~/rust-ch25/tally</code>; then the three commands shown ran there, one after another in one shell.</p>
+    <ol class="readlist">
+      <li><span><code>--top 300</code>: <samp>300 is not in 0..=255</samp>. clap knew the field is a <code>u8</code> and checked the range: a conversion that refused instead of cheating. Part 5 is all about that.</span></li>
+      <li><span>No file: <samp>the following required arguments were not provided</samp>, and a usage line.</span></li>
+      <li><span>A typo: <samp>tip: a similar argument exists: '--quiet'</samp>. Every message goes to <b>stderr</b>, and the program ends with exit code <b>2</b>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-clap-fill-m" id="ex-clap-fill"></div>
+  <script type="application/json" id="ex-clap-fill-m">{"program": "fill_clap.rs", "prompt": "Finish the greeter: the derive that writes the parser, the attribute that makes <code>count</code> a <code>-c</code>/<code>--count</code> option, and the call that fills in the struct. It's run as <code>cargo run -q -- Ada --count 2</code>.", "blanks": [{"line": 4, "text": "Parser"}, {"line": 10, "text": "short, long", "accept": ["long, short"]}, {"line": 15, "text": "Args::parse()"}], "explain": "<code>#[derive(Parser)]</code> (imported on line 1) writes the parser. <code>#[arg(short, long, …)]</code> turns the field into <code>-c</code> and <code>--count</code>, with a default of 1. <code>Args::parse()</code> reads the real arguments: <code>name</code> is <code>Ada</code>, <code>count</code> is 2, so the greeting prints twice."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE EXCHANGE BOOTHS<small>E0308 between i64 and i32; as casts: truncation, sign change, float saturation, the literal the compiler catches; From and Into; E0277 when no fair exchange exists; TryFrom and TryInto; checked, overflowing, wrapping and saturating maths</small></h2>
+
+  <section class="panel sketch" data-play aria-label="Panel 31: three exchange booths">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption soft">Numbers in Rust come in sizes (Chapter 3): a <code>u8</code> holds 0 to 255, an <code>i32</code> about ±2 billion, an <code>i64</code> far more. Rust <b>never</b> changes a number's type behind your back. To change one, you visit an exchange booth, and there are three.</p>
+    <div class="booths">
+      <div class="booth"><h3>From / Into<small>the fair booth</small></h3>
+        <svg viewBox="0 0 200 110" aria-hidden="true"><rect x="50" y="20" width="100" height="80" rx="6" fill="#C9F2D9" stroke="#111" stroke-width="3"/><path d="M42 20 L100 2 L158 20 Z" fill="#FFF6CC" stroke="#111" stroke-width="3" stroke-linejoin="round"/><text x="100" y="56" text-anchor="middle">u8 → u32</text><text x="100" y="82" text-anchor="middle">always</text></svg>
+        <p>Only offers exchanges that <b>always</b> work, losing nothing: a small box into a bigger one.</p></div>
+      <div class="booth"><h3>TryFrom / TryInto<small>the careful booth</small></h3>
+        <svg viewBox="0 0 200 110" aria-hidden="true"><rect x="50" y="20" width="100" height="80" rx="6" fill="#DDE8FF" stroke="#111" stroke-width="3"/><path d="M42 20 L100 2 L158 20 Z" fill="#FFF6CC" stroke="#111" stroke-width="3" stroke-linejoin="round"/><text x="100" y="56" text-anchor="middle">i64 → u8</text><text x="100" y="82" text-anchor="middle">Ok or Err</text></svg>
+        <p>Checks first. If it fits, <code>Ok</code>; if not, it <b>refuses</b> with <code>Err</code> and tells you.</p></div>
+      <div class="booth shady"><h3>as<small>the shady booth</small></h3>
+        <svg viewBox="0 0 200 110" aria-hidden="true"><rect x="50" y="20" width="100" height="80" rx="6" fill="#FFE1E1" stroke="#111" stroke-width="3" stroke-dasharray="8 5"/><path d="M42 20 L100 2 L158 20 Z" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-linejoin="round"/><text x="100" y="56" text-anchor="middle">300 → 44</text><text x="100" y="82" text-anchor="middle">no checks</text></svg>
+        <p>Always gives you <i>something</i>, never says a word. If the value didn't fit, you've been shortchanged.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>From when it always fits, TryFrom when it might not, as only when you've checked</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 32: E0308, an i64 where an i32 was expected">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="E0308!" data-seed="32"></svg>
+    <p class="caption">Why bother with booths at all? Because Rust refuses to mix sizes.</p>
+    <span class="file-tab">e0308.rs</span>
+    <pre class="code" data-src="e0308.rs"></pre>
+    <pre class="term" data-run="e0308.rs" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>An i64 might not fit in an i32. I won't squeeze it in silently, but I'll show you how to ask properly.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>What</b>: <code>mismatched types</code>, <code>expected `i32`, found `i64`</code>: the carets under the call on line 6.</span></li>
+      <li><span><b>Why</b>: the dashes under <code>i32</code> say <code>expected due to this</code>, the type you wrote on the left.</span></li>
+      <li><span><b>Fix</b>: the <code>help:</code> offers <code>.try_into().unwrap()</code>: the careful booth, plus "panic if it doesn't fit". 120,000 does fit, so that would work. Or make the variable an <code>i64</code> too, which is often the real answer.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: the shady booth at work">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Nine trips to the shady booth. Every one compiles and runs without a single warning.</p>
+    <span class="file-tab">as_casts.rs</span>
+    <pre class="code" data-src="as_casts.rs"></pre>
+    <pre class="term" data-run="as_casts.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Integer to smaller integer</b>: <code>as</code> keeps only the bits that fit and throws the rest away (<b>truncation</b>). 300 is 256 + 44, and a u8 can't hold the 256, so <samp>44</samp>.</span></li>
+      <li><span><b>Signed to unsigned</b>: −1 is stored as all ones in binary; read as a u8 that's <samp>255</samp>, as a u32 <samp>4294967295</samp>. The <b>sign change</b> is silent.</span></li>
+      <li><span><b>Float to integer</b>: the fraction is chopped off, not rounded (3.99 → <samp>3</samp>), and values out of range are pinned to the nearest end (<b>saturation</b>): −5.7 → <samp>0</samp>, 1e10 → <samp>2147483647</samp>, the biggest i32. NaN becomes <samp>0</samp>.</span></li>
+      <li><span>A <code>u8</code> can become a <code>char</code>: 65 is <samp>A</samp>. And integer to float is fine at this size: <samp>300</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 34: the as machine" data-machine="m-as">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The shady booth as a machine. Feed it a value; it always hands something back, and often not what went in. The last chip is the one case the Compiler catches: a plain number written straight into the cast.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-as">{"label": "as", "program": "as_casts.rs", "examples": [
+      {"in": "big as u8 (big = 300)", "out": "44", "expectLine": "300 as u8   = 44", "outKind": "u8", "note": "300 − 256 = 44. The 256 didn't fit, so it vanished. No error, no warning."},
+      {"in": "minus as u8 (minus = -1)", "out": "255", "expectLine": "-1 as u8    = 255", "outKind": "u8", "note": "The same bits, read as unsigned. −1 has become the biggest u8."},
+      {"in": "minus as u32", "out": "4294967295", "expectLine": "-1 as u32   = 4294967295", "outKind": "u32", "note": "Four billion books owed, from a debt of one."},
+      {"in": "price as i32 (price = 3.99)", "out": "3", "expectLine": "3.99 as i32 = 3", "outKind": "i32", "note": "Chopped toward zero, not rounded. Use <code>price.round() as i32</code> for 4."},
+      {"in": "debt as u32 (debt = -5.7)", "out": "0", "expectLine": "-5.7 as u32 = 0", "outKind": "u32", "note": "A u32 can't be negative, so the value is pinned to 0."},
+      {"in": "huge as i32 (huge = 1e10)", "out": "2147483647", "expectLine": "1e10 as i32 = 2147483647", "outKind": "i32", "note": "Ten billion is too big, so it's pinned to <code>i32::MAX</code>."},
+      {"in": "f64::NAN as i32", "out": "0", "expectLine": "NaN as i32  = 0", "outKind": "i32", "note": "\"Not a number\" becomes 0, quietly."},
+      {"in": "65u8 as char", "out": "A", "expectLine": "65 as char  = A", "outKind": "char", "note": "Only <code>u8</code> may be cast to <code>char</code>: every u8 is a valid char."},
+      {"in": "big as f32", "out": "300", "expectLine": "300 as f32  = 300", "outKind": "f32", "note": "This one is exact. (Very large integers can lose their last digits in a float.)"},
+      {"in": "300 as u8 (a literal)", "error": "error: literal out of range for `u8`", "program": "literal_cast.rs", "note": "When the number is written right in the cast, the Compiler can see it won't fit and stops the build (the <code>overflowing_literals</code> lint, an error by default). With a variable it can't know, and stays quiet."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-casts-predict-m" id="ex-casts-predict"></div>
+  <script type="application/json" id="ex-casts-predict-m">{"program": "predict_casts.rs", "prompt": "Five trips to the shady booth. What does the program print?", "hint": "Integer to smaller integer: subtract 256 until it fits (a u8 holds 0 to 255; an i8 holds −128 to 127, and 128 to 255 wrap round to −128 to −1). Float to integer: chop off the fraction, then pin to the nearest end.", "explain": "<samp>4</samp>: 260 − 256. <samp>254</samp>: −2 read as unsigned is 256 − 2. <samp>2</samp>: 2.7 chopped, not rounded. <samp>255</samp>: 999.0 is too big for a u8, so it's pinned to 255 (a float saturates; an integer would truncate). <samp>-56</samp>: 200 doesn't fit an i8, and 200 − 256 = −56."}</script>
+
+  <section class="panel clean" aria-label="Panel 35: the fair booth">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption"><code>From</code> (Chapter 18) is the fair booth. The standard library only offers <code>From</code> where every possible value fits: u8 into u32, i32 into i64, f32 into f64, char into u32, &amp;str into String.</p>
+    <div class="runs2">
+      <div><h3>FAIR EXCHANGES</h3><span class="file-tab">from_into.rs</span><pre class="code" data-src="from_into.rs"></pre><pre class="term" data-run="from_into.rs"></pre></div>
+      <div><h3>NO FAIR EXCHANGE HERE</h3><span class="file-tab">from_bad.rs</span><pre class="code" data-src="from_bad.rs"></pre><pre class="term" data-run="from_bad.rs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Lines 3–4</b>: <code>u32::from(small)</code> and <code>wide.into()</code> are the same booth seen from both sides. <code>into()</code> needs to know the target, here from <code>let wider: i64</code>.</span></li>
+      <li><span><b>Line 6</b>: a char's code number: é is <samp>233</samp> (U+00E9).</span></li>
+      <li><span><b>The error</b>: <code>the trait bound `i32: From&lt;i64&gt;` is not satisfied</code>. There's no fair booth from i64 to i32, because some i64s don't fit. The <code>help:</code> lists the booths that <b>do</b> exist: <code>bool</code>, <code>i16</code>, <code>i8</code>, <code>u16</code>, <code>u8</code>, all small enough.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: the careful booth">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption"><code>TryFrom</code> is the careful booth: it hands back a parcel. <code>try_into()</code> is the same booth from the other side.</p>
+    <span class="file-tab">try_from.rs</span>
+    <pre class="code" data-src="try_from.rs"></pre>
+    <pre class="term" data-run="try_from.rs"></pre>
+    <ol class="readlist">
+      <li><span>42 and 255 fit: <code>Ok</code>. 256, 300 and −1 don't: <code>Err</code>, and the error's message says which way it missed: <samp>too large</samp> or <samp>too small</samp>.</span></li>
+      <li><span><b>Lines 8–11</b>: with <code>try_into()</code>, the target type comes from the annotation. 120,000 fits an i32: <samp>Ok(120000)</samp>. Debug shows the error's insides: <samp>TryFromIntError(PosOverflow)</samp>, "positive overflow".</span></li>
+      <li><span>Nothing is ever shortchanged. You decide what happens on <code>Err</code>: report it, use a default, or stop.</span></li>
+    </ol>
+    <p class="caption soft">A real difference between versions: on Rust 1.97.0 the same program printed one message for both directions, <samp>out of range integral type conversion attempted</samp>. Here is that run, captured with the older toolchain:</p>
+    <pre class="term small" data-run="try_from.rs" data-alt></pre>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 37: the TryFrom machine" data-machine="m-try">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">The careful booth as a machine. Values that fit come out as <code>Ok</code>; values that don't come out as <code>Err</code>. The last chip calls <code>.unwrap()</code> on an <code>Err</code>, and the machine jams with a panic.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-try">{"label": "u8::try_from", "program": "try_from.rs", "examples": [
+      {"in": "42_i64", "out": "Ok(42)", "expectLine": "u8::try_from(42) = Ok(42)", "outKind": "Result<u8, _>", "note": "Fits: the same number, now a u8."},
+      {"in": "255_i64", "out": "Ok(255)", "expectLine": "u8::try_from(255) = Ok(255)", "outKind": "Result<u8, _>", "note": "The biggest u8 still fits."},
+      {"in": "256_i64", "out": "Err", "expectLine": "u8::try_from(256) = Err: number too large to fit in target type", "outKind": "Result<u8, _>", "note": "One too many. The booth refuses: <code>Err</code>, \"number too large to fit in target type\"."},
+      {"in": "-1_i64", "out": "Err", "expectLine": "u8::try_from(-1) = Err: number too small to fit in target type", "outKind": "Result<u8, _>", "note": "No negative u8s: \"number too small to fit in target type\". Compare <code>-1 as u8</code>, which said 255."},
+      {"in": "u8::try_from(300).unwrap()", "error": "called `Result::unwrap()` on an `Err` value: TryFromIntError(PosOverflow)", "program": "try_unwrap.rs", "note": "The refusal was honest; <code>unwrap()</code> turned it into a panic (exit 101). The <samp>(1)</samp> in <samp>thread 'main' (1)</samp> is a thread id; on your machine it will be a different number."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-booth1-m" id="ex-booth1"></div>
+  <script type="application/json" id="ex-booth1-m">{"q": "A function receives a page count as <code>u16</code> and must store it in a <code>u32</code> field. Which booth?", "options": [
+    {"t": "<code>u32::from(pages)</code> (or <code>pages.into()</code>)", "why": "Yes. Every u16 (0 to 65,535) fits in a u32, so the standard library offers the fair booth. It can't fail, so there's no parcel to open.", "correct": true},
+    {"t": "<code>u32::try_from(pages)</code>", "why": "It works, but it hands back a <code>Result</code> that can never be <code>Err</code>. Use the fair booth when the exchange always fits."},
+    {"t": "<code>pages as u32</code>", "why": "It gives the right answer here, but <code>as</code> would also accept a change that loses data, without telling anyone. <code>From</code> says \"this always fits\" and is checked by the Compiler."},
+    {"t": "No conversion needed: Rust widens it automatically", "why": "Rust never changes a number's type by itself; you'd get E0308."}]}</script>
+
+  <div data-ex="choice" data-model="ex-booth2-m" id="ex-booth2"></div>
+  <script type="application/json" id="ex-booth2-m">{"q": "A user typed a shelf number that was parsed as <code>i64</code>. The shelves array is indexed with <code>usize</code>. Which booth?", "options": [
+    {"t": "<code>usize::try_from(n)</code>, handling any <code>Err</code>", "why": "Yes. A typed number might be negative, which no usize can hold. The careful booth refuses, and your program can tell the user.", "correct": true},
+    {"t": "<code>n as usize</code>, as shelf numbers are small", "why": "Shady: −1 becomes 18446744073709551615 on a 64-bit machine, and indexing with that panics far from the real mistake."},
+    {"t": "<code>usize::from(n)</code>, the fair booth", "why": "There is no fair booth from i64 to usize (E0277), exactly because negative numbers don't fit."},
+    {"t": "<code>n.try_into().unwrap()</code> on the input", "why": "It's the careful booth, but <code>unwrap()</code> turns a user's typo into a panic. Fine in a quick experiment, not for user input."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 38: arithmetic that tells you">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Sums can overflow too. In a debug build, overflow panics; in a release build, it wraps round (Chapter 3). When overflow is possible, say what you want with these method families.</p>
+    <span class="file-tab">checked.rs</span>
+    <pre class="code" data-src="checked.rs"></pre>
+    <pre class="term" data-run="checked.rs"></pre>
+    <div class="ops-wrap"><table class="ops ref-table">
+      <thead><tr><th>Family</th><th>On overflow</th><th>250u8 + 10</th></tr></thead>
+      <tbody>
+        <tr><td><code>checked_*</code></td><td>gives <code>None</code></td><td><samp>None</samp></td></tr>
+        <tr><td><code>overflowing_*</code></td><td>wraps, and adds a "did it overflow?" flag</td><td><samp>(4, true)</samp></td></tr>
+        <tr><td><code>wrapping_*</code></td><td>wraps round, like an odometer</td><td><samp>4</samp></td></tr>
+        <tr><td><code>saturating_*</code></td><td>stops at the nearest end</td><td><samp>255</samp></td></tr>
+      </tbody>
+    </table></div>
+    <p class="caption soft"><code>checked_sub(251)</code> is <code>None</code> because a u8 can't go below 0, and <code>checked_div(0)</code> is <code>None</code> instead of a divide-by-zero panic.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-fact-trace-m" id="ex-fact-trace"></div>
+  <script type="application/json" id="ex-fact-trace-m">{"program": "trace_factorial.rs", "columns": ["n", "product"], "given": [0], "prompt": "The product 1 × 2 × 3 × … in a <code>u8</code>, using <code>checked_mul</code>. Each row prints <code>n</code> and the product so far; when the next product won't fit, the row says <code>overflow</code> and the loop stops. Fill in the product column.", "explain": "1, 2, 6, 24, 120. The next product is 120 × 6 = 720, more than 255, so <code>checked_mul</code> gives <code>None</code>: <samp>6 overflow</samp>, and <code>break</code> ends the loop. With plain <code>*</code> this debug build would have panicked; with <code>wrapping_mul</code> it would have printed 208 (720 − 512) and carried on, wrong."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · LABELS THAT CAN'T BE MIXED UP<small>type aliases are only nicknames; the newtype pattern (struct Meters(f64)) so units can't be mixed (E0308); From between newtypes; Default, derived and by hand; a validated newtype built with TryFrom</small></h2>
+
+  <section class="panel pop" aria-label="Panel 39: the bookmobile and the bridge">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <svg class="sfx tr" data-sfx="CRUNCH?" data-seed="39"></svg>
+    <p class="caption">The library's bookmobile is 3.5 metres tall. The sign on the old bridge says 11 feet. Mabel's route planner gave its types nicknames, to be careful.</p>
+    <span class="file-tab">alias_bug.rs</span>
+    <pre class="code" data-src="alias_bug.rs"></pre>
+    <pre class="term" data-run="alias_bug.rs"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak says: </span>Heh. 11 feet is only 3.35 metres. The van <b>doesn't</b> fit, and nobody noticed.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Lines 1–2</b>: <code>type Meters = f64;</code> is a <b>type alias</b>: a nickname. <code>Meters</code>, <code>Feet</code> and <code>f64</code> are all exactly the same type to the Compiler.</span></li>
+      <li><span><b>Line 11</b>: so passing feet where metres are wanted is fine as far as Rust knows, and the program compares 3.5 with 11.0. A <b>logic bug</b>: no error, wrong answer.</span></li>
+      <li><span>Aliases are still useful for shortening long types, like <code>type Result&lt;T&gt; = std::result::Result&lt;T, MyError&gt;</code>. They just don't protect anything.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean alarm" aria-label="Panel 40: newtypes, labels the Compiler checks">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="E0308!" data-seed="40"></svg>
+    <p class="caption">A <b>newtype</b> is a tuple struct with one field (Chapter 10): <code>struct Meters(f64);</code>. Inside it's still an f64, with no extra cost at run time, but to the Compiler it's a brand-new type.</p>
+    <span class="file-tab">newtype_bad.rs</span>
+    <pre class="code" data-src="newtype_bad.rs"></pre>
+    <pre class="term" data-run="newtype_bad.rs" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span><code>expected `Meters`, found `Feet`</code>. Now I can see the units, so I can stop the van before the bridge.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span>The same bug, but now it's E0308 at compile time instead of a wrong answer at run time. The <code>note:</code> points at the function, showing <code>bridge: Meters</code>.</span></li>
+      <li><span><code>.0</code> reaches the f64 inside (line 5).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 41: a fair booth between units">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">Feet really can become metres, always, so we build our own fair booth: <code>impl From&lt;Feet&gt; for Meters</code>. Now the conversion is written once, in one place.</p>
+    <span class="file-tab">newtype_ok.rs</span>
+    <pre class="code" data-src="newtype_ok.rs"></pre>
+    <pre class="term" data-run="newtype_ok.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 4–8</b>: one foot is exactly 0.3048 metres.</span></li>
+      <li><span><b>Line 17</b>: implementing <code>From</code> gives <code>into()</code> for free (Chapter 18). The annotation says which way.</span></li>
+      <li><span>The truth: <samp>3.35 m</samp>, and <samp>false</samp>. The bookmobile takes the long way round.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Catchphrase: <b>a newtype is a label the Compiler reads</b>. If two numbers mean different things, give them different types.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-alias-spot-m" id="ex-alias-spot"></div>
+  <script type="application/json" id="ex-alias-spot-m">{"program": "spot_alias.rs", "bug": 10, "prompt": "A box of books weighs 9 pounds, which is about 4,082 grams. The post office takes parcels up to 2,000 grams, so the answer should be <code>false</code>. The program says <code>true</code>. Click the line with the bug.", "explain": "Line 10 pours pounds into grams with no conversion. The aliases are only nicknames for <code>u32</code>, so the Compiler can't object. 9 ≤ 2000, so <samp>true</samp>. Fix: make <code>Grams</code> and <code>Pounds</code> newtypes (<code>struct Grams(u32);</code>), then line 10 becomes E0308, and write <code>impl From&lt;Pounds&gt; for Grams</code> to do the maths (1 lb ≈ 453.6 g)."}</script>
+
+  <section class="panel clean" aria-label="Panel 42: Default, a sensible starting value">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption"><code>Default</code> (Chapter 18) gives a type a sensible starting value. Derive it when "zero, false, empty" is right; write it by hand when it isn't.</p>
+    <span class="file-tab">defaults.rs</span>
+    <pre class="code" data-src="defaults.rs"></pre>
+    <pre class="term" data-run="defaults.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b>: derived <code>Default</code> uses each field's default: 0, false, an empty String.</span></li>
+      <li><span><b>Lines 11–15</b>: a library has 10 shelves unless told otherwise, so <code>Shelves</code> writes its own <code>default</code>.</span></li>
+      <li><span><b>Line 20</b>: <code>..Default::default()</code> fills every field you didn't write. Handy for settings structs with many fields.</span></li>
+      <li><span><b>Line 25</b>: numbers default to 0 and Options to <code>None</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 43: a newtype that checks itself">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">The best newtypes <b>refuse to exist</b> with a bad value. Mabel's line counter needs a <code>--top</code> number from 1 to 20. Text goes in; either a valid <code>TopN</code> comes out, or a message saying why not.</p>
+    <span class="file-tab">topn.rs</span>
+    <pre class="code" data-src="topn.rs"></pre>
+    <pre class="term" data-run="topn.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 4–5</b>: <code>impl TryFrom&lt;i64&gt; for TopN</code> builds our own careful booth. <code>type Error = String;</code> says what a refusal looks like.</span></li>
+      <li><span><b>Line 9</b>: <code>n as u8</code> is safe <b>here</b>, because line 8 has just proved that n is between 1 and 20. That's the only good use of the shady booth: after you've checked.</span></li>
+      <li><span><b>Line 17</b>: two checks in a row. <code>parse</code> rejects text that isn't a number; <code>map_err</code> turns its error into a String and <code>?</code> returns it. Then <code>TopN::try_from</code> rejects numbers out of range.</span></li>
+      <li><span>Anywhere else in the program, a <code>TopN</code> is <b>known</b> to be valid. No function needs to check it again.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Check once, at the door; then let the type remember. People call this "parse, don't validate".</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-newtype-fill-m" id="ex-newtype-fill"></div>
+  <script type="application/json" id="ex-newtype-fill-m">{"program": "fill_newtype.rs", "prompt": "A star rating from 0 to 5. Fill in the trait being implemented (with its input type), the line naming the error type, and the variant for a refusal.", "blanks": [{"line": 4, "text": "TryFrom<u32>"}, {"line": 5, "text": "type Error = String;"}, {"line": 11, "text": "Err"}], "explain": "<code>impl TryFrom&lt;u32&gt; for Stars</code> builds the careful booth from u32. <code>type Error = String;</code> names what a refusal carries. 4 fits, so <samp>Ok(4)</samp>; 9 doesn't, so <code>Err(format!(…))</code>: <samp>Err(\"9 stars? The most is 5.\")</samp>. (<code>.map(|s| s.0)</code> in <code>main</code> shows the number inside an <code>Ok</code>.)"}</script>
+
+  <div data-ex="choice" data-model="ex-alias-choice-m" id="ex-alias-choice"></div>
+  <script type="application/json" id="ex-alias-choice-m">{"q": "A program handles both book IDs and member IDs, and both are <code>u32</code>. Mabel wants the Compiler to stop anyone passing a member ID where a book ID is expected. What should she write?", "options": [
+    {"t": "<code>struct BookId(u32);</code> and <code>struct MemberId(u32);</code>", "why": "Yes. Two newtypes are two different types, so a mix-up is E0308 at compile time, at no cost when the program runs.", "correct": true},
+    {"t": "<code>type BookId = u32;</code> and <code>type MemberId = u32;</code>", "why": "Aliases are nicknames: both are still plain <code>u32</code>, and the Compiler accepts any mix-up, as the bookmobile found out."},
+    {"t": "Name the variables carefully: <code>book_id</code>, <code>member_id</code>", "why": "Good names help people, but the Compiler doesn't read names. A newtype makes the rule checkable."},
+    {"t": "Store book IDs as <code>u32</code> and member IDs as <code>u64</code>", "why": "That would catch some mix-ups by accident, but the meaning still isn't written down, and <code>as</code> or <code>into()</code> would happily convert between them."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · THE LINE COUNTER<small>a real command-line tool: arguments, a validated --top newtype, a buffered file read, buffered output with a flush, honest exit codes; every road through it; then the boss level and the recap</small></h2>
+
+  <section class="panel clean" aria-label="Panel 44: linecount, the whole tool">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">Everything from today in one tool. <code>linecount [--top N] FILE</code> counts the lines and words in a file and shows its N longest lines (3 if you don't say). Bad usage ends with exit code 2, a file problem with 1.</p>
+    <span class="file-tab">linecount.rs</span>
+    <pre class="code" data-src="linecount.rs"></pre>
+    <pre class="term" data-run="linecount.rs"></pre>
+    <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/linecount</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then exactly the commands shown ran there.</p>
+    <ol class="readlist">
+      <li><span><b>Lines 6–26</b>: the <code>TopN</code> newtype from Panel 43, with its careful booth, plus a hand-written <code>Default</code> of 3.</span></li>
+      <li><span><b>Lines 28–37</b>: <code>parse_args</code> matches the shape of the argument list with slice patterns (Chapter 21): one word, or <code>--top</code>, a number and a word. Anything else is a usage error. Both refusals are Strings, so <code>?</code> can pass either one up.</span></li>
+      <li><span><b>Lines 39–44</b>: a BufReader walks the file; <code>line?</code> passes up any reading error, and <code>File::open(path)?</code> a missing file.</span></li>
+      <li><span><b>Lines 46–52</b>: results go into a BufWriter around <code>io::stdout().lock()</code> (one lock for all the writes), sorted longest first, and <b>flushed</b> before <code>count</code> returns. <code>usize::from(top.0)</code> is a fair exchange from u8.</span></li>
+      <li><span><b>Lines 56–72</b>: <code>main</code> turns each outcome into a message on stderr and an exit code. It <b>returns</b> the code, so every drop runs.</span></li>
+      <li><span>The second command is the system's own <code>wc</code> (word count) tool: 5 lines and 21 words. The two tools agree.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 45: the map of the line counter" data-map="map-lc">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption soft">Every road a run can take. Each road is a real run of the same program with different arguments.</p>
+    <div class="paths" role="group" aria-label="Choose a run"><span class="label">RUN IT AS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maplc-t maplc-d"><title id="maplc-t">The roads through linecount</title><desc id="maplc-d">Seven places. Down the left: main collects the words with env::args, then parse_args checks their shape and turns the number into a TopN, then File::open opens the file, then the lines are read. From reading, a road leads right to the report, which writes through a BufWriter, flushes and exits with code 0. From parse_args, an Err road leads right to a stop that prints the problem on stderr and exits with 2. From File::open, an Err road leads right to a stop that prints the problem on stderr and exits with 1.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <p class="caption soft">The seven copies of the program used for these roads are the same source, letter for letter: <span class="parity" data-same-src="linecount.rs,road_ok.rs,road_top.rs,road_word.rs,road_range.rs,road_lost.rs,road_usage.rs"></span></p>
+    <p class="howmade"><b>How this run was really made:</b> for each road, <code>mk.sh</code> put that road's copy of the program into the project <code>~/rust-ch25/linecount</code>, with <code>notes.txt</code> beside <code>Cargo.toml</code>; then the road's own command (shown in its first step) ran there.</p>
+    <script type="application/json" id="map-lc">{"seed": 25, "size": [690, 480], "start": [[175, 4], [175, 26]],
+      "states": [
+        {"id": "MAIN", "x": 30, "y": 32, "w": 290, "h": 70, "label": "main collects", "sub": "env::args().skip(1)"},
+        {"id": "PARSE", "x": 30, "y": 152, "w": 290, "h": 70, "label": "parse_args", "sub": "shape? number? 1 to 20?"},
+        {"id": "E2", "x": 410, "y": 152, "w": 260, "h": 70, "label": "stderr, exit 2", "sub": "used wrong", "kind": "error"},
+        {"id": "OPEN", "x": 30, "y": 272, "w": 290, "h": 70, "label": "File::open", "sub": "the file is there?"},
+        {"id": "E1", "x": 410, "y": 272, "w": 260, "h": 70, "label": "stderr, exit 1", "sub": "file trouble", "kind": "error"},
+        {"id": "READ", "x": 30, "y": 392, "w": 290, "h": 70, "label": "read lines", "sub": "BufReader, line?"},
+        {"id": "REPORT", "x": 410, "y": 392, "w": 260, "h": 70, "label": "report, flush", "sub": "stdout, exit 0", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "MAIN", "to": "PARSE", "pts": [[175, 106], [175, 146]], "label": "&args", "lx": 187, "ly": 132},
+        {"id": "te2", "from": "PARSE", "to": "E2", "pts": [[324, 187], [404, 187]], "label": "Err", "lx": 344, "ly": 176},
+        {"id": "t1", "from": "PARSE", "to": "OPEN", "pts": [[175, 226], [175, 266]], "label": "Ok((top, path))", "lx": 187, "ly": 252},
+        {"id": "te1", "from": "OPEN", "to": "E1", "pts": [[324, 307], [404, 307]], "label": "Err(e)", "lx": 334, "ly": 296},
+        {"id": "t2", "from": "OPEN", "to": "READ", "pts": [[175, 346], [175, 386]], "label": "Ok(file)", "lx": 187, "ly": 372},
+        {"id": "t3", "from": "READ", "to": "REPORT", "pts": [[324, 427], [404, 427]], "label": "lines", "lx": 340, "ly": 416}],
+      "paths": [
+        {"id": "pok", "label": "notes.txt", "program": "road_ok.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q -- notes.txt</code>: one word arrives, <code>[\"notes.txt\"]</code>."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "The pattern <code>[file]</code> matches: no <code>--top</code>, so <code>TopN::default()</code>, which is 3."},
+          {"on": ["OPEN"], "via": ["t1"], "output": [], "note": "<code>File::open(\"notes.txt\")</code>: <code>Ok</code>."},
+          {"on": ["READ"], "via": ["t2"], "output": [], "note": "The BufReader hands over 5 lines; they hold 21 words."},
+          {"on": ["REPORT"], "via": ["t3"], "output": ["5 lines, 21 words", " 35 | A quiet library is a happy library.", " 24 | Books wait on the shelf.", " 24 | Mabel stamps every loan."], "note": "The counts and the 3 longest lines go into the BufWriter, then <code>flush()</code> pours them out. The two 24-character lines keep their file order, because <code>sort_by_key</code> is stable. Exit code 0."}]},
+        {"id": "ptop", "label": "--top 1 notes.txt", "program": "road_top.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q -- --top 1 notes.txt</code>: three words."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "<code>[flag, n, file]</code> with <code>flag == \"--top\"</code>. <code>\"1\".parse()</code> gives 1, and <code>TopN::try_from(1)</code> says <code>Ok</code>."},
+          {"on": ["OPEN"], "via": ["t1"], "output": [], "note": "The file opens."},
+          {"on": ["READ"], "via": ["t2"], "output": [], "note": "5 lines, 21 words."},
+          {"on": ["REPORT"], "via": ["t3"], "output": ["5 lines, 21 words", " 35 | A quiet library is a happy library."], "note": "Only the longest line this time. Exit code 0."}]},
+        {"id": "pword", "label": "--top lots …", "program": "road_word.rs", "expect": {"exit": 2, "stderrContains": "--top needs a whole number: invalid digit found in string"}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q -- --top lots notes.txt</code>."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "The shape is right, but <code>\"lots\".parse::&lt;i64&gt;()</code> fails. <code>map_err</code> turns that into a String, and <code>?</code> returns it."},
+          {"on": ["E2"], "via": ["te2"], "output": [], "error": "linecount: --top needs a whole number: invalid digit found in string", "note": "<code>main</code> prints the refusal on stderr and returns <code>ExitCode::from(2)</code>. The file is never opened."}]},
+        {"id": "prange", "label": "--top 50 …", "program": "road_range.rs", "expect": {"exit": 2, "stderrContains": "--top must be from 1 to 20, not 50"}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q -- --top 50 notes.txt</code>."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "50 is a fine i64, but the careful booth <code>TopN::try_from(50)</code> refuses: not between 1 and 20."},
+          {"on": ["E2"], "via": ["te2"], "output": [], "error": "linecount: --top must be from 1 to 20, not 50", "note": "Exit code 2. With <code>50 as u8</code> the program would have run with 50, and with <code>300 as u8</code>, with 44."}]},
+        {"id": "plost", "label": "--top 2 lost.txt", "program": "road_lost.rs", "expect": {"exit": 1, "stderrContains": "linecount: lost.txt: No such file or directory (os error 2)"}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q -- --top 2 lost.txt</code>."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "All good: <code>TopN(2)</code> and the path <code>lost.txt</code>."},
+          {"on": ["OPEN"], "via": ["t1"], "output": [], "note": "<code>File::open</code> gives <code>Err</code>; the <code>?</code> on line 40 returns it from <code>count</code>."},
+          {"on": ["E1"], "via": ["te1"], "output": [], "error": "linecount: lost.txt: No such file or directory (os error 2)", "note": "<code>main</code> names the tool and the file, adds the operating system's reason, and returns <code>ExitCode::FAILURE</code>: exit code 1."}]},
+        {"id": "pusage", "label": "(no words)", "program": "road_usage.rs", "expect": {"exit": 2, "stderrContains": "usage: linecount [--top N] FILE"}, "steps": [
+          {"on": ["MAIN"], "output": [], "note": "<code>cargo run -q</code> with nothing after it: an empty list."},
+          {"on": ["PARSE"], "via": ["t0"], "output": [], "note": "Neither pattern matches, so the last arm, <code>_</code>, gives the usage message."},
+          {"on": ["E2"], "via": ["te2"], "output": [], "error": "linecount: usage: linecount [--top N] FILE", "note": "A usage line on stderr and exit code 2: the usual way for a tool to say \"here's how to call me\"."}]}]}</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-count-parsons-m" id="ex-count-parsons"></div>
+  <script type="application/json" id="ex-count-parsons-m">{"program": "parsons_count.rs", "seed": 11, "pin": [1, 2, 4, 7], "prompt": "Build the heart of a line counter: open the file, wrap it in a bucket, collect the lines, count the words, report.", "explain": "Open the file, then wrap it in a <code>BufReader</code> (the reader needs the file). The loop pushes each opened line into the Vec; the closing brace ends the loop. Only then can the words be counted, and only then printed. <code>Ok(())</code> ends <code>main</code>: <samp>5 lines, 21 words</samp>, the same as <code>wc</code>."}</script>
+  <p class="howmade"><b>How this run was really made:</b> as in Panel 3, <code>mk.sh</code> set up the cargo project <code>~/rust-ch25/parsons_count</code> with <code>notes.txt</code> beside <code>Cargo.toml</code>; then <code>cargo run -q</code> ran there to make the goal output.</p>
+
+  <section class="panel pop" data-play aria-label="Panel 46: boss level">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="46"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Pipes, buckets and booths, all mixed up. Watch for the shady booth, flush before you leave, and read the Compiler's labels.</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. Three booths, one number. What does the program print?", "hint": "1000 = 3 × 256 + 232. <code>try_from</code> only answers whether it fits. <code>u16::from</code> widens the u8 you already have. Dividing a float, then <code>as i32</code>, chops the fraction.", "explain": "<code>1000 as u8</code> keeps the low 8 bits: <samp>232</samp>. <code>u8::try_from(1000)</code> is an <code>Err</code>, so <code>is_ok()</code> is <samp>false</samp>. <code>u16::from(232) * 2</code> is <samp>464</samp>: the damage was done by <code>as</code>, and widening afterwards can't undo it. 1000 / 3 = 333.33…, chopped to <samp>333</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.rs", "columns": ["text", "try_from", "as u8"], "given": [0], "prompt": "Boss 2. Four lines are read from a byte slice (which has <code>BufRead</code>, just like a file). Each is parsed as an i64, then sent through both the careful booth and the shady one. Fill in each row (a failed parse counts as 0 for <code>as</code>).", "explain": "7 fits both ways: <samp>Ok(7)</samp> and <samp>7</samp>. 300: the careful booth says <samp>Err</samp>, the shady one quietly gives <samp>44</samp>. −4: <samp>Err</samp> versus <samp>252</samp> (256 − 4). <code>ten</code> isn't a number, so the parse fails: <samp>not-a-number</samp>, and <code>unwrap_or(0)</code> gives 0. Every time the booths disagree, <code>as</code> is the one that lied."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. The shelf report goes to stdout through a bucket, and the note goes to stderr. Fill in the bucket type, the macro that writes a line into it, the line that pours it out, and the macro for the note.", "blanks": [{"line": 4, "text": "BufWriter::new"}, {"line": 6, "text": "writeln!"}, {"line": 8, "text": "out.flush()?;"}, {"line": 9, "text": "eprintln!"}], "explain": "<code>BufWriter::new(io::stdout().lock())</code> puts a bucket in front of stdout. <code>writeln!(out, …)?</code> writes into it. <code>out.flush()?</code> pours the three lines out and reports any failure. <code>eprintln!</code> sends the note down stderr, so <code>cargo run -q &gt; report.txt</code> would save only the shelf lines."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 46, "pin": [1, 2, 10], "prompt": "Boss 4. Two newtypes for temperatures. Put the lines in order: a fair booth from Fahrenheit to Celsius, then a <code>main</code> that uses it.", "explain": "<code>impl From&lt;Fahrenheit&gt; for Celsius</code> holds one function, <code>from</code>, whose body does the maths: (68 − 32) × 5 / 9 = 20. Close the function, then the impl. In <code>main</code>, make the reading, convert it with <code>into()</code> (free, thanks to <code>From</code>), print with one decimal: <samp>The reading room is 20.0 °C</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_spot.rs", "bug": 4, "prompt": "Boss 5. 1200 pages minus 600 read should leave 600. The program says 88. Click the line with the bug.", "explain": "Line 4: <code>as u8</code> squeezes 600 into a box that holds 0 to 255. 600 − 512 = <samp>88</samp>, with no warning. Fix: keep it a <code>u32</code> (no cast at all), or use <code>u8::try_from(total - read)</code> and handle the <code>Err</code> if a u8 is truly needed."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_error.rs", "expect": "error", "answer": "E0369", "ask": "This one doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "Boss 6. Two shelf lengths, added together.", "hint": "A newtype is a brand-new type. Does it get every operator its inner f64 has, for free?", "explain": "<samp>error[E0369]: cannot add `Meters` to `Meters`</samp>, with <samp>an implementation of `Add` might be missing for `Meters`</samp>. A newtype starts with nothing: no <code>+</code>, no Display, no Copy. That's the point, since only the operations you choose exist. Write <code>impl Add for Meters</code> (Chapter 18), or add the insides: <code>Meters(shelf_a.0 + shelf_b.0)</code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 47: what you learned">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <p class="caption">What you learned in Chapter 25</p>
+    <ul class="recap">
+      <li><b>DATA DOWN THE MAIN PIPE, TROUBLE DOWN THE SPOUT</b>stdin (0), stdout (1, <code>println!</code>), stderr (2, <code>eprintln!</code>); <code>|</code>, <code>&gt;</code> and <code>2&gt;</code> in the shell; <code>io::stdin().read_to_string</code> (to EOF) and <code>io::stdin().lines()</code>. Exit codes: 0 means OK; return <code>ExitCode</code> from <code>main</code>; <code>Err</code> from <code>main</code> gives 1; panics give 101; <code>process::exit</code> stops on the spot.</li>
+      <li><b>EVERY SHELF HANDS BACK A PARCEL</b><code>fs::read_to_string</code>, <code>fs::write</code> (wipes), <code>File::open</code>, <code>File::create</code>, <code>OpenOptions</code> (append); <code>e.kind()</code>: <code>NotFound</code>, <code>IsADirectory</code>, <code>InvalidData</code>; <code>Path</code>/<code>PathBuf</code>, <code>join</code>, <code>push</code>, <code>.display()</code> (E0277 without it). An unopened <code>Result</code> is a warning and can hide a failure; <code>let _ =</code> when you mean it.</li>
+      <li><b>FLUSH BEFORE YOU LEAVE</b><code>BufReader</code> + <code>BufRead::lines()</code> (E0599 without the import); <code>BufWriter</code>'s bucket pours when full, on <code>flush()</code>, or on drop. <code>process::exit</code> skips the drop and loses it; drop swallows write errors. <code>Read</code> and <code>Write</code> let one function serve stdout, files and <code>Vec&lt;u8&gt;</code>.</li>
+      <li><b>ARGUMENTS ARE TEXT UNTIL YOU PARSE THEM</b><code>env::args</code>, <code>env::var</code> (an <code>Err</code> when unset); <code>set_var</code> needs <code>unsafe</code> in edition 2024 (E0133), so read settings once instead. clap: <code>#[derive(Parser)]</code>, <code>#[arg(short, long)]</code>, <code>///</code> help, errors with exit 2.</li>
+      <li><b>FROM WHEN IT ALWAYS FITS, TRYFROM WHEN IT MIGHT NOT, AS ONLY WHEN YOU'VE CHECKED</b><code>as</code> truncates (300 → 44), flips signs (−1 → 255) and saturates floats (1e10 → i32::MAX, NaN → 0), silently. E0308 between i64 and i32; E0277 when there's no <code>From</code>. <code>checked_</code>, <code>overflowing_</code>, <code>wrapping_</code>, <code>saturating_</code>.</li>
+      <li><b>A NEWTYPE IS A LABEL THE COMPILER READS</b><code>type</code> aliases are nicknames; <code>struct Meters(f64)</code> is a new type (E0308 when mixed). Build booths between them with <code>From</code>, validate at the door with <code>TryFrom</code>, start sensibly with <code>Default</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The pipes are fitted, the buckets are flushed, and the shady booth is closed for business. Well, mostly.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 48: next time, the busy kitchen">
+    <span class="panel-no" aria-hidden="true">48</span>
+    <p class="caption soft">Coming up in Chapter 26: The Busy Kitchen…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 540 230" role="img" aria-label="Teaser picture: a kitchen counter with three cooking pots, each with steam rising, labelled thread 1, thread 2 and thread 3. Above them, a rail with three order tickets hanging from it, labelled channel. On the counter, a single knife labelled Mutex.">
+        <path d="M30 70 H510" stroke="#111" stroke-width="4"/>
+        <g fill="#FFF6CC" stroke="#111" stroke-width="3"><rect x="300" y="72" width="36" height="32" rx="3"/><rect x="350" y="72" width="36" height="32" rx="3"/><rect x="400" y="72" width="36" height="32" rx="3"/></g><g stroke="#111" stroke-width="2"><path d="M306 84 h24 M306 94 h16 M356 84 h24 M356 94 h16 M406 84 h24 M406 94 h16"/></g>
+        <text class="h" x="300" y="56">CHANNEL</text>
+        <rect x="20" y="170" width="500" height="20" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <g fill="#DDE8FF" stroke="#111" stroke-width="4"><path d="M60 130 h80 v40 h-80 z"/><path d="M200 130 h80 v40 h-80 z"/><path d="M340 130 h80 v40 h-80 z"/></g>
+        <g fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"><path d="M85 124 q-5 -6 0 -12 M110 124 q5 -6 0 -12"/><path d="M225 124 q-5 -6 0 -12 M250 124 q5 -6 0 -12"/><path d="M365 124 q-5 -6 0 -12 M390 124 q5 -6 0 -12"/></g>
+        <text class="s mid" x="100" y="216">thread 1</text><text class="s mid" x="240" y="216">thread 2</text><text class="s mid" x="380" y="216">thread 3</text>
+        <path d="M450 160 h56 l10 6 l-10 6 h-56 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/><rect x="430" y="158" width="22" height="16" rx="3" fill="#111"/>
+        <text class="ms mid" x="470" y="150">Mutex</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Next: <b>threads</b>, several cooks in one kitchen. Order tickets on a rail are channels, the one shared knife everyone must ask for is a <code>Mutex</code>, and the recipe book with a reader counter is an <code>Arc</code>. And you'll see why <code>set_var</code> was so nervous about other threads.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch24.html">← Ch 24 · Cities and Pyramids</a><a class="next" href="ch26.html">Ch 26 · The Busy Kitchen →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: file descriptors, buffering, bits and exit codes</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Let's take the plumbing apart.</p></div>
+      </div>
+      <h3>The numbers 0, 1 and 2</h3>
+      <p>On Linux and macOS, a running program refers to each open pipe or file by a small number, a <b>file descriptor</b>. Every program starts with three already open: 0 (stdin), 1 (stdout) and 2 (stderr). That's why the shell writes <code>2&gt;</code> for "redirect stderr": it means "descriptor 2". When you open a file, it typically gets the next free number, 3. Windows uses "handles" instead, with the same three standard ones.</p>
+      <h3>Rust's own buffering of stdout</h3>
+      <p><code>io::stdout()</code> already has a small bucket that pours at every newline (it's line-buffered), which is why <code>print!</code> without a newline sometimes doesn't appear until later; call <code>io::stdout().flush()</code> after a prompt. stderr has no bucket at all, so warnings appear at once. Each <code>println!</code> also locks stdout for a moment; in a loop that prints thousands of lines, take the lock once with <code>io::stdout().lock()</code> and wrap it in a BufWriter, as <code>linecount</code> does.</p>
+      <h3>Why 300 as u8 is 44</h3>
+      <p>Integers are stored in binary. 300 is <code>1 0010 1100</code>: nine bits. A u8 has room for eight, so <code>as</code> keeps the lowest eight, <code>0010 1100</code>, which is 44. Negative numbers use <b>two's complement</b>: −1 is all ones, so as a u8 it reads 1111 1111 = 255. Casting between signed and unsigned of the same size never changes a bit, only how the bits are read. Float-to-integer casts have saturated (pinned to the nearest end, NaN to 0) since Rust 1.45; before that, out-of-range casts were undefined behaviour.</p>
+      <h3>Exit codes have 8 bits on Unix</h3>
+      <p>On Linux and macOS, a parent process sees only the lowest 8 bits of an exit code, which is why <code>ExitCode::from</code> takes a <code>u8</code>. <code>process::exit(256)</code> would look like 0 there, and like 256 on Windows; the standard library's documentation gives this very example. Shells also report a program killed by a signal as 128 plus the signal number.</p>
+      <h3>What main's Result does</h3>
+      <p>When <code>main</code> returns <code>Err(e)</code>, Rust prints <code>Error: </code> and <code>e</code>'s <b>Debug</b> form to stderr, and exits with 1. That's why Panel 12 showed <samp>Os { code: 2, kind: NotFound, … }</samp> instead of the friendlier Display text. Real tools usually match the error in <code>main</code> and print it with <code>{e}</code>, as <code>linecount</code> does. The <code>anyhow</code> crate prints a tidy chain of causes.</p>
+      <h3>Newtypes cost nothing</h3>
+      <p>In practice a struct with a single field has the same size as that field: <code>Meters(f64)</code> is 8 bytes, like <code>f64</code>, and the wrapper costs nothing at run time. Rust's default layout doesn't <em>promise</em> this; writing <code>#[repr(transparent)]</code> above the struct makes it a guarantee (the Rust Reference, "Type layout"). The safety is free.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where you'll meet these pipes and booths</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Unix-style tools</b> (<code>grep</code>, <code>wc</code>, <code>sort</code>) read stdin when no file is given, write results to stdout, complain on stderr and use exit codes 0, 1 and 2. A Rust tool that follows the same rules fits straight into any pipeline.</li>
+        <li><b>clap</b> is the usual choice for argument parsing in Rust command-line tools. Its derive style also does subcommands (<code>tool add</code>, <code>tool list</code>) with an <code>enum</code>, can read defaults from environment variables (its <code>env</code> feature), and generates shell completions. Chapter 28 looks at choosing crates.</li>
+        <li><b>Reading configuration</b>: settings usually come from three places, in order of priority: command-line flags, then environment variables, then a config file, then defaults. Read them all once at start-up into one settings struct with <code>Default</code>.</li>
+        <li><b>Testing output</b>: write functions that take <code>&amp;mut impl Write</code>, as in Panel 20. The real program passes stdout; tests pass a <code>Vec&lt;u8&gt;</code> and compare.</li>
+        <li><b>Newtypes</b> appear wherever a mix-up would be expensive: IDs (<code>UserId</code>, <code>OrderId</code>), money in cents, units, and validated text such as an <code>Email</code> that can only be built by a <code>TryFrom&lt;&amp;str&gt;</code> that checked it.</li>
+        <li><b>Lints for casts</b>: <code>cargo clippy -- -W clippy::cast_possible_truncation</code> warns at every <code>as</code> that might lose data. Some teams turn it on for the whole project (Chapter 15 introduced clippy).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Errors should be printed with println!."</b> Put them on stderr with <code>eprintln!</code>, or they end up inside saved results.</li>
+        <li><b>"Any exit code is fine; nobody looks."</b> Scripts, <code>&amp;&amp;</code>, build systems and CI all look. 0 must mean success.</li>
+        <li><b>"process::exit is just a quicker return."</b> It skips every drop: unflushed buckets are lost, and temporary files aren't cleaned up.</li>
+        <li><b>"fs::write adds to the file."</b> It replaces it. Use <code>OpenOptions::new().append(true)</code>.</li>
+        <li><b>"Dropping a BufWriter is as good as flushing it."</b> It usually writes the data, but any error is thrown away. Flush yourself and check the result.</li>
+        <li><b>"lines() keeps the newline."</b> It removes it (and a <code>\r</code> before it, for Windows files).</li>
+        <li><b>"Command-line numbers arrive as numbers."</b> Every argument is a String until you parse it.</li>
+        <li><b>"<code>as</code> rounds floats."</b> It chops toward zero. Use <code>.round()</code> first.</li>
+        <li><b>"<code>as</code> will panic if the value doesn't fit."</b> It never panics and never warns (except for a literal the Compiler can see). That's why it's the shady booth.</li>
+        <li><b>"A type alias makes a new type."</b> It's a nickname. Use a newtype for protection.</li>
+        <li><b>"A newtype gets its inner type's methods and operators."</b> It gets nothing until you implement or derive it (E0369 for <code>+</code>).</li>
+        <li><b>"Wrapping set_var in unsafe makes it safe."</b> <code>unsafe</code> is a promise you make. With other threads touching the environment, the promise is false.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project and a text file</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new pipes</code>, then <code>cd pipes</code>. Create <code>notes.txt</code> next to <code>Cargo.toml</code> with a few lines of your own. No Rust yet? Install it from rustup.rs: on Windows, run the installer it offers (it may ask for the Visual Studio C++ build tools); on macOS and Linux, paste the one-line command shown there. Check with <code>cargo --version</code>; this book used 1.99.1, and <code>rustup update</code> gets the newest.</p>
+      <h3>2. The pipes on your system</h3>
+      <div class="ops-wrap"><table class="ops ref-table">
+        <thead><tr><th>Job</th><th>macOS / Linux (bash, zsh)</th><th>Windows PowerShell</th></tr></thead>
+        <tbody>
+          <tr><td>pipe a file in</td><td><code>cat notes.txt | cargo run -q</code></td><td><code>Get-Content notes.txt | cargo run -q</code></td></tr>
+          <tr><td>hide stderr</td><td><code>cargo run -q 2&gt; /dev/null</code></td><td><code>cargo run -q 2&gt; $null</code></td></tr>
+          <tr><td>save stdout</td><td><code>cargo run -q &gt; out.txt</code></td><td><code>cargo run -q &gt; out.txt</code></td></tr>
+          <tr><td>last exit code</td><td><code>echo $?</code></td><td><code>$LASTEXITCODE</code> (PowerShell's <code>$?</code> is only True or False)</td></tr>
+          <tr><td>set a variable for one run</td><td><code>SHELVES=24 cargo run -q</code></td><td><code>$env:SHELVES = "24"; cargo run -q</code> (stays set in that window)</td></tr>
+          <tr><td>end typed input</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Enter</kbd></td></tr>
+        </tbody>
+      </table></div>
+      <p>In the older Windows <code>cmd.exe</code>: <code>type notes.txt | cargo run -q</code>, <code>echo %ERRORLEVEL%</code>, and <code>set SHELVES=24</code> before the command. <code>/dev/full</code> exists only on Linux, so try Panel 23 there (or in WSL on Windows).</p>
+      <h3>3. Experiments</h3>
+      <ol>
+        <li>Paste <code>streams.rs</code>. Run <code>cargo run -q &gt; out.txt</code>, then look inside <code>out.txt</code>. Where did the warning go?</li>
+        <li>Paste <code>vanish.rs</code>, run it, and check <code>report.txt</code>. Then replace <code>process::exit(0);</code> with <code>Ok(())</code> and run it again.</li>
+        <li>Take <code>numbered.rs</code> and make it read from stdin when no file name is given: <code>let reader: Box&lt;dyn BufRead&gt; = …</code> with <code>io::stdin().lock()</code> on one side and <code>BufReader::new(File::open(path)?)</code> on the other (Chapter 23's <code>dyn</code>).</li>
+        <li>Run <code>cargo add clap --features derive</code> (this needs the internet) and paste <code>tally.rs</code>. Try <code>-t3</code>, <code>--top=3</code>, <code>-qt 3</code> and <code>--version</code>.</li>
+        <li>Paste <code>as_casts.rs</code> and add your own: <code>-1.5 as u8</code>, <code>256.7 as u8</code>, <code>(-129_i32) as i8</code>. Predict each before running.</li>
+        <li>Add <code>impl std::ops::Add for Meters</code> to <code>boss_error.rs</code> so it compiles.</li>
+      </ol>
+      <p><b>On your machine:</b> panics show a thread id like <samp>thread 'main' (1)</samp>, and yours will differ. Windows paths print with <code>\</code>. Error messages from the operating system (the part after the colon, like <samp>No such file or directory (os error 2)</samp>) are worded by your system, so they differ on Windows. Messages from the standard library can change between Rust versions, as <code>try_from</code>'s did.</p>
+      <h3>4. Explain the errors</h3>
+      <p>Run <code>rustc --explain E0133</code>, and the same for E0308, E0277, E0599 and E0369.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>stream</dt><dd>A pipe that carries bytes one after another: stdin, stdout, stderr, a file, a network connection.</dd>
+        <dt>stdin / stdout / stderr</dt><dd>Standard input (0), standard output (1) and standard error (2): the three streams every program starts with.</dd>
+        <dt>pipe (<code>|</code>)</dt><dd>Joins one program's stdout to the next program's stdin.</dd>
+        <dt>redirect (<code>&gt;</code>, <code>2&gt;</code>, <code>&lt;</code>)</dt><dd>Send stdout or stderr to a file, or feed a file into stdin.</dd>
+        <dt>end of file (EOF)</dt><dd>The signal that a stream has no more data. At a keyboard: Ctrl+D (Ctrl+Z on Windows).</dd>
+        <dt>exit code</dt><dd>The number a program hands back when it ends. 0 means success.</dd>
+        <dt><code>ExitCode</code></dt><dd>A type <code>main</code> can return to choose the exit code tidily.</dd>
+        <dt><code>process::exit</code></dt><dd>Ends the program immediately with a code, skipping every drop.</dd>
+        <dt><code>std::fs</code></dt><dd>The file-system module: <code>read_to_string</code>, <code>write</code>, <code>read</code>, <code>remove_file</code>, <code>metadata</code>…</dd>
+        <dt><code>File::open</code> / <code>File::create</code></dt><dd>Open an existing file for reading / open a file for writing, new or emptied.</dd>
+        <dt><code>OpenOptions</code></dt><dd>A builder for opening files any way you like, for example in append mode.</dd>
+        <dt><code>io::Error</code>, <code>ErrorKind</code></dt><dd>The error type of every I/O operation, and its category: <code>NotFound</code>, <code>PermissionDenied</code>, <code>IsADirectory</code>, <code>InvalidData</code>, <code>StorageFull</code>…</dd>
+        <dt><code>Path</code> / <code>PathBuf</code></dt><dd>A borrowed / owned file-system path, with methods for its parts.</dd>
+        <dt>buffer</dt><dd>A bucket of memory that collects data so it can be moved in fewer, bigger trips.</dd>
+        <dt><code>BufReader</code> / <code>BufWriter</code></dt><dd>Wrappers that add a buffer in front of a reader / a writer.</dd>
+        <dt>flush</dt><dd>Pour out everything waiting in a buffer now, and report whether it worked.</dd>
+        <dt><code>Read</code> / <code>Write</code> / <code>BufRead</code></dt><dd>The traits for things you can read bytes from / write bytes to / read line by line.</dd>
+        <dt>command-line argument</dt><dd>A word typed after the program's name; <code>env::args()</code> gives them, as Strings.</dd>
+        <dt>environment variable</dt><dd>A named setting passed to a program by whoever started it; <code>env::var</code> reads one.</dd>
+        <dt><code>unsafe</code> block</dt><dd>Code where you promise the Compiler that rules it can't check are kept.</dd>
+        <dt>clap, <code>#[derive(Parser)]</code></dt><dd>A crate that builds an argument parser, help text and error messages from a struct.</dd>
+        <dt>cast (<code>as</code>)</dt><dd>A conversion that always produces a value, even a wrong one: truncation, sign change, saturation.</dd>
+        <dt>truncation / saturation</dt><dd>Throwing away the bits that don't fit / pinning a value to the nearest end of the range.</dd>
+        <dt><code>From</code> / <code>Into</code></dt><dd>Conversions that can't fail or lose information.</dd>
+        <dt><code>TryFrom</code> / <code>TryInto</code></dt><dd>Conversions that may refuse, handing back a <code>Result</code>.</dd>
+        <dt><code>checked_*</code>, <code>overflowing_*</code>, <code>wrapping_*</code>, <code>saturating_*</code></dt><dd>Arithmetic that, on overflow, gives None / wraps and says so / wraps / stops at the end.</dd>
+        <dt>type alias</dt><dd>A second name for an existing type (<code>type Meters = f64;</code>). No new checks.</dd>
+        <dt>newtype</dt><dd>A one-field tuple struct that makes a distinct type around another (<code>struct Meters(f64);</code>).</dd>
+        <dt><code>Default</code></dt><dd>The trait for a type's sensible starting value.</dd>
+        <dt>E0133 / E0308 / E0277 / E0599 / E0369</dt><dd>Unsafe call outside <code>unsafe</code> / mismatched types / a missing trait (Display for paths, <code>From&lt;i64&gt;</code> for i32) / a trait method used without importing the trait / an operator the type doesn't have.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li><a href="https://doc.rust-lang.org/stable/book/ch12-00-an-io-project.html">The Rust Programming Language, chapter 12</a>: building a command-line program, including <a href="https://doc.rust-lang.org/book/ch12-06-writing-to-stderr-instead-of-stdout.html">writing errors to stderr</a>.</li>
+        <li>std: <a href="https://doc.rust-lang.org/std/io/index.html">std::io</a>, <a href="https://doc.rust-lang.org/std/fs/index.html">std::fs</a>, <a href="https://doc.rust-lang.org/std/io/struct.BufWriter.html">BufWriter</a> (the note on flushing before drop), <a href="https://doc.rust-lang.org/std/path/struct.Path.html">Path</a>, <a href="https://doc.rust-lang.org/std/env/index.html">std::env</a> and <a href="https://doc.rust-lang.org/std/env/fn.set_var.html">set_var</a>'s safety section, <a href="https://doc.rust-lang.org/std/process/fn.exit.html">process::exit</a>, <a href="https://doc.rust-lang.org/std/process/struct.ExitCode.html">ExitCode</a>, <a href="https://doc.rust-lang.org/std/convert/trait.TryFrom.html">TryFrom</a>.</li>
+        <li><a href="https://doc.rust-lang.org/rust-by-example/types/cast.html">Rust by Example: Casting</a> and <a href="https://doc.rust-lang.org/rust-by-example/conversion.html">Conversion</a>.</li>
+        <li>The error index: <a href="https://doc.rust-lang.org/error_codes/E0133.html">E0133</a>, <a href="https://doc.rust-lang.org/error_codes/E0308.html">E0308</a>, <a href="https://doc.rust-lang.org/error_codes/E0277.html">E0277</a>, <a href="https://doc.rust-lang.org/error_codes/E0599.html">E0599</a>, <a href="https://doc.rust-lang.org/error_codes/E0369.html">E0369</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html">clap's derive tutorial</a> on docs.rs.</li>
+        <li><a href="https://rust-cli.github.io/book/index.html">Command Line Applications in Rust</a>, a free short book on CLI tools.</li>
+        <li><a href="https://github.com/rust-lang/rustlings">Rustlings</a>: the <code>conversions</code> exercises.</li>
+        <li><a href="https://google.github.io/comprehensive-rust/">Comprehensive Rust</a>: the slides on <code>Read</code>/<code>Write</code> and on <code>From</code>/<code>Into</code> and casting.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch25</code>. Each of the 66 programs was built and run as its own cargo project with <code>cargo run -q</code>, a debug build. Programs that read <code>notes.txt</code>, take arguments or environment variables, or use pipes were run through small terminal scripts that first copy the program and <code>notes.txt</code> into its project folder (the chapter's <code>mk.sh</code>); the commands shown are the commands that ran. The clap programs used clap 4.6.7. Files the programs write (<code>loans.txt</code>, <code>report.txt</code>, <code>copy.txt</code>…) were written in those project folders. The terminals show the real compiler messages, exit codes, and panic messages; the panic's thread id, <samp>(1)</samp>, comes from running each program in its own fresh process namespace, where the main thread really is number 1.</p>
+  <p>The two versions printed the same output for every program except <code>try_from.rs</code>, whose error message changed: Rust 1.99.1 says <samp>number too large to fit in target type</samp> or <samp>number too small to fit in target type</samp>, where 1.97.0 said <samp>out of range integral type conversion attempted</samp> (Panel 36 shows both runs). Three compiler messages differ only in a note that points into the standard library's own source (<code>forgot_bufread.rs</code>, <code>boss_error.rs</code>) or in one pair of backticks in a note (<code>path_display.rs</code>).</p>
+  <p>The BufWriter tracer, the two machines and the line counter's map are teaching models; each checks itself against those runs and shows a badge. The tracer's screen must match the real output of <code>buffer_steps.rs</code> line for line, and its bucket contents are the ones that program printed. Each machine example names the real output line or error it stands for. Each map road names the program whose real exit code and output it must match, and a badge proves the seven <code>linecount</code> copies are identical source. The pipes picture, the buckets, the booths, the exit-code flags and the teaser are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Rust standard library documentation for BufWriter (dropping attempts a flush but ignores errors; the default 8 KiB buffer), std::env::set_var (its safety section), std::process::exit (destructors don't run; only the low 8 bits of an exit code on Unix), and std::fs, std::io, Path, ExitCode and TryFrom; The Rust Programming Language, chapter 12, especially its section on writing errors to standard error; Rust by Example's page on casting (truncation, sign change, float saturation since 1.45, the overflowing_literals lint); clap's derive tutorial (positional arguments, short and long options, default_value_t); and, fetched on 2026-11-08 for this revision, the Rust Reference's "Type layout" page (the default representation's limited guarantees; <code>#[repr(transparent)]</code>), std::env::set_var's safety section again, and Rust's release notes (saturating float-to-integer <code>as</code> casts in 1.45.0); and the course research map's rows I14 and I16, which also list Comprehensive Rust, Easy Rust, roadmap.sh, Rustlings, 100 Exercises to Learn Rust and Effective Rust (not fetched for this chapter).</p>
+  <p>Mabel, the Professor, the Compiler, Digger, Sneak and every picture here are original characters and drawings made in code; Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

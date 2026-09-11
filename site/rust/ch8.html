@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Library Ledger</title>
+<meta name="description" content="Chapter 8 of the Pip &amp; Friends Rust book, a comic course: references and borrowing. Shared references &amp;T (look, don't take), mutable references &amp;mut T (write, still don't take), borrowing in function parameters, many readers or one writer, borrows that end at their last use, dereferencing with *, the &amp;mut guess ritual explained, the read/write/own permission model, and the real errors E0499, E0502, E0596 and E0597 read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch8.css">
+<script defer src="../data/rs-ch8.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/ext/rs-ch8.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch7.html">&larr; Ch 7</a><span aria-current="page">Ch 8 of 29</span><a href="ch9.html">Ch 9 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 8</p>
+    <h1 id="cover-h">THE LIBRARY LEDGER</h1>
+    <div class="cover-pair">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <svg class="fig" viewBox="0 0 300 220" aria-hidden="true">
+        <rect x="18" y="20" width="264" height="186" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+        <path d="M150 20 v186" stroke="#111" stroke-width="3"/>
+        <text class="h" x="84" y="54" text-anchor="middle">LEDGER</text>
+        <text class="h" x="216" y="54" text-anchor="middle">EMMA</text>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">
+          <text x="32" y="92">&amp;  Ana</text><text x="32" y="122">&amp;  Ben</text><text x="32" y="152">&amp;  Cal</text>
+          <text x="164" y="92">&amp;mut</text><text x="164" y="116">Dev</text>
+        </g>
+        <path d="M30 100 h104 M30 130 h104 M30 160 h104 M162 124 h108" stroke="#B9C7E3" stroke-width="2"/>
+        <g class="stamp-in"><rect x="172" y="140" width="96" height="40" rx="6" fill="#FFFFFF" stroke="#B00020" stroke-width="3" stroke-dasharray="7 5" transform="rotate(-8 220 160)"/>
+        <text x="220" y="168" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="20" fill="#B00020" transform="rotate(-8 220 160)">ALONE</text></g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian points at her open ledger. The left page lists three readers, Ana, Ben and Cal, each with an ampersand. The right page, headed Emma, lists one writer, Dev, marked ampersand-mut, with a dashed red stamp that says ALONE.</p>
+    <p class="caption blurb">Last chapter, a book had exactly one owner, and lending it meant giving it away. Today Mabel opens her ledger and starts <b>lending</b> properly: many people may <em>read</em> a book at once, or one person may <em>write</em> in it, and every loan comes back before the owner leaves. About 100 minutes, with 21 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The reading room: <code>&amp;</code>, look but don't take</a></li>
+      <li><a href="#part-2">Writing in the margins: <code>&amp;mut</code> and the star <code>*</code></a></li>
+      <li><a href="#part-3">The ledger rule: many readers or one writer</a></li>
+      <li><a href="#part-4">A loan ends at its last use</a></li>
+      <li><a href="#part-5">Bring it back before the owner leaves</a></li>
+      <li><a href="#part-6">Compile or not? Detective drills</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE READING ROOM<small>Shared references <code>&amp;T</code>: look at a value without taking it</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: handing the book over and back">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Remember Chapter 7? Every book has exactly one owner. Pass a <code>String</code> to a function and it <b>moves</b>: the function owns it now.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Mabel says: </span>Someone wants to count the letters in the title of <i>Emma</i>. Do I really have to <b>give</b> them the book, and then hope they give it back?</p>
+        <p class="bubble"><span class="sr-only">Mabel says: </span>That works, but it's clumsy. Look.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Mabel shrugs, looking unhappy about handing her book away.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: the give-it-back way">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">The Chapter 7 way: hand the book over, and have the function hand it back along with its answer, in a tuple.</p>
+    <span class="file-tab">give_back.rs</span>
+    <pre class="code" data-src="give_back.rs"></pre>
+    <pre class="term" data-run="give_back.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>count_letters(book)</code> moves the <code>String</code> into the function. <code>book</code> is empty-handed.</span></li>
+      <li><span><b>Line 9</b>: the function returns a tuple, <code>(title, n)</code>: the book itself, plus the answer.</span></li>
+      <li><span><b>Line 3 again</b>: <code>let (book, letters) = ...</code> unpacks the tuple (Chapter 5) and gives the book a home in a new <code>book</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>It runs, but every function that only wants to <em>look</em> would need this give-and-take-back dance. There must be a way to just <b>lend</b> it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 3: the reading room">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">The reading room. The owner keeps the book. Readers come to the table and <b>look</b>. Nobody walks off with it.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 300" role="img" aria-label="Drawing of the reading room. An open book labelled Emma lies on a table. Its owner, holding the book's key, stands on the left. Three readers, labelled with ampersands, sit around the table; dashed lines run from their eyes to the book, meaning they only look. A sign on the wall says READING ROOM: LOOK, DON'T TAKE.">
+      <rect x="170" y="14" width="320" height="44" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text class="h mid" x="330" y="44">READING ROOM: LOOK, DON'T TAKE</text>
+      <ellipse cx="330" cy="236" rx="210" ry="40" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+      <path d="M246 214 q42 -22 84 -4 q42 -18 84 4 v34 q-42 -18 -84 0 q-42 -18 -84 0 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <path d="M330 210 v38" stroke="#111" stroke-width="2.5"/>
+      <path d="M258 236 q30 -10 60 -2 M342 222 q30 -8 60 2 M342 232 q30 -8 60 2" fill="none" stroke="#B9C7E3" stroke-width="2.5"/>
+      <text class="m mid" x="288" y="226" style="font-size:16px">Emma</text>
+      <!-- owner with key -->
+      <g transform="translate(40 120)">
+        <circle cx="40" cy="30" r="24" fill="#F2B38F" stroke="#111" stroke-width="3"/>
+        <path d="M14 116 q0 -60 26 -60 q26 0 26 60 z" fill="#C9603F" stroke="#111" stroke-width="3"/>
+        <circle cx="32" cy="27" r="3" fill="#111"/><circle cx="48" cy="27" r="3" fill="#111"/><path d="M33 38 q7 6 14 0" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+      <svg data-char="key" x="80" y="170" width="74" height="57"></svg>
+      <text class="mid" x="80" y="270" style="font-size:22px">owner: <tspan font-family="JetBrains Mono, monospace" font-weight="800">book</tspan></text>
+      <!-- readers -->
+      <g stroke="#111" stroke-width="3">
+        <circle cx="430" cy="128" r="20" fill="#DDE8FF"/><circle cx="520" cy="150" r="20" fill="#C9F2D9"/><circle cx="600" cy="196" r="20" fill="#FFE1E1"/>
+        <path d="M410 186 q0 -36 20 -36 q20 0 20 36 z" fill="#7FB2FF"/><path d="M500 208 q0 -36 20 -36 q20 0 20 36 z" fill="#7FB2FF"/><path d="M580 254 q0 -36 20 -36 q20 0 20 36 z" fill="#7FB2FF"/>
+      </g>
+      <g fill="#111"><circle cx="424" cy="126" r="2.5"/><circle cx="436" cy="126" r="2.5"/><circle cx="514" cy="148" r="2.5"/><circle cx="526" cy="148" r="2.5"/><circle cx="594" cy="194" r="2.5"/><circle cx="606" cy="194" r="2.5"/></g>
+      <g fill="none" stroke="#111" stroke-width="2.5" stroke-dasharray="6 6" stroke-linecap="round"><path d="M420 140 L370 214"/><path d="M506 162 L400 222"/><path d="M582 204 L412 236"/></g>
+      <text class="m" x="456" y="110" style="font-size:22px">&amp;Ana</text><text class="m" x="548" y="136" style="font-size:22px">&amp;Ben</text><text class="m mid" x="606" y="166" style="font-size:22px">&amp;Cal</text>
+    </svg></div>
+    <div class="duo">
+      <div class="duo-card"><h3>BORROW<small>&amp;book</small></h3><p>Putting <code>&amp;</code> in front of a value makes a <b>reference</b>: a note that says "the book is <em>over there</em>". Handing out a reference is called <b>borrowing</b>.</p></div>
+      <div class="duo-card"><h3>READ-ONLY<small>&amp;String</small></h3><p>The type of that note is <code>&amp;String</code>, said "reference to a String" or "ref String". A plain <code>&amp;</code> reference only lets you <b>look</b>. It is also called a <b>shared reference</b>.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The owner keeps the key. A reference is just a <b>reading pass</b>. Catchphrase: <b>look, don't take</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: lending to a function">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">The same job, by lending. Spot the two <code>&amp;</code> signs.</p>
+    <span class="file-tab">lend.rs</span>
+    <pre class="code" data-src="lend.rs"></pre>
+    <pre class="term" data-run="lend.rs" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>count_letters(&amp;book)</code>. The <code>&amp;</code> says "lend it, don't give it". <code>book</code> stays the owner.</span></li>
+      <li><span><b>Line 7</b>: <code>title: &amp;String</code>. The function asks for a reference to a <code>String</code>, not a <code>String</code>. Its job is to look, so a reading pass is all it needs.</span></li>
+      <li><span><b>Line 8</b>: <code>title.len()</code> reads the length through the reference. No tuple, no handing back.</span></li>
+      <li><span><b>Line 4</b>: <code>book</code> can still be printed. It never left home.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 5: stack and heap, a reading loan" data-mem="mem-lend" data-heap-label="the coat-check room" id="mem-lend-box">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Step through it, as in Chapter 7's stack-and-heap pictures. Watch <code>title</code> on <code>count_letters</code>'s plate: it holds a <b>reference</b>, an arrow to <code>book</code>'s slot on <code>main</code>'s plate. When the function ends, it vanishes without freeing anything.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-lend">{"program": "lend.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts: one empty plate. Nothing on the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>String::from</code> builds the String, as in Chapter 7: on <code>main</code>'s plate, <code>book</code> holds <code>ptr</code>, <code>len</code> and <code>cap</code>; the letters are on the heap. <code>book</code> owns all of it.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["book", "H1"]},
+      {"line": 8, "note": "<code>count_letters(&amp;book)</code> puts a new plate on top. Its parameter <code>title</code> is a <b>reference</b>: the address of <code>book</code>'s slot, drawn as an arrow back to <code>main</code>'s plate. Nothing moved: the String and its letters still belong to <code>book</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}, {"name": "count_letters", "slots": [{"n": "title", "type": "&String", "ref": "main/book"}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["title"]},
+      {"line": 4, "note": "<code>title.len()</code> follows the arrow to <code>book</code> and reads its <code>len</code>: 4. The function returns, and its plate comes off, reference and all. Removing a reference frees nothing, because it never owned anything. The 4 lands in <code>letters</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}, {"n": "letters", "type": "usize", "val": "4"}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["letters"]},
+      {"line": 5, "note": "<code>book</code> still owns its String, so line 4 can print it.", "output": ["Emma has 4 letters"], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}, {"n": "letters", "type": "usize", "val": "4"}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}},
+      {"line": null, "note": "The closing brace. The owner leaves, so its heap letters are freed, exactly once, by their one owner. The reference had already gone.", "output": ["Emma has 4 letters"], "frames": [], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fill-borrow-m" id="ex-fill-borrow"></div>
+  <script type="application/json" id="ex-fill-borrow-m">{"program": "fill_borrow.rs", "prompt": "<code>count_words</code> only needs to look at the poem. Fill both blanks so the poem is lent, not given away, and line 4 can still print it. (<code>text.split(' ').count()</code> counts the pieces between spaces.)", "blanks": [{"line": 3, "text": "&poem", "accept": ["&poem", "& poem"]}, {"line": 7, "text": "&String", "accept": ["&String", "& String"]}], "explain": "Two matching <code>&amp;</code> signs: <code>&amp;poem</code> at the call lends the String, and <code>text: &amp;String</code> in the signature says the function expects a reference. Without them the poem would move into <code>count_words</code> and line 4 could not print it."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 6: forgetting the ampersand">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="E0308!" data-seed="6"></svg>
+    <p class="caption">The function asks for a reading pass, but line 3 hands over the book itself.</p>
+    <span class="file-tab">lend_forget.rs</span>
+    <pre class="code" data-src="lend_forget.rs"></pre>
+    <pre class="term wrap" data-run="lend_forget.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0308]: mismatched types</code><br><b>What</b>: the wrong type, the same error code as in Chapter 3.</span></li>
+      <li><span><code>^^^^ expected `&amp;String`, found `String`</code><br><b>The primary label</b>, under <code>book</code> on line 3: the function wanted a reference and got the whole <code>String</code>.</span></li>
+      <li><span><code>note: function defined here</code><br>The Compiler shows you the signature on line 7, so you can see what it wanted.</span></li>
+      <li><span><code>help: consider borrowing here</code><br>And the fix, with a <code>+</code> marking the one character to add: <code>&amp;book</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>A <code>String</code> and a <code>&amp;String</code> are different types. One is the book, the other is a note saying where the book is. I won't swap one for the other behind your back.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: what a reference prints">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A reference is its own little value, with its own name. What happens when you print it, or ask it a question?</p>
+    <span class="file-tab">ref_basics.rs</span>
+    <pre class="code" data-src="ref_basics.rs"></pre>
+    <pre class="term" data-run="ref_basics.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>let r = &amp;book;</code> stores a reference in a box of its own. <code>r</code>'s type is <code>&amp;String</code>.</span></li>
+      <li><span><b>Line 5</b>: printing <code>r</code> prints the <em>book</em>, not an address. <code>println!</code> follows the arrow for you.</span></li>
+      <li><span><b>Line 6</b>: <code>*r</code> means "follow the arrow to the value". <code>(*r).len()</code> is the long way to ask the String for its length. Part 2 is all about the star.</span></li>
+      <li><span><b>Line 7</b>: <code>r.len()</code> does the same thing. The dot follows arrows by itself, so you almost never need to write the star before a method. This is called <b>auto-deref</b>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-lend-predict-m" id="ex-lend-predict"></div>
+  <script type="application/json" id="ex-lend-predict-m">{"program": "predict_lend.rs", "hint": "<code>\"Dracula\"</code> has 7 letters. Count how many times the book is lent, and whether it ever moves.", "explain": "<code>count_letters</code> borrows the title twice; each loan ends when the call returns. <code>a</code> is 7 and <code>b</code> is 7 × 2 = 14. The title was never moved, so line 6 can still print it."}</script>
+
+  <section class="panel clean" aria-label="Panel 8: many readers at once">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Three readers, one book, all at the same table, at the same time.</p>
+    <span class="file-tab">many_readers.rs</span>
+    <pre class="code" data-src="many_readers.rs"></pre>
+    <pre class="term" data-run="many_readers.rs"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Three reading loans in my ledger, and the owner can read too (line 7). Reading never changes anything, so readers can't get in each other's way. That's why <code>&amp;</code> is called a <b>shared</b> reference.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sig-choice-m" id="ex-sig-choice"></div>
+  <script type="application/json" id="ex-sig-choice-m">{"q": "<code>count_vowels</code> needs to look at a <code>String</code> and return a number. The caller must still be able to use its String afterwards. Which first line is the best fit?", "options": [
+    {"t": "<code>fn count_vowels(s: String) -&#8288;&gt; usize</code>", "why": "This takes ownership: the String moves into the function and is dropped when it ends. The caller loses it (E0382 if it tries to use it again)."},
+    {"t": "<code>fn count_vowels(s: &amp;String) -&#8288;&gt; usize</code>", "why": "Yes. A shared reference is a reading pass: the function can look, the caller keeps the String, and many readers could look at the same time.", "correct": true},
+    {"t": "<code>fn count_vowels(s: &amp;mut String) -&#8288;&gt; usize</code>", "why": "It would work, but it asks for far more than it needs: a writing loan. The caller would have to make its String <code>mut</code>, and nobody else could even read it during the call. Ask for the smallest permission that does the job."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · WRITING IN THE MARGINS<small>Mutable references <code>&amp;mut T</code>, the three <code>mut</code>s, the star <code>*</code>, and the <code>&amp;mut guess</code> ritual</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 9: checked out to one writer">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">To write notes in the margins, you can't sit in the reading room. You check the book out, and take it to a study booth, <b>alone</b>.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 270" role="img" aria-label="Drawing: a closed study booth with a sign CHECKED OUT, ONE WRITER. Inside, one person labelled ampersand-mut Dev writes in the book with a pencil. Outside a rope, two readers wait with their reading passes, and the owner waits holding the key. A label says the owner gets the book back when the writer is done.">
+      <rect x="250" y="40" width="260" height="200" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <rect x="282" y="10" width="196" height="40" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text class="h mid" x="380" y="38">CHECKED OUT</text>
+      <rect x="270" y="176" width="220" height="20" rx="4" fill="#C8955E" stroke="#111" stroke-width="3"/>
+      <path d="M330 170 q22 -14 50 -2 q28 -12 50 2 v10 h-100 z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <circle cx="380" cy="100" r="22" fill="#F2B38F" stroke="#111" stroke-width="3"/>
+      <path d="M352 176 q0 -48 28 -48 q28 0 28 48" fill="#FF9F43" stroke="#111" stroke-width="3"/>
+      <circle cx="372" cy="98" r="2.5" fill="#111"/><circle cx="388" cy="98" r="2.5" fill="#111"/><path d="M372 110 h16" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+      <g transform="rotate(30 420 150)"><rect x="414" y="120" width="10" height="44" fill="#FFD60A" stroke="#111" stroke-width="2.5"/><path d="M414 164 l5 12 l5 -12 z" fill="#F2B38F" stroke="#111" stroke-width="2"/></g>
+      <text class="m mid" x="380" y="226">&amp;mut Dev</text>
+      <!-- rope -->
+      <path d="M40 210 q50 22 100 0 q50 22 100 0" fill="none" stroke="#B00020" stroke-width="5"/>
+      <g stroke="#111" stroke-width="3"><rect x="34" y="150" width="10" height="70" fill="#C8955E"/><rect x="236" y="150" width="10" height="70" fill="#C8955E"/></g>
+      <g stroke="#111" stroke-width="3"><circle cx="90" cy="120" r="18" fill="#DDE8FF"/><circle cx="170" cy="120" r="18" fill="#C9F2D9"/><path d="M72 176 q0 -36 18 -36 q18 0 18 36 z" fill="#7FB2FF"/><path d="M152 176 q0 -36 18 -36 q18 0 18 36 z" fill="#7FB2FF"/></g>
+      <text class="m mid" x="90" y="94">&amp;Ana</text><text class="m mid" x="170" y="94">&amp;Ben</text>
+      <text class="mid s" x="130" y="258">readers wait</text>
+      <g transform="translate(560 110)"><circle cx="30" cy="20" r="20" fill="#F2B38F" stroke="#111" stroke-width="3"/><path d="M8 96 q0 -54 22 -54 q22 0 22 54 z" fill="#C9603F" stroke="#111" stroke-width="3"/></g>
+      <svg data-char="key" x="586" y="150" width="66" height="51"></svg>
+      <text class="mid s" x="590" y="236">owner waits too</text>
+    </svg></div>
+    <div class="duo">
+      <div class="duo-card"><h3>WRITE<small>&amp;mut book</small></h3><p><code>&amp;mut</code> makes a <b>mutable reference</b>: a pass that lets you <em>change</em> the value. You still don't own it, so you can't give it away or drop it.</p></div>
+      <div class="duo-card dashed"><h3>ALONE<small>exclusive</small></h3><p>While a writing loan is open, nobody else may use the book at all: no other writers, no readers, not even the owner. That's why it's also called an <b>exclusive</b> (or unique) reference.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: writing through a mutable reference">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Mabel lends <i>Emma</i> to someone who writes a note in it. Count the <code>mut</code>s.</p>
+    <span class="file-tab">add_note.rs</span>
+    <pre class="code" data-src="add_note.rs"></pre>
+    <pre class="term" data-run="add_note.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b>: <code>let mut book</code>. The owner must allow changes at all (Chapter 2). You can't lend out a right to write that you don't have.</span></li>
+      <li><span><b>Line 3</b>: <code>&amp;mut book</code> at the call. You say it out loud: "I'm lending this for writing."</span></li>
+      <li><span><b>Line 7</b>: <code>page: &amp;mut String</code> in the signature. The function says it out loud too: "I will change what you lend me."</span></li>
+      <li><span><b>Line 8</b>: <code>push_str</code> adds text to the end of the String, through the reference. The change lands in <code>book</code>'s String, as line 4 shows.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Three <code>mut</code>s: the owner's box, the loan, and the function's promise. Rust makes every change visible where it happens, so reading <code>add_note(&amp;mut book)</code> tells you <code>book</code> may change.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 11: stack and heap, a writing loan" data-mem="mem-note" data-heap-label="the coat-check room" id="mem-note-box">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Step through the writing loan. <code>page</code> points at <code>book</code>'s own slot, not at the letters. When the note doesn't fit, the String moves its letters to a bigger heap block, and <code>page</code> still leads to the right place.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-note">{"program": "add_note.rs", "steps": [
+      {"line": 2, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 3, "note": "<code>let mut book</code>: a String with 4 letters and room for 4. The owner may write in it, because of <code>mut</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["book", "H1"]},
+      {"line": 8, "note": "<code>add_note(&amp;mut book)</code>: a <b>writing</b> loan. <code>page</code> holds the address of <code>book</code>'s slot. From now until the loan ends, <code>page</code> is the only way in: <code>book</code> itself is frozen.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H1", "len": 4, "cap": 4}]}, {"name": "add_note", "slots": [{"n": "page", "type": "&mut String", "ref": "main/book", "refLabel": "&mut book"}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes"}}, "changed": ["page"]},
+      {"line": 9, "note": "<code>push_str</code> adds 16 more letters. 20 won't fit in room for 4, so the String asks for a bigger heap block (#2, room for 20), copies the letters over, adds the note, and frees block #1. <code>book</code>'s <code>ptr</code>, <code>len</code> and <code>cap</code> change; <code>page</code> still points at <code>book</code>'s slot, so it still leads to the right place. Anyone holding an arrow into block #1 would now point at freed memory. The writing loan guarantees nobody was.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H2", "len": 20, "cap": 20}]}, {"name": "add_note", "slots": [{"n": "page", "type": "&mut String", "ref": "main/book", "refLabel": "&mut book"}]}], "heap": {"H1": {"cells": ["E", "m", "m", "a"], "cap": 4, "label": "String bytes", "freed": true}, "H2": {"cells": ["E", "m", "m", "a", "␣", "(", "g", "r", "e", "a", "t", "␣", "e", "n", "d", "i", "n", "g", "!", ")"], "cap": 20, "label": "String bytes"}}, "changed": ["book", "H1", "H2"]},
+      {"line": 4, "note": "<code>add_note</code> returns. Its plate, and the writing loan, are gone. <code>book</code> has all its rights back, and its String now holds the note.", "output": [], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H2", "len": 20, "cap": 20}]}], "heap": {"H2": {"cells": ["E", "m", "m", "a", "␣", "(", "g", "r", "e", "a", "t", "␣", "e", "n", "d", "i", "n", "g", "!", ")"], "cap": 20, "label": "String bytes"}}, "changed": ["book"]},
+      {"line": 5, "note": "The owner prints its own, changed book.", "output": ["Emma (great ending!)"], "frames": [{"name": "main", "slots": [{"n": "book", "type": "String", "ptr": "H2", "len": 20, "cap": 20}]}], "heap": {"H2": {"cells": ["E", "m", "m", "a", "␣", "(", "g", "r", "e", "a", "t", "␣", "e", "n", "d", "i", "n", "g", "!", ")"], "cap": 20, "label": "String bytes"}}},
+      {"line": null, "note": "Closing brace: the owner leaves, and block #2 is freed.", "output": ["Emma (great ending!)"], "frames": [], "heap": {"H2": {"cells": ["E", "m", "m", "a", "␣", "(", "g", "r", "e", "a", "t", "␣", "e", "n", "d", "i", "n", "g", "!", ")"], "cap": 20, "label": "String bytes", "freed": true}}, "changed": ["H2"]}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 12: lending a right you don't have">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="NO MUT!" data-seed="12"></svg>
+    <p class="caption">Forget the first <code>mut</code>, on the owner's <code>let</code>.</p>
+    <span class="file-tab">no_mut_owner.rs</span>
+    <pre class="code" data-src="no_mut_owner.rs"></pre>
+    <pre class="term wrap" data-run="no_mut_owner.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0596]: cannot borrow `book` as mutable, as it is not declared as mutable</code><br><b>What</b>: E0596, "can't make a writing loan here". The sentence already says why: <code>book</code> isn't <code>mut</code>.</span></li>
+      <li><span><code>--> src/main.rs:3:14</code> and <code>^^^^^^^^^ cannot borrow as mutable</code><br><b>Where</b>: under <code>&amp;mut book</code> on line 3, where the loan is asked for.</span></li>
+      <li><span><code>help: consider changing this to be mutable</code><br>The fix is on a <em>different</em> line, line 2, with <code>+++</code> under the missing <code>mut</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>The owner said "this never changes" on line 2. A writing loan would break that promise, so I refuse it, and I point at where the promise was made.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 13: writing with a reading pass">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <svg class="sfx tr" data-sfx="READ ONLY!" data-seed="13"></svg>
+    <p class="caption">Now the owner is fine, but the function only asked for a reading pass, and then tries to write.</p>
+    <span class="file-tab">note_behind_ref.rs</span>
+    <pre class="code" data-src="note_behind_ref.rs"></pre>
+    <pre class="term wrap" data-run="note_behind_ref.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0596]: cannot borrow `*page` as mutable, as it is behind a `&amp;` reference</code><br>Same code, different story. <code>*page</code> means "the value <code>page</code> points at". That value sits <b>behind a <code>&amp;</code></b>: a read-only pass.</span></li>
+      <li><span><code>^^^^ `page` is a `&amp;` reference, so it cannot be borrowed as mutable</code><br><b>The primary label</b>, under <code>page</code> on line 8. <code>push_str</code> needs to write, and <code>page</code> can only read.</span></li>
+      <li><span><code>help: consider changing this to be a mutable reference</code><br>The fix is on line 7, the signature: <code>&amp;mut String</code>. (Line 3 still lends with a plain <code>&amp;</code>, and line 2 has no <code>mut</code>, so those need changing too, as in panels 10 and 12.)</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Mabel says: </span>Detective habit: the caret shows where the problem was <b>noticed</b> (the write on line 8). The <code>help:</code> shows where it <b>started</b> (the signature on line 7).</p></div>
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="pointL" data-prop="ledger"></svg>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spot-mut-m" id="ex-spot-mut"></div>
+  <script type="application/json" id="ex-spot-mut-m">{"program": "spot_mut.rs", "bug": 7, "prompt": "This shopping list won't compile. The caret points at line 8, but the mistake is somewhere else. Click the line you would change.", "explain": "Line 7 promises only to read: <code>list: &amp;String</code>. Line 8 then tries to write with <code>push_str</code>, which is where E0596 is <em>noticed</em>. The caller on line 3 already lends <code>&amp;mut list</code>; the signature just has to ask for it: <code>list: &amp;mut String</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 14: the arrow and the star">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">A reference is an arrow. The star <code>*</code> means <b>follow the arrow</b> and work on whatever is at the other end. That's called <b>dereferencing</b>.</p>
+    <svg class="fig fig-wide" viewBox="0 0 660 230" role="img" aria-label="Drawing: a box named count holds the number 5. A small card named r holds an arrow pointing at the count box. Under r: r is the card, the arrow. Under the count box: star r is what the arrow points at, the 5. A note says star r plus-equals 1 changes the 5 into 6; r plus-equals 1 would try to add 1 to the card itself, which makes no sense.">
+      <rect x="30" y="60" width="170" height="80" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <text class="m" x="44" y="88" style="font-size:16px">r: &amp;mut i32</text>
+      <circle cx="160" cy="114" r="8" fill="#111"/>
+      <path d="M168 114 C 260 114, 300 100, 392 100" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M380 90 l14 10 l-14 10" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="400" y="50" width="200" height="100" rx="12" fill="#F2B38F" stroke="#111" stroke-width="4"/>
+      <text class="m" x="414" y="78" style="font-size:16px">count: i32</text>
+      <text class="m mid" x="500" y="128" style="font-size:36px">5</text>
+      <text class="mid" x="115" y="176"><tspan font-family="JetBrains Mono, monospace" font-weight="800">r</tspan> = the arrow</text>
+      <text class="mid" x="500" y="176"><tspan font-family="JetBrains Mono, monospace" font-weight="800">*r</tspan> = the 5 at the end</text>
+      <text class="mid s" x="330" y="214"><tspan font-family="JetBrains Mono, monospace" font-weight="800">*r += 1</tspan> turns the 5 into a 6</text>
+      <text class="mid s" x="330" y="34">follow the arrow</text>
+    </svg>
+    <svg class="fig fig-narrow" viewBox="0 0 340 330" role="img" aria-label="Drawing: a small card named r holds an arrow pointing down at a box named count holding the number 5. r is the arrow; star r is the 5 at the end; star r plus-equals 1 turns the 5 into a 6.">
+      <rect x="14" y="20" width="180" height="76" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <text class="m" x="28" y="50">r: &amp;mut i32</text>
+      <circle cx="160" cy="76" r="8" fill="#111"/>
+      <path d="M160 84 C 160 140, 250 126, 250 164" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M240 152 l10 14 l10 -14" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text x="14" y="130"><tspan font-family="JetBrains Mono, monospace" font-weight="800">r</tspan> = the arrow</text>
+      <rect x="140" y="172" width="186" height="96" rx="12" fill="#F2B38F" stroke="#111" stroke-width="4"/>
+      <text class="m" x="154" y="200">count: i32</text>
+      <text class="m mid" x="233" y="252" style="font-size:38px">5</text>
+      <text x="14" y="296"><tspan font-family="JetBrains Mono, monospace" font-weight="800">*r</tspan> = the 5 at the end</text>
+      <text x="14" y="324"><tspan font-family="JetBrains Mono, monospace" font-weight="800">*r += 1</tspan> makes it 6</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>You've already seen <code>*page</code> in an error message: "the thing <code>page</code> points at". Read <code>*r</code> aloud as "<b>the thing r points at</b>". Catchphrase: <b>the star follows the arrow</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 15: star in action">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Numbers have no methods to do the following for you, so with a number the star is written out.</p>
+    <span class="file-tab">deref.rs</span>
+    <pre class="code" data-src="deref.rs"></pre>
+    <pre class="term" data-run="deref.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b>: <code>r</code> is a writing loan of <code>count</code>.</span></li>
+      <li><span><b>Line 5</b>: <code>*r += 1</code>: "add 1 to the thing <code>r</code> points at". <code>count</code> goes from 5 to 6.</span></li>
+      <li><span><b>Line 7</b>: <code>*r = *r * 10</code>: read through the arrow (6), multiply, write back through the arrow (60).</span></li>
+      <li><span><b>Line 9</b>: <code>count</code> really is 60. And it can be printed here because <code>r</code>'s last use was line 8 (Part 4 explains why that matters).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 16: the star machine" data-machine="m-star">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The star machine. <code>count</code> starts at 5 and <code>r = &amp;mut count</code>. Feed it each line of <code>deref.rs</code> in order, then try leaving the star off.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-star">{"label": "*r", "program": "deref.rs", "examples": [
+      {"in": "*r", "out": "5", "expectLine": "*r reads 5", "outKind": "follows the arrow: reads count", "note": "Line 4. The machine follows <code>r</code>'s arrow and reads what's there: <code>count</code>'s 5."},
+      {"in": "*r += 1", "out": "6", "expectLine": "after *r += 1: 6", "outKind": "count is now 6", "note": "Line 5. Follows the arrow and adds 1 <em>there</em>. <code>r</code> itself still points at the same place."},
+      {"in": "*r = *r * 10", "out": "60", "expectLine": "after *r = *r * 10: 60", "outKind": "count is now 60", "note": "Line 7. The right side reads through the arrow (6 × 10), the left side writes through it."},
+      {"in": "count (after the loan)", "out": "60", "expectLine": "count is now 60", "outKind": "the owner sees the change", "note": "Line 9. Every change went into <code>count</code> itself. The reference was just a way in."},
+      {"in": "r += 1", "error": "error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut {integer}`", "program": "no_star.rs", "note": "<code>no_star.rs</code> leaves the star off. That asks to add 1 to the <em>arrow</em>, which means nothing, so the Compiler jams. Its <code>help:</code> line says it exactly: <samp>`+=` can be used on `{integer}` if you dereference the left-hand side</samp>, and shows <code>*r += 1</code>."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-deref-predict-m" id="ex-deref-predict"></div>
+  <script type="application/json" id="ex-deref-predict-m">{"program": "deref_predict.rs", "hint": "Every line with a star changes <code>score</code> itself. Line 6 prints a calculation; it doesn't change anything.", "explain": "<code>score</code> starts at 10. <code>*r += 5</code> makes it 15; <code>*r = *r * 2</code> makes it 30. Line 6 prints <code>*r - 1</code>, which is 29, without storing it. Line 7 prints <code>score</code> itself: 30."}</script>
+
+  <div data-ex="fill" data-model="ex-fill-star-m" id="ex-fill-star"></div>
+  <script type="application/json" id="ex-fill-star-m">{"program": "fill_star.rs", "prompt": "A game loses one life per call. Fill the three blanks: the writing loan at the first call, the parameter's type, and the left side of the subtraction.", "blanks": [{"line": 3, "text": "&mut lives", "accept": ["&mut lives", "& mut lives"]}, {"line": 8, "text": "&mut i32", "accept": ["&mut i32", "& mut i32"]}, {"line": 9, "text": "*n", "accept": ["*n", "* n"]}], "explain": "<code>lose_one</code> must change the caller's number, so it borrows it with <code>&amp;mut</code>, at the call and in the type. Inside, <code>*n -= 1</code> follows the arrow and subtracts there. 3 minus two lives is 1."}</script>
+
+  <div data-ex="trace" data-model="ex-trace-counter-m" id="ex-trace-counter"></div>
+  <script type="application/json" id="ex-trace-counter-m">{"program": "trace_counter.rs", "columns": ["pile", "stamps"], "given": [0], "prompt": "Mabel stamps piles of books: pile 1 has 1 book, pile 2 has 2, and so on. <code>add_stamps</code> writes the running total through a <code>&amp;mut</code>. Fill in the <code>stamps</code> column, one row per <code>println!</code>.", "explain": "Each call follows the arrow and adds the pile to the same <code>stamps</code> box in <code>main</code>: 0 + 1 = 1, + 2 = 3, + 3 = 6, + 4 = 10. The loan is new on every lap and ends when <code>add_stamps</code> returns, so line 5 may read <code>stamps</code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 17: the ritual explained">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Back in Chapter 6 you typed a line like a magic spell: <code>.read_line(&amp;mut guess)</code>. Now you can read it.</p>
+    <span class="file-tab">guess_ritual.rs</span><pre class="code" data-src="guess_ritual.rs"></pre><pre class="term" data-run="guess_ritual.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b>: <code>let mut guess = String::new();</code> an empty String that <code>main</code> owns. <code>mut</code>, because something is going to write in it.</span></li>
+      <li><span><b>Line 7</b>: <code>&amp;mut guess</code> lends it to <code>read_line</code> <b>for writing</b>. <code>read_line</code> adds the typed letters, including the Enter key's newline <code>\n</code>: that's why <code>"42"</code> plus Enter is 3 letters, and why Chapter 6 needed <code>.trim()</code>.</span></li>
+    </ol>
+    <p class="caption soft">Here's a pretend <code>read_line</code> you could write yourself. Same shape: <code>buffer: &amp;mut String</code>, then <code>push_str</code>. Same result, without the keyboard.</p>
+    <span class="file-tab">my_read_line.rs</span><pre class="code" data-src="my_read_line.rs"></pre><pre class="term" data-run="my_read_line.rs"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Why not just <em>return</em> a new String? Because this way you choose the String, and you can reuse the same one again and again in a loop, as the guessing game did. No spell, just a writing loan.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ritual-choice-m" id="ex-ritual-choice"></div>
+  <script type="application/json" id="ex-ritual-choice-m">{"q": "Why does <code>io::stdin().read_line(&amp;mut guess)</code> need <code>&amp;mut</code>, and not just <code>&amp;</code> or plain <code>guess</code>?", "options": [
+    {"t": "<code>read_line</code> writes into <code>guess</code>, and <code>main</code> keeps it afterwards.", "why": "Yes. It writes the typed text into <code>guess</code>'s String, so it needs a writing loan (<code>&amp;mut</code>); <code>main</code> wants the String back afterwards, so it lends instead of giving (no plain <code>guess</code>).", "correct": true},
+    {"t": "Because <code>guess</code> will hold a number, and numbers need <code>&amp;mut</code>.", "why": "<code>guess</code> is a <code>String</code>; turning it into a number came later, with <code>parse</code>. The <code>&amp;mut</code> is about writing into the String."},
+    {"t": "Because <code>&amp;</code> on its own would copy the String.", "why": "A <code>&amp;</code> never copies anything: it's a reading pass. It's refused because a reading pass can't write (E0596)."},
+    {"t": "So that <code>read_line</code> can keep <code>guess</code> for ever.", "why": "A loan always ends; <code>read_line</code> gives the pass back when it returns. To keep something for ever you'd have to give it away (move it)."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-parsons-note-m" id="ex-parsons-note"></div>
+  <script type="application/json" id="ex-parsons-note-m">{"program": "parsons_note.rs", "seed": 8, "pin": [1, 6], "prompt": "Put the lines in order: <code>main</code> first, then the function that writes in the menu. The program must print the goal output.", "explain": "<code>main</code> makes the menu <code>mut</code>, lends it with <code>&amp;mut menu</code>, and prints it after the loan. The function's type <code>&amp;mut String</code> lets <code>push_str</code> add to the end. Each function ends with its own closing brace."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE LEDGER RULE<small>Many readers or one writer: why, and the errors E0499 and E0502</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 18: Mabel's rule">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="THE RULE!" data-seed="18"></svg>
+    <p class="caption">Mabel's ledger has one rule. At any moment, a book may be lent to…</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>MANY READERS<small>&amp;  &amp;  &amp;</small></h3><p>Any number of shared references at once. <span class="stamp yes">ALLOWED</span></p></div>
+      <div class="duo-card"><h3>ONE WRITER<small>&amp;mut</small></h3><p>Exactly one mutable reference, and nobody else at all. <span class="stamp yes">ALLOWED</span></p></div>
+      <div class="duo-card dashed"><h3>BOTH AT ONCE<small>&amp; + &amp;mut</small></h3><p>Readers and a writer together, or two writers. <span class="stamp no">NEVER</span></p></div>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Lend it to many readers, or to one writer. Never both at once. Catchphrase: <b>many readers or one writer</b>.</p></div>
+    </div>
+    <p class="sr-only">Three cards: many readers, allowed; one writer, allowed; both at once, never. Mabel points at her ledger.</p>
+  </section>
+
+  <section class="panel sketch" data-play aria-label="Panel 19: why the rule exists">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">Why so strict? Here's what could go wrong. A reader writes down where shelf slot 0 is. Then someone adds a book, the shelf is full, and the whole shelf moves to a bigger room.</p>
+    <svg class="fig fig-wide" viewBox="0 0 660 300" role="img" aria-label="Drawing in two parts. Top: a short shelf holding books 10, 20 and 30, full. A reader's card labelled first has an arrow pointing at the book in slot 0. Bottom: after push 40, the books have moved to a longer shelf in a new room holding 10, 20, 30 and 40. The old shelf is faded and labelled freed. The reader's arrow still points at the old, freed shelf, marked with a question mark: a dangling arrow.">
+      <text class="h" x="20" y="30">BEFORE</text>
+      <rect x="120" y="14" width="210" height="70" rx="8" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><rect x="134" y="24" width="56" height="50" rx="4" fill="#7FB2FF"/><rect x="198" y="24" width="56" height="50" rx="4" fill="#C9F2D9"/><rect x="262" y="24" width="56" height="50" rx="4" fill="#FFE1E1"/></g>
+      <g class="m" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" text-anchor="middle"><text x="162" y="56">10</text><text x="226" y="56">20</text><text x="290" y="56">30</text></g>
+      <text class="s" x="340" y="56">full: no room left</text>
+      <rect x="20" y="104" width="96" height="40" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="30" y="130" style="font-size:16px">first</text>
+      <path d="M106 112 C 130 100, 150 96, 158 80" fill="none" stroke="#111" stroke-width="3.5"/><path d="M150 84 l8 -6 l2 10" fill="none" stroke="#111" stroke-width="3.5"/>
+      <text class="h" x="350" y="186">AFTER push(40)</text>
+      <g><rect x="120" y="150" width="210" height="70" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/><text class="mid" x="225" y="192">freed</text></g>
+      <g class="slide-in"><rect x="350" y="200" width="290" height="70" rx="8" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><rect x="362" y="210" width="60" height="50" rx="4" fill="#7FB2FF"/><rect x="430" y="210" width="60" height="50" rx="4" fill="#C9F2D9"/><rect x="498" y="210" width="60" height="50" rx="4" fill="#FFE1E1"/><rect x="566" y="210" width="60" height="50" rx="4" fill="#FFD60A"/></g>
+      <g class="m" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" text-anchor="middle"><text x="392" y="242">10</text><text x="460" y="242">20</text><text x="528" y="242">30</text><text x="596" y="242">40</text></g></g>
+      <text class="s" x="350" y="292">the shelf moved to a bigger room</text>
+      <rect x="20" y="240" width="96" height="40" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="30" y="266" style="font-size:16px">first</text>
+      <path d="M106 248 C 130 236, 150 230, 158 214" fill="none" stroke="#B00020" stroke-width="3.5" stroke-dasharray="7 5"/>
+      <text class="big" x="166" y="244" fill="#B00020">?!</text>
+    </svg>
+    <svg class="fig fig-narrow" viewBox="0 0 340 380" role="img" aria-label="Before: a full shelf holding 10, 20 and 30, and a card named first pointing at slot 0. After push 40: the old shelf is freed and empty, the books have moved to a longer shelf holding 10, 20, 30 and 40, and the card first still points at the freed shelf, marked with a red question mark: a dangling arrow.">
+      <text class="h" x="4" y="28">BEFORE</text>
+      <rect x="110" y="10" width="222" height="64" rx="8" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><rect x="120" y="19" width="62" height="46" rx="4" fill="#7FB2FF"/><rect x="190" y="19" width="62" height="46" rx="4" fill="#C9F2D9"/><rect x="260" y="19" width="62" height="46" rx="4" fill="#FFE1E1"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" text-anchor="middle" fill="#111"><text x="151" y="49">10</text><text x="221" y="49">20</text><text x="291" y="49">30</text></g>
+      <text class="s" x="110" y="98">full: no room left</text>
+      <rect x="4" y="46" width="86" height="38" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="14" y="71">first</text>
+      <path d="M90 62 L130 56" stroke="#111" stroke-width="3.5"/><path d="M120 50 l11 6 l-9 8" fill="none" stroke="#111" stroke-width="3.5"/>
+      <text class="h" x="4" y="140">AFTER push(40)</text>
+      <rect x="110" y="152" width="222" height="62" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <text class="mid" x="221" y="190">freed</text>
+      <rect x="4" y="184" width="86" height="38" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="14" y="209">first</text>
+      <path d="M90 200 L124 190" stroke="#B00020" stroke-width="3.5" stroke-dasharray="6 4"/>
+      <text class="big" x="58" y="176" fill="#B00020">?!</text>
+      <rect x="20" y="262" width="312" height="64" rx="8" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><rect x="30" y="271" width="66" height="46" rx="4" fill="#7FB2FF"/><rect x="104" y="271" width="66" height="46" rx="4" fill="#C9F2D9"/><rect x="178" y="271" width="66" height="46" rx="4" fill="#FFE1E1"/><rect x="252" y="271" width="66" height="46" rx="4" fill="#FFD60A"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" text-anchor="middle" fill="#111"><text x="63" y="301">10</text><text x="137" y="301">20</text><text x="211" y="301">30</text><text x="285" y="301">40</text></g>
+      <text class="s mid" x="176" y="356">the shelf moved to a bigger room</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-mouth="o" data-arms="shrug" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The reader's note now points at an empty, freed room. That's a <b>dangling reference</b>, and in some languages reading it gives garbage, or a crash, or a security hole. Rust's answer: while anyone is reading, nobody may write. Then this can never happen.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-rule-choice-m" id="ex-rule-choice"></div>
+  <script type="application/json" id="ex-rule-choice-m">{"q": "Four snapshots of Mabel's ledger for one book, each taken at a single moment. Which one breaks the rule?", "options": [
+    {"t": "Open loans: <code>&amp;</code> Ana, <code>&amp;</code> Ben, <code>&amp;</code> Cal.", "why": "Three readers at once: many readers is allowed."},
+    {"t": "Open loans: <code>&amp;mut</code> Dev.", "why": "One writer, alone: allowed."},
+    {"t": "Open loans: <code>&amp;</code> Ana, <code>&amp;mut</code> Dev.", "why": "Yes, this one. A reader and a writer at the same moment: Ana's note could point at something Dev is about to move or change. That's E0502.", "correct": true},
+    {"t": "Open loans: none.", "why": "No loans at all: the owner has everything. Always fine."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 20: two writers">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="E0499!" data-seed="20"></svg>
+    <p class="caption">Ana and Ben both want to write in <i>Emma</i>, at the same time.</p>
+    <span class="file-tab">two_writers.rs</span>
+    <pre class="code" data-src="two_writers.rs"></pre>
+    <pre class="term wrap" data-run="two_writers.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0499]: cannot borrow `book` as mutable more than once at a time</code><br><b>What</b>: two writing loans of the same book are open together.</span></li>
+      <li><span><code>^^^^^^^^^ second mutable borrow occurs here</code><br><b>The primary label</b>: line 4, Ben's loan. That's the moment the Compiler <em>notices</em>.</span></li>
+      <li><span><code>--------- first mutable borrow occurs here</code><br><b>A secondary label</b> (the dashes): line 3, Ana's loan, which is still open…</span></li>
+      <li><span><code>--- first borrow later used here</code><br><b>…the suspect</b>: line 5. Ana writes <em>after</em> Ben got his loan, so her loan was still open when Ben's began.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where, and here are the other two places that matter. A borrow error is always a story about two loans: read every label, not just the caret.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, gate down. A burst says E0499.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 21: reading while someone writes">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="E0502!" data-seed="21"></svg>
+    <p class="caption">Panel 19's story, in real code. A <code>Vec</code> (a growable list, made here with <code>vec![...]</code>) is the shelf. <code>&amp;shelf[0]</code> borrows slot 0.</p>
+    <span class="file-tab">reader_writer.rs</span>
+    <pre class="code" data-src="reader_writer.rs"></pre>
+    <pre class="term wrap" data-run="reader_writer.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0502]: cannot borrow `shelf` as mutable because it is also borrowed as immutable</code><br><b>What</b>: a reader and a writer at once. ("Immutable" means read-only, a plain <code>&amp;</code>; "mutable" means <code>&amp;mut</code>.)</span></li>
+      <li><span><code>^^^^^^^^^^^^^^ mutable borrow occurs here</code><br><b>Scene</b>: line 4. <code>push</code> is a method that writes, so calling it asks for a writing loan of <code>shelf</code>, all by itself.</span></li>
+      <li><span><code>----- immutable borrow occurs here</code> then <code>----- immutable borrow later used here</code><br><b>Suspect</b>: the reader made on line 3 and still used on line 5.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Mabel says: </span>The Compiler doesn't know whether this particular <code>push</code> would move the shelf. It only knows that it <em>might</em>, so the rule must hold every time.</p></div>
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="pointL" data-prop="ledger"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: finish reading first">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The fix: finish reading <em>before</em> writing. Swap two lines.</p>
+    <span class="file-tab">reader_writer_fix.rs</span>
+    <pre class="code" data-src="reader_writer_fix.rs"></pre>
+    <pre class="term" data-run="reader_writer_fix.rs"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The reader is still made on line 3, and its scope still runs to the closing brace. Yet this compiles! Hold that thought: Part 4 explains when a loan really ends.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spot-shelf-m" id="ex-spot-shelf"></div>
+  <script type="application/json" id="ex-spot-shelf-m">{"program": "spot_shelf.rs", "bug": 4, "prompt": "A writing loan is open from line 3 until <code>pen</code>'s last use. Which line tries to read <code>names</code> while that loan is open?", "explain": "Line 4 reads <code>names.len()</code> while <code>pen</code> holds the writing loan, which is used again on line 5. That's E0502 the other way round: <samp>cannot borrow `names` as immutable because it is also borrowed as mutable</samp>. Fix: measure the length before line 3, or after line 5."}</script>
+
+  <div data-ex="predict" data-model="ex-e0499-predict-m" id="ex-e0499-predict"></div>
+  <script type="application/json" id="ex-e0499-predict-m">{"program": "cn_writer_overlap.rs", "expect": "error", "answer": "E0499", "ask": "This doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "Two writing loans of <code>s</code>. Is <code>a</code>'s loan still open when <code>b</code>'s begins?", "hint": "Find <code>a</code>'s last use. Is it before or after line 4?", "explain": "<code>a</code> is used again on line 6, after <code>b</code>'s loan began on line 4, so two writing loans overlap: <samp>error[E0499]: cannot borrow `s` as mutable more than once at a time</samp>. Fix: finish with <code>a</code> before making <code>b</code>."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · A LOAN ENDS AT ITS LAST USE<small>Non-lexical lifetimes, Mabel's permission ledger (R, W, O), and the map of loans</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 23: loans as bars on a timeline">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Draw each loan as a bar, from the line where it's made to the line where it's <b>last used</b>. Not to the closing brace. Bars of a writer must never overlap any other bar.</p>
+    <svg class="fig timeline tl-wide" viewBox="0 0 660 260" role="img" aria-label="Two timelines over program lines 2 to 9. Top, last_use.rs, which compiles: r1 and r2 are bars from line 3 or 4 to line 5; w is a bar from line 6 to line 7. The bars of w do not overlap the readers' bars. Bottom, last_use_late.rs, which does not compile: r1's bar runs from line 3 all the way to line 8, and w's bar from line 6 to 7 sits on top of it; the overlap is marked with a cross and E0502.">
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" text-anchor="middle" fill="#111">
+        <text x="150" y="20">2</text><text x="210" y="20">3</text><text x="270" y="20">4</text><text x="330" y="20">5</text><text x="390" y="20">6</text><text x="450" y="20">7</text><text x="510" y="20">8</text><text x="570" y="20">9</text>
+      </g>
+      <text class="s" x="610" y="20">line</text>
+      <path d="M130 28 h470" stroke="#111" stroke-width="2"/>
+      <text class="h" x="10" y="52">COMPILES</text>
+      <text class="lbl" x="96" y="80" text-anchor="end">r1</text><rect x="200" y="64" width="140" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="96" y="108" text-anchor="end">r2</text><rect x="260" y="92" width="80" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="96" y="136" text-anchor="end">w</text><rect x="380" y="120" width="80" height="22" rx="11" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <text class="s" x="476" y="137">no overlap ✓</text>
+      <path d="M130 156 h470" stroke="#B9C7E3" stroke-width="2"/>
+      <text class="h" x="10" y="184">E0502</text>
+      <text class="lbl" x="96" y="210" text-anchor="end">r1</text><rect x="200" y="194" width="320" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="96" y="240" text-anchor="end">w</text><rect x="380" y="224" width="80" height="22" rx="11" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <path d="M404 186 l32 32 M436 186 l-32 32" stroke="#B00020" stroke-width="5" stroke-linecap="round"/>
+      <text class="s" x="532" y="212">r1 used on 8</text>
+    </svg>
+    <svg class="fig timeline tl-narrow" viewBox="0 0 350 300" role="img" aria-label="Two timelines over program lines 2 to 9. Top, last_use.rs, which compiles: r1 runs from line 3 to line 5, r2 from line 4 to line 5, and the writer w from line 6 to line 7, with no overlap. Bottom, last_use_late.rs: r1 runs from line 3 to line 8, right across w's bar from line 6 to 7; the overlap is marked with a cross and E0502.">
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" text-anchor="middle" fill="#111">
+        <text x="60" y="20">2</text><text x="98" y="20">3</text><text x="136" y="20">4</text><text x="174" y="20">5</text><text x="212" y="20">6</text><text x="250" y="20">7</text><text x="288" y="20">8</text><text x="326" y="20">9</text>
+      </g>
+      <path d="M44 28 h298" stroke="#111" stroke-width="2"/>
+      <text class="h" x="4" y="54">COMPILES</text>
+      <text class="lbl" x="40" y="80" text-anchor="end" style="font-size:19px">r1</text><rect x="88" y="62" width="96" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="40" y="108" text-anchor="end" style="font-size:19px">r2</text><rect x="126" y="90" width="58" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="40" y="136" text-anchor="end" style="font-size:19px">w</text><rect x="202" y="118" width="58" height="22" rx="11" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <text x="202" y="166">no overlap ✓</text>
+      <path d="M44 178 h298" stroke="#B9C7E3" stroke-width="2"/>
+      <text class="h" x="4" y="206">E0502</text>
+      <text class="lbl" x="40" y="232" text-anchor="end" style="font-size:19px">r1</text><rect x="88" y="216" width="210" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <text class="lbl" x="40" y="262" text-anchor="end" style="font-size:19px">w</text><rect x="202" y="246" width="58" height="22" rx="11" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <path d="M216 206 l28 28 M244 206 l-28 28" stroke="#B00020" stroke-width="5" stroke-linecap="round"/>
+      <text x="96" y="294">r1 used on line 8</text>
+    </svg>
+    <p class="caption soft">Readers are solid sky bars, the writer is a dashed yellow bar. The ✗ marks the overlap.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: readers finish, then a writer">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">The top timeline, as a program.</p>
+    <span class="file-tab">last_use.rs</span>
+    <pre class="code" data-src="last_use.rs"></pre>
+    <pre class="term" data-run="last_use.rs"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span><code>r1</code> and <code>r2</code> still <em>exist</em> until the closing brace, but they're never used after line 5. So I cross their loans out of my ledger right there, and the writer on line 6 is welcome. Catchphrase: <b>a loan ends at its last use</b>.</p></div>
+    </div>
+    <p class="caption soft">The feature's official name is <b>non-lexical lifetimes</b>: a loan's life isn't tied to the braces (the "lexical" layout of the code) but to how the reference is actually used. Older books and blog posts, written before the borrow checker learned this, may show programs like this one failing.</p>
+  </section>
+
+  <section class="panel clean ledger" aria-label="Panel 25: Mabel's permission ledger" data-ledger="lg-last">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Mabel's ledger, line by line. Every <b>place</b> (a variable, or the value behind a reference, like <code>*r1</code>) has up to three <b>permissions</b>: <b>R</b>ead it, <b>W</b>rite it, <b>O</b>wn it (move it away or drop it). Lending takes some away from the owner; the loan's end gives them back.</p>
+    <div class="lg-split">
+      <ol class="tr-code lg-code"></ol>
+      <div class="lg-right">
+        <table class="lg-table"></table>
+        <div class="lg-ledger"><p class="label">OPEN LOANS</p><ul class="lg-loans"></ul></div>
+        <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+      </div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the whole ledger</summary><table class="transcript"><thead><tr><th>Step</th><th>Line just run</th><th>What happens</th><th>Permissions</th><th>Open loans</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="lg-last">{"program": "last_use.rs", "places": ["book", "*r1", "*r2", "*w"], "steps": [
+      {"line": null, "note": "Before line 2 runs, nothing exists yet.", "perms": {}, "loans": [], "output": []},
+      {"line": 2, "note": "<code>let mut book</code>: the owner gets all three. R, because owners can read. W, because of <code>mut</code>. O, because it owns the String.", "perms": {"book": "RWO"}, "loans": [], "output": []},
+      {"line": 3, "note": "<code>r1</code> borrows for reading. While that loan is open, the owner keeps only R: it may read, but may not write in the book or give it away. Through <code>r1</code> you may read, nothing more.", "perms": {"book": "R", "*r1": "R"}, "loans": ["<code>r1</code> reads <code>book</code>"], "output": []},
+      {"line": 4, "note": "A second reader. Readers share: everyone has R.", "perms": {"book": "R", "*r1": "R", "*r2": "R"}, "loans": ["<code>r1</code> reads <code>book</code>", "<code>r2</code> reads <code>book</code>"], "output": []},
+      {"line": 5, "note": "Both readers are used for the last time. Their loans end right after this line, so W and O come back to the owner.", "perms": {"book": "RWO"}, "loans": [], "output": ["Emma and Emma"]},
+      {"line": 6, "note": "<code>w</code> borrows for writing. A writing loan takes <b>everything</b> from the owner: no R, no W, no O. Through <code>w</code> you may read and write, but not own.", "perms": {"book": "", "*w": "RW"}, "loans": ["<code>w</code> writes in <code>book</code>, alone"], "output": ["Emma and Emma"]},
+      {"line": 7, "note": "<code>w</code> writes the note. It's <code>w</code>'s last use, so the loan ends and the owner gets R, W and O back.", "perms": {"book": "RWO"}, "loans": [], "output": ["Emma and Emma"]},
+      {"line": 8, "note": "The owner reads its own book again: allowed, because no loans are open. At the closing brace the owner leaves and the String is dropped.", "perms": {"book": "RWO"}, "loans": [], "output": ["Emma and Emma", "Emma (2nd ed.)"]}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-perm-choice-m" id="ex-perm-choice"></div>
+  <script type="application/json" id="ex-perm-choice-m">{"q": "In <code>last_use.rs</code>, right after line 3 (<code>let r1 = &amp;book;</code>), which permissions does the owner <code>book</code> still have?", "options": [
+    {"t": "Only R: it may read, but not write or give it away.", "why": "Yes. A reading loan takes away W and O for as long as it is open. Readers and owner can all still read.", "correct": true},
+    {"t": "R and W: it may read and write, but not give the book away.", "why": "Writing while a reader holds a loan is exactly what the rule forbids (E0502). W is gone too."},
+    {"t": "R, W and O: lending to a reader changes nothing for the owner.", "why": "Something does change: the owner can't write or move the book until the reader's last use (line 5)."},
+    {"t": "Nothing at all, until <code>r1</code> is finished.", "why": "That's what a <em>writing</em> loan does (line 6). A reading loan leaves the owner R."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 26: one late reader">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="LATE!" data-seed="26"></svg>
+    <p class="caption">The bottom timeline. Change only the last line: print <code>r1</code> again, after the writer.</p>
+    <span class="file-tab">last_use_late.rs</span>
+    <pre class="code" data-src="last_use_late.rs"></pre>
+    <pre class="term wrap" data-run="last_use_late.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>^^^^^^^^^ mutable borrow occurs here</code><br><b>Scene</b>: line 6, the writer.</span></li>
+      <li><span><code>----- immutable borrow occurs here</code><br>The reader <code>r1</code>, made on line 3. The <code>...</code> line means the Compiler skipped lines 4 and 5 because they don't matter to this story. (<code>r2</code> isn't mentioned at all: its loan really did end on line 5.)</span></li>
+      <li><span><code>-- immutable borrow later used here</code><br><b>Suspect</b>: line 8. That one late use stretches <code>r1</code>'s bar right across the writer's.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>The error is reported on line 6, but the line you changed was line 8. Detective rule: <b>read the "later used here" label</b>. It's often the real culprit.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: the map of loans" data-map="map-loans">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">The map of loans. The book is always in one of three places: on the shelf, in the reading room, or checked out. A wrong request sends you to the gate. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="map-t map-d"><title id="map-t">Map of a book's loans</title><desc id="map-d">Four places: on the shelf, where the owner has read, write and own; the reading room, where readers and the owner can read; checked out, where one writer can read and write and the owner has nothing; and gate down, a compile error. A shared loan goes from the shelf to the reading room, and more shared loans stay there. When the last reader is used for the last time, the road goes back to the shelf. A mutable loan goes from the shelf to checked out, and the writer's last use goes back to the shelf. Asking for a mutable loan in the reading room, or for any second loan while checked out, leads to gate down.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-loans">{"seed": 8, "size": [690, 590], "start": [[345, 6], [345, 34]],
+      "states": [
+        {"id": "SHELF", "x": 235, "y": 40, "w": 220, "h": 76, "label": "on the shelf", "sub": "owner: R W O"},
+        {"id": "READ", "x": 16, "y": 250, "w": 250, "h": 76, "label": "reading room", "sub": "readers R · owner R"},
+        {"id": "WRITE", "x": 424, "y": 250, "w": 250, "h": 76, "label": "checked out", "sub": "writer R W · owner none"},
+        {"id": "GATE", "x": 235, "y": 470, "w": 220, "h": 76, "label": "gate down", "sub": "compile error", "kind": "error"}],
+      "transitions": [
+        {"id": "t1", "from": "SHELF", "to": "READ", "pts": [[231, 70], [110, 70], [110, 244]], "label": "lend `&`", "lx": 100, "ly": 160, "anchor": "end"},
+        {"id": "t2", "from": "READ", "to": "SHELF", "pts": [[190, 244], [190, 104], [229, 104]], "label": ["last", "reader's", "last use"], "lx": 198, "ly": 150},
+        {"id": "t3", "from": "SHELF", "to": "WRITE", "pts": [[459, 70], [580, 70], [580, 244]], "label": "lend `&mut`", "lx": 590, "ly": 160},
+        {"id": "t4", "from": "WRITE", "to": "SHELF", "pts": [[500, 244], [500, 104], [461, 104]], "label": ["writer's", "last use"], "lx": 490, "ly": 160, "anchor": "end"},
+        {"id": "t5", "from": "READ", "to": "READ", "pts": [[60, 330], [60, 380], [130, 380], [130, 332]], "label": "another `&`: fine", "lx": 20, "ly": 408},
+        {"id": "t6", "from": "READ", "to": "GATE", "pts": [[240, 330], [240, 430], [300, 430], [300, 464]], "label": ["`&mut` while", "readers read"], "lx": 250, "ly": 362, "bug": true},
+        {"id": "t7", "from": "WRITE", "to": "GATE", "pts": [[600, 330], [600, 508], [461, 508]], "label": ["a second loan", "while writing"], "lx": 590, "ly": 400, "anchor": "end", "bug": true}],
+      "paths": [
+        {"id": "ok", "label": "compiles: last_use.rs", "program": "last_use.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SHELF"], "output": [], "note": "<code>last_use.rs</code>, line 2. A new String on the shelf: the owner has R, W and O."},
+          {"on": ["READ"], "via": ["t1"], "output": [], "note": "Line 3: <code>r1 = &amp;book</code>. Into the reading room."},
+          {"on": ["READ"], "via": ["t5"], "output": [], "note": "Line 4: <code>r2 = &amp;book</code>. Another reader: fine."},
+          {"on": ["READ"], "output": ["Emma and Emma"], "note": "Line 5 prints through both readers. It's the last use of each."},
+          {"on": ["SHELF"], "via": ["t2"], "output": ["Emma and Emma"], "note": "So both loans end. Back on the shelf, with all three permissions."},
+          {"on": ["WRITE"], "via": ["t3"], "output": ["Emma and Emma"], "note": "Line 6: <code>w = &amp;mut book</code>. Checked out to one writer."},
+          {"on": ["SHELF"], "via": ["t4"], "output": ["Emma and Emma"], "note": "Line 7 is the writer's last use. Back on the shelf."},
+          {"on": ["SHELF"], "output": ["Emma and Emma", "Emma (2nd ed.)"], "mood": "happy", "note": "Line 8: the owner reads its own book. Compiled and ran."}]},
+        {"id": "two", "label": "two writers", "bug": true, "program": "two_writers.rs", "expect": {"exit": 101, "stderrContains": "E0499"}, "steps": [
+          {"on": ["SHELF"], "output": [], "note": "<code>two_writers.rs</code>, line 2: on the shelf."},
+          {"on": ["WRITE"], "via": ["t3"], "output": [], "note": "Line 3: <code>ana = &amp;mut book</code>. Checked out to Ana. Her last use is line 5, so her loan stays open until then."},
+          {"on": ["GATE"], "via": ["t7"], "output": [], "error": "error[E0499]: cannot borrow `book` as mutable more than once at a time", "note": "Line 4: Ben asks for a second writing loan while Ana's is open. Gate down: nothing runs."}]},
+        {"id": "late", "label": "a late reader", "bug": true, "program": "last_use_late.rs", "expect": {"exit": 101, "stderrContains": "E0502"}, "steps": [
+          {"on": ["SHELF"], "output": [], "note": "<code>last_use_late.rs</code>, line 2: on the shelf."},
+          {"on": ["READ"], "via": ["t1"], "output": [], "note": "Line 3: <code>r1 = &amp;book</code>. But <code>r1</code> is used again on line 8, so this loan stays open until then."},
+          {"on": ["READ"], "via": ["t5"], "output": [], "note": "Line 4: <code>r2</code> joins. Its last use is line 5."},
+          {"on": ["GATE"], "via": ["t6"], "output": [], "error": "error[E0502]: cannot borrow `book` as mutable because it is also borrowed as immutable", "note": "Line 6 asks for <code>&amp;mut book</code> while <code>r1</code> is still in the reading room. Gate down."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-nll-predict-m" id="ex-nll-predict"></div>
+  <script type="application/json" id="ex-nll-predict-m">{"program": "cn_reader_then_writer.rs", "prompt": "A reader, then a writer, on the same String. Does it compile? If it does, what does it print? (If you think it fails, you'll see the real run either way.)", "hint": "Where is <code>a</code> used for the last time? Is that before or after <code>b</code> is made?", "explain": "It compiles. Line 4 prints <samp>hi</samp> through <code>a</code>, and that is <code>a</code>'s last use, so its reading loan ends before <code>b</code>'s writing loan starts on line 5. <code>b.push('!')</code> adds one character, then the owner prints <samp>hi!</samp>."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · BRING IT BACK BEFORE THE OWNER LEAVES<small>References never dangle: E0597</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 28: the owner leaves the room">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Inside a block, an owner leaves at the closing brace, and their book is cleared away (it's <b>dropped</b>, Chapter 7). What if someone outside the block is still holding a card that points at it?</p>
+    <svg class="fig fig-wide" viewBox="0 0 660 270" role="img" aria-label="Drawing: a room drawn as a big pair of curly braces. Inside, an empty dashed shelf slot with a question mark: the book is gone. The owner, labelled book, walks out through a door at the closing brace. Outside the room, a reader holds a card labelled card, with a dashed red arrow pointing back into the room at the empty slot. Mabel's stamp beside it says REFUSED.">
+      <text class="m" x="14" y="160" style="font-size:150px;font-weight:500">{</text>
+      <text class="m" x="300" y="160" style="font-size:150px;font-weight:500">}</text>
+      <text class="mid s" x="230" y="26">the owner leaves at <tspan font-family="JetBrains Mono, monospace" font-weight="800">}</tspan></text>
+      <rect x="92" y="58" width="64" height="80" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="7 5"/>
+      <text class="big mid" x="124" y="108" fill="#B00020">?</text>
+      <text class="mid s" x="128" y="196">empty</text>
+      <g transform="translate(212 46)"><circle cx="22" cy="18" r="16" fill="#F2B38F" stroke="#111" stroke-width="3"/><path d="M4 92 q0 -56 18 -56 q18 0 18 56 z" fill="#C9603F" stroke="#111" stroke-width="3"/><rect x="34" y="50" width="22" height="28" rx="2" fill="#B00020" stroke="#111" stroke-width="2.5"/></g>
+      <path d="M268 100 h50 M306 90 l12 10 l-12 10" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="m mid" x="234" y="196">book</text>
+      <rect x="360" y="56" width="40" height="92" rx="4" fill="#C8955E" stroke="#111" stroke-width="3"/>
+      <circle cx="392" cy="104" r="3.5" fill="#111"/>
+      <g transform="translate(540 56)"><circle cx="30" cy="20" r="18" fill="#DDE8FF" stroke="#111" stroke-width="3"/><path d="M8 100 q0 -56 22 -56 q22 0 22 56 z" fill="#7FB2FF" stroke="#111" stroke-width="3"/></g>
+      <rect x="456" y="96" width="70" height="38" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="466" y="121" style="font-size:16px">card</text>
+      <path d="M470 136 C 430 262, 200 262, 140 144" fill="none" stroke="#B00020" stroke-width="3.5" stroke-dasharray="7 5"/>
+      <path d="M150 140 l-12 2 l4 12" fill="none" stroke="#B00020" stroke-width="3.5" stroke-linejoin="round"/>
+      <g class="stamp-in" transform="rotate(-8 588 216)"><rect x="528" y="196" width="120" height="40" rx="6" fill="#FFFFFF" stroke="#B00020" stroke-width="3" stroke-dasharray="7 5"/><text x="588" y="224" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#B00020">REFUSED</text></g>
+    </svg>
+    <svg class="fig fig-narrow" viewBox="0 0 340 360" role="img" aria-label="Drawing: a room drawn as curly braces. Inside, an empty dashed shelf slot with a question mark. The owner, book, walks out through a door at the closing brace. Below, a reader holds a card whose dashed red arrow points back at the empty slot. A stamp says REFUSED.">
+      <text class="mid s" x="150" y="22">the owner leaves at <tspan font-family="JetBrains Mono, monospace" font-weight="800">}</tspan></text>
+      <text class="m" x="-6" y="168" style="font-size:130px;font-weight:500">{</text>
+      <text class="m" x="222" y="168" style="font-size:130px;font-weight:500">}</text>
+      <rect x="62" y="52" width="56" height="76" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="7 5"/>
+      <text class="big mid" x="90" y="102" fill="#B00020">?</text>
+      <g transform="translate(140 40)"><circle cx="22" cy="18" r="16" fill="#F2B38F" stroke="#111" stroke-width="3"/><path d="M4 92 q0 -56 18 -56 q18 0 18 56 z" fill="#C9603F" stroke="#111" stroke-width="3"/><rect x="32" y="50" width="20" height="26" rx="2" fill="#B00020" stroke="#111" stroke-width="2.5"/></g>
+      <text class="m mid" x="162" y="160">book</text>
+      <text class="mid s" x="90" y="160">empty</text>
+      <rect x="290" y="44" width="38" height="92" rx="4" fill="#C8955E" stroke="#111" stroke-width="3"/>
+      <rect x="150" y="236" width="70" height="38" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text class="m" x="160" y="261">card</text>
+      <g transform="translate(232 214)"><circle cx="30" cy="20" r="18" fill="#DDE8FF" stroke="#111" stroke-width="3"/><path d="M8 100 q0 -56 22 -56 q22 0 22 56 z" fill="#7FB2FF" stroke="#111" stroke-width="3"/></g>
+      <path d="M150 256 C 70 256, 70 200, 88 172" fill="none" stroke="#B00020" stroke-width="3.5" stroke-dasharray="7 5"/>
+      <path d="M78 180 l10 -10 l6 12" fill="none" stroke="#B00020" stroke-width="3.5" stroke-linejoin="round"/>
+      <g class="stamp-in" transform="rotate(-8 80 318)"><rect x="20" y="298" width="120" height="40" rx="6" fill="#FFFFFF" stroke="#B00020" stroke-width="3" stroke-dasharray="7 5"/><text x="80" y="326" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#B00020">REFUSED</text></g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A card pointing at a book that's gone is a dangling reference again. I never issue one. Catchphrase: <b>bring it back before the owner leaves</b>. In plain words: <b>a reference can never outlive its owner</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 29: does not live long enough">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="E0597!" data-seed="29"></svg>
+    <p class="caption"><code>book</code> lives only inside the inner braces. <code>card</code> lives outside, and is used after them.</p>
+    <span class="file-tab">dangle_scope.rs</span>
+    <pre class="code" data-src="dangle_scope.rs"></pre>
+    <pre class="term wrap" data-run="dangle_scope.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0597]: `book` does not live long enough</code><br><b>What</b>: the owner leaves before the loan is finished.</span></li>
+      <li><span><code>^^^^^ borrowed value does not live long enough</code><br><b>Scene</b>: line 5, where the loan <code>&amp;book</code> is made.</span></li>
+      <li><span><code>- `book` dropped here while still borrowed</code><br>Line 6, the closing brace: that's where the owner leaves and the String is dropped.</span></li>
+      <li><span><code>---- borrow later used here</code><br><b>Suspect</b>: line 7 still wants to read through <code>card</code>. The label on line 4, <code>binding `book` declared here</code>, shows where the owner was born, inside the block.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>In some languages this program would compile, and then print whatever happened to be in that memory. I check it before anything runs, so a dangling reference never even gets built.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: the owner must live longer">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The fix: the owner must live at least as long as every use of the loan. Move <code>book</code> out of the inner block.</p>
+    <span class="file-tab">dangle_fix.rs</span>
+    <pre class="code" data-src="dangle_fix.rs"></pre>
+    <pre class="term" data-run="dangle_fix.rs"></pre>
+    <p class="caption soft">Two more fixes to try yourself (not run for this page): do the printing inside the block, before the owner leaves; or don't borrow at all, and move the String into <code>card</code>. What you can't do is keep the card longer than the book. (Returning a reference to something a function made itself is the same mistake in disguise; it's case file #2 in Chapter 9.)</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spot-dangle-m" id="ex-spot-dangle"></div>
+  <script type="application/json" id="ex-spot-dangle-m">{"program": "spot_dangle.rs", "bug": 8, "prompt": "This won't compile. Click the line that uses the loan after its owner has left.", "explain": "<code>word</code> is dropped at the closing brace on line 7. Line 6 reads <code>longest</code> while <code>word</code> is still alive, which is fine. Line 8 reads it after <code>word</code> is gone: E0597, <samp>`word` dropped here while still borrowed</samp> on line 7 and <samp>borrow later used here</samp> on line 8."}</script>
+
+  <section class="panel sketch" aria-label="Panel 31: the five rules on one card">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption soft">Mabel's lending rules, on one card. Cut it out and keep it.</p>
+    <table class="ref-table">
+      <thead><tr><th scope="col">Write</th><th scope="col">Means</th><th scope="col">Rule</th></tr></thead>
+      <tbody>
+        <tr><td><code>&amp;x</code></td><td>Lend <code>x</code> for reading (a shared reference).</td><td>As many as you like at once. The owner keeps R.</td></tr>
+        <tr><td><code>&amp;mut x</code></td><td>Lend <code>x</code> for writing (a mutable, exclusive reference).</td><td><code>x</code> must be <code>let mut</code>. Only one, and nobody else at all meanwhile.</td></tr>
+        <tr><td><code>*r</code></td><td>The value <code>r</code> points at.</td><td>Read with <code>*r</code>; write with <code>*r = …</code> only through <code>&amp;mut</code>. Methods and <code>println!</code> follow the arrow for you.</td></tr>
+        <tr><td>last use</td><td>Where a loan ends.</td><td>Not the closing brace: the last line that uses the reference.</td></tr>
+        <tr><td>owner leaves</td><td>The value is dropped.</td><td>Every loan must be finished first (else E0597).</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · COMPILE OR NOT?<small>Six snippets. Decide, then open the real run</small></h2>
+
+  <section class="panel pop" aria-label="Panel 32: detective drills">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">For each card: draw the loan bars in your head, decide <span class="stamp yes">COMPILES</span> or <span class="stamp no">GATE DOWN</span>, then open the real run.</p>
+    <div class="verdicts">
+      <div class="duo-card"><h3>CARD A</h3><pre class="code" data-src="cn_two_readers.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="cn_two_readers.rs" data-exit></pre><p><span class="stamp yes">COMPILES</span> Two readers and the owner reading. Many readers: fine.</p></details></div>
+      <div class="duo-card"><h3>CARD B</h3><pre class="code" data-src="cn_scoped_writer.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="cn_scoped_writer.rs" data-exit></pre><p><span class="stamp yes">COMPILES</span> The writer <code>w</code> lives and dies inside the block, before the reader is made.</p></details></div>
+      <div class="duo-card"><h3>CARD C</h3><pre class="code" data-src="cn_mut_behind.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="cn_mut_behind.rs" data-exit></pre><p><span class="stamp no">E0596</span> Writing through a reading pass. Notice the <code>help:</code> fixes only one of the two problems: after <code>&amp;mut s</code>, <code>s</code> would also need <code>let mut</code>, as in panel 12.</p></details></div>
+      <div class="duo-card"><h3>CARD D</h3><pre class="code" data-src="cn_push_while_reading.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="cn_push_while_reading.rs" data-exit></pre><p><span class="stamp no">E0502</span> A reader of slot 2 is still used after the <code>push</code>.</p></details></div>
+      <div class="duo-card"><h3>CARD E</h3><pre class="code" data-src="cn_card_outlives.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="cn_card_outlives.rs" data-exit></pre><p><span class="stamp no">E0597</span> Even a plain number can't be borrowed past its owner's closing brace.</p></details></div>
+      <div class="duo-card"><h3>CARD F</h3><pre class="code" data-src="move_while_lent.rs"></pre>
+        <details class="hint"><summary>Open the real run</summary><pre class="term wrap" data-run="move_while_lent.rs" data-exit></pre><p><span class="stamp no">E0505</span> A new code! Giving the book away (a move) while it's lent. Moving needs O, and a reading loan took O away. Same story as always: a loan, a conflicting action, and a later use.</p></details></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Nothing runs until everything checks out. A gate-down program prints no output at all: no half-run, no surprises later.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 33: boss level">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="33"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Readers, writers, stars and owners leaving the room, all mixed together. Keep the ledger in your head: who holds a loan, and when is it last used?</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms with her ledger, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. <code>peek</code> reads, <code>grow</code> writes. What does it print?", "hint": "Keep track of the shelf after each line. <code>grow</code> adds one <code>B</code> per time.", "explain": "The shelf starts as <samp>A</samp> (1 letter), so <code>n</code> is 1 and the first <code>grow</code> adds one B: <samp>AB</samp>. Then <code>m</code> is 2, so two more Bs: <samp>ABBB</samp>, which has 4 letters. Every loan ends when its call returns, so reading and writing take turns without trouble."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.rs", "columns": ["pages", "total", "best"], "given": [0], "prompt": "Boss 2. Two writing loans in one call, to two <em>different</em> boxes. Fill in <code>total</code> and <code>best</code> for each row.", "explain": "<code>total</code> adds every pile: 3, 12, 16, 28. <code>best</code> only changes when a bigger pile turns up: 3, 9, stays 9 for the 4, then 12. Two <code>&amp;mut</code> at once is fine here: they lend two different values, <code>total</code> and <code>best</code>. The rule is about two loans of the <em>same</em> value."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. A wallet: <code>spend</code> changes it, <code>report</code> only reads it. Fill in the four blanks.", "blanks": [{"line": 3, "text": "&mut balance", "accept": ["&mut balance", "& mut balance"]}, {"line": 8, "text": "&mut i32", "accept": ["&mut i32", "& mut i32"]}, {"line": 9, "text": "*money", "accept": ["*money", "* money"]}, {"line": 12, "text": "&i32", "accept": ["&i32", "& i32"]}], "explain": "<code>spend</code> writes, so it takes <code>&amp;mut i32</code>, and the call lends <code>&amp;mut balance</code>; inside, <code>*money -= cost</code> subtracts through the arrow. <code>report</code> only reads, so the smallest permission is <code>&amp;i32</code>. <code>println!</code> follows the arrow by itself. 100 − 30 − 25 = 45."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 21, "prompt": "Boss 4. Put the lines in order so the program compiles and prints the goal output. Careful: the reader must be finished before the writer starts.", "explain": "<code>look</code> reads and is used (its last use) before <code>pen</code> is made. Then <code>pen</code> writes the <samp>s</samp>, and its loan ends at its last use, so the owner can print <code>word</code>. Put the <code>println!</code> of <code>look</code> after <code>pen</code>'s line and you'd get E0502."}</script>
+
+  <div data-ex="spot" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_spot.rs", "bug": 5, "prompt": "Boss 5. This won't compile. Click the line that uses a reader too late.", "explain": "<code>host</code> borrows slot 0 on line 3, and line 5 still reads it, after the <code>push</code> on line 4 wrote to the list. Move line 5 above line 4, and the reader's last use comes before the writer: it compiles. The <samp>immutable borrow later used here</samp> label points straight at line 5."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_error.rs", "expect": "error", "answer": "E0597", "ask": "This one doesn't compile. Which error code does the Compiler print? Type it like E0000.", "prompt": "Boss 6. A note borrowed inside a block, then copied after it.", "hint": "Where does <code>page</code>'s owner leave? Is <code>note</code> used after that?", "explain": "<code>page</code> is dropped at the closing brace on line 7, but <code>note</code>, which borrows it, is used on line 8: <samp>error[E0597]: `page` does not live long enough</samp>. Fix: move <code>let page</code> above the block, or do the cloning inside it."}</script>
+
+  <section class="panel pop" aria-label="Panel 34: what you learned">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">What you learned in Chapter 8</p>
+    <ul class="recap">
+      <li><b>LOOK, DON'T TAKE</b><code>&amp;x</code> lends <code>x</code> for reading; the type is <code>&amp;T</code>. Functions that only look take <code>&amp;String</code>, and the caller keeps its value. A reference owns nothing, so dropping it frees nothing.</li>
+      <li><b>SAY MUT THREE TIMES</b>To write through a reference: <code>let mut x</code>, lend <code>&amp;mut x</code>, accept <code>&amp;mut T</code>. Missing one gives E0596. That's the whole secret of <code>read_line(&amp;mut guess)</code>.</li>
+      <li><b>THE STAR FOLLOWS THE ARROW</b><code>*r</code> is the value <code>r</code> points at: <code>*r += 1</code>. Methods (<code>r.len()</code>) and <code>println!</code> follow the arrow for you.</li>
+      <li><b>MANY READERS OR ONE WRITER</b>Any number of <code>&amp;</code>, or exactly one <code>&amp;mut</code> and nothing else. Two writers: E0499. A reader and a writer: E0502.</li>
+      <li><b>A LOAN ENDS AT ITS LAST USE</b>Not at the closing brace. Read the "later used here" label: that late use is often the culprit.</li>
+      <li><b>BRING IT BACK BEFORE THE OWNER LEAVES</b>A reference can never outlive its owner: E0597. Read, write and own permissions come and go with every loan.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="cheer" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Every loan in the ledger, and every one came back. You now know the rules the borrow checker plays by.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 35: next time, case files and windows">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">Coming up in Chapter 9: Case Files and Windows…</p>
+    <div class="teaser">
+      <svg class="fig" viewBox="0 0 560 210" role="img" aria-label="Teaser picture: on the left, a cork detective board with three case files pinned to it, labelled E0106, E0507 and E0502, joined by red string. On the right, a window frame placed over a bookshelf, showing only the middle three books.">
+        <rect x="14" y="14" width="250" height="180" rx="8" fill="#D9BF94" stroke="#111" stroke-width="4"/>
+        <g stroke="#111" stroke-width="3"><rect x="30" y="34" width="90" height="62" rx="4" fill="#FFFFFF" transform="rotate(-4 75 65)"/><rect x="150" y="30" width="96" height="62" rx="4" fill="#FFF6CC" transform="rotate(3 198 61)"/><rect x="86" y="116" width="96" height="62" rx="4" fill="#FFE1E1" transform="rotate(-2 134 147)"/></g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111"><text x="46" y="76">E0106</text><text x="168" y="72">E0507</text><text x="106" y="160">E0502</text></g>
+        <path d="M60 38 L210 32 L134 118 Z" fill="none" stroke="#B00020" stroke-width="2.5"/>
+        <g fill="#FF5A4E" stroke="#111" stroke-width="2"><circle cx="60" cy="38" r="6"/><circle cx="210" cy="32" r="6"/><circle cx="134" cy="118" r="6"/></g>
+        <rect x="290" y="110" width="256" height="84" rx="6" fill="#E8D3B0" stroke="#111" stroke-width="4"/>
+        <g stroke="#111" stroke-width="3"><rect x="302" y="122" width="30" height="62" fill="#7FB2FF"/><rect x="340" y="122" width="30" height="62" fill="#C9F2D9"/><rect x="378" y="122" width="30" height="62" fill="#FFD60A"/><rect x="416" y="122" width="30" height="62" fill="#FFE1E1"/><rect x="454" y="122" width="30" height="62" fill="#DDE8FF"/><rect x="492" y="122" width="30" height="62" fill="#F2B38F"/></g>
+        <rect x="332" y="96" width="122" height="106" rx="4" fill="none" stroke="#111" stroke-width="6"/>
+        <path d="M393 96 v106 M332 149 h122" stroke="#111" stroke-width="3"/>
+        <text class="mid s" x="418" y="60">a window onto</text><text class="mid s" x="418" y="84">part of the shelf</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="ledger"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Mabel thinks: </span>Next: a casebook of borrow errors, one case file each, with the scene, the suspect and the known fixes. And <b>slices</b>: a window that lets you borrow just part of a String or a list.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch7.html">← Ch 7 · Plate Stacks, House Keys</a><a class="next" href="ch9.html">Ch 9 · Case Files and Windows →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what a reference is made of, and what the borrow checker costs</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>A reference is about the simplest thing a computer has: a memory address. Everything clever about it happens before the program runs.</p></div>
+      </div>
+      <h3>A reference is an address</h3>
+      <p>In memory, <code>&amp;book</code> is just the address of <code>book</code>'s slot on the stack: a number saying where to look. On a 64-bit computer that's 8 bytes, whatever it points at. A reference to a 24-byte <code>String</code> is 8 bytes; a reference to an array of a thousand numbers is still 8 bytes. That's why lending is cheap and why functions take <code>&amp;</code> for big things.</p>
+      <span class="file-tab">sizes.rs</span><pre class="code" data-src="sizes.rs"></pre><pre class="term" data-run="sizes.rs"></pre>
+      <p>(<code>std::mem::size_of::&lt;T&gt;()</code> asks how many bytes a type takes. These sizes are for this 64-bit Linux machine; a 32-bit system would show 4 for each reference.)</p>
+      <h3>The capacities in panel 11, measured</h3>
+      <p>Panel 11 draws <code>book</code>'s room growing from 4 bytes to 20. This program makes the same String the same way and asks it for its <code>capacity()</code> before and after the note.</p>
+      <span class="file-tab">caps.rs</span><pre class="code" data-src="caps.rs"></pre><pre class="term" data-run="caps.rs"></pre>
+      <h3>Permissions don't exist at run time</h3>
+      <p>R, W and O live only in the Compiler's head. The program that finally runs contains no ledger, no counters and no checks for borrowing: <code>&amp;</code> and <code>&amp;mut</code> become the same kind of plain address. The <b>borrow checker</b> is the part of the Compiler that does the bookkeeping, and when it is satisfied it leaves nothing behind. Safety at zero run-time cost is the whole point.</p>
+      <h3>Why <code>&amp;mut</code> must be alone</h3>
+      <p>Two names that lead to the same data are called <b>aliases</b>. Aliases alone are harmless (many readers), and changes alone are harmless (one writer). Aliases <em>plus</em> changes are what cause trouble: a reader's note pointing into a buffer that a writer just reallocated, as in panel 19. Rust's rule, "aliasing XOR mutation", rules that out entirely. The Brown edition of the Rust book calls it the <b>Pointer Safety Principle</b>.</p>
+      <h3>The dot and auto-deref</h3>
+      <p>When you write <code>r.len()</code>, the Compiler sees that <code>len</code> belongs to <code>String</code>, not to <code>&amp;String</code>, so it inserts the <code>*</code> for you: <code>(*r).len()</code>. It does the same through several layers (a reference to a reference). It also works the other way: <code>book.len()</code> really calls <code>String::len(&amp;book)</code>, lending <code>book</code> for the call. That's why <code>shelf.push(40)</code> in panel 21 counted as a writing loan: <code>push</code> takes <code>&amp;mut self</code>, so the dot quietly lends <code>&amp;mut shelf</code>. Methods and <code>self</code> are Chapter 10.</p>
+      <h3>Two loans of two different things</h3>
+      <p>In Boss 2, <code>read(&amp;mut total, &amp;mut best, pages)</code> has two <code>&amp;mut</code> at once and compiles fine, because the rule counts loans <em>per value</em>. The borrow checker can also tell apart different fields of a struct or tuple, so <code>&amp;mut pair.0</code> and <code>&amp;mut pair.1</code> can coexist. It can't tell apart <code>v[0]</code> and <code>v[1]</code> of a vector, because an index is only known at run time; Chapter 9 shows the tool for that.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: how professionals use &amp; and &amp;mut</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Take <code>&amp;</code> by default.</b> Most functions only need to look at their inputs. Asking for a reference keeps the caller free to use its value afterwards, and costs 8 bytes instead of a copy.</li>
+        <li><b>Use <code>&amp;mut</code> to update in place.</b> Filling a buffer (<code>read_line</code>), adding to a list, adjusting a score: the caller can see from <code>&amp;mut x</code> at the call that <code>x</code> may change.</li>
+        <li><b>Take ownership only when you keep it.</b> A function that stores the value somewhere for later, or turns it into something else, takes it by value (a move).</li>
+        <li><b>Looping without giving the list away.</b> <code>for x in &amp;list</code> reads each item; <code>for x in &amp;mut list</code> lets you change each item through <code>*x</code>. Remember Chapter 7's <code>for x in v</code>, which moved the whole vector into the loop.</li>
+      </ul>
+      <span class="file-tab">in_real.rs</span><pre class="code" data-src="in_real.rs"></pre><pre class="term" data-run="in_real.rs"></pre>
+      <ul>
+        <li><b>A small preview:</b> experienced Rust programmers write <code>&amp;str</code> instead of <code>&amp;String</code>, and <code>&amp;[i32]</code> instead of <code>&amp;Vec&lt;i32&gt;</code>, for parameters. Those are <b>slices</b>, coming in Chapter 9, and they accept more kinds of input. <code>&amp;String</code> is perfectly correct; it's just less flexible.</li>
+        <li><b>Threads</b> (Chapter 26) rely on these same rules: two threads writing the same data at once is a data race, and in safe Rust it won't compile, for exactly the reason two <code>&amp;mut</code> won't.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>&amp;x</code> makes a copy of <code>x</code>."</b> It makes a small address that points at <code>x</code>. Nothing is copied, nothing is moved.</li>
+        <li><b>"A reference owns the value too, a little bit."</b> It owns nothing. When a reference goes away, nothing is freed. Only the owner drops the value.</li>
+        <li><b>"<code>&amp;mut</code> means the reference itself can be changed to point elsewhere."</b> It means you can change the value it <em>points at</em>. Re-pointing a reference variable needs <code>let mut r</code>, which is a different thing.</li>
+        <li><b>"<code>let r = &amp;mut x;</code> works whenever <code>r</code> is <code>mut</code>."</b> The <em>owner</em> <code>x</code> must be <code>let mut</code>. You can't lend a right to write that you don't have (E0596).</li>
+        <li><b>"A loan lasts until the closing brace."</b> It lasts until the reference's last use (non-lexical lifetimes).</li>
+        <li><b>"Two <code>&amp;mut</code> in one line is always an error."</b> Only two loans of the <em>same</em> value. Lending <code>&amp;mut a</code> and <code>&amp;mut b</code> together is fine.</li>
+        <li><b>"The error is on the line with the caret."</b> The caret marks where the conflict was noticed. The cause is often the "later used here" line or the signature in the <code>help:</code>.</li>
+        <li><b>"Printing a reference prints an address."</b> <code>println!("{r}")</code> follows the arrow and prints the value.</li>
+        <li><b>"<code>*</code> is for multiplying only."</b> Between two values it multiplies (<code>a * b</code>); in front of a reference it follows the arrow (<code>*r</code>). Line 7 of <code>deref.rs</code> uses both: <code>*r = *r * 10</code>.</li>
+        <li><b>"The borrow checker slows my program down."</b> All of its work happens while compiling. At run time a reference is a plain address.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new ledger</code>, then <code>cd ledger</code>, and open <code>src/main.rs</code> in your editor. Run each experiment with <code>cargo run</code>. No Rust yet? Install it from rustup.rs: on Windows, run the installer it offers (it may ask for the Visual Studio C++ build tools); on macOS and Linux, paste the one-line command shown on that page. Check with <code>cargo --version</code>.</p>
+      <h3>2. Lend, don't give</h3>
+      <ol>
+        <li>Paste <code>give_back.rs</code> from panel 2 and run it.</li>
+        <li>Rewrite it as <code>lend.rs</code> (panel 4): add <code>&amp;</code> in two places and delete the tuple.</li>
+        <li>Now remove the <code>&amp;</code> at the call only, and read E0308's <code>help:</code> line.</li>
+      </ol>
+      <h3>3. Collect all four codes</h3>
+      <ul>
+        <li><b>E0499</b>: make two <code>let a = &amp;mut s;</code> loans and use the first after the second.</li>
+        <li><b>E0502</b>: hold <code>&amp;v[0]</code> across a <code>v.push(...)</code>.</li>
+        <li><b>E0596</b>: call <code>push_str</code> through a <code>&amp;String</code>.</li>
+        <li><b>E0597</b>: borrow a value inside <code>{ }</code> and use the reference after the brace.</li>
+      </ul>
+      <p>For each one, run <code>rustc --explain E0499</code> (and so on) to read the official explanation with examples. Then fix it by moving a single line, and watch it compile.</p>
+      <h3>4. Watch the loans in your editor</h3>
+      <p>With <b>rust-analyzer</b> (an extension in VS Code; built in to editors such as Zed and Helix; RustRover has its own Rust support), borrow errors are underlined as you type, with every label shown in place. Hover over <code>r</code> to see its type, <code>&amp;String</code>.</p>
+      <h3>5. Playground and Aquascope</h3>
+      <p>No install? play.rust-lang.org runs every program on this page in a browser (choose edition 2024). The Brown University edition of the Rust book has interactive permission diagrams like Mabel's ledger, drawn by a tool called Aquascope, for many of its examples.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>reference</dt><dd>A value that points at another value without owning it. Made with <code>&amp;</code> or <code>&amp;mut</code>.</dd>
+        <dt>borrow / borrowing</dt><dd>Making a reference: lending a value without giving it away.</dd>
+        <dt>shared reference, <code>&amp;T</code></dt><dd>A read-only reference. Any number can exist at once. Also called an immutable reference.</dd>
+        <dt>mutable reference, <code>&amp;mut T</code></dt><dd>A reference you can change the value through. Only one at a time, and nothing else meanwhile. Also called an exclusive or unique reference.</dd>
+        <dt>loan</dt><dd>Mabel's word for one borrow, from when it's made to its last use.</dd>
+        <dt>dereference, <code>*</code></dt><dd>Follow a reference to the value it points at: <code>*r</code>.</dd>
+        <dt>auto-deref</dt><dd>The dot (<code>r.len()</code>) and <code>println!</code> follow references for you.</dd>
+        <dt>borrow checker</dt><dd>The part of the Compiler that checks every loan against the rules, before the program runs.</dd>
+        <dt>non-lexical lifetimes</dt><dd>The rule that a loan ends at the reference's last use, not at the closing brace.</dd>
+        <dt>place</dt><dd>Anything that can hold a value and be borrowed: a variable, <code>*r</code>, an element <code>v[0]</code>, a field.</dd>
+        <dt>permissions (R, W, O)</dt><dd>Read, Write, Own: what the borrow checker lets you do with a place at each line. A teaching model from the Brown edition of the Rust book.</dd>
+        <dt>alias</dt><dd>A second name or path to the same data.</dd>
+        <dt>dangling reference</dt><dd>A reference to memory that has been freed. Safe Rust never lets one exist.</dd>
+        <dt>reallocate</dt><dd>Move a String's or Vec's contents to a bigger heap block when they outgrow the old one.</dd>
+        <dt>E0499 / E0502 / E0596 / E0597</dt><dd>Two writers; a reader and a writer; writing without permission; a reference that outlives its owner. Bonus: E0505, moving a value while it's lent.</dd>
+        <dt>Vec, <code>vec![...]</code></dt><dd>A growable list. This chapter draws it as a shelf; Chapter 11, which covers it in depth, calls it the accordion folder.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li><a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Programming Language, 4.2 References and Borrowing</a></li>
+        <li><a href="https://rust-book.cs.brown.edu/ch04-02-references-and-borrowing.html">The Brown University edition, 4.2 References and Borrowing</a>, with the permission diagrams this chapter's ledger is modelled on</li>
+        <li><a href="https://doc.rust-lang.org/rust-by-example/scope/borrow.html">Rust by Example: Borrowing</a>, <a href="https://doc.rust-lang.org/rust-by-example/scope/borrow/mut.html">Mutability</a> and <a href="https://doc.rust-lang.org/rust-by-example/scope/borrow/alias.html">Aliasing</a></li>
+        <li><a href="https://doc.rust-lang.org/reference/types/pointer.html">The Reference: pointer types</a> and <a href="https://doc.rust-lang.org/std/primitive.reference.html">std: the reference page</a></li>
+        <li>The error index: <a href="https://doc.rust-lang.org/error_codes/E0499.html">E0499</a>, <a href="https://doc.rust-lang.org/error_codes/E0502.html">E0502</a>, <a href="https://doc.rust-lang.org/error_codes/E0596.html">E0596</a>, <a href="https://doc.rust-lang.org/error_codes/E0597.html">E0597</a>, <a href="https://doc.rust-lang.org/error_codes/E0505.html">E0505</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://google.github.io/comprehensive-rust/">Comprehensive Rust</a>: the References and Borrowing segments.</li>
+        <li><a href="https://rustlings.rust-lang.org/">Rustlings</a>: the <code>move_semantics</code> exercises practise borrowing too.</li>
+        <li><a href="https://rust-exercises.com/100-exercises/">100 Exercises to Learn Rust</a>: section 3, with its "references in memory" pictures.</li>
+        <li><a href="https://tourofrust.com/">Tour of Rust</a>: the ownership and borrowing chapter, one small runnable page per idea.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch8</code>. Each program was built and run as its own cargo project with <code>cargo run -q</code>, a debug build; the terminals show the real compiler messages, and the exit code 101 after each failed build. Programs that read the keyboard (<code>guess_ritual.rs</code>) were given their typing through a real terminal, which is why the typed <samp>42</samp> appears on screen. Both Rust versions printed exactly the same output and the same messages for all 45 programs.</p>
+  <p>The stack-and-heap steppers, the star machine, Mabel's permission ledger and the map of loans are teaching models; each checks itself against those runs and shows a badge. The R/W/O permissions follow the model of the Brown University edition of the Rust book; they describe what the borrow checker tracks while compiling and are not printed by any program. The String capacities drawn in panels 5 and 11 (4, then 20) are what this Rust version really allocates for these strings: <code>caps.rs</code>, in the notebook's "Under the hood" page, prints them; another version may grow differently. The reading room, the study booth, the shelves, the timelines and the teaser are pictures, not output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, 4.2 References and Borrowing; its Brown University edition, 4.2 (the permissions model and the Pointer Safety Principle); Rust by Example (Borrowing, Mutability, Aliasing); the Rust Reference (pointer types) and the error index (E0499, E0502, E0505, E0596, E0597); Comprehensive Rust (References, Borrowing); 100 Exercises to Learn Rust (3.10); Tour of Rust (chapter 5); Rustlings (move_semantics); roadmap.sh/rust.</p>
+  <p>Mabel, the Compiler, the Professor and every picture here are original characters and drawings made in code; Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

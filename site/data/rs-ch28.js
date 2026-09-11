@@ -1,0 +1,1071 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "rust",
+  "capturedWith": [
+   "Rust 1.99.1 (edition 2024)",
+   "Rust 1.97.0 (edition 2024)"
+  ],
+  "primary": "Rust 1.99.1 (edition 2024)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/rust-ch28",
+  "versionDifferences": [
+   "bench_debug.rs",
+   "bench_release.rs",
+   "iter_vs_index.rs",
+   "lint_me.rs",
+   "serde_no_derive.rs"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bench_debug.rs, bench_release.rs, iter_vs_index.rs, lint_me.rs, serde_no_derive.rs."
+ },
+ "programs": {
+  "alloc_count.rs": {
+   "src": "use std::alloc::{GlobalAlloc, Layout, System};\nuse std::fmt::Write;\nuse std::sync::atomic::{AtomicUsize, Ordering};\n\n// A tally counter on the heap's front desk: every request for heap memory\n// (new or bigger) adds 1, then the normal allocator does the real work.\n// Writing your own allocator needs `unsafe`; you will rarely do this. It's here to measure.\nstruct Tally;\nstatic ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);\n\nunsafe impl GlobalAlloc for Tally {\n    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {\n        ALLOCATIONS.fetch_add(1, Ordering::Relaxed);\n        unsafe { System.alloc(layout) }\n    }\n    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {\n        unsafe { System.dealloc(ptr, layout) }\n    }\n}\n\n#[global_allocator]\nstatic TALLY: Tally = Tally;\n\n// Runs `job` and returns how many heap allocations it made.\nfn count<T>(job: impl FnOnce() -> T) -> usize {\n    let before = ALLOCATIONS.load(Ordering::Relaxed);\n    let result = job();\n    let after = ALLOCATIONS.load(Ordering::Relaxed);\n    drop(result);\n    after - before\n}\n\nfn longest_cloned(titles: Vec<String>) -> String {\n    let mut best = String::new();\n    for t in titles.clone() {\n        if t.len() > best.len() {\n            best = t.clone();\n        }\n    }\n    best\n}\n\nfn longest_borrowed(titles: &[String]) -> &str {\n    let mut best = \"\";\n    for t in titles {\n        if t.len() > best.len() {\n            best = t;\n        }\n    }\n    best\n}\n\nfn vowels_owned(word: String) -> usize {\n    word.chars().filter(|c| \"aeiou\".contains(*c)).count()\n}\n\nfn vowels_borrowed(word: &str) -> usize {\n    word.chars().filter(|c| \"aeiou\".contains(*c)).count()\n}\n\nfn main() {\n    let shelf = vec![String::from(\"Emma\"), String::from(\"Middlemarch\"), String::from(\"Dune\")];\n    let mut results = Vec::with_capacity(8);\n\n    results.push((\"push 1000 numbers, no capacity\", count(|| {\n        let mut v = Vec::new();\n        for i in 0..1000 {\n            v.push(i);\n        }\n        v\n    })));\n    results.push((\"push 1000 numbers, with_capacity\", count(|| {\n        let mut v = Vec::with_capacity(1000);\n        for i in 0..1000 {\n            v.push(i);\n        }\n        v\n    })));\n    results.push((\"longest title, clone-heavy\", count(|| longest_cloned(shelf.clone()))));\n    results.push((\"longest title, borrowing\", count(|| longest_borrowed(&shelf).len())));\n    results.push((\"100 labels, a new String each\", count(|| {\n        let mut letters = 0;\n        for i in 0..100 {\n            let label = format!(\"shelf {i}\");\n            letters += label.len();\n        }\n        letters\n    })));\n    results.push((\"100 labels, one reused buffer\", count(|| {\n        let mut letters = 0;\n        let mut label = String::new();\n        for i in 0..100 {\n            label.clear();\n            write!(label, \"shelf {i}\").unwrap();\n            letters += label.len();\n        }\n        letters\n    })));\n    results.push((\"100 vowel counts, String parameter\", count(|| {\n        let mut total = 0;\n        for _ in 0..100 {\n            total += vowels_owned(\"Middlemarch\".to_string());\n        }\n        total\n    })));\n    results.push((\"100 vowel counts, &str parameter\", count(|| {\n        let mut total = 0;\n        for _ in 0..100 {\n            total += vowels_borrowed(\"Middlemarch\");\n        }\n        total\n    })));\n\n    for (what, n) in results {\n        println!(\"{what}: {n} allocations\");\n    }\n}\n",
+   "stdout": "push 1000 numbers, no capacity: 9 allocations\npush 1000 numbers, with_capacity: 1 allocations\nlongest title, clone-heavy: 10 allocations\nlongest title, borrowing: 0 allocations\n100 labels, a new String each: 100 allocations\n100 labels, one reused buffer: 1 allocations\n100 vowel counts, String parameter: 100 allocations\n100 vowel counts, &str parameter: 0 allocations\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "push 1000 numbers, no capacity: 9 allocations\npush 1000 numbers, with_capacity: 1 allocations\nlongest title, clone-heavy: 10 allocations\nlongest title, borrowing: 0 allocations\n100 labels, a new String each: 100 allocations\n100 labels, one reused buffer: 1 allocations\n100 vowel counts, String parameter: 100 allocations\n100 vowel counts, &str parameter: 0 allocations\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/alloc_count"
+    }
+   ]
+  },
+  "bench_debug.rs": {
+   "src": "use std::time::Instant;\n\nfn main() {\n    let books: Vec<u64> = (1..=3_000_000).collect();\n\n    let start = Instant::now();\n    let mut total = 0;\n    for i in 0..books.len() {\n        total += books[i] % 7;\n    }\n    let loop_time = start.elapsed();\n\n    let start = Instant::now();\n    let chained: u64 = books.iter().map(|b| b % 7).sum();\n    let chain_time = start.elapsed();\n\n    println!(\"loop:  {total} in {loop_time:.2?}\");\n    println!(\"chain: {chained} in {chain_time:.2?}\");\n}\n",
+   "stdout": "loop:  8999997 in 38.53ms\nchain: 8999997 in 34.87ms\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "loop:  8999997 in 38.53ms\nchain: 8999997 in 34.87ms\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/bench_debug"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "loop:  8999997 in 77.59ms\nchain: 8999997 in 140.05ms\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "loop:  8999997 in 77.59ms\nchain: 8999997 in 140.05ms\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch28/bench_debug"
+     }
+    ]
+   }
+  },
+  "bench_release.rs": {
+   "src": "use std::time::Instant;\n\nfn main() {\n    let books: Vec<u64> = (1..=3_000_000).collect();\n\n    let start = Instant::now();\n    let mut total = 0;\n    for i in 0..books.len() {\n        total += books[i] % 7;\n    }\n    let loop_time = start.elapsed();\n\n    let start = Instant::now();\n    let chained: u64 = books.iter().map(|b| b % 7).sum();\n    let chain_time = start.elapsed();\n\n    println!(\"loop:  {total} in {loop_time:.2?}\");\n    println!(\"chain: {chained} in {chain_time:.2?}\");\n}\n",
+   "stdout": "loop:  8999997 in 16.70ms\nchain: 8999997 in 12.25ms\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q --release",
+     "out": "loop:  8999997 in 16.70ms\nchain: 8999997 in 12.25ms\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/bench_release"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "loop:  8999997 in 33.30ms\nchain: 8999997 in 17.53ms\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo run -q --release",
+      "out": "loop:  8999997 in 33.30ms\nchain: 8999997 in 17.53ms\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch28/bench_release"
+     }
+    ]
+   }
+  },
+  "boss_fill.rs": {
+   "src": "fn count_long(words: &[&str], min: usize) -> usize {\n    words.iter().filter(|w| w.len() >= min).count()\n}\n\nfn shout_all(words: &[&str]) -> Vec<String> {\n    words.iter().map(|w| w.to_uppercase()).collect()\n}\n\nfn main() {\n    let words = vec![\"tea\", \"biscuit\", \"jam\", \"crumpet\"];\n    println!(\"{}\", count_long(&words, 4));\n    println!(\"{:?}\", shout_all(&words[..2]));\n}\n",
+   "stdout": "2\n[\"TEA\", \"BISCUIT\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "2\n[\"TEA\", \"BISCUIT\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/boss_fill"
+    }
+   ]
+  },
+  "boss_parsons.rs": {
+   "src": "fn report(titles: &[&str]) -> String {\n    let mut out = String::with_capacity(64);\n    for t in titles {\n        out.push_str(t);\n        out.push('\\n');\n    }\n    out\n}\n\nfn main() {\n    print!(\"{}\", report(&[\"Emma\", \"Dune\", \"Beloved\"]));\n}\n",
+   "stdout": "Emma\nDune\nBeloved\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Emma\nDune\nBeloved\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.rs": {
+   "src": "#[derive(Default)]\nstruct Report {\n    title: String,\n    max_rows: usize,\n    sorted: bool,\n}\n\nimpl Report {\n    fn titled(title: &str) -> Report {\n        Report { title: title.to_string(), max_rows: 3, ..Default::default() }\n    }\n    fn sorted(mut self) -> Report {\n        self.sorted = true;\n        self\n    }\n    fn render(&self, scores: &[u32]) -> String {\n        let mut rows = scores.to_vec();\n        if self.sorted {\n            rows.sort_unstable_by(|a, b| b.cmp(a));\n        }\n        let shown: Vec<String> = rows.iter().take(self.max_rows).map(|s| s.to_string()).collect();\n        format!(\"{}: [{}]\", self.title, shown.join(\", \"))\n    }\n}\n\nfn main() {\n    let scores = [40, 95, 12, 77, 60];\n    println!(\"{}\", Report::titled(\"as read\").render(&scores));\n    println!(\"{}\", Report::titled(\"top\").sorted().render(&scores));\n    println!(\"{}\", Report { max_rows: 5, ..Report::titled(\"all\") }.render(&scores));\n}\n",
+   "stdout": "as read: [40, 95, 12]\ntop: [95, 77, 60]\nall: [40, 95, 12, 77, 60]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "as read: [40, 95, 12]\ntop: [95, 77, 60]\nall: [40, 95, 12, 77, 60]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.rs": {
+   "src": "mod cards {\n    pub struct CardNumber(u32);\n\n    impl CardNumber {\n        pub fn new(n: u32) -> Option<CardNumber> {\n            if (1000..10000).contains(&n) { Some(CardNumber(n)) } else { None }\n        }\n        pub fn get(&self) -> u32 {\n            self.0\n        }\n    }\n}\n\nfn main() {\n    let good = cards::CardNumber::new(4821).unwrap();\n    let sneaky = cards::CardNumber(7);\n    println!(\"{} {}\", good.get(), sneaky.get());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0603]: tuple struct constructor `CardNumber` is private\n  --> src/main.rs:16:25\n   |\n 2 |     pub struct CardNumber(u32);\n   |                           --- a constructor is private if any of the fields is private\n...\n16 |     let sneaky = cards::CardNumber(7);\n   |                         ^^^^^^^^^^ private tuple struct constructor\n   |\nnote: the tuple struct constructor `CardNumber` is defined here\n  --> src/main.rs:2:5\n   |\n 2 |     pub struct CardNumber(u32);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: consider making the field publicly accessible\n   |\n 2 |     pub struct CardNumber(pub u32);\n   |                           +++\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0603]: tuple struct constructor `CardNumber` is private\n  --> src/main.rs:16:25\n   |\n 2 |     pub struct CardNumber(u32);\n   |                           --- a constructor is private if any of the fields is private\n...\n16 |     let sneaky = cards::CardNumber(7);\n   |                         ^^^^^^^^^^ private tuple struct constructor\n   |\nnote: the tuple struct constructor `CardNumber` is defined here\n  --> src/main.rs:2:5\n   |\n 2 |     pub struct CardNumber(u32);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: consider making the field publicly accessible\n   |\n 2 |     pub struct CardNumber(pub u32);\n   |                           +++\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `boss_spot` (bin \"boss_spot\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.rs": {
+   "src": "fn main() {\n    let mut buf = String::with_capacity(8);\n    for word in [\"ox\", \"zebra\", \"aardvark\", \"emu\", \"hippopotamus\"] {\n        buf.clear();\n        buf.push_str(word);\n        println!(\"{} {} {}\", word, buf.len(), buf.capacity());\n    }\n}\n",
+   "stdout": "ox 2 8\nzebra 5 8\naardvark 8 8\nemu 3 8\nhippopotamus 12 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "ox 2 8\nzebra 5 8\naardvark 8 8\nemu 3 8\nhippopotamus 12 16\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/boss_trace"
+    }
+   ]
+  },
+  "builder.rs": {
+   "src": "use std::fmt;\n\n#[derive(Debug)]\nenum Size {\n    Small,\n    Medium,\n    Large,\n}\n\n/// A cup of tea from the library café.\nstruct Tea {\n    flavor: String,\n    size: Size,\n    sugar: u8,\n    to_go: bool,\n}\n\n/// Collects your choices, then [`TeaBuilder::build`] makes the [`Tea`].\n///\n/// # Examples\n///\n/// ```\n/// let tea = Tea::order(\"mint\").sugar(1).build();\n/// ```\nstruct TeaBuilder {\n    flavor: String,\n    size: Size,\n    sugar: u8,\n    to_go: bool,\n}\n\nimpl Tea {\n    /// Starts an order. Anything you don't choose stays at its default:\n    /// medium, no sugar, for here.\n    fn order(flavor: &str) -> TeaBuilder {\n        TeaBuilder { flavor: flavor.to_string(), size: Size::Medium, sugar: 0, to_go: false }\n    }\n}\n\nimpl TeaBuilder {\n    fn size(mut self, size: Size) -> TeaBuilder {\n        self.size = size;\n        self\n    }\n    fn sugar(mut self, spoons: u8) -> TeaBuilder {\n        self.sugar = spoons;\n        self\n    }\n    fn to_go(mut self) -> TeaBuilder {\n        self.to_go = true;\n        self\n    }\n    fn build(self) -> Tea {\n        Tea { flavor: self.flavor, size: self.size, sugar: self.sugar, to_go: self.to_go }\n    }\n}\n\nimpl fmt::Display for Tea {\n    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {\n        let place = if self.to_go { \"to go\" } else { \"for here\" };\n        write!(f, \"{:?} {} tea, sugar {}, {}\", self.size, self.flavor, self.sugar, place)\n    }\n}\n\nfn main() {\n    let plain = Tea::order(\"mint\").build();\n    let big = Tea::order(\"chai\").size(Size::Large).sugar(2).build();\n    let quick = Tea::order(\"lemon\").to_go().size(Size::Small).build();\n    println!(\"{plain}\");\n    println!(\"{big}\");\n    println!(\"{quick}\");\n}\n",
+   "stdout": "Medium mint tea, sugar 0, for here\nLarge chai tea, sugar 2, for here\nSmall lemon tea, sugar 0, to go\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Medium mint tea, sugar 0, for here\nLarge chai tea, sugar 2, for here\nSmall lemon tea, sugar 0, to go\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/builder"
+    }
+   ]
+  },
+  "builder_twice.rs": {
+   "src": "struct Tea {\n    flavor: String,\n    sugar: u8,\n}\n\nstruct TeaBuilder {\n    flavor: String,\n    sugar: u8,\n}\n\nimpl TeaBuilder {\n    fn sugar(mut self, spoons: u8) -> TeaBuilder {\n        self.sugar = spoons;\n        self\n    }\n    fn build(self) -> Tea {\n        Tea { flavor: self.flavor, sugar: self.sugar }\n    }\n}\n\nfn main() {\n    let order = TeaBuilder { flavor: String::from(\"mint\"), sugar: 0 }.sugar(1);\n    let first = order.build();\n    let second = order.build();\n    println!(\"{} ({}) and {} ({})\", first.flavor, first.sugar, second.flavor, second.sugar);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0382]: use of moved value: `order`\n  --> src/main.rs:24:18\n   |\n22 |     let order = TeaBuilder { flavor: String::from(\"mint\"), sugar: 0 }.sugar(1);\n   |         ----- move occurs because `order` has type `TeaBuilder`, which does not implement the `Copy` trait\n23 |     let first = order.build();\n   |                       ------- `order` moved due to this method call\n24 |     let second = order.build();\n   |                  ^^^^^ value used here after move\n   |\nnote: `TeaBuilder::build` takes ownership of the receiver `self`, which moves `order`\n  --> src/main.rs:16:14\n   |\n16 |     fn build(self) -> Tea {\n   |              ^^^^\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `builder_twice` (bin \"builder_twice\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0382]: use of moved value: `order`\n  --> src/main.rs:24:18\n   |\n22 |     let order = TeaBuilder { flavor: String::from(\"mint\"), sugar: 0 }.sugar(1);\n   |         ----- move occurs because `order` has type `TeaBuilder`, which does not implement the `Copy` trait\n23 |     let first = order.build();\n   |                       ------- `order` moved due to this method call\n24 |     let second = order.build();\n   |                  ^^^^^ value used here after move\n   |\nnote: `TeaBuilder::build` takes ownership of the receiver `self`, which moves `order`\n  --> src/main.rs:16:14\n   |\n16 |     fn build(self) -> Tea {\n   |              ^^^^\n\nFor more information about this error, try `rustc --explain E0382`.\nerror: could not compile `builder_twice` (bin \"builder_twice\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/builder_twice"
+    }
+   ]
+  },
+  "clap_card.rs": {
+   "src": "use clap::Parser;\n\n/// Prints a library card.\n#[derive(Parser)]\nstruct Args {\n    /// Who the card is for\n    #[arg(long)]\n    name: String,\n    /// How many books they may borrow at once\n    #[arg(long, default_value_t = 5)]\n    books: u32,\n}\n\nfn main() {\n    let args = Args::parse();\n    println!(\"LIBRARY CARD: {} (may borrow {})\", args.name, args.books);\n}\n",
+   "stdout": "LIBRARY CARD: Ada (may borrow 5)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q -- --name Ada",
+     "out": "LIBRARY CARD: Ada (may borrow 5)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/clap_card"
+    }
+   ]
+  },
+  "clone_free.rs": {
+   "src": "fn longest_title(titles: &[String]) -> &str {\n    let mut best = \"\";\n    for t in titles {\n        if t.len() > best.len() {\n            best = t;\n        }\n    }\n    best\n}\n\nfn main() {\n    let shelf = vec![String::from(\"Emma\"), String::from(\"Middlemarch\"), String::from(\"Dune\")];\n    let winner = longest_title(&shelf);\n    println!(\"longest: {winner}\");\n    println!(\"the shelf still has {} books\", shelf.len());\n}\n",
+   "stdout": "longest: Middlemarch\nthe shelf still has 3 books\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "longest: Middlemarch\nthe shelf still has 3 books\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/clone_free"
+    }
+   ]
+  },
+  "clone_heavy.rs": {
+   "src": "fn longest_title(titles: Vec<String>) -> String {\n    let mut best = String::new();\n    for t in titles.clone() {\n        if t.len() > best.len() {\n            best = t.clone();\n        }\n    }\n    best\n}\n\nfn main() {\n    let shelf = vec![String::from(\"Emma\"), String::from(\"Middlemarch\"), String::from(\"Dune\")];\n    let winner = longest_title(shelf.clone());\n    println!(\"longest: {winner}\");\n    println!(\"the shelf still has {} books\", shelf.len());\n}\n",
+   "stdout": "longest: Middlemarch\nthe shelf still has 3 books\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "longest: Middlemarch\nthe shelf still has 3 books\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/clone_heavy"
+    }
+   ]
+  },
+  "dates.rs": {
+   "src": "use chrono::{Datelike, Days, NaiveDate};\n\nfn main() {\n    let borrowed = NaiveDate::from_ymd_opt(2026, 11, 8).unwrap();\n    let due = borrowed + Days::new(21);\n    println!(\"borrowed {borrowed} ({})\", borrowed.weekday());\n    println!(\"due      {due} ({})\", due.weekday());\n    println!(\"2028-02-29 exists? {}\", NaiveDate::from_ymd_opt(2028, 2, 29).is_some());\n    println!(\"2027-02-29 exists? {}\", NaiveDate::from_ymd_opt(2027, 2, 29).is_some());\n}\n",
+   "stdout": "borrowed 2026-11-08 (Sun)\ndue      2026-11-29 (Sun)\n2028-02-29 exists? true\n2027-02-29 exists? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "borrowed 2026-11-08 (Sun)\ndue      2026-11-29 (Sun)\n2028-02-29 exists? true\n2027-02-29 exists? false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/dates"
+    }
+   ]
+  },
+  "default_demo.rs": {
+   "src": "struct Search {\n    words: String,\n    max_results: usize,\n    ebooks: bool,\n    language: Option<String>,\n}\n\nimpl Default for Search {\n    fn default() -> Search {\n        Search { words: String::new(), max_results: 10, ebooks: true, language: None }\n    }\n}\n\nfn main() {\n    let quick = Search { words: String::from(\"dragons\"), ..Default::default() };\n    let picky = Search {\n        words: String::from(\"moons\"),\n        max_results: 3,\n        language: Some(String::from(\"fr\")),\n        ..Default::default()\n    };\n    for s in [&quick, &picky] {\n        println!(\"{:?}: top {}, ebooks {}, language {:?}\", s.words, s.max_results, s.ebooks, s.language);\n    }\n}\n",
+   "stdout": "\"dragons\": top 10, ebooks true, language None\n\"moons\": top 3, ebooks true, language Some(\"fr\")\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "\"dragons\": top 10, ebooks true, language None\n\"moons\": top 3, ebooks true, language Some(\"fr\")\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/default_demo"
+    }
+   ]
+  },
+  "dice_seeded.rs": {
+   "src": "use rand::rngs::StdRng;\nuse rand::{RngExt, SeedableRng};\n\nfn main() {\n    let mut rng = StdRng::seed_from_u64(28);\n    let rolls: Vec<u32> = (0..5).map(|_| rng.random_range(1..=6)).collect();\n    println!(\"five rolls: {rolls:?}\");\n\n    let shelf = [\"Emma\", \"Dune\", \"Ulysses\", \"Beloved\"];\n    let pick = shelf[rng.random_range(0..shelf.len())];\n    println!(\"tonight's pick: {pick}\");\n}\n",
+   "stdout": "five rolls: [3, 3, 1, 4, 1]\ntonight's pick: Emma\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "five rolls: [3, 3, 1, 4, 1]\ntonight's pick: Emma\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/dice_seeded"
+    }
+   ]
+  },
+  "ex_newtype_spot.rs": {
+   "src": "struct Celsius(f64);\nstruct Fahrenheit(f64);\n\nfn to_fahrenheit(c: Celsius) -> Fahrenheit {\n    Fahrenheit(c.0 * 9.0 / 5.0 + 32.0)\n}\n\nfn main() {\n    let reading_room = Celsius(20.0);\n    let outside = Fahrenheit(50.0);\n    let warm = to_fahrenheit(reading_room);\n    let odd = to_fahrenheit(outside);\n    println!(\"{} {}\", warm.0, odd.0);\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n  --> src/main.rs:12:29\n   |\n12 |     let odd = to_fahrenheit(outside);\n   |               ------------- ^^^^^^^ expected `Celsius`, found `Fahrenheit`\n   |               |\n   |               arguments to this function are incorrect\n   |\nnote: function defined here\n  --> src/main.rs:4:4\n   |\n 4 | fn to_fahrenheit(c: Celsius) -> Fahrenheit {\n   |    ^^^^^^^^^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `ex_newtype_spot` (bin \"ex_newtype_spot\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n  --> src/main.rs:12:29\n   |\n12 |     let odd = to_fahrenheit(outside);\n   |               ------------- ^^^^^^^ expected `Celsius`, found `Fahrenheit`\n   |               |\n   |               arguments to this function are incorrect\n   |\nnote: function defined here\n  --> src/main.rs:4:4\n   |\n 4 | fn to_fahrenheit(c: Celsius) -> Fahrenheit {\n   |    ^^^^^^^^^^^^^ ----------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `ex_newtype_spot` (bin \"ex_newtype_spot\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/ex_newtype_spot"
+    }
+   ]
+  },
+  "ex_signature.rs": {
+   "src": "fn average(scores: &Vec<u32>) -> u32 {\n    let total: u32 = scores.iter().sum();\n    total / scores.len() as u32\n}\n\nfn main() {\n    let week = vec![8, 6, 10];\n    println!(\"week: {}\", average(&week));\n    let weekend = [9, 7];\n    println!(\"weekend: {}\", average(&weekend));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n  --> src/main.rs:10:37\n   |\n10 |     println!(\"weekend: {}\", average(&weekend));\n   |                             ------- ^^^^^^^^ expected `&Vec<u32>`, found `&[{integer}; 2]`\n   |                             |\n   |                             arguments to this function are incorrect\n   |\n   = note: expected reference `&Vec<u32>`\n              found reference `&[{integer}; 2]`\nnote: function defined here\n  --> src/main.rs:1:4\n   |\n 1 | fn average(scores: &Vec<u32>) -> u32 {\n   |    ^^^^^^^ -----------------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `ex_signature` (bin \"ex_signature\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n  --> src/main.rs:10:37\n   |\n10 |     println!(\"weekend: {}\", average(&weekend));\n   |                             ------- ^^^^^^^^ expected `&Vec<u32>`, found `&[{integer}; 2]`\n   |                             |\n   |                             arguments to this function are incorrect\n   |\n   = note: expected reference `&Vec<u32>`\n              found reference `&[{integer}; 2]`\nnote: function defined here\n  --> src/main.rs:1:4\n   |\n 1 | fn average(scores: &Vec<u32>) -> u32 {\n   |    ^^^^^^^ -----------------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `ex_signature` (bin \"ex_signature\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/ex_signature"
+    }
+   ]
+  },
+  "features.rs": {
+   "src": "#[tokio::main(flavor = \"current_thread\")]\nasync fn main() {\n    println!(\"hello from a tiny async main\");\n}\n",
+   "stdout": "8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "grep tokio Cargo.toml",
+     "out": "name = \"tokio_full\"\ntokio = { version = \"=1.54.1\", features = [\"full\"] }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/tokio_full"
+    },
+    {
+     "cmd": "cargo tree --prefix none --no-dedupe | sort -u | wc -l",
+     "out": "20\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/tokio_full"
+    },
+    {
+     "cmd": "grep tokio Cargo.toml",
+     "out": "name = \"tokio_lean\"\ntokio = { version = \"=1.54.1\", features = [\"rt\", \"macros\"] }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/tokio_lean"
+    },
+    {
+     "cmd": "cargo tree --prefix none --no-dedupe | sort -u | wc -l",
+     "out": "8\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/tokio_lean"
+    }
+   ]
+  },
+  "fill_buffer.rs": {
+   "src": "use std::fmt::Write;\n\nfn main() {\n    let titles = [\"Emma\", \"Dune\", \"Beloved\"];\n    let mut line = String::with_capacity(32);\n    for (i, t) in titles.iter().enumerate() {\n        line.clear();\n        write!(line, \"{}. {}\", i + 1, t).unwrap();\n        println!(\"{line} ({} bytes, room for {})\", line.len(), line.capacity());\n    }\n}\n",
+   "stdout": "1. Emma (7 bytes, room for 32)\n2. Dune (7 bytes, room for 32)\n3. Beloved (10 bytes, room for 32)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "1. Emma (7 bytes, room for 32)\n2. Dune (7 bytes, room for 32)\n3. Beloved (10 bytes, room for 32)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/fill_buffer"
+    }
+   ]
+  },
+  "fill_default.rs": {
+   "src": "#[derive(Default)]\nstruct Settings {\n    font_size: u32,\n    dark_mode: bool,\n    name: String,\n}\n\nfn main() {\n    let s = Settings { font_size: 18, ..Default::default() };\n    println!(\"{} {} {:?}\", s.font_size, s.dark_mode, s.name);\n}\n",
+   "stdout": "18 false \"\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "18 false \"\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/fill_default"
+    }
+   ]
+  },
+  "greet_str.rs": {
+   "src": "fn shout(name: &str) -> String {\n    format!(\"{}!\", name.to_uppercase())\n}\n\nfn main() {\n    let owner = String::from(\"Mabel\");\n    let robot = \"Pip the robot\";\n    println!(\"{}\", shout(&owner));       // a &String is fine too\n    println!(\"{}\", shout(\"Pip\"));        // a string literal\n    println!(\"{}\", shout(&robot[8..13])); // a slice of some text\n}\n",
+   "stdout": "MABEL!\nPIP!\nROBOT!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "MABEL!\nPIP!\nROBOT!\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/greet_str"
+    }
+   ]
+  },
+  "greet_string.rs": {
+   "src": "fn shout(name: &String) -> String {\n    format!(\"{}!\", name.to_uppercase())\n}\n\nfn main() {\n    let owner = String::from(\"Mabel\");\n    println!(\"{}\", shout(&owner));\n    println!(\"{}\", shout(\"Pip\"));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", shout(\"Pip\"));\n  |                    ----- ^^^^^ expected `&String`, found `&str`\n  |                    |\n  |                    arguments to this function are incorrect\n  |\n  = note: expected reference `&String`\n             found reference `&'static str`\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn shout(name: &String) -> String {\n  |    ^^^^^ -------------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `greet_string` (bin \"greet_string\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n --> src/main.rs:8:26\n  |\n8 |     println!(\"{}\", shout(\"Pip\"));\n  |                    ----- ^^^^^ expected `&String`, found `&str`\n  |                    |\n  |                    arguments to this function are incorrect\n  |\n  = note: expected reference `&String`\n             found reference `&'static str`\nnote: function defined here\n --> src/main.rs:1:4\n  |\n1 | fn shout(name: &String) -> String {\n  |    ^^^^^ -------------\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `greet_string` (bin \"greet_string\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/greet_string"
+    }
+   ]
+  },
+  "grow_small.rs": {
+   "src": "fn main() {\n    let mut shelf = Vec::new();\n    for book in [10, 20, 30, 40, 50] {\n        shelf.push(book);\n        println!(\"pushed {book}: len {}, capacity {}\", shelf.len(), shelf.capacity());\n    }\n    let mut ready = Vec::with_capacity(5);\n    for book in [10, 20, 30, 40, 50] {\n        ready.push(book);\n    }\n    println!(\"ready: len {}, capacity {}\", ready.len(), ready.capacity());\n}\n",
+   "stdout": "pushed 10: len 1, capacity 4\npushed 20: len 2, capacity 4\npushed 30: len 3, capacity 4\npushed 40: len 4, capacity 4\npushed 50: len 5, capacity 8\nready: len 5, capacity 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "pushed 10: len 1, capacity 4\npushed 20: len 2, capacity 4\npushed 30: len 3, capacity 4\npushed 40: len 4, capacity 4\npushed 50: len 5, capacity 8\nready: len 5, capacity 5\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/grow_small"
+    }
+   ]
+  },
+  "guard.rs": {
+   "src": "struct Lamp {\n    desk: u32,\n}\n\nimpl Lamp {\n    fn switch_on(desk: u32) -> Lamp {\n        println!(\"desk {desk}: lamp ON\");\n        Lamp { desk }\n    }\n}\n\nimpl Drop for Lamp {\n    fn drop(&mut self) {\n        println!(\"desk {}: lamp off\", self.desk);\n    }\n}\n\nfn main() {\n    let _hall = Lamp::switch_on(1);\n    {\n        let _reading = Lamp::switch_on(2);\n        println!(\"reading at desk 2...\");\n    }\n    println!(\"back in the hall\");\n    let early = Lamp::switch_on(3);\n    drop(early);\n    println!(\"closing time\");\n}\n",
+   "stdout": "desk 1: lamp ON\ndesk 2: lamp ON\nreading at desk 2...\ndesk 2: lamp off\nback in the hall\ndesk 3: lamp ON\ndesk 3: lamp off\nclosing time\ndesk 1: lamp off\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "desk 1: lamp ON\ndesk 2: lamp ON\nreading at desk 2...\ndesk 2: lamp off\nback in the hall\ndesk 3: lamp ON\ndesk 3: lamp off\nclosing time\ndesk 1: lamp off\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/guard"
+    }
+   ]
+  },
+  "guard_lock.rs": {
+   "src": "use std::sync::Mutex;\n\nfn main() {\n    let loans = Mutex::new(0);\n    let _ = loans.lock().unwrap();\n    println!(\"loans: {:?}\", loans);\n}\n",
+   "stdout": "",
+   "stderr": "error: non-binding let on a synchronization lock\n --> src/main.rs:5:9\n  |\n5 |     let _ = loans.lock().unwrap();\n  |         ^ this lock is not assigned to a binding and is immediately dropped\n  |\n  = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)]`) on by default\nhelp: consider binding to an unused variable to avoid immediately dropping the value\n  |\n5 |     let _unused = loans.lock().unwrap();\n  |          ++++++\nhelp: consider immediately dropping the value\n  |\n5 -     let _ = loans.lock().unwrap();\n5 +     drop(loans.lock().unwrap());\n  |\n\nerror: could not compile `guard_lock` (bin \"guard_lock\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: non-binding let on a synchronization lock\n --> src/main.rs:5:9\n  |\n5 |     let _ = loans.lock().unwrap();\n  |         ^ this lock is not assigned to a binding and is immediately dropped\n  |\n  = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)]`) on by default\nhelp: consider binding to an unused variable to avoid immediately dropping the value\n  |\n5 |     let _unused = loans.lock().unwrap();\n  |          ++++++\nhelp: consider immediately dropping the value\n  |\n5 -     let _ = loans.lock().unwrap();\n5 +     drop(loans.lock().unwrap());\n  |\n\nerror: could not compile `guard_lock` (bin \"guard_lock\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/guard_lock"
+    }
+   ]
+  },
+  "guard_underscore.rs": {
+   "src": "struct Lamp {\n    desk: u32,\n}\n\nimpl Lamp {\n    fn switch_on(desk: u32) -> Lamp {\n        println!(\"desk {desk}: lamp ON\");\n        Lamp { desk }\n    }\n}\n\nimpl Drop for Lamp {\n    fn drop(&mut self) {\n        println!(\"desk {}: lamp off\", self.desk);\n    }\n}\n\nfn main() {\n    let _ = Lamp::switch_on(7);\n    println!(\"reading a long book at desk 7...\");\n    println!(\"still reading...\");\n}\n",
+   "stdout": "desk 7: lamp ON\ndesk 7: lamp off\nreading a long book at desk 7...\nstill reading...\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "desk 7: lamp ON\ndesk 7: lamp off\nreading a long book at desk 7...\nstill reading...\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/guard_underscore"
+    }
+   ]
+  },
+  "into_string.rs": {
+   "src": "struct Badge {\n    name: String,\n}\n\nimpl Badge {\n    fn new(name: impl Into<String>) -> Badge {\n        Badge { name: name.into() }\n    }\n}\n\nfn main() {\n    let a = Badge::new(\"Ada\");                 // &str: letters copied\n    let b = Badge::new(String::from(\"Grace\")); // String: moved in\n    let c = Badge::new('Z');                   // char: turned into one\n    println!(\"{} | {} | {}\", a.name, b.name, c.name);\n}\n",
+   "stdout": "Ada | Grace | Z\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada | Grace | Z\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/into_string"
+    }
+   ]
+  },
+  "iter_vs_index.rs": {
+   "src": "fn main() {\n    let pages: Vec<u32> = vec![120, 80, 300, 45];\n\n    // an index loop: works, but you manage i yourself\n    let mut long_total = 0;\n    for i in 0..pages.len() {\n        if pages[i] > 100 {\n            long_total += pages[i];\n        }\n    }\n\n    // an iterator chain: says what you want, not how to walk\n    let chained: u32 = pages.iter().filter(|&&p| p > 100).sum();\n\n    println!(\"loop:  {long_total}\");\n    println!(\"chain: {chained}\");\n}\n",
+   "stdout": "",
+   "stderr": "warning: the loop variable `i` is only used to index `pages`\n --> src/main.rs:6:14\n  |\n6 |     for i in 0..pages.len() {\n  |              ^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_range_loop\n  = note: `#[warn(clippy::needless_range_loop)]` on by default\nhelp: consider using an iterator\n  |\n6 -     for i in 0..pages.len() {\n6 +     for <item> in &pages {\n  |\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "loop:  420\nchain: 420\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/pages"
+    },
+    {
+     "cmd": "cargo clippy -q",
+     "out": "",
+     "err": "warning: the loop variable `i` is only used to index `pages`\n --> src/main.rs:6:14\n  |\n6 |     for i in 0..pages.len() {\n  |              ^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_range_loop\n  = note: `#[warn(clippy::needless_range_loop)]` on by default\nhelp: consider using an iterator\n  |\n6 -     for i in 0..pages.len() {\n6 +     for <item> in &pages {\n  |\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch28/pages"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "warning: the loop variable `i` is only used to index `pages`\n --> src/main.rs:6:14\n  |\n6 |     for i in 0..pages.len() {\n  |              ^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_range_loop\n  = note: `#[warn(clippy::needless_range_loop)]` on by default\nhelp: consider using an iterator\n  |\n6 -     for i in 0..pages.len() {\n6 +     for <item> in &pages {\n  |\n\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "loop:  420\nchain: 420\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/rust-ch28/pages"
+     },
+     {
+      "cmd": "cargo clippy -q",
+      "out": "",
+      "err": "warning: the loop variable `i` is only used to index `pages`\n --> src/main.rs:6:14\n  |\n6 |     for i in 0..pages.len() {\n  |              ^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_range_loop\n  = note: `#[warn(clippy::needless_range_loop)]` on by default\nhelp: consider using an iterator\n  |\n6 -     for i in 0..pages.len() {\n6 +     for <item> in &pages {\n  |\n\n",
+      "exit": 0,
+      "dir": "~/rust-ch28/pages"
+     }
+    ]
+   }
+  },
+  "lint_fixed.rs": {
+   "src": "fn shelf_label(title: &str) -> String {\n    title.to_uppercase()\n}\n\nfn main() {\n    let title = String::from(\"Dune\");\n    println!(\"{}\", shelf_label(&title));\n}\n",
+   "stdout": "DUNE\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo clippy -q",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/shelf_fixed"
+    },
+    {
+     "cmd": "cargo run -q",
+     "out": "DUNE\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/shelf_fixed"
+    }
+   ]
+  },
+  "lint_me.rs": {
+   "src": "fn shelf_label(title: &String) -> String {\n    let label = title.to_uppercase();\n    return label;\n}\n\nfn main() {\n    let title = String::from(\"Dune\");\n    let copy = title.clone();\n    println!(\"{}\", shelf_label(&copy));\n}\n",
+   "stdout": "",
+   "stderr": "warning: unneeded `return` statement\n --> src/main.rs:3:5\n  |\n3 |     return label;\n  |     ^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_return\n  = note: `#[warn(clippy::needless_return)]` on by default\nhelp: remove `return`\n  |\n3 -     return label;\n3 +     label\n  |\n\nwarning: writing `&String` instead of `&str` involves a new object where a slice will do\n --> src/main.rs:1:23\n  |\n1 | fn shelf_label(title: &String) -> String {\n  |                       ^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#ptr_arg\n  = note: `#[warn(clippy::ptr_arg)]` on by default\nhelp: change this to\n  |\n1 - fn shelf_label(title: &String) -> String {\n1 + fn shelf_label(title: &str) -> String {\n  |\n\nwarning: redundant clone\n --> src/main.rs:8:21\n  |\n8 |     let copy = title.clone();\n  |                     ^^^^^^^^ help: remove this\n  |\nnote: this value is dropped without further use\n --> src/main.rs:8:16\n  |\n8 |     let copy = title.clone();\n  |                ^^^^^\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#redundant_clone\n  = note: requested on the command line with `-W clippy::redundant-clone`\n\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo clippy -q -- -W clippy::redundant_clone",
+     "out": "",
+     "err": "warning: unneeded `return` statement\n --> src/main.rs:3:5\n  |\n3 |     return label;\n  |     ^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_return\n  = note: `#[warn(clippy::needless_return)]` on by default\nhelp: remove `return`\n  |\n3 -     return label;\n3 +     label\n  |\n\nwarning: writing `&String` instead of `&str` involves a new object where a slice will do\n --> src/main.rs:1:23\n  |\n1 | fn shelf_label(title: &String) -> String {\n  |                       ^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#ptr_arg\n  = note: `#[warn(clippy::ptr_arg)]` on by default\nhelp: change this to\n  |\n1 - fn shelf_label(title: &String) -> String {\n1 + fn shelf_label(title: &str) -> String {\n  |\n\nwarning: redundant clone\n --> src/main.rs:8:21\n  |\n8 |     let copy = title.clone();\n  |                     ^^^^^^^^ help: remove this\n  |\nnote: this value is dropped without further use\n --> src/main.rs:8:16\n  |\n8 |     let copy = title.clone();\n  |                ^^^^^\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#redundant_clone\n  = note: requested on the command line with `-W clippy::redundant-clone`\n\n",
+     "exit": 0,
+     "dir": "~/rust-ch28/shelf"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "warning: unneeded `return` statement\n --> src/main.rs:3:5\n  |\n3 |     return label;\n  |     ^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_return\n  = note: `#[warn(clippy::needless_return)]` on by default\nhelp: remove `return`\n  |\n3 -     return label;\n3 +     label\n  |\n\nwarning: writing `&String` instead of `&str` involves a new object where a slice will do\n --> src/main.rs:1:23\n  |\n1 | fn shelf_label(title: &String) -> String {\n  |                       ^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#ptr_arg\n  = note: `#[warn(clippy::ptr_arg)]` on by default\nhelp: change this to\n  |\n1 - fn shelf_label(title: &String) -> String {\n1 + fn shelf_label(title: &str) -> String {\n  |\n\nwarning: redundant clone\n --> src/main.rs:8:21\n  |\n8 |     let copy = title.clone();\n  |                     ^^^^^^^^ help: remove this\n  |\nnote: this value is dropped without further use\n --> src/main.rs:8:16\n  |\n8 |     let copy = title.clone();\n  |                ^^^^^\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_clone\n  = note: requested on the command line with `-W clippy::redundant-clone`\n\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cargo clippy -q -- -W clippy::redundant_clone",
+      "out": "",
+      "err": "warning: unneeded `return` statement\n --> src/main.rs:3:5\n  |\n3 |     return label;\n  |     ^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_return\n  = note: `#[warn(clippy::needless_return)]` on by default\nhelp: remove `return`\n  |\n3 -     return label;\n3 +     label\n  |\n\nwarning: writing `&String` instead of `&str` involves a new object where a slice will do\n --> src/main.rs:1:23\n  |\n1 | fn shelf_label(title: &String) -> String {\n  |                       ^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#ptr_arg\n  = note: `#[warn(clippy::ptr_arg)]` on by default\nhelp: change this to\n  |\n1 - fn shelf_label(title: &String) -> String {\n1 + fn shelf_label(title: &str) -> String {\n  |\n\nwarning: redundant clone\n --> src/main.rs:8:21\n  |\n8 |     let copy = title.clone();\n  |                     ^^^^^^^^ help: remove this\n  |\nnote: this value is dropped without further use\n --> src/main.rs:8:16\n  |\n8 |     let copy = title.clone();\n  |                ^^^^^\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_clone\n  = note: requested on the command line with `-W clippy::redundant-clone`\n\n",
+      "exit": 0,
+      "dir": "~/rust-ch28/shelf"
+     }
+    ]
+   }
+  },
+  "newtype_mixup.rs": {
+   "src": "struct Meters(f64);\nstruct Seconds(f64);\n\nfn speed(distance: Meters, time: Seconds) -> f64 {\n    distance.0 / time.0\n}\n\nfn main() {\n    let lap = Meters(400.0);\n    let clock = Seconds(50.0);\n    println!(\"{} m/s\", speed(clock, lap));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: arguments to this function are incorrect\n  --> src/main.rs:11:24\n   |\n11 |     println!(\"{} m/s\", speed(clock, lap));\n   |                        ^^^^^ -----  --- expected `Seconds`, found `Meters`\n   |                              |\n   |                              expected `Meters`, found `Seconds`\n   |\nnote: function defined here\n  --> src/main.rs:4:4\n   |\n 4 | fn speed(distance: Meters, time: Seconds) -> f64 {\n   |    ^^^^^\nhelp: swap these arguments\n   |\n11 -     println!(\"{} m/s\", speed(clock, lap));\n11 +     println!(\"{} m/s\", speed(lap, clock));\n   |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `newtype_mixup` (bin \"newtype_mixup\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: arguments to this function are incorrect\n  --> src/main.rs:11:24\n   |\n11 |     println!(\"{} m/s\", speed(clock, lap));\n   |                        ^^^^^ -----  --- expected `Seconds`, found `Meters`\n   |                              |\n   |                              expected `Meters`, found `Seconds`\n   |\nnote: function defined here\n  --> src/main.rs:4:4\n   |\n 4 | fn speed(distance: Meters, time: Seconds) -> f64 {\n   |    ^^^^^\nhelp: swap these arguments\n   |\n11 -     println!(\"{} m/s\", speed(clock, lap));\n11 +     println!(\"{} m/s\", speed(lap, clock));\n   |\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `newtype_mixup` (bin \"newtype_mixup\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/newtype_mixup"
+    }
+   ]
+  },
+  "newtype_ok.rs": {
+   "src": "use std::fmt;\n\nstruct Meters(f64);\nstruct Seconds(f64);\n\nimpl fmt::Display for Meters {\n    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {\n        write!(f, \"{} m\", self.0)\n    }\n}\n\nfn speed(distance: &Meters, time: &Seconds) -> f64 {\n    distance.0 / time.0\n}\n\nfn main() {\n    let lap = Meters(400.0);\n    let clock = Seconds(50.0);\n    println!(\"{lap} in {} s: {} m/s\", clock.0, speed(&lap, &clock));\n}\n",
+   "stdout": "400 m in 50 s: 8 m/s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "400 m in 50 s: 8 m/s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/newtype_ok"
+    }
+   ]
+  },
+  "opt_ref.rs": {
+   "src": "struct Member {\n    name: String,\n    nickname: Option<String>,\n}\n\nimpl Member {\n    // awkward: hands out a reference to the Option box itself\n    fn nickname_raw(&self) -> &Option<String> {\n        &self.nickname\n    }\n\n    // better: maybe a reference, with a plain &str inside\n    fn nickname(&self) -> Option<&str> {\n        self.nickname.as_deref()\n    }\n}\n\nfn main() {\n    let ada = Member { name: String::from(\"Ada\"), nickname: Some(String::from(\"Countess\")) };\n    let alan = Member { name: String::from(\"Alan\"), nickname: None };\n    for m in [&ada, &alan] {\n        println!(\"{}: raw {:?}, tidy {:?}\", m.name, m.nickname_raw(), m.nickname());\n        println!(\"  call them {}\", m.nickname().unwrap_or(&m.name));\n    }\n}\n",
+   "stdout": "Ada: raw Some(\"Countess\"), tidy Some(\"Countess\")\n  call them Countess\nAlan: raw None, tidy None\n  call them Alan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ada: raw Some(\"Countess\"), tidy Some(\"Countess\")\n  call them Countess\nAlan: raw None, tidy None\n  call them Alan\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/opt_ref"
+    }
+   ]
+  },
+  "overflow.rs": {
+   "src": "fn main() {\n    let mut visitors: u8 = 250;\n    for hour in 1..=8 {\n        visitors += 1;\n        println!(\"hour {hour}: {visitors} visitors\");\n    }\n}\n",
+   "stdout": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/overflow",
+     "merged": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "overflow_release.rs": {
+   "src": "fn main() {\n    let mut visitors: u8 = 250;\n    for hour in 1..=8 {\n        visitors += 1;\n        println!(\"hour {hour}: {visitors} visitors\");\n    }\n}\n",
+   "stdout": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\nhour 6: 0 visitors\nhour 7: 1 visitors\nhour 8: 2 visitors\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q --release",
+     "out": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\nhour 6: 0 visitors\nhour 7: 1 visitors\nhour 8: 2 visitors\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/overflow_release"
+    }
+   ]
+  },
+  "parsons_builder.rs": {
+   "src": "struct Ticket {\n    film: String,\n    seats: u32,\n}\n\nstruct TicketBuilder {\n    film: String,\n    seats: u32,\n}\n\nimpl TicketBuilder {\n    fn new(film: &str) -> TicketBuilder {\n        TicketBuilder { film: film.to_string(), seats: 1 }\n    }\n    fn seats(mut self, n: u32) -> TicketBuilder {\n        self.seats = n;\n        self\n    }\n    fn build(self) -> Ticket {\n        Ticket { film: self.film, seats: self.seats }\n    }\n}\n\nfn main() {\n    let t = TicketBuilder::new(\"Moon Story\").seats(3).build();\n    println!(\"{} x{}\", t.film, t.seats);\n}\n",
+   "stdout": "Moon Story x3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Moon Story x3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/parsons_builder"
+    }
+   ]
+  },
+  "parsons_serde.rs": {
+   "src": "use serde::{Deserialize, Serialize};\n\n#[derive(Debug, Serialize, Deserialize)]\nstruct Pin {\n    x: i32,\n    y: i32,\n}\n\nfn main() {\n    let pin = Pin { x: 3, y: -1 };\n    let text = serde_json::to_string(&pin).unwrap();\n    println!(\"sent: {text}\");\n    let back: Pin = serde_json::from_str(&text).unwrap();\n    println!(\"received: {back:?}\");\n}\n",
+   "stdout": "sent: {\"x\":3,\"y\":-1}\nreceived: Pin { x: 3, y: -1 }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "sent: {\"x\":3,\"y\":-1}\nreceived: Pin { x: 3, y: -1 }\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/parsons_serde"
+    }
+   ]
+  },
+  "predict_cap.rs": {
+   "src": "fn main() {\n    let mut cart: Vec<u32> = Vec::with_capacity(3);\n    println!(\"start: len {}, cap {}\", cart.len(), cart.capacity());\n    cart.push(7);\n    cart.push(8);\n    cart.push(9);\n    println!(\"full:  len {}, cap {}\", cart.len(), cart.capacity());\n    cart.push(10);\n    println!(\"more:  len {}, cap {}\", cart.len(), cart.capacity());\n}\n",
+   "stdout": "start: len 0, cap 3\nfull:  len 3, cap 3\nmore:  len 4, cap 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "start: len 0, cap 3\nfull:  len 3, cap 3\nmore:  len 4, cap 6\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/predict_cap"
+    }
+   ]
+  },
+  "predict_guard.rs": {
+   "src": "struct Noisy(&'static str);\n\nimpl Drop for Noisy {\n    fn drop(&mut self) {\n        println!(\"put away {}\", self.0);\n    }\n}\n\nfn main() {\n    let _a = Noisy(\"atlas\");\n    let _b = Noisy(\"bible\");\n    {\n        let _c = Noisy(\"comic\");\n        println!(\"reading\");\n    }\n    let d = Noisy(\"diary\");\n    drop(d);\n    println!(\"closing\");\n}\n",
+   "stdout": "reading\nput away comic\nput away diary\nclosing\nput away bible\nput away atlas\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "reading\nput away comic\nput away diary\nclosing\nput away bible\nput away atlas\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/predict_guard"
+    }
+   ]
+  },
+  "predict_into.rs": {
+   "src": "fn label(name: impl Into<String>, shelf: u32) -> String {\n    let mut text: String = name.into();\n    text.push_str(&format!(\" @ shelf {shelf}\"));\n    text\n}\n\nfn initials(full: &str) -> String {\n    full.split_whitespace().filter_map(|w| w.chars().next()).collect()\n}\n\nfn main() {\n    let owned = String::from(\"Jane Eyre\");\n    println!(\"{}\", label(\"Dune\", 4));\n    println!(\"{}\", label(owned.clone(), 7));\n    println!(\"{}\", initials(&owned));\n    println!(\"{}\", initials(\"the left hand of darkness\"));\n}\n",
+   "stdout": "Dune @ shelf 4\nJane Eyre @ shelf 7\nJE\ntlhod\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune @ shelf 4\nJane Eyre @ shelf 7\nJE\ntlhod\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/predict_into"
+    }
+   ]
+  },
+  "predict_json.rs": {
+   "src": "use serde::{Deserialize, Serialize};\n\n#[derive(Serialize, Deserialize)]\nstruct Loan {\n    book: String,\n    days: u32,\n    renewed: bool,\n}\n\nfn main() {\n    let loan = Loan { book: String::from(\"Emma\"), days: 14, renewed: false };\n    println!(\"{}\", serde_json::to_string(&loan).unwrap());\n\n    let text = r#\"{\"days\": 21, \"book\": \"Dune\", \"renewed\": true}\"#;\n    let back: Loan = serde_json::from_str(text).unwrap();\n    println!(\"{} for {} days (renewed: {})\", back.book, back.days, back.renewed);\n}\n",
+   "stdout": "{\"book\":\"Emma\",\"days\":14,\"renewed\":false}\nDune for 21 days (renewed: true)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "{\"book\":\"Emma\",\"days\":14,\"renewed\":false}\nDune for 21 days (renewed: true)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/predict_json"
+    }
+   ]
+  },
+  "predict_release.rs": {
+   "src": "fn main() {\n    let mut level: u8 = 254;\n    for _ in 0..3 {\n        level += 1;\n        println!(\"level {level}\");\n    }\n    let floor: u8 = 1;\n    println!(\"floor {}\", floor.wrapping_sub(2));\n}\n",
+   "stdout": "level 255\nlevel 0\nlevel 1\nfloor 255\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q --release",
+     "out": "level 255\nlevel 0\nlevel 1\nfloor 255\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/predict_release"
+    }
+   ]
+  },
+  "private_field.rs": {
+   "src": "mod library {\n    pub struct Card {\n        pub holder: String,\n        fines: u32,\n    }\n\n    impl Card {\n        pub fn new(holder: &str) -> Card {\n            Card { holder: holder.to_string(), fines: 0 }\n        }\n        pub fn fines(&self) -> u32 {\n            self.fines\n        }\n        pub fn add_fine(&mut self, cents: u32) {\n            self.fines += cents;\n        }\n    }\n}\n\nfn main() {\n    let mut card = library::Card::new(\"Ada\");\n    card.add_fine(50);\n    card.fines = 0;\n    println!(\"{} owes {} cents\", card.holder, card.fines());\n}\n",
+   "stdout": "",
+   "stderr": "error[E0616]: field `fines` of struct `Card` is private\n  --> src/main.rs:23:10\n   |\n23 |     card.fines = 0;\n   |          ^^^^^ private field\n\nFor more information about this error, try `rustc --explain E0616`.\nerror: could not compile `private_field` (bin \"private_field\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0616]: field `fines` of struct `Card` is private\n  --> src/main.rs:23:10\n   |\n23 |     card.fines = 0;\n   |          ^^^^^ private field\n\nFor more information about this error, try `rustc --explain E0616`.\nerror: could not compile `private_field` (bin \"private_field\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/private_field"
+    }
+   ]
+  },
+  "profile_checks.rs": {
+   "src": "fn main() {\n    let mut visitors: u8 = 250;\n    for hour in 1..=8 {\n        visitors += 1;\n        println!(\"hour {hour}: {visitors} visitors\");\n    }\n}\n",
+   "stdout": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q --release",
+     "out": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/visitors",
+     "merged": "hour 1: 251 visitors\nhour 2: 252 visitors\nhour 3: 253 visitors\nhour 4: 254 visitors\nhour 5: 255 visitors\n\nthread 'main' (1) panicked at src/main.rs:4:9:\nattempt to add with overflow\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "tpl/visitors/Cargo.toml": {
+   "src": "[package]\nname = \"visitors\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n\n[profile.release]\noverflow-checks = true\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "regex_bad.rs": {
+   "src": "use regex::Regex;\n\nfn main() {\n    let notes = \"Dune due 2026-11-20\";\n    println!(\"looking for dates...\");\n    let date = Regex::new(r\"(\\d{4}-(\\d{2})-\\d{2}\").unwrap();\n    println!(\"found: {}\", date.is_match(notes));\n}\n",
+   "stdout": "looking for dates...\n",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:6:52:\ncalled `Result::unwrap()` on an `Err` value: Syntax(\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nregex parse error:\n    (\\d{4}-(\\d{2})-\\d{2}\n    ^\nerror: unclosed group\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "looking for dates...\n",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:6:52:\ncalled `Result::unwrap()` on an `Err` value: Syntax(\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nregex parse error:\n    (\\d{4}-(\\d{2})-\\d{2}\n    ^\nerror: unclosed group\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/regex_bad",
+     "merged": "looking for dates...\n\nthread 'main' (1) panicked at src/main.rs:6:52:\ncalled `Result::unwrap()` on an `Err` value: Syntax(\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nregex parse error:\n    (\\d{4}-(\\d{2})-\\d{2}\n    ^\nerror: unclosed group\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+   ]
+  },
+  "regex_dates.rs": {
+   "src": "use regex::Regex;\n\nfn main() {\n    let notes = \"Dune due 2026-11-20, Emma due 2026-12-01, Ulysses lost.\";\n    let due = Regex::new(r\"(\\w+) due (\\d{4})-(\\d{2})-(\\d{2})\").unwrap();\n    for caps in due.captures_iter(notes) {\n        println!(\"{}: day {}, month {}\", &caps[1], &caps[4], &caps[3]);\n    }\n    println!(\"any dates in 'Ulysses lost'? {}\", due.is_match(\"Ulysses lost\"));\n}\n",
+   "stdout": "Dune: day 20, month 11\nEmma: day 01, month 12\nany dates in 'Ulysses lost'? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Dune: day 20, month 11\nEmma: day 01, month 12\nany dates in 'Ulysses lost'? false\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/regex_dates"
+    }
+   ]
+  },
+  "regex_no_use.rs": {
+   "src": "fn count_dates(pattern: &Regex, notes: &str) -> usize {\n    pattern.find_iter(notes).count()\n}\n\nfn main() {\n    let date = regex::Regex::new(r\"\\d{4}-\\d{2}-\\d{2}\").unwrap();\n    println!(\"{}\", count_dates(&date, \"Dune due 2026-11-20\"));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0425]: cannot find type `Regex` in this scope\n --> src/main.rs:1:26\n  |\n1 | fn count_dates(pattern: &Regex, notes: &str) -> usize {\n  |                          ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `regex_no_use` (bin \"regex_no_use\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0425]: cannot find type `Regex` in this scope\n --> src/main.rs:1:26\n  |\n1 | fn count_dates(pattern: &Regex, notes: &str) -> usize {\n  |                          ^^^^^ not found in this scope\n\nFor more information about this error, try `rustc --explain E0425`.\nerror: could not compile `regex_no_use` (bin \"regex_no_use\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/regex_no_use"
+    }
+   ]
+  },
+  "serde_demo.rs": {
+   "src": "use serde::{Deserialize, Serialize};\n\n#[derive(Debug, PartialEq, Serialize, Deserialize)]\nstruct Book {\n    title: String,\n    pages: u32,\n    tags: Vec<String>,\n    on_loan: bool,\n}\n\nfn main() {\n    let book = Book {\n        title: String::from(\"Dune\"),\n        pages: 412,\n        tags: vec![String::from(\"sci-fi\"), String::from(\"desert\")],\n        on_loan: false,\n    };\n\n    let text = serde_json::to_string(&book).unwrap();\n    println!(\"{text}\");\n\n    let pretty = serde_json::to_string_pretty(&book).unwrap();\n    println!(\"{pretty}\");\n\n    let back: Book = serde_json::from_str(&text).unwrap();\n    println!(\"{back:?}\");\n    println!(\"same book? {}\", back == book);\n}\n",
+   "stdout": "{\"title\":\"Dune\",\"pages\":412,\"tags\":[\"sci-fi\",\"desert\"],\"on_loan\":false}\n{\n  \"title\": \"Dune\",\n  \"pages\": 412,\n  \"tags\": [\n    \"sci-fi\",\n    \"desert\"\n  ],\n  \"on_loan\": false\n}\nBook { title: \"Dune\", pages: 412, tags: [\"sci-fi\", \"desert\"], on_loan: false }\nsame book? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "{\"title\":\"Dune\",\"pages\":412,\"tags\":[\"sci-fi\",\"desert\"],\"on_loan\":false}\n{\n  \"title\": \"Dune\",\n  \"pages\": 412,\n  \"tags\": [\n    \"sci-fi\",\n    \"desert\"\n  ],\n  \"on_loan\": false\n}\nBook { title: \"Dune\", pages: 412, tags: [\"sci-fi\", \"desert\"], on_loan: false }\nsame book? true\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/serde_demo"
+    }
+   ]
+  },
+  "serde_errors.rs": {
+   "src": "use serde::Deserialize;\n\n#[derive(Debug, Deserialize)]\nstruct Book {\n    title: String,\n    pages: u32,\n}\n\nfn main() {\n    let inputs = [\n        r#\"{\"title\": \"Emma\", \"pages\": 474}\"#,\n        r#\"{\"title\": \"Emma\", \"pages\": 474, \"stars\": 5}\"#,\n        r#\"{\"title\": \"Emma\"}\"#,\n        r#\"{\"title\": \"Emma\", \"pages\": \"lots\"}\"#,\n        r#\"{\"title\": \"Emma\", \"pages\": -3}\"#,\n        r#\"{\"title\": \"Emma\", \"pages\": 474\"#,\n    ];\n    for text in inputs {\n        let parsed: Result<Book, serde_json::Error> = serde_json::from_str(text);\n        match parsed {\n            Ok(book) => println!(\"Ok: {} has {} pages\", book.title, book.pages),\n            Err(e) => println!(\"Err: {e}\"),\n        }\n    }\n}\n",
+   "stdout": "Ok: Emma has 474 pages\nOk: Emma has 474 pages\nErr: missing field `pages` at line 1 column 17\nErr: invalid type: string \"lots\", expected u32 at line 1 column 33\nErr: invalid value: integer `-3`, expected u32 at line 1 column 29\nErr: EOF while parsing an object at line 1 column 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "Ok: Emma has 474 pages\nOk: Emma has 474 pages\nErr: missing field `pages` at line 1 column 17\nErr: invalid type: string \"lots\", expected u32 at line 1 column 33\nErr: invalid value: integer `-3`, expected u32 at line 1 column 29\nErr: EOF while parsing an object at line 1 column 30\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/serde_errors"
+    }
+   ]
+  },
+  "serde_no_derive.rs": {
+   "src": "use serde::Serialize;\n\n#[derive(Serialize)]\nstruct Book {\n    title: String,\n    pages: u32,\n}\n\nfn main() {\n    let book = Book { title: String::from(\"Dune\"), pages: 412 };\n    println!(\"{}\", serde_json::to_string(&book).unwrap());\n}\n",
+   "stdout": "",
+   "stderr": "error: cannot find derive macro `Serialize` in this scope\n   --> src/main.rs:3:10\n    |\n  3 | #[derive(Serialize)]\n    |          ^^^^^^^^^\n    |\nnote: `Serialize` is a trait, not a derive macro\n   --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/ser/mod.rs:234:1\n    |\n234 | pub trait Serialize {\n    | ^^^^^^^^^^^^^^^^^^^\n    = help: consider implementing `Serialize` for your type manually\n\nerror[E0277]: the trait bound `Book: serde::Serialize` is not satisfied\n    --> src/main.rs:11:42\n     |\n  11 |     println!(\"{}\", serde_json::to_string(&book).unwrap());\n     |                    --------------------- ^^^^^ unsatisfied trait bound\n     |                    |\n     |                    required by a bound introduced by this call\n     |\nhelp: the trait `Serialize` is not implemented for `Book`\n    --> src/main.rs:4:1\n     |\n   4 | struct Book {\n     | ^^^^^^^^^^^\n     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `Book` type\n     = note: for types from other crates check whether the crate offers a `serde` feature flag\n     = help: the following other types implement trait `Serialize`:\n               &'a T\n               &'a mut T\n               ()\n               (T,)\n               (T0, T1)\n               (T0, T1, T2)\n               (T0, T1, T2, T3)\n               (T0, T1, T2, T3, T4)\n             and 129 others\nnote: required by a bound in `serde_json::to_string`\n    --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/ser.rs:2247:17\n     |\n2245 | pub fn to_string<T>(value: &T) -> Result<String>\n     |        --------- required by a bound in this function\n2246 | where\n2247 |     T: ?Sized + Serialize,\n     |                 ^^^^^^^^^ required by this bound in `to_string`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `serde_no_derive` (bin \"serde_no_derive\") due to 2 previous errors\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error: cannot find derive macro `Serialize` in this scope\n   --> src/main.rs:3:10\n    |\n  3 | #[derive(Serialize)]\n    |          ^^^^^^^^^\n    |\nnote: `Serialize` is a trait, not a derive macro\n   --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/ser/mod.rs:234:1\n    |\n234 | pub trait Serialize {\n    | ^^^^^^^^^^^^^^^^^^^\n    = help: consider implementing `Serialize` for your type manually\n\nerror[E0277]: the trait bound `Book: serde::Serialize` is not satisfied\n    --> src/main.rs:11:42\n     |\n  11 |     println!(\"{}\", serde_json::to_string(&book).unwrap());\n     |                    --------------------- ^^^^^ unsatisfied trait bound\n     |                    |\n     |                    required by a bound introduced by this call\n     |\nhelp: the trait `Serialize` is not implemented for `Book`\n    --> src/main.rs:4:1\n     |\n   4 | struct Book {\n     | ^^^^^^^^^^^\n     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `Book` type\n     = note: for types from other crates check whether the crate offers a `serde` feature flag\n     = help: the following other types implement trait `Serialize`:\n               &'a T\n               &'a mut T\n               ()\n               (T,)\n               (T0, T1)\n               (T0, T1, T2)\n               (T0, T1, T2, T3)\n               (T0, T1, T2, T3, T4)\n             and 129 others\nnote: required by a bound in `serde_json::to_string`\n    --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/ser.rs:2247:17\n     |\n2245 | pub fn to_string<T>(value: &T) -> Result<String>\n     |        --------- required by a bound in this function\n2246 | where\n2247 |     T: ?Sized + Serialize,\n     |                 ^^^^^^^^^ required by this bound in `to_string`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `serde_no_derive` (bin \"serde_no_derive\") due to 2 previous errors\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/serde_no_derive"
+    }
+   ],
+   "alt": {
+    "version": "Rust 1.97.0 (edition 2024)",
+    "stdout": "",
+    "stderr": "error: cannot find derive macro `Serialize` in this scope\n --> src/main.rs:3:10\n  |\n3 | #[derive(Serialize)]\n  |          ^^^^^^^^^\n  |\nnote: `Serialize` is imported here, but it is only a trait, without a derive macro\n --> src/main.rs:1:5\n  |\n1 | use serde::Serialize;\n  |     ^^^^^^^^^^^^^^^^\n\nerror[E0277]: the trait bound `Book: serde::Serialize` is not satisfied\n    --> src/main.rs:11:42\n     |\n  11 |     println!(\"{}\", serde_json::to_string(&book).unwrap());\n     |                    --------------------- ^^^^^ unsatisfied trait bound\n     |                    |\n     |                    required by a bound introduced by this call\n     |\nhelp: the trait `Serialize` is not implemented for `Book`\n    --> src/main.rs:4:1\n     |\n   4 | struct Book {\n     | ^^^^^^^^^^^\n     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `Book` type\n     = note: for types from other crates check whether the crate offers a `serde` feature flag\n     = help: the following other types implement trait `Serialize`:\n               &'a T\n               &'a mut T\n               ()\n               (T,)\n               (T0, T1)\n               (T0, T1, T2)\n               (T0, T1, T2, T3)\n               (T0, T1, T2, T3, T4)\n             and 129 others\nnote: required by a bound in `serde_json::to_string`\n    --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/ser.rs:2247:17\n     |\n2245 | pub fn to_string<T>(value: &T) -> Result<String>\n     |        --------- required by a bound in this function\n2246 | where\n2247 |     T: ?Sized + Serialize,\n     |                 ^^^^^^^^^ required by this bound in `to_string`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `serde_no_derive` (bin \"serde_no_derive\") due to 2 previous errors\n",
+    "exit": 101,
+    "steps": [
+     {
+      "cmd": "cargo run -q",
+      "out": "",
+      "err": "error: cannot find derive macro `Serialize` in this scope\n --> src/main.rs:3:10\n  |\n3 | #[derive(Serialize)]\n  |          ^^^^^^^^^\n  |\nnote: `Serialize` is imported here, but it is only a trait, without a derive macro\n --> src/main.rs:1:5\n  |\n1 | use serde::Serialize;\n  |     ^^^^^^^^^^^^^^^^\n\nerror[E0277]: the trait bound `Book: serde::Serialize` is not satisfied\n    --> src/main.rs:11:42\n     |\n  11 |     println!(\"{}\", serde_json::to_string(&book).unwrap());\n     |                    --------------------- ^^^^^ unsatisfied trait bound\n     |                    |\n     |                    required by a bound introduced by this call\n     |\nhelp: the trait `Serialize` is not implemented for `Book`\n    --> src/main.rs:4:1\n     |\n   4 | struct Book {\n     | ^^^^^^^^^^^\n     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `Book` type\n     = note: for types from other crates check whether the crate offers a `serde` feature flag\n     = help: the following other types implement trait `Serialize`:\n               &'a T\n               &'a mut T\n               ()\n               (T,)\n               (T0, T1)\n               (T0, T1, T2)\n               (T0, T1, T2, T3)\n               (T0, T1, T2, T3, T4)\n             and 129 others\nnote: required by a bound in `serde_json::to_string`\n    --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/ser.rs:2247:17\n     |\n2245 | pub fn to_string<T>(value: &T) -> Result<String>\n     |        --------- required by a bound in this function\n2246 | where\n2247 |     T: ?Sized + Serialize,\n     |                 ^^^^^^^^^ required by this bound in `to_string`\n\nFor more information about this error, try `rustc --explain E0277`.\nerror: could not compile `serde_no_derive` (bin \"serde_no_derive\") due to 2 previous errors\n",
+      "exit": 101,
+      "dir": "~/rust-ch28/serde_no_derive"
+     }
+    ]
+   }
+  },
+  "serde_panic.rs": {
+   "src": "use serde::Deserialize;\n\n#[derive(Debug, Deserialize)]\nstruct Book {\n    title: String,\n    pages: u32,\n}\n\nfn main() {\n    let book: Book = serde_json::from_str(r#\"{\"title\": \"Emma\"}\"#).unwrap();\n    println!(\"{} has {} pages\", book.title, book.pages);\n}\n",
+   "stdout": "",
+   "stderr": "\nthread 'main' (1) panicked at src/main.rs:10:67:\ncalled `Result::unwrap()` on an `Err` value: Error(\"missing field `pages`\", line: 1, column: 17)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "\nthread 'main' (1) panicked at src/main.rs:10:67:\ncalled `Result::unwrap()` on an `Err` value: Error(\"missing field `pages`\", line: 1, column: 17)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/serde_panic"
+    }
+   ]
+  },
+  "slices.rs": {
+   "src": "fn total(prices: &[u32]) -> u32 {\n    prices.iter().sum()\n}\n\nfn main() {\n    let cart = vec![4, 10, 6];\n    let fixed = [3, 3, 3];\n    println!(\"a Vec:      {}\", total(&cart));\n    println!(\"an array:   {}\", total(&fixed));\n    println!(\"part of it: {}\", total(&cart[1..]));\n    println!(\"nothing:    {}\", total(&[]));\n}\n",
+   "stdout": "a Vec:      20\nan array:   9\npart of it: 16\nnothing:    0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "a Vec:      20\nan array:   9\npart of it: 16\nnothing:    0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/slices"
+    }
+   ]
+  },
+  "stack_heap.rs": {
+   "src": "use std::mem::size_of;\n\nfn main() {\n    println!(\"u8          {:>3} byte\", size_of::<u8>());\n    println!(\"u64         {:>3} bytes\", size_of::<u64>());\n    println!(\"[u64; 50]   {:>3} bytes\", size_of::<[u64; 50]>());\n    println!(\"&str        {:>3} bytes (pointer + length)\", size_of::<&str>());\n    println!(\"String      {:>3} bytes (pointer + length + capacity)\", size_of::<String>());\n    println!(\"Vec<u64>    {:>3} bytes, whatever its length\", size_of::<Vec<u64>>());\n    println!(\"Box<[u64; 50]> {} bytes (the 400 live on the heap)\", size_of::<Box<[u64; 50]>>());\n}\n",
+   "stdout": "u8            1 byte\nu64           8 bytes\n[u64; 50]   400 bytes\n&str         16 bytes (pointer + length)\nString       24 bytes (pointer + length + capacity)\nVec<u64>     24 bytes, whatever its length\nBox<[u64; 50]> 8 bytes (the 400 live on the heap)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "u8            1 byte\nu64           8 bytes\n[u64; 50]   400 bytes\n&str         16 bytes (pointer + length)\nString       24 bytes (pointer + length + capacity)\nVec<u64>     24 bytes, whatever its length\nBox<[u64; 50]> 8 bytes (the 400 live on the heap)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/stack_heap"
+    }
+   ]
+  },
+  "trace_iter.rs": {
+   "src": "fn main() {\n    let pages = [120, 30, 80, 300, 45];\n    let mut running = 0;\n    for (i, p) in pages.iter().enumerate().filter(|(_, p)| **p > 50) {\n        running += p;\n        println!(\"{i} {p} {running}\");\n    }\n}\n",
+   "stdout": "0 120 120\n2 80 200\n3 300 500\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 120 120\n2 80 200\n3 300 500\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/trace_iter"
+    }
+   ]
+  },
+  "tree.rs": {
+   "src": "use serde::{Deserialize, Serialize};\n\n#[derive(Debug, PartialEq, Serialize, Deserialize)]\nstruct Book {\n    title: String,\n    pages: u32,\n    tags: Vec<String>,\n    on_loan: bool,\n}\n\nfn main() {\n    let book = Book {\n        title: String::from(\"Dune\"),\n        pages: 412,\n        tags: vec![String::from(\"sci-fi\"), String::from(\"desert\")],\n        on_loan: false,\n    };\n\n    let text = serde_json::to_string(&book).unwrap();\n    println!(\"{text}\");\n\n    let pretty = serde_json::to_string_pretty(&book).unwrap();\n    println!(\"{pretty}\");\n\n    let back: Book = serde_json::from_str(&text).unwrap();\n    println!(\"{back:?}\");\n    println!(\"same book? {}\", back == book);\n}\n",
+   "stdout": "booknotes v0.1.0 (/home/you/rust-ch28/booknotes)\n├── serde v1.0.229\n│   ├── serde_core v1.0.229\n│   └── serde_derive v1.0.229 (proc-macro)\n│       ├── proc-macro2 v1.0.107\n│       │   └── unicode-ident v1.0.27\n│       ├── quote v1.0.47\n│       │   └── proc-macro2 v1.0.107 (*)\n│       └── syn v3.0.9\n│           ├── proc-macro2 v1.0.107 (*)\n│           ├── quote v1.0.47 (*)\n│           └── unicode-ident v1.0.27\n└── serde_json v1.0.154\n    ├── itoa v1.0.18\n    ├── memchr v2.8.3\n    ├── serde_core v1.0.229\n    └── zmij v1.0.23\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo tree",
+     "out": "booknotes v0.1.0 (/home/you/rust-ch28/booknotes)\n├── serde v1.0.229\n│   ├── serde_core v1.0.229\n│   └── serde_derive v1.0.229 (proc-macro)\n│       ├── proc-macro2 v1.0.107\n│       │   └── unicode-ident v1.0.27\n│       ├── quote v1.0.47\n│       │   └── proc-macro2 v1.0.107 (*)\n│       └── syn v3.0.9\n│           ├── proc-macro2 v1.0.107 (*)\n│           ├── quote v1.0.47 (*)\n│           └── unicode-ident v1.0.27\n└── serde_json v1.0.154\n    ├── itoa v1.0.18\n    ├── memchr v2.8.3\n    ├── serde_core v1.0.229\n    └── zmij v1.0.23\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/booknotes"
+    }
+   ]
+  },
+  "tpl/booknotes/Cargo.toml": {
+   "src": "[package]\nname = \"booknotes\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"=1.0.229\", features = [\"derive\"] }\nserde_json = \"=1.0.154\"\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "two_versions.rs": {
+   "src": "use rand::SeedableRng;\nuse rand::rngs::StdRng;\n\nfn main() {\n    let mut rng = StdRng::seed_from_u64(28);\n    let books = [\"Emma\", \"Dune\", \"Ulysses\"];\n    println!(\"tonight: {}\", shelf::pick(&books, &mut rng));\n}\n",
+   "stdout": "",
+   "stderr": "error[E0308]: mismatched types\n  --> src/main.rs:7:49\n   |\n 7 |     println!(\"tonight: {}\", shelf::pick(&books, &mut rng));\n   |                             -----------         ^^^^^^^^ expected `rand::rngs::std::StdRng`, found `StdRng`\n   |                             |\n   |                             arguments to this function are incorrect\n   |\nnote: there are multiple different versions of crate `rand` in the dependency graph\n  --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/std.rs:70:1\n   |\n70 | pub struct StdRng(Rng);\n   | ^^^^^^^^^^^^^^^^^ this is the expected type\n   |\n  ::: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.10.3/src/rngs/std.rs:73:1\n   |\n73 | pub struct StdRng(Rng);\n   | ----------------- this is the found type\n   = help: you can use `cargo tree` to explore your dependency tree\nnote: function defined here\n  --> shelf/src/lib.rs:5:8\n   |\n 5 | pub fn pick<'a>(books: &[&'a str], rng: &mut StdRng) -> &'a str {\n   |        ^^^^\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `reading` (bin \"reading\") due to 1 previous error\n",
+   "exit": 101,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "",
+     "err": "error[E0308]: mismatched types\n  --> src/main.rs:7:49\n   |\n 7 |     println!(\"tonight: {}\", shelf::pick(&books, &mut rng));\n   |                             -----------         ^^^^^^^^ expected `rand::rngs::std::StdRng`, found `StdRng`\n   |                             |\n   |                             arguments to this function are incorrect\n   |\nnote: there are multiple different versions of crate `rand` in the dependency graph\n  --> /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/std.rs:70:1\n   |\n70 | pub struct StdRng(Rng);\n   | ^^^^^^^^^^^^^^^^^ this is the expected type\n   |\n  ::: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.10.3/src/rngs/std.rs:73:1\n   |\n73 | pub struct StdRng(Rng);\n   | ----------------- this is the found type\n   = help: you can use `cargo tree` to explore your dependency tree\nnote: function defined here\n  --> shelf/src/lib.rs:5:8\n   |\n 5 | pub fn pick<'a>(books: &[&'a str], rng: &mut StdRng) -> &'a str {\n   |        ^^^^\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `reading` (bin \"reading\") due to 1 previous error\n",
+     "exit": 101,
+     "dir": "~/rust-ch28/reading"
+    }
+   ]
+  },
+  "tpl/reading/Cargo.toml": {
+   "src": "[package]\nname = \"reading\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrand = \"=0.10.3\"\nshelf = { path = \"shelf\" }\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/reading/shelf/Cargo.toml": {
+   "src": "[package]\nname = \"shelf\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrand = { version = \"0.9\", default-features = false, features = [\"std\", \"std_rng\"] }\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "tpl/reading/shelf/src/lib.rs": {
+   "src": "use rand::Rng;\nuse rand::rngs::StdRng;\n\n/// Picks a book from the shelf at random.\npub fn pick<'a>(books: &[&'a str], rng: &mut StdRng) -> &'a str {\n    books[rng.random_range(0..books.len())]\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "two_versions_tree.rs": {
+   "src": "use rand::SeedableRng;\nuse rand::rngs::StdRng;\n\nfn main() {\n    let mut rng = StdRng::seed_from_u64(28);\n    let books = [\"Emma\", \"Dune\", \"Ulysses\"];\n    println!(\"tonight: {}\", shelf::pick(&books, &mut rng));\n}\n",
+   "stdout": "rand v0.9.5\n└── shelf v0.1.0 (/home/you/rust-ch28/reading/shelf)\n    └── reading v0.1.0 (/home/you/rust-ch28/reading)\n\nrand v0.10.3\n└── reading v0.1.0 (/home/you/rust-ch28/reading)\n\nrand_core v0.9.5\n├── rand v0.9.5 (*)\n└── rand_chacha v0.9.0\n    └── rand v0.9.5 (*)\n\nrand_core v0.10.1\n├── chacha20 v0.10.2\n│   └── rand v0.10.3 (*)\n├── getrandom v0.4.3\n│   └── rand v0.10.3 (*)\n└── rand v0.10.3 (*)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo tree --duplicates",
+     "out": "rand v0.9.5\n└── shelf v0.1.0 (/home/you/rust-ch28/reading/shelf)\n    └── reading v0.1.0 (/home/you/rust-ch28/reading)\n\nrand v0.10.3\n└── reading v0.1.0 (/home/you/rust-ch28/reading)\n\nrand_core v0.9.5\n├── rand v0.9.5 (*)\n└── rand_chacha v0.9.0\n    └── rand v0.9.5 (*)\n\nrand_core v0.10.1\n├── chacha20 v0.10.2\n│   └── rand v0.10.3 (*)\n├── getrandom v0.4.3\n│   └── rand v0.10.3 (*)\n└── rand v0.10.3 (*)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/reading"
+    }
+   ]
+  },
+  "vec_growth.rs": {
+   "src": "fn main() {\n    let mut shelf: Vec<u32> = Vec::new();\n    println!(\"{} {}\", shelf.len(), shelf.capacity());\n    for book in 1..=9 {\n        shelf.push(book);\n        println!(\"{} {}\", shelf.len(), shelf.capacity());\n    }\n}\n",
+   "stdout": "0 0\n1 4\n2 4\n3 4\n4 4\n5 8\n6 8\n7 8\n8 8\n9 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cargo run -q",
+     "out": "0 0\n1 4\n2 4\n3 4\n4 4\n5 8\n6 8\n7 8\n8 8\n9 16\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/rust-ch28/vec_growth"
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

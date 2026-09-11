@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en" data-book="rust">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open the Restaurant</title>
+<meta name="description" content="Chapter 29 of the Pip &amp; Friends Rust book, a comic course, and its last chapter: Mabel opens a restaurant, a multithreaded web server built in stages. TcpListener::bind and incoming(), reading an HTTP request with BufReader, writing a response with a status line, headers and a body, a router with a 404 page, a slow route that blocks a one-cook kitchen, a thread pool of workers fed by a channel (Arc&lt;Mutex&lt;Receiver&gt;&gt;, Box&lt;dyn FnOnce() + Send + 'static&gt;), graceful shutdown with Drop, the lock held too long, a real curl session and the same restaurant on Tokio. Ends with a celebration and a recap of the whole book.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/rs-ch29.css">
+<script defer src="../data/rs-ch29.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/rs-ch29.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Rust book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch28.html">&larr; Ch 28</a><span aria-current="page">Ch 29 of 29</span>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">RUST · CHAPTER 29 · THE LAST ONE</p>
+    <h1 id="cover-h">OPEN THE RESTAURANT</h1>
+    <div class="cover-crew">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave" data-prop="none"></svg>
+      <svg class="char cook" data-char="linecook" data-variant="a" data-pose="ticket"></svg>
+      <svg class="char cook" data-char="linecook" data-variant="b" data-pose="knife"></svg>
+      <svg class="char cook" data-char="linecook" data-variant="c" data-pose="cheer"></svg>
+      <svg class="char" data-char="asyncwaiter" data-pose="tray"></svg>
+      <svg class="char" data-char="inspector" data-mood="happy" data-label="DINER"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian waves. Beside her stand three cooks from Chapter 26, Ana with an order ticket, Ben with a kitchen knife and Cy cheering, then the waiter from Chapter 27 with a tray, and the hard-hat Inspector wearing a badge that says DINER.</p>
+    <p class="caption blurb">The café from Chapter 26 is getting a real front door. Today Mabel opens a <b>restaurant on the internet</b>: a <b>web server</b>, the kind of program that answers when a browser visits a page. It's the Rust book's own final project, built in stages: one cook who takes one order at a time, a slow stew that holds everyone up, then a <b>brigade</b> of cooks fed by a ticket rail (a thread pool), and finally a tidy <b>closing time</b>. Every tool from the whole book turns up, so this chapter ends with a party and a tour of all 29 chapters. On the way: six different compiler errors and four panics, read like a detective. About 150 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The front door: listen, read the order card, plate a reply</a></li>
+      <li><a href="#part-2">The menu, and one slow stew</a></li>
+      <li><a href="#part-3">Hire a brigade: the thread pool</a></li>
+      <li><a href="#part-4">Kitchen rules and closing time</a></li>
+      <li><a href="#part-5">Grand opening: a real client, and the async waiter</a></li>
+      <li><a href="#part-6">Boss level</a></li>
+      <li><a href="#part-7">The party: what you learned in the whole book</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE FRONT DOOR<small>a web server is a restaurant; TcpListener::bind opens a door on a port; incoming() is the queue of visitors; an HTTP request is an order card; a response is the plate; read errors like a detective</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: the big day">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="TA-DA!" data-seed="29"></svg>
+    <p class="caption">Twenty-eight chapters ago, Mabel's first program printed one line and stopped. Today her program will sit and <b>wait for visitors</b>, and answer each one.</p>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="happy" data-mouth="shout" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>When you type an address into a browser, the browser sends a little order to a program on another computer, and that program sends back a page. That program is a <b>web server</b>. Let's open one!</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Everything stays on your own computer today, and we use only Rust's standard library. Real websites use big, well-tested libraries for this. Building a small one by hand is how you see what those libraries do for you.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel cheers with both arms up. The Professor answers her.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the restaurant picture">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Here is the whole idea as a restaurant. Keep this picture: every program in this chapter is a piece of it.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 330" role="img" aria-labelledby="rest-t rest-d"><title id="rest-t">The restaurant picture</title><desc id="rest-d">Left: a diner labelled browser, holding an order card. An arrow labelled TCP connection leads to a door with the sign 127.0.0.1, door 7878. Under the arrow: GET slash HTTP/1.1, the order card, the request. Behind the door, the kitchen labelled server, where a cook stands next to a plate. A dashed arrow back to the diner is labelled 200 OK plus the page: the plate, the response.</desc>
+      <defs><marker id="ra" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#111"/></marker></defs>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <circle cx="66" cy="96" r="26" fill="#F3C9A1"/><path d="M36 196 l6 -66 q24 -12 48 0 l6 66 z" fill="#B5D3FF"/>
+        <path d="M92 140 l14 -8" fill="none"/><rect x="104" y="112" width="30" height="40" rx="3" fill="#FFF6CC" stroke-width="3"/>
+        <rect x="282" y="40" width="96" height="196" rx="6" fill="#E8D3B0"/><circle cx="360" cy="140" r="6" fill="#111"/>
+        <rect x="270" y="10" width="120" height="30" rx="6" fill="#FFFFFF" stroke-width="3"/>
+        <rect x="430" y="40" width="230" height="196" rx="10" fill="#F4F1EA"/>
+        <circle cx="530" cy="152" r="22" fill="#E8B38A"/><path d="M510 132 q-12 -26 20 -30 q32 4 20 30 z" fill="#FFFFFF"/>
+        <path d="M498 232 l6 -56 q26 -12 52 0 l6 56 z" fill="#FFFFFF"/>
+        <ellipse cx="616" cy="214" rx="30" ry="9" fill="#DDE8FF"/><path d="M594 210 q22 -30 44 0 z" fill="#FFFFFF" stroke-width="3"/>
+      </g>
+      <path d="M156 84 H272" stroke="#111" stroke-width="4" fill="none" marker-end="url(#ra)"/>
+      <path d="M610 248 Q380 320 104 254" stroke="#111" stroke-width="4" fill="none" stroke-dasharray="10 7" marker-end="url(#ra)"/>
+      <text class="m mid" x="330" y="31">127.0.0.1</text>
+      <text class="ms mid" x="330" y="106">door</text><text class="m mid" x="330" y="126">7878</text>
+      <text class="s mid" x="214" y="70">TCP connection</text>
+      <text class="ms mid" x="214" y="116">GET / HTTP/1.1</text><text class="s mid" x="214" y="138">the order card</text><text class="s mid" x="214" y="158">(request)</text>
+      <text class="h mid" x="66" y="224">DINER</text><text class="s mid" x="66" y="244">(the browser)</text>
+      <text class="h mid" x="545" y="70">KITCHEN</text><text class="s mid" x="545" y="92">(the server)</text>
+      <text class="ms mid" x="380" y="262">200 OK + the page</text><text class="s mid" x="380" y="318">the plate (response)</text>
+    </svg></div>
+    <ul class="readlist">
+      <li><span><b>The diner</b> is the <b>client</b>: a browser, or any program that asks. <b>The kitchen</b> is the <b>server</b>: a program that waits and answers.</span></li>
+      <li><span><b>The door</b> has an address. <code>127.0.0.1</code> is a special address that always means "this same computer" (its nickname is <b>localhost</b>). <code>7878</code> is a <b>port</b>: one computer has 65,535 numbered doors, so many servers can run at once. The Rust book picked 7878 because it spells "rust" on a phone keypad.</span></li>
+      <li><span><b>TCP</b> is the corridor between diner and kitchen: a <b>connection</b> that delivers bytes in order, without losing any. <b>HTTP</b> is the language the order card and the plate are written in.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: open the door">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">First, just open the door and count who comes in. Rust's <code>std::net</code> module has everything we need.</p>
+    <span class="file-tab">first_listen.rs</span>
+    <pre class="code" data-src="first_listen.rs"></pre>
+    <pre class="term" data-run="first_listen.rs" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b>: <code>TcpListener::bind("127.0.0.1:7878")</code> opens door 7878 and starts listening. It returns a <code>Result</code> (Chapter 13), because the door might already be taken (panel 4).</span></li>
+      <li><span><b>Line 9</b>: <code>listener.incoming()</code> is an iterator (Chapter 20) of visitors. Each item is one <b>connection attempt</b>, a <code>Result&lt;TcpStream&gt;</code>. A <code>TcpStream</code> is the open line to one diner: you can read their order from it and write your answer into it.</span></li>
+      <li><span>A real server loops over <code>incoming()</code> forever. Here, <code>.take(3)</code> stops after three visitors so the program can finish and be captured. The Rust book uses the same trick.</span></li>
+      <li><span><b>Line 10</b>: when <code>_stream</code> goes out of scope at the end of each loop turn, it is dropped, and dropping a <code>TcpStream</code> hangs up the line (Chapter 7: "when the owner leaves, the library takes the book back").</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="inspector" data-mood="happy" data-label="DINER"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Inspector says: </span>And I'm the <b>test diner</b>! Every program today has a little function at the bottom, like <code>test_diners</code> on line 19, that plays the browser. <code>TcpStream::connect</code> knocks on the door. A restaurant has a soft opening before the big day; this is ours. I'm not part of the server. I just visit it, on my own thread, so the kitchen can work at the same time.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-take-m" id="ex-take"></div>
+  <script type="application/json" id="ex-take-m">{"q": "Mabel deletes <code>.take(3)</code> from line 9, so it says <code>for stream in listener.incoming() {</code>. The test diners still knock exactly 3 times. What happens?", "options": [
+    {"t": "Three visitors are counted, then it waits at the door forever: <samp>Soft opening over</samp> never prints", "why": "Right. <code>incoming()</code> never runs out by itself: after the third visitor, the loop just waits for a fourth. That's exactly what a real server should do. You stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd>.", "correct": true},
+    {"t": "The same output as now: the loop ends when the test diners stop knocking", "why": "The listener can't know that nobody else will come. An open door stays open; only <code>take</code> (or a <code>break</code>) ends the loop."},
+    {"t": "A compile error: an endless <code>incoming()</code> loop must be limited with <code>take</code>", "why": "It compiles fine. An endless iterator is allowed; Chapter 20's <code>(1..)</code> is one too."},
+    {"t": "A panic: the fourth <code>unwrap()</code> finds no visitor, and the server crashes", "why": "There is no fourth item yet, so nothing is unwrapped. The loop simply waits for one."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 4: address already in use">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <svg class="sfx tr" data-sfx="TAKEN!" data-seed="4"></svg>
+    <p class="caption">Mabel tries to open two restaurants behind the same door.</p>
+    <span class="file-tab">e_addr_in_use.rs</span>
+    <pre class="code" data-src="e_addr_in_use.rs"></pre>
+    <pre class="term" data-run="e_addr_in_use.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>It compiled, and the first restaurant opened: line 5's message printed. Then a <b>panic</b> at run time. Read it like a detective. <code>thread 'main' (1)</code>: <b>who</b>. The <code>(1)</code> is the thread's id from the operating system; on your computer it will be some other number. That's fine.</span></li>
+      <li><span><code>panicked at src/main.rs:7:54</code>: <b>where</b>, line 7, column 54, the <code>.unwrap()</code> after the second <code>bind</code>.</span></li>
+      <li><span><b>What</b>: <code>called `Result::unwrap()` on an `Err` value</code>, and the <code>Err</code> holds the operating system's own answer: <code>code: 98, kind: AddrInUse, message: "Address already in use"</code>. One door, one listener.</span></li>
+      <li><span>You'll meet this for real: run your server, forget it's still running in another terminal, and start it again. Stop the old one first (<kbd>Ctrl</kbd>+<kbd>C</kbd>), or pick another port. Ports below 1024 are a second trap: on Linux, for example, they need administrator rights, so stay above them.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 5: the order card">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">When a browser knocks, it doesn't just stand there. It hands over an <b>order card</b> written in HTTP: plain text, one line after another. (Not Chapter 27's order slip, which was a future waiting to be handed in: this card is what the diner actually wants.)</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 270" role="img" aria-labelledby="slip-t slip-d"><title id="slip-t">Anatomy of an HTTP request</title><desc id="slip-d">An order card with four lines. Line 1, GET slash HTTP/1.1, is labelled the request line: method, path, version. Lines 2 and 3, Host and User-Agent, are labelled headers: name, colon, value. Line 4 is empty and labelled the blank line: the order ends here. Every line ends with the two invisible characters backslash r backslash n.</desc>
+      <path d="M40 20 h330 v220 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 l-14 -10 l-14 10 h-8 z" fill="#FFF6CC" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text class="m" x="56" y="60">GET / HTTP/1.1</text><text class="ms" x="300" y="60">\r\n</text>
+      <text class="m" x="56" y="100">Host: 127.0.0.1:7878</text><text class="ms" x="300" y="100">\r\n</text>
+      <text class="m" x="56" y="140">User-Agent: test-diner</text><text class="ms" x="300" y="140">\r\n</text>
+      <rect x="54" y="176" width="236" height="26" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="2.5" stroke-dasharray="6 5"/><text class="ms" x="300" y="196">\r\n</text>
+      <g stroke="#111" stroke-width="3" fill="none"><path d="M376 54 h40"/><path d="M376 120 q20 0 40 0"/><path d="M376 189 h40"/></g>
+      <text x="424" y="50">the <tspan font-weight="700">request line</tspan>:</text><text class="s" x="424" y="72">method · path · version</text>
+      <text x="424" y="116">headers:</text><text class="s" x="424" y="138">name: value (any number)</text>
+      <text x="424" y="186">a blank line:</text><text class="s" x="424" y="208">the order ends here</text>
+    </svg></div>
+    <ul class="readlist">
+      <li><span>The <b>request line</b> says what the diner wants. <code>GET</code> is the <b>method</b> ("please give me"); <code>/</code> is the <b>path</b>, the page asked for (<code>/</code> means the front page); <code>HTTP/1.1</code> is the version of the language.</span></li>
+      <li><span><b>Headers</b> add details: which address the diner typed (<code>Host</code>), which browser it is, what it can read.</span></li>
+      <li><span>Every line ends with two invisible characters: <code>\r\n</code>, "carriage return, line feed" (Chapter 12's backslash codes), called <b>CRLF</b>. A completely <b>empty line</b> means "that's the whole order". Catchphrase: <b>a blank line ends the order</b>. Remember it; it's the bug in the exercise after panel 10.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: read the order card">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The kitchen reads the card line by line, and stops at the blank line.</p>
+    <span class="file-tab">read_request.rs</span>
+    <pre class="code" data-src="read_request.rs"></pre>
+    <pre class="term" data-run="read_request.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 16</b>: each connection goes to its own function, <code>handle_connection</code>, which takes ownership of the <code>stream</code>.</span></li>
+      <li><span><b>Line 17</b>: <code>BufReader::new(&amp;stream)</code> wraps a <em>borrowed</em> stream in a reader with a buffer (Chapter 25's pipes), which gives us <code>.lines()</code>. <code>lines()</code> comes from the <code>BufRead</code> trait, and <code>use std::io::prelude::*</code> on line 1 brings it, and its friends <code>Read</code> and <code>Write</code>, into scope.</span></li>
+      <li><span><b>Lines 19–22</b>: an iterator chain (Chapter 20). Each line is a <code>Result</code>, so <code>map(|line| line.unwrap())</code> opens it; <code>take_while(|line| !line.is_empty())</code> keeps going <b>until the blank line</b>; <code>collect()</code> packs the lines into a <code>Vec&lt;String&gt;</code>. Notice the <code>\r\n</code> is gone: <code>lines()</code> strips it.</span></li>
+      <li><span>Why stop at the blank line instead of reading to the end? Because the diner doesn't hang up after ordering: it waits for the plate. Reading "until the end" would wait forever.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-freq-m" id="ex-freq"></div>
+  <script type="application/json" id="ex-freq-m">{"program": "fill_request.rs", "prompt": "A diner orders <code>/menu</code> with two headers. Fill in the reader that gives us <code>.lines()</code> (line 12) and the step that stops at the blank line (line 16).", "blanks": [{"line": 12, "text": "BufReader::new(&stream)"}, {"line": 16, "text": "take_while(|line| !line.is_empty())", "accept": ["take_while(|l| !l.is_empty())", "take_while(|line| line != \"\")"]}], "explain": "<code>BufReader::new(&amp;stream)</code> borrows the stream and adds the buffer that <code>lines()</code> needs. <code>take_while</code> keeps lines until the first empty one, so the three lines of the card are collected: <samp>3 lines, first: GET /menu HTTP/1.1</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 7: the plate">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">The answer goes back on a <b>plate</b>, also written in HTTP. It has the same shape as the order card: a first line, headers, a blank line, and then the food itself.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 250" role="img" aria-labelledby="plate-t plate-d"><title id="plate-t">Anatomy of an HTTP response</title><desc id="plate-d">A plate-shaped card with four parts. HTTP/1.1 200 OK is the status line: version, status code, reason. Content-Length: 28 is a header: how many bytes of food follow. Then a blank line. Then the body: an h1 heading saying Welcome to Mabel's.</desc>
+      <rect x="30" y="20" width="360" height="210" rx="22" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <rect x="44" y="34" width="332" height="182" rx="14" fill="#DDE8FF" stroke="#111" stroke-width="2.5"/>
+      <text class="m" x="58" y="68">HTTP/1.1 200 OK</text>
+      <text class="m" x="58" y="108">Content-Length: 28</text>
+      <rect x="56" y="124" width="300" height="24" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <text class="ms" x="58" y="186">&lt;h1&gt;Welcome to Mabel's!&lt;/h1&gt;</text>
+      <g stroke="#111" stroke-width="3" fill="none"><path d="M396 62 h30"/><path d="M396 102 h30"/><path d="M396 136 h30"/><path d="M396 180 h30"/></g>
+      <text x="434" y="58">the <tspan font-weight="700">status line</tspan></text><text class="s" x="434" y="78">version · code · reason</text>
+      <text x="434" y="108">headers</text>
+      <text x="434" y="142">a blank line</text>
+      <text x="434" y="176">the <tspan font-weight="700">body</tspan>: the food</text><text class="s" x="434" y="196">(here, a bit of HTML)</text>
+    </svg></div>
+    <ul class="readlist">
+      <li><span>The <b>status code</b> is a three-digit verdict: <code>200 OK</code> means "here you go", <code>404 NOT FOUND</code> means "not on the menu". The words after the number are for humans.</span></li>
+      <li><span><code>Content-Length</code> tells the diner how many <b>bytes</b> of food follow, so it knows when the plate is complete. Rust's <code>.len()</code> on a string counts bytes (Chapter 12), which is exactly what this header wants.</span></li>
+      <li><span>The <b>body</b> here is <b>HTML</b>, the language web pages are written in: <code>&lt;h1&gt;…&lt;/h1&gt;</code> means "a big heading". A browser draws it; our test diner just prints it.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: plate a reply">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Now the kitchen answers. The test diner prints exactly what it received, using <code>{:?}</code> so the invisible <code>\r\n</code> characters show up as text.</p>
+    <span class="file-tab">respond.rs</span>
+    <pre class="code" data-src="respond.rs"></pre>
+    <pre class="term" data-run="respond.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 19</b>: <code>mut stream</code>, because writing into a stream changes it.</span></li>
+      <li><span><b>Line 21</b>: this kitchen only needs the first line. <code>lines().next()</code> gives an <code>Option</code> (maybe there's no line at all), and inside it a <code>Result</code> (maybe the read failed): two <code>unwrap()</code>s. Panel 12 shows the day that first one goes wrong.</span></li>
+      <li><span><b>Lines 24–27</b>: build the plate with <code>format!</code>: status line, <code>\r\n</code>, the header, <code>\r\n\r\n</code> (end of the header line, then the blank line), then the body. The body <code>&lt;h1&gt;Welcome to Mabel's!&lt;/h1&gt;</code> is 28 bytes long.</span></li>
+      <li><span><b>Line 29</b>: <code>write_all</code> sends bytes, so <code>as_bytes()</code> turns the <code>String</code> into a <code>&amp;[u8]</code> (Chapter 12). When the function ends, <code>stream</code> is dropped and the line hangs up, which tells the diner "that's everything". The diner received 67 bytes: 39 of status line, header and line endings, plus the 28 of body.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Every visit is the same three moves. Catchphrase: <b>read the card, cook, plate it</b>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-presp-m" id="ex-presp"></div>
+  <script type="application/json" id="ex-presp-m">{"program": "predict_response.rs", "prompt": "No network this time: just the plate. What does it print? Write <code>\\r\\n</code> exactly the way <code>{:?}</code> shows it.", "hint": "Count the bytes of <code>&lt;p&gt;No pizza&lt;/p&gt;</code>: every letter, space and angle bracket is one byte. <code>lines()</code> splits at each line ending, and an empty line still counts as a line.", "explain": "The body has 15 bytes, so the header says <samp>Content-Length: 15</samp>. <code>{:?}</code> shows each line ending as <samp>\\r\\n</samp>. <code>lines()</code> finds four lines: the status line, the header, the blank line and the body: <samp>4</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzresp-m" id="ex-pzresp"></div>
+  <script type="application/json" id="ex-pzresp-m">{"program": "pz_response.rs", "seed": 8, "pin": [1, 7], "prompt": "Put the plate together in an order that compiles and prints the goal output.", "explain": "The body comes first, because <code>length</code> is measured from it; the headers need <code>length</code>; the whole response needs the headers and the body; and you can only print it once it exists."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 9: no method named write_all">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="E0599!" data-seed="9"></svg>
+    <p class="caption">Mabel tidies up her <code>use</code> lines and imports only what she thinks she needs.</p>
+    <span class="file-tab">e_write_scope.rs</span>
+    <pre class="code" data-src="e_write_scope.rs"></pre>
+    <pre class="term" data-run="e_write_scope.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0599]: no method named `write_all` found for struct `TcpStream` in the current scope</code>. The method <em>exists</em>; Rust just can't see it from here.</span></li>
+      <li><span><code>--&gt; src/main.rs:14:12</code> and the carets point at <code>write_all</code> on line 14.</span></li>
+      <li><span>The notes explain: <code>items from traits can only be used if the trait is in scope</code>. <code>write_all</code> belongs to the <code>Write</code> trait (Chapter 17's badges), and line 1 imported <code>BufRead</code> but not <code>Write</code>.</span></li>
+      <li><span>The <code>help:</code> gives the fix, <code>+ use std::io::Write;</code>, and then a second guess, <code>write</code>. Ignore that one: <code>write</code> may send only <em>part</em> of the bytes; <code>write_all</code> keeps going until everything is sent. (The <code>--&gt; /rustc/…</code> line points into Rust's own source code, at a path that differs between Rust versions.)</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>A trait's methods need their trait in scope. That's why the Rust book writes <code>use std::io::prelude::*;</code>: one line that brings in <code>Read</code>, <code>Write</code>, <code>BufRead</code> and <code>Seek</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 10: cannot borrow stream as mutable">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <svg class="sfx tr" data-sfx="E0596!" data-seed="10"></svg>
+    <p class="caption">Same kitchen, imports fixed. This time line 11 lost a little word.</p>
+    <span class="file-tab">e_not_mut.rs</span>
+    <pre class="code" data-src="e_not_mut.rs"></pre>
+    <pre class="term" data-run="e_not_mut.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0596]: cannot borrow `stream` as mutable, as it is not declared as mutable</code>: <code>write_all</code> takes <code>&amp;mut self</code>, so it needs a <code>stream</code> you're allowed to change (Chapter 8: "say mut three times").</span></li>
+      <li><span><code>help: consider changing this to be mutable</code>, with <code>+++</code> under the exact spot on line 11: <code>mut stream: TcpStream</code>. A parameter is a variable like any other.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sblank-m" id="ex-sblank"></div>
+  <script type="application/json" id="ex-sblank-m">{"program": "spot_blank.rs", "bug": 20, "prompt": "The kitchen sends a plate, but the diner can't find where the food starts, and <code>main</code> panics on line 11. Click the line that really holds the bug.", "explain": "Line 20 has only one <code>\\r\\n</code> after the header, so there's no blank line: the diner reads <code>&lt;h1&gt;Soup of the day&lt;/h1&gt;</code> as if it were another header. <code>split(\"\\r\\n\\r\\n\").nth(1)</code> finds no second piece, so <code>unwrap()</code> on line 11 panics with <samp>called `Option::unwrap()` on a `None` value</samp>. The panic is reported where it happened; the bug is where the plate was made. Fix: <code>{length}\\r\\n\\r\\n{contents}</code>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE MENU, AND ONE SLOW STEW<small>match on the request line to pick a page; 404 for anything else; the router as a machine and as a map; a shy diner panics the kitchen; one slow order holds up everyone behind it; one thread per order, and why that's dangerous</small></h2>
+
+  <section class="panel clean" aria-label="Panel 11: a menu with three answers">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">A restaurant needs a menu. The kitchen looks at the request line and picks a page: the front page for <code>/</code>, a slow-cooked stew for <code>/sleep</code>, and a polite "sorry" for anything else. Here the test diner orders whatever path you give on the command line.</p>
+    <span class="file-tab">route_home.rs</span>
+    <pre class="code" data-src="route_home.rs"></pre>
+    <div class="runs2">
+      <div><h3>ordering /</h3><pre class="term" data-run="route_home.rs" data-exit></pre></div>
+      <div><h3>ordering /pizza</h3><pre class="term" data-run="route_missing.rs" data-exit></pre></div>
+      <div><h3>ordering /sleep (takes a second)</h3><pre class="term" data-run="route_slow.rs" data-exit></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="route_home.rs,route_slow.rs,route_missing.rs"></span> The three terminals ran the same source file; only the argument after <code>--</code> changed.</p>
+    <ol class="readlist">
+      <li><span><b>Line 6</b>: <code>env::args().nth(1)</code> (Chapter 16) reads the path from the command line: <code>cargo run -q -- /pizza</code>. Everything after <code>--</code> goes to our program, not to cargo.</span></li>
+      <li><span><b>Line 23</b>: <code>match &amp;request_line[..]</code> turns the <code>String</code> into a <code>&amp;str</code> so it can be compared with the string literals in the arms below. Each arm gives back a <b>pair</b>: the status line and the body.</span></li>
+      <li><span><b>Lines 25–28</b>: the <code>/sleep</code> arm runs <code>thread::sleep(Duration::from_secs(1))</code> first: it pretends this dish takes one second to cook. Remember it; it's about to cause trouble.</span></li>
+      <li><span><b>Line 29</b>: <code>_</code> catches everything else: <code>404 NOT FOUND</code> (Chapter 21: specific holes first, catch-all last). Both answers go through the same plating code on lines 32–34.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 12: the router machine" data-machine="m-route">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">The router as a machine. Feed it a request line; it answers with a status. <code>route_table.rs</code> runs the same <code>match</code> on six lines, and one more chip shows a diner who never sends a line at all.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-route">{"label": "route()", "program": "route_table.rs", "examples": [
+      {"in": "\"GET / HTTP/1.1\"", "out": "200 OK", "expectLine": "\"GET / HTTP/1.1\" -> 200 OK", "note": "An exact match for the first arm: the front page."},
+      {"in": "\"GET /sleep HTTP/1.1\"", "out": "200 OK (after a nap)", "expectLine": "\"GET /sleep HTTP/1.1\" -> 200 OK (after a nap)", "note": "The second arm. In the real kitchen this one sleeps for a second first."},
+      {"in": "\"GET /pizza HTTP/1.1\"", "out": "404 NOT FOUND", "expectLine": "\"GET /pizza HTTP/1.1\" -> 404 NOT FOUND", "note": "No arm matches, so <code>_</code> catches it."},
+      {"in": "\"get / HTTP/1.1\"", "out": "404 NOT FOUND", "expectLine": "\"get / HTTP/1.1\" -> 404 NOT FOUND", "note": "String patterns match exactly, letter for letter: lowercase <code>get</code> is a different string. (Real servers treat the method name as case-sensitive too.)"},
+      {"in": "\"GET /  HTTP/1.1\"", "out": "404 NOT FOUND", "expectLine": "\"GET /  HTTP/1.1\" -> 404 NOT FOUND", "note": "Two spaces after the slash. One extra space is enough to miss the arm."},
+      {"in": "\"POST / HTTP/1.1\"", "out": "404 NOT FOUND", "expectLine": "\"POST / HTTP/1.1\" -> 404 NOT FOUND", "note": "<code>POST</code> is the method for sending data, as a form does. Our menu only knows <code>GET</code>."},
+      {"in": "(the diner sends nothing)", "error": "called `Option::unwrap()` on a `None` value", "program": "route_empty.rs", "note": "<code>route_empty.rs</code>: a shy diner connects and leaves without ordering. <code>lines().next()</code> finds no line at all and returns <code>None</code>, and the first <code>unwrap()</code> panics the whole server. Browsers really do open spare connections and close them unused. A sturdy server answers with <code>match</code> or <code>?</code> instead (Chapter 13); this chapter keeps the Rust book's <code>unwrap()</code>s so the code stays short."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 13: the map of one visit" data-map="map-route">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">The map of one visit. Pick an order and step through it; each road is checked against the real run of that program.</p>
+    <div class="paths" role="group" aria-label="Choose a run"><span class="label">ORDER:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapr-t mapr-d"><title id="mapr-t">The map of one visit</title><desc id="mapr-d">Six places. Top row: order arrives, match the request line, front page 200 OK. Bottom row: 404 not found, nap 1 second, plate sent. From order arrives, read the request line to reach match. From match: GET slash leads to front page; GET slash sleep leads down to nap; anything else leads to 404. From front page, from nap after one second, and from 404, write_all leads to plate sent.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen run</summary><div class="map-text"></div><table class="transcript"><caption>Chosen run</caption><thead><tr><th>Step</th><th>Mabel is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-route">{"seed": 29, "size": [690, 360], "start": [[89, 14], [89, 54]], "states": [{"id": "DOOR", "x": 14, "y": 60, "w": 150, "h": 70, "label": "order arrives", "sub": "a TcpStream"}, {"id": "MATCH", "x": 262, "y": 60, "w": 166, "h": 70, "label": "match the line", "sub": "line 23"}, {"id": "HOME", "x": 510, "y": 60, "w": 166, "h": 70, "label": "front page", "sub": "200 OK"}, {"id": "MISS", "x": 14, "y": 230, "w": 166, "h": 70, "label": "not on menu", "sub": "404 NOT FOUND"}, {"id": "NAP", "x": 262, "y": 230, "w": 166, "h": 70, "label": "nap 1 second", "sub": "then 200 OK"}, {"id": "SENT", "x": 510, "y": 230, "w": 166, "h": 70, "label": "plate sent", "sub": "write_all", "kind": "end"}], "transitions": [{"id": "read", "from": "DOOR", "to": "MATCH", "pts": [[168, 95], [256, 95]], "label": ["read the", "first line"], "lx": 174, "ly": 124}, {"id": "home", "from": "MATCH", "to": "HOME", "pts": [[432, 95], [504, 95]], "label": ["`GET /`"], "lx": 436, "ly": 124}, {"id": "nap", "from": "MATCH", "to": "NAP", "pts": [[345, 134], [345, 224]], "label": ["`GET /sleep`"], "lx": 354, "ly": 184}, {"id": "miss", "from": "MATCH", "to": "MISS", "pts": [[290, 134], [150, 224]], "label": ["anything", "else"], "lx": 178, "ly": 172, "anchor": "end"}, {"id": "homes", "from": "HOME", "to": "SENT", "pts": [[593, 134], [593, 224]], "label": ["send"], "lx": 584, "ly": 184, "anchor": "end"}, {"id": "naps", "from": "NAP", "to": "SENT", "pts": [[432, 265], [504, 265]], "label": ["after 1 s"], "lx": 434, "ly": 294}, {"id": "misss", "from": "MISS", "to": "SENT", "pts": [[97, 304], [97, 342], [593, 342], [593, 304]], "label": ["send the sorry page"], "lx": 196, "ly": 334}], "paths": [{"id": "home", "label": "GET /: route_home.rs", "program": "route_home.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["DOOR"], "output": [], "note": "A diner connects and sends an order card. <code>main</code> passes the stream to <code>handle_connection</code>."}, {"on": ["MATCH"], "via": ["read"], "output": ["Order:     GET / HTTP/1.1"], "note": "Line 20 reads the first line of the card, and line 21 prints it."}, {"on": ["HOME"], "via": ["home"], "output": ["Order:     GET / HTTP/1.1"], "note": "The first arm matches exactly: status <code>HTTP/1.1 200 OK</code> and the welcome page."}, {"on": ["SENT"], "via": ["homes"], "output": ["Order:     GET / HTTP/1.1", "Diner got: HTTP/1.1 200 OK", "Body:      <h1>Welcome to Mabel's!</h1>"], "note": "Lines 32 to 34 plate the reply and send it; the stream is dropped and the line hangs up. Back in <code>main</code>, the diner's thread is joined and lines 14 and 15 print what it received."}]}, {"id": "slow", "label": "GET /sleep: route_slow.rs", "program": "route_slow.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["DOOR"], "output": [], "note": "A diner connects and sends an order card. <code>main</code> passes the stream to <code>handle_connection</code>."}, {"on": ["MATCH"], "via": ["read"], "output": ["Order:     GET /sleep HTTP/1.1"], "note": "Line 20 reads the first line of the card, and line 21 prints it."}, {"on": ["NAP"], "via": ["nap"], "output": ["Order:     GET /sleep HTTP/1.1"], "note": "The second arm: <code>thread::sleep</code> for one second, then the stew. Nothing else can happen in this kitchen meanwhile."}, {"on": ["SENT"], "via": ["naps"], "output": ["Order:     GET /sleep HTTP/1.1", "Diner got: HTTP/1.1 200 OK", "Body:      <h1>Slow-cooked stew</h1>"], "note": "Lines 32 to 34 plate the reply and send it; the stream is dropped and the line hangs up. Back in <code>main</code>, the diner's thread is joined and lines 14 and 15 print what it received."}]}, {"id": "miss", "label": "GET /pizza: route_missing.rs", "program": "route_missing.rs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["DOOR"], "output": [], "note": "A diner connects and sends an order card. <code>main</code> passes the stream to <code>handle_connection</code>."}, {"on": ["MATCH"], "via": ["read"], "output": ["Order:     GET /pizza HTTP/1.1"], "note": "Line 20 reads the first line of the card, and line 21 prints it."}, {"on": ["MISS"], "via": ["miss"], "output": ["Order:     GET /pizza HTTP/1.1"], "note": "No arm matches <code>GET /pizza HTTP/1.1</code>, so <code>_</code> answers <code>404 NOT FOUND</code> with the sorry page."}, {"on": ["SENT"], "via": ["misss"], "output": ["Order:     GET /pizza HTTP/1.1", "Diner got: HTTP/1.1 404 NOT FOUND", "Body:      <h1>Sorry, not on the menu</h1>"], "note": "Lines 32 to 34 plate the reply and send it; the stream is dropped and the line hangs up. Back in <code>main</code>, the diner's thread is joined and lines 14 and 15 print what it received."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-proutes-m" id="ex-proutes"></div>
+  <script type="application/json" id="ex-proutes-m">{"program": "predict_routes.rs", "prompt": "A tiny menu as a plain function. For each path, it prints the path, the status and the body's length in bytes. What does it print?", "hint": "Count bytes: <code>&lt;h1&gt;Hi!&lt;/h1&gt;</code> is 4 + 3 + 5. And patterns match letter for letter, capitals included.", "explain": "<samp>/</samp> matches the first arm: <samp>200 OK</samp> and 12 bytes. <samp>/tea</samp> matches the second: <samp>&lt;p&gt;Tea&lt;/p&gt;</samp> is 10 bytes. <samp>/Tea</samp> has a capital T, so no arm matches: <samp>404 NOT FOUND</samp> with the 11-byte <samp>&lt;p&gt;Nope&lt;/p&gt;</samp>."}</script>
+
+  <section class="panel pop" data-play aria-label="Panel 14: one cook, one slow stew">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="TAP TAP" data-seed="14"></svg>
+    <p class="caption">Lunchtime. Diner 1 orders the slow stew. A moment later, diner 2 just wants the front page, which takes no time at all to make. The kitchen has one cook: the main thread.</p>
+    <span class="file-tab">slow_single.rs</span>
+    <pre class="code" data-src="slow_single.rs"></pre>
+    <pre class="term" data-run="slow_single.rs"></pre>
+    <ol class="readlist">
+      <li><span>Two test diners this time (lines 8–12). Diner 2's thread sleeps 100 milliseconds first, so it surely knocks second. Each diner reports its status and how long it waited, <b>rounded to whole seconds</b>, so the output is the same on every run.</span></li>
+      <li><span><b>Line 16</b> calls <code>handle_connection</code> directly: the loop can't take the next visitor until this one is fully served. The kitchen prints <samp>start</samp> when it begins an order and <samp>ready</samp> just before plating it.</span></li>
+      <li><span>Read the screen: the stew starts, the stew is ready, and only <em>then</em> does the front page start. Diner 2 waited <samp>about 1 s</samp> for a page that takes no time to make. Its knock was waiting in the door's queue the whole time; the operating system keeps a short line of visitors at the door until the program calls for the next one.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="linecook" data-variant="a" data-pose="work"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ana the cook says: </span>I can't plate a hello while I'm stirring a stew. Catchphrase: <b>one slow stew holds up the whole line</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 15: one cook, minute by minute">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">Here's the same problem minute by minute, with no network at all. One cook, four orders, each taking some minutes. Each order starts when the cook is free.</p>
+    <ul class="readlist">
+      <li><span>In the program below, <code>clock</code> is the minute the cook is next free. Each order starts there, and pushes the clock forward by its own time.</span></li>
+      <li><span>Nobody overtakes: tea takes 1 minute but can't start before minute 6, because stew, toast and soup were ahead of it.</span></li>
+    </ul>
+  </section>
+
+  <div data-ex="trace" data-model="ex-t1cook-m" id="ex-t1cook"></div>
+  <script type="application/json" id="ex-t1cook-m">{"program": "trace_one_cook.rs", "columns": ["dish", "start", "finish"], "given": [0], "prompt": "Fill in each order's start and finish minute.", "explain": "Stew runs 0 to 3. Toast starts when the stew is done: 3 to 4. Soup: 4 to 6. Tea: 6 to 7. A 1-minute tea finishes at minute 7, just because of the queue in front of it."}</script>
+
+  <section class="panel clean" aria-label="Panel 16: a cook for every order">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Chapter 26 gave us an easy fix: hire a new cook for every order. One line changes.</p>
+    <span class="file-tab">spawn_each.rs</span>
+    <pre class="code" data-src="spawn_each.rs"></pre>
+    <pre class="term" data-run="spawn_each.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 16</b>: <code>thread::spawn(|| handle_connection(stream))</code>. The closure owns <code>stream</code> (it's moved in, because <code>handle_connection</code> takes it by value), and the loop is free at once to greet the next diner.</span></li>
+      <li><span>Now diner 2's front page starts while the stew is still cooking, and is ready first: <samp>200 OK after about 0 s</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>It works, but there's no limit. Ten diners, ten threads. A flood of ten million requests, from a crowd or from someone attacking you on purpose, means ten million threads, and the computer runs out of memory long before that. A restaurant doesn't hire a new cook for every customer.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-1v4-m" id="ex-1v4"></div>
+  <script type="application/json" id="ex-1v4-m">{"q": "Coming next: a kitchen with a <b>fixed</b> number of cooks who take orders from one queue, first come, first served. Six diners arrive at the same moment, all ordering the 1-second stew. Roughly when is the <b>last</b> one served, with 1 cook, and with 4 cooks?", "keepOrder": true, "options": [
+    {"t": "1 cook: about 1 s. 4 cooks: about 1 s.", "why": "One cook cooks one stew at a time, so six stews in a row take about six seconds."},
+    {"t": "1 cook: about 6 s. 4 cooks: about 1 s.", "why": "Four cooks start four stews at once, but stews 5 and 6 have to wait for a free cook, so they finish at about 2 seconds."},
+    {"t": "1 cook: about 6 s. 4 cooks: about 2 s.", "why": "Right. One cook: six stews back to back. Four cooks: stews 1 to 4 finish at about 1 s; then two cooks take stews 5 and 6, which finish at about 2 s. More cooks help, up to the number of orders cooking at once.", "correct": true},
+    {"t": "1 cook: about 6 s. 4 cooks: about 1.5 s.", "why": "A stew can't be split between cooks: each one takes a whole second, so the last two finish at about 2 s."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · HIRE A BRIGADE<small>a thread pool: a fixed crew of workers, a channel as the ticket rail, jobs as boxed closures; build it the way the Rust book does, letting the Compiler tell us what's missing (E0433, E0382, E0277); watch the Arc counter; then race 1, 2 and 4 workers</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 17: the brigade and the ticket rail">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption soft">Real kitchens solve this with a <b>brigade</b>: a fixed crew of cooks, and a <b>ticket rail</b> where orders wait. The head chef at the pass clips each new order onto the rail; whichever cook is free takes the next ticket. In code, that's called a <b>thread pool</b>.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 300" role="img" aria-labelledby="brig-t brig-d"><title id="brig-t">The brigade</title><desc id="brig-d">Left: the head chef, labelled main thread, execute, clips tickets onto a long rail labelled channel. Two tickets wait on the rail, labelled Job. At the right end of the rail is a single clip labelled Mutex: only one cook at a time may pull a ticket. Below the rail, four cooks labelled worker 0 to worker 3 each hold a key labelled Arc, all pointing to the same clip. Worker 0 is cooking, the others wait.</desc>
+      <rect x="150" y="40" width="430" height="16" rx="6" fill="#B9C7E3" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><path d="M250 56 h44 v52 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-9 5 z" fill="#FFF6CC"/><path d="M330 56 h44 v52 l-7 -5 l-7 5 l-7 -5 l-7 5 l-7 -5 l-9 5 z" fill="#FFF6CC"/></g>
+      <rect x="560" y="26" width="40" height="44" rx="8" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+      <circle cx="80" cy="74" r="26" fill="#F3C9A1" stroke="#111" stroke-width="4"/><path d="M58 54 q-14 -28 22 -32 q36 4 22 32 z" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M50 170 l6 -66 q24 -12 48 0 l6 66 z" fill="#FFFFFF" stroke="#111" stroke-width="4"/><path d="M104 116 l40 -60" stroke="#111" stroke-width="5"/>
+      <g stroke="#111" stroke-width="4">
+        <circle cx="210" cy="190" r="20" fill="#F3C9A1"/><path d="M188 260 l5 -48 q17 -9 34 0 l5 48 z" fill="#7FB2FF"/>
+        <circle cx="330" cy="190" r="20" fill="#C68E5F"/><path d="M308 260 l5 -48 q17 -9 34 0 l5 48 z" fill="#FFD60A"/>
+        <circle cx="450" cy="190" r="20" fill="#E8B38A"/><path d="M428 260 l5 -48 q17 -9 34 0 l5 48 z" fill="#C9F2D9"/>
+        <circle cx="570" cy="190" r="20" fill="#8D5A3B"/><path d="M548 260 l5 -48 q17 -9 34 0 l5 48 z" fill="#FFE1E1"/>
+      </g>
+      <g stroke="#111" stroke-width="2.5" fill="none" stroke-dasharray="6 6"><path d="M228 176 Q420 120 572 72"/><path d="M344 174 Q460 120 574 72"/><path d="M462 174 Q520 120 578 72"/><path d="M572 170 L582 72"/></g>
+      <text class="h" x="40" y="200">HEAD CHEF</text><text class="s" x="40" y="220">main thread</text><text class="ms" x="40" y="240">pool.execute(…)</text>
+      <text class="ms mid" x="272" y="96">Job</text><text class="ms mid" x="352" y="96">Job</text>
+      <text class="s" x="150" y="30">the ticket rail: a channel</text>
+      <text class="s mid" x="580" y="18">Mutex</text>
+      <text class="ms mid" x="210" y="282">worker 0</text><text class="ms mid" x="330" y="282">worker 1</text><text class="ms mid" x="450" y="282">worker 2</text><text class="ms mid" x="570" y="282">worker 3</text>
+      <text class="s" x="604" y="122">every cook</text><text class="s" x="604" y="140">holds an</text><text class="s" x="604" y="158">Arc key</text>
+    </svg></div>
+    <ul class="readlist">
+      <li><span><b><code>ThreadPool</code></b>: the whole brigade. <code>ThreadPool::new(4)</code> hires four cooks once, at opening time. <code>pool.execute(job)</code> clips a ticket onto the rail.</span></li>
+      <li><span><b>A worker</b>: one cook, a thread that loops forever: take a ticket, cook it, take the next. With 4 workers, at most 4 orders cook at once; the rest wait on the rail. A flood of diners makes the rail longer, not the kitchen bigger.</span></li>
+      <li><span><b>The rail</b> is a channel (Chapter 26): one <code>Sender</code> for the head chef, one <code>Receiver</code> that the cooks must <em>share</em>. The clip is a <code>Mutex</code>, so only one cook pulls a ticket at a time, and every cook holds an <code>Arc</code> key to the same rail. That's the type you're about to build: <code>Arc&lt;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;&gt;</code>.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 18: cannot find type ThreadPool">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="E0433!" data-seed="18"></svg>
+    <p class="caption">The Rust book's trick: first write the code you <em>wish</em> worked, then let the Compiler tell you what's missing, one error at a time. The wish:</p>
+    <span class="file-tab">e_no_pool.rs</span>
+    <pre class="code" data-src="e_no_pool.rs"></pre>
+    <pre class="term" data-run="e_no_pool.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0433]: cannot find type `ThreadPool` in this scope</code>, with <code>use of undeclared type `ThreadPool`</code> under it. Of course: it doesn't exist yet. That's the to-do list: a struct called <code>ThreadPool</code>, a function <code>new</code>, and a method <code>execute</code> that takes a closure, just like <code>thread::spawn</code> does.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="rustc"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Some people call this <b>compiler-driven development</b>. Fine by me. I'll keep saying what's missing until nothing is.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 19: what is a job?">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">What goes on a ticket? A piece of code to run later: a <b>closure</b>. Different orders are different closures, with different types, but one rail can carry only one type. So every ticket is the same kind of box:</p>
+    <pre class="code jobline">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;</pre>
+    <div class="duo three">
+      <div class="duo-card"><b><code>Box&lt;dyn …&gt;</code></b><p>A box on the heap holding "something that can do this", whatever its real type is: Chapter 23's universal remote. All boxes are the same size, so one rail fits them all.</p></div>
+      <div class="duo-card"><b><code>FnOnce()</code></b><p>The trait for a closure that can be called <b>once</b>, takes nothing and returns nothing (Chapter 20). A ticket is cooked once, and the closure may use up what it owns, like the <code>stream</code>.</p></div>
+      <div class="duo-card"><b><code>Send + 'static</code></b><p><code>Send</code>: allowed to travel to another thread (Chapter 26's badge). <code>'static</code>: borrows nothing short-lived, so it may wait on the rail as long as it likes (Chapter 19).</p></div>
+    </div>
+    <p>The line starts with <code>type Job =</code>, a <b>type alias</b>: a short nickname for a long type, so the rest of the code can just say <code>Job</code>.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-job-m" id="ex-job-x"></div>
+  <script type="application/json" id="ex-job-m">{"q": "Why is a ticket <code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code> and not simply <code>Box&lt;dyn Fn()&gt;</code>?", "options": [
+    {"t": "It goes to another thread (<code>Send</code>), may wait long (<code>'static</code>), runs once (<code>FnOnce</code>)", "why": "Right. Each part answers one question. Where does it go? To a worker thread, so <code>Send</code>. How long may it wait? Indefinitely, so it can't borrow locals: <code>'static</code>. How often does it run? Once, possibly using up what it owns, like a <code>TcpStream</code>: <code>FnOnce</code>.", "correct": true},
+    {"t": "<code>FnOnce</code> closures run faster than <code>Fn</code> closures, and a pool needs speed", "why": "Speed has nothing to do with it. <code>FnOnce</code> is the most permissive kind of closure: it accepts closures that move their captured values out when called."},
+    {"t": "<code>Send</code> is needed because the closure prints to the screen from a worker", "why": "Printing is fine from any thread. <code>Send</code> is about the closure itself being moved to another thread."},
+    {"t": "<code>'static</code> keeps the closure alive until the whole program ends, so it's never lost", "why": "Chapter 19: <code>'static</code> means it <em>could</em> live that long, because it borrows nothing short-lived. The job is still dropped right after it runs."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 20: use of moved value receiver">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="E0382!" data-seed="20"></svg>
+    <p class="caption">First try at hiring: make one channel, and hand the receiving end to each of the four workers.</p>
+    <span class="file-tab">e_moved_receiver.rs</span>
+    <pre class="code" data-src="e_moved_receiver.rs"></pre>
+    <pre class="term" data-run="e_moved_receiver.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0382]: use of moved value: `receiver`</code>, and the key label: <code>value moved here, in previous iteration of loop</code>. Worker 0 took the receiver on the loop's first turn; on the second turn there's nothing left to give worker 1.</span></li>
+      <li><span>Line 23's label says why it moved instead of being copied: a <code>Receiver</code> doesn't implement <code>Copy</code>. And you can't <code>clone</code> it either: an <code>mpsc</code> channel is "multiple producer, <b>single consumer</b>" (Chapter 26).</span></li>
+      <li><span>The <code>note:</code> suggests borrowing instead. That can't work here: each worker's thread may outlive this function (Chapter 26: "a cook might outlive you, so give, don't lend"). We need several <em>owners</em> of one receiver.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-srecv-m" id="ex-srecv"></div>
+  <script type="application/json" id="ex-srecv-m">{"program": "spot_receiver.rs", "bug": 26, "prompt": "The same mistake in a fresh kitchen. Click the line where the receiver is handed over again after it has already gone.", "explain": "Line 26 runs four times, and each turn moves <code>receiver</code> into a new worker. The second turn finds it gone: <samp>value moved here, in previous iteration of loop</samp>. Fix: wrap it once as <code>Arc::new(Mutex::new(receiver))</code> before the loop, and pass <code>Arc::clone(&amp;receiver)</code> on line 26."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 21: Receiver cannot be shared between threads safely">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="E0277!" data-seed="21"></svg>
+    <p class="caption">Several owners? That's what <code>Arc</code> is for. Mabel wraps the receiver in an <code>Arc</code> and gives each worker a clone.</p>
+    <span class="file-tab">e_arc_only.rs</span>
+    <pre class="code" data-src="e_arc_only.rs"></pre>
+    <pre class="term" data-run="e_arc_only.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0277]: `std::sync::mpsc::Receiver&lt;Box&lt;(dyn FnOnce() + Send + 'static)&gt;&gt;` cannot be shared between threads safely</code>. Long, but it's just our <code>Receiver&lt;Job&gt;</code> with the alias spelled out.</span></li>
+      <li><span>The two notes are the chain of reasoning: <code>the trait `Sync` is not implemented for</code> the receiver, so <code>Arc&lt;…&gt;</code> can't <code>implement `Send`</code>, and <code>spawn</code> requires <code>Send</code>. An <code>Arc</code> lets several threads <em>look at</em> one value at the same time; two cooks pulling a ticket off the same rail at the same instant would be a data race.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="focus" data-arms="point" data-prop="ledger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Chapter 26 again: <b>Arc to share, Mutex to change</b>. Taking a ticket changes the rail, so the rail needs a clip: <code>Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-psend-m" id="ex-psend"></div>
+  <script type="application/json" id="ex-psend-m">{"program": "predict_send.rs", "expect": "error", "answer": "E0277", "ask": "Line 30 here says <code>F: FnOnce() + 'static</code>: the <code>Send</code> is missing from <code>execute</code>. Does it compile? If not, which error code does the Compiler give?", "explain": "<samp>error[E0277]: `F` cannot be sent between threads safely</samp>, pointing at <code>send(job)</code> on line 33. <code>Box::new(f)</code> has to become a <code>Job</code>, which promises <code>Send</code>, but nothing promised that <code>F</code> has it. The <code>help:</code> adds <code>+ std::marker::Send</code> to line 30."}</script>
+
+  <section class="panel clean tracer" aria-label="Panel 22: watch the rail and its keys" data-tracer="tr-pool" id="tr-pool-box">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">The working recipe, small enough to watch: one rail, one clip, two cooks. Step through it and follow the <b>strong count</b> (how many <code>Arc</code> keys keep the rail alive), who holds the clip, and the closing sequence at the end. The cooks' threads are drawn as frames under <code>main</code>.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-pool-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-pool">{"program": "pool_tracer.rs", "steps": [{"line": 7, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main thread", "vars": []}], "objects": {}, "changed": []}, {"line": 8, "note": "Line 7: a channel, the ticket rail. <code>sender</code> clips tickets on; <code>receiver</code> takes them off.", "output": [], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "R"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}}, "changed": ["sender", "receiver"]}, {"line": 9, "note": "Line 8: the receiver moves into a <code>Mutex</code> (the clip), inside an <code>Arc</code>. The name <code>receiver</code> is reused (shadowing, Chapter 2) for the Arc key. One key: strong count 1.", "output": [], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}}, "changed": ["receiver"]}, {"line": 11, "note": "Line 9 prints the count.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}}, "changed": []}, {"line": 13, "note": "Line 11: an empty vector for the cooks' handles. The loop on line 12 will run twice.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle> (empty)", "items": [{"val": "(empty)"}]}}, "changed": ["workers"]}, {"line": 14, "note": "Line 13, first turn: <code>Arc::clone</code> makes a second key, <code>rx</code>, to the <b>same</b> allocation. Strong count 2.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}, {"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle> (empty)", "items": [{"val": "(empty)"}]}}, "changed": ["rx"]}, {"line": 13, "note": "Line 14: a cook's thread starts, and the <code>move</code> closure takes <code>rx</code> with it. Its handle goes into <code>workers</code>. The cook takes the clip at once (line 15) and waits inside <code>recv()</code> for a ticket.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 2", "pairs": [{"k": "strong", "val": "2"}, {"k": "lock", "val": "held by worker 1, waiting in recv()"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}}, "changed": ["rx"]}, {"line": 14, "note": "Line 13, second turn: another key. Strong count 3.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}, {"n": "rx", "ref": "A"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 1, waiting in recv()"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}}, "changed": ["rx"]}, {"line": 22, "note": "Line 14: worker 2 starts with its key. The clip is taken, so worker 2 waits at <code>lock()</code>. Both cooks are waiting, and neither uses any CPU while it waits.", "output": ["owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}, {"name": "worker 2", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 1; worker 2 waits for it"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}, {"ref": "H2"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}, "H2": {"kind": "JoinHandle", "value": "worker 2's thread"}}, "changed": []}, {"line": 24, "note": "Line 22: three keys (main's and the two cooks').", "output": ["owners: 1", "owners: 3"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}, {"name": "worker 2", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 1; worker 2 waits for it"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}, {"ref": "H2"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}, "H2": {"kind": "JoinHandle", "value": "worker 2's thread"}}, "changed": []}, {"line": 25, "note": "Line 24: a boxed closure goes onto the rail: one ticket.", "output": ["owners: 1", "owners: 3"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}, {"name": "worker 2", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 1; worker 2 waits for it"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "ticket", "ref": "J"}]}, "J": {"kind": "Job", "label": "Box<dyn FnOnce()> · the job", "value": "|| println!(\"soup is ready\")"}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}, {"ref": "H2"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}, "H2": {"kind": "JoinHandle", "value": "worker 2's thread"}}, "changed": []}, {"line": 25, "note": "Meanwhile, on worker 1's thread: <code>recv()</code> returns the ticket, and the guard is dropped at the end of line 15, so the clip passes to worker 2, which waits in <code>recv()</code> now. Worker 1 calls <code>job()</code>: <samp>soup is ready</samp>. (Here worker 1 got it; on another run it could be worker 2. The screen is the same.)", "output": ["owners: 1", "owners: 3", "soup is ready"], "frames": [{"name": "main thread", "vars": [{"n": "sender", "ref": "S"}, {"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}, {"n": "job", "ref": "J"}]}, {"name": "worker 2", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"S": {"kind": "Sender", "label": "Sender<Job>", "pairs": [{"k": "rail", "ref": "C"}]}, "A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 2, waiting in recv()"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel)", "pairs": [{"k": "senders", "val": "1"}, {"k": "tickets", "val": "none"}]}, "J": {"kind": "Job", "label": "Box<dyn FnOnce()> · the job", "value": "|| println!(\"soup is ready\")"}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}, {"ref": "H2"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}, "H2": {"kind": "JoinHandle", "value": "worker 2's thread"}}, "changed": ["job"]}, {"line": 26, "note": "Line 25: <code>drop(sender)</code>. The last sender is gone, so the rail is <b>closed</b>. (The job box was used up when it ran.)", "output": ["owners: 1", "owners: 3", "soup is ready"], "frames": [{"name": "main thread", "vars": [{"n": "receiver", "ref": "A"}, {"n": "workers", "ref": "V"}]}, {"name": "worker 1", "vars": [{"n": "rx", "ref": "A"}]}, {"name": "worker 2", "vars": [{"n": "rx", "ref": "A"}]}], "objects": {"A": {"kind": "Arc", "label": "Arc allocation · strong 3", "pairs": [{"k": "strong", "val": "3"}, {"k": "lock", "val": "held by worker 2, waiting in recv()"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel) · closed", "pairs": [{"k": "senders", "val": "0"}, {"k": "tickets", "val": "none"}]}, "V": {"kind": "Vec", "label": "Vec<JoinHandle>", "items": [{"ref": "H1"}, {"ref": "H2"}]}, "H1": {"kind": "JoinHandle", "value": "worker 1's thread"}, "H2": {"kind": "JoinHandle", "value": "worker 2's thread"}}, "changed": ["sender"]}, {"line": 29, "note": "Lines 26 to 28: <code>recv()</code> now returns <code>Err</code> on both cooks' threads, so each <code>break</code>s out of its loop, and its thread ends. Their <code>rx</code> keys are dropped: strong count back to 1. <code>main</code> joins both handles, using up the vector.", "output": ["owners: 1", "owners: 3", "soup is ready"], "frames": [{"name": "main thread", "vars": [{"n": "receiver", "ref": "A"}]}], "objects": {"A": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel) · closed", "pairs": [{"k": "senders", "val": "0"}, {"k": "tickets", "val": "none"}]}}, "changed": ["workers"]}, {"line": null, "note": "Line 29: <samp>owners: 1</samp>. At <code>main</code>'s closing brace the last key goes, the count reaches 0, and the Mutex, the receiver and the rail are freed.", "output": ["owners: 1", "owners: 3", "soup is ready", "owners: 1"], "frames": [{"name": "main thread", "vars": [{"n": "receiver", "ref": "A"}]}], "objects": {"A": {"kind": "Arc", "label": "Arc allocation · strong 1", "pairs": [{"k": "strong", "val": "1"}, {"k": "lock", "val": "free"}, {"k": "data", "ref": "R"}]}, "R": {"kind": "Receiver", "label": "Receiver<Job> (inside the Mutex)", "pairs": [{"k": "rail", "ref": "C"}]}, "C": {"kind": "channel", "label": "the ticket rail (channel) · closed", "pairs": [{"k": "senders", "val": "0"}, {"k": "tickets", "val": "none"}]}}, "changed": []}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: the whole restaurant">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">And here is the whole restaurant: the router from Part 2, the test diners from panel 14, and a <code>ThreadPool</code> of four workers. The <code>main</code> function changed in just two places: line 14 hires the brigade, and line 18 clips each visitor onto the rail.</p>
+    <span class="file-tab">pool_server.rs</span>
+    <pre class="code" data-src="pool_server.rs"></pre>
+    <pre class="term" data-run="pool_server.rs"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 58</b>: the <code>Job</code> alias. <b>Lines 60–63</b>: the pool owns its workers and the sending end of the rail. (Why the sender sits inside an <code>Option</code> is a closing-time story: Part 4.)</span></li>
+      <li><span><b>Lines 66–75</b>, <code>new</code>: refuse a pool of zero (line 67, panel 32), make the channel, wrap the receiver <b>once</b> in <code>Arc::new(Mutex::new(…))</code>, and hire each worker with its own <code>Arc::clone</code>. <code>Vec::with_capacity(size)</code> reserves room for exactly that many (Chapter 28).</span></li>
+      <li><span><b>Lines 77–83</b>, <code>execute</code>: the same bounds as <code>thread::spawn</code>, <code>FnOnce() + Send + 'static</code>. Box the closure and send it down the rail. It returns at once; the head chef never cooks.</span></li>
+      <li><span><b>Lines 102–111</b>, a worker: a thread that loops forever. <b>Line 104</b> takes the clip with <code>lock()</code>, waits for a ticket with <code>recv()</code>, and lets go of the clip at the end of that line. Then <b>line 106</b> cooks: <code>job()</code> calls the boxed closure. <code>recv()</code> returns <code>Err</code> only when the rail is closed (line 107).</span></li>
+      <li><span>Read the screen: both orders <samp>start</samp> almost together, the front page is <samp>ready</samp> before the stew, and diner 2 waited <samp>about 0 s</samp>. The last four lines come from the pool's <code>Drop</code>, run when <code>pool</code> goes out of scope at the end of <code>main</code>: that's Part 4.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="linecook" data-variant="b" data-pose="ticket"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ben the cook says: </span>Four of us, one rail, first come first served. Catchphrase: <b>a fixed brigade and a ticket rail</b>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fpool-m" id="ex-fpool"></div>
+  <script type="application/json" id="ex-fpool-m">{"program": "fill_pool.rs", "prompt": "Rebuild the heart of the pool. Line 22: the shared, lockable receiver. Line 25: each worker's own key to it. Line 34: turn the closure into a ticket.", "blanks": [{"line": 22, "text": "Arc::new(Mutex::new(receiver))"}, {"line": 25, "text": "Arc::clone(&receiver)", "accept": ["receiver.clone()"]}, {"line": 34, "text": "Box::new(f)"}], "explain": "The receiver is wrapped once: a <code>Mutex</code> so one worker at a time can take from it, inside an <code>Arc</code> so every worker can own a key. Each worker gets <code>Arc::clone(&amp;receiver)</code> (the <code>receiver.clone()</code> spelling does the same thing). <code>Box::new(f)</code> puts the closure in a box, which then becomes a <code>Job</code>. The single worker cooks: <samp>pancakes are ready</samp>, then closing time."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzhire-m" id="ex-pzhire"></div>
+  <script type="application/json" id="ex-pzhire-m">{"program": "pz_pool_new.rs", "seed": 23, "pin": [1, 2, 4, 6, 9, 12, 13, 14, 15, 16, 17, 18, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31], "prompt": "<code>hire</code> is a pool without the struct: it returns the sender and the cooks' handles. Put its six loose lines in order. (The worker's loop is pinned.)", "explain": "Make the rail, then wrap its receiver in <code>Arc&lt;Mutex&lt;…&gt;&gt;</code> (it must exist before it's wrapped). The <code>for</code> loop hires each cook: clone a key first, so the <code>move</code> closure can take it. Close the loop, and return the sender and the handles."}</script>
+
+  <section class="panel clean rushlanes" aria-label="Panel 24: rush hour with 1, 2 and 4 workers" data-rushlanes="rush-m" id="rush-box">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Rush hour. Five diners arrive 50 ms apart: stew, hello, stew, hello, hello. <code>rush.rs</code> runs the same rush against pools of 1, 2 and 4 workers, and each quick diner reports whether it <b>waited behind a stew</b> (took longer than 400 ms). Pick a pool size and step through. Which worker takes which ticket is up to the operating system, so the lanes show <b>one possible</b> assignment; the yes/no verdicts are checked against the real run.</p>
+    <details><summary>The whole program: <code>rush.rs</code></summary><span class="file-tab">rush.rs</span><pre class="code" data-src="rush.rs"></pre></details>
+    <div class="rl-sizes" role="group" aria-label="Choose how many workers"><span class="label">POOL:</span></div>
+    <ul class="rl-key" aria-label="Key">
+      <li><i class="hatch"></i> stew (800 ms)</li><li><i></i> quick order (really a millisecond or two; drawn 100 ms wide so you can see it)</li><li><i class="thick"></i> cooking now (also marked ▶)</li><li><i class="dash"></i> waiting on the rail</li>
+    </ul>
+    <div class="picscroll" data-now><svg class="rl-svg pic-wide" role="img" aria-label="Rush-hour lanes: the ticket rail on top, one lane per worker below, time from left to right. The text version below lists every diner."></svg></div>
+    <div class="rl-split">
+      <p class="narration"></p>
+      <div class="screen"><p class="label">SCREEN (this pool's block)</p><pre></pre></div>
+    </div>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every diner in this pool</summary><table class="transcript"><thead><tr><th>Diner</th><th>Order</th><th>Arrives</th><th>Worker</th><th>Starts</th><th>Ready</th><th>Waited behind a stew?</th><th>The real run printed</th></tr></thead><tbody></tbody></table></details>
+    <details><summary>The whole real run of rush.rs</summary><pre class="term" data-run="rush.rs"></pre></details>
+    <script type="application/json" id="rush-m">{"program": "rush.rs", "gap": 1, "slow": 16, "fast": 2, "threshold": 8, "orders": ["/sleep", "/", "/sleep", "/", "/"], "sizes": [1, 2, 4]}</script>
+    <ul class="readlist">
+      <li><span><b>1 worker</b>: the one-cook kitchen of panel 14 again. Every quick order waits.</span></li>
+      <li><span><b>2 workers</b>: diner 2 slips in while worker 0 stirs the first stew. But then worker 1 takes the second stew, both cooks are busy, and diners 4 and 5 wait anyway.</span></li>
+      <li><span><b>4 workers</b>: two stews cook while two workers stay free for the quick orders: nobody waits. A pool should be big enough for the slow orders you expect at once, and no bigger than the computer can handle.</span></li>
+    </ul>
+  </section>
+
+  <div data-ex="trace" data-model="ex-t2cook-m" id="ex-t2cook"></div>
+  <script type="application/json" id="ex-t2cook-m">{"program": "trace_two_cooks.rs", "columns": ["dish", "cook", "start", "finish"], "given": [0], "prompt": "The clock again, now with two cooks. Each order goes to the cook who is free first (cook 0 on a tie). Fill in who cooks it, and when.", "explain": "Stew: both free at 0, so cook 0, from 0 to 3. Toast: cook 1 is free at 0: 0 to 1. Soup: cook 1 is free at 1, before cook 0 at 3: 1 to 3. Tea: both free at 3, a tie, so cook 0: 3 to 4. The same four orders took until minute 7 with one cook."}</script>
+
+  <section class="panel clean" aria-label="Panel 25: the chatty version">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">The Rust book's own pool prints a line every time a worker takes a job, and another when it clocks out. Here is that chatty version, with three diners in a row.</p>
+    <span class="file-tab">pool_logs.rs · one possible run</span>
+    <pre class="term" data-run="pool_logs.rs"></pre>
+    <ol class="readlist">
+      <li><span>Which worker took which job, and how the clock-out lines mix with <samp>Shutting down worker N</samp>, is up to the operating system's scheduler. Run it again and the numbers can change. That's why this terminal says <b>one possible run</b>, and why no exercise in this chapter asks you to predict worker numbers. (Its code is on the lab page of the notebook.)</span></li>
+      <li><span>What can't change: three jobs, then <samp>Shutting down.</samp> from <code>main</code>, then each worker clocks out exactly once. Chapter 26: <b>each cook keeps their own order; nobody promises the mix</b>.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · KITCHEN RULES AND CLOSING TIME<small>a cook who keeps the clip while cooking (while let holds the lock); main leaving without waiting; the closing ritual: close the rail, then join every worker (Drop, Option::take, drain and E0507); a rail that never closes; assert! at the door</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 26: the cook who keeps the clip">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="HOLD IT!" data-seed="26"></svg>
+    <p class="caption">Mabel shortens the worker loop. <code>while let</code> (Chapter 21) looks so much neater. Two cooks, a 1-second stew, then toast 100 ms later. Compare the runs.</p>
+    <div class="runs2">
+      <div><span class="file-tab">lock_held.rs</span><pre class="code" data-src="lock_held.rs"></pre><pre class="term" data-run="lock_held.rs"></pre></div>
+      <div><span class="file-tab">lock_fixed.rs</span><pre class="code" data-src="lock_fixed.rs"></pre><pre class="term" data-run="lock_fixed.rs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span>Both compile without a single warning, and both use two cooks. But with <code>while let</code>, the toast waited a whole second, as if there were only one cook.</span></li>
+      <li><span>The reason is <b>when the guard is dropped</b>. <code>receiver.lock().unwrap()</code> makes a <code>MutexGuard</code> (Chapter 26), a <b>temporary</b> value nobody named. In a <code>let</code> statement (lock_fixed.rs, line 15), a temporary is dropped at the semicolon: the clip is released before <code>job()</code> runs. In <code>while let</code> (lock_held.rs, line 14), temporaries in the condition live until the <b>end of the loop body</b>: the cook holds the clip for the whole second of stirring, and the other cook can't even look at the rail.</span></li>
+      <li><span>The Rust book shows exactly this trap. The program isn't wrong in a way any compiler could catch; it's just slow, which is why it's worth remembering.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="linecook" data-variant="c" data-pose="wait"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cy the cook says: </span>Catchphrase: <b>grab the ticket, let go of the clip</b>. Then cook.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-slock-m" id="ex-slock"></div>
+  <script type="application/json" id="ex-slock-m">{"program": "spot_lock.rs", "bug": 14, "prompt": "Two cooks, but the tea always waits for the stew. Click the line that keeps the clip held while a job cooks.", "explain": "Line 14: the <code>MutexGuard</code> made in the <code>while let</code> condition lives until the end of the loop body, so <code>job()</code> on line 15 runs with the lock held, and the other cook can't receive the tea: <samp>tea served after about 1 s</samp>. Take the ticket in its own <code>let</code> statement (<code>let message = receiver.lock().unwrap().recv();</code>), then <code>match</code> on it."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 27: main leaves without waiting">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="CLICK!" data-seed="27"></svg>
+    <p class="caption">This pool has no <code>Drop</code> at all. At closing time, a cook is still counting the till: 300 ms of work.</p>
+    <details><summary>The whole program: <code>no_drop.rs</code> (a pool with no <code>Drop</code>)</summary><span class="file-tab">no_drop.rs</span><pre class="code" data-src="no_drop.rs"></pre></details>
+    <pre class="term" data-run="no_drop.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Exit code 0, and no till count. When <code>main</code> returns, the whole program ends, and every worker thread is stopped wherever it is (Chapter 26: "don't lock up until every cook has clocked out").</span></li>
+      <li><span>The Compiler left two clues in yellow: <code>field `workers` is never read</code> and <code>fields `id` and `thread` are never read</code>. The pool keeps every <code>JoinHandle</code>, but nothing ever uses them to <code>join</code>. A warning like that can point at a real bug.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 28: the closing ritual">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">A good restaurant closes in order. In code, this goes in <code>impl Drop for ThreadPool</code>, so it happens by itself when the pool goes out of scope (Chapter 23's "last one out turns off the lights").</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 230" role="img" aria-labelledby="close-t close-d"><title id="close-t">Closing time in three steps</title><desc id="close-d">Step 1: the head chef takes down the ticket rail, labelled drop the sender. Step 2: each cook finishes the ticket in hand, finds the rail closed, recv returns Err, and leaves. Step 3: the head chef waits at the door for each cook in turn, labelled join, then locks up.</desc>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="14" y="20" width="204" height="196" rx="14" fill="#FFFFFF"/><rect x="238" y="20" width="204" height="196" rx="14" fill="#FFFFFF"/><rect x="462" y="20" width="204" height="196" rx="14" fill="#FFFFFF"/>
+        <path d="M40 96 h150" stroke="#B9C7E3" stroke-width="12"/><path d="M60 70 l110 56 M170 70 l-110 56" stroke-width="5"/>
+        <circle cx="300" cy="96" r="18" fill="#C68E5F"/><path d="M282 156 l4 -40 q14 -8 28 0 l4 40 z" fill="#FFD60A"/><path d="M340 120 h60" marker-end="url(#ca)"/>
+        <rect x="560" y="64" width="60" height="92" rx="4" fill="#E8D3B0"/><circle cx="510" cy="96" r="18" fill="#F3C9A1"/><path d="M492 156 l4 -40 q14 -8 28 0 l4 40 z" fill="#FFFFFF"/>
+      </g>
+      <defs><marker id="ca" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#111"/></marker></defs>
+      <text class="h" x="28" y="50">1 · CLOSE THE RAIL</text><text class="h" x="252" y="50">2 · COOKS FINISH</text><text class="h" x="476" y="50">3 · WAIT AT THE DOOR</text>
+      <text class="ms" x="28" y="170">drop(self.sender</text><text class="ms" x="28" y="190">  .take());</text>
+      <text class="s" x="252" y="182">last ticket, then</text><text class="ms" x="252" y="202">recv() → Err: break</text>
+      <text class="ms" x="476" y="182">for each worker:</text><text class="ms" x="476" y="202">  thread.join()</text>
+    </svg></div>
+    <ul class="readlist">
+      <li><span><b>Step 1</b> comes first because a worker blocked in <code>recv()</code> only wakes up with <code>Err</code> once <b>every</b> sender is gone (Chapter 26: the receiver's loop ends when every sender is dropped). Tickets already on the rail are still handed out first.</span></li>
+      <li><span><b>Step 3</b>: <code>join()</code> waits for each thread to finish. Finished orders get plated; nobody is cut off mid-stew.</span></li>
+      <li><span>One snag: <code>drop</code> only gets <code>&amp;mut self</code>, a mutable <em>borrow</em> of the pool, but dropping the sender and joining a thread both need to <em>own</em> them. The next two panels are the Compiler explaining that, and the way out.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 29: cannot move out of worker.thread">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="E0507!" data-seed="29"></svg>
+    <p class="caption">Mabel writes step 3 the obvious way: loop over the workers and join each one.</p>
+    <span class="file-tab">e0507.rs</span>
+    <pre class="code" data-src="e0507.rs"></pre>
+    <pre class="term" data-run="e0507.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>error[E0507]: cannot move out of `worker.thread` which is behind a mutable reference</code>. Line 40 loops over <code>&amp;mut self.workers</code>, so each <code>worker</code> is only borrowed.</span></li>
+      <li><span>The labels: <code>`worker.thread` moved due to this method call</code>, and the <code>note:</code> says why: <code>join</code> <code>takes ownership of the receiver `self`</code>. Joining uses the handle up, and you can't use up something you only borrowed (Chapter 8: <b>look, don't take</b>. A <code>&amp;mut</code> lets you change, but not take.)</span></li>
+      <li><span>The fix the Rust book uses: <code>self.workers.drain(..)</code>. <code>drain</code> removes every element from the vector and hands each one over <b>by value</b>, so the loop owns each worker and may join it. The pool is ending anyway, so an empty vector is fine.</span></li>
+      <li><span>The sender has the same snag, solved another way: it's stored as <code>Option&lt;Sender&lt;Job&gt;&gt;</code>, and <code>self.sender.take()</code> swaps a <code>None</code> in and hands back the <code>Some(sender)</code>, which <code>drop()</code> then gets rid of (Chapter 11's gift box: take the gift, leave the empty box). That's why <code>execute</code> says <code>self.sender.as_ref().unwrap()</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 30: a rail that never closes">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="ZZZ…" data-seed="30"></svg>
+    <p class="caption">What if step 1 is forgotten? This <code>Drop</code> joins every worker but never drops the sender. A real run of that would hang forever, so this program brings a <b>watchdog</b>: a thread that ends everything after 2 seconds and says so.</p>
+    <details><summary>The whole program: <code>forget_sender.rs</code> (its <code>Drop</code> and the watchdog)</summary><span class="file-tab">forget_sender.rs</span><pre class="code" data-src="forget_sender.rs"></pre></details>
+    <pre class="term" data-run="forget_sender.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span>The soup got made, <code>main</code> reached closing time, and <code>Drop</code> started: <samp>Shutting down worker 0</samp>. Then nothing, until the watchdog barked and <code>std::process::exit(1)</code> ended the program with <samp>exit code 1</samp>.</span></li>
+      <li><span>Worker 0 is waiting in <code>recv()</code> for a ticket that can never come, but the rail isn't closed, because the pool still holds the sender. And <code>main</code> is waiting in <code>join()</code> for worker 0. Each waits for the other: the same shape as Chapter 26's deadlock.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-arms="shrug" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The cooks are waiting for tickets, and I'm waiting for the cooks. Catchphrase: <b>take the rail down, then wait for every cook</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: closing time, done right">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The till program again, now with the full <code>Drop</code> from panel 23.</p>
+    <span class="file-tab">with_drop.rs</span>
+    <pre class="code" data-src="with_drop.rs"></pre>
+    <pre class="term" data-run="with_drop.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>main: closing time</samp> prints, and <code>main</code> ends, which drops <code>pool</code>, which runs <code>drop</code> (line 42). Line 44 closes the rail. Line 46 prints <samp>Shutting down worker 0</samp>, and line 47 <b>waits</b> at <code>join</code>.</span></li>
+      <li><span>Worker 0 finishes counting (<samp>till counted: 42 coins</samp>), asks the rail for more, gets <code>Err</code>, and breaks out of its loop. Its thread ends, the <code>join</code> returns, and only then does the program end.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pshut-m" id="ex-pshut"></div>
+  <script type="application/json" id="ex-pshut-m">{"program": "predict_shutdown.rs", "prompt": "One worker, two orders, each taking 200 ms to plate. <code>main</code> prints its last line right after clipping both tickets. What does the program print, in order?", "hint": "<code>main</code> reaches line 13 long before 200 ms have passed. When does <code>drop</code> run, and what does it print before it starts waiting?", "explain": "<code>main</code> prints <samp>main: last order taken</samp> at once. At its closing brace, <code>pool</code> is dropped: the rail is closed, <samp>Shutting down worker 0</samp> prints, and <code>join</code> waits. Tickets already on the rail are still handed out, so the worker plates <samp>order 1 plated</samp> and then <samp>order 2 plated</samp> before <code>recv()</code> finally says <code>Err</code>."}</script>
+
+  <div data-ex="fill" data-model="ex-fdrop-m" id="ex-fdrop"></div>
+  <script type="application/json" id="ex-fdrop-m">{"program": "fill_drop.rs", "prompt": "Write the closing ritual. Line 41 closes the rail; line 42 hands every worker over by value; line 44 waits for one.", "blanks": [{"line": 41, "text": "self.sender.take()"}, {"line": 42, "text": "self.workers.drain(..)"}, {"line": 44, "text": "worker.thread.join()"}], "explain": "<code>self.sender.take()</code> moves the sender out of its <code>Option</code>, and <code>drop</code> throws it away, so the rail is closed. <code>drain(..)</code> empties the vector by value, so <code>join</code> (which takes ownership of the handle) is allowed. The waffles were ready before closing time, then each of the two workers shuts down in order."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzclose-m" id="ex-pzclose"></div>
+  <script type="application/json" id="ex-pzclose-m">{"program": "pz_closing.rs", "seed": 31, "pin": [1, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 31], "prompt": "Same <code>hire</code> as before, now pinned. Put <code>main</code> in order so the omelette is made and the program ends by itself.", "explain": "Hire first; send the order while you still have the sender; then <code>drop(sender)</code>, so each cook's <code>recv()</code> can return <code>Err</code>. Only then join the cooks: joining before the drop would wait forever, and sending after the drop wouldn't compile (the sender is gone). The last line prints once every cook has left."}</script>
+
+  <div data-ex="choice" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"q": "In <code>drop</code>, Mabel swaps the order: first the <code>for</code> loop that joins every worker, then <code>drop(self.sender.take())</code>. What happens at closing time?", "options": [
+    {"t": "It hangs: <code>join</code> waits for a worker stuck in <code>recv()</code>, and the rail never closes", "why": "Right. It's panel 30's hang, just with the sender dropped one line too late.", "correct": true},
+    {"t": "The same as before: the order of the two steps doesn't matter at closing time", "why": "It does. Workers only leave their loop once <code>recv()</code> returns <code>Err</code>, and that needs the rail closed first."},
+    {"t": "A compile error, because <code>self.sender</code> is used after the <code>for</code> loop", "why": "<code>self.sender</code> is still there after the loop: the loop drained <code>self.workers</code>, not the sender. It compiles, then hangs."},
+    {"t": "The workers are stopped at once, so the tickets still on the rail are lost", "why": "Nothing stops a thread from outside in Rust. Each worker only stops by leaving its own loop."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 32: assertion failed">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="32"></svg>
+    <p class="caption">Last rule of the house: a kitchen with no cooks makes no sense.</p>
+    <details><summary>The whole program: <code>e_pool_zero.rs</code> (a pool asked for zero workers)</summary><span class="file-tab">e_pool_zero.rs</span><pre class="code" data-src="e_pool_zero.rs"></pre></details>
+    <pre class="term" data-run="e_pool_zero.rs" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>ThreadPool::new(0)</code> on line 5, and line 18, the first line of <code>new</code>, is <code>assert!(size &gt; 0);</code>. An <code>assert!</code> panics when its condition is false: <code>assertion failed: size &gt; 0</code>, <code>panicked at src/main.rs:18:9</code>.</span></li>
+      <li><span>Without it, the pool would accept tickets that no worker would ever take. A wrong size is the <em>caller's</em> bug, and Chapter 13 says <b>panic for bugs, parcel for problems</b>. A gentler design would return a <code>Result</code> from a function called <code>build</code>, as the Rust book suggests trying.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · GRAND OPENING<small>the finished server runs forever; a real client, curl, visits it in a real terminal session; then the same restaurant with one async waiter instead of a brigade (Tokio)</small></h2>
+
+  <section class="panel clean" aria-label="Panel 33: open for real">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <svg class="sfx tr" data-sfx="OPEN!" data-seed="33"></svg>
+    <p class="caption">No test diners, no <code>take</code>. This is the finished restaurant: the same <code>handle_connection</code> and <code>ThreadPool</code> as panel 23, and a <code>main</code> that serves forever.</p>
+    <details><summary>The whole program: <code>grand_opening.rs</code> (a <code>main</code> that serves forever, plus panel 23's pool and kitchen)</summary><span class="file-tab">grand_opening.rs</span><pre class="code" data-src="grand_opening.rs"></pre></details>
+    <p class="caption soft">Now a real client visits. <b>curl</b> is a command-line program that speaks HTTP, like a browser that prints instead of drawing; it comes with Windows 10 and later, macOS and most Linux systems. Every command below ran in <b>one</b> shell, one after another, exactly as you'd type them.</p>
+    <pre class="term" data-run="grand_opening.rs"></pre>
+    <p class="caption soft"><b>How this run was really made:</b> every command above ran exactly as shown, one after another in one bash shell. Two small differences: the first step, before its <code>cd</code>, ran a helper script (<code>mk.sh</code>) that refreshed the <code>grand_opening</code> project folder from <code>grand_opening.rs</code>; and <code>cargo run -q &amp;</code> was written <code>{ cargo run -q &amp; }</code>, which is the same command grouped in braces. curl really receives each line ending as the two characters <code>\r\n</code>; the capture stored them as plain line breaks, which is how a terminal shows them.</p>
+    <ol class="readlist">
+      <li><span><code>cargo run -q &amp;</code>: the <code>&amp;</code> at the end runs the server <b>in the background</b>, so the same terminal stays free for more commands (on Linux and macOS shells). Its messages still appear in this terminal, whenever it prints them: <samp>Mabel's is open…</samp> turned up during <code>sleep 1</code>, which just gave the server a second to start.</span></li>
+      <li><span><code>curl -s -i http://127.0.0.1:7878/</code>: <code>-s</code> means silent (no progress bar), <code>-i</code> means "show the status line and headers too, not just the body". The server's <samp>start</samp> and <samp>ready</samp> lines come first, then curl prints the plate it received.</span></li>
+      <li><span>The second visit orders <code>/pizza</code>: <samp>404 NOT FOUND</samp>. Finally <code>kill %1</code> stops background job number 1, our server. In a terminal where the server runs in front, <kbd>Ctrl</kbd>+<kbd>C</kbd> does the same.</span></li>
+      <li><span>Try it in a browser too: run <code>cargo run</code>, open <code>http://127.0.0.1:7878</code> and you'll see "Welcome to Mabel's!" as a big heading. The notebook's lab page has the steps for Windows, macOS and Linux.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: the async waiter's restaurant">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Chapter 27's waiter has an idea. Cooking a stew is mostly <b>waiting</b>, so why pay four cooks to wait? Here is the same restaurant on <b>Tokio</b>, the async runtime: every visitor becomes a small <b>task</b>, and a few threads juggle all of them.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="asyncwaiter" data-pose="run"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The waiter says: </span>While the stew simmers, I'm already serving table 2. Chapter 27: <b>never freeze the waiter</b>.</p></div>
+    </div>
+    <span class="file-tab">tokio_server.rs</span>
+    <pre class="code" data-src="tokio_server.rs"></pre>
+    <pre class="term" data-run="tokio_server.rs"></pre>
+    <ol class="readlist">
+      <li><span>It needs one crate, pinned in <code>Cargo.toml</code>: <code>tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }</code>. <code>net</code> brings Tokio's own <code>TcpListener</code> and <code>TcpStream</code>; <code>io-util</code> brings the async versions of <code>read_line</code> and <code>write_all</code> (Chapter 28: turn on only the features you use).</span></li>
+      <li><span><b>Line 15</b>: <code>listener.accept().await</code> waits for the next visitor without blocking a thread. <b>Line 16</b>: <code>tokio::spawn(handle_connection(stream))</code> hands each visitor to a new task. No pool, no rail, no <code>Mutex</code>: Tokio's scheduler is the rail.</span></li>
+      <li><span><b>Line 33</b>: the stew is <code>tokio::time::sleep(…).await</code>, not <code>thread::sleep</code>. Using <code>thread::sleep</code> inside a task would freeze the thread it runs on (Chapter 27's frozen waiter).</span></li>
+      <li><span>The same first six lines as panel 23's thread pool (and no pool to shut down at the end): the front page is ready first, and diner 2 waited <samp>about 0 s</samp>. For a handful of diners, threads and tasks look the same. With ten thousand mostly-waiting connections, tasks are much cheaper: each costs a few hundred bytes instead of a thread's whole stack. Real Rust web servers are built on this, with libraries like hyper and Axum on top.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-async-m" id="ex-async"></div>
+  <script type="application/json" id="ex-async-m">{"q": "Two kitchens: one compresses large photos (pure computing, a few seconds of CPU per order); the other holds 20,000 open chat connections that are idle almost all the time. Which design fits each one best?", "options": [
+    {"t": "Photos: a pool with about one thread per core. Chat: async tasks on Tokio", "why": "Right. Computing work wants real threads, and more threads than cores only take turns. Mostly-waiting work wants tasks, which cost almost nothing while they wait.", "correct": true},
+    {"t": "Photos: async tasks on Tokio. Chat: one thread for every open connection", "why": "Backwards. 20,000 threads would eat a lot of memory just to wait, and compressing a photo inside a task blocks that runtime thread, freezing the waiter."},
+    {"t": "Both: a brand-new thread for every order, with no pool and no limit", "why": "That's panel 16's kitchen: fine for a few orders, but nothing limits the number of threads."},
+    {"t": "Both: one single thread for everything, so nothing can go wrong", "why": "That's panel 14's kitchen: one slow order holds up everybody behind it."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>a busy night: predict a full service, find a stray space, rebuild the pool's spine, plate a reply, run the queue, and share a menu</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 35: boss level">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="35"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Saturday night, full house. Six rounds, and every one of them uses something from the whole book.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Inspector says: </span>I'll be the diners. Remember: worker numbers are never promised, so look for what can't change.</p></div>
+      <svg class="char" data-char="inspector" data-mood="stern" data-label="DINER"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel raises both arms, ready. The Inspector, wearing a DINER badge, looks on sternly. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.rs", "prompt": "Boss 1. Two workers, three diners knocking at almost the same moment: <code>/sleep</code>, <code>/</code> and <code>/pizza</code>. The kitchen prints nothing; <code>main</code> prints each diner's report in diner order, then the pool closes. What's on the screen?", "hint": "Each report is the status without <code>HTTP/1.1</code>, then the wait rounded to whole seconds. With two workers, can the stew hold up a quick order?", "explain": "One worker takes the stew; the other has time for both quick orders, whatever order they knock in. So: <samp>200 OK after about 1 s</samp>, <samp>200 OK after about 0 s</samp>, <samp>404 NOT FOUND after about 0 s</samp>. The reports come out in diner order because <code>main</code> joins the diners in order. Then <code>Drop</code>: <samp>Shutting down worker 0</samp> and <samp>Shutting down worker 1</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.rs", "bug": 23, "prompt": "Boss 2. The front page always says \"Sorry, not on the menu\". It compiles without a warning. Click the line with the bug.", "explain": "Line 23's pattern is <code>\"GET / HTTP/1.1 \"</code>, with a space before the closing quote. The request line has no trailing space, so the arm never matches and <code>_</code> answers <samp>404 NOT FOUND</samp>. String patterns compare letter for letter, spaces included (the router machine in panel 12 showed the same thing)."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.rs", "prompt": "Boss 3. The pool's spine. Line 11: what a ticket is. Line 27: how the pool stores its sender. Line 57: how a worker takes one ticket and lets go of the clip.", "blanks": [{"line": 11, "text": "dyn FnOnce() + Send + 'static", "accept": ["dyn FnOnce() + 'static + Send", "dyn Send + FnOnce() + 'static"]}, {"line": 27, "text": "Some(sender)"}, {"line": 57, "text": "receiver.lock().unwrap().recv()"}], "explain": "A ticket is <code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code>: run once, can travel, borrows nothing short-lived. The sender sits in an <code>Option</code>, as <code>Some(sender)</code>, so <code>Drop</code> can <code>take()</code> it. And <code>let message = receiver.lock().unwrap().recv();</code> is a <code>let</code> statement, so the guard is gone at the semicolon, before the job cooks. Output: <samp>dessert is ready</samp>, then <samp>Shutting down worker 0</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.rs", "seed": 35, "pin": [1, 2, 3, 5, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37], "prompt": "Boss 4. This version of <code>handle_connection</code> uses <code>if</code>/<code>else</code> instead of <code>match</code> (the Rust book's version). Put its body in order so the diner gets the goal output.", "explain": "Read the first line, then decide: the front page in the <code>if</code> branch, the 404 in the <code>else</code> branch (swapping them would send the welcome page for <code>/menu</code>). <code>if</code> is an expression (Chapter 4), so the whole <code>if</code>/<code>else</code> produces the pair. Then measure the body, build the plate, and write it."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.rs", "columns": ["dish", "cook", "start", "waited"], "given": [0], "prompt": "Boss 5. Two cooks, and now orders <em>arrive</em> at different minutes. Each goes to the cook who is free first (cook 0 on a tie), and can't start before it arrives. Fill in the cook, the start minute and how long it waited.", "explain": "Stew arrives at 0: cook 0, starts at 0, waits 0 (cook 0 busy until 4). Toast arrives at 1: cook 1 is free, starts at 1, waits 0 (busy until 2). Soup arrives at 1: cook 1 is free at 2, sooner than cook 0 at 4: starts at 2, waited 1 (busy until 4). Tea arrives at 2: both free at 4, a tie, cook 0: starts at 4, waited 2."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. At opening time, Mabel loads the whole menu, a big <code>HashMap</code> of dishes and prices, which never changes after that. Every job in the pool needs to read it. What's the best way to hand it to the jobs?", "options": [
+    {"t": "Wrap it once in an <code>Arc&lt;HashMap&lt;…&gt;&gt;</code> and move an <code>Arc::clone</code> into each job's closure", "why": "Right. Many owners on many threads (Arc, Chapter 26), reading only, so no lock is needed. Each clone costs one click of the counter, not a copy of the menu.", "correct": true},
+    {"t": "Wrap it once in an <code>Arc&lt;Mutex&lt;HashMap&lt;…&gt;&gt;&gt;</code> and lock it in each job", "why": "It works, but every reader would take turns at the clip for no reason. A Mutex is for changing, and the menu never changes."},
+    {"t": "Wrap it once in an <code>Rc&lt;HashMap&lt;…&gt;&gt;</code> and move an <code>Rc::clone</code> into each job", "why": "Rc's counter isn't thread-safe, so it has no <code>Send</code> badge: <code>execute</code> would refuse the closure with E0277."},
+    {"t": "Borrow it: <code>let menu = &amp;menu;</code> and use <code>menu</code> inside each job", "why": "A <code>Job</code> must be <code>'static</code>: it may wait on the rail longer than <code>main</code>'s local <code>menu</code> lives. The Compiler refuses the borrow (Chapter 19: a bookmark can't outlive its book)."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · THE PARTY<small>what you learned in this chapter, and a walk back through all 29</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 36: the party">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <svg class="sfx tl" data-sfx="HOORAY!" data-seed="36"></svg>
+    <svg class="sfx tr" data-sfx="POP!" data-seed="7"></svg>
+    <p class="banner">YOU DID IT!</p>
+    <div class="party">
+      <svg class="char lg" data-char="compiler" data-mood="happy" data-label="rustc"></svg>
+      <svg class="char" data-char="librarian" data-mood="happy" data-mouth="shout" data-arms="cheer" data-prop="book"></svg>
+      <svg class="char" data-char="linecook" data-variant="a" data-pose="cheer"></svg>
+      <svg class="char" data-char="linecook" data-variant="b" data-pose="cheer"></svg>
+      <svg class="char" data-char="asyncwaiter" data-pose="cheer"></svg>
+      <svg class="char" data-char="inspector" data-mood="happy" data-stamp="pass" data-label="BOOK"></svg>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: the whole cast celebrates. The Compiler's beacon is green and its gate is up. Mabel cheers holding her red book. Two cooks, Ana and Ben, cheer, and so does the waiter. The Inspector holds up a PASS stamp on a badge that says BOOK. The Professor smiles. Bursts say HOORAY and POP.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Twenty-nine chapters. You started with <code>println!</code>, and you just built a program that waits for strangers on a network, cooks on four threads at once, never races two cooks to one ticket, and closes up without dropping a plate. The Compiler checked every bit of it before it ran.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Gate's up. <b>Nothing ran until everything checked out</b>, and look how far that got you. Thanks for reading my notes all the way through.</p></div>
+      <svg class="char sm" data-char="compiler" data-mood="happy" data-label="rustc"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 37: what you learned in chapter 29">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">What you learned in Chapter 29</p>
+    <ul class="recap">
+      <li><b>READ THE CARD, COOK, PLATE IT</b>A web server listens on a port (<code>TcpListener::bind</code>), takes visitors from <code>incoming()</code>, reads the request line with a <code>BufReader</code>, and writes a response: status line, headers, blank line, body. Dropping the <code>TcpStream</code> hangs up. One door per port (<code>AddrInUse</code>), <code>Write</code> in scope (E0599), <code>mut stream</code> (E0596).</li>
+      <li><b>A BLANK LINE ENDS THE ORDER</b>Every HTTP line ends with <code>\r\n</code>, and an empty line ends the headers, on the order card and on the plate. Forget it and the diner can't find the food. <code>Content-Length</code> counts bytes.</li>
+      <li><b>ONE SLOW STEW HOLDS UP THE WHOLE LINE</b>A <code>match</code> on the request line is the menu, with <code>_</code> for 404. With one thread, a slow order makes everyone behind it wait. A thread per order fixes that, but with no limit at all.</li>
+      <li><b>A FIXED BRIGADE AND A TICKET RAIL</b>A thread pool hires a fixed number of workers once. <code>execute</code> boxes a closure as a <code>Job</code> (<code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code>) and sends it down a channel; the workers share the receiver as <code>Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;</code> (E0382 without the Arc, E0277 without the Mutex).</li>
+      <li><b>GRAB THE TICKET, LET GO OF THE CLIP</b>Take the job in a <code>let</code> statement, so the guard drops at the semicolon. <code>while let … lock()</code> keeps the lock while the job runs, and the brigade works like one cook.</li>
+      <li><b>TAKE THE RAIL DOWN, THEN WAIT FOR EVERY COOK</b><code>impl Drop for ThreadPool</code>: drop the sender (<code>Option::take</code>), then join every worker (<code>drain(..)</code>, or E0507). Forget the join and work is cut off; forget the drop and closing time never ends.</li>
+    </ul>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 38: the whole journey">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">The whole journey, from the first <code>println!</code> to this restaurant. Every card is a chapter you finished; the lines under it are its catchphrases, each one a memory hook for an idea you can now use. The beginner track shows each chapter's first two; the intermediate track shows them all.</p>
+    <p class="tracklabel">BEGINNER TRACK · CHAPTERS 1–16</p>
+    <ol class="journey"><li class=""><span class="jn">CHAPTER 1 · HELLO</span><span class="jt"><a href="ch1.html">The Translator Robot</a></span><ul><li>Nothing runs until everything checks out</li><li>The recipe, not the kitchen</li></ul></li><li class=""><span class="jn">CHAPTER 2 · VARIABLES</span><span class="jt"><a href="ch2.html">Red Pens and Boxes</a></span><ul><li>Read the red from the top</li><li>First error first</li></ul></li><li class=""><span class="jn">CHAPTER 3 · NUMBERS</span><span class="jt"><a href="ch3.html">Odometers and Speech Bubbles</a></span><ul><li>Pick the odometer that fits the trip</li><li>Single quote, single letter</li></ul></li><li class=""><span class="jn">CHAPTER 4 · FUNCTIONS</span><span class="jt"><a href="ch4.html">Machines and Switches</a></span><ul><li>Build it once, use it anywhere</li><li>The last line drops out</li></ul></li><li class=""><span class="jn">CHAPTER 5 · LOOPS</span><span class="jt"><a href="ch5.html">Laps and Egg Cartons</a></span><ul><li><code>loop</code> runs till the whistle</li><li><code>while</code> reads the sign first</li></ul></li><li class=""><span class="jn">CHAPTER 6 · GAME</span><span class="jt"><a href="ch6.html">The Guessing Game</a></span><ul><li>Input arrives as a letter</li><li>Open the envelope, then read it</li></ul></li><li class=""><span class="jn">CHAPTER 7 · OWNERSHIP</span><span class="jt"><a href="ch7.html">Plate Stacks, House Keys</a></span><ul><li>Plates stack up: last in, first out</li><li>The ticket's in your pocket, the coat's in the back</li></ul></li><li class=""><span class="jn">CHAPTER 8 · BORROWING</span><span class="jt"><a href="ch8.html">The Library Ledger</a></span><ul><li>Look, don't take</li><li>Say <code>mut</code> three times</li></ul></li><li class=""><span class="jn">CHAPTER 9 · SLICES</span><span class="jt"><a href="ch9.html">Case Files and Windows</a></span><ul><li>Follow the suspect, not the scene</li><li>The casebook</li></ul></li><li class=""><span class="jn">CHAPTER 10 · STRUCTS</span><span class="jt"><a href="ch10.html">Forms and Remote Controls</a></span><ul><li>A form keeps things together</li><li>Copy the rest, move the strings</li></ul></li><li class=""><span class="jn">CHAPTER 11 · ENUMS</span><span class="jt"><a href="ch11.html">Gift Boxes and Accordions</a></span><ul><li>One of a few, and the Compiler knows them all</li><li>Every shape gets a chute</li></ul></li><li class=""><span class="jn">CHAPTER 12 · STRINGS</span><span class="jt"><a href="ch12.html">Notebooks and Photocopies</a></span><ul><li>Own the notebook, borrow the page</li><li>Write on the left, read on the right</li></ul></li><li class=""><span class="jn">CHAPTER 13 · MAPS</span><span class="jt"><a href="ch13.html">Lockers and Parcels</a></span><ul><li>A label gets you straight to the locker</li><li><code>get</code> hands you a gift box, not the gift</li></ul></li><li class=""><span class="jn">CHAPTER 14 · MODULES</span><span class="jt"><a href="ch14.html">Buildings and Inspectors</a></span><ul><li>Locked unless you say <code>pub</code></li><li><code>use</code> is a speed-dial, not a key</li></ul></li><li class=""><span class="jn">CHAPTER 15 · TOOLS</span><span class="jt"><a href="ch15.html">Map, Compass, Magnifier</a></span><ul><li>Read the arrow before you call</li><li>Compiles isn't the same as correct</li></ul></li><li class=""><span class="jn">CHAPTER 16 · CAPSTONE</span><span class="jt"><a href="ch16.html">The Search Robot</a></span><ul><li>Word zero is the robot's own name</li><li>Check the count before you reach</li></ul></li></ol>
+    <p class="tracklabel">INTERMEDIATE TRACK · CHAPTERS 17–29</p>
+    <ol class="journey"><li class="inter"><span class="jn">CHAPTER 17 · GENERICS</span><span class="jt"><a href="ch17.html">Cookie Cutters and Badges</a></span><ul><li>One recipe, many doughs</li><li>The factory stamps a copy per dough</li><li>A blank <code>T</code> can't do anything until you say what it can do</li><li>A trait is a badge, and <code>impl</code> is passing the test</li><li>No badge, no entry</li><li>The badge or the wearer must be yours</li></ul></li><li class="inter"><span class="jn">CHAPTER 18 · STD TRAITS</span><span class="jt"><a href="ch18.html">The Universal Adapter Kit</a></span><ul><li>Grow the plug, fit the socket</li><li><code>Debug</code> you derive, <code>Display</code> you decide</li><li>Flyers are photocopied, keys are cut</li><li>Derived order reads top to bottom · keys need <code>Hash</code> and <code>Eq</code></li><li>Write <code>From</code>, get <code>Into</code></li><li>Every operator is a method in disguise</li></ul></li><li class="inter"><span class="jn">CHAPTER 19 · LIFETIMES</span><span class="jt"><a href="ch19.html">Due-Date Stamps</a></span><ul><li>A due date is a place in the code</li><li>A stamp describes; it never extends</li><li>Say whose due date the book shares</li><li>Three rules write most stamps for you</li><li>A bookmark can't outlive its book</li><li><code>'static</code> means "could live forever", not "make it live forever"</li></ul></li><li class="inter"><span class="jn">CHAPTER 20 · ITERATORS</span><span class="jt"><a href="ch20.html">Backpacks and Conveyor Belts</a></span><ul><li>Bars in, answer out</li><li>Notes point home; move packs the real thing</li><li>Look, change, or hand over</li><li>Nothing moves until the packer pulls</li><li><code>iter</code> looks, <code>iter_mut</code> writes, <code>into_iter</code> takes</li><li>Name the box · belts are free</li></ul></li><li class="inter"><span class="jn">CHAPTER 21 · PATTERNS</span><span class="jt"><a href="ch21.html">Shape Sorters and Customs</a></span><ul><li>Each hole is a pattern; names are little hands</li><li>If it might not fit, say what happens when it doesn't</li><li>Underscore alone grabs nothing</li><li>Specific holes first, catch-all last</li><li>Teach <code>From</code> once, and <code>?</code> does the paperwork</li><li>Stamp the context, keep the cause</li></ul></li><li class="inter"><span class="jn">CHAPTER 22 · DATA</span><span class="jt"><a href="ch22.html">Drawers and Typesetters</a></span><ul><li>Pick the drawer for the job</li><li>The heap always serves the biggest first</li><li>Sort before you search</li><li>The recipe runs only if the drawer is empty</li><li>Bytes for storage, chars for code points, graphemes for people</li><li><code>write!</code> writes, pad listens</li></ul></li><li class="inter"><span class="jn">CHAPTER 23 · POINTERS</span><span class="jt"><a href="ch23.html">Keys, Counters and Remotes</a></span><ul><li>One key on the desk, the value in the unit</li><li>Keys turn themselves</li><li>Join adds one, leave takes one, last one out turns off the lights</li><li>The whiteboard still has rules; it just checks them later</li><li>Strong keys in a loop never let go</li><li>A hard-wired remote is fastest; a universal remote works with everything</li></ul></li><li class="inter"><span class="jn">CHAPTER 24 · CARGO</span><span class="jt"><a href="ch24.html">Cities and Pyramids</a></span><ul><li>The logic lives in the library; <code>main</code> just opens the door</li><li>One city, one receipt</li><li>Features add rooms; they never take one away</li><li>Break it, bump the major</li><li>Many small tests at the bottom, a few big ones at the top</li><li>Run the right checks, the same way every time</li></ul></li><li class="inter"><span class="jn">CHAPTER 25 · FILES</span><span class="jt"><a href="ch25.html">Pipes and Exchange Booths</a></span><ul><li>Data down the main pipe, trouble down the spout</li><li>Every shelf hands back a parcel</li><li>Flush before you leave</li><li>Arguments are text until you parse them</li><li><code>From</code> when it always fits, <code>TryFrom</code> when it might not, <code>as</code> only when you've checked</li><li>A newtype is a label the Compiler reads</li></ul></li><li class="inter"><span class="jn">CHAPTER 26 · THREADS</span><span class="jt"><a href="ch26.html">The Busy Kitchen</a></span><ul><li>Each cook keeps their own order; nobody promises the mix</li><li>Don't lock up until every cook has clocked out</li><li>A cook might outlive you, so give, don't lend</li><li>Clip it on, let it go</li><li><code>Arc</code> to share, <code>Mutex</code> to change</li><li>Always ask for the tools in the same order</li></ul></li><li class="inter"><span class="jn">CHAPTER 27 · ASYNC</span><span class="jt"><a href="ch27.html">One Waiter, Many Stamps</a></span><ul><li>Waiting isn't working</li><li>A future is an order slip: nothing cooks until someone hands it in</li><li>No waiter, no service</li><li>Take all the orders, then wait</li><li>Never freeze the waiter</li><li>A macro is a stamp: it prints code before the Compiler reads it</li></ul></li><li class="inter"><span class="jn">CHAPTER 28 · CRAFT</span><span class="jt"><a href="ch28.html">Handles, Race Cars, Hardware</a></span><ul><li>Borrow what you read, return what you make</li><li>Easy to grip the right way, impossible to grip the wrong way</li><li>When the Trail Guide points, look</li><li>Race the car you'll drive</li><li>Pack once, pack light</li><li>Pick tools by reputation and fit, not by the shiniest box</li></ul></li><li class="inter here"><span class="jn">CHAPTER 29 · SERVER</span><span class="jt">Open the Restaurant (you are here)</span><ul><li>Read the card, cook, plate it</li><li>A blank line ends the order</li><li>One slow stew holds up the whole line</li><li>A fixed brigade and a ticket rail</li><li>Grab the ticket, let go of the clip</li><li>Take the rail down, then wait for every cook</li></ul></li></ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: where next">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">The end of this book isn't the end of Rust. Here's what lies past the intermediate track, for when you're ready. None of it is needed to write real, useful programs: you already can.</p>
+    <ol class="checklist">
+      <li><b>Build things.</b> A command-line tool for something you do by hand every week (Chapter 16 and 25), a small game, or this server with a real HTML file and a <code>/menu</code> page. Projects teach what chapters can't.</li>
+      <li><b>Real web servers</b> use hyper and Axum on Tokio, with TLS (the "s" in https), timeouts and limits on how much a diner may send. Their documentation will feel familiar now: routers, handlers, shared state in an <code>Arc</code>.</li>
+      <li><b>Async in depth</b>: how futures, wakers and <code>Pin</code> work inside, in the free Async Book.</li>
+      <li><b><code>unsafe</code> Rust</b>: the small, clearly marked corners where you promise the Compiler something it can't check, and how the standard library uses them to build safe tools like <code>Vec</code> and <code>Mutex</code>.</li>
+      <li><b>Procedural macros</b>: write your own <code>#[derive(…)]</code>, like the <code>Serialize</code> you used in Chapter 28.</li>
+      <li><b>Other places Rust runs</b>: tiny chips with no operating system (embedded Rust), the browser (WebAssembly), and inside other languages' programs (FFI).</li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="librarian" data-mood="happy" data-arms="wave" data-prop="book"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>That's the last page of my ledger. Every book went out to exactly one owner, every loan came back before its owner left, and every cook clocked out before I locked up. Thank you for reading with me. Now go and write something nobody has written before. And when the Compiler stops you, read its note from the top: it's on your side.</p></div>
+    </div>
+    <p class="sr-only">Picture: Mabel waves goodbye, holding her red book.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch28.html">← Ch 28 · Handles, Race Cars, Hardware</a><a class="next" href="index.html">Book contents →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: sockets, the door's queue, and why the guard lingers</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span><code>TcpListener</code> and <code>TcpStream</code> are thin wrappers around the operating system's <b>sockets</b>. Rust adds ownership: a socket closes exactly when its owner drops it.</p></div>
+      </div>
+      <h3>What bind, incoming and connect really do</h3>
+      <p><code>TcpListener::bind</code> asks the operating system for a listening socket on an address and port. From then on, the system itself accepts connections and parks them in a short queue, the <b>backlog</b>, even while your program is busy. That's why diner 2 in panel 14 wasn't refused: it waited in the backlog. Each turn of <code>incoming()</code> calls <code>accept</code>, which takes the next connection from that queue (or waits for one) and wraps it in a <code>TcpStream</code>. On Unix-like systems, Rust's standard library also sets the <code>SO_REUSEADDR</code> option, so a restarted server can bind the same port right away instead of waiting a minute or two for old connections to clear; a second listener while the first is still open still gets <code>AddrInUse</code>.</p>
+      <h3>TCP in one paragraph</h3>
+      <p>TCP turns the internet's unreliable little packets into a reliable, ordered stream of bytes: it numbers the pieces, re-sends lost ones and puts them back in order. It knows nothing about lines or messages, which is why HTTP needs its blank line and <code>Content-Length</code> to say where things end. <code>127.0.0.1</code> never leaves your computer: the system loops the bytes straight back.</p>
+      <h3>HTTP/1.1, keep-alive and what we skipped</h3>
+      <p>HTTP/1.1 lets a browser send several requests over one connection ("keep-alive"). Our server answers one request and hangs up, which is allowed: the client simply opens a new connection next time. Real servers also handle request bodies (a <code>POST</code> carries data after the blank line, sized by its own <code>Content-Length</code>), headers that arrive in pieces, very long or malicious requests, timeouts, and HTTP/2 and HTTP/3. That's a lot of careful code, which is why real programs use a library like hyper.</p>
+      <h3>Why <code>while let</code> keeps the lock</h3>
+      <p>Rust drops a temporary value at the end of the <b>enclosing statement</b>. In <code>let message = receiver.lock().unwrap().recv();</code>, the statement ends at the semicolon, so the <code>MutexGuard</code> is dropped before the next line. In <code>while let Ok(job) = receiver.lock().unwrap().recv() { … }</code>, the condition belongs to the whole <code>while let</code> expression, so its temporaries live until the end of each pass through the loop body. The 2024 edition shortened this for <code>if let</code> (its temporaries are now dropped before the <code>else</code>) but not for <code>while let</code>, and this chapter's captures, made with edition 2024, show the lock really is still held.</p>
+      <h3>Why the Receiver isn't Sync</h3>
+      <p><code>Sender</code> is <code>Send</code> (and since Rust 1.72 also <code>Sync</code>), so many threads can send. <code>Receiver</code> is <code>Send</code> but not <code>Sync</code>: only one thread at a time may receive, which is the "single consumer" in <code>mpsc</code>. The <code>Mutex</code> makes the "one at a time" explicit. Crates like crossbeam-channel offer channels with many receivers if you'd rather skip the lock.</p>
+      <h3>Threads vs tasks</h3>
+      <p>A spawned thread reserves its own stack (2 MiB by default for Rust threads on most platforms) and is scheduled by the operating system. A Tokio task is a state machine (Chapter 27) that is only as big as the variables it keeps across <code>.await</code>s, scheduled by Tokio onto a few worker threads. That's why tasks scale to many thousands of mostly-idle connections.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where this chapter's ideas live</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>hyper</b> is the HTTP library underneath much of the Rust web world; <b>Axum</b> (from the Tokio project) and <b>actix-web</b> add routing, so your "menu" becomes functions attached to paths, and shared state is often an <code>Arc&lt;AppState&gt;</code>, just like Boss 6.</li>
+        <li><b>Thread pools</b> are everywhere: <b>rayon</b> keeps one sized to your cores for data-parallel work, and Tokio keeps a separate blocking pool (<code>spawn_blocking</code>) for slow work that would otherwise freeze the waiter.</li>
+        <li><b>Graceful shutdown</b> in production waits for a signal, such as <kbd>Ctrl</kbd>+<kbd>C</kbd> (<code>tokio::signal::ctrl_c</code>) or a stop request from the system, then stops accepting, lets in-flight requests finish, and exits: the same closing ritual as panel 28.</li>
+        <li><b>Backpressure</b>: a bounded rail (<code>sync_channel(n)</code>, Chapter 26) makes the head chef wait when too many tickets pile up, instead of letting memory grow without limit. Real servers also cap how many connections they hold at once.</li>
+        <li><b>Bad input</b>: production servers never <code>unwrap()</code> on what a client sends. A malformed request gets a <code>400 Bad Request</code>, and the server keeps running.</li>
+        <li><b>Testing a server</b> the way this chapter's test diners do (start it, connect, check the reply) is called an <b>integration test</b> (Chapter 24). Crates like reqwest act as the diner.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>incoming()</code> ends when nobody is left."</b> It never ends on its own; only <code>take</code>, a <code>break</code> or stopping the program ends the loop (Exercise "take").</li>
+        <li><b>"Reading the request means reading until the end."</b> The client keeps the connection open waiting for the plate. Read up to the blank line (and then any body the headers announce).</li>
+        <li><b>"<code>Content-Length</code> counts characters."</b> It counts bytes. "café" is 5 bytes in UTF-8 (Chapter 12).</li>
+        <li><b>"More workers is always faster."</b> Only while there's waiting to overlap or cores to use. A pool far larger than the work just costs memory.</li>
+        <li><b>"The pool runs jobs in the order they were sent, so their output comes out in that order."</b> Jobs <em>start</em> in rail order, but they finish whenever they finish, on whichever worker (panel 25).</li>
+        <li><b>"The Mutex makes the workers take turns cooking."</b> Only taking a ticket is one at a time. Cooking happens outside the lock, unless you hold the guard too long (panel 26).</li>
+        <li><b>"Dropping the pool stops the workers."</b> Nothing stops a thread from outside. Dropping the sender asks them to stop; <code>join</code> waits until they have.</li>
+        <li><b>"Async is always better than threads."</b> Async shines for waiting; for heavy computing, a thread pool is simpler and just as fast.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>0. Have Rust</h3>
+      <p>If you haven't installed it yet: on <b>Windows</b>, download and run <code>rustup-init.exe</code> from rustup.rs (it may ask you to install the Visual Studio C++ build tools first). On <b>macOS</b> and <b>Linux</b>, run <code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code>. <code>rustc --version</code> shows your version; this book used 1.99.1, and <code>rustup update</code> gets the newest. The thread-pool server needs no crates at all.</p>
+      <h3>1. Open your restaurant</h3>
+      <p>In a terminal (Windows: PowerShell or Windows Terminal; macOS: Terminal; Linux: any terminal), run <code>cargo new hello</code> and <code>cd hello</code>. Paste the whole of <code>grand_opening.rs</code> (panel 33's file) into <code>src/main.rs</code> and run <code>cargo run</code>. Open <code>http://127.0.0.1:7878</code> in a browser: there's your heading. Try <code>http://127.0.0.1:7878/sleep</code> in one tab and the front page in another. Stop the server with <kbd>Ctrl</kbd>+<kbd>C</kbd>. (Some browsers hold back a second identical request until the first finishes, so test two <em>different</em> pages to see the pool at work.)</p>
+      <h3>2. Visit with curl</h3>
+      <p>Leave the server running and open a <b>second</b> terminal window. Run <code>curl -i http://127.0.0.1:7878/</code>. On Windows, in the older Windows PowerShell 5.1, type <code>curl.exe</code> instead of <code>curl</code>, because there <code>curl</code> is a nickname for a different command (<code>Invoke-WebRequest</code>); in PowerShell 7 and in Command Prompt, plain <code>curl</code> works. On macOS and Linux you can also do what panel 33 did: start the server with <code>cargo run -q &amp;</code> and stop it with <code>kill %1</code>.</p>
+      <h3>3. Break it on purpose</h3>
+      <ul>
+        <li>Start the server twice (two terminals): the second panics with <code>AddrInUse</code>, panel 4.</li>
+        <li>Change the worker loop to the <code>while let</code> version, open <code>/sleep</code> and the front page together, and watch the front page wait.</li>
+        <li>Delete <code>drop(self.sender.take());</code>, change <code>main</code> to <code>incoming().take(2)</code>, make two visits, and watch closing time never end. <kbd>Ctrl</kbd>+<kbd>C</kbd> rescues you.</li>
+        <li><code>rustc --explain E0382</code>, <code>E0277</code>, <code>E0507</code> and <code>E0599</code> print longer explanations with examples.</li>
+      </ul>
+      <h3>4. Grow it</h3>
+      <ul>
+        <li>Move the HTML into files, <code>hello.html</code> and <code>404.html</code>, next to <code>Cargo.toml</code>, and read them with <code>fs::read_to_string</code>, as the Rust book does. (Run <code>cargo run</code> from the project folder, or the relative paths won't be found.)</li>
+        <li>Add a <code>/menu</code> page, and a visit counter shared by all workers with an <code>Arc&lt;AtomicU64&gt;</code> (Chapter 26).</li>
+        <li>Write <code>ThreadPool::build(size) -&gt; Result&lt;ThreadPool, PoolError&gt;</code> instead of panicking on zero.</li>
+        <li>Replace every <code>unwrap()</code> in <code>handle_connection</code> with <code>?</code> and a function that returns <code>io::Result&lt;()&gt;</code> (Chapter 13), so a shy diner can't crash the kitchen.</li>
+      </ul>
+      <h3>5. The chatty pool from panel 25</h3>
+      <span class="file-tab">pool_logs.rs</span>
+      <pre class="code" data-src="pool_logs.rs"></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>web server / client</dt><dd>A program that waits for requests and answers them / the program that asks (a browser, curl, our test diner).</dd>
+        <dt>IP address, <code>127.0.0.1</code>, localhost</dt><dd>The number that names a computer on a network; <code>127.0.0.1</code> (nickname localhost) always means "this computer".</dd>
+        <dt>port</dt><dd>A numbered door on one computer (1 to 65535), so many servers can share it. Below 1024 usually needs administrator rights.</dd>
+        <dt>TCP / connection</dt><dd>The protocol that delivers a reliable, ordered stream of bytes between two programs / one such open line.</dd>
+        <dt><code>TcpListener</code> / <code>TcpStream</code></dt><dd>A listening socket bound to a port / one open connection you can read from and write to.</dd>
+        <dt>socket</dt><dd>The operating system's handle for one end of network communication.</dd>
+        <dt>backlog</dt><dd>The operating system's short queue of accepted connections waiting for the program to call for them.</dd>
+        <dt>HTTP</dt><dd>The text language of web requests and responses.</dd>
+        <dt>request / request line / method / path</dt><dd>What the client sends / its first line, like <code>GET / HTTP/1.1</code> / the verb (<code>GET</code>, <code>POST</code>) / which page (<code>/</code>, <code>/sleep</code>).</dd>
+        <dt>header</dt><dd>A <code>Name: value</code> line after the first line, adding details.</dd>
+        <dt>CRLF</dt><dd><code>\r\n</code>, the two characters that end every HTTP line; an empty line ends the headers.</dd>
+        <dt>response / status line / status code</dt><dd>What the server sends back / its first line / the three-digit verdict: 200 OK, 404 NOT FOUND, 400 Bad Request.</dd>
+        <dt>body / HTML</dt><dd>The content after the blank line / the language web pages are written in.</dd>
+        <dt><code>Content-Length</code></dt><dd>The header that says how many bytes of body follow.</dd>
+        <dt>router</dt><dd>The code that picks an answer from the request (here, a <code>match</code>).</dd>
+        <dt>thread pool / worker</dt><dd>A fixed set of threads that take jobs from a shared queue / one of those threads.</dd>
+        <dt>job</dt><dd>One unit of work on the queue; here <code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code>.</dd>
+        <dt>type alias</dt><dd><code>type Job = …;</code>: a short name for a longer type.</dd>
+        <dt>compiler-driven development</dt><dd>Writing the code you wish worked, then fixing what the Compiler says is missing, one error at a time.</dd>
+        <dt>temporary</dt><dd>A value made in the middle of an expression without a name, like the guard from <code>lock()</code>; dropped at the end of its statement.</dd>
+        <dt>graceful shutdown</dt><dd>Stopping so that work in progress finishes: stop taking orders, let the workers finish, wait for them.</dd>
+        <dt><code>Option::take</code> / <code>Vec::drain</code></dt><dd>Move the value out and leave <code>None</code> / remove elements and hand each one over by value.</dd>
+        <dt><code>assert!</code></dt><dd>A macro that panics if its condition is false.</dd>
+        <dt>curl</dt><dd>A command-line HTTP client.</dd>
+        <dt>task (Tokio)</dt><dd>A lightweight unit of async work; many tasks share a few threads.</dd>
+        <dt>E0433 / E0599 / E0596</dt><dd>Cannot find a type (or path) / no such method in scope (often a trait not imported) / cannot borrow as mutable.</dd>
+        <dt>E0382 / E0277 / E0507</dt><dd>Use of a moved value ("in previous iteration of loop") / a missing trait, here <code>Send</code> or <code>Sync</code> / cannot move out of something behind a reference.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Rust documentation</h3>
+      <ul>
+        <li>The Rust Programming Language, chapter 21, Final Project: <a href="https://doc.rust-lang.org/book/ch21-01-single-threaded.html">Building a Single-Threaded Web Server</a>, <a href="https://doc.rust-lang.org/book/ch21-02-multithreaded.html">From Single-Threaded to Multithreaded Server</a> and <a href="https://doc.rust-lang.org/book/ch21-03-graceful-shutdown-and-cleanup.html">Graceful Shutdown and Cleanup</a>. This chapter follows its order, with test diners so every run could be captured.</li>
+        <li>Standard library docs: <a href="https://doc.rust-lang.org/std/net/struct.TcpListener.html"><code>TcpListener</code></a>, <a href="https://doc.rust-lang.org/std/net/struct.TcpStream.html"><code>TcpStream</code></a>, <a href="https://doc.rust-lang.org/std/io/struct.BufReader.html"><code>BufReader</code></a>, <a href="https://doc.rust-lang.org/std/sync/mpsc/index.html"><code>std::sync::mpsc</code></a>, <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html"><code>Mutex</code></a>, <a href="https://doc.rust-lang.org/std/ops/trait.Drop.html"><code>Drop</code></a>, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#method.drain"><code>Vec::drain</code></a>.</li>
+        <li>The Rust Reference on <a href="https://doc.rust-lang.org/reference/destructors.html#temporary-scopes">temporary scopes</a>: the exact rule behind panel 26.</li>
+        <li>The error index: <a href="https://doc.rust-lang.org/error_codes/E0507.html">E0507</a>, <a href="https://doc.rust-lang.org/error_codes/E0599.html">E0599</a>, <a href="https://doc.rust-lang.org/error_codes/E0433.html">E0433</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview">MDN: An overview of HTTP</a>: requests, responses, status codes and headers, clearly explained.</li>
+        <li><a href="https://tokio.rs/tokio/tutorial">The Tokio tutorial</a>: builds a small server step by step with tasks, shared state and channels.</li>
+        <li><a href="https://rust-exercises.com/100-exercises/">100 Exercises to Learn Rust</a>: chapters 7 and 8 build a ticket system as a client and server, with threads, then async.</li>
+        <li><a href="https://rust-lang.github.io/async-book/">The Async Book</a> and <a href="https://marabos.nl/atomics/">Rust Atomics and Locks</a> by Mara Bos, for what's underneath tasks and Mutexes.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Rust 1.99.1 with edition 2024 (shown) and Rust 1.97.0 (comparison), on 2026-11-08, in <code>/home/you/rust-ch29</code>. Each of the 49 programs was built as its own cargo project and run with <code>cargo run -q</code> on 64-bit Linux, inside a fresh process namespace, which is why the main thread's id is <code>(1)</code>. Compile errors are shown exactly as cargo printed them, with their real exit code, 101; panics in <code>main</code> also exit with 101.</p>
+  <p>The servers really listen on <code>127.0.0.1:7878</code>, and the test diners are real TCP clients running on their own threads in the same program; a server serves a fixed number of visitors (<code>take</code>) so that it ends. Wait times are measured with <code>Instant</code> but printed only rounded to whole seconds, or as a yes/no against a 400 ms threshold, with margins of hundreds of milliseconds, so each run prints the same thing; every program was run twice to check. <code>pool_logs.rs</code> prints worker numbers chosen by the scheduler: it is marked nondeterministic, labelled "one possible run", and never used as an answer key. <code>forget_sender.rs</code> would hang forever; its watchdog thread ends it after 2 seconds with exit code 1. Panel 33 is one real shell session (<code>grand_opening.cmd</code>: the steps run in one bash process, so <code>cd</code>, the background job and <code>kill %1</code> carry over). Its first step also refreshes the project folder from <code>grand_opening.rs</code> with a small helper script before the <code>cd</code>; curl's <code>\r\n</code> line endings are shown as plain line breaks, as a terminal displays them.</p>
+  <p>Version differences: <code>e_write_scope.rs</code> and <code>e_arc_only.rs</code> differ only in the line that points into the standard library's source (1.99.1 locates <code>Write</code> in <code>library/core/src/io/write.rs</code>, 1.97.0 in <code>library/std/src/io/mod.rs</code>), and <code>e0507.rs</code> also names <code>std::thread::JoinHandle::&lt;T&gt;::join</code> on 1.99.1 where 1.97.0 says <code>JoinHandle::&lt;T&gt;::join</code>. <code>pool_logs.rs</code> is listed too, only because its scheduler-dependent worker lines came out in a different mix; it is never treated as a second run on this page. Every other program printed the same on both versions. The Tokio program uses tokio 1.54.1, pinned exactly.</p>
+  <p>The rush-hour lanes are an extension (<code>assets/ext/rs-ch29.js</code>): it plays the queue (first come, first served; a free worker takes the next ticket) and checks every quick diner's "waited behind a stew?" verdict, and every diner's order, against the matching block of the real <code>rush.rs</code> run; which worker takes which ticket is drawn as one possible assignment. The pool tracer, the router machine and the map of one visit are teaching models that check themselves against the runs and show a badge; the tracer follows worker 1 taking the ticket, one possible order that gives the same screen. The restaurant, order card, plate, brigade and closing-time drawings are pictures, not output. The whole-journey cards were built from the recap panels of chapters 1 to 28 of this book (checked against them on 2026-11-08), written in sentence case.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Rust Programming Language, chapter 21, sections 21.1 to 21.3 (read for this chapter: the port and <code>take</code> choices, the request and response formats, the <code>/sleep</code> route, the compiler-driven pool with E0433, E0382 and <code>Arc&lt;Mutex&lt;Receiver&gt;&gt;</code>, the <code>while let</code> lock warning, the unbounded-threads warning, <code>Drop</code> with E0507, <code>drain</code> and <code>Option::take</code>); and the course research map's row I23, which also lists 100 Exercises to Learn Rust chapters 7 and 8 and Comprehensive Rust's concurrency exercises (cited from the map, not fetched).</p>
+  <p>Mabel, the Professor, the Compiler, the Inspector, the line cooks, the waiter and every picture here are original characters and drawings made in code. Rust's own mascot is deliberately not used. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
