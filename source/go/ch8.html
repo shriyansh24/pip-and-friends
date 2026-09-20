@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Receipts and Footprints</title>
+<meta name="description" content="Chapter 8 of the Go book of Pip &amp; Friends, a comic course: errors as values (every result comes with a receipt), the if err != nil habit, returning early, writing your own errors with errors.New and fmt.Errorf, choosing between returning, skipping and stopping; then debugging like a detective: compile errors, panics and wrong output, reading a panic report line by line, print debugging with %#v, go vet, a tiny reproduction, the rubber duck and Delve.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch8.css">
+<script defer src="../data/go-ch8.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch8.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch7.html">&larr; Ch 7</a><span aria-current="page">Ch 8 of 28</span><a href="ch9.html">Ch 9 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 8</p>
+    <h1 id="cover-h">RECEIPTS AND FOOTPRINTS</h1>
+    <div class="scene">
+      <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="smile" data-arms="wave"></svg>
+      <svg class="char lg" data-char="detective" data-mood="happy" data-prop="glass"></svg>
+    </div>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves. Next to Scoot stands Inspector Pell, a detective in a brown hat and a tan trench coat, holding up a magnifying glass.</p>
+    <p class="caption blurb">Things go wrong. Text isn't a number, a file isn't there, a box is empty. In Go, a function that can fail hands you a <b>receipt</b> with every result: an <code>error</code> value. Learn the Go habit of reading it <em>first</em>, and write receipts of your own. Then, when a program crashes or lies, follow its <b>footprints</b> like a detective, and learn the five-step loop that fixes any bug. About 90 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Every delivery has a receipt: errors as values</a></li>
+      <li><a href="#part-2">Unread receipts: the classic mistakes</a></li>
+      <li><a href="#part-3">Write your own receipts: errors.New, fmt.Errorf, and what to do with them</a></li>
+      <li><a href="#part-4">Three kinds of bug</a></li>
+      <li><a href="#part-5">Footprints: reading a panic like a detective</a></li>
+      <li><a href="#part-6">The detective's method: debugging step by step</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · EVERY DELIVERY HAS A RECEIPT<small>Errors are values you can hold, print and check</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: zero parcels?">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Monday at the depot. The note on Scoot's desk says how many parcels to deliver. Scoot's program reads it.</p>
+    <span class="file-tab">opener.go</span>
+    <pre class="code" data-src="opener.go"></pre>
+    <pre class="term" data-run="opener.go"></pre>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble shout"><span class="sr-only">Scoot says: </span>Zero?! The note said <em>twelve</em>. Twelve parcels are sitting in the van!</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>No crash, no warning. The program just quietly said something wrong.</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Scoot says: </span>Look at line 10. <code>strconv.Atoi</code> handed back <b>two</b> things, and I threw the second one away with <code>_</code>. That second thing was trying to tell me something.</p></div>
+      <svg class="char sm" data-char="sneak"></svg>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs in surprise. The sneak critter, which stands for a quiet bug, puts a finger to its lips.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: a box and a receipt">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">In chapter 7, Penny the clerk handed back a number box and a receipt. From now on, think of every delivery that way: <b>a box, and a receipt clipped to it</b>.</p>
+    <div class="duo deliveries">
+      <svg viewBox="20 24 290 276" role="img" aria-label="Picture: a good delivery. A parcel box holding the number 12, with a white receipt clipped on that says err: nil, all good, with a tick. Underneath: receipt first, then use the box.">
+
+      <path d="M40 120 L150 120 L150 230 L40 230 Z" fill="#F2C9A0" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M40 120 L70 92 L180 92 L150 120 Z" fill="#E3B98F" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M150 120 L180 92 L180 200 L150 230 Z" fill="#D9A877" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text x="95" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="40" fill="#111">12</text>
+      <path d="M176 40 h112 v128 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 z" fill="#FFFFFF" stroke="#111" stroke-width="3.5" stroke-linejoin="round"/>
+      <text x="232" y="66" text-anchor="middle" font-family="Bangers, sans-serif" font-size="20" fill="#111" letter-spacing="2">RECEIPT</text>
+      <text x="190" y="96" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">err: nil</text>
+      <text x="190" y="122" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">all good</text>
+      <path d="M248 132 l10 12 l20 -26" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M172 110 q-14 -6 -10 14" fill="none" stroke="#111" stroke-width="3"/>
+      <text x="150" y="268" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">receipt first, then use the box</text>
+      </svg>
+      <svg viewBox="340 24 300 276" role="img" aria-label="Picture: a bad delivery. A parcel box drawn with a dashed outline holding 0, with a pink receipt clipped on that says err: parsing twelve: invalid syntax, with a warning mark. Underneath: receipt says stop: the 0 means nothing.">
+      <path d="M360 120 L470 120 L470 230 L360 230 Z" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-dasharray="10 7" stroke-linejoin="round"/>
+      <path d="M360 120 L390 92 L500 92 L470 120 Z" fill="#F4F1EA" stroke="#111" stroke-width="4" stroke-dasharray="10 7" stroke-linejoin="round"/>
+      <path d="M470 120 L500 92 L500 200 L470 230 Z" fill="#F4F1EA" stroke="#111" stroke-width="4" stroke-dasharray="10 7" stroke-linejoin="round"/>
+      <text x="415" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="40" fill="#111">0</text>
+      <path d="M496 40 h136 v150 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 z" fill="#FFE1E1" stroke="#111" stroke-width="3.5" stroke-dasharray="8 4" stroke-linejoin="round"/>
+      <text x="564" y="66" text-anchor="middle" font-family="Bangers, sans-serif" font-size="20" fill="#111" letter-spacing="2">RECEIPT</text>
+      <text x="506" y="94" font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111">err: parsing</text>
+      <text x="506" y="116" font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111">"twelve":</text>
+      <text x="506" y="138" font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111">invalid syntax</text>
+      <circle cx="606" cy="166" r="13" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="606" y="173" text-anchor="middle" font-family="Bangers, sans-serif" font-size="20" fill="#111">!</text>
+      <text x="470" y="262" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">receipt says stop:</text><text x="470" y="286" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">the 0 means nothing</text>
+          </svg>
+    </div>
+    <p class="stamp">READ THE RECEIPT BEFORE YOU OPEN THE BOX</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Go has a type just for receipts: <code>error</code>. A function that can fail hands it back as its <b>last</b> result. When nothing went wrong, the receipt is <code>nil</code>: blank, nothing to report.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: two deliveries, two receipts">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Look at both results this time: the box <em>and</em> the receipt.</p>
+    <span class="file-tab">receipt.go</span>
+    <pre class="code" data-src="receipt.go"></pre>
+    <pre class="term" data-run="receipt.go"></pre>
+    <ol class="readlist">
+      <li><span><code>n, err := strconv.Atoi("42")</code> (line 9)<br>Two boxes catch two results. <code>err</code> is what every Go programmer calls the receipt.</span></li>
+      <li><span><code>42 &lt;nil&gt;</code><br>The text was a number, so the receipt is blank. <code>Println</code> shows a blank receipt as <samp>&lt;nil&gt;</samp>.</span></li>
+      <li><span><code>0 strconv.Atoi: parsing "twelve": invalid syntax</code><br>The receipt says who complained (<code>strconv.Atoi</code>), what it was reading (<code>"twelve"</code>) and what was wrong (<code>invalid syntax</code>: not written like a number). The box holds 0, the zero value for <code>int</code>: a placeholder, not an answer.</span></li>
+      <li><span>Line 12 uses <code>=</code>, not <code>:=</code><br>Both boxes already exist, so they just get new contents.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pair-m" id="ex-pair"></div>
+  <script type="application/json" id="ex-pair-m">{"program": "predict_pair.go", "prompt": "One whole number, one with a decimal point. What's printed? Type both lines exactly.", "hint": "<code>Atoi</code> reads whole numbers only. What does it put in the box when it can't? And what does a blank receipt print as?", "explain": "<code>\"7\"</code> is a whole number: <samp>7 &lt;nil&gt;</samp>. <code>\"7.5\"</code> has a dot, which is not allowed in a whole number, so the box gets the zero value 0 and the receipt says <samp>invalid syntax</samp>. (For decimals you'd use <code>strconv.ParseFloat</code> from chapter 7.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 4: nil, the blank receipt">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">What does a receipt box hold before anything is put in it? Ask Go.</p>
+    <span class="file-tab">nil_err.go</span>
+    <pre class="code" data-src="nil_err.go"></pre>
+    <pre class="term" data-run="nil_err.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="ghost" data-label="nil"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Meet the ghost again: <code>nil</code>, Go's word for "nothing here". The zero value of an <code>error</code> box is <code>nil</code> (line 9). So "no error" and "nobody filled the box" look the same: a blank receipt.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>err == nil</code> (line 10)<br>Asks "is the receipt blank?" It gives a <code>bool</code>: <samp>true</samp>. The <code>err</code> next to it prints as <samp>&lt;nil&gt;</samp>.</span></li>
+      <li><span>Lines 12 and 13<br><code>"12"</code> is fine, so the receipt stays blank: <samp>true &lt;nil&gt;</samp>.</span></li>
+      <li><span>Lines 15 and 16<br><code>"12kg"</code> isn't a number. Now the receipt has writing on it, so <code>err == nil</code> is <samp>false</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-nil-m" id="ex-nil"></div>
+  <script type="application/json" id="ex-nil-m">{"q": "<code>n, err := strconv.Atoi(\"ten\")</code> gives <code>n</code> = 0 and an <code>err</code> that isn't <code>nil</code>. What is that 0?", "options": [
+    {"t": "A placeholder, the zero value for <code>int</code>", "correct": true, "why": "Yes. When the receipt isn't blank, the box only holds the zero value because Go has to put <em>something</em> there. Read the receipt and don't use the box."},
+    {"t": "The number Go guessed from the letters", "why": "Go never guesses. <code>\"ten\"</code> isn't written with digits, so Atoi gives up."},
+    {"t": "An error code that means \"invalid syntax\"", "why": "The reason is written on the receipt, <code>err</code>, not hidden in the number."},
+    {"t": "Proof that the person typed 0", "why": "If they had typed 0, the receipt would be <code>nil</code>. The only way to tell \"typed 0\" from \"couldn't read it\" is to check <code>err</code>."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 5: the Go habit, if err != nil">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Here is the most-typed line in all of Go. Read the receipt <em>right after</em> the call, and stop if it has writing on it.</p>
+    <span class="file-tab">check_bad.go</span>
+    <pre class="code" data-src="check_bad.go"></pre>
+    <pre class="term" data-run="check_bad.go"></pre>
+    <p class="caption soft"><code>check_good.go</code> is the same program, except that line 9 says <code>note := "12"</code>:</p>
+    <pre class="term" data-run="check_good.go"></pre>
+    <details><summary>Show all of check_good.go</summary><pre class="code" data-src="check_good.go"></pre></details>
+    <ol class="readlist">
+      <li><span><code>if err != nil {</code> (line 11)<br><code>!=</code> means "is not". So: "if the receipt is <em>not</em> blank". This check comes straight after the call, before <code>parcels</code> is used anywhere.</span></li>
+      <li><span><code>return</code> (line 13)<br>Leaves <code>main</code> at once, which ends the program. Line 15 never runs, so the junk 0 is never printed. Leaving a function early like this is called an <b>early return</b>.</span></li>
+      <li><span><code>check_good.go</code><br>The note says <code>"12"</code>. The receipt is blank, the <code>if</code> is skipped, and line 15 prints the real number.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 6: the happy road and the exit ramps">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">Go code has a shape. The <b>happy path</b>, where everything works, runs straight down the left edge. Every problem takes an <b>exit ramp</b> to the right and leaves early.</p>
+    <svg class="pic-mid road" viewBox="0 0 360 350" role="img" aria-label="Picture: a road running straight down the page, with three stops on it: call Atoi, check the receipt, use the number. Beside the check, an exit ramp curves off to the right to a sign saying return early, with the words err is not nil on the ramp. At the bottom of the road a finish flag says done. The happy path never turns; problems leave by the side.">
+      <rect x="40" y="8" width="70" height="300" fill="#DADADA" stroke="#111" stroke-width="4"/>
+      <path d="M75 18 v282" stroke="#FFFFFF" stroke-width="5" stroke-dasharray="18 14"/>
+      <path d="M110 164 C 160 164, 190 160, 226 146" fill="none" stroke="#111" stroke-width="44"/>
+      <path d="M110 164 C 160 164, 190 160, 226 146" fill="none" stroke="#DADADA" stroke-width="36"/>
+      <rect x="10" y="30" width="236" height="46" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text x="128" y="60" text-anchor="middle" font-size="19" font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">n, err := Atoi(s)</text>
+      <rect x="10" y="142" width="160" height="46" rx="8" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <text x="90" y="172" text-anchor="middle" font-size="19" font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">err != nil?</text>
+      <rect x="200" y="96" width="152" height="68" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="3.5" stroke-dasharray="8 5"/>
+      <text x="276" y="124" text-anchor="middle" font-family="Bangers, sans-serif" font-size="23" fill="#111" letter-spacing="2">EXIT RAMP</text>
+      <text x="276" y="151" text-anchor="middle" font-size="16" font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">return early</text>
+      <text x="270" y="196" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">yes: not blank</text>
+      <text x="118" y="226" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">no: keep going ↓</text>
+      <rect x="10" y="250" width="160" height="46" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <text x="90" y="280" text-anchor="middle" font-size="19" font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">use n</text>
+      <path d="M128 336 v-30 h36 l-9 9 l9 9 h-36" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <text x="176" y="336" font-family="Bangers, sans-serif" font-size="23" fill="#111" letter-spacing="2">DONE</text>
+    </svg>
+    <p class="stamp">CHECK RIGHT AWAY. LEAVE EARLY.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>No <code>else</code> needed. The problem leaves inside the <code>if</code>; the happy path just carries on underneath, never indented. Go programmers call it keeping the happy path on the left.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillcheck-m" id="ex-fillcheck"></div>
+  <script type="application/json" id="ex-fillcheck-m">{"program": "fill_check.go", "prompt": "Fill the two blanks: the check that asks \"is there a problem?\", and the word that leaves early.", "blanks": [{"line": 10, "text": "err != nil", "accept": ["err!=nil", "nil != err"]}, {"line": 12, "text": "return"}], "explain": "<code>if err != nil</code> is true only when the receipt has writing on it. <code>return</code> leaves <code>main</code> so the junk number is never used. Here <code>\"9\"</code> is fine, so the receipt is blank, the <code>if</code> is skipped, and the happy path prints <samp>Stops today: 9</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzcheck-m" id="ex-pzcheck"></div>
+  <script type="application/json" id="ex-pzcheck-m">{"program": "parsons_check.go", "seed": 5, "pin": [1, 2, 3, 4, 5], "prompt": "Put the lines in order so the program prints the goal output. Clue: the tabs show how deep each line sits. The <code>package</code> and <code>import</code> lines are already in place.", "explain": "Call first, then the check straight away, then the early exit inside the <code>if</code>, then the happy path underneath. <code>\"ground\"</code> isn't a number, so the program stops at <code>return</code> and never says which floor. (Blank lines are left out; Go doesn't need them.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 7: ask again instead of giving up">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Leaving isn't the only exit ramp. Remember chapter 7's tip calculator, which carried on with a tip of 0 after a bad answer? Here it reads the receipt, and when there's a problem it <b>asks again</b>. Typed: <kbd>fifteen</kbd>, then <kbd>15</kbd>.</p>
+    <span class="file-tab">ask_again.go</span>
+    <pre class="code" data-src="ask_again.go"></pre>
+    <pre class="term" data-run="ask_again.go"></pre>
+    <ol class="readlist">
+      <li><span><code>for scanner.Scan() {</code> (line 14)<br>Keep reading lines for as long as there are lines to read (chapter 7).</span></li>
+      <li><span><code>continue</code> (line 19)<br>The exit ramp from a bad line: say what was wrong, ask again, and go round for the next line (chapter 6). The bad number is never used.</span></li>
+      <li><span><code>break</code> (line 22)<br>A good number: print the tip and leave the loop. 40 × 15 / 100 is 6.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · UNREAD RECEIPTS<small>The classic ways to miss an error, and how Go tries to stop you</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 8: Scan ignores the receipt">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="UNREAD!" data-seed="8"></svg>
+    <p class="caption">Mistake: calling something that hands back a receipt, and never looking at it. Both programs were typed <kbd>ten</kbd>.</p>
+    <div class="pair">
+      <div><span class="file-tab">scan_ignore.go</span><pre class="code" data-src="scan_ignore.go"></pre><pre class="term wrap" data-run="scan_ignore.go"></pre></div>
+      <div><span class="file-tab">scan_err.go</span><pre class="code" data-src="scan_err.go"></pre><pre class="term wrap" data-run="scan_err.go"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="taster"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>scan_ignore.go</code>: <code>fmt.Scan</code> returns two results too (how many boxes it filled, and a receipt). Line 8 ignores both, so it happily doubles the 0 that <code>parcels</code> started with. <samp>Doubled: 0</samp> is a lie.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Scoot says: </span><code>scan_err.go</code>: catch the receipt and it explains everything: <samp>expected integer</samp>. Printing it is a start; next, add the <code>if err != nil</code> and stop.</p></div>
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+    <p class="sr-only">Picture: the taster critter, which stands for a bad value, pulls a face.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 9: a receipt caught but never read">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Catch the receipt in a box and then forget it? The Compiler won't have it.</p>
+    <span class="file-tab">unused_err.go</span>
+    <pre class="code" data-src="unused_err.go"></pre>
+    <pre class="term wrap" data-run="unused_err.go" data-exit></pre>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 9, column 11: <samp>declared and not used: err</samp>. You named a box and never looked inside. Nothing runs until everything checks out.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Writing <code>_</code> instead of <code>err</code> would make me quiet. That's allowed, but it's a promise: "I'm sure this can't fail." Panel 1 shows what a broken promise looks like.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 10: a receipt nobody picked up">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The sneakiest mistake of all. <code>os.Remove</code> deletes a file and returns just one thing: a receipt. Call it without catching anything, and the Compiler has nothing to complain about.</p>
+    <div class="pair">
+      <div><span class="file-tab">remove_quiet.go</span><pre class="code" data-src="remove_quiet.go"></pre><pre class="term wrap" data-run="remove_quiet.go"></pre></div>
+      <div><span class="file-tab">remove_check.go</span><pre class="code" data-src="remove_check.go"></pre><pre class="term wrap" data-run="remove_check.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>remove_quiet.go</code>: <samp>Cleaned up!</samp><br>There was never a file called <code>nothing-here</code> in this folder. The delete failed, the receipt fell on the floor, and the program bragged anyway.</span></li>
+      <li><span><code>remove_check.go</code>: <code>err := os.Remove(…)</code> (line 9)<br>Catch the receipt, check it, and the truth comes out: <samp>remove nothing-here: no such file or directory</samp>. The message even names the action and the file.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Tip: some editors and extra checkers flag a dropped receipt like line 9 of <code>remove_quiet.go</code>. The plain Go toolchain doesn't, so the habit has to be yours.</p></div>
+    </div>
+    <p class="sr-only">Picture: Specs, the proof-reading critter with big glasses, peers at the code.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: a file that is not there">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Same pattern, different clerk. <code>os.Open</code> opens a file for reading and hands back the file and a receipt. (Files properly are chapter 14; here we only read the receipt.)</p>
+    <span class="file-tab">open_err.go</span>
+    <pre class="code" data-src="open_err.go"></pre>
+    <pre class="term wrap" data-run="open_err.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="digger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The digger looked everywhere: <samp>open nofile.txt: no such file or directory</samp>. Action, name, reason. Every good receipt reads like that. <code>_</code> throws away the file box because we never get as far as using it.</p></div>
+    </div>
+    <p class="sr-only">Picture: the digger critter, which stands for a missing file, leans on its shovel.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotignore-m" id="ex-spotignore"></div>
+  <script type="application/json" id="ex-spotignore-m">{"program": "spot_ignore.go", "bug": 10, "prompt": "The shop charges 4 per box and the order says three boxes. The program says the total is 0. Click the line where the problem was hidden.", "explain": "Line 10 throws the receipt away with <code>_</code>. <code>\"three\"</code> isn't written in digits, so <code>boxes</code> holds the junk 0 and every line after it uses that 0. Fix: <code>boxes, err := strconv.Atoi(\"three\")</code>, then <code>if err != nil { fmt.Println(err); return }</code>, right after."}</script>
+
+  <div data-ex="predict" data-model="ex-skip-m" id="ex-skip"></div>
+  <script type="application/json" id="ex-skip-m">{"program": "predict_skip.go", "prompt": "Three notes, one of them bad. This program reads every receipt and skips the bad note. What's printed?", "hint": "For each note: is the receipt blank? If not, the program prints <samp>skip:</samp> and the receipt, then <code>continue</code> jumps to the next note.", "explain": "<code>\"5\"</code> and <code>\"15\"</code> are fine and get doubled. <code>\"five\"</code> gets a receipt, which is printed after <samp>skip:</samp>; <code>continue</code> skips the doubling for that note only. The loop carries on, and <samp>done</samp> prints at the end."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · WRITE YOUR OWN RECEIPTS<small>Functions that can fail, errors.New, fmt.Errorf, and choosing what to do</small></h2>
+
+  <section class="panel clean" aria-label="Panel 12: a function that hands back a receipt">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Scoot opens a weigh station. Its machine, <code>weigh</code>, reads a parcel's weight from a note. It can fail, so it promises two results: <code>(int, error)</code>.</p>
+    <span class="file-tab">weigh.go</span>
+    <pre class="code" data-src="weigh.go"></pre>
+    <pre class="term" data-run="weigh.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func weigh(text string) (int, error)</code> (line 9)<br>The <code>error</code> goes <b>last</b>. That's a Go custom every library follows.</span></li>
+      <li><span><code>return 0, err</code> (line 12)<br>Atoi's receipt has writing on it, so <code>weigh</code> leaves early: an empty box (the zero value 0) and the <em>same</em> receipt, passed on to whoever called.</span></li>
+      <li><span><code>return kg, nil</code> (line 14)<br>The happy path: the real number and a blank receipt.</span></li>
+      <li><span>The caller's view<br><code>main</code> gets exactly the same two things it would get from Atoi itself. A receipt can travel up through as many machines as you like.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 13: the receipt travels back, step by step" data-tracer="tr-weigh" id="tr-weigh-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Step through a bad delivery. Watch the receipt get made inside <code>weigh</code>'s frame, then handed back to <code>main</code>.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-weigh-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-weigh">{ "program": "tracer_weigh.go", "steps": [
+      {"line": 17, "note": "The run starts in <code>main</code>. No boxes yet.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 9, "note": "Line 17 calls <code>weigh(\"heavy\")</code>. A new frame opens below <code>main</code>, and the parameter <code>text</code> gets a copy of the argument.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "weigh(text)", "vars": [{"n": "text", "ref": "T"}]}], "objects": {"T": {"kind": "string", "value": "\"heavy\""}}, "changed": ["text"]},
+      {"line": 10, "note": "Atoi can't read <code>\"heavy\"</code>. <code>kg</code> gets the zero value 0, and <code>err</code> gets a receipt: an <b>error value</b> with the reason written on it.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "weigh(text)", "vars": [{"n": "text", "ref": "T"}, {"n": "kg", "ref": "K"}, {"n": "err", "ref": "E"}]}], "objects": {"T": {"kind": "string", "value": "\"heavy\""}, "K": {"kind": "int", "value": "0"}, "E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}}, "changed": ["kg", "err"]},
+      {"line": 11, "note": "<code>err != nil</code>? Yes: the receipt has writing on it. Take the exit ramp.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "weigh(text)", "vars": [{"n": "text", "ref": "T"}, {"n": "kg", "ref": "K"}, {"n": "err", "ref": "E"}]}], "objects": {"T": {"kind": "string", "value": "\"heavy\""}, "K": {"kind": "int", "value": "0"}, "E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}}},
+      {"line": 18, "note": "<code>return 0, err</code>: <code>weigh</code>'s frame closes (its boxes fade). Back on line 17, <code>main</code> catches a fresh 0 and the <b>same</b> receipt. Line 13 of <code>weigh</code>, its happy return, never ran.", "output": [], "frames": [{"name": "main", "vars": [{"n": "kg", "ref": "MK"}, {"n": "err", "ref": "E"}]}], "objects": {"T": {"kind": "string", "value": "\"heavy\""}, "K": {"kind": "int", "value": "0"}, "E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}, "MK": {"kind": "int", "value": "0"}}, "changed": ["kg", "err"]},
+      {"line": 19, "note": "<code>main</code> reads the receipt too: <code>err != nil</code> is true.", "output": [], "frames": [{"name": "main", "vars": [{"n": "kg", "ref": "MK"}, {"n": "err", "ref": "E"}]}], "objects": {"E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}, "MK": {"kind": "int", "value": "0"}}},
+      {"line": 20, "note": "It prints the problem. Printing an error shows its full text, which starts with <code>strconv.Atoi:</code> (the drawing keeps the receipt short).", "output": ["Problem: strconv.Atoi: parsing \"heavy\": invalid syntax"], "frames": [{"name": "main", "vars": [{"n": "kg", "ref": "MK"}, {"n": "err", "ref": "E"}]}], "objects": {"E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}, "MK": {"kind": "int", "value": "0"}}},
+      {"line": null, "note": "<code>return</code> ends <code>main</code> early. Line 22, the happy path, never ran: the junk 0 was never used.", "output": ["Problem: strconv.Atoi: parsing \"heavy\": invalid syntax"], "frames": [{"name": "main", "vars": [{"n": "kg", "ref": "MK"}, {"n": "err", "ref": "E"}]}], "objects": {"E": {"kind": "error", "value": "parsing \"heavy\": invalid syntax"}, "MK": {"kind": "int", "value": "0"}}}
+    ] }</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pzweigh-m" id="ex-pzweigh"></div>
+  <script type="application/json" id="ex-pzweigh-m">{"program": "parsons_weigh.go", "seed": 3, "pin": [1, 2, 3, 4, 5], "alts": [{"order": [1, 2, 3, 4, 5, 13, 14, 15, 6, 7, 8, 9, 10, 11, 12], "program": "parsons_weigh_alt.go"}], "prompt": "Build a function that reads a number of stops and hands back a receipt. Put the lines in order. (The <code>package</code> and <code>import</code> lines are already in place; <code>main</code> may come before or after <code>stops</code>.)", "explain": "Inside <code>stops</code>: call Atoi, check the receipt, leave early with <code>return 0, err</code>, otherwise <code>return n, nil</code>. <code>fmt.Println(stops(\"4\"))</code> prints both results: <samp>4 &lt;nil&gt;</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 14: writing receipts with errors.New and fmt.Errorf">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">"45" is a perfectly good number, but Scoot can't carry 45 kg. That's a problem only <em>your</em> program knows about, so write the receipt yourself.</p>
+    <span class="file-tab">rules.go</span>
+    <pre class="code" data-src="rules.go"></pre>
+    <pre class="term" data-run="rules.go"></pre>
+    <ol class="readlist">
+      <li><span><code>"errors"</code> (line 4)<br>A small standard package for making receipts.</span></li>
+      <li><span><code>errors.New("weight must be above zero")</code> (line 18)<br>Makes a new error value with exactly that text. Use it when the message never changes.</span></li>
+      <li><span><code>fmt.Errorf("too heavy: %d kg (limit %d kg)", kg, limit)</code> (line 21)<br>Like <code>Sprintf</code> from chapter 4, but the result is an error value instead of a string. Use it when the message should include values.</span></li>
+      <li><span><code>fmt.Println(weigh("12"))</code> (line 27)<br>A call that returns two values can go straight into <code>Println</code>, which prints both. Handy for testing; real code catches them in boxes.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Go's style for receipts: start with a small letter and don't end with a full stop. They often get glued onto other messages, like <samp>order 7: too heavy</samp>, and capitals in the middle look odd.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine weigh" aria-label="Panel 15: the weigh machine" data-machine="m-weigh">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">The weigh machine with all its rules. Feed it notes. A good note comes out as a number; a bad one jams it, and the jam <em>is</em> the receipt. (This version prints receipts to the error screen, <code>os.Stderr</code>; more on that in panel 20.)</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-weigh">{"label": "weigh()", "program": "weigh_machine.go", "examples": [
+      {"in": "\"12\"", "out": "12", "outKind": "int, and a nil receipt", "note": "A whole number between 1 and 30: through every check. The receipt is <code>nil</code>."},
+      {"in": "\"30\"", "out": "30", "outKind": "int, and a nil receipt", "note": "Exactly the limit is fine: the rule is <code>kg &gt; limit</code>, and 30 &gt; 30 is false."},
+      {"in": "\"heavy\"", "error": "strconv.Atoi: parsing \"heavy\": invalid syntax", "note": "Jammed at the first check. This is Atoi's own receipt, passed straight on with <code>return 0, err</code>."},
+      {"in": "\"0\"", "error": "weight must be above zero", "note": "Atoi was happy (0 is a number), but the second rule wasn't: <code>errors.New</code>."},
+      {"in": "\"45\"", "error": "too heavy: 45 kg (limit 30 kg)", "note": "A number, above zero, but over the limit. <code>fmt.Errorf</code> wrote the actual weight into the message."},
+      {"in": "\"7.5\"", "error": "strconv.Atoi: parsing \"7.5\": invalid syntax", "note": "Weights here are whole kilograms, so the dot jams Atoi."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-errorf-m" id="ex-errorf"></div>
+  <script type="application/json" id="ex-errorf-m">{"program": "fill_errorf.go", "prompt": "<code>checkFloor</code> returns only a receipt, like <code>os.Remove</code>. Fill in the fixed message maker, the message maker with a value in it, and what to return when all is well.", "blanks": [{"line": 10, "text": "errors.New"}, {"line": 13, "text": "fmt.Errorf"}, {"line": 15, "text": "nil"}], "explain": "A message that never changes: <code>errors.New</code>. A message with the floor number in it: <code>fmt.Errorf</code> with <code>%d</code>. No problem: <code>return nil</code>, the blank receipt, which prints as <samp>&lt;nil&gt;</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-traceweigh-m" id="ex-traceweigh"></div>
+  <script type="application/json" id="ex-traceweigh-m">{"program": "trace_weigh.go", "columns": ["note", "kg", "err == nil"], "given": [0], "prompt": "Four notes go through <code>weigh</code>. For each, fill in the box it hands back and whether the receipt is blank (<code>true</code> or <code>false</code>).", "explain": "<code>\"8\"</code> is fine: 8, <code>true</code>. <code>\"eight\"</code> jams Atoi: 0, <code>false</code>. <code>\"31\"</code> is a number but over 30: <code>return 0, errors.New(…)</code>, so 0, <code>false</code>. <code>\"30\"</code> is exactly the limit: 30, <code>true</code>. Every failure hands back 0 in the box."}</script>
+
+  <section class="panel sketch" aria-label="Panel 16: the map of weigh's roads" data-map="map-weigh">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">The map of a call to <code>weigh</code>. There is one happy road and two exit ramps, and <code>main</code> checks the receipt whichever way it comes back. Pick a road and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapw-t mapw-d"><title id="mapw-t">Map of a call to weigh</title><desc id="mapw-d">main calls weigh. weigh asks Atoi to read the text, then reads the receipt. If err is not nil it leaves early with return 0, err. If err is nil it checks whether kg is over 30; if it is, it also leaves early, with a receipt from fmt.Errorf. Otherwise it hands back kg and nil. Either way, main reads the receipt: nil leads to printing the load, not nil leads to printing the problem.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-weigh">{"seed": 8, "size": [690, 600], "start": [[150, 4], [150, 20]],
+      "states": [
+        {"id": "S0", "x": 30, "y": 24, "w": 240, "h": 60, "label": "CALL", "sub": "main, line 20"},
+        {"id": "A", "x": 30, "y": 120, "w": 240, "h": 60, "label": "ASK ATOI", "sub": "line 9"},
+        {"id": "C1", "x": 30, "y": 216, "w": 240, "h": 60, "label": "READ THE RECEIPT", "sub": "`err != nil`?"},
+        {"id": "C2", "x": 30, "y": 312, "w": 240, "h": 60, "label": "WEIGHT CHECK", "sub": "`kg > 30`?"},
+        {"id": "OK", "x": 30, "y": 408, "w": 240, "h": 60, "label": "HAND BACK", "sub": "`return kg, nil`"},
+        {"id": "BAD", "x": 420, "y": 264, "w": 240, "h": 60, "label": "LEAVE EARLY", "sub": "`return 0, …`"},
+        {"id": "M", "x": 420, "y": 408, "w": 240, "h": 60, "label": "MAIN READS IT", "sub": "`err != nil`? line 21"},
+        {"id": "E1", "x": 230, "y": 516, "w": 200, "h": 62, "label": "PRINT LOAD", "sub": "line 25", "kind": "end"},
+        {"id": "E2", "x": 470, "y": 516, "w": 200, "h": 62, "label": "PRINT PROBLEM", "sub": "lines 22 and 23", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "A", "pts": [[150, 88], [150, 114]], "label": "go in", "lx": 162, "ly": 106},
+        {"id": "t1", "from": "A", "to": "C1", "pts": [[150, 184], [150, 210]], "label": "2 results", "lx": 162, "ly": 202},
+        {"id": "t2", "from": "C1", "to": "C2", "pts": [[150, 280], [150, 306]], "label": "nil", "lx": 162, "ly": 298},
+        {"id": "t3", "from": "C1", "to": "BAD", "pts": [[274, 240], [540, 240], [540, 258]], "label": "not nil", "lx": 340, "ly": 230, "bug": true},
+        {"id": "t4", "from": "C2", "to": "OK", "pts": [[150, 376], [150, 402]], "label": "no", "lx": 162, "ly": 394},
+        {"id": "t5", "from": "C2", "to": "BAD", "pts": [[274, 342], [540, 342], [540, 330]], "label": "yes", "lx": 340, "ly": 362, "bug": true},
+        {"id": "t6", "from": "OK", "to": "M", "pts": [[274, 438], [414, 438]], "label": "back", "lx": 344, "ly": 428, "anchor": "middle"},
+        {"id": "t7", "from": "BAD", "to": "M", "pts": [[630, 328], [630, 402]], "label": "back", "lx": 620, "ly": 370, "anchor": "end"},
+        {"id": "t8", "from": "M", "to": "E1", "pts": [[470, 472], [470, 494], [330, 494], [330, 510]], "label": "nil", "lx": 400, "ly": 488, "anchor": "middle"},
+        {"id": "t9", "from": "M", "to": "E2", "pts": [[600, 472], [600, 510]], "label": "not nil", "lx": 610, "ly": 496, "bug": true}],
+      "paths": [
+        {"id": "good", "label": "Good note \"12\"", "program": "map_good.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>map_good.go</code>: line 20 calls <code>weigh(\"12\")</code>."},
+          {"on": ["A"], "via": ["t0"], "output": [], "note": "Line 9: Atoi reads <code>\"12\"</code>. <code>kg</code> is 12 and <code>err</code> is <code>nil</code>."},
+          {"on": ["C1"], "via": ["t1"], "output": [], "mood": "focus", "note": "Line 10: is <code>err != nil</code>? No. The receipt is blank."},
+          {"on": ["C2"], "via": ["t2"], "output": [], "mood": "focus", "note": "Line 13: is 12 &gt; 30? No."},
+          {"on": ["OK"], "via": ["t4"], "output": [], "note": "Line 16: <code>return kg, nil</code>. The real box and a blank receipt."},
+          {"on": ["M"], "via": ["t6"], "output": [], "mood": "focus", "note": "Back in <code>main</code>, line 21: is <code>err != nil</code>? No."},
+          {"on": ["E1"], "via": ["t8"], "output": ["Loaded 12 kg"], "note": "Line 25, the happy path, prints the load. The happy road never turned once."}]},
+        {"id": "word", "label": "Not a number", "bug": true, "program": "map_word.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>map_word.go</code>: line 20 calls <code>weigh(\"heavy\")</code>."},
+          {"on": ["A"], "via": ["t0"], "output": [], "note": "Line 9: Atoi can't read it. <code>kg</code> is 0 and <code>err</code> holds a receipt."},
+          {"on": ["C1"], "via": ["t1"], "output": [], "mood": "surprised", "note": "Line 10: is <code>err != nil</code>? <b>Yes.</b>"},
+          {"on": ["BAD"], "via": ["t3"], "output": [], "note": "Line 11: <code>return 0, err</code>. Leave early. Lines 13 to 16 never run."},
+          {"on": ["M"], "via": ["t7"], "output": [], "mood": "focus", "note": "Back in <code>main</code>, line 21: the receipt is not blank."},
+          {"on": ["E2"], "via": ["t9"], "output": ["Problem: strconv.Atoi: parsing \"heavy\": invalid syntax"], "note": "Line 22 prints the problem, and line 23 returns: <code>main</code> leaves early too. Line 25 never runs."}]},
+        {"id": "heavy", "label": "Too heavy \"45\"", "bug": true, "program": "map_heavy.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>map_heavy.go</code>: line 20 calls <code>weigh(\"45\")</code>."},
+          {"on": ["A"], "via": ["t0"], "output": [], "note": "Line 9: 45 is a fine number. <code>kg</code> is 45, <code>err</code> is <code>nil</code>."},
+          {"on": ["C1"], "via": ["t1"], "output": [], "mood": "focus", "note": "Line 10: the receipt is blank. Carry on."},
+          {"on": ["C2"], "via": ["t2"], "output": [], "mood": "surprised", "note": "Line 13: is 45 &gt; 30? <b>Yes.</b>"},
+          {"on": ["BAD"], "via": ["t5"], "output": [], "note": "Line 14: <code>return 0, fmt.Errorf(…)</code>. A receipt written by our own code."},
+          {"on": ["M"], "via": ["t7"], "output": [], "mood": "focus", "note": "Back in <code>main</code>: it can't tell (and doesn't need to know) who wrote the receipt. It isn't blank."},
+          {"on": ["E2"], "via": ["t9"], "output": ["Problem: too heavy: 45 kg"], "note": "Line 22 prints our own message. Same exit ramp as a bad number."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: add a note to the receipt">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">A receipt that only says <samp>invalid syntax</samp> doesn't say <em>which</em> order went wrong. When you pass a receipt up, you can add a note to the front.</p>
+    <span class="file-tab">context.go</span>
+    <pre class="code" data-src="context.go"></pre>
+    <pre class="term wrap" data-run="context.go"></pre>
+    <ol class="readlist">
+      <li><span><code>fmt.Errorf("order %d: %v", order, err)</code> (line 20)<br><code>%v</code> prints a value in its plain form; for an error, that's its message. The new receipt says <samp>order 7:</samp> and then the old one, word for word.</span></li>
+      <li><span>Read the final message from left to right<br><samp>Can't load the van</samp> (said by <code>main</code>) → <samp>order 7</samp> (added by <code>load</code>) → <samp>strconv.Atoi: parsing "12kg": invalid syntax</samp> (from Atoi, passed on untouched by <code>weigh</code>). Each machine added what only it knew.</span></li>
+    </ol>
+    <p class="caption soft">Later (chapter 19) you'll meet <code>%w</code>, which also lets a program look <em>inside</em> a receipt to find the original one. For printing, <code>%v</code> is all you need.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-context-m" id="ex-context"></div>
+  <script type="application/json" id="ex-context-m">{"program": "predict_context.go", "prompt": "Scoot visits two houses. One has no doorbell. What's printed?", "hint": "A blank receipt prints as <samp>&lt;nil&gt;</samp>. When <code>ring</code> complains, <code>visit</code> glues <samp>house 9: </samp> onto the front.", "explain": "House 4 has a bell, so <code>ring</code> and <code>visit</code> both return <code>nil</code>: <samp>&lt;nil&gt;</samp>. House 9's empty bell makes <code>ring</code> return <samp>no doorbell</samp>, and <code>visit</code> adds the house number in front."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 18: two wrong returns">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="BOTH DRAWERS!" data-seed="18"></svg>
+    <p class="caption">Two classic mistakes in a function that promised <code>(int, error)</code>.</p>
+    <div class="pair">
+      <div><span class="file-tab">ret_err.go</span><pre class="code" data-src="ret_err.go"></pre><pre class="term wrap" data-run="ret_err.go" data-exit></pre></div>
+      <div><span class="file-tab">ret_nil.go</span><pre class="code" data-src="ret_nil.go"></pre><pre class="term wrap" data-run="ret_nil.go" data-exit></pre></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span><code>ret_err.go</code>, line 11: you handed back only the receipt. <b>have</b> <code>(error)</code>, <b>want</b> <code>(int, error)</code>. Fill the box drawer too: <code>return 0, err</code>.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span><code>ret_nil.go</code>, line 11: <code>nil</code> is a blank <em>receipt</em>, not an empty number box. An <code>int</code> can't be <code>nil</code>; its "nothing" is 0.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotret-m" id="ex-spotret"></div>
+  <script type="application/json" id="ex-spotret-m">{"program": "spot_return.go", "bug": 13, "prompt": "This doesn't compile. Click the line the Compiler complains about.", "explain": "<code>tip</code> promised <code>(int, error)</code>, so <em>every</em> <code>return</code> needs both. Line 13 gives only the number 3: <samp>not enough return values</samp>, with <samp>have (number)</samp> and <samp>want (int, error)</samp>. Fix: <code>return 3, nil</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 19: three things to do with a receipt">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">You've read the receipt, and it isn't blank. Now what? There are three good answers. Pick by asking "who can actually do something about this?"</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>PASS IT UP<small>return 0, err</small></h3><p>Inside a helper function like <code>weigh</code>. It doesn't know whether the caller wants to skip, retry or stop, so it hands the receipt back and lets the caller decide.</p></div>
+      <div class="duo-card"><h3>SKIP AND CARRY ON<small>print, then continue</small></h3><p>In a loop over many items, when one bad item shouldn't spoil the rest: say which one was skipped, and do the others.</p></div>
+      <div class="duo-card dashed"><h3>SAY SO AND STOP<small>print, then exit</small></h3><p>In <code>main</code>, when nothing useful can happen without this value. Explain the problem and end the program.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>What's <em>never</em> a good answer: ignoring it (panel 1), or crashing because of it (panel 21). Bad input is normal. People type "twelve". Files go missing. A good program expects that.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: skip and carry on, or say so and stop">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">The two answers that belong in <code>main</code>, both writing their complaints to the <b>error screen</b>.</p>
+    <span class="file-tab">batch.go</span>
+    <pre class="code" data-src="batch.go"></pre>
+    <pre class="term wrap" data-run="batch.go"></pre>
+    <span class="file-tab">stop_exit.go</span>
+    <pre class="code" data-src="stop_exit.go"></pre>
+    <pre class="term wrap" data-run="stop_exit.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>fmt.Fprintln(os.Stderr, …)</code><br>A program has two output streams to the terminal: <b>standard output</b> (<code>os.Stdout</code>, where <code>Println</code> writes) for results, and <b>standard error</b> (<code>os.Stderr</code>) for complaints. Both show up on your screen; here, error lines are drawn in the error style. They can be sent to different places later, so the results stay clean.</span></li>
+      <li><span><code>batch.go</code>: skip and carry on<br>Two bad notes skipped, two good ones added: 12 + 8 = 20 kg. The summary says how many were skipped, so nothing is hidden.</span></li>
+      <li><span><code>stop_exit.go</code>: say so and stop, with <code>os.Exit(1)</code> (line 14)<br>Ends the program at once with exit code 1, the usual code for "it went wrong". <code>go run</code> reports it as <samp>exit status 1</samp>. Line 16 never runs.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 21: an ignored receipt becomes a crash">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="CRASH!" data-seed="21"></svg>
+    <p class="caption">The worst ending: a receipt ignored on line 13 turns into a crash two lines later.</p>
+    <span class="file-tab">panic_input.go</span>
+    <pre class="code" data-src="panic_input.go"></pre>
+    <pre class="term wrap" data-run="panic_input.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="zilch"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>"none"</code> isn't a number, so <code>guests</code> got the junk 0. Then 12 cookies shared between 0 people: zilch! A <b>panic</b>, Go's word for a run-time crash. You met them in chapters 4 and 6.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Scoot says: </span>Go's standard library almost always hands bad input a receipt, not a panic. Your code should too. And now let's learn to read that crash report properly. It's a trail of footprints!</p></div>
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="flat" data-arms="pointL"></svg>
+    </div>
+    <p class="sr-only">Picture: zilch, the divide-by-zero critter, looks smug.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-choose-m" id="ex-choose"></div>
+  <script type="application/json" id="ex-choose-m">{"q": "You're writing <code>func parseTime(text string) (int, error)</code>, a helper used by many programs. The text is <code>\"noon-ish\"</code>. What should <code>parseTime</code> do?", "options": [
+    {"t": "<code>return 0, fmt.Errorf(…)</code> and let the caller decide", "correct": true, "why": "Yes, with a clear message. A helper can't know whether its caller wants to skip, ask again or stop. Pass the receipt up."},
+    {"t": "Print \"bad time\" and carry on as if the time were 0", "why": "The caller would get a 0 that looks like midnight and no way to know it's junk. That's panel 1 all over again."},
+    {"t": "Call <code>os.Exit(1)</code> and end the whole program", "why": "Stopping the whole program is <code>main</code>'s decision. A helper that exits would kill programs that wanted to ask again."},
+    {"t": "Divide by zero on purpose so the program panics", "why": "Bad input is normal; a crash is never the friendly answer. Go's standard library almost always returns an error for bad input."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THREE KINDS OF BUG<small>Before it runs, while it runs, after it runs</small></h2>
+
+  <section class="panel sketch kinds" aria-label="Panel 22: one program, broken three ways">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Scoot wants the average weight of three parcels: 4, 9 and 5 kg, so 18 ÷ 3 = 6. Here is that program broken three different ways. Every bug you'll ever meet is one of these three kinds.</p>
+    <div class="duo-card">
+      <h3>1 · COMPILE ERROR<small>caught before anything runs</small></h3>
+      <span class="file-tab">kind_compile.go</span><pre class="code" data-src="kind_compile.go"></pre><pre class="term wrap" data-run="kind_compile.go" data-exit></pre>
+      <p class="tell"><b>HOW TO TELL:</b> a <samp># command-line-arguments</samp> header, then <samp>./file.go:line:column: message</samp>. Nothing printed by your program at all. Exit code 1.</p>
+    </div>
+    <div class="duo-card">
+      <h3>2 · PANIC<small>a crash while running</small></h3>
+      <span class="file-tab">kind_panic.go</span><pre class="code" data-src="kind_panic.go"></pre><pre class="term wrap" data-run="kind_panic.go" data-exit></pre>
+      <p class="tell"><b>HOW TO TELL:</b> the program started (any output before the crash is real), then <samp>panic:</samp>, a list of functions and lines, and <samp>exit status 2</samp>.</p>
+    </div>
+    <div class="duo-card dashed">
+      <h3>3 · WRONG OUTPUT<small>a logic bug: runs fine, gives the wrong answer</small></h3>
+      <span class="file-tab">kind_wrong.go</span><pre class="code" data-src="kind_wrong.go"></pre><pre class="term wrap" data-run="kind_wrong.go" data-exit></pre>
+      <p class="tell"><b>HOW TO TELL:</b> no message at all, exit code 0. Only <em>you</em> know 4 is wrong, because you know the answer should be 6.</p>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Kind 3 is the sneakiest: no Compiler, no crash, just a quiet lie. The loop starts at 1, so the 4 in slot 0 is never added: (9 + 5) ÷ 3 = 4. Always know what answer you <em>expect</em> before you run.</p></div>
+    </div>
+    <p class="caption soft">The fixed program, <code>kind_right.go</code>, starts at <code>i := 0</code> and stops at <code>i &lt; len(weights)</code>. It prints:</p>
+    <pre class="term" data-run="kind_right.go"></pre>
+    <p class="sr-only">Picture: the sneak critter, the quiet logic bug, tiptoes past.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-kind1-m" id="ex-kind1"></div>
+  <script type="application/json" id="ex-kind1-m">{"q": "A program compiles, runs, prints <samp>Total: 110</samp> and ends with exit code 0. You expected 100. What kind of bug is this?", "options": [
+    {"t": "A logic bug: wrong output, no message", "correct": true, "why": "Yes. The code runs but does the wrong thing. No message, no crash, normal exit: only your expectation says it's wrong. Time for print debugging (part 6)."},
+    {"t": "A compile error the Compiler missed", "why": "A compile error stops the program before it runs, so nothing would be printed at all."},
+    {"t": "A panic that printed no report", "why": "A panic prints <samp>panic:</samp> and a trail, and ends with <samp>exit status 2</samp>, not 0."},
+    {"t": "Not a bug: Go sometimes adds a little extra", "why": "Integer maths in Go is exact. 110 instead of 100 means the program did something you didn't intend."}]}</script>
+
+  <div data-ex="predict" data-model="ex-kind2-m" id="ex-kind2"></div>
+  <script type="application/json" id="ex-kind2-m">{"program": "predict_panic.go", "expect": "error", "answer": "index out of range [4] with length 4", "ask": "It compiles, prints four lines, then panics. Type the details that come after <samp>panic: runtime error: </samp> (start with \"index\").", "hint": "<code>range 6</code> counts 0 to 5. The array has 4 elements, indexed 0 to 3. Which index is the first one that doesn't exist?", "explain": "Laps 0 to 3 print fine. On lap 4, <code>stops[4]</code> doesn't exist, and Go panics with <samp>index out of range [4] with length 4</samp>: the index you asked for, then the real length. The Compiler couldn't catch it, because <code>i</code> is a variable."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · FOOTPRINTS<small>Reading a panic report like a detective</small></h2>
+
+  <section class="panel pop" aria-label="Panel 23: Inspector Pell takes the case">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">A knock at the depot door.</p>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">Inspector Pell says: </span>Inspector Pell. I hear you've had a crash. Don't panic. Well: Go panicked, so you don't have to.</p>
+        <p class="bubble right"><span class="sr-only">Inspector Pell says: </span>A panic report is a case file. The first line names <b>the crime</b>. Below it is a trail of <b>footprints</b>: every function that was running, from the <b>scene</b> where it broke, back to <code>main</code>, where it all started.</p>
+      </div>
+      <svg class="char lg" data-char="detective" data-mood="focus" data-prop="notebook"></svg>
+    </div>
+    <svg class="pic-mid" viewBox="0 0 360 450" role="img" aria-label="Picture: a case file, read from top to bottom. At the top, a pink label: THE CRIME, the first line, panic. A trail of footprints runs down the left side past three cards: 1, the scene, the first function listed, where it broke; 2, a footprint, who called it; 3, main, the last function listed, where the trail starts. The trail ends at a door marked exit status 2, which only says that the program ended.">
+      <rect x="6" y="6" width="348" height="438" rx="14" fill="#F2DDB0" stroke="#111" stroke-width="4"/>
+      <rect x="22" y="20" width="316" height="56" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="3.5" stroke-dasharray="8 4"/>
+      <text x="180" y="45" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">THE CRIME</text>
+      <text x="180" y="67" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">the first line: panic: …</text>
+      <g fill="#111"><ellipse cx="44" cy="90" rx="5" ry="8"/><ellipse cx="62" cy="108" rx="5" ry="8"/><ellipse cx="44" cy="126" rx="5" ry="8"/><ellipse cx="44" cy="178" rx="5" ry="8"/><ellipse cx="62" cy="196" rx="5" ry="8"/><ellipse cx="44" cy="214" rx="5" ry="8"/><ellipse cx="44" cy="266" rx="5" ry="8"/><ellipse cx="62" cy="284" rx="5" ry="8"/><ellipse cx="44" cy="302" rx="5" ry="8"/><ellipse cx="44" cy="354" rx="5" ry="8"/><ellipse cx="62" cy="372" rx="5" ry="8"/><ellipse cx="44" cy="390" rx="5" ry="8"/></g>
+      <rect x="86" y="100" width="252" height="62" rx="8" fill="#FFD60A" stroke="#111" stroke-width="3.5"/>
+      <text x="212" y="126" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">1 · THE SCENE</text>
+      <text x="212" y="150" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">first listed: where it broke</text>
+      <rect x="86" y="188" width="252" height="62" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <text x="212" y="214" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">2 · FOOTPRINT</text>
+      <text x="212" y="238" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">who called the one above</text>
+      <rect x="86" y="276" width="252" height="62" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/>
+      <text x="212" y="302" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">3 · main</text>
+      <text x="212" y="326" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">last listed: trail starts here</text>
+      <rect x="86" y="366" width="56" height="66" rx="4" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <circle cx="130" cy="402" r="4" fill="#111"/>
+      <text x="156" y="396" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">EXIT STATUS 2</text>
+      <text x="156" y="420" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">only says it ended</text>
+    </svg>
+    <p class="sr-only">Picture: Inspector Pell, in a brown fedora and a tan trench coat, holds up her case notebook.</p>
+  </section>
+
+  <section class="panel clean lens" aria-label="Panel 24: the parts of a panic report, clue by clue" data-lens="lens-simple">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">A short case first: one function, one crash. Step through the clues.</p>
+    <span class="file-tab">panic_simple.go</span>
+    <div class="lens-split" data-reserve>
+      <div class="lens-t"><p class="label">THE TERMINAL</p><pre class="term lens-term"></pre></div>
+      <div><p class="label">THE CODE</p><ol class="lens-code" aria-label="panic_simple.go, with the line each footprint points at marked"></ol></div>
+      <div><ol class="lens-trail" aria-label="The trail of footprints, newest call first"></ol></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next clue <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every clue</summary><table class="transcript"><thead><tr><th>Clue</th><th>Label</th><th>Highlighted lines</th><th>What it tells you</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="lens-simple">{"program": "panic_simple.go", "steps": [
+      {"hl": ["panic: runtime error"], "tag": "THE CRIME", "note": "Read the <b>first</b> line first. <samp>panic:</samp> means the program crashed. <samp>runtime error</samp> means one of Go's own safety checks caught it, while the program was running."},
+      {"hl": ["index out of range [5] with length 3"], "tag": "THE DETAILS", "note": "What exactly went wrong: someone asked for index <b>5</b> of something with length <b>3</b>, whose indexes are only 0, 1 and 2."},
+      {"hl": ["goroutine 1 [running]:"], "tag": "WHO", "note": "Which worker crashed. A <b>goroutine</b> is one line of work running in your program, like one courier on a round. Your program is goroutine 1. Chapter 24 adds more couriers; until then there's only ever one."},
+      {"hl": ["main.main()"], "tag": "FUNCTION", "note": "The function that was running: <code>main</code> in package <code>main</code>, written <code>package.function</code>."},
+      {"hl": ["panic_simple.go:9"], "tag": "THE SCENE", "note": "The file and <b>line number</b>: line 9, <code>fmt.Println(shelf[slot])</code>, lit in THE CODE. The <samp>+0x65</samp> at the end is a position inside the compiled machine code. You can ignore it; it changes when the code changes."},
+      {"hl": ["exit status 2"], "tag": "THE EXIT", "note": "Not from your program but from <code>go run</code>: the program ended with exit code 2, Go's code for a panic. (Then <code>go run</code> itself exits with 1, which is the code the terminal shows below its last line.)"},
+      {"hl": ["panic: runtime error: index out of range [5] with length 3", "panic_simple.go:9"], "tag": "CASE CLOSED", "note": "Crime plus scene: line 9 used <code>slot</code> 5 on a 3-slot shelf. Notice <samp>Fetching slot 5</samp> printed first: line 8 ran fine. Fix: make sure <code>slot &lt; len(shelf)</code> before using it."}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 25: do not read only the last line">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Mistake: reading only the last line of the report.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The last line says <samp>exit status 2</samp>. So… it crashed? I knew that already.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Inspector Pell says: </span>The last line is the getaway car: it only tells you that something happened. In Go, the crime is at the <b>top</b>. Read top-down: the first line, then the first file and line number under it. That's usually the whole case.</p></div>
+      <svg class="char" data-char="detective" data-mood="normal" data-prop="glass"></svg>
+    </div>
+    <p class="stamp">IN GO, READ THE FIRST LINE FIRST</p>
+  </section>
+
+  <section class="panel clean lens" aria-label="Panel 26: following the footprints back to main" data-lens="lens-trail">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">A longer trail. <code>main</code> calls <code>label</code>, which calls <code>pick</code>. The first delivery works; the second one crashes. Follow the footprints from the scene back to <code>main</code>.</p>
+    <span class="file-tab">trail.go</span>
+    <div class="lens-split" data-reserve>
+      <div class="lens-t"><p class="label">THE TERMINAL</p><pre class="term lens-term"></pre></div>
+      <div><p class="label">THE CODE</p><ol class="lens-code" aria-label="trail.go, with the line each footprint points at marked"></ol></div>
+      <div><ol class="lens-trail" aria-label="The trail of footprints, newest call first"></ol></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next clue <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every clue</summary><table class="transcript"><thead><tr><th>Clue</th><th>Label</th><th>Highlighted lines</th><th>What it tells you</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="lens-trail">{"program": "trail.go", "steps": [
+      {"hl": ["panic: runtime error: index out of range [5] with length 3"], "tag": "THE CRIME", "note": "Same crime as before: index 5, length 3. But this time there are three functions listed underneath."},
+      {"hl": ["main.pick(...)", "trail.go:6"], "tag": "THE SCENE", "note": "The <b>first</b> function in the list is the newest call: where it broke. <code>pick</code>, line 6: <code>return shelf[n]</code>."},
+      {"hl": ["main.label(...)", "trail.go:10"], "tag": "FOOTPRINT", "note": "One step back: who called <code>pick</code>? <code>label</code>, on line 10."},
+      {"hl": ["main.main()", "trail.go:16"], "tag": "START OF TRAIL", "note": "Who called <code>label</code>? <code>main</code>, on line 16: <code>label(shelf, 5)</code>. There's the 5! The <b>last</b> function in the list is always where the trail starts."},
+      {"hl": ["main.pick(...)", "main.label(...)"], "tag": "(...)", "note": "Why <samp>(...)</samp>? These small functions were <b>inlined</b>: the Compiler copied their bodies straight into the caller to save time, so the report leaves out their argument values. Nothing is wrong; the line numbers are still exact."},
+      {"hl": ["panic: runtime error", "trail.go:16"], "tag": "CASE CLOSED", "note": "It <em>crashed</em> on line 6, but the bad value <em>came from</em> line 16. The scene isn't always where the culprit is: follow the footprints until you find where the wrong value was born. Fix it there (or make <code>pick</code> check its index and return an error)."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: a real case from the weekly report">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">A bigger case. Scoot's weekly van report crashes on Wednesday. Read it like the Inspector: first line, the scene, the footprints.</p>
+    <span class="file-tab">orders_big.go</span>
+    <pre class="code" data-src="orders_big.go"></pre>
+    <pre class="term wrap" data-run="orders_big.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>The crime: <samp>integer divide by zero</samp><br>Something was divided by 0.</span></li>
+      <li><span>The scene: <samp>main.perVan(...)</samp>, line 10<br><code>parcels / vans</code>. So <code>vans</code> was 0.</span></li>
+      <li><span>Footprint: <samp>main.report(…)</samp>, line 16<br>This one wasn't inlined, so Go printed its arguments in raw form (hexadecimal, base 16). A string shows as two numbers: where its letters are kept, and how many there are. <samp>0x3</samp> is 3 letters (<samp>Wed</samp>), and <samp>0x64</samp> is 100: Wednesday's parcels. A <samp>?</samp> means "this value may be out of date". Handy clues, but you rarely need them.</span></li>
+      <li><span>Start of the trail: <samp>main.main()</samp>, line 23<br><code>report("Wed", 100, "five")</code>. And the output above the crash agrees: <samp>Wed: 100 parcels, 0 vans</samp>.</span></li>
+      <li><span>Case closed: line 14<br><code>vans, _ := strconv.Atoi(vansText)</code> threw away the receipt for <code>"five"</code>. An unread receipt, two functions away from the crash.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="detective" data-mood="happy" data-prop="glass"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pell says: </span>Monday and Tuesday ran fine, so their lines printed. A panic stops the whole program, so Thursday and <samp>Report done</samp> never happened.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spottrail-m" id="ex-spottrail"></div>
+  <script type="application/json" id="ex-spottrail-m">{"program": "spot_trail.go", "bug": 13, "prompt": "This program panics. Follow the footprints in the real run (shown after you check). The crash happens inside <code>last</code>, but where was the wrong value made? Click that line.", "explain": "The scene is line 6, <code>return shelf[n]</code>, but <code>last</code> just did what it was told. The footprint below it points to line 13: <code>last(shelf, count)</code> with <code>count</code> = 4, and a 4-element array's last index is 3. Fix line 13: <code>last(shelf, count-1)</code>."}</script>
+
+  <div data-ex="choice" data-model="ex-lens-m" id="ex-lens"></div>
+  <script type="application/json" id="ex-lens-m">{"q": "A Go panic report lists three functions: <code>main.check(...)</code>, then <code>main.load(...)</code>, then <code>main.main()</code>. Which function was running at the moment of the crash?", "options": [
+    {"t": "<code>main.check</code>, the first one listed", "correct": true, "why": "Yes. Go prints the newest call first. The first function under <samp>goroutine 1 [running]:</samp> is the scene."},
+    {"t": "<code>main.main</code>, the last one listed", "why": "<code>main</code> is where the trail <em>starts</em>: it called <code>load</code>, which called <code>check</code>."},
+    {"t": "<code>main.load</code>, the one in the middle", "why": "<code>load</code> was waiting for <code>check</code> to finish. It's a footprint, not the scene."},
+    {"t": "You can't tell from the report", "why": "You can: the order of the list is the order of the calls, newest first."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · THE DETECTIVE'S METHOD<small>Debugging: a loop you can follow for any bug</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 28: the debugging loop">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft"><b>Debugging</b> means finding and fixing a bug. Guessing and changing things at random is slow and makes new bugs. Inspector Pell uses the same five steps on every case, round and round until it's solved.</p>
+    <ol class="loop5">
+      <li><b>REPRODUCE</b>Make it fail again, on purpose, with the same input.</li>
+      <li><b>READ</b>The first line of the message, then the line number.</li>
+      <li><b>HYPOTHESISE</b>Guess one cause, a guess you can test.</li>
+      <li><b>CHANGE ONE THING</b>Only one. Then you know what made the difference.</li>
+      <li><b>RE-RUN</b>Did the message change? Back to step 2.</li>
+    </ol>
+    <p class="stamp">CHANGE ONE THING AT A TIME</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Inspector Pell says: </span>A <b>hypothesis</b> is a guess you can check: "I think <code>vans</code> is 0 on Wednesday." Then you check it, and it's either confirmed or crossed off. Either way, you learned something.</p></div>
+      <svg class="char sm" data-char="detective" data-mood="focus" data-prop="notebook"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: shrink it to a tiny reproduction">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Step 1 has a power-up: the <b>tiny reproduction</b>. Cut the program down, piece by piece, re-running each time, until only the lines that still cause the crash are left. The 26-line weekly report shrinks to this:</p>
+    <span class="file-tab">repro.go</span>
+    <pre class="code" data-src="repro.go"></pre>
+    <pre class="term wrap" data-run="repro.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Same crime, <samp>integer divide by zero</samp>, from just two lines inside <code>main</code>. Now there's nowhere for the bug to hide. And if you ever ask someone for help, a tiny reproduction is the best gift you can bring.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: print debugging shows the invisible">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">A wrong-output case. The customer answered "yes", so why isn't Scoot delivering? Step 2, read… but there's no message. So make the program <em>tell</em> you what's in its boxes: <b>print debugging</b>.</p>
+    <span class="file-tab">debug_hidden.go</span>
+    <pre class="code" data-src="debug_hidden.go"></pre>
+    <pre class="term" data-run="debug_hidden.go"></pre>
+    <ol class="readlist">
+      <li><span><code>%v|</code> (line 7)<br>The plain form shows <samp>yes</samp>, and only the <samp>|</samp> placed straight after it gives away that something invisible is in between.</span></li>
+      <li><span><code>%#v</code> (line 8)<br>Prints a value the way you'd write it <b>in Go code</b>. Strings get quotes, so the stray space is plain to see: <samp>"yes "</samp>. And <code>"yes " == "yes"</code> is false.</span></li>
+      <li><span>Fix<br>Trim the text before comparing: <code>strings.TrimSpace</code> from chapter 7.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: plain form and Go form">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Two forms of the same three values. When a value looks fine but behaves oddly, reach for <code>%#v</code>.</p>
+    <span class="file-tab">debug_verbs.go</span>
+    <pre class="code" data-src="debug_verbs.go"></pre>
+    <pre class="term" data-run="debug_verbs.go"></pre>
+    <ol class="readlist">
+      <li><span>An empty string<br><code>%v</code> prints nothing at all (look at the two spaces between the bars). <code>%#v</code> prints <samp>""</samp>.</span></li>
+      <li><span>An array<br><code>%#v</code> also shows its type: <samp>[3]int{4, 9, 5}</samp>, exactly how you'd write it in code.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-hash-m" id="ex-hash"></div>
+  <script type="application/json" id="ex-hash-m">{"program": "predict_hash.go", "prompt": "The same two values, printed with <code>%v</code> and then with <code>%#v</code>. What's printed?", "hint": "<code>%#v</code> writes values the way they'd appear in Go code: strings in quotes, arrays with their type in front and commas between.", "explain": "Plain: <samp>Oslo [3 8]</samp>. Go form: <samp>\"Oslo\" [2]int{3, 8}</samp>. The quotes and the type are the extra information a detective wants."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: print inside the loop">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Back to a wrong total. The four parcels weigh 3 + 6 + 2 + 5 = 16 kg, but the program's sum ends lower. Add one debug print at the end of the loop body: the lap, the weight it read, and the running sum. Before running it, fill in the table below.</p>
+    <span class="file-tab">debug_trace.go</span>
+    <pre class="code" data-src="debug_trace.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="detective" data-mood="normal" data-prop="glass"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pell says: </span>Print the boxes that matter, every lap. Then the evidence is on the screen in black and white. When the case is closed, delete the debug line.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-dtrace-m" id="ex-dtrace"></div>
+  <script type="application/json" id="ex-dtrace-m">{"program": "debug_trace.go", "columns": ["i", "weights[i]", "sum"], "given": [0], "prompt": "Fill in each line the debug print shows. Then look at the first column: which parcel never shows up?", "explain": "The rows say 6, 2, 5: the sum ends at 13, not 16. The first row already has <code>i</code> = 1, so <code>weights[0]</code>, the 3, is never added. Hypothesis confirmed; change one thing: <code>i := 0</code>."}</script>
+
+  <section class="panel pop" aria-label="Panel 33: go vet spots a bug the Compiler allows">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Your second pair of eyes, from chapter 2: <code>go vet</code>. It doesn't run your program; it reads your code for mistakes that compile fine but are almost certainly wrong. First the plain run, then vet:</p>
+    <span class="file-tab">vet_printf.go</span>
+    <pre class="code" data-src="vet_printf.go"></pre>
+    <pre class="term wrap" data-run="vet_printf.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>go run</code> printed a garbled line, <samp>Stops: %!d(string=five)</samp>, instead of a number, and no error. Specs caught why, on line 7: <code>%d</code> wants a whole number, but <code>stops</code> holds text. Run <code>go vet</code> whenever output looks odd, and before you share code.</p></div>
+    </div>
+    <p class="sr-only">Picture: Specs, the go vet critter with big glasses and a magnifier.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-skip1-m" id="ex-skip1"></div>
+  <script type="application/json" id="ex-skip1-m">{"q": "A program crashed. You changed two lines at once, re-ran it, and the crash went away. Which step of Inspector Pell's loop did you skip?", "options": [
+    {"t": "Change one thing at a time", "correct": true, "why": "Yes. With two changes you can't tell which one fixed it, and the other one may have added a new bug. Undo one, re-run, and find out."},
+    {"t": "Reproduce the crash first", "why": "You did reproduce it: you saw it crash before your change, and saw that it stopped. The step you broke comes later."},
+    {"t": "Read the first line first", "why": "Reading the report is how you'd choose what to change. The problem here is changing two things in one go."},
+    {"t": "Re-run after the change", "why": "You did re-run it: that's how you saw the crash go away."}]}</script>
+
+  <section class="panel sketch kit" aria-label="Panel 34: three more tools: the duck, the steps and the debugger">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">Three more tools for the detective's kit.</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <svg class="char sm" data-char="duck"></svg>
+        <h3>THE RUBBER DUCK</h3>
+        <p>Explain your code out loud, line by line, to a rubber duck (or a patient friend). Saying "and then this line…" makes you notice what the line <em>really</em> does. It works embarrassingly often.</p>
+      </div>
+      <div class="duo-card">
+        <svg class="char" data-char="machine" data-label="step()"></svg>
+        <h3>SMALLER STEPS</h3>
+        <p>Big jobs hide bugs. Split the problem into steps, one function each (chapter 7), and check each step on its own. A bug in a 5-line function has nowhere to hide.</p>
+      </div>
+      <div class="duo-card dashed">
+        <svg class="char sm" data-char="professor"></svg>
+        <h3>A DEBUGGER</h3>
+        <p>A <b>debugger</b> pauses a running program at a line you choose (a <b>breakpoint</b>), so you can look inside every box and step one line at a time. The debugger most Go programmers use is <b>Delve</b> (<code>dlv</code>), a free tool you install once. The Professor's lab below shows how.</p>
+      </div>
+    </div>
+    <p class="sr-only">Pictures: a yellow rubber duck; a small machine labelled step(); the Professor.</p>
+  </section>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 35: boss level">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="35"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Receipts, exit ramps and footprints, all mixed up. For each one: what does the receipt say, and which road does the run take?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A booking machine with two rules, and four orders. What's printed?", "hint": "Order numbers come from <code>range</code>, so they start at 0. A refused order prints a line and adds nothing. Which orders get through?", "explain": "Order 0 (<code>\"2\"</code>) is fine: booked is 2. Order 1 (<code>\"6\"</code>) is a number but more than 4: <samp>6 won't fit</samp>. Order 2 (<code>\"two\"</code>) fails Atoi, and <code>seats</code> replaces Atoi's receipt with its own: <samp>not a number</samp>. Order 3 (<code>\"4\"</code>) is fine: 2 + 4 = 6."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.go", "bug": 11, "prompt": "Boss 2. The note says floor 7, and the program sends Scoot to floor 0. No error, no crash. Click the line with the bug.", "explain": "Line 11 says <code>err == nil</code>: \"if the receipt is <em>blank</em>, leave early\". That's backwards. A good note takes the exit ramp with 0 and a blank receipt, and <code>main</code> can't tell anything went wrong. Fix: <code>if err != nil</code>. One character, one quiet logic bug."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.go", "prompt": "Boss 3. A star-rating reader with three exit ramps. Fill in the ramp that passes Atoi's receipt up, the fixed message, and the message with a number in it.", "blanks": [{"line": 12, "text": "return 0, err", "accept": ["return 0,err"]}, {"line": 15, "text": "errors.New"}, {"line": 18, "text": "fmt.Errorf"}, {"line": 18, "text": "%d"}], "explain": "Pass Atoi's receipt up with <code>return 0, err</code>. A message that never changes: <code>errors.New</code>. A message that shows the number: <code>fmt.Errorf</code> with <code>%d</code>, which is why the goal output says <samp>9 stars?</samp>"}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 11, "pin": [1, 2, 3, 4, 5], "prompt": "Boss 4. Put the lines in order: double every good note, and say <samp>bad note</samp> for the others without stopping. (The <code>package</code> and <code>import</code> lines are already in place.)", "explain": "Loop over the notes. Inside: read, check straight away, and on a bad receipt print and <code>continue</code>. The happy path doubles the number underneath the <code>if</code>. 10 → 20, <code>\"ten\"</code> → bad note, 5 → 10."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.go", "columns": ["i", "sum", "bad"], "given": [0], "prompt": "Boss 5. Five notes, some of them not numbers. Fill in <code>sum</code> and <code>bad</code> after each lap.", "explain": "<code>\"3\"</code>: sum 3. <code>\"x\"</code>: a receipt, bad becomes 1. <code>\"4\"</code>: sum 7. <code>\"-\"</code> isn't a number on its own: bad becomes 2. <code>\"5\"</code>: sum 12. The <code>else</code> makes sure a junk 0 is never added, though here adding 0 would do no harm. In other sums, like counting parcels, it would."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "expect": "error", "answer": "no new variables on left side of :=", "ask": "Boss 6. This doesn't compile. Type the Compiler's message, without the address (start with \"no\").", "hint": "<code>:=</code> builds at least one <em>new</em> box. On line 19, is anything on the left new?", "explain": "Lines 9 and 14 each built a new box (<code>a</code>, then <code>b</code>), so reusing <code>err</code> there was fine. Line 19 has only <code>_</code> and <code>err</code>, which already exists: <samp>no new variables on left side of :=</samp>. Use <code>=</code> there."}</script>
+
+  <section class="panel pop" aria-label="Panel 36: what you learned">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">What you learned in Chapter 8</p>
+    <ul class="recap">
+      <li><b>READ THE RECEIPT BEFORE YOU OPEN THE BOX</b>A function that can fail returns <code>(value, error)</code>, error last. <code>nil</code> means no problem. When <code>err</code> isn't <code>nil</code>, the value is a junk zero value.</li>
+      <li><b>CHECK RIGHT AWAY. LEAVE EARLY.</b><code>if err != nil { … return }</code> straight after the call. The happy path runs down the left edge; problems take an exit ramp.</li>
+      <li><b>NEVER DROP A RECEIPT</b><code>_</code> and calls like <code>os.Remove(…)</code> with nothing caught hide errors. Give bad input an error value, not a panic.</li>
+      <li><b>WRITE RECEIPTS PEOPLE CAN READ</b><code>errors.New("…")</code> for a fixed message, <code>fmt.Errorf("…%d…", x)</code> with values, <code>fmt.Errorf("order %d: %v", n, err)</code> to add a note. Small letter, no full stop. Then pass it up, skip and carry on, or say so and stop.</li>
+      <li><b>IN GO, READ THE FIRST LINE FIRST</b>Three kinds of bug: compile error, panic, wrong output. In a panic report, the first line is the crime, the first file:line is the scene, and the footprints lead down to <code>main</code>.</li>
+      <li><b>CHANGE ONE THING AT A TIME</b>Reproduce, read, hypothesise, change one thing, re-run. Shrink to a tiny reproduction; print with <code>%#v</code>; run <code>go vet</code>; tell the duck.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every receipt read, every footprint followed. Case closed!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 37: next time, windows on a shelf">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">Coming up in Chapter 9: Windows on a Shelf</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini" viewBox="0 0 220 110" aria-hidden="true"><rect x="8" y="60" width="204" height="12" fill="#C8955E" stroke="#111" stroke-width="3"/><g stroke="#111" stroke-width="3"><rect x="16" y="30" width="28" height="30" fill="#F2C9A0"/><rect x="50" y="30" width="28" height="30" fill="#DDE8FF"/><rect x="84" y="30" width="28" height="30" fill="#C9F2D9"/><rect x="118" y="30" width="28" height="30" fill="#FFF6CC"/><rect x="152" y="30" width="28" height="30" fill="#FFE1E1"/></g><rect x="44" y="14" width="108" height="66" rx="4" fill="none" stroke="#111" stroke-width="5" stroke-dasharray="10 5"/><text x="98" y="102" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">s[1:4]</text></svg>
+          <p><b>Slices</b>: a window onto a long shelf of boxes. Unlike an egg carton, a slice can grow with <code>append</code>.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="char" data-char="crate" data-items="3,6,2"></svg>
+          <p>And a familiar crime: <samp>index out of range</samp>. You already know how to read that report.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Cartons have a fixed size. My round doesn't. Next: lists that grow!</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser picture: a long shelf of five coloured boxes with a dashed window frame around three of them, labelled s[1:4]; and the crate creature holding 3, 6 and 2.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch7.html">← Ch 7 · Machines and Mail Slots</a><a class="next" href="ch9.html">Ch 9 · Windows on a Shelf →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what an error value is, and what a panic report really shows</summary>
+    <div class="page-body">
+      <h3>An error is an ordinary value</h3>
+      <p>Go has no special machinery for errors that can fail. An <code>error</code> is a value like an <code>int</code>: you can put it in a box, pass it to a function, return it, compare it with <code>nil</code> and print it. Strictly, <code>error</code> is an <b>interface</b>: any value that can describe itself in words with an <code>Error() string</code> method counts as an error. <code>Println</code> calls that method to get the text it prints. Interfaces are chapter 14's subject; for now, "a receipt with a message on it" is exactly right.</p>
+      <h3>What <code>errors.New</code> and <code>fmt.Errorf</code> build</h3>
+      <p><code>errors.New("x")</code> makes a tiny hidden value holding the text <code>"x"</code> and hands you a receipt pointing at it. Two calls with the same text make two <em>different</em> receipts, which is why programs don't compare errors by their text. <code>fmt.Errorf</code> formats the message first, exactly like <code>fmt.Sprintf</code>, then does the same. With <code>%w</code> instead of <code>%v</code> it also remembers the receipt it wrapped (chapter 19).</p>
+      <h3>Why Go chose receipts</h3>
+      <p>Many languages report problems with <b>exceptions</b>: the failing code "throws", and the program jumps to some handler that may be far away. Go's designers chose to make errors visible in every function's signature instead: if a function can fail, you see <code>error</code> in its results and decide on the spot. The cost is many <code>if err != nil</code> lines. The benefit is that you can read a function from top to bottom and see every way it can go wrong. Go does have <code>panic</code>, but it's meant for bugs ("this should never happen"), not for bad input.</p>
+      <h3>The panic report, part by part</h3>
+      <ul>
+        <li><b><samp>panic: runtime error: …</samp></b>: the reason. "runtime error" means a check built into Go fired, such as the index check and the integer-division check whose reports you read on this page. Not every panic says it.</li>
+        <li><b>A blank line</b>, then <b><samp>goroutine 1 [running]:</samp></b>: the goroutine that crashed and what it was doing. With many goroutines (chapter 24), the report can list them all.</li>
+        <li><b>Pairs of lines, newest call first</b>: a function name (<code>package.function</code>), then a tab and the file path with its line number. A function called from another function appears above its caller.</li>
+        <li><b><samp>(...)</samp></b> after a name: the function was inlined, so its argument values aren't available. <b>Hex values</b> in brackets: the arguments in raw form; a trailing <samp>?</samp> means the value may be out of date.</li>
+        <li><b><samp>+0x65</samp></b>: how far into the function's machine code the crash happened. Useful to tools, not to you.</li>
+        <li><b><samp>exit status 2</samp></b>: printed by <code>go run</code>, not by your program. A panicking Go program exits with code 2. <code>go run</code> then exits with 1 itself. If you build a program first (<code>go build</code>) and run it directly, there is no <samp>exit status</samp> line; the shell just sees code 2.</li>
+      </ul>
+      <p>The file paths in this book's reports are the real paths of the capture folder, <code>/home/you/go-ch8/</code>. On your computer they will be your own folder. Building with <code>-trimpath</code> replaces those paths with short module paths, which is how many real programs are shipped.</p>
+      <h3>Exit codes and the two output streams</h3>
+      <p>Every program ends with an <b>exit code</b>: 0 for success, anything else for failure. <code>os.Exit(1)</code> picks the code yourself. Every program also has two streams to the terminal: standard output and standard error. A shell can send them to different places, for example <code>go run batch.go &gt; load.txt</code> puts the results in a file while the complaints still appear on your screen. Note that <code>os.Exit</code> ends the program immediately, without running any <code>defer</code>red clean-up (chapter 14).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where you'll see these every day</summary>
+    <div class="page-body">
+      <ul>
+        <li><b><code>if err != nil</code></b> is everywhere: opening files, reading from the network, talking to databases, parsing text. In the Go standard library, almost every function that touches the outside world returns an <code>error</code> last.</li>
+        <li><b>Command-line tools</b> follow panel 20's pattern: print <samp>toolname: what went wrong</samp> to standard error, and <code>os.Exit(1)</code>. Go's <code>log</code> package has a shortcut, <code>log.Fatal(err)</code>, which prints the error with a timestamp and exits with code 1.</li>
+        <li><b>Adding context</b> as receipts travel up (panel 17) is how real error messages end up reading like <samp>load config: open settings.json: no such file or directory</samp>: each layer adds what it was doing.</li>
+        <li><b>Servers</b> mostly "skip and carry on": one bad request gets an error reply, and the server keeps serving everyone else.</li>
+        <li><b>Panics in real code</b> are bugs, reported with exactly the layout you learned. Crash reporters and logs show the same trail, often with many more frames: read it the same way, first line first, then the first frame in <em>your</em> code.</li>
+        <li><b>Debuggers</b>: VS Code's Go extension and GoLand both use Delve underneath, so clicking in the margin to set a breakpoint is the same <code>break</code> command as in the lab.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"If there's an error, the value will be something sensible."</b> By custom it's the zero value (0, <code>""</code>), and you mustn't use it. Some functions document a useful partial value, but don't rely on it unless the docs say so.</li>
+        <li><b>"<code>nil</code> means zero."</b> <code>nil</code> means "no value here" for things like errors. An <code>int</code> can never be <code>nil</code> (panel 18).</li>
+        <li><b>"Printing the error is handling it."</b> Printing and then carrying on with the junk value (panel 8, <code>scan_err.go</code>) still uses junk. Handling means choosing a road: pass up, skip, or stop.</li>
+        <li><b>"<code>_</code> makes errors go away."</b> It only stops you seeing them.</li>
+        <li><b>"Bad input should panic so I notice."</b> Bad input is normal. Return an error; save panics for impossible situations.</li>
+        <li><b>"Error messages should look like sentences: <samp>Too heavy!</samp>"</b> Go style is small letter, no full stop, because messages get chained: <samp>order 7: too heavy</samp>.</li>
+        <li><b>"The last line of the report is the important one."</b> In Go it's <samp>exit status 2</samp>. Read the first line first.</li>
+        <li><b>"The line in the top frame is where the bug is."</b> It's where the program <em>crashed</em>. The wrong value may come from a footprint further down (panel 26).</li>
+        <li><b>"If it compiles, it works."</b> The Compiler checks types and names, not your intentions. Panics and wrong answers both compile.</li>
+        <li><b>"Change several things at once to save time."</b> If it starts working, you won't know which change fixed it, and the others may have added new bugs.</li>
+        <li><b>"Debug prints are unprofessional."</b> Professionals use them all the time. Just delete them when you're done.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself, and drive the Delve debugger (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project and break it on purpose</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir trail</code>, then <code>cd trail</code>, then <code>go mod init example/trail</code>.</li>
+        <li>Create <code>main.go</code> and type in <code>trail.go</code> from panel 26. Run <code>go run .</code> and read the report top-down. Your file path will show your own folder.</li>
+        <li>Change <code>label(shelf, 5)</code> to <code>label(shelf, 2)</code>. Re-run. One change, one re-run: the crash is gone.</li>
+        <li>Type in <code>rules.go</code> from panel 14 as a second project. Add a fourth call, <code>weigh("-3")</code>, and predict the line before you run it.</li>
+      </ol>
+      <p class="os-note">Running with <code>go run .</code> inside a module, compile errors start with <code># example/trail</code> instead of this book's <code># command-line-arguments</code>. The messages and line numbers are the same.</p>
+      <h3>2. Install Delve</h3>
+      <ol>
+        <li>Run <code>go install github.com/go-delve/delve/cmd/dlv@latest</code>. This downloads, builds and installs the <code>dlv</code> program into Go's own <code>bin</code> folder.</li>
+        <li>Check it with <code>dlv version</code>. If the terminal says the command isn't found, add Go's bin folder to your PATH: it's <code>%USERPROFILE%\go\bin</code> on Windows and <code>~/go/bin</code> on macOS and Linux (<code>go env GOPATH</code> prints the folder that contains <code>bin</code>).</li>
+      </ol>
+      <ul>
+        <li><b>macOS:</b> the first run may ask for permission to let a debugger control other programs, and may need the command-line developer tools (<code>xcode-select --install</code>).</li>
+        <li><b>Linux:</b> works out of the box on most systems.</li>
+        <li><b>Windows:</b> works in PowerShell and in VS Code's terminal.</li>
+      </ul>
+      <h3>3. A first debugging session</h3>
+      <p>Inside the <code>trail</code> folder (with <code>label(shelf, 5)</code> put back), type these commands one at a time. This card lists the commands and where each one leaves you, not a captured run: your screen will show Delve's own replies, including source listings with an arrow (<samp>=&gt;</samp>) at the current line. The steps were checked by hand with Delve 1.27.2 and Go 1.27.3.</p>
+      <pre class="dlv">dlv debug              start the program under Delve, paused before main
+(dlv) break main.go:16   a breakpoint on the line that calls label(shelf, 5)
+(dlv) continue           run until the breakpoint (short form: c); "parcel: kite" prints first
+(dlv) print shelf        look inside a box (short form: p)
+(dlv) step               go INTO the call on this line: Delve stops on label's first line, line 9 (s)
+(dlv) args               label's parameters: shelf, and slot = 5
+(dlv) step               on to line 10, the line that calls pick
+(dlv) step               INTO pick: Delve stops on its first line, line 5
+(dlv) print n            n is 5: the hypothesis is confirmed
+(dlv) next               run one line without going into calls (n): now on line 6
+(dlv) next               line 6 runs, and Delve stops at the panic ([unrecovered-panic])
+(dlv) exit               leave Delve (or: quit)</pre>
+      <p>Other commands worth knowing: <code>locals</code> (every box in the current function), <code>stack</code> (the same footprints as a panic report, while the program is still alive), <code>restart</code> and <code>help</code>.</p>
+      <h3>4. Try the other tools</h3>
+      <ol>
+        <li>Add the debug print from panel 32 to your own loop, then remove it.</li>
+        <li>Put <code>fmt.Printf("%d\n", "five")</code> in a program and run <code>go vet .</code> to meet Specs's message.</li>
+        <li>Pick a program that misbehaves and explain it out loud, line by line, to any object on your desk.</li>
+      </ol>
+      <ul>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs all the programs in this chapter and shows panic reports, but it has no debugger. Its file paths look different (<code>/tmp/sandbox…/prog.go</code>).</li>
+      </ul>
+      <p class="os-note">Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>error</dt><dd>Go's type for "something went wrong" values: the receipt. Returned as a function's last result.</dd>
+        <dt><code>err</code></dt><dd>The name Go programmers give a box holding an error.</dd>
+        <dt><code>nil</code></dt><dd>"No value here". An error that is <code>nil</code> means no problem. Prints as <samp>&lt;nil&gt;</samp>.</dd>
+        <dt><code>if err != nil</code></dt><dd>"If there is a problem". The check that goes straight after any call that can fail.</dd>
+        <dt>early return</dt><dd>Leaving a function as soon as there's a problem, so the rest only runs on the happy path.</dd>
+        <dt>happy path</dt><dd>The way through the code when nothing goes wrong. In Go it runs down the left edge, not indented.</dd>
+        <dt><code>errors.New</code></dt><dd>Makes a new error value with a fixed message.</dd>
+        <dt><code>fmt.Errorf</code></dt><dd>Makes a new error value from a format, like <code>Sprintf</code>, so the message can include values.</dd>
+        <dt>context (in an error)</dt><dd>Extra words added in front of a receipt as it's passed up, like <samp>order 7:</samp>.</dd>
+        <dt>standard output / standard error</dt><dd>A program's two streams to the terminal: <code>os.Stdout</code> for results, <code>os.Stderr</code> for complaints.</dd>
+        <dt><code>os.Exit(code)</code></dt><dd>Ends the program at once with that exit code. 1 is the usual "it failed" code.</dd>
+        <dt>exit code</dt><dd>A number a program hands back when it ends: 0 for success, anything else for failure. A panic gives 2.</dd>
+        <dt>bug</dt><dd>A mistake in a program. Three kinds: compile error, panic, wrong output.</dd>
+        <dt>compile error</dt><dd>A problem the Compiler finds before the program runs. Nothing runs.</dd>
+        <dt>panic</dt><dd>A crash while the program is running, with a report and exit code 2.</dd>
+        <dt>logic bug</dt><dd>The program runs and ends normally but does the wrong thing. No message at all.</dd>
+        <dt>panic report / stack trace</dt><dd>What Go prints when it panics: the reason, then the functions that were running, newest first, with file and line.</dd>
+        <dt>stack frame (frame)</dt><dd>One function call that is still running. Each pair of lines in the trace is one frame: one footprint.</dd>
+        <dt>goroutine</dt><dd>One line of work running in a Go program. Every program starts with goroutine 1.</dd>
+        <dt>inlined</dt><dd>A small function whose body the Compiler copied into its caller. Shown as <samp>(...)</samp> in a trace.</dd>
+        <dt>runtime error</dt><dd>A problem caught by Go's own checks while running, like an index out of range.</dd>
+        <dt>debugging</dt><dd>Finding and fixing bugs. The loop: reproduce, read, hypothesise, change one thing, re-run.</dd>
+        <dt>hypothesis</dt><dd>A guess about the cause that you can test.</dd>
+        <dt>tiny reproduction</dt><dd>The smallest program that still shows the bug.</dd>
+        <dt>print debugging</dt><dd>Adding temporary print lines to see what's in your boxes while the program runs.</dd>
+        <dt><code>%#v</code></dt><dd>Prints a value the way you'd write it in Go code: strings in quotes, arrays with their type.</dd>
+        <dt><code>go vet</code></dt><dd>A checker that reports code which compiles but is probably wrong.</dd>
+        <dt>rubber duck debugging</dt><dd>Explaining your code out loud, line by line, to find the bug yourself.</dd>
+        <dt>debugger / Delve</dt><dd>A tool that pauses a running program so you can look inside it. Delve (<code>dlv</code>) is the one most Go programmers use; it's a separate free tool you install.</dd>
+        <dt>breakpoint</dt><dd>A line where the debugger pauses the program.</dd>
+        <dt>exception</dt><dd>Other languages' way of reporting errors by jumping to a handler. Go uses error values instead.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/tour/methods/19">A Tour of Go: Errors</a> and its exercise (they use methods and interfaces, which this book reaches in chapters 13 and 14).</li>
+        <li><a href="https://go.dev/blog/error-handling-and-go">The Go Blog: Error handling and Go</a>, the classic introduction to <code>errors.New</code>, <code>fmt.Errorf</code> and checking errors where they happen.</li>
+        <li><a href="https://go.dev/blog/errors-are-values">The Go Blog: Errors are values</a>, on writing error checks that read well.</li>
+        <li><a href="https://go.dev/doc/effective_go#errors">Effective Go: Errors</a>, and <a href="https://go.dev/wiki/CodeReviewComments">Go Code Review Comments</a> ("Error Strings", "Handle Errors", "Indent Error Flow", "Don't Panic").</li>
+        <li><a href="https://pkg.go.dev/errors">Package errors</a>, <a href="https://pkg.go.dev/fmt#Errorf">fmt.Errorf</a>, <a href="https://pkg.go.dev/os#Exit">os.Exit</a> and <a href="https://pkg.go.dev/cmd/vet">cmd/vet</a> reference pages.</li>
+        <li><a href="https://pkg.go.dev/runtime">Package runtime</a>, whose overview explains the <code>GOTRACEBACK</code> setting that controls how much a panic report shows.</li>
+        <li><a href="https://github.com/go-delve/delve/tree/master/Documentation">Delve documentation</a>: getting started and the full command list.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/errors">Go by Example: Errors</a> and <a href="https://gobyexample.com/exit">Exit</a>.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/pointers-and-errors">Learn Go with Tests: Pointers and errors</a>, which builds error returns test-first.</li>
+        <li><a href="https://exercism.org/tracks/go">Exercism's Go track</a>: its "errors" concept and exercises, with free mentoring.</li>
+        <li><a href="https://roadmap.sh/golang">roadmap.sh Go roadmap</a>: the error-handling basics and debugging nodes list further reading.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch8</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1); panel 33 runs <code>go run vet_printf.go</code> and then <code>go vet vet_printf.go</code>. Panic reports show the real file path and code offsets of those runs, and are the same on every run. Programs that read the keyboard were fed their input from a file and also run in a pseudo-terminal, so the typing appears as on a real screen. <code>os.Remove("nothing-here")</code> ran in that folder, where no such file exists. Every program was also run with Go 1.24.7, built against a copy of the <code>go.mod</code> that says <code>go 1.24</code>. Seven programs differ: six panic reports only in their <samp>+0x…</samp> code offsets (and, in <code>orders_big.go</code>, the raw argument values), and <code>go vet</code> on Go 1.24.7 words its report for <code>vet_printf.go</code> differently (it adds a <samp># command-line-arguments</samp> header and points at column 2, not 21). The page shows the Go 1.27.3 runs. 57 programs were captured, all deterministic; <code>parsons_weigh_alt.go</code> is the second accepted order of the puzzle after panel 13. The Delve session in the lab is a list of commands checked by hand, not a captured run.</p>
+  <p>The memory tracer, the map of <code>weigh</code>, the weigh machine and the two panic lenses are teaching models; each checks itself against those runs and shows a badge. In the tracer, the receipt is drawn as one box shared by <code>weigh</code> and <code>main</code>, with its message shortened (the full text, starting <samp>strconv.Atoi:</samp>, is on the screen); strictly, each returned error value is a small copy that refers to the same underlying message.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Go Blog, "Error handling and Go"; Go Code Review Comments ("Error Strings", "Handle Errors", "Indent Error Flow", "Don't Panic"); the Delve documentation (getting started and the command-line reference); Effective Go, "Errors"; the Go specification (run-time panics); A Tour of Go, Go by Example ("Errors"), boot.dev Learn Go, Exercism, roadmap.sh ("Error Handling Basics", "Stack Traces &amp; Debugging"), Learn Go with Tests ("Pointers and errors"), 100 Go Mistakes (diagnostics) and Concurrency in Go (anatomy of a goroutine error), as summarised in this book's research map.</p>
+  <p>Scoot, Inspector Pell, the Compiler, the Professor and the critters are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

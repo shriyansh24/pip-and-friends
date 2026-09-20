@@ -1,0 +1,837 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch9",
+  "versionDifferences": [
+   "boss_err.go",
+   "grow.go",
+   "loop_wrong.go",
+   "predict_oob.go",
+   "slice_oob.go",
+   "spot_make.go",
+   "within_cap.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_err.go, grow.go, loop_wrong.go, predict_oob.go, slice_oob.go, spot_make.go, within_cap.go."
+ },
+ "programs": {
+  "append_basic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tbag := []string{\"book\"}\n\tbag = append(bag, \"lamp\")\n\tfmt.Println(bag)\n\tbag = append(bag, \"kite\", \"socks\")\n\tfmt.Println(bag, len(bag))\n}\n",
+   "stdout": "[book lamp]\n[book lamp kite socks] 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run append_basic.go",
+     "out": "[book lamp]\n[book lamp kite socks] 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "append_machine.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(append([]int{1, 2}, 3))\n\tfmt.Println(append([]string{\"a\"}, \"b\", \"c\"))\n\tvar none []int\n\tfmt.Println(append(none, 42))\n}\n",
+   "stdout": "[1 2 3]\n[a b c]\n[42]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run append_machine.go",
+     "out": "[1 2 3]\n[a b c]\n[42]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "append_new.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{1, 2, 3}\n\tt := append(s, 4)\n\tfmt.Println(\"s:\", s)\n\tfmt.Println(\"t:\", t)\n}\n",
+   "stdout": "s: [1 2 3]\nt: [1 2 3 4]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run append_new.go",
+     "out": "s: [1 2 3]\nt: [1 2 3 4]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "append_type.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tages := []int{9, 12}\n\tages = append(ages, \"ten\")\n\tfmt.Println(ages)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./append_type.go:7:22: cannot use \"ten\" (untyped string constant) as int value in argument to append\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run append_type.go",
+     "out": "",
+     "err": "# command-line-arguments\n./append_type.go:7:22: cannot use \"ten\" (untyped string constant) as int value in argument to append\n",
+     "exit": 1
+    }
+   ]
+  },
+  "append_unused.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{7, 8}\n\tappend(s, 9)\n\tfmt.Println(s)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./append_unused.go:7:2: append(s, 9) (value of type []int) is not used\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run append_unused.go",
+     "out": "",
+     "err": "# command-line-arguments\n./append_unused.go:7:2: append(s, 9) (value of type []int) is not used\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar queue []string\n\tfmt.Println(len(queue), cap(queue))\n\tqueue[0] = \"Ada\"\n\tfmt.Println(queue)\n}\n",
+   "stdout": "0 0\n",
+   "stderr": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x72\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "0 0\n",
+     "err": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x72\nexit status 2\n",
+     "exit": 1,
+     "merged": "0 0\npanic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x72\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "0 0\n",
+    "stderr": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x78\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run boss_err.go",
+      "out": "0 0\n",
+      "err": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x78\nexit status 2\n",
+      "exit": 1,
+      "merged": "0 0\npanic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/boss_err.go:8 +0x78\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tlaps := []int{61, 58, 63, 57, 60}\n\tlast3 := laps[len(laps)-3:]\n\tfirst2 := laps[:2]\n\tfmt.Println(first2, last3)\n\tfmt.Println(len(last3), cap(last3))\n}\n",
+   "stdout": "[61 58] [63 57 60]\n3 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go",
+     "out": "[61 58] [63 57 60]\n3 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\twords := []string{\"go\", \"slice\", \"map\", \"window\"}\n\tvar long []string\n\tfor _, w := range words {\n\t\tif len(w) > 3 {\n\t\t\tlong = append(long, w)\n\t\t}\n\t}\n\tfmt.Println(long, len(long))\n}\n",
+   "stdout": "[slice window] 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "[slice window] 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons_alt.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar long []string\n\twords := []string{\"go\", \"slice\", \"map\", \"window\"}\n\tfor _, w := range words {\n\t\tif len(w) > 3 {\n\t\t\tlong = append(long, w)\n\t\t}\n\t}\n\tfmt.Println(long, len(long))\n}\n",
+   "stdout": "[slice window] 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons_alt.go",
+     "out": "[slice window] 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tnums := []int{3, 1, 4, 1, 5, 9}\n\tfmt.Println(nums[:2], nums[len(nums)-2:])\n\tfmt.Println(len(nums[1:4]), cap(nums[1:4]))\n\tvar big []int\n\tfor _, n := range nums {\n\t\tif n > 2 {\n\t\t\tbig = append(big, n)\n\t\t}\n\t}\n\tfmt.Println(big, len(big))\n}\n",
+   "stdout": "[3 1] [5 9]\n3 5\n[3 4 5 9] 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "[3 1] [5 9]\n3 5\n[3 4 5 9] 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsquares := make([]int, 3)\n\tfor n := 1; n <= 3; n++ {\n\t\tsquares = append(squares, n*n)\n\t}\n\tfmt.Println(squares)\n}\n",
+   "stdout": "[0 0 0 1 4 9]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "[0 0 0 1 4 9]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := make([]int, 0, 2)\n\tfor _, n := range []int{5, 6, 7, 8, 9} {\n\t\ts = append(s, n)\n\t\tfmt.Println(n, len(s), cap(s))\n\t}\n}\n",
+   "stdout": "5 1 2\n6 2 2\n7 3 4\n8 4 4\n9 5 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "5 1 2\n6 2 2\n7 3 4\n8 4 4\n9 5 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "compare_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ta := []int{1, 2}\n\tb := []int{1, 2}\n\tfmt.Println(a == b)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./compare_err.go:8:14: invalid operation: a == b (slice can only be compared to nil)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run compare_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./compare_err.go:8:14: invalid operation: a == b (slice can only be compared to nil)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "compare_loop.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc same(a, b []int) bool {\n\tif len(a) != len(b) {\n\t\treturn false\n\t}\n\tfor i := range a {\n\t\tif a[i] != b[i] {\n\t\t\treturn false\n\t\t}\n\t}\n\treturn true\n}\n\nfunc main() {\n\tfmt.Println(same([]int{1, 2}, []int{1, 2}))\n\tfmt.Println(same([]int{1, 2}, []int{2, 1}))\n\tfmt.Println(same([]int{1, 2}, []int{1, 2, 3}))\n}\n",
+   "stdout": "true\nfalse\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run compare_loop.go",
+     "out": "true\nfalse\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "empty_check.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc isEmpty(s []string) bool {\n\treturn len(s) == 0\n}\n\nfunc main() {\n\tvar a []string\n\tb := []string{}\n\tc := []string{\"Ada\"}\n\tfmt.Println(isEmpty(a), isEmpty(b), isEmpty(c))\n}\n",
+   "stdout": "true true false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run empty_check.go",
+     "out": "true true false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_append.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar stamps []string\n\tstamps = append(stamps, \"moon\")\n\tstamps = append(stamps, \"star\", \"sun\")\n\tfmt.Println(stamps, len(stamps))\n}\n",
+   "stdout": "[moon star sun] 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_append.go",
+     "out": "[moon star sun] 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_slice.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tweek := []string{\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"}\n\tworkdays := week[:5]\n\tweekend := week[5:]\n\tfmt.Println(workdays)\n\tfmt.Println(weekend)\n}\n",
+   "stdout": "[Mon Tue Wed Thu Fri]\n[Sat Sun]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_slice.go",
+     "out": "[Mon Tue Wed Thu Fri]\n[Sat Sun]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "first.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := []string{\"book\", \"lamp\", \"socks\"}\n\tfmt.Println(parcels)\n\tfmt.Println(len(parcels))\n\tfmt.Println(parcels[0])\n\tparcels[1] = \"kite\"\n\tfmt.Println(parcels)\n}\n",
+   "stdout": "[book lamp socks]\n3\nbook\n[book kite socks]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run first.go",
+     "out": "[book lamp socks]\n3\nbook\n[book kite socks]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grow.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar s []int\n\tfor i := range 10 {\n\t\ts = append(s, i)\n\t\tfmt.Println(\"len\", len(s), \"cap\", cap(s))\n\t}\n}\n",
+   "stdout": "len 1 cap 4\nlen 2 cap 4\nlen 3 cap 4\nlen 4 cap 4\nlen 5 cap 8\nlen 6 cap 8\nlen 7 cap 8\nlen 8 cap 8\nlen 9 cap 16\nlen 10 cap 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grow.go",
+     "out": "len 1 cap 4\nlen 2 cap 4\nlen 3 cap 4\nlen 4 cap 4\nlen 5 cap 8\nlen 6 cap 8\nlen 7 cap 8\nlen 8 cap 8\nlen 9 cap 16\nlen 10 cap 16\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "len 1 cap 1\nlen 2 cap 2\nlen 3 cap 4\nlen 4 cap 4\nlen 5 cap 8\nlen 6 cap 8\nlen 7 cap 8\nlen 8 cap 8\nlen 9 cap 16\nlen 10 cap 16\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run grow.go",
+      "out": "len 1 cap 1\nlen 2 cap 2\nlen 3 cap 4\nlen 4 cap 4\nlen 5 cap 8\nlen 6 cap 8\nlen 7 cap 8\nlen 8 cap 8\nlen 9 cap 16\nlen 10 cap 16\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "loop_wrong.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tnums := []int{1, 2, 3}\n\tfor i, n := range nums {\n\t\tn = nums[i] * 2\n\t}\n\tnums = nums * 2\n\tfmt.Println(nums)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./loop_wrong.go:7:9: declared and not used: n\n./loop_wrong.go:10:9: invalid operation: nums * 2 (mismatched types []int and untyped int)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run loop_wrong.go",
+     "out": "",
+     "err": "# command-line-arguments\n./loop_wrong.go:7:9: declared and not used: n\n./loop_wrong.go:10:9: invalid operation: nums * 2 (mismatched types []int and untyped int)\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# command-line-arguments\n./loop_wrong.go:7:9: declared and not used: n\n./loop_wrong.go:10:16: cannot convert 2 (untyped int constant) to type []int\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run loop_wrong.go",
+      "out": "",
+      "err": "# command-line-arguments\n./loop_wrong.go:7:9: declared and not used: n\n./loop_wrong.go:10:16: cannot convert 2 (untyped int constant) to type []int\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "make.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ta := make([]int, 3)\n\tfmt.Println(a, len(a), cap(a))\n\ta[0] = 7\n\tfmt.Println(a)\n\tb := make([]string, 0, 5)\n\tfmt.Println(b, len(b), cap(b))\n\tb = append(b, \"hi\")\n\tfmt.Printf(\"%q %d %d\\n\", b, len(b), cap(b))\n}\n",
+   "stdout": "[0 0 0] 3 3\n[7 0 0]\n[] 0 5\n[\"hi\"] 1 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run make.go",
+     "out": "[0 0 0] 3 3\n[7 0 0]\n[] 0 5\n[\"hi\"] 1 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "make_fix.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscores := make([]int, 0, 3)\n\tscores = append(scores, 7)\n\tscores = append(scores, 9)\n\tfmt.Println(scores, len(scores))\n}\n",
+   "stdout": "[7 9] 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run make_fix.go",
+     "out": "[7 9] 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "make_trap.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscores := make([]int, 3)\n\tscores = append(scores, 7)\n\tscores = append(scores, 9)\n\tfmt.Println(scores, len(scores))\n}\n",
+   "stdout": "[0 0 0 7 9] 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run make_trap.go",
+     "out": "[0 0 0 7 9] 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "neg_idx.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstops := []string{\"bakery\", \"school\", \"park\"}\n\tfmt.Println(stops[-1])\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./neg_idx.go:7:20: invalid argument: index -1 (constant of type int) must not be negative\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run neg_idx.go",
+     "out": "",
+     "err": "# command-line-arguments\n./neg_idx.go:7:20: invalid argument: index -1 (constant of type int) must not be negative\n",
+     "exit": 1
+    }
+   ]
+  },
+  "nil_empty.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar a []int\n\tb := []int{}\n\tfmt.Println(a, b)\n\tfmt.Println(len(a), len(b))\n\tfmt.Println(a == nil, b == nil)\n\tfmt.Printf(\"%#v %#v\\n\", a, b)\n}\n",
+   "stdout": "[] []\n0 0\ntrue false\n[]int(nil) []int{}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run nil_empty.go",
+     "out": "[] []\n0 0\ntrue false\n[]int(nil) []int{}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_evens.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar evens []int\n\tfor n := range 10 {\n\t\tif n%2 == 0 {\n\t\t\tevens = append(evens, n)\n\t\t}\n\t}\n\tfmt.Println(evens)\n}\n",
+   "stdout": "[0 2 4 6 8]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_evens.go",
+     "out": "[0 2 4 6 8]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_cmp.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ttoday := []string{\"milk\", \"eggs\"}\n\tusual := []string{\"milk\", \"eggs\"}\n\tif today == usual {\n\t\tfmt.Println(\"same as usual\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./predict_cmp.go:8:5: invalid operation: today == usual (slice can only be compared to nil)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run predict_cmp.go",
+     "out": "",
+     "err": "# command-line-arguments\n./predict_cmp.go:8:5: invalid operation: today == usual (slice can only be compared to nil)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "predict_lit.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{4, 8, 15}\n\ts[2] = 16\n\tfmt.Println(len(s), s)\n\tfmt.Println(s[0] + s[2])\n}\n",
+   "stdout": "3 [4 8 16]\n20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_lit.go",
+     "out": "3 [4 8 16]\n20\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_make.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tnames := make([]string, 2)\n\tnames = append(names, \"Ada\")\n\tfmt.Printf(\"%q\\n\", names)\n\tfmt.Println(len(names))\n}\n",
+   "stdout": "[\"\" \"\" \"Ada\"]\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_make.go",
+     "out": "[\"\" \"\" \"Ada\"]\n3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_nil.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar list []string\n\tfmt.Println(list, len(list), list == nil)\n\tlist = append(list, \"tea\")\n\tfmt.Println(list, len(list), list == nil)\n}\n",
+   "stdout": "[] 0 true\n[tea] 1 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_nil.go",
+     "out": "[] 0 true\n[tea] 1 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_oob.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tbeads := []string{\"red\", \"blue\", \"gold\", \"jade\"}\n\tn := len(beads)\n\tfmt.Println(\"last:\", beads[n-1])\n\tfmt.Println(\"next:\", beads[n])\n}\n",
+   "stdout": "last: jade\n",
+   "stderr": "panic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xde\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run predict_oob.go",
+     "out": "last: jade\n",
+     "err": "panic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xde\nexit status 2\n",
+     "exit": 1,
+     "merged": "last: jade\npanic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xde\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "last: jade\n",
+    "stderr": "panic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xfd\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run predict_oob.go",
+      "out": "last: jade\n",
+      "err": "panic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xfd\nexit status 2\n",
+      "exit": 1,
+      "merged": "last: jade\npanic: runtime error: index out of range [4] with length 4\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/predict_oob.go:9 +0xfd\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "predict_slice.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tdays := []string{\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"}\n\tmid := days[1:4]\n\tfmt.Println(mid)\n\tfmt.Println(len(mid), cap(mid))\n\tfmt.Println(days[3:])\n}\n",
+   "stdout": "[Tue Wed Thu]\n3 4\n[Thu Fri]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_slice.go",
+     "out": "[Tue Wed Thu]\n3 4\n[Thu Fri]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "range_copy.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tprices := []int{5, 8}\n\tfor _, p := range prices {\n\t\tp = p + 100\n\t\tfmt.Println(\"inside:\", p)\n\t}\n\tfmt.Println(prices)\n}\n",
+   "stdout": "inside: 105\ninside: 108\n[5 8]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run range_copy.go",
+     "out": "inside: 105\ninside: 108\n[5 8]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "range_fix.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tprices := []int{5, 8}\n\tfor i := range prices {\n\t\tprices[i] = prices[i] + 100\n\t}\n\tfmt.Println(prices)\n}\n",
+   "stdout": "[105 108]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run range_fix.go",
+     "out": "[105 108]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "range_slice.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := []string{\"book\", \"lamp\", \"kite\"}\n\tfor i, p := range parcels {\n\t\tfmt.Println(i, p)\n\t}\n\tweights := []int{3, 5, 2}\n\ttotal := 0\n\tfor _, w := range weights {\n\t\ttotal += w\n\t}\n\tfmt.Println(\"total:\", total)\n}\n",
+   "stdout": "0 book\n1 lamp\n2 kite\ntotal: 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run range_slice.go",
+     "out": "0 book\n1 lamp\n2 kite\ntotal: 10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shelf_grow.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc show(s []int) {\n\tfmt.Printf(\"len=%d cap=%d %v\\n\", len(s), cap(s), s)\n}\n\nfunc main() {\n\ts := make([]int, 0, 4)\n\tshow(s)\n\ts = append(s, 10)\n\tshow(s)\n\ts = append(s, 20, 30)\n\tshow(s)\n\ts = append(s, 40)\n\tshow(s)\n\ts = append(s, 50)\n\tshow(s)\n}\n",
+   "stdout": "len=0 cap=4 []\nlen=1 cap=4 [10]\nlen=3 cap=4 [10 20 30]\nlen=4 cap=4 [10 20 30 40]\nlen=5 cap=8 [10 20 30 40 50]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run shelf_grow.go",
+     "out": "len=0 cap=4 []\nlen=1 cap=4 [10]\nlen=3 cap=4 [10 20 30]\nlen=4 cap=4 [10 20 30 40]\nlen=5 cap=8 [10 20 30 40 50]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shelf_slice.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc show(s []int) {\n\tfmt.Printf(\"len=%d cap=%d %v\\n\", len(s), cap(s), s)\n}\n\nfunc main() {\n\tnums := []int{10, 20, 30, 40, 50}\n\tshow(nums)\n\tw := nums[1:3]\n\tshow(w)\n\tw = nums[3:]\n\tshow(w)\n\tw = nums[:0]\n\tshow(w)\n\tw = nums[1:3]\n\tw = w[:4]\n\tshow(w)\n}\n",
+   "stdout": "len=5 cap=5 [10 20 30 40 50]\nlen=2 cap=4 [20 30]\nlen=2 cap=2 [40 50]\nlen=0 cap=5 []\nlen=4 cap=4 [20 30 40 50]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run shelf_slice.go",
+     "out": "len=5 cap=5 [10 20 30 40 50]\nlen=2 cap=4 [20 30]\nlen=2 cap=2 [40 50]\nlen=0 cap=5 []\nlen=4 cap=4 [20 30 40 50]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slice_backwards.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{1, 2, 3, 4}\n\tfmt.Println(s[3:1])\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./slice_backwards.go:7:18: invalid slice indices: 1 < 3\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run slice_backwards.go",
+     "out": "",
+     "err": "# command-line-arguments\n./slice_backwards.go:7:18: invalid slice indices: 1 < 3\n",
+     "exit": 1
+    }
+   ]
+  },
+  "slice_const.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{1, 2, 3}\n\tfmt.Println(s[:5])\n}\n",
+   "stdout": "",
+   "stderr": "panic: runtime error: slice bounds out of range [:5] with capacity 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_const.go:7 +0x45\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run slice_const.go",
+     "out": "",
+     "err": "panic: runtime error: slice bounds out of range [:5] with capacity 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_const.go:7 +0x45\nexit status 2\n",
+     "exit": 1
+    }
+   ]
+  },
+  "slice_oob.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstops := []string{\"bakery\", \"school\", \"park\"}\n\tfmt.Println(\"first:\", stops[0])\n\tfmt.Println(\"sixth:\", stops[5])\n\tfmt.Println(\"done\")\n}\n",
+   "stdout": "first: bakery\n",
+   "stderr": "panic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xbb\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run slice_oob.go",
+     "out": "first: bakery\n",
+     "err": "panic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xbb\nexit status 2\n",
+     "exit": 1,
+     "merged": "first: bakery\npanic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xbb\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "first: bakery\n",
+    "stderr": "panic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xd6\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run slice_oob.go",
+      "out": "first: bakery\n",
+      "err": "panic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xd6\nexit status 2\n",
+      "exit": 1,
+      "merged": "first: bakery\npanic: runtime error: index out of range [5] with length 3\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/slice_oob.go:8 +0xd6\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "slicer_machine.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []string{\"A\", \"B\", \"C\", \"D\", \"E\"}\n\tfmt.Println(\"s[1:3] =\", s[1:3])\n\tfmt.Println(\"s[:2] =\", s[:2])\n\tfmt.Println(\"s[3:] =\", s[3:])\n\tfmt.Println(\"s[2:2] =\", s[2:2])\n\tfmt.Println(\"s[:] =\", s[:])\n}\n",
+   "stdout": "s[1:3] = [B C]\ns[:2] = [A B]\ns[3:] = [D E]\ns[2:2] = []\ns[:] = [A B C D E]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run slicer_machine.go",
+     "out": "s[1:3] = [B C]\ns[:2] = [A B]\ns[3:] = [D E]\ns[2:2] = []\ns[:] = [A B C D E]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slicing.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tshelf := []string{\"A\", \"B\", \"C\", \"D\", \"E\"}\n\tw := shelf[1:3]\n\tfmt.Println(w, len(w), cap(w))\n\tfmt.Println(shelf[:2])\n\tfmt.Println(shelf[2:])\n\tfmt.Println(shelf[:])\n}\n",
+   "stdout": "[B C] 2 4\n[A B]\n[C D E]\n[A B C D E]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run slicing.go",
+     "out": "[B C] 2 4\n[A B]\n[C D E]\n[A B C D E]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_make.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tguests := make([]string, 0, 3)\n\tguests[0] = \"Ada\"\n\tguests = append(guests, \"Grace\")\n\tfmt.Println(guests)\n}\n",
+   "stdout": "",
+   "stderr": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/spot_make.go:7 +0x2a\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_make.go",
+     "out": "",
+     "err": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/spot_make.go:7 +0x2a\nexit status 2\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/spot_make.go:7 +0x2f\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run spot_make.go",
+      "out": "",
+      "err": "panic: runtime error: index out of range [0] with length 0\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/spot_make.go:7 +0x2f\nexit status 2\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_range.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscores := []int{40, 55, 70}\n\tfor _, sc := range scores {\n\t\tsc = sc + 10\n\t}\n\tfmt.Println(\"with bonus:\", scores)\n}\n",
+   "stdout": "with bonus: [40 55 70]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_range.go",
+     "out": "with bonus: [40 55 70]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "squares.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar squares []int\n\tfor n := 1; n <= 5; n++ {\n\t\tsquares = append(squares, n*n)\n\t}\n\tfmt.Println(squares)\n\tfmt.Println(\"how many:\", len(squares))\n}\n",
+   "stdout": "[1 4 9 16 25]\nhow many: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run squares.go",
+     "out": "[1 4 9 16 25]\nhow many: 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_cap.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := make([]int, 0, 3)\n\tfor i := 1; i <= 7; i++ {\n\t\ts = append(s, i)\n\t\tfmt.Println(len(s), cap(s))\n\t}\n}\n",
+   "stdout": "1 3\n2 3\n3 3\n4 6\n5 6\n6 6\n7 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_cap.go",
+     "out": "1 3\n2 3\n3 3\n4 6\n5 6\n6 6\n7 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_window.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := []int{0, 1, 2, 3, 4, 5}\n\tw := s[0:2]\n\tfmt.Println(0, 2, len(w), cap(w))\n\tw = s[1:4]\n\tfmt.Println(1, 4, len(w), cap(w))\n\tw = s[2:6]\n\tfmt.Println(2, 6, len(w), cap(w))\n\tw = s[4:4]\n\tfmt.Println(4, 4, len(w), cap(w))\n\tw = s[5:6]\n\tfmt.Println(5, 6, len(w), cap(w))\n}\n",
+   "stdout": "0 2 2 6\n1 4 3 5\n2 6 4 4\n4 4 0 2\n5 6 1 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_window.go",
+     "out": "0 2 2 6\n1 4 3 5\n2 6 4 4\n4 4 0 2\n5 6 1 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "types.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tcarton := [3]int{1, 2, 3}\n\twindow := []int{1, 2, 3}\n\tfmt.Printf(\"%T\\n\", carton)\n\tfmt.Printf(\"%T\\n\", window)\n\tfmt.Println(carton, window)\n}\n",
+   "stdout": "[3]int\n[]int\n[1 2 3] [1 2 3]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run types.go",
+     "out": "[3]int\n[]int\n[1 2 3] [1 2 3]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "walk_bag.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar bag []string\n\tfmt.Println(len(bag), bag)\n\tbag = append(bag, \"apple\")\n\tfmt.Println(len(bag), bag)\n\tbag = append(bag, \"pear\", \"plum\")\n\tfmt.Println(len(bag), bag)\n}\n",
+   "stdout": "0 []\n1 [apple]\n3 [apple pear plum]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run walk_bag.go",
+     "out": "0 []\n1 [apple]\n3 [apple pear plum]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "within_cap.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := make([]int, 2, 5)\n\tfmt.Println(len(s), cap(s))\n\ti := 3\n\ts[i] = 1\n\tfmt.Println(s)\n}\n",
+   "stdout": "2 5\n",
+   "stderr": "panic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x9a\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run within_cap.go",
+     "out": "2 5\n",
+     "err": "panic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x9a\nexit status 2\n",
+     "exit": 1,
+     "merged": "2 5\npanic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x9a\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "2 5\n",
+    "stderr": "panic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x99\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run within_cap.go",
+      "out": "2 5\n",
+      "err": "panic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x99\nexit status 2\n",
+      "exit": 1,
+      "merged": "2 5\npanic: runtime error: index out of range [3] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch9/within_cap.go:9 +0x99\nexit status 2\n"
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
