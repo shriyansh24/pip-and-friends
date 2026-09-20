@@ -1,0 +1,1017 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch5",
+  "versionDifferences": [
+   "vet_slips.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): vet_slips.go."
+ },
+ "programs": {
+  "assign_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := 3\n\tif parcels = 5 {\n\t\tfmt.Println(\"Five parcels!\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./assign_err.go:7:13: syntax error: cannot use assignment parcels = 5 as value\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run assign_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./assign_err.go:7:13: syntax error: cannot use assignment parcels = 5 as value\n",
+     "exit": 1
+    }
+   ]
+  },
+  "backpack.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tprice := 40\n\tqty := 3\n\tif total := price * qty; total > 100 {\n\t\tfmt.Println(\"Free shipping on\", total)\n\t} else {\n\t\tfmt.Println(\"Shipping costs 5 on\", total)\n\t}\n\tfmt.Println(\"Order placed\")\n}\n",
+   "stdout": "Free shipping on 120\nOrder placed\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run backpack.go",
+     "out": "Free shipping on 120\nOrder placed\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "backpack_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tprice := 40\n\tqty := 3\n\tif total := price * qty; total > 100 {\n\t\tfmt.Println(\"Free shipping on\", total)\n\t}\n\tfmt.Println(\"You paid\", total)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./backpack_err.go:11:26: undefined: total\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run backpack_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./backpack_err.go:11:26: undefined: total\n",
+     "exit": 1
+    }
+   ]
+  },
+  "bools.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar home bool\n\tfmt.Println(\"home:\", home)\n\thome = true\n\tfmt.Println(\"home:\", home)\n\theavy := 25 > 20\n\tfmt.Println(\"heavy:\", heavy)\n\tfmt.Printf(\"heavy is a %T\\n\", heavy)\n}\n",
+   "stdout": "home: false\nhome: true\nheavy: true\nheavy is a bool\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run bools.go",
+     "out": "home: false\nhome: true\nheavy: true\nheavy is a bool\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := 7\n\tif parcels % 2 {\n\t\tfmt.Println(\"odd number of parcels\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./boss_err.go:7:5: non-boolean condition in if statement\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./boss_err.go:7:5: non-boolean condition in if statement\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tcoins := 7\n\tswitch {\n\tcase coins >= 10:\n\t\tfmt.Println(\"rich\")\n\tcase coins >= 5 && coins < 10:\n\t\tfmt.Println(\"comfy\")\n\t\tfallthrough\n\tdefault:\n\t\tfmt.Println(\"save more\")\n\t}\n}\n",
+   "stdout": "comfy\nsave more\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go",
+     "out": "comfy\nsave more\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\nimport \"fmt\"\nfunc main() {\n\tparcels := 4\n\tswitch {\n\tcase parcels > 3:\n\t\tfmt.Println(\"van\")\n\t\tfallthrough\n\tcase parcels > 1:\n\t\tfmt.Println(\"helper\")\n\t}\n\tfmt.Println(\"go!\")\n}\n",
+   "stdout": "van\nhelper\ngo!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "van\nhelper\ngo!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tkm := 8\n\training := true\n\tif km > 5 && !raining {\n\t\tfmt.Println(\"long ride\")\n\t} else if km > 5 || raining {\n\t\tfmt.Println(\"take the van\")\n\t} else {\n\t\tfmt.Println(\"walk\")\n\t}\n\tswitch {\n\tcase km%2 == 0:\n\t\tfmt.Println(\"even km\")\n\t\tfallthrough\n\tcase km > 100:\n\t\tfmt.Println(\"far!\")\n\tdefault:\n\t\tfmt.Println(\"odd km\")\n\t}\n}\n",
+   "stdout": "take the van\neven km\nfar!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "take the van\neven km\nfar!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tage := 40\n\tif age >= 13 || age <= 19 {\n\t\tfmt.Println(age, \"is a teenager\")\n\t} else {\n\t\tfmt.Println(age, \"is not a teenager\")\n\t}\n}\n",
+   "stdout": "40 is a teenager\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "40 is a teenager\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfuel := 10\n\tif fuel > 8 {\n\t\tfuel = fuel - 4\n\t}\n\tfmt.Println(\"a\", fuel)\n\tif fuel > 8 {\n\t\tfuel = fuel - 4\n\t} else if fuel > 5 {\n\t\tfuel = fuel * 2\n\t}\n\tfmt.Println(\"b\", fuel)\n\tswitch {\n\tcase fuel > 10:\n\t\tfuel = fuel - 10\n\t\tfallthrough\n\tcase fuel > 100:\n\t\tfuel = fuel + 1\n\t}\n\tfmt.Println(\"c\", fuel)\n\tif f := fuel * 3; f > 9 && fuel != 3 {\n\t\tfuel = f\n\t}\n\tfmt.Println(\"d\", fuel)\n}\n",
+   "stdout": "a 6\nb 12\nc 3\nd 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "a 6\nb 12\nc 3\nd 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "brace_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tweight := 25\n\tif weight > 20\n\t{\n\t\tfmt.Println(\"Heavy\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./brace_err.go:7:16: syntax error: unexpected newline, expected { after if clause\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run brace_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./brace_err.go:7:16: syntax error: unexpected newline, expected { after if clause\n",
+     "exit": 1
+    }
+   ]
+  },
+  "brk.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tweight := 0\n\tswitch {\n\tcase weight >= 0:\n\t\tif weight == 0 {\n\t\t\tfmt.Println(\"Empty box: skip it\")\n\t\t\tbreak\n\t\t}\n\t\tfmt.Println(\"Weighing\", weight, \"kg\")\n\t}\n\tfmt.Println(\"Next parcel\")\n}\n",
+   "stdout": "Empty box: skip it\nNext parcel\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run brk.go",
+     "out": "Empty box: skip it\nNext parcel\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "circuit.go": {
+   "src": "package main\n\nimport \"fmt\"\n\n// ask prints its name, so the output shows which sides were really checked.\nfunc ask(name string, v bool) bool {\n\tfmt.Print(\" \", name)\n\treturn v\n}\n\nfunc main() {\n\tfmt.Print(\"true && true: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", true) && ask(\"b\", true))\n\tfmt.Print(\"true && false: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", true) && ask(\"b\", false))\n\tfmt.Print(\"false && true: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", false) && ask(\"b\", true))\n\tfmt.Print(\"false && false: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", false) && ask(\"b\", false))\n\tfmt.Print(\"true || true: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", true) || ask(\"b\", true))\n\tfmt.Print(\"true || false: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", true) || ask(\"b\", false))\n\tfmt.Print(\"false || true: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", false) || ask(\"b\", true))\n\tfmt.Print(\"false || false: asked\")\n\tfmt.Println(\" ->\", ask(\"a\", false) || ask(\"b\", false))\n\tfmt.Print(\"!true: asked\")\n\tfmt.Println(\" ->\", !ask(\"a\", true))\n\tfmt.Print(\"!false: asked\")\n\tfmt.Println(\" ->\", !ask(\"a\", false))\n}\n",
+   "stdout": "true && true: asked a b -> true\ntrue && false: asked a b -> false\nfalse && true: asked a -> false\nfalse && false: asked a -> false\ntrue || true: asked a -> true\ntrue || false: asked a -> true\nfalse || true: asked a b -> true\nfalse || false: asked a b -> false\n!true: asked a -> false\n!false: asked a -> true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run circuit.go",
+     "out": "true && true: asked a b -> true\ntrue && false: asked a b -> false\nfalse && true: asked a -> false\nfalse && false: asked a -> false\ntrue || true: asked a -> true\ntrue || false: asked a -> true\nfalse || true: asked a b -> true\nfalse || false: asked a b -> false\n!true: asked a -> false\n!false: asked a -> true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "compare.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := 7\n\tfmt.Println(\"parcels == 7:\", parcels == 7)\n\tfmt.Println(\"parcels != 7:\", parcels != 7)\n\tfmt.Println(\"parcels < 10:\", parcels < 10)\n\tfmt.Println(\"parcels <= 6:\", parcels <= 6)\n\tfmt.Println(\"parcels > 7: \", parcels > 7)\n\tfmt.Println(\"parcels >= 7:\", parcels >= 7)\n}\n",
+   "stdout": "parcels == 7: true\nparcels != 7: false\nparcels < 10: true\nparcels <= 6: false\nparcels > 7:  false\nparcels >= 7: true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run compare.go",
+     "out": "parcels == 7: true\nparcels != 7: false\nparcels < 10: true\nparcels <= 6: false\nparcels > 7:  false\nparcels >= 7: true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "compare_machine.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"7 == 7 ->\", 7 == 7)\n\tfmt.Println(\"3 != 4 ->\", 3 != 4)\n\tfmt.Println(\"10 <= 10 ->\", 10 <= 10)\n\tfmt.Println(\"2+2 == 4 ->\", 2+2 == 4)\n\tfmt.Println(`\"Go\" == \"go\" ->`, \"Go\" == \"go\")\n\tfmt.Println(\"7 == 7.0 ->\", 7 == 7.0)\n\tn, f := 7, 7.0\n\tfmt.Println(\"float64(n) == f ->\", float64(n) == f)\n}\n",
+   "stdout": "7 == 7 -> true\n3 != 4 -> true\n10 <= 10 -> true\n2+2 == 4 -> true\n\"Go\" == \"go\" -> false\n7 == 7.0 -> true\nfloat64(n) == f -> true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run compare_machine.go",
+     "out": "7 == 7 -> true\n3 != 4 -> true\n10 <= 10 -> true\n2+2 == 4 -> true\n\"Go\" == \"go\" -> false\n7 == 7.0 -> true\nfloat64(n) == f -> true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "compare_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstops := 4\n\tleft := 10 - stops\n\tfmt.Println(left > 5)\n\tfmt.Println(stops*2 == left)\n\tfmt.Println(left != 6)\n\tfmt.Println(stops >= 4)\n}\n",
+   "stdout": "true\nfalse\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run compare_predict.go",
+     "out": "true\nfalse\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "days.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tday := \"sun\"\n\tswitch day {\n\tcase \"sat\", \"sun\":\n\t\tfmt.Println(\"Weekend: no deliveries\")\n\tcase \"fri\":\n\t\tfmt.Println(\"Friday: double route\")\n\tdefault:\n\t\tfmt.Println(\"Weekday: normal route\")\n\t}\n\tfmt.Println(\"Calendar checked\")\n}\n",
+   "stdout": "Weekend: no deliveries\nCalendar checked\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run days.go",
+     "out": "Weekend: no deliveries\nCalendar checked\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "delivery.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\thasAddress := true\n\tsomeoneHome := false\n\training := true\n\tparcels := 3\n\tfmt.Println(\"hand it over:\", hasAddress && someoneHome)\n\tfmt.Println(\"leave a note:\", hasAddress && !someoneHome)\n\tfmt.Println(\"take the van:\", raining || parcels > 5)\n\tfmt.Println(\"bike is fine:\", !raining)\n}\n",
+   "stdout": "hand it over: false\nleave a note: true\ntake the van: true\nbike is fine: false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run delivery.go",
+     "out": "hand it over: false\nleave a note: true\ntake the van: true\nbike is fine: false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "dup_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstops := 2\n\tswitch stops {\n\tcase 1:\n\t\tfmt.Println(\"one stop\")\n\tcase 2, 3:\n\t\tfmt.Println(\"a few stops\")\n\tcase 3:\n\t\tfmt.Println(\"three stops\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./dup_err.go:12:7: duplicate case 3 (constant of type int) in expression switch\n\t./dup_err.go:10:10: previous case\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run dup_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./dup_err.go:12:7: duplicate case 3 (constant of type int) in expression switch\n\t./dup_err.go:10:10: previous case\n",
+     "exit": 1
+    }
+   ]
+  },
+  "early.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\taddress := \"\"\n\tif address == \"\" {\n\t\tfmt.Println(\"No address: back to the depot\")\n\t\treturn\n\t}\n\tfmt.Println(\"Delivering to\", address)\n}\n",
+   "stdout": "No address: back to the depot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run early.go",
+     "out": "No address: back to the depot\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "early_ok.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\taddress := \"12 Elm Street\"\n\tif address == \"\" {\n\t\tfmt.Println(\"No address: back to the depot\")\n\t\treturn\n\t}\n\tfmt.Println(\"Delivering to\", address)\n}\n",
+   "stdout": "Delivering to 12 Elm Street\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run early_ok.go",
+     "out": "Delivering to 12 Elm Street\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "else_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tweight := 25\n\tif weight > 20 {\n\t\tfmt.Println(\"Heavy\")\n\t}\n\telse {\n\t\tfmt.Println(\"Light\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./else_err.go:10:2: syntax error: unexpected keyword else, expected }\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run else_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./else_err.go:10:2: syntax error: unexpected keyword else, expected }\n",
+     "exit": 1
+    }
+   ]
+  },
+  "fall_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"M\"\n\tswitch size {\n\tcase \"L\":\n\t\tfmt.Println(\"big bag\")\n\tcase \"M\":\n\t\tfmt.Println(\"strap\")\n\t\tfallthrough\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./fall_err.go:12:3: cannot fallthrough final case in switch\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run fall_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./fall_err.go:12:3: cannot fallthrough final case in switch\n",
+     "exit": 1
+    }
+   ]
+  },
+  "fall_mid.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"L\"\n\tswitch size {\n\tcase \"L\":\n\t\tfallthrough\n\t\tfmt.Println(\"big bag\")\n\tcase \"M\":\n\t\tfmt.Println(\"strap\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./fall_mid.go:9:3: fallthrough statement out of place\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run fall_mid.go",
+     "out": "",
+     "err": "# command-line-arguments\n./fall_mid.go:9:3: fallthrough statement out of place\n",
+     "exit": 1
+    }
+   ]
+  },
+  "fall_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ttemp := 35\n\tswitch {\n\tcase temp > 30:\n\t\tfmt.Println(\"hot\")\n\t\tfallthrough\n\tcase temp < 0:\n\t\tfmt.Println(\"freezing?!\")\n\tdefault:\n\t\tfmt.Println(\"mild\")\n\t}\n}\n",
+   "stdout": "hot\nfreezing?!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fall_predict.go",
+     "out": "hot\nfreezing?!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_case.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfruit := \"kiwi\"\n\tswitch fruit {\n\tcase \"apple\", \"pear\":\n\t\tfmt.Println(\"from the orchard\")\n\tcase \"kiwi\", \"mango\":\n\t\tfmt.Println(\"from far away\")\n\tdefault:\n\t\tfmt.Println(\"no idea\")\n\t}\n}\n",
+   "stdout": "from far away\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_case.go",
+     "out": "from far away\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_guard.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstock := 0\n\tsold := 6\n\tfmt.Println(\"busy shop?\", stock > 0 && sold/stock > 2)\n}\n",
+   "stdout": "busy shop? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_guard.go",
+     "out": "busy shop? false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_if.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\theight := 120\n\tif height >= 120 {\n\t\tfmt.Println(\"You may ride\")\n\t} else {\n\t\tfmt.Println(\"Too short, sorry\")\n\t}\n}\n",
+   "stdout": "You may ride\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_if.go",
+     "out": "You may ride\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_truthy.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tbags := 0\n\tif bags != 0 {\n\t\tfmt.Println(\"Bags to carry:\", bags)\n\t} else {\n\t\tfmt.Println(\"Hands free!\")\n\t}\n}\n",
+   "stdout": "Hands free!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_truthy.go",
+     "out": "Hands free!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fold.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\nfunc main() {\n\tanswer := \"YES\"\n\tfmt.Println(answer == \"yes\")\n\tfmt.Println(strings.ToLower(answer) == \"yes\")\n\tfmt.Println(strings.EqualFold(answer, \"yes\"))\n}\n",
+   "stdout": "false\ntrue\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fold.go",
+     "out": "false\ntrue\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grade_40.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 40\n\tif score >= 90 {\n\t\tfmt.Println(\"Grade A\")\n\t} else if score >= 80 {\n\t\tfmt.Println(\"Grade B\")\n\t} else if score >= 70 {\n\t\tfmt.Println(\"Grade C\")\n\t} else {\n\t\tfmt.Println(\"Keep practising\")\n\t}\n\tfmt.Println(\"Report sent\")\n}\n",
+   "stdout": "Keep practising\nReport sent\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grade_40.go",
+     "out": "Keep practising\nReport sent\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grade_72.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 72\n\tif score >= 90 {\n\t\tfmt.Println(\"Grade A\")\n\t} else if score >= 80 {\n\t\tfmt.Println(\"Grade B\")\n\t} else if score >= 70 {\n\t\tfmt.Println(\"Grade C\")\n\t} else {\n\t\tfmt.Println(\"Keep practising\")\n\t}\n\tfmt.Println(\"Report sent\")\n}\n",
+   "stdout": "Grade C\nReport sent\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grade_72.go",
+     "out": "Grade C\nReport sent\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grade_85.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 85\n\tif score >= 90 {\n\t\tfmt.Println(\"Grade A\")\n\t} else if score >= 80 {\n\t\tfmt.Println(\"Grade B\")\n\t} else if score >= 70 {\n\t\tfmt.Println(\"Grade C\")\n\t} else {\n\t\tfmt.Println(\"Keep practising\")\n\t}\n\tfmt.Println(\"Report sent\")\n}\n",
+   "stdout": "Grade B\nReport sent\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grade_85.go",
+     "out": "Grade B\nReport sent\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grade_95.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 95\n\tif score >= 90 {\n\t\tfmt.Println(\"Grade A\")\n\t} else if score >= 80 {\n\t\tfmt.Println(\"Grade B\")\n\t} else if score >= 70 {\n\t\tfmt.Println(\"Grade C\")\n\t} else {\n\t\tfmt.Println(\"Keep practising\")\n\t}\n\tfmt.Println(\"Report sent\")\n}\n",
+   "stdout": "Grade A\nReport sent\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grade_95.go",
+     "out": "Grade A\nReport sent\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grade_wrong.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 95\n\tif score >= 70 {\n\t\tfmt.Println(\"Grade C\")\n\t} else if score >= 80 {\n\t\tfmt.Println(\"Grade B\")\n\t} else if score >= 90 {\n\t\tfmt.Println(\"Grade A\")\n\t} else {\n\t\tfmt.Println(\"Keep practising\")\n\t}\n}\n",
+   "stdout": "Grade C\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run grade_wrong.go",
+     "out": "Grade C\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "guard.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := 0\n\tkm := 12\n\tfmt.Println(\"short trips?\", parcels > 0 && km/parcels < 5)\n\tparcels = 4\n\tfmt.Println(\"short trips?\", parcels > 0 && km/parcels < 5)\n}\n",
+   "stdout": "short trips? false\nshort trips? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run guard.go",
+     "out": "short trips? false\nshort trips? true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "guard_crash.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tparcels := 0\n\tkm := 12\n\tfmt.Println(\"short trips?\", km/parcels < 5 && parcels > 0)\n}\n",
+   "stdout": "",
+   "stderr": "panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch5/guard_crash.go:8 +0x9\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run guard_crash.go",
+     "out": "",
+     "err": "panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch5/guard_crash.go:8 +0x9\nexit status 2\n",
+     "exit": 1
+    }
+   ]
+  },
+  "lazy.go": {
+   "src": "package main\n\nimport \"fmt\"\n\n// isOpen walks to the door to check. It tells you every time it runs.\nfunc isOpen() bool {\n\tfmt.Println(\"  (walked to the door)\")\n\treturn true\n}\n\nfunc main() {\n\thasParcel := false\n\tfmt.Println(\"Trip 1, no parcel:\")\n\tfmt.Println(\"  deliver?\", hasParcel && isOpen())\n\thasParcel = true\n\tfmt.Println(\"Trip 2, with a parcel:\")\n\tfmt.Println(\"  deliver?\", hasParcel && isOpen())\n}\n",
+   "stdout": "Trip 1, no parcel:\n  deliver? false\nTrip 2, with a parcel:\n  (walked to the door)\n  deliver? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run lazy.go",
+     "out": "Trip 1, no parcel:\n  deliver? false\nTrip 2, with a parcel:\n  (walked to the door)\n  deliver? true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "mismatch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tn := 7\n\tf := 7.0\n\tfmt.Println(n == f)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./mismatch.go:8:19: invalid operation: n == f (mismatched types int and float64)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run mismatch.go",
+     "out": "",
+     "err": "# command-line-arguments\n./mismatch.go:8:19: invalid operation: n == f (mismatched types int and float64)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "missing_return.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc sign(n int) string {\n\tif n > 0 {\n\t\treturn \"positive\"\n\t} else if n < 0 {\n\t\treturn \"negative\"\n\t}\n}\n\nfunc main() {\n\tfmt.Println(sign(5))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./missing_return.go:11:1: missing return\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run missing_return.go",
+     "out": "",
+     "err": "# command-line-arguments\n./missing_return.go:11:1: missing return\n",
+     "exit": 1
+    }
+   ]
+  },
+  "mix_trunc.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tcount := 3\n\tfmt.Println(count > 2.5)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./mix_trunc.go:7:22: 2.5 (untyped float constant) truncated to int\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run mix_trunc.go",
+     "out": "",
+     "err": "# command-line-arguments\n./mix_trunc.go:7:22: 2.5 (untyped float constant) truncated to int\n",
+     "exit": 1
+    }
+   ]
+  },
+  "nested.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\thasAddress := true\n\tsomeoneHome := false\n\tif hasAddress {\n\t\tif someoneHome {\n\t\t\tfmt.Println(\"Hand it over\")\n\t\t} else {\n\t\t\tfmt.Println(\"Leave a note\")\n\t\t}\n\t} else {\n\t\tfmt.Println(\"Back to the depot\")\n\t}\n}\n",
+   "stdout": "Leave a note\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run nested.go",
+     "out": "Leave a note\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "noimport.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tanswer := \"YES\"\n\tfmt.Println(strings.ToLower(answer) == \"yes\")\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./noimport.go:7:14: undefined: strings\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run noimport.go",
+     "out": "",
+     "err": "# command-line-arguments\n./noimport.go:7:14: undefined: strings\n",
+     "exit": 1
+    }
+   ]
+  },
+  "parcel.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tweight := 25\n\tif weight > 20 {\n\t\tfmt.Println(\"Heavy: take the van\")\n\t} else {\n\t\tfmt.Println(\"Light: take the bike\")\n\t}\n\tfmt.Println(\"Off we go!\")\n}\n",
+   "stdout": "Heavy: take the van\nOff we go!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parcel.go",
+     "out": "Heavy: take the van\nOff we go!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_ladder.go": {
+   "src": "package main\nimport \"fmt\"\nfunc main() {\n\ttemp := 31\n\tif temp >= 30 {\n\t\tfmt.Println(\"Hot: bring water\")\n\t} else if temp >= 15 {\n\t\tfmt.Println(\"Nice: just ride\")\n\t} else {\n\t\tfmt.Println(\"Cold: wear gloves\")\n\t}\n}\n",
+   "stdout": "Hot: bring water\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_ladder.go",
+     "out": "Hot: bring water\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "precedence.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(true || false && false)\n\tfmt.Println((true || false) && false)\n}\n",
+   "stdout": "true\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run precedence.go",
+     "out": "true\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_backpack.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstock := 8\n\tif left := stock - 10; left < 0 {\n\t\tfmt.Println(\"short by\", -left)\n\t} else {\n\t\tfmt.Println(\"spare\", left)\n\t}\n}\n",
+   "stdout": "short by 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_backpack.go",
+     "out": "short by 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_nested.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tage := 10\n\ttall := true\n\tif age >= 8 {\n\t\tif tall {\n\t\t\tfmt.Println(\"big slide\")\n\t\t} else {\n\t\t\tfmt.Println(\"small slide\")\n\t\t}\n\t} else {\n\t\tfmt.Println(\"sandpit\")\n\t}\n\tif age >= 8 && !tall {\n\t\tfmt.Println(\"grow a bit!\")\n\t}\n\tfmt.Println(\"have fun\")\n}\n",
+   "stdout": "big slide\nhave fun\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_nested.go",
+     "out": "big slide\nhave fun\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_switch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstops := 3\n\tswitch stops {\n\tcase 1, 2:\n\t\tfmt.Println(\"short day\")\n\tcase 3, 4:\n\t\tfmt.Println(\"medium day\")\n\tcase 5:\n\t\tfmt.Println(\"long day\")\n\tdefault:\n\t\tfmt.Println(\"check the schedule\")\n\t}\n\tfmt.Println(\"route ready\")\n}\n",
+   "stdout": "medium day\nroute ready\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_switch.go",
+     "out": "medium day\nroute ready\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sign.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc sign(n int) string {\n\tif n > 0 {\n\t\treturn \"positive\"\n\t} else if n < 0 {\n\t\treturn \"negative\"\n\t}\n\treturn \"zero\"\n}\n\nfunc main() {\n\tfmt.Println(sign(5))\n\tfmt.Println(sign(0))\n}\n",
+   "stdout": "positive\nzero\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run sign.go",
+     "out": "positive\nzero\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "size_l.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"L\"\n\tswitch size {\n\tcase \"XL\", \"XXL\":\n\t\tfmt.Println(\"Needs the van\")\n\tcase \"L\":\n\t\tfmt.Println(\"Needs the big bag\")\n\t\tfallthrough\n\tcase \"M\":\n\t\tfmt.Println(\"Needs a strap\")\n\tdefault:\n\t\tfmt.Println(\"Fits in the satchel\")\n\t}\n\tfmt.Println(\"Packed!\")\n}\n",
+   "stdout": "Needs the big bag\nNeeds a strap\nPacked!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run size_l.go",
+     "out": "Needs the big bag\nNeeds a strap\nPacked!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "size_m.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"M\"\n\tswitch size {\n\tcase \"XL\", \"XXL\":\n\t\tfmt.Println(\"Needs the van\")\n\tcase \"L\":\n\t\tfmt.Println(\"Needs the big bag\")\n\t\tfallthrough\n\tcase \"M\":\n\t\tfmt.Println(\"Needs a strap\")\n\tdefault:\n\t\tfmt.Println(\"Fits in the satchel\")\n\t}\n\tfmt.Println(\"Packed!\")\n}\n",
+   "stdout": "Needs a strap\nPacked!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run size_m.go",
+     "out": "Needs a strap\nPacked!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "size_s.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"S\"\n\tswitch size {\n\tcase \"XL\", \"XXL\":\n\t\tfmt.Println(\"Needs the van\")\n\tcase \"L\":\n\t\tfmt.Println(\"Needs the big bag\")\n\t\tfallthrough\n\tcase \"M\":\n\t\tfmt.Println(\"Needs a strap\")\n\tdefault:\n\t\tfmt.Println(\"Fits in the satchel\")\n\t}\n\tfmt.Println(\"Packed!\")\n}\n",
+   "stdout": "Fits in the satchel\nPacked!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run size_s.go",
+     "out": "Fits in the satchel\nPacked!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "size_xxl.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsize := \"XXL\"\n\tswitch size {\n\tcase \"XL\", \"XXL\":\n\t\tfmt.Println(\"Needs the van\")\n\tcase \"L\":\n\t\tfmt.Println(\"Needs the big bag\")\n\t\tfallthrough\n\tcase \"M\":\n\t\tfmt.Println(\"Needs a strap\")\n\tdefault:\n\t\tfmt.Println(\"Fits in the satchel\")\n\t}\n\tfmt.Println(\"Packed!\")\n}\n",
+   "stdout": "Needs the van\nPacked!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run size_xxl.go",
+     "out": "Needs the van\nPacked!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_assign.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tspeed := 25\n\tlimit := 30\n\tfmt.Println(\"speed\", speed)\n\tif speed = limit {\n\t\tfmt.Println(\"right at the limit\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./spot_assign.go:9:11: syntax error: cannot use assignment speed = limit as value\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_assign.go",
+     "out": "",
+     "err": "# command-line-arguments\n./spot_assign.go:9:11: syntax error: cannot use assignment speed = limit as value\n",
+     "exit": 1
+    }
+   ]
+  },
+  "spot_emptycase.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tday := \"sat\"\n\tswitch day {\n\tcase \"sat\":\n\tcase \"sun\":\n\t\tfmt.Println(\"Weekend!\")\n\tdefault:\n\t\tfmt.Println(\"Work day\")\n\t}\n\tfmt.Println(\"Calendar checked\")\n}\n",
+   "stdout": "Calendar checked\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_emptycase.go",
+     "out": "Calendar checked\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_scope.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstock := 12\n\tif left := stock - 5; left > 0 {\n\t\tfmt.Println(\"in stock:\", left)\n\t}\n\tstock = 2\n\tfmt.Println(\"left now:\", left)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./spot_scope.go:11:27: undefined: left\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_scope.go",
+     "out": "",
+     "err": "# command-line-arguments\n./spot_scope.go:11:27: undefined: left\n",
+     "exit": 1
+    }
+   ]
+  },
+  "strings_cmp.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"apple\" == \"apple\")\n\tfmt.Println(\"Apple\" == \"apple\")\n\tfmt.Println(\"apple\" < \"banana\")\n\tfmt.Println(\"Apple\" < \"apple\")\n\tfmt.Println(\"Zebra\" < \"apple\")\n\tfmt.Println(\"10\" < \"9\")\n\tfmt.Println(\"ant\" < \"anteater\")\n}\n",
+   "stdout": "true\nfalse\ntrue\ntrue\ntrue\ntrue\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run strings_cmp.go",
+     "out": "true\nfalse\ntrue\ntrue\ntrue\ntrue\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "strings_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"cat\" < \"dog\")\n\tfmt.Println(\"Dog\" < \"cat\")\n\tfmt.Println(\"go\" == \"Go\")\n\tfmt.Println(\"100\" < \"25\")\n}\n",
+   "stdout": "true\ntrue\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run strings_predict.go",
+     "out": "true\ntrue\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "switch_init.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tswitch hour := 14; {\n\tcase hour < 12:\n\t\tfmt.Println(\"Good morning\")\n\tcase hour < 18:\n\t\tfmt.Println(\"Good afternoon\")\n\tdefault:\n\t\tfmt.Println(\"Good evening\")\n\t}\n}\n",
+   "stdout": "Good afternoon\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run switch_init.go",
+     "out": "Good afternoon\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tagless.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tscore := 85\n\tswitch {\n\tcase score >= 90:\n\t\tfmt.Println(\"Grade A\")\n\tcase score >= 80:\n\t\tfmt.Println(\"Grade B\")\n\tcase score >= 70:\n\t\tfmt.Println(\"Grade C\")\n\tdefault:\n\t\tfmt.Println(\"Keep practising\")\n\t}\n}\n",
+   "stdout": "Grade B\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run tagless.go",
+     "out": "Grade B\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_lazy.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nvar asks int\n\n// ask counts how many times it is really called.\nfunc ask(v bool) bool {\n\tasks = asks + 1\n\treturn v\n}\n\nfunc main() {\n\tr := ask(false) && ask(true)\n\tfmt.Println(\"1\", r, asks)\n\tr = ask(true) && ask(false)\n\tfmt.Println(\"2\", r, asks)\n\tr = ask(true) || ask(false)\n\tfmt.Println(\"3\", r, asks)\n\tr = ask(false) || ask(false)\n\tfmt.Println(\"4\", r, asks)\n}\n",
+   "stdout": "1 false 1\n2 false 3\n3 true 4\n4 false 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_lazy.go",
+     "out": "1 false 1\n2 false 3\n3 true 4\n4 false 6\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "truth_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tsunny := true\n\ttired := false\n\tfmt.Println(sunny && tired)\n\tfmt.Println(sunny || tired)\n\tfmt.Println(!tired)\n\tfmt.Println(!sunny || tired)\n}\n",
+   "stdout": "false\ntrue\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run truth_predict.go",
+     "out": "false\ntrue\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "truthy_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tletters := 3\n\tif letters {\n\t\tfmt.Println(\"Got mail!\")\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./truthy_err.go:7:5: non-boolean condition in if statement\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run truthy_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./truthy_err.go:7:5: non-boolean condition in if statement\n",
+     "exit": 1
+    }
+   ]
+  },
+  "truthy_ok.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tletters := 3\n\tif letters > 0 {\n\t\tfmt.Println(\"Got mail!\")\n\t}\n}\n",
+   "stdout": "Got mail!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run truthy_ok.go",
+     "out": "Got mail!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "vet_slips.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tx := 3\n\tfmt.Println(x != 1 || x != 2)\n\tfmt.Println(x > 5 && x > 5)\n\tfmt.Println(x == x)\n}\n",
+   "stdout": "",
+   "stderr": "vet_slips.go:7:14: suspect or: x != 1 || x != 2\nvet_slips.go:8:14: redundant and: x > 5 && x > 5\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run vet_slips.go",
+     "out": "true\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go vet vet_slips.go",
+     "out": "",
+     "err": "vet_slips.go:7:14: suspect or: x != 1 || x != 2\nvet_slips.go:8:14: redundant and: x > 5 && x > 5\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# command-line-arguments\n# [command-line-arguments]\n./vet_slips.go:7:14: suspect or: x != 1 || x != 2\n./vet_slips.go:8:14: redundant and: x > 5 && x > 5\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run vet_slips.go",
+      "out": "true\nfalse\ntrue\n",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "go vet vet_slips.go",
+      "out": "",
+      "err": "# command-line-arguments\n# [command-line-arguments]\n./vet_slips.go:7:14: suspect or: x != 1 || x != 2\n./vet_slips.go:8:14: redundant and: x > 5 && x > 5\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "walk_if.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tkm := 3\n\tfmt.Println(\"Trip:\", km, \"km\")\n\tif km < 5 {\n\t\tfmt.Println(\"Bike it\")\n\t} else {\n\t\tfmt.Println(\"Take the van\")\n\t}\n\tif km == 0 {\n\t\tfmt.Println(\"Already there!\")\n\t}\n\tfmt.Println(\"Done\")\n}\n",
+   "stdout": "Trip: 3 km\nBike it\nDone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run walk_if.go",
+     "out": "Trip: 3 km\nBike it\nDone\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "weekend_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tday := \"sun\"\n\tweekend := day == \"sat\" || \"sun\"\n\tfmt.Println(\"weekend:\", weekend)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./weekend_err.go:7:13: invalid operation: day == \"sat\" || \"sun\" (mismatched types untyped bool and untyped string)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run weekend_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./weekend_err.go:7:13: invalid operation: day == \"sat\" || \"sun\" (mismatched types untyped bool and untyped string)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "weekend_ok.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tday := \"sun\"\n\tweekend := day == \"sat\" || day == \"sun\"\n\tfmt.Println(\"weekend:\", weekend)\n}\n",
+   "stdout": "weekend: true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run weekend_ok.go",
+     "out": "weekend: true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
