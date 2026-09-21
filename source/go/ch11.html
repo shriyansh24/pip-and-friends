@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beads on a Necklace</title>
+<meta name="description" content="Chapter 11 of the Go book of Pip &amp; Friends, a comic course: strings as a necklace of beads. Bytes and UTF-8, why len counts bytes, utf8.RuneCountInString, s[i] as a byte, range handing out runes and byte offsets, the byte and rune types, converting with string, []byte and []rune, raw and interpreted string literals, the strings package (Contains, HasPrefix, Index, Split, Join, Fields, Replace, ToUpper, TrimSpace, Repeat, Cut and the new CutLast), strings.Builder and comparing strings, with every classic error read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch11.css">
+<script defer src="../data/go-ch11.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch11.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch10.html">&larr; Ch 10</a><span aria-current="page">Ch 11 of 28</span><a href="ch12.html">Ch 12 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 11</p>
+    <h1 id="cover-h">BEADS ON A NECKLACE</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, cheers with both arms up.</p>
+    <p class="caption blurb">Names on parcels, street addresses, messages, emoji: most of what programs handle is <b>text</b>. In Go, a string is a necklace of <b>beads</b> (bytes), and some letters need two, three or four beads. This chapter shows why <code>len("héllo")</code> is 6, how <code>range</code> hands you whole letters, how to change text when strings can't be changed, and the <code>strings</code> toolbox for searching, splitting, cutting and building. About 100 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The necklace: bytes, UTF-8 and len</a></li>
+      <li><a href="#part-2">One bead or one letter: s[i], byte, rune and range</a></li>
+      <li><a href="#part-3">Converting, quoting, and why strings never change</a></li>
+      <li><a href="#part-4">The strings toolbox</a></li>
+      <li><a href="#part-5">Building and comparing strings</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE NECKLACE<small>Bytes, UTF-8 and what len really counts</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Scoot's label printer miscounts">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's new label printer charges by the letter. Today's parcel is for a café.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Back in chapter 7's word counter, <code>len</code> told me how long a string is. <code>"hello"</code> has 5 letters, and <code>len</code> said 5.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Then I typed <code>"héllo"</code>, with an accent on the e. Still 5 letters. The printer billed me for <b>6</b>!</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, surprised, holding a letter.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: len of hello and héllo">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Same five letters to your eye. Let the program count.</p>
+    <span class="file-tab">count.go</span>
+    <pre class="code" data-src="count.go"></pre>
+    <pre class="term wrap" data-run="count.go"></pre>
+    <ol class="readlist">
+      <li><span><code>5</code> (line 7)<br><code>"hello"</code>: five letters, length 5. No surprise.</span></li>
+      <li><span><code>6</code> (line 10)<br><code>"héllo"</code>: five letters, length <b>6</b>. Not a bug. <code>len</code> isn't counting letters at all. It counts something smaller.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: a string is a necklace of beads">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Picture a necklace. The cord holds a row of <b>beads</b>. Over the beads hang letter <b>charms</b>. Most charms hang on one bead, but some letters need two, three or four.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 300" role="img" aria-label="Picture: a necklace cord holding six beads in a row. Over them hang five letter charms: h over the first bead, é over the second and third beads together, then l, l and o over one bead each. The two beads under é are darker, and the second of them has a dashed outline. Badge 1 points at the h charm: a letter. Badge 2 points at the last bead: a byte. Badge 3 sits above é: two beads for one letter. Badge 4 is a bracket under all six beads labelled LEN 6.">
+      <path d="M30 120 Q30 190 70 190 L610 190 Q650 190 650 120" fill="none" stroke="#8A5A2B" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="3">
+        <circle cx="100" cy="190" r="36" fill="#FFF6CC"/><circle cx="196" cy="190" r="36" fill="#F2C9A0"/><circle cx="292" cy="190" r="36" fill="#F2C9A0" stroke-dasharray="9 5"/>
+        <circle cx="388" cy="190" r="36" fill="#FFF6CC"/><circle cx="484" cy="190" r="36" fill="#FFF6CC"/><circle cx="580" cy="190" r="36" fill="#FFF6CC"/>
+      </g>
+      <g fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round">
+        <path d="M78 150 V138 H122 V150 M100 138 V116"/>
+        <path d="M168 150 V138 H320 V150 M244 138 V116"/>
+        <path d="M366 150 V138 H410 V150 M388 138 V116"/>
+        <path d="M462 150 V138 H506 V150 M484 138 V116"/>
+        <path d="M558 150 V138 H602 V150 M580 138 V116"/>
+      </g>
+      <g fill="#FFFFFF" stroke="#111" stroke-width="3">
+        <rect x="70" y="56" width="60" height="60" rx="12"/><rect x="214" y="56" width="60" height="60" rx="12"/><rect x="358" y="56" width="60" height="60" rx="12"/>
+        <rect x="454" y="56" width="60" height="60" rx="12"/><rect x="550" y="56" width="60" height="60" rx="12"/>
+      </g>
+      <g font-family="Atkinson Hyperlegible Next, sans-serif" font-weight="700" font-size="38" fill="#111" text-anchor="middle">
+        <text x="100" y="99">h</text><text x="244" y="99">é</text><text x="388" y="99">l</text><text x="484" y="99">l</text><text x="580" y="99">o</text>
+      </g>
+      <path d="M62 244 v10 h556 v-10" fill="none" stroke="#111" stroke-width="3.5"/>
+      <text x="360" y="290" text-anchor="middle" font-family="Bangers, sans-serif" font-size="32" fill="#111" letter-spacing="1">LEN 6</text>
+      <circle cx="38" cy="70" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="38" y="78" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">1</text>
+      <path d="M55 74 L68 80" stroke="#111" stroke-width="3"/>
+      <circle cx="652" cy="236" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="652" y="244" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">2</text>
+      <path d="M638 226 L614 208" stroke="#111" stroke-width="3"/>
+      <circle cx="244" cy="30" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="244" y="38" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">3</text>
+      <circle cx="304" cy="282" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="304" y="290" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">4</text>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>A <b>charm</b>: one letter, the thing you see. Go calls a letter a <b>rune</b>.</span></li>
+      <li><span>2</span><span>A <b>bead</b>: one <b>byte</b>, a small number from 0 to 255. Strings are stored as beads.</span></li>
+      <li><span>3</span><span>Some letters need more than one bead. <code>é</code> hangs on <b>two</b>. (The dashed bead is the second half of it.)</span></li>
+      <li><span>4</span><span><code>len</code> counts <b>beads</b>, not charms: 6.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>So the printer was right, in its own way. It billed me per bead. Catchphrase: <b>len counts beads, not letters.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 4: how many beads a letter needs">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">Why beads? A computer can only store numbers. Text is stored by turning every letter into numbers, using a code book that the whole world shares. Go uses the most common one, <b>UTF-8</b>.</p>
+    <div class="beadrow" role="img" aria-label="Four cards. h: 1 bead, plain English letters, digits and punctuation. é: 2 beads, accented letters, Greek, Cyrillic, Hebrew, Arabic. 日: 3 beads, Chinese, Japanese and Korean characters, the euro sign. A waving-hand emoji: 4 beads, emoji and rarer symbols.">
+      <div><span class="glyph">h</span><span class="beads"><span class="one"></span></span><b>1 BEAD</b><p>English letters, digits, spaces, punctuation</p></div>
+      <div><span class="glyph">é</span><span class="beads"><span></span><span></span></span><b>2 BEADS</b><p>accented letters, Greek, Cyrillic, Hebrew, Arabic</p></div>
+      <div><span class="glyph">日</span><span class="beads"><span></span><span></span><span></span></span><b>3 BEADS</b><p>Chinese, Japanese and Korean, the € sign</p></div>
+      <div><span class="glyph">👋</span><span class="beads"><span></span><span></span><span></span><span></span></span><b>4 BEADS</b><p>emoji and rarer symbols</p></div>
+    </div>
+    <div class="duo">
+      <div class="duo-card">
+        <svg class="char wide" data-char="train" data-text="hello"></svg>
+        <p>For plain English text, one letter is one bead, so counting beads and counting letters give the same answer. That's why chapter 7's word counter never noticed.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>UTF-8<small>the code book</small></h3>
+        <p>Every letter in every language, plus emoji, has its own number, called a <b>code point</b>. UTF-8 writes each code point as 1 to 4 beads. Go source files are UTF-8, so <code>"héllo"</code> in your code really is those 6 beads.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: the train creature pulls five carriages spelling hello, one carriage per letter.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: counting letters with utf8.RuneCountInString">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Counting charms needs a function from the <code>unicode/utf8</code> package. Four words, each printed with its <code>len</code> and its letter count:</p>
+    <span class="file-tab">runecount.go</span>
+    <pre class="code" data-src="runecount.go"></pre>
+    <pre class="term wrap" data-run="runecount.go"></pre>
+    <ol class="readlist">
+      <li><span><code>"unicode/utf8"</code> (line 5)<br>A package of helpers for UTF-8 beads. Its name has a slash, so you call it by the last part: <code>utf8.</code></span></li>
+      <li><span><code>utf8.RuneCountInString(w)</code> (line 10)<br>Walks the beads and counts the letters (runes).</span></li>
+      <li><span><code>日本 6 2</code> and <code>hi👋 6 3</code><br>Three of the words are 6 beads long. They hold 5, 2 and 3 letters. Bead count and letter count only agree for <code>hello</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Want to know how much room a string takes? <code>len</code>. Want to know how many letters a person sees? <code>utf8.RuneCountInString</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-len-m" id="ex-len"></div>
+  <script type="application/json" id="ex-len-m">{"program": "predict_len.go", "prompt": "Scoot orders a drink. What are the two numbers?", "hint": "c, a and f are plain English letters. How many beads does é need?", "explain": "<code>café</code> is c, a, f (one bead each) plus é (two beads): <code>len</code> is <samp>5</samp>. It shows 4 letters, so <code>utf8.RuneCountInString</code> is <samp>4</samp>."}</script>
+
+  <section class="panel clean necklace" aria-label="Panel 6: step along the necklace" data-necklace="nk-words">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Step along three necklaces. The program prints each word's bead count and letter count, then one line per letter: where the letter starts, the letter, and its beads. Every line is computed from the picture and checked against the real run.</p>
+    <div class="nk-split"><ol class="tr-code nk-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="nk-svg" role="img" aria-label="The necklace for the current step; the narration and the text version below describe it."></svg></div>
+    <ul class="nk-key" aria-label="Key to the picture">
+      <li><i></i> a one-bead letter</li>
+      <li><i class="multi"></i> first bead of a longer letter</li>
+      <li><i class="cont"></i> its following beads (dashed)</li>
+      <li><i class="on"></i> the letter range is on now (thick)</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Word</th><th>What happens</th><th>Necklace</th><th>Printed</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="nk-words">{"program": "necklace.go", "headerLine": 10, "lapLine": 12, "words": ["héllo", "日本", "hi👋"], "intro": {
+      "héllo": "Line 10 prints the word, its <code>len</code> (6 beads) and its rune count (5 letters). Each bead holds a number from 0 to 255: you'll see those numbers again in part 2.",
+      "日本": "\"Japan\", written in two characters. Each one needs <b>three</b> beads: <code>len</code> 6, but only 2 letters.",
+      "hi👋": "Two plain letters and an emoji. The emoji alone is <b>four</b> beads, the most UTF-8 ever uses for one letter."}}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-lencount-m" id="ex-lencount"></div>
+  <script type="application/json" id="ex-lencount-m">{"q": "<code>len(\"naïve\")</code> is 6, though you can see 5 letters. What is <code>len</code> counting?", "options": [
+    {"t": "Bytes: the beads that store the text", "correct": true, "why": "Yes. n, a, v and e are one bead each, and ï needs two. 1 + 1 + 2 + 1 + 1 = 6."},
+    {"t": "Letters, plus one hidden letter at the end", "why": "Go strings have no hidden end marker. <code>len(\"hello\")</code> is exactly 5."},
+    {"t": "Letters, but it miscounts accented ones", "why": "It doesn't miscount: it was never counting letters. It counts bytes, every time."},
+    {"t": "Letters and spaces", "why": "There are no spaces in <code>\"naïve\"</code>. The extra 1 comes from ï taking two beads."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · ONE BEAD OR ONE LETTER<small>s[i], byte, rune and range</small></h2>
+
+  <section class="panel clean" aria-label="Panel 7: indexing a string gives a byte">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Square brackets work on strings, like on slices. But what comes out?</p>
+    <span class="file-tab">index_byte.go</span>
+    <pre class="code" data-src="index_byte.go"></pre>
+    <pre class="term wrap" data-run="index_byte.go"></pre>
+    <ol class="readlist">
+      <li><span><code>104 195 169</code> (line 7)<br><code>s[0]</code>, <code>s[1]</code>, <code>s[2]</code> are <b>beads</b>, printed as numbers. 104 is <code>h</code>. 195 and 169 together are <code>é</code>: two beads, one letter.</span></li>
+      <li><span><code>uint8</code> (line 8)<br>The type of a bead: an unsigned whole number that fits in 8 bits, so 0 to 255. Go has a friendlier name for it: <code>byte</code>.</span></li>
+      <li><span><code>'h' 'Ã'</code> (line 9)<br><code>%q</code> shows a number as the letter it would be on its own. Bead 104 alone is <code>h</code>. Bead 195 alone is <code>Ã</code>: not what you wrote. Half of an é is not an e.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>s[i]</code> hands you <b>one bead</b>, not one letter. For plain English text that's the same thing. For anything else, watch out.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 8: byte and rune">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">Go has a type for a bead and a type for a whole letter.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>BYTE<small>one bead</small></h3>
+        <svg class="mini" viewBox="0 0 200 90" aria-hidden="true"><path d="M10 45 H190" stroke="#8A5A2B" stroke-width="5"/><circle cx="100" cy="45" r="34" fill="#FFF6CC" stroke="#111" stroke-width="5"/><text x="100" y="54" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111">104</text></svg>
+        <p><code>byte</code> is another name for <code>uint8</code>: a number from 0 to 255. <code>s[i]</code> gives you a <code>byte</code>.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>RUNE<small>one whole letter</small></h3>
+        <svg class="mini" viewBox="0 0 200 90" aria-hidden="true"><path d="M10 64 H190" stroke="#8A5A2B" stroke-width="5"/><circle cx="76" cy="64" r="22" fill="#F2C9A0" stroke="#111" stroke-width="3"/><circle cx="124" cy="64" r="22" fill="#F2C9A0" stroke="#111" stroke-width="3" stroke-dasharray="7 4"/><path d="M60 36 V28 H140 V36" fill="none" stroke="#111" stroke-width="3"/><rect x="78" y="0" width="44" height="28" rx="8" fill="#FFD60A" stroke="#111" stroke-width="4"/><text x="100" y="23" text-anchor="middle" font-family="Atkinson Hyperlegible Next, sans-serif" font-weight="700" font-size="24" fill="#111">é</text></svg>
+        <p><code>rune</code> is another name for <code>int32</code>: one letter's <b>code point</b>, however many beads it takes. Write one in <b>single</b> quotes: <code>'é'</code>.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Double quotes make a <b>string</b>, a whole necklace: <code>"é"</code>. Single quotes make a <b>rune</b>, one charm: <code>'é'</code>. Go is picky about which is which.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: rune literals">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">A byte and a rune, each from a single-quoted letter.</p>
+    <span class="file-tab">rune_lit.go</span>
+    <pre class="code" data-src="rune_lit.go"></pre>
+    <pre class="term wrap" data-run="rune_lit.go"></pre>
+    <ol class="readlist">
+      <li><span><code>104 233</code> (line 8)<br>Underneath, both are numbers. <code>'h'</code> is 104. <code>'é'</code> is code point 233, one number for the whole letter, even though it takes two beads in a string.</span></li>
+      <li><span><code>h é</code> (line 9)<br><code>%c</code> prints a number as its letter (<b>c</b> for character).</span></li>
+      <li><span><code>uint8 int32</code> (line 10)<br>The real type names behind <code>byte</code> and <code>rune</code>.</span></li>
+      <li><span><code>U+00E9</code> (line 11)<br><code>%U</code> shows the code point the way Unicode charts write it: <code>U+</code> and the number in hexadecimal (base 16). E9 in hexadecimal is 233.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 10: comparing a byte with a string">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Mistake: checking the first letter with double quotes.</p>
+    <div class="pair">
+      <div><span class="file-tab">cmp_err.go</span><pre class="code" data-src="cmp_err.go"></pre><pre class="term wrap" data-run="cmp_err.go" data-exit></pre></div>
+      <div><span class="file-tab">cmp_fix.go</span><pre class="code" data-src="cmp_fix.go"></pre><pre class="term wrap" data-run="cmp_fix.go"></pre></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 7, column 16. Before the <code>==</code>, <code>name[0]</code> is a <code>byte</code>, one bead. After it, <code>"H"</code> is a string, a whole necklace. A bead can't equal a necklace: <samp>mismatched types byte and untyped string</samp>.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Fix: compare a bead with a bead. <code>'H'</code> in single quotes.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, keeps its gate down.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillq-m" id="ex-fillq"></div>
+  <script type="application/json" id="ex-fillq-m">{"program": "fill_quote.go", "prompt": "Parcel codes start with a zone letter, then digits. Fill the blanks: line 7 checks for zone Z, and line 10 turns the digit bead <code>'4'</code> into the number 4 by taking away the bead for the digit zero.", "blanks": [{"line": 7, "text": "'Z'", "accept": ["90"]}, {"line": 10, "text": "'0'", "accept": ["48"]}], "explain": "<code>code[0]</code> is a byte, so compare it with the rune literal <code>'Z'</code> (single quotes). Digit beads are in order: <code>'0'</code> is 48, <code>'4'</code> is 52, so <code>code[1] - '0'</code> is 52 − 48 = <samp>4</samp>, the digit's value."}</script>
+
+  <div data-ex="choice" data-model="ex-quotes-m" id="ex-quotes"></div>
+  <script type="application/json" id="ex-quotes-m">{"q": "Which of these is a <b>rune</b>: one whole letter?", "options": [
+    {"t": "<code>'é'</code>", "correct": true, "why": "Yes. Single quotes around exactly one letter make a rune, here code point 233."},
+    {"t": "<code>\"é\"</code>", "why": "Double quotes make a string: a necklace that happens to hold one letter (in 2 beads)."},
+    {"t": "<code>`é`</code>", "why": "Backticks make a string too, a raw one (part 3)."},
+    {"t": "<code>'hé'</code>", "why": "A rune is one letter. Two letters in single quotes don't compile: <samp>more than one character in rune literal</samp>."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 11: index past the last bead">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tr" data-sfx="SNAP!" data-seed="11"></svg>
+    <p class="caption">Indexes run from 0 to <code>len(s)-1</code>, counted in beads.</p>
+    <span class="file-tab">idx_oob.go</span>
+    <pre class="code" data-src="idx_oob.go"></pre>
+    <pre class="term wrap" data-run="idx_oob.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>last bead: 111</code><br>Line 8 ran. <code>n</code> is 6, so <code>s[5]</code> is the last bead, 111, the <code>o</code>.</span></li>
+      <li><span><code>index out of range [6] with length 6</code><br>Read the <code>panic:</code> line first. Index 6 of a string with 6 beads: one past the end. The length is in <b>beads</b>, exactly like slices in chapter 9.</span></li>
+      <li><span><code>idx_oob.go:9</code><br>The scene of the crime. The <code>+0x65</code> is a position in the compiled program and may differ on your machine.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="tumble"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Fell off the end of the cord! A string is a read-only row of bytes, so it plays by the slice rules.</p></div>
+    </div>
+    <p class="sr-only">Picture: the tumble critter falls off the end of a row of boxes.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: range over a string hands out whole letters">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Good news: <code>for … range</code> over a string reads the beads for you and hands out <b>whole letters</b>.</p>
+    <span class="file-tab">range_runes.go</span>
+    <pre class="code" data-src="range_runes.go"></pre>
+    <pre class="term wrap" data-run="range_runes.go"></pre>
+    <ol class="readlist">
+      <li><span><code>for i, r := range "héllo"</code> (line 6)<br>Each lap hands you <code>r</code>, a <b>rune</b> (one letter), and <code>i</code>, the bead where that letter <b>starts</b>.</span></li>
+      <li><span><code>0:h 1:é 3:l 4:l 5:o</code><br>Five laps, one per letter. The offsets jump from 1 to <b>3</b>: é starts at bead 1 and covers beads 1 and 2, so the next letter starts at 3. That is what panel 6 showed.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>an index hands you a bead; range hands you a letter.</b> And <code>i</code> is a bead number, not a letter number.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: two loops over the same string">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Two loops, one string. The first counts with an index; the second uses <code>range</code>. Both print numbers.</p>
+    <span class="file-tab">two_loops.go</span>
+    <pre class="code" data-src="two_loops.go"></pre>
+    <pre class="term wrap" data-run="two_loops.go"></pre>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>INDEX LOOP<small>lines 8–10</small></h3>
+        <p>Six laps, because <code>len(s)</code> is 6. Each <code>s[i]</code> is a <b>byte</b>: <samp>104 195 169 108 108 111</samp>. The é comes out in two halves.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>RANGE LOOP<small>lines 13–15</small></h3>
+        <p>Five laps, one per letter. Each <code>r</code> is a <b>rune</b>: <samp>104 233 108 108 111</samp>. The é is one number, 233.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Working with letters? Use <code>range</code>. Working with raw bytes, say a file's contents? Use the index loop.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trace1-m" id="ex-trace1"></div>
+  <script type="application/json" id="ex-trace1-m">{"program": "trace_range.go", "columns": ["i", "r", "beads"], "given": [1], "prompt": "Each lap prints <code>i</code>, the letter, and how many beads the letter takes (<code>len(string(r))</code>). The letters are filled in. Fill in <code>i</code> and the bead count for every lap.", "explain": "h is 1 bead at offset 0. é starts at 1 and takes 2 beads, so the next letter starts at 1 + 2 = 3. The rest are one bead each: 3, 4, 5. Each <code>i</code> is the previous <code>i</code> plus the previous letter's beads."}</script>
+
+  <div data-ex="predict" data-model="ex-offsets-m" id="ex-offsets"></div>
+  <script type="application/json" id="ex-offsets-m">{"program": "predict_offsets.go", "prompt": "A German word: über (over). What does each lap print?", "hint": "ü is an accented letter, like é. How many beads? Then where does b start?", "explain": "ü takes 2 beads, at offsets 0 and 1, so b starts at bead <samp>2</samp>. Then e at 3 and r at 4. Four laps, four letters: <samp>0:ü 2:b 3:e 4:r</samp>, one per line."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · CONVERTING, QUOTING, AND NOT CHANGING<small><code>[]byte</code>, <code>[]rune</code>, <code>string()</code>, literals, and read-only strings</small></h2>
+
+  <section class="panel clean" aria-label="Panel 14: converting between strings, bytes and runes">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Three ways to see the same text. Conversions turn one into another.</p>
+    <span class="file-tab">convert.go</span>
+    <pre class="code" data-src="convert.go"></pre>
+    <pre class="term wrap" data-run="convert.go"></pre>
+    <ol class="readlist">
+      <li><span><code>[]byte(s)</code> (line 7)<br>Unstring the beads into a slice of bytes: <samp>[104 195 169]</samp>, three beads.</span></li>
+      <li><span><code>[]rune(s)</code> (line 8)<br>Unstring the letters into a slice of runes: <samp>[104 233]</samp>, two letters. Now index 1 really is the second <b>letter</b>.</span></li>
+      <li><span><code>string(letters[1])</code> (line 11)<br>A rune back into a one-letter string: <samp>é</samp>. And <code>len(letters)</code> is 2: the number of letters.</span></li>
+      <li><span><code>string([]byte{71, 111})</code> (line 13)<br>Beads strung back into a string: 71 is <code>G</code>, 111 is <code>o</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 15: the conversion machine" data-machine="m-conv">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Feed the conversion machine. The last input slips past the Compiler, and gets caught by a different checker.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-conv">{"label": "convert", "program": "conv_machine.go", "examples": [
+      {"in": "[]byte(\"hé\")", "out": "[104 195 169]", "outKind": "[]byte", "note": "A string in, its beads out: 3 bytes."},
+      {"in": "[]rune(\"hé\")", "out": "[104 233]", "outKind": "[]rune", "note": "A string in, its letters out: 2 runes."},
+      {"in": "[]rune(\"日本\")", "out": "[26085 26412]", "outKind": "[]rune", "note": "Six beads in, two runes out. Their code points are big numbers: 26085 and 26412."},
+      {"in": "string('é')", "out": "é", "outKind": "string", "note": "One rune in, a one-letter string out (2 beads long)."},
+      {"in": "string([]byte{104, 195, 169})", "out": "hé", "outKind": "string", "note": "Beads in, a string out. 195 and 169 join up into é again."},
+      {"in": "string(seat), seat := 65", "error": "conversion from int to string yields a string of one rune, not a string of digits", "program": "string_int.go", "note": "<code>seat</code> is an <code>int</code>. <code>string(65)</code> doesn't make <samp>\"65\"</samp>: it makes the letter with code point 65, <samp>A</samp>. Panel 24 reads this one closely."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: the third letter">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Scoot wants the third letter of <code>"naïve"</code>. Index 2, surely?</p>
+    <span class="file-tab">nth.go</span>
+    <pre class="code" data-src="nth.go"></pre>
+    <pre class="term wrap" data-run="nth.go"></pre>
+    <ol class="readlist">
+      <li><span><code>195</code> and <code>'Ã'</code> (lines 7 and 8)<br><code>s[2]</code> is bead 2: the first half of ï. Not a letter at all.</span></li>
+      <li><span><code>ï</code> (line 11)<br><code>[]rune(s)</code> lays the letters out one per box, so index 2 is the third letter.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Need letter number <i>n</i>? <code>[]rune(s)[n]</code>. The conversion has to read every bead, so do it once and keep the slice if you need many letters.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-nth-m" id="ex-nth"></div>
+  <script type="application/json" id="ex-nth-m">{"q": "<code>word := \"señor\"</code>. Which expression gives the third letter, <code>\"ñ\"</code>, as a string?", "options": [
+    {"t": "<code>string([]rune(word)[2])</code>", "correct": true, "why": "Yes: letters one per box, take box 2, turn the rune back into a string."},
+    {"t": "<code>[]rune(word)[2]</code>", "why": "The right letter, but as a rune: the number 241, not a string. Wrap it in <code>string(…)</code>."},
+    {"t": "<code>string([]byte(word)[2])</code>", "why": "Box 2 of the <em>bytes</em> is bead 195, the first half of ñ. As a string it becomes the letter with code point 195: <samp>Ã</samp>."},
+    {"t": "<code>string(word[2])</code>", "why": "<code>word[2]</code> is bead 195 too, so this also gives <samp>Ã</samp>: a half-bead dressed up as a letter."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 17: strings can't be changed">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="17"></svg>
+    <p class="caption">Scoot tries to turn "jam" into "ham" by swapping one bead.</p>
+    <span class="file-tab">assign_err.go</span>
+    <pre class="code" data-src="assign_err.go"></pre>
+    <pre class="term wrap" data-run="assign_err.go" data-exit></pre>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 7, column 2. You may <b>read</b> <code>s[0]</code>, but you may never write to it. Strings are <b>immutable</b>: once a necklace is made, its beads are glued on.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span><samp>neither addressable nor a map index expression</samp> is my formal way of saying "there is no box here you're allowed to change". Make a new string instead.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, keeps its gate down.</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 18: change a copy, then string it back" data-tracer="tr-copy" id="tr-copy-box">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">The way round it: unstring the beads into a <code>[]byte</code> (which <em>can</em> change), change that, and string a new necklace. Watch what happens to the original.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-copy-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-copy">{ "program": "copy_bytes.go", "steps": [
+      {"line": 6, "note": "The run starts in <code>main</code>.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 7, "note": "<code>s</code> names a string, <samp>jam</samp>: three beads, glued on for good.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S1"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}}, "changed": ["s"]},
+      {"line": 8, "note": "<code>[]byte(s)</code> <b>copies</b> the beads into a brand-new slice that <code>b</code> names. These are loose beads: 106, 97, 109.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S1"}, {"n": "b", "ref": "B"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "106"}, {"val": "97"}, {"val": "109"}]}}, "changed": ["b"]},
+      {"line": 9, "note": "<code>b[0] = 'h'</code> swaps the first loose bead for 104, the <code>h</code>. Allowed: a slice's boxes can change. Look at <code>s</code>: still <samp>jam</samp>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S1"}, {"n": "b", "ref": "B"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "104"}, {"val": "97"}, {"val": "109"}]}}, "changed": ["b"]},
+      {"line": 10, "note": "<code>string(b)</code> strings the beads into a <b>new</b> necklace, <samp>ham</samp>, named <code>t</code>. That copies the beads again, so changing <code>b</code> later could never change <code>t</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S1"}, {"n": "b", "ref": "B"}, {"n": "t", "ref": "S2"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "104"}, {"val": "97"}, {"val": "109"}]}, "S2": {"kind": "string", "value": "\"ham\"", "label": "read-only"}}, "changed": ["t"]},
+      {"line": 11, "note": "Printed: the original, the new string, and the bytes.", "output": ["jam ham [104 97 109]"], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S1"}, {"n": "b", "ref": "B"}, {"n": "t", "ref": "S2"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "104"}, {"val": "97"}, {"val": "109"}]}, "S2": {"kind": "string", "value": "\"ham\"", "label": "read-only"}}},
+      {"line": 12, "note": "<code>s = \"ram\"</code> doesn't change the old necklace either. It hangs the <b>name</b> <code>s</code> on a different necklace. Nothing names <samp>jam</samp> now, so it fades: Go will tidy it away.", "output": ["jam ham [104 97 109]"], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S3"}, {"n": "b", "ref": "B"}, {"n": "t", "ref": "S2"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "104"}, {"val": "97"}, {"val": "109"}]}, "S2": {"kind": "string", "value": "\"ham\"", "label": "read-only"}, "S3": {"kind": "string", "value": "\"ram\"", "label": "read-only"}}, "changed": ["s"]},
+      {"line": null, "note": "Every string in this run stayed exactly as it was made. Changing text in Go always means <b>making a new string</b>.", "output": ["jam ham [104 97 109]", "ram ham"], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S3"}, {"n": "b", "ref": "B"}, {"n": "t", "ref": "S2"}]}], "objects": {"S1": {"kind": "string", "value": "\"jam\"", "label": "read-only"}, "B": {"kind": "slice", "label": "[]byte · a copy", "items": [{"val": "104"}, {"val": "97"}, {"val": "109"}]}, "S2": {"kind": "string", "value": "\"ham\"", "label": "read-only"}, "S3": {"kind": "string", "value": "\"ram\"", "label": "read-only"}}}
+    ] }</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pzname-m" id="ex-pzname"></div>
+  <script type="application/json" id="ex-pzname-m">{"program": "parsons_name.go", "seed": 5, "pin": [1, 3], "prompt": "Put the lines in order to turn <samp>kim</samp> into <samp>Tim</samp> without touching the original string, then print both.", "explain": "The string comes first, then its beads are copied into a <code>[]byte</code>, then the copy's first bead changes, and only then can the new string be made and printed. <code>name</code> is untouched: <samp>Tim kim</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 19: reversing bead by bead breaks letters">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Scoot writes a function to spell words backwards. It reverses the beads.</p>
+    <span class="file-tab">reverse_bytes.go</span>
+    <pre class="code" data-src="reverse_bytes.go"></pre>
+    <pre class="term wrap" data-run="reverse_bytes.go"></pre>
+    <ol class="readlist">
+      <li><span><code>"pots"</code><br>"stop" backwards. Plain English: one bead per letter, so reversing beads reverses letters. Looks fine.</span></li>
+      <li><span><code>"oll\xa9\xc3h"</code><br>The é's two beads came out swapped, 169 then 195. That pair isn't a letter in UTF-8. <code>%q</code> shows a bead that belongs to no letter as <code>\x</code> plus its number in hexadecimal: <code>\xa9</code> is 169 and <code>\xc3</code> is 195.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>No error, no panic. Just a broken word. Tested only with English? You'd never notice. That's why I tested with <code>héllo</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak critter, a quiet logic bug, tiptoes past.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: reverse the letters instead">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">The fix is one word: reverse a <code>[]rune</code>, so whole letters move together.</p>
+    <span class="file-tab">reverse_runes.go</span>
+    <pre class="code" data-src="reverse_runes.go"></pre>
+    <pre class="term wrap" data-run="reverse_runes.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Lines 6 and 7 now say <code>rune</code>. Each box holds a whole letter, however many beads it takes. Catchphrase: <b>reverse letters, not beads.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotrev-m" id="ex-spotrev"></div>
+  <script type="application/json" id="ex-spotrev-m">{"program": "spot_reverse.go", "bug": 6, "prompt": "<code>backwards(\"año\")</code> should print <samp>oña</samp>. Click the line that makes it go wrong.", "explain": "Line 6 cuts the string into <b>bytes</b>. ñ is two beads (195 and 177); walked backwards, each bead becomes its own letter: 177 is <samp>±</samp> and 195 is <samp>Ã</samp>. Fix: <code>letters := []rune(s)</code>, so each box is a whole letter."}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: three kinds of quotes">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Go has three kinds of quotes. Two make strings, one makes a rune.</p>
+    <div class="quotes">
+      <div><b>DOUBLE QUOTES</b><span class="big">"a\tb"</span><p>An <b>interpreted</b> string. A backslash starts an <b>escape</b>: <code>\n</code> new line, <code>\t</code> tab, <code>\"</code> a quote, <code>\\</code> a backslash.</p></div>
+      <div class="dashed"><b>BACKTICKS</b><span class="big">`a\tb`</span><p>A <b>raw</b> string. Every character means itself: a backslash is just a backslash. It may even run over several lines.</p></div>
+      <div><b>SINGLE QUOTES</b><span class="big">'é'</span><p>A <b>rune</b>: exactly one letter. Escapes work here too: <code>'\n'</code> is the new-line rune.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The backtick lives on the key left of <kbd>1</kbd> on most keyboards. Raw strings are perfect for Windows paths and anything full of backslashes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: escapes and raw strings">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Every kind of string literal, and what it really prints.</p>
+    <span class="file-tab">literals.go</span>
+    <pre class="code" data-src="literals.go"></pre>
+    <pre class="term wrap" data-run="literals.go"></pre>
+    <ol class="readlist">
+      <li><span><code>\t</code> and <code>\n</code> (lines 6 and 7)<br>A tab, and a line break. Two characters in your code, one bead in the string.</span></li>
+      <li><span><code>"C:\\new\\table"</code> and <code>`C:\new\table`</code> (lines 9 and 10)<br>The same text, two ways. Without the doubled backslashes, line 9 would hold a new line (<code>\n</code>) and a tab (<code>\t</code>)!</span></li>
+      <li><span>Lines 11 and 12<br>A raw string can hold double quotes and a real line break, exactly as typed.</span></li>
+      <li><span><code>"\u00e9 = \xc3\xa9"</code> (line 13)<br><code>\u</code> writes a letter by its code point; <code>\x</code> writes a single bead by its hexadecimal value. Both make é.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-escape-m" id="ex-escape"></div>
+  <script type="application/json" id="ex-escape-m">{"program": "predict_escape.go", "prompt": "One interpreted string, one raw string, then their lengths. Type everything the program prints (four lines).", "hint": "In double quotes, <code>\\n</code> is one bead: a line break. In backticks it is two ordinary characters.", "explain": "<code>\"a\\nb\"</code> prints <samp>a</samp> and <samp>b</samp> on two lines: 3 beads (a, line break, b). The raw <code>`a\\nb`</code> prints the backslash and the n as they are: <samp>a\\nb</samp>, 4 beads. So the last line is <samp>3 4</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-raw-m" id="ex-raw"></div>
+  <script type="application/json" id="ex-raw-m">{"q": "Which line prints exactly <samp>C:\\new</samp>?", "options": [
+    {"t": "<code>fmt.Println(`C:\\new`)</code>", "correct": true, "why": "Yes. In a raw string the backslash is just a backslash."},
+    {"t": "<code>fmt.Println(\"C:\\new\")</code>", "why": "In double quotes, <code>\\n</code> is a line break. This prints <samp>C:</samp>, then <samp>ew</samp> on the next line."},
+    {"t": "<code>fmt.Println('C:\\new')</code>", "why": "Single quotes hold one rune. Several letters don't compile."},
+    {"t": "<code>fmt.Println(C:\\new)</code>", "why": "Without quotes, Go reads it as code, not text. It doesn't compile."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 23: mixing up the quotes">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Two quote mix-ups, both caught at the Compiler's desk.</p>
+    <div class="pair">
+      <div><span class="file-tab">quote_err.go</span><pre class="code" data-src="quote_err.go"></pre><pre class="term wrap" data-run="quote_err.go" data-exit></pre></div>
+      <div><span class="file-tab">rune_two.go</span><pre class="code" data-src="rune_two.go"></pre><pre class="term wrap" data-run="rune_two.go" data-exit></pre></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span><code>quote_err.go</code>: a <code>rune</code> box needs one letter in <b>single</b> quotes, <code>'é'</code>. <code>"é"</code> is a string, and <samp>cannot use … as rune value</samp>.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span><code>rune_two.go</code>: single quotes hold <b>one</b> letter. For two letters, use a string: <code>"ok"</code>.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, keeps its gate down.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 24: string of an int is a letter, not digits">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Scoot makes a seat label from the number 65. The program runs, and prints the wrong thing.</p>
+    <span class="file-tab">string_int.go</span>
+    <pre class="code" data-src="string_int.go"></pre>
+    <pre class="term wrap" data-run="string_int.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>Seat A</code><br><code>go run</code> compiled it and ran it. <code>string(seat)</code> took 65 as a <b>code point</b>, and code point 65 is the letter <code>A</code>.</span></li>
+      <li><span><code>conversion from int to string yields a string of one rune, not a string of digits</code><br><code>go vet</code> (chapter 2) knows this trap. Line 7, column 21: "you get one letter, not the digits".</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Specs spotted it. For digits, use chapter 7's <code>strconv.Itoa</code>, which turns 65 into <samp>"65"</samp>.</p></div>
+    </div>
+    <p class="sr-only">Picture: Specs, the go vet critter with big glasses and a magnifier.</p>
+    <span class="file-tab">itoa.go</span>
+    <pre class="code" data-src="itoa.go"></pre>
+    <pre class="term wrap" data-run="itoa.go"></pre>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE STRINGS TOOLBOX<small>Search, change, split, join and cut</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 25: the strings package is a toolbox">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">Go's standard library has a whole toolbox for text: the <code>strings</code> package. Add <code>"strings"</code> to your imports, then call <code>strings.Name(…)</code>.</p>
+    <ul class="toolbox" aria-label="The toolbox's drawers">
+      <li><b>SEARCH</b><code>Contains ContainsRune HasPrefix HasSuffix Index</code><small><code>ContainsRune</code> asks about one letter (a rune) instead of a string.</small></li>
+      <li><b>CHANGE</b><code>ToUpper ToLower TrimSpace Replace ReplaceAll Repeat</code></li>
+      <li><b>SPLIT &amp; JOIN</b><code>Split Fields Join</code></li>
+      <li><b>CUT</b><code>Cut CutLast</code></li>
+      <li><b>BUILD</b><code>Builder</code> (part 5)</li>
+      <li><b>COMPARE</b><code>EqualFold</code> (part 5)</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Strings can't change, so not one of these tools changes your string. Every tool <b>hands back</b> a new one. Keep that in mind for panel 28.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: searching inside a string">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Is it in there? Where? Five questions about an address.</p>
+    <span class="file-tab">search.go</span>
+    <pre class="code" data-src="search.go"></pre>
+    <pre class="term wrap" data-run="search.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Contains</code>, <code>HasPrefix</code>, <code>HasSuffix</code> (lines 10 to 12)<br>Yes-or-no questions: anywhere inside? At the start? At the end? Each answers a <code>bool</code>.</span></li>
+      <li><span><code>7</code> (line 13)<br><code>Index</code> says where the first match starts. "Street" starts at bead 7.</span></li>
+      <li><span><code>-1</code> (line 14)<br>Not found. -1 can never be a real position, so it's Go's way of saying "nowhere".</span></li>
+      <li><span><code>6</code> (line 15)<br>In <code>"café bar"</code>, the letters before "bar" are c, a, f, é and a space: five letters. Yet <code>Index</code> says <b>6</b>. It counts <b>beads</b>, and é is two.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: tools that make changed copies">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">The "change" drawer. Each line hands back a new, changed string.</p>
+    <span class="file-tab">change.go</span>
+    <pre class="code" data-src="change.go"></pre>
+    <pre class="term wrap" data-run="change.go"></pre>
+    <ol class="readlist">
+      <li><span><code>HÉLLO</code> (line 9)<br><code>ToUpper</code> knows about accents: é becomes É. Every language's capitals work.</span></li>
+      <li><span><code>"hi there"</code> (line 11)<br><code>TrimSpace</code> strips spaces, tabs and line breaks from both ends, never from the middle. <code>%q</code> shows the quotes so you can see the edges.</span></li>
+      <li><span><code>a+b-c</code> and <code>a+b+c</code> (lines 12 and 13)<br><code>Replace</code>'s last input says how many to replace (1 here). <code>ReplaceAll</code> replaces every one.</span></li>
+      <li><span><code>hohoho</code> (line 14)<br><code>Repeat</code> strings the same beads several times.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 28: ToUpper without catching the result">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Scoot wants to shout the city's name. Line 10 does nothing. No error.</p>
+    <span class="file-tab">upper_lost.go</span>
+    <pre class="code" data-src="upper_lost.go"></pre>
+    <pre class="term wrap" data-run="upper_lost.go"></pre>
+    <div class="scene">
+      <svg class="char" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Line 10 made <samp>PARIS</samp>, and dropped it on the floor. <code>city</code> can't change, remember? Unlike <code>append</code> in chapter 9, the Compiler lets this one through silently. Line 13 catches the new string: <code>city = strings.ToUpper(city)</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak critter, a quiet logic bug, tiptoes past.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotup-m" id="ex-spotup"></div>
+  <script type="application/json" id="ex-spotup-m">{"program": "spot_upper.go", "bug": 11, "prompt": "The names should come out in capitals, but the program prints <samp>[ana bo]</samp>. No error. Click the guilty line.", "explain": "Line 11 builds a capitalised copy and throws it away. Strings can't change, so <code>names[i]</code> is untouched. Fix: <code>names[i] = strings.ToUpper(names[i])</code>. Writing through the index (chapter 9) puts the new string in the box."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: split, fields and join">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Cut a string into a slice of pieces, and glue pieces back together.</p>
+    <span class="file-tab">split.go</span>
+    <pre class="code" data-src="split.go"></pre>
+    <pre class="term wrap" data-run="split.go"></pre>
+    <ol class="readlist">
+      <li><span><code>["red" "green" "blue"]</code> (line 9)<br><code>Split</code> cuts at every comma and hands back a <code>[]string</code>. The commas themselves are gone. <code>%q</code> puts quotes round each piece so you can see where they start and end.</span></li>
+      <li><span><code>["a" "" "b"]</code> (line 10)<br>Two commas in a row leave an <b>empty</b> piece between them. <code>Split</code> keeps it.</span></li>
+      <li><span><code>["lots" "of" "space"]</code> (line 11)<br><code>Fields</code> splits on any run of spaces, tabs or line breaks, and never makes empty pieces. Perfect for words.</span></li>
+      <li><span><code>up-and-away</code> (line 14)<br><code>Join</code> is <code>Split</code> backwards: pieces in, glued with <code>"-"</code> between them.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: Cut and CutLast">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Often you only need one cut: before the sign, and after it. That's <code>Cut</code>. Go 1.27 added <code>CutLast</code> (its release notes: "The new CutLast function slices a string around the last occurrence of a separator"), which cuts at the <em>last</em> sign instead of the first.</p>
+    <span class="file-tab">cut.go</span>
+    <pre class="code" data-src="cut.go"></pre>
+    <pre class="term wrap" data-run="cut.go"></pre>
+    <ol class="readlist">
+      <li><span><code>before, after, found := strings.Cut(line, "=")</code> (line 11)<br>Three results at once (chapter 7's multiple returns): the text before the <b>first</b> <code>=</code>, the text after it, and whether there was one.</span></li>
+      <li><span><code>color=deep | blue | true</code> (line 14)<br><code>CutLast</code> cuts at the <b>last</b> <code>=</code>. Handy for file extensions: <code>photo.old.jpg</code> → <code>photo.old</code> and <code>jpg</code>.</span></li>
+      <li><span><code>false</code> (line 17)<br>No sign at all: <code>found</code> is false (and <code>before</code> is the whole string). The <code>_</code> blanks throw away results you don't need.</span></li>
+    </ol>
+    <p class="caption">The same program under Go 1.24.7, an older version, with <code>go 1.24</code> in its module file:</p>
+    <pre class="term wrap" data-run="cut.go" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><samp>undefined: strings.CutLast</samp>: older Go has no such tool. If a tool from this book is "undefined" on your computer, check <code>go version</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 31: the strings machine" data-machine="m-tools">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Feed the toolbox machine. Every output is a real line from one run; the last input jams it.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-tools">{"label": "strings.", "program": "tools_machine.go", "examples": [
+      {"in": "ToUpper(\"dash\")", "out": "DASH", "outKind": "string", "note": "A new string, all capitals."},
+      {"in": "Split(\"1-2-3\", \"-\")", "out": "[\"1\" \"2\" \"3\"]", "outKind": "[]string", "note": "Cut at every dash: three pieces in a slice (printed with <code>%q</code>)."},
+      {"in": "Fields(\" so \u00a0much \u00a0room \")", "out": "[\"so\" \"much\" \"room\"]", "outKind": "[]string", "note": "Words, however many spaces sit between them. (The real string has two spaces between the words.)"},
+      {"in": "Cut(\"photo.old.jpg\", \".\")", "out": "photo old.jpg true", "outKind": "string, string, bool", "note": "Cut at the <b>first</b> dot."},
+      {"in": "CutLast(\"photo.old.jpg\", \".\")", "out": "photo.old jpg true", "outKind": "string, string, bool", "note": "Cut at the <b>last</b> dot: the extension. New in Go 1.27."},
+      {"in": "Repeat(\"=\", 8)", "out": "========", "outKind": "string", "note": "Eight copies: a quick underline."},
+      {"in": "Join([]string{\"a\", \"b\", \"c\"}, \", \")", "out": "a, b, c", "outKind": "string", "note": "Pieces glued with a comma and a space."},
+      {"in": "TrimSpace(\"\\t done \\n\")", "out": "\"done\"", "outKind": "string", "note": "The tab, spaces and line break at the edges are gone."},
+      {"in": "Split(\"a b c\")", "error": "not enough arguments in call to strings.Split", "program": "split_args.go", "note": "<code>Split</code> needs two inputs: the string and the separator. The Compiler lists what it got (<samp>have (string)</samp>) and what it wants (<samp>want (string, string)</samp>)."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-filltools-m" id="ex-filltools"></div>
+  <script type="application/json" id="ex-filltools-m">{"program": "fill_tools.go", "prompt": "Fill in the three tool names. Line 10 strips the spaces from both ends. Line 11 prints it in capitals. Line 12 asks whether it starts with \"ship\".", "blanks": [{"line": 10, "text": "TrimSpace"}, {"line": 11, "text": "ToUpper"}, {"line": 12, "text": "HasPrefix"}], "explain": "<code>TrimSpace</code> removes the edges, giving <code>\"ship it\"</code>. <code>ToUpper</code> hands back <samp>SHIP IT</samp>. <code>HasPrefix</code> answers <samp>true</samp>, because the trimmed string starts with \"ship\". (On <code>msg</code> itself it would be false: the spaces come first.)"}</script>
+
+  <div data-ex="predict" data-model="ex-split-m" id="ex-split"></div>
+  <script type="application/json" id="ex-split-m">{"program": "predict_split.go", "prompt": "Today's date, cut into pieces and glued back. Type both lines.", "hint": "Split at each dash. How many pieces? Which one is index 1?", "explain": "<code>Split</code> gives three pieces, <code>\"2026\"</code>, <code>\"11\"</code> and <code>\"08\"</code>, so <samp>3 11</samp>. <code>Join</code> glues them with slashes: <samp>2026/11/08</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-cut-m" id="ex-cut"></div>
+  <script type="application/json" id="ex-cut-m">{"q": "<code>f := \"photo.old.jpg\"</code>. Which call gets you <code>\"jpg\"</code>, the file extension, as its second result?", "options": [
+    {"t": "<code>strings.CutLast(f, \".\")</code>", "correct": true, "why": "Yes: cut at the last dot, so the second result is <code>\"jpg\"</code>."},
+    {"t": "<code>strings.Cut(f, \".\")</code>", "why": "Cuts at the <em>first</em> dot: the second result is <code>\"old.jpg\"</code>."},
+    {"t": "<code>strings.Split(f, \".\")</code>", "why": "That hands back one result, a slice of three pieces. Its index 1 is <code>\"old\"</code>."},
+    {"t": "<code>strings.Index(f, \".\")</code>", "why": "Index gives a position (5, the first dot), not any text."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pzext-m" id="ex-pzext"></div>
+  <script type="application/json" id="ex-pzext-m">{"program": "parsons_ext.go", "seed": 4, "pin": [1, 3, 4, 5, 6], "prompt": "Put the lines in order: split the file name at its last dot and, if there was a dot, print the name and the extension in capitals.", "explain": "The file name comes first. <code>CutLast</code> makes three names at once. The <code>if found</code> guards the print, so a name with no dot prints nothing. Then the two closing braces: the <code>if</code>'s and <code>main</code>'s."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · BUILDING AND COMPARING<small>+=, strings.Builder, ==, &lt; and EqualFold</small></h2>
+
+  <section class="panel clean" aria-label="Panel 32: plus-equals makes a new string each time">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Adding to a string with <code>+=</code> works. But a string can't grow, so what really happens?</p>
+    <span class="file-tab">plus_loop.go</span>
+    <pre class="code" data-src="plus_loop.go"></pre>
+    <pre class="term wrap" data-run="plus_loop.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Each <code>s += "go"</code> strings a <b>whole new necklace</b>: all the old beads, copied, plus two more. Three laps: no problem. Ten thousand laps: that's a lot of copying.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: strings.Builder">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">For building text bit by bit, the toolbox has a workbench: <code>strings.Builder</code>. You add beads to it, and string the necklace once, at the end.</p>
+    <span class="file-tab">builder.go</span>
+    <pre class="code" data-src="builder.go"></pre>
+    <pre class="term wrap" data-run="builder.go"></pre>
+    <ol class="readlist">
+      <li><span><code>var sb strings.Builder</code> (line 9)<br>An empty workbench, ready to use. No <code>make</code> needed.</span></li>
+      <li><span><code>sb.WriteString</code>, <code>sb.WriteByte</code>, <code>sb.WriteRune</code> (lines 11, 12 and 14)<br>Add a string, one bead, or one whole letter. The dot means "this workbench's own action" (chapter 13 calls these <b>methods</b>).</span></li>
+      <li><span><code>sb.String()</code> (line 15)<br>String the finished necklace: <samp>go-go-go-é</samp>.</span></li>
+      <li><span><code>11</code> (line 16)<br><code>sb.Len()</code> counts <b>beads</b>, like <code>len</code>: 9 for <code>go-go-go-</code>, plus 2 for é.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: walk Scoot through a builder" data-walk="walk-sb">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Walk a builder line by line, and watch the bead count.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">walk_builder.go</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-sb">{"program": "walk_builder.go", "steps": [
+      {"line": 9, "output": [], "mood": "focus", "arms": "point", "note": "The run starts in <code>main</code>. Line 9 is next."},
+      {"line": 10, "output": [], "mood": "happy", "arms": "point", "note": "<code>var sb strings.Builder</code>: an empty workbench. Nothing on it yet: 0 beads."},
+      {"line": 11, "output": [], "mood": "happy", "arms": "point", "note": "<code>WriteString(\"Hi \")</code> adds 3 beads: H, i and a space."},
+      {"line": 12, "output": [], "mood": "focus", "arms": "point", "note": "<code>WriteString(\"Zoë\")</code> adds Z, o and ë. ë is an accented letter: 2 beads. So 3 + 4 = 7 beads on the bench."},
+      {"line": 13, "output": ["7"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "<code>sb.Len()</code> printed <samp>7</samp>: beads, not letters (there are 6 letters)."},
+      {"line": 14, "output": ["7"], "mood": "happy", "arms": "point", "note": "<code>WriteRune('!')</code> adds one letter, here a one-bead one."},
+      {"line": null, "output": ["7", "Hi Zoë!"], "mood": "happy", "arms": "cheer", "note": "<code>sb.String()</code> strings the finished necklace, once: <samp>Hi Zoë!</samp>."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trace2-m" id="ex-trace2"></div>
+  <script type="application/json" id="ex-trace2-m">{"program": "trace_build.go", "columns": ["w", "len(w)", "sb.Len()"], "given": [0], "prompt": "Three one-letter strings go onto the workbench. Each lap prints the letter, its <code>len</code>, and the bench's bead count so far. Fill in the two numbers for each lap.", "explain": "a is 1 bead (total 1). ñ is an accented letter: 2 beads (total 3). 日 is a Chinese character: 3 beads (total 6). Three letters, six beads."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzbuild-m" id="ex-pzbuild"></div>
+  <script type="application/json" id="ex-pzbuild-m">{"program": "parsons_build.go", "seed": 2, "pin": [1, 3, 4, 5, 6], "prompt": "Put the lines in order to sing <samp>lalala</samp> with a builder.", "explain": "The workbench is made before the loop, so it keeps every lap's beads. The loop writes \"la\" three times. <code>sb.String()</code> is printed once, after the loop's closing brace."}</script>
+
+  <section class="panel clean" aria-label="Panel 35: comparing strings">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Strings compare with <code>==</code>, <code>!=</code>, <code>&lt;</code> and <code>&gt;</code>, like numbers. But in what order?</p>
+    <span class="file-tab">compare.go</span>
+    <pre class="code" data-src="compare.go"></pre>
+    <pre class="term wrap" data-run="compare.go"></pre>
+    <ol class="readlist">
+      <li><span><code>true true</code> (line 10)<br><code>==</code> is true when every bead matches. <code>&lt;</code> works like a dictionary: "apple" comes before "banana".</span></li>
+      <li><span><code>true</code> (line 11)<br>"Zebra" before "apple"? Go compares <b>bead numbers</b>, one by one. Capital Z is 90 and small a is 97, so every capital comes before every small letter.</span></li>
+      <li><span><code>true</code> (line 12)<br>"10" before "9": the first beads decide, and '1' (49) is less than '9' (57). Text that looks like numbers doesn't sort like numbers.</span></li>
+      <li><span><code>false true</code> (line 13)<br>"go" and "Go" differ by one bead. <code>strings.EqualFold</code> compares ignoring capitals.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-cmp-m" id="ex-cmp"></div>
+  <script type="application/json" id="ex-cmp-m">{"program": "predict_compare.go", "prompt": "Three comparisons, three lines of <samp>true</samp> or <samp>false</samp>.", "hint": "Compare bead by bead from the left. Capitals have smaller numbers than small letters. If one string runs out first, it comes first.", "explain": "c comes before d: <samp>true</samp>. C (67) is less than c (99): <samp>true</samp>. \"car\" and \"cart\" match until \"car\" runs out, and the shorter one comes first: <samp>true</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 36: two é's that are not equal">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">One last surprise. Unicode has two ways to write é: one letter, or a plain e followed by an invisible "add an accent" mark.</p>
+    <span class="file-tab">two_e.go</span>
+    <pre class="code" data-src="two_e.go"></pre>
+    <pre class="term wrap" data-run="two_e.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>They look the same on screen: <samp>é é</samp>. But one is 2 beads and the other is 3, and <code>==</code> compares beads, so <samp>false</samp>. Text typed on different computers can do this. The Professor's notebook ("Common wrong ideas") says what to do about it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 37: the string rogues' gallery">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">Detective's wall: every string mistake in this chapter, how it shows itself, and where it's caught.</p>
+    <ol class="checklist">
+      <li><span><b>Byte vs string</b> · at the desk · <samp>invalid operation: name[0] == "H" (mismatched types byte and untyped string)</samp>. Compare a bead with <code>'H'</code>.</span></li>
+      <li><span><b>Writing into a string</b> · at the desk · <samp>cannot assign to s[0] (neither addressable nor a map index expression)</samp>. Make a new string.</span></li>
+      <li><span><b>Wrong quotes for a rune</b> · at the desk · <samp>cannot use "é" (untyped string constant) as rune value</samp> and <samp>more than one character in rune literal</samp>.</span></li>
+      <li><span><b>Index past the end</b> · in the kitchen · <samp>panic: runtime error: index out of range [6] with length 6</samp>. Lengths are in beads.</span></li>
+      <li><span><b><code>string(n)</code> on an int</b> · vet · <samp>conversion from int to string yields a string of one rune, not a string of digits</samp>. Use <code>strconv.Itoa</code>.</span></li>
+      <li><span><b>Reversing or slicing bytes</b> · no message · broken letters like <samp>\xa9\xc3</samp>. Use <code>[]rune</code>.</span></li>
+      <li><span><b>Dropping a tool's result</b> · no message · the string is unchanged. Catch it: <code>s = strings.ToUpper(s)</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The quiet ones hide in English-only tests. Always test text code with at least one accent and one emoji.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 38: boss level">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="38"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Beads, letters, offsets and tools, all mixed up. Draw the necklace on paper: beads in a row, charms on top. Then count.</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A Spanish word, señor. Type all three lines.", "hint": "ñ is an accented letter. Number the beads: s 0, e 1, ñ 2 and 3, then o and r.", "explain": "Six beads, five letters: <samp>6 5</samp>. <code>Index</code> counts beads, and o starts at bead <samp>4</samp>. <code>[]rune(s)[2]</code> is the third letter: <samp>ñ</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["i", "r", "total"], "given": [1], "prompt": "Boss 2. Ranging over <code>\"Zoë!\"</code>, each lap adds the letter's bead count to <code>total</code>, then prints <code>i</code>, the letter and the total. Fill in <code>i</code> and <code>total</code>.", "explain": "Z and o are one bead each (offsets 0 and 1, totals 1 and 2). ë starts at 2 and takes 2 beads (total 4). So ! starts at bead 4, and the total ends at 5, which is <code>len(\"Zoë!\")</code>."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 7, "prompt": "Boss 3. The label should show the first three letters, <samp>Zür</samp>, but it shows <samp>Zü</samp>. Click the guilty line.", "explain": "Line 7 slices <b>beads</b>: <code>city[:3]</code> is Z (1 bead) plus ü (2 beads). Only two letters. Fix: <code>string([]rune(city)[:3])</code>, which takes three letters."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 9, "pin": [1, 3, 4, 5, 6], "prompt": "Boss 4. Put the lines in order to count the vowels in <code>\"olé olé\"</code>, accented ones included. (<code>strings.ContainsRune</code>, from panel 25's SEARCH drawer, asks whether one letter is in a string.)", "explain": "The counter starts before the loop. <code>range</code> hands over whole letters, so é arrives as one rune and <code>strings.ContainsRune</code> can find it in the vowel list. o, é, o, é: <samp>4</samp>. The print comes once, after the loop."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. From the email address, print the first name in capitals and the domain: <samp>ANA mail.example</samp>. Line 10 cuts at the @. Line 11 cuts the user part at its first dot. Line 12 makes capitals.", "blanks": [{"line": 10, "text": "Cut", "accept": ["CutLast"]}, {"line": 11, "text": "\".\""}, {"line": 12, "text": "ToUpper"}], "explain": "<code>strings.Cut(email, \"@\")</code> gives <code>\"ana.lopez\"</code> and <code>\"mail.example\"</code>. Cutting the user at <code>\".\"</code> gives <code>\"ana\"</code>, and <code>ToUpper</code> makes it <samp>ANA</samp>. (With only one @, <code>CutLast</code> would work on line 10 too.)"}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Scoot adds an exclamation mark to a word. What happens?", "expect": "error", "answer": "mismatched types string and rune", "ask": "It doesn't compile. Type the part of the message in brackets. (Start with \"mismatched\".)", "hint": "What type is <code>word</code>? What type is <code>bang</code>? Can <code>+</code> join them?", "explain": "<code>word</code> is a string and <code>bang</code> is a rune, and <code>+</code> only joins two strings: <samp>invalid operation: word + bang (mismatched types string and rune)</samp>. Fix: <code>word + string(bang)</code>, or write <code>\"!\"</code> in double quotes."}</script>
+
+  <section class="panel pop" aria-label="Panel 39: what you learned">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">What you learned in Chapter 11</p>
+    <ul class="recap">
+      <li><b>LEN COUNTS BEADS, NOT LETTERS</b>A string is a read-only row of bytes in UTF-8. A letter takes 1 to 4 beads. Count letters with <code>utf8.RuneCountInString</code>.</li>
+      <li><b>AN INDEX HANDS YOU A BEAD; RANGE HANDS YOU A LETTER</b><code>s[i]</code> is a <code>byte</code>. <code>for i, r := range s</code> gives each <code>rune</code> and the bead where it starts.</li>
+      <li><b>A STRING NEVER CHANGES: MAKE A NEW ONE</b><code>s[0] = …</code> doesn't compile. Convert to <code>[]byte</code> or <code>[]rune</code>, change that, convert back.</li>
+      <li><b>REVERSE LETTERS, NOT BEADS</b>For letter positions, slicing or reversing, use <code>[]rune(s)</code>. Single quotes make a rune; double quotes and backticks make strings.</li>
+      <li><b>THE TOOLBOX HANDS BACK A NEW STRING: CATCH IT</b><code>s = strings.ToUpper(s)</code>. Search, change, <code>Split</code>/<code>Join</code>, <code>Cut</code>/<code>CutLast</code>.</li>
+      <li><b>BUILD BIG STRINGS ON A BUILDER</b><code>strings.Builder</code> collects beads and strings them once. Strings compare bead by bead.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Café, 日本 or 👋: I count the beads, I hand over whole letters. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: next time, coat checks and character sheets">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Coming up in Chapter 12: Coat Checks, Character Sheets</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="char" data-char="cabinet" data-keys="apple,mango,zebra"></svg>
+          <p>A <b>map</b> works like a coat check: hand over a ticket (a key), get back the coat (a value). Perfect for counting how many times each word appears.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 120" aria-hidden="true"><rect x="40" y="8" width="140" height="104" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="4"/><text x="110" y="34" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111" letter-spacing="1">PLAYER</text><path d="M56 44 H164" stroke="#111" stroke-width="3"/><text x="58" y="68" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">Name: Ana</text><text x="58" y="94" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">Age:  30</text></svg>
+          <p>A <b>struct</b> is a character sheet: a fixed set of labelled fields, like a name and an age, kept together.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today I split a sentence into words with <code>strings.Fields</code>. Next time: count how often each word turns up. That needs a coat check.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: the cabinet creature with drawers labelled apple, mango and zebra; and a character sheet card headed PLAYER with Name: Ana and Age: 30.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch10.html">← Ch 10 · Two Windows, One Shelf</a><a class="next" href="ch12.html">Ch 12 · Coat Checks, Character Sheets →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: string headers, UTF-8 bit patterns, and what conversions cost</summary>
+    <div class="page-body">
+      <h3>A string is two words</h3>
+      <p>A Go string value is a small header: a <b>pointer</b> to its bytes and a <b>length</b>. No capacity, because a string never grows. On a 64-bit computer that's 16 bytes, however long the text. Assigning a string (<code>t := s</code>) or passing it to a function copies the header, not the bytes. That's safe precisely because the bytes can never change: nobody can paint through one name and surprise the other, which is the chapter 10 problem strings simply don't have.</p>
+      <h3>How UTF-8 lays out the beads</h3>
+      <p>UTF-8 marks every bead so a program can tell where letters start:</p>
+      <ul>
+        <li>Code points 0 to 127 (plain English, digits, punctuation) use one byte that starts with a 0 bit: <code>0xxxxxxx</code>. These are the same numbers as the old ASCII code.</li>
+        <li>A two-byte letter starts <code>110xxxxx</code>, a three-byte one <code>1110xxxx</code>, a four-byte one <code>11110xxx</code>.</li>
+        <li>Every following byte starts <code>10xxxxxx</code>. Those are the dashed beads in panel 6, and they are always 128 to 191. That's why é's second bead, 169, can never be mistaken for the start of a letter.</li>
+      </ul>
+      <p>é is code point 233, binary <code>11101001</code>. Split over two beads: <code>110</code>+<code>00011</code> = 195 and <code>10</code>+<code>101001</code> = 169. Exactly the beads your programs printed.</p>
+      <h3>What range does with broken beads</h3>
+      <p>The Go specification says that when <code>range</code> meets bytes that aren't valid UTF-8, it hands out the rune <code>0xFFFD</code> (the "replacement character", often drawn as a question mark in a diamond) and moves on by <b>one</b> byte. So ranging over the broken result of panel 19 never crashes; it just yields replacement characters for the two stray beads. <code>utf8.ValidString(s)</code> tells you in advance whether a string is valid.</p>
+      <h3>Conversions copy</h3>
+      <p><code>[]byte(s)</code>, <code>[]rune(s)</code> and <code>string(b)</code> normally allocate new memory and copy, which is what panel 18's tracer showed: a <code>[]byte</code> can change, so it must not share bytes with a string that promises never to change. The compiler skips the copy in some safe cases, for example <code>for i, b := range []byte(s)</code> or a <code>string(b)</code> used only as a map key. <code>[]rune(s)</code> uses 4 bytes per letter, so it's up to four times bigger than the string.</p>
+      <h3>copy from a string</h3>
+      <p>The built-in <code>copy</code> from chapter 10 also takes a string as its source when the destination is a <code>[]byte</code>. It copies <b>beads</b>, as many as the destination has room for, even if that cuts a letter in half:</p>
+      <span class="file-tab">copy_string.go</span>
+      <pre class="code" data-src="copy_string.go"></pre>
+      <pre class="term wrap" data-run="copy_string.go"></pre>
+      <p>Three beads fit: h and both halves of é, so <code>n</code> is 3 and <code>%q</code> shows <samp>"hé"</samp>. With room for only two, the second bead of é would have been left behind.</p>
+      <h3>Substrings share</h3>
+      <p><code>s[2:5]</code> on a string makes a new header pointing into the same bytes, with no copying, like slicing a slice. A tiny substring can therefore keep a huge string alive in memory. <code>strings.Clone(sub)</code> makes an independent copy when that matters.</p>
+      <h3>Inside strings.Builder</h3>
+      <p>A <code>Builder</code> keeps a growing <code>[]byte</code>, using <code>append</code> from chapter 9, and <code>String()</code> hands that memory over as a string without copying it again. The documentation warns: do not copy a <code>Builder</code> after you've started writing to it. If you know the final size, <code>sb.Grow(n)</code> reserves the room up front. Chapter 28 measures the difference against <code>+=</code>.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where strings, bytes and runes show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Files and networks speak bytes.</b> Reading a file gives a <code>[]byte</code>; so does an HTTP request body. Many programs convert with <code>string(data)</code> once, then use the <code>strings</code> toolbox. The <code>bytes</code> package has the same tools (<code>bytes.Contains</code>, <code>bytes.Split</code>, <code>bytes.CutLast</code>…) for working on <code>[]byte</code> directly, without converting.</li>
+        <li><b>Parsing lines.</b> <code>strings.Cut(line, "=")</code> for settings files, <code>strings.Fields(line)</code> for words, <code>strings.Split(line, ",")</code> for simple comma-separated data. (Real CSV with quoted fields needs <code>encoding/csv</code>.)</li>
+        <li><b>File names.</b> <code>CutLast(name, ".")</code> gets an extension; the <code>path/filepath</code> package has <code>filepath.Ext</code> for real paths.</li>
+        <li><b>Cleaning input.</b> <code>strings.TrimSpace</code> on everything a person types: chapter 7's typed input could carry stray spaces round the number.</li>
+        <li><b>Showing text to people.</b> Counting letters for a limit (a username of at most 20 letters) uses <code>utf8.RuneCountInString</code>, not <code>len</code>. Storing a size limit in a database column usually means bytes, so <code>len</code>. Know which one you mean.</li>
+        <li><b>Building output.</b> Report generators and template engines build text on a <code>strings.Builder</code> or write straight into a file.</li>
+        <li><b>Case-insensitive checks.</b> <code>strings.EqualFold(answer, "yes")</code> accepts YES, Yes and yes.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>len(s)</code> is the number of letters."</b> It's the number of bytes. They agree only for plain English text.</li>
+        <li><b>"<code>s[i]</code> is the i-th letter."</b> It's the i-th byte, a <code>uint8</code>. For letters, use <code>[]rune(s)[i]</code> or <code>range</code>.</li>
+        <li><b>"In <code>for i, r := range s</code>, <code>i</code> counts letters."</b> <code>i</code> is the byte offset where each letter starts: 0, 1, 3, 4, 5 for "héllo".</li>
+        <li><b>"A rune is a character."</b> A rune is one code point. Most of the time that's one visible letter, but panel 36's e-plus-accent is two runes that look like one letter, and some emoji are built from several code points too.</li>
+        <li><b>"Strings are arrays of chars, so I can change one."</b> Go strings are immutable. Every change makes a new string.</li>
+        <li><b>"<code>strings.ToUpper(s)</code> makes <code>s</code> uppercase."</b> It returns a new string. Catch it: <code>s = strings.ToUpper(s)</code>.</li>
+        <li><b>"<code>string(65)</code> is <code>"65"</code>."</b> It's <code>"A"</code>. Use <code>strconv.Itoa</code>. <code>go vet</code> flags it.</li>
+        <li><b>"Single and double quotes are the same."</b> Single quotes make a rune; double quotes and backticks make strings.</li>
+        <li><b>"<code>s += x</code> in a loop is free."</b> Each one copies the whole string so far. Use a <code>strings.Builder</code> for big loops.</li>
+        <li><b>"<code>&lt;</code> on strings sorts like a dictionary."</b> It compares byte values: capitals before small letters, and "10" before "9".</li>
+        <li><b>"Two strings that look the same are <code>==</code>."</b> Not if their bytes differ, as panel 36 showed. What to do: normalise both strings to the same form first, usually NFC ("Unicode Normalization Form C", where é is the one-letter version), with the <code>golang.org/x/text/unicode/norm</code> package, then compare: <code>norm.NFC.String(a) == norm.NFC.String(b)</code>. That package lives outside the standard library, so this page didn't run it; the Go Blog's "Text normalization in Go" (in Go deeper) walks through it.</li>
+        <li><b>"Go strings must be valid UTF-8."</b> A string can hold any bytes. Literals in your source code are UTF-8, but bytes read from a file might not be.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir beads</code>, then <code>cd beads</code>.</li>
+        <li><code>go mod init example/beads</code>. It creates a <code>go.mod</code> file and says so.</li>
+        <li>Create <code>main.go</code> and type in <code>necklace.go</code> from panel 6. Your editor must save it as UTF-8, which every modern editor does by default.</li>
+        <li><code>go run .</code> should print the same 13 lines as panel 6.</li>
+      </ol>
+      <p class="os-note">Running with <code>go run .</code> inside a module, expect compile errors to be headed by your module's name instead of this book's <code># command-line-arguments</code>. (The lab's steps are for your own machine and weren't captured for this page; the messages quoted in step 3 are the ones this chapter's own programs printed for the same mistakes, with different names.)</p>
+      <h3>2. Play with it</h3>
+      <ol>
+        <li>Add your own name, a word in another language you know, and your favourite emoji to the list on line 9. Predict each <code>len</code> before running.</li>
+        <li>Try a flag emoji or a family emoji. You may see more runes than you expected: they're made of several code points glued together.</li>
+        <li>Change line 12 to print <code>fmt.Printf("%d %q %U\n", i, r, r)</code> and look at the code points.</li>
+        <li>Print <code>strings.ToUpper</code> and <code>strings.ToLower</code> of a word with ß or İ in it, and compare the lengths before and after.</li>
+      </ol>
+      <h3>3. Break it on purpose</h3>
+      <ol>
+        <li>Add <code>w[0] = 'X'</code> inside the loop. Meet <samp>cannot assign to w[0]</samp>.</li>
+        <li>Add <code>fmt.Println(w[len(w)])</code>. It compiles, then panics with <samp>index out of range [6] with length 6</samp>.</li>
+        <li>Write <code>var r rune = "x"</code>. Meet <samp>cannot use "x" (untyped string constant) as rune value</samp>.</li>
+        <li>Write <code>n := 7</code> and <code>fmt.Println(string(n))</code>, then run <code>go vet .</code>.</li>
+        <li>Print <code>w[:2]</code> with <code>%q</code> for each word. Which ones cut a letter in half?</li>
+      </ol>
+      <h3>4. Read the docs from the terminal</h3>
+      <p><code>go doc strings</code> lists the whole toolbox; <code>go doc strings.CutLast</code> shows one tool. If it can't find it, your Go is older than 1.27.</p>
+      <ul>
+        <li><b>Windows:</b> Windows Terminal and PowerShell show UTF-8 correctly. In the old Command Prompt, letters like é may appear as two odd symbols; run <code>chcp 65001</code> first, or use Windows Terminal. Go installs from the .msi on go.dev/dl.</li>
+        <li><b>macOS:</b> Terminal uses UTF-8 out of the box. Install Go with the .pkg from go.dev/dl or with Homebrew (<code>brew install go</code>).</li>
+        <li><b>Linux:</b> check that <code>echo $LANG</code> ends in <code>UTF-8</code>; most desktops do. Unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages may be older than 1.27, and then <code>CutLast</code> is undefined (panel 30).</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs everything here, accents and emoji included.</li>
+      </ul>
+      <p class="os-note">Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>byte</dt><dd>A small number from 0 to 255, stored in 8 bits: one bead. In Go, <code>byte</code> is another name for <code>uint8</code>.</dd>
+        <dt>bit</dt><dd>A single 0 or 1. Eight bits make a byte.</dd>
+        <dt>UTF-8</dt><dd>The way of writing every letter as 1 to 4 bytes that Go (and most of the web) uses.</dd>
+        <dt>Unicode</dt><dd>The shared code book that gives every letter, symbol and emoji in every language its own number.</dd>
+        <dt>code point</dt><dd>A letter's number in Unicode, such as 233 for é, written <code>U+00E9</code>.</dd>
+        <dt>rune</dt><dd>Go's type for one code point; another name for <code>int32</code>. Written in single quotes: <code>'é'</code>.</dd>
+        <dt>rune literal</dt><dd>A rune written in code: one letter between single quotes.</dd>
+        <dt>ASCII</dt><dd>An old code for 128 English letters, digits and symbols; they are the one-byte letters in UTF-8.</dd>
+        <dt>immutable</dt><dd>Can't be changed after it's made. Go strings are immutable.</dd>
+        <dt>byte offset</dt><dd>The position of a byte in a string, counted from 0. <code>range</code> gives each letter's starting byte offset.</dd>
+        <dt><code>utf8.RuneCountInString</code></dt><dd>Counts the runes (letters) in a string.</dd>
+        <dt>conversion</dt><dd>Turning a value into another type: <code>[]byte(s)</code>, <code>[]rune(s)</code>, <code>string(r)</code>.</dd>
+        <dt>interpreted string literal</dt><dd>A string in double quotes, where backslash escapes like <code>\n</code> are turned into special characters.</dd>
+        <dt>raw string literal</dt><dd>A string in backticks, where every character means itself and line breaks are allowed.</dd>
+        <dt>escape sequence</dt><dd>A backslash and a code inside quotes that stands for a hard-to-type character: <code>\n</code>, <code>\t</code>, <code>\"</code>, <code>\\</code>, <code>\u00e9</code>, <code>\xc3</code>.</dd>
+        <dt>hexadecimal</dt><dd>Writing numbers in base 16 with digits 0–9 and a–f: <code>a9</code> is 169.</dd>
+        <dt><code>strings</code> package</dt><dd>Go's standard toolbox of functions for searching, changing, splitting and building strings.</dd>
+        <dt>separator</dt><dd>The text you split at or join with, like <code>","</code> in <code>strings.Split(s, ",")</code>.</dd>
+        <dt><code>strings.Builder</code></dt><dd>A workbench that collects bytes efficiently and makes one string at the end.</dd>
+        <dt>method</dt><dd>A function that belongs to a value and is called with a dot, like <code>sb.WriteString</code>. Chapter 13 explains them.</dd>
+        <dt>lexical (byte-wise) order</dt><dd>How <code>&lt;</code> compares strings: byte by byte from the left, and a shorter string first if it runs out.</dd>
+        <dt>replacement character</dt><dd><code>U+FFFD</code>, what <code>range</code> hands out for bytes that aren't valid UTF-8.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/blog/strings">The Go Blog: Strings, bytes, runes and characters in Go</a>, the classic explanation of everything in this chapter.</li>
+        <li><a href="https://pkg.go.dev/strings">Package strings</a> (every tool, with runnable examples) and <a href="https://pkg.go.dev/unicode/utf8">package unicode/utf8</a>.</li>
+        <li><a href="https://go.dev/ref/spec#String_types">The Go specification: string types</a>, <a href="https://go.dev/ref/spec#String_literals">string literals</a>, <a href="https://go.dev/ref/spec#Rune_literals">rune literals</a>, <a href="https://go.dev/ref/spec#Conversions_to_and_from_a_string_type">conversions to and from a string type</a> and <a href="https://go.dev/ref/spec#For_range">for statements with range</a>.</li>
+        <li><a href="https://go.dev/doc/go1.27">Go 1.27 release notes</a>, which list <code>strings.CutLast</code> and <code>bytes.CutLast</code>.</li>
+        <li><a href="https://go.dev/blog/normalization">The Go Blog: Text normalization in Go</a>, about panel 36's two é's and the <code>golang.org/x/text/unicode/norm</code> package that fixes them.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/strings-and-runes">Go by Example: Strings and Runes</a> and <a href="https://gobyexample.com/string-functions">String Functions</a>.</li>
+        <li><a href="https://exercism.org/tracks/go">Exercism's Go track</a>, whose concepts include strings, the strings package, runes and strings.Builder.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries), mistakes #36 to #41: runes, string iteration, trim functions, concatenation, useless conversions and substring memory.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch11</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1); panel 24 runs <code>go run string_int.go</code> and then <code>go vet string_int.go</code>. The panic report shows the real file path and code offset of that run. Output with accents, Chinese characters and emoji was captured and shown as UTF-8. 56 programs were captured, all deterministic. Each run started in a fresh process namespace with address randomisation off, so code offsets repeat between captures; on your machine they may differ.</p>
+  <p>Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code> (the <code>go vet</code> step included). 51 of the 56 programs gave identical results, compile errors included. The five differences: the three programs that use <code>strings.CutLast</code> (<code>cut.go</code>, <code>tools_machine.go</code>, <code>parsons_ext.go</code>) fail with <samp>undefined: strings.CutLast</samp>, shown in panel 30; <code>idx_oob.go</code> panics identically except for the code offset (<code>+0x6b</code> instead of <code>+0x65</code>); and in <code>string_int.go</code> the run prints the same <samp>Seat A</samp> and <code>go vet</code> gives the same warning at the same line and column, but Go 1.24.7's vet adds two header lines (<samp># command-line-arguments</samp> and <samp># [command-line-arguments]</samp>) and writes the path as <samp>./string_int.go</samp>.</p>
+  <p>The necklace stepper (a chapter extension, <code>assets/ext/go-ch11.js</code>), the tracer, the walk-through and the two machines are teaching models; each checks itself against those runs and shows a badge. The necklace stepper encodes each word to UTF-8 itself and compares every line it computes with the real output. In the tracer, each string is drawn as one box holding its text; strictly, a string variable holds a small header pointing at read-only bytes (see the notebook).</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): The Go Blog, "Strings, bytes, runes and characters in Go" and "Text normalization in Go"; the Go specification (string types, string and rune literals, conversions, comparison operators, for statements with range); the <code>strings</code>, <code>unicode/utf8</code> and <code>strconv</code> package documentation; the Go 1.27 release notes; Go by Example, "Strings and Runes"; 100 Go Mistakes, #36 to #41 (free summaries); Exercism's Go track, The Go Programming Language section 3.5, Get Programming with Go lesson 9, Learning Go 2nd edition chapter 3 and roadmap.sh (as summarised in this book's research map).</p>
+  <p>Scoot, the Compiler, Specs, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
