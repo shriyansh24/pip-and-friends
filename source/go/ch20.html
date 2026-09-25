@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cutters and Gumballs</title>
+<meta name="description" content="Chapter 20 of the Go book of Pip &amp; Friends, a comic course: generics as an adjustable cookie cutter (type parameters, any, comparable, cmp.Ordered, union and tilde constraints, type inference, generic types like Stack[T], Go 1.27 generic methods, the slices and maps packages, and when an interface is the better tool), then iterators as a gumball machine you crank (iter.Seq, iter.Seq2, yield, break making yield return false, slices.All, Values, Backward, Collect, Sorted, maps.Keys, iter.Pull).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch20.css">
+<script defer src="../data/go-ch20.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch20.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch19.html">&larr; Ch 19</a><span aria-current="page">Ch 20 of 28</span><a href="ch21.html">Ch 21 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 20 · INTERMEDIATE</p>
+    <h1 id="cover-h">CUTTERS AND GUMBALLS</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello.</p>
+    <p class="caption blurb">Last chapter, small interfaces snapped together like pipes. This chapter has two new tools. First, a <b>cookie cutter with an adjustable slot</b>: one function or type that works for ints, floats, strings and your own types, without copying it out three times. That's <b>generics</b>. Then a <b>gumball machine you crank</b>: a function that hands out values one at a time to a <code>for range</code> loop, and stops the moment you walk away. That's an <b>iterator</b>. About 130 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The cookie cutter: your first generic functions</a></li>
+      <li><a href="#part-2">Shaping the slot: constraints, unions and the tilde</a></li>
+      <li><a href="#part-3">Generic types: one Stack design, any parcel</a></li>
+      <li><a href="#part-4">Generics in the toolbox, and when not to use them</a></li>
+      <li><a href="#part-5">The gumball machine: writing iterators with yield</a></li>
+      <li><a href="#part-6">Ready-made gumballs: Seq2, slices, maps and laziness</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE COOKIE CUTTER<small>Type parameters, any, a constraint that allows &gt;, and type inference</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: three cutters that do the same job">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's next delivery is a box of cookie cutters for the bakery. Inside: a cutter for <b>int dough</b>, a cutter for <b>float dough</b> and a cutter for <b>string dough</b>. All three are exactly the same shape.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Three cutters for one shape? If the baker wants to change the shape, she has to change all three, and she'll forget one.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Our programs have the same problem. Look at the next panel: three functions, the same five lines, only the <b>type</b> is different.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, looking worried.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: the same function written three times">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">"Give me the bigger of two values", written once per type.</p>
+    <span class="file-tab">copy_paste.go</span>
+    <pre class="code" data-src="copy_paste.go"></pre>
+    <pre class="term" data-run="copy_paste.go"></pre>
+    <ol class="readlist">
+      <li><span><code>MaxInt</code>, <code>MaxFloat</code>, <code>MaxString</code> (lines 5, 12 and 19)<br>The bodies are identical, line for line. Only the type names in the first line change.</span></li>
+      <li><span><samp>pear</samp> on the last line<br><code>&gt;</code> on strings compares them like a dictionary does, letter by letter: <code>"p"</code> comes after <code>"a"</code>, so <code>"pear"</code> is the bigger one.</span></li>
+      <li><span>Want <code>int64</code> too? A fourth copy. Find a bug? Fix it four times. Programmers call this kind of copying <b>duplication</b>, and they try hard to avoid it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: a cookie cutter with an adjustable slot">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Imagine <b>one</b> cutter with an <b>adjustable slot</b> on top. Before you cut, you slide a dough type into the slot: int, float, string. A little gauge on the slot checks that the dough can do what the cutter needs. Go 1.18 added exactly this, and called it <b>generics</b>.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 680 320" role="img" aria-label="Picture: a big star-shaped cookie cutter in the middle with a slot on top labelled T. A gauge on the slot reads cmp.Ordered: must allow less-than and greater-than. On the left, three dough balls labelled int, float64 and string go into the slot with check marks. A grey block labelled Point struct is stopped at the gauge with a cross: Point does not satisfy cmp.Ordered. On the right, three star cookies come out labelled Max of int, Max of float64 and Max of string. Badge 1 marks the slot, badge 2 the gauge, badge 3 the doughs going in, badge 4 the cookies coming out.">
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="90" y="30">DOUGHS (TYPES)</text><text x="590" y="30">COOKIES</text></g>
+      <g stroke="#111" stroke-width="3">
+        <ellipse cx="90" cy="76" rx="56" ry="24" fill="#FFF6CC"/>
+        <ellipse cx="90" cy="134" rx="56" ry="24" fill="#DDE8FF"/>
+        <ellipse cx="90" cy="192" rx="56" ry="24" fill="#C9F2D9"/>
+        <rect x="40" y="236" width="100" height="44" rx="6" fill="#F3F3F3" stroke-dasharray="8 5"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="90" y="81">int</text><text x="90" y="139">float64</text><text x="90" y="197">string</text><text x="90" y="263">Point</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="26" fill="#111"><text x="152" y="85">✓</text><text x="152" y="143">✓</text><text x="152" y="201">✓</text><text x="146" y="268">✗</text></g>
+      <path d="M170 76 Q220 70 258 104 M170 134 H256 M170 192 Q220 196 258 162" fill="none" stroke="#111" stroke-width="3"/>
+      <path d="M244 96 l16 10 l-18 4 M244 128 l14 6 l-14 6 M244 170 l16 -10 l-18 -4" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M170 258 H214" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/>
+      <path d="M220 246 l20 24 M240 246 l-20 24" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <path d="M340 92 L364 140 L418 146 L378 182 L390 236 L340 208 L290 236 L302 182 L262 146 L316 140 Z" fill="#FFFFFF" stroke="#111" stroke-width="6" stroke-linejoin="round"/>
+      <rect x="306" y="54" width="68" height="40" rx="8" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+      <text x="340" y="82" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111">[T]</text>
+      <rect x="250" y="252" width="180" height="50" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="340" y="272">gauge: cmp.Ordered</text><text x="340" y="292">must allow &lt; and &gt;</text></g>
+      <path d="M340 248 V222" stroke="#111" stroke-width="3" stroke-dasharray="5 4"/>
+      <path d="M430 146 H486" stroke="#111" stroke-width="4"/><path d="M474 134 l14 12 l-14 12" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <g stroke="#111" stroke-width="3" stroke-linejoin="round">
+        <path d="M532 54 l8 16 l18 2 l-13 12 l4 18 l-17 -9 l-17 9 l4 -18 l-13 -12 l18 -2 Z" fill="#FFF6CC"/>
+        <path d="M532 128 l8 16 l18 2 l-13 12 l4 18 l-17 -9 l-17 9 l4 -18 l-13 -12 l18 -2 Z" fill="#DDE8FF"/>
+        <path d="M532 202 l8 16 l18 2 l-13 12 l4 18 l-17 -9 l-17 9 l4 -18 l-13 -12 l18 -2 Z" fill="#C9F2D9"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111"><text x="560" y="88">Max[int]</text><text x="560" y="162">Max[float64]</text><text x="560" y="236">Max[string]</text></g>
+      <circle cx="400" cy="62" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="400" y="70" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">1</text>
+      <circle cx="456" cy="278" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="456" y="286" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">2</text>
+      <circle cx="200" cy="40" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="200" y="48" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">3</text>
+      <circle cx="580" cy="284" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="580" y="292" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">4</text>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The slot is a <b>type parameter</b>, usually called <code>T</code>: a stand-in for a type, filled in later.</span></li>
+      <li><span>2</span><span>The gauge is the <b>constraint</b>: what any type must be able to do to fit the slot.</span></li>
+      <li><span>3</span><span>Each dough is a real <b>type argument</b>. A type that fails the gauge is refused by the Compiler.</span></li>
+      <li><span>4</span><span>Each cut is an <b>instantiation</b>: <code>Max[int]</code>, <code>Max[float64]</code>... one cutter, many cookies.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>one cutter, many doughs.</b> You write the shape once, and the slot says which doughs it accepts.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: a first generic function">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Let's start with the widest slot of all: a function that hands back the first item of <b>any</b> slice.</p>
+    <span class="file-tab">first_generic.go</span>
+    <pre class="code" data-src="first_generic.go"></pre>
+    <pre class="term" data-run="first_generic.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func First[T any](items []T) T</code> (line 5)<br>The new part is the square brackets after the name: the <b>type parameter list</b>. <code>T</code> is the slot's name, and <code>any</code> is its gauge. <code>any</code> (chapter 14) means "every type fits". After that, <code>T</code> is used like any type name: the input is a slice of <code>T</code>, and the result is one <code>T</code>.</span></li>
+      <li><span><code>First(nums)</code> (line 12)<br>You don't have to say which type goes in the slot. Go looks at the argument, a <code>[]int</code>, and works out <code>T = int</code>. That is <b>type inference</b>: <samp>42</samp>.</span></li>
+      <li><span><code>First(words)</code> (line 13)<br>The same function with <code>T = string</code>: <samp>cookie</samp>.</span></li>
+      <li><span><code>First[float64](...)</code> (line 14)<br>You may also fill the slot yourself, in square brackets. This is called <b>instantiating</b> the function: <samp>2.5</samp>.</span></li>
+      <li><span><code>%T</code> (line 15)<br>The results really have the type in the slot: <samp>int string</samp>. Not <code>any</code>! That's the big difference from chapter 14's <code>any</code> parameters, where you got a box you had to open with a type assertion.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tparam-m" id="ex-tparam"></div>
+  <script type="application/json" id="ex-tparam-m">{"q": "In <code>func First[T any](items []T) T</code>, what is <code>T</code>?", "options": [
+    {"t": "A <b>type parameter</b>: a stand-in for a type", "correct": true, "why": "Yes: a stand-in for a type, chosen each time the function is used. Each call fills the slot with a real type, either written in brackets or worked out from the arguments."},
+    {"t": "A new type called <code>T</code>, like <code>type T struct{}</code>", "why": "No type called <code>T</code> is declared anywhere. <code>T</code> only exists inside this function, and it means a different type in each use."},
+    {"t": "Another name for <code>any</code>, so the result is an <code>any</code> box", "why": "<code>any</code> is the constraint, the gauge. <code>First(nums)</code> really returns an <code>int</code>: panel 4 printed <samp>int</samp> with <code>%T</code>."},
+    {"t": "A variable that holds the first item", "why": "Variables live in the round brackets. Square brackets after a function name hold type parameters."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: any is too wide for greater-than">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="5"></svg>
+    <p class="caption">Now the cutter from panel 2. Let's try the widest slot, <code>any</code>, for <code>Max</code>.</p>
+    <span class="file-tab">any_gt.go</span>
+    <pre class="code" data-src="any_gt.go"></pre>
+    <pre class="term wrap" data-run="any_gt.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read it like a detective, from the message back to the place. <code>invalid operation: a &gt; b (type parameter T cannot use operator &gt;)</code>: the brackets give the reason.</span></li>
+      <li><span><code>./any_gt.go:6:5</code><br>Line 6, column 5: the <code>a</code> in <code>a &gt; b</code>. Notice that the call on line 13 isn't the problem. The Compiler checks the generic function <b>by itself</b>, for every type the gauge lets in.</span></li>
+      <li><span>And <code>any</code> lets in everything: structs, slices, functions, maps. You can't ask whether one function is "bigger" than another, so <code>&gt;</code> is refused for all of them.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Nothing runs until everything checks out. Your gauge says "any type at all". I can't promise <code>&gt;</code> works for any type at all. Tighten the gauge.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, a checkpoint robot with a red beacon, keeps its gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: cmp.Ordered fixes it">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The fix is a tighter gauge. The standard package <code>cmp</code> has one called <code>cmp.Ordered</code>: "any type that <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code> and <code>&gt;=</code> work on". That's every integer type, every float type, and strings.</p>
+    <span class="file-tab">max_ordered.go</span>
+    <pre class="code" data-src="max_ordered.go"></pre>
+    <pre class="term" data-run="max_ordered.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func Max[T cmp.Ordered](a, b T) T</code> (line 8)<br>One function replaces all three from panel 2. Both <code>a</code> and <code>b</code> are a <code>T</code>, so they're always the <b>same</b> type.</span></li>
+      <li><span><code>Max(3, 7)</code>, <code>Max(2.5, 1.5)</code>, <code>Max("apple", "pear")</code> (lines 16 to 18)<br>Inference picks <code>int</code>, <code>float64</code> and <code>string</code>: <samp>7</samp>, <samp>2.5</samp>, <samp>pear</samp>.</span></li>
+      <li><span><code>Max[float64](3, 2.5)</code> (line 19)<br>Filling the slot yourself: both untyped constants become <code>float64</code>. The bigger one is <samp>3</samp>, printed without a decimal point (chapter 4).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>the gauge decides what you may do.</b> Inside the function, you may only use what <em>every</em> type in the slot can do. With <code>any</code>, that's almost nothing. With <code>cmp.Ordered</code>, comparing is allowed.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 7: the Max cookie cutter" data-machine="m-max">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Feed doughs into the <code>Max</code> cutter. The last two chips come from separate programs that the Compiler refuses.</p>
+    <span class="file-tab">max_machine.go</span>
+    <pre class="code" data-src="max_machine.go"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-max">{"label": "Max[T cmp.Ordered]", "program": "max_machine.go", "examples": [
+      {"in": "3, 7", "out": "7", "expectLine": "Max(3, 7) = 7", "outKind": "int", "note": "Two untyped whole numbers: inference picks <code>int</code>."},
+      {"in": "2.5, 1.5", "out": "2.5", "expectLine": "Max(2.5, 1.5) = 2.5", "outKind": "float64", "note": "Two untyped decimals: <code>T</code> is <code>float64</code>."},
+      {"in": "\"apple\", \"pear\"", "out": "\"pear\"", "expectLine": "Max(\"apple\", \"pear\") = \"pear\"", "outKind": "string", "note": "Strings compare like a dictionary. (<code>%q</code> printed the quotes.)"},
+      {"in": "'a', 'b'", "out": "98", "expectLine": "Max('a', 'b') = 98", "outKind": "rune (int32)", "note": "A rune is a number (chapter 4). <code>'b'</code> is 98, and Println prints the number."},
+      {"in": "Celsius(20), Celsius(31)", "out": "31", "expectLine": "Max(Celsius(20), Celsius(31)) = 31", "outKind": "Celsius", "note": "Your own cup from chapter 18 fits too, because <code>cmp.Ordered</code> accepts any type <b>made of</b> float64. Part 2 shows how."},
+      {"in": "Point{1, 2}, Point{3, 4}", "error": "Point does not satisfy cmp.Ordered", "program": "max_struct.go", "note": "A struct has no order: which point is bigger? The gauge refuses it before anything runs (<code>max_struct.go</code> line 18). The full message lists every type the gauge accepts."},
+      {"in": "n (an int), 2.5", "error": "cannot use 2.5 (untyped float constant) as int value in argument to Max (truncated)", "program": "max_mixed.go", "note": "Both arguments must be the same <code>T</code>. The variable <code>n</code> fixes <code>T = int</code>, and 2.5 won't fit in an int without losing its .5 (\"truncated\")."}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotany-m" id="ex-spotany"></div>
+  <script type="application/json" id="ex-spotany-m">{"program": "spot_any.go", "bug": 5, "prompt": "The Compiler complains about line 8. Which line really needs changing?", "explain": "Line 8 is only where the problem shows. The real mistake is the gauge on line 5: <code>any</code> doesn't promise <code>&lt;</code>. Write <code>func Smallest[T cmp.Ordered](items []T) T</code> and add <code>\"cmp\"</code> to the imports, and the program prints <samp>2</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-infer-m" id="ex-infer"></div>
+  <script type="application/json" id="ex-infer-m">{"program": "predict_infer.go", "prompt": "Type inference, three ways. Type all three lines.", "hint": "Line 16: two untyped constants, one with a decimal point: which type can hold both? Line 17: in Go, capital letters come before small letters. Line 18: <code>'A'</code> is a rune constant; what number is it?", "explain": "<code>Max(3, 2.5)</code>: both are untyped constants, so Go picks a type that holds both, <code>float64</code>, and 3 wins: <samp>3</samp>. <code>Max(\"Zebra\", \"apple\")</code>: strings compare byte by byte, and every capital letter comes before every small letter, so <samp>apple</samp> is the bigger one. <code>Max[int](10, 'A')</code>: <code>'A'</code> is 65 as an int: <samp>65</samp>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · SHAPING THE SLOT<small>Constraints are interfaces: comparable, unions and the tilde</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 8: constraints are sets of types">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">Here's the secret: every gauge is an <b>interface</b> (chapter 14). In a constraint, an interface describes a <b>set of types</b>: the doughs that fit. The tighter the set, the more the function may do with them.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 680 330" role="img" aria-label="Picture: four nested boxes, like a target. The outer box is any: every type, including slices, maps and functions. Inside it, comparable: types that double-equals works on, such as ints, strings, pointers and structs of comparable fields. Inside that, cmp.Ordered: types that less-than works on, the integers, floats and strings. Beside it, a small box called Number, written as tilde int or tilde float64: int, float64 and any type made of them, such as Celsius. Under each box: what the function may use.">
+      <rect x="14" y="14" width="652" height="300" rx="18" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-dasharray="12 7"/>
+      <text x="34" y="46" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">any</text>
+      <text x="96" y="46" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">every type: also []int, map[string]int, func()</text>
+      <text x="34" y="300" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">may use: assign, pass, return. That's about it.</text>
+      <rect x="34" y="62" width="612" height="210" rx="16" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <text x="52" y="92" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">comparable</text>
+      <text x="52" y="116" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">types == works on: also bool, pointers, structs of these</text>
+      <text x="52" y="258" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">may also use: == and != (and be a map key)</text>
+      <rect x="52" y="128" width="330" height="104" rx="14" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <text x="68" y="158" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">cmp.Ordered</text>
+      <text x="68" y="184" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">all ints, all floats, string</text>
+      <text x="68" y="212" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">may also use: &lt; &lt;= &gt; &gt;=</text>
+      <rect x="400" y="128" width="228" height="104" rx="14" fill="#C9F2D9" stroke="#111" stroke-width="4"/>
+      <text x="416" y="158" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">Number</text>
+      <text x="416" y="184" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">~int | ~float64</text>
+      <text x="416" y="212" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">may use: + - * / &lt;</text>
+    </svg></div>
+    <ul class="checklist">
+      <li><code>any</code> and <code>comparable</code> are built into Go. <code>cmp.Ordered</code> lives in package <code>cmp</code>.</li>
+      <li><code>Number</code> is one <b>you</b> write, in panel 10. Its <code>|</code> means "or", and its <code>~</code> means "or any type made of it".</li>
+      <li>A slice, a map or a function is never <code>comparable</code>: Go doesn't let you ask whether two slices are <code>==</code>, and they can't be map keys (chapter 12).</li>
+      <li>Every <code>Number</code> type is also inside <code>cmp.Ordered</code>'s set; the picture draws them side by side only to keep it readable.</li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: comparable allows double equals">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">"Is this value in the slice?" needs <code>==</code>. The gauge for that is <code>comparable</code>. In <code>any_eq.go</code>, the same function with <code>any</code>.</p>
+    <div class="pair">
+      <div><span class="file-tab">comparable.go</span><pre class="code" data-src="comparable.go"></pre><pre class="term wrap" data-run="comparable.go"></pre></div>
+      <div><span class="file-tab">any_eq.go</span><pre class="code" data-src="any_eq.go"></pre><pre class="term wrap" data-run="any_eq.go" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>comparable.go</code>: <code>Contains[T comparable]</code> (line 7)<br>Works for strings, ints, and even the <code>Point</code> struct, because a struct whose fields are all comparable is comparable too: <samp>true false true</samp>.</span></li>
+      <li><span><code>any_eq.go</code>: <code>incomparable types in type set</code><br>The "type set" is the set of doughs the gauge lets in (panel 8). <code>any</code>'s set includes slices and maps, which can't be compared, so <code>==</code> is refused on line 7.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: your own constraint with a union and a tilde">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Adding needs <code>+</code>, and strings use <code>+</code> to glue text, which isn't what a <code>Sum</code> means. So write your <b>own</b> gauge: an interface that lists the types you accept.</p>
+    <span class="file-tab">number.go</span>
+    <pre class="code" data-src="number.go"></pre>
+    <pre class="term" data-run="number.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type Number interface { ~int | ~float64 }</code> (lines 5 to 7)<br>An interface with a list of types instead of methods. <code>|</code> makes a <b>union</b>: "int <em>or</em> float64". Every type in it supports <code>+</code>, so <code>Sum</code> may use <code>+=</code> on line 12.</span></li>
+      <li><span>The <code>~</code> (tilde)<br><code>~float64</code> means "float64, <b>or any type whose underlying type is float64</b>" (chapter 18's cups). That's why <code>[]Celsius</code> works on line 23: <samp>41.5</samp>.</span></li>
+      <li><span><code>var total T</code> (line 10)<br>Every type has a zero value, so a <code>T</code> starts at zero: 0 for ints, 0 for floats, a zero Celsius for Celsius.</span></li>
+      <li><span><code>%T</code> of <code>Sum(temps)</code> (line 24)<br><samp>main.Celsius</samp>: the result is still in the Celsius cup. Generics keep your types; they never pour them into a plain <code>float64</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>a tilde lets the cousins in.</b> <code>~float64</code> welcomes float64 and every cup made of float64.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 11: two doughs the gauge refuses">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Two refusals. In <code>number_string.go</code>, someone tries to sum strings. In <code>no_tilde.go</code>, someone forgot the tildes.</p>
+    <div class="pair">
+      <div><span class="file-tab">number_string.go</span><pre class="term wrap" data-run="number_string.go" data-exit></pre></div>
+      <div><span class="file-tab">no_tilde.go</span><pre class="term wrap" data-run="no_tilde.go" data-exit></pre></div>
+    </div>
+    <span class="file-tab">no_tilde.go</span>
+    <pre class="code" data-src="no_tilde.go"></pre>
+    <ol class="readlist">
+      <li><span><code>string does not satisfy Number (string missing in ~int | ~float64)</code><br>"Satisfy" means "pass the gauge". The bracket explains: <code>string</code> isn't in the list. This time the error points at the <b>call</b> (line 18 of <code>number_string.go</code>), because the function itself is fine.</span></li>
+      <li><span><code>Celsius does not satisfy Number (possibly missing ~ for float64 in Number)</code><br>Here <code>Number</code> is <code>int | float64</code>, with no tildes (line 6). Celsius is <em>made of</em> float64 but isn't float64 itself. The Compiler even guesses the fix: put a <code>~</code> before <code>float64</code>.</span></li>
+    </ol>
+    <div class="verdict-row">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+      <p class="bubble"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where, and here's a fix. The gauge is checked at every call, before anything runs, so a wrong dough can never reach the cutter.</p>
+    </div>
+    <p class="sr-only">Picture: the Compiler, red beacon on, gate down.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-errtilde-m" id="ex-errtilde"></div>
+  <script type="application/json" id="ex-errtilde-m">{"program": "predict_tilde.go", "expect": "error", "answer": "possibly missing ~ for int in Whole", "ask": "It doesn't compile. The message begins <code>Miles does not satisfy Whole (</code>. Type what's inside the brackets.", "hint": "<code>Miles</code> is made of <code>int</code>. Does <code>Whole</code> accept types made of int, or only <code>int</code> itself? What does the Compiler suggest?", "explain": "<samp>Miles does not satisfy Whole (possibly missing ~ for int in Whole)</samp>. Without a tilde, <code>Whole</code> accepts exactly <code>int</code> and <code>int64</code>. Write <code>~int | ~int64</code> and the program prints <samp>42</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-fillnum-m" id="ex-fillnum"></div>
+  <script type="application/json" id="ex-fillnum-m">{"program": "fill_constraint.go", "prompt": "<code>Average</code> must accept ints, floats and the <code>Score</code> cup, which is made of int. Fill in the union on line 6 and the constraint on line 9.", "blanks": [{"line": 6, "text": "~int | ~float64", "accept": ["~float64 | ~int", "~int|~float64", "~float64|~int"]}, {"line": 9, "text": "Number"}], "explain": "The union needs the tilde, or <code>Score</code> (made of int) would be refused. Then <code>Average[T Number]</code> uses the constraint by name. (2 + 4 + 9) / 3 is <samp>5</samp>, and (7 + 8) / 2 is <samp>7.5</samp>. The function converts to <code>float64</code> before dividing, so the average of whole numbers can have a fraction."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzgeneric-m" id="ex-pzgeneric"></div>
+  <script type="application/json" id="ex-pzgeneric-m">{"program": "parsons_generic.go", "seed": 5, "pin": [1, 3, 5, 11, 13, 15, 16, 17, 18], "prompt": "A generic <code>Count</code> that counts how many times a value appears. Put the body of <code>Count</code> in order.", "explain": "Start the counter at 0, loop over the items, and inside the loop compare with <code>==</code> (which is why the gauge is <code>comparable</code>). Close the <code>if</code> and the <code>for</code>, then return the count. There are two <samp>\"a\"</samp>s and three <samp>7</samp>s."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · ONE STACK DESIGN, ANY PARCEL<small>Generic types, their methods, and Go 1.27's generic methods</small></h2>
+
+  <section class="panel clean" aria-label="Panel 12: a generic Stack type">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Slots work on types too. At the depot, parcels pile up in a <b>stack</b>: the last one put on top is the first one taken off. Here is one stack design that holds any kind of parcel.</p>
+    <span class="file-tab">stack.go</span>
+    <pre class="code" data-src="stack.go"></pre>
+    <pre class="term" data-run="stack.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type Stack[T any] struct</code> (line 5)<br>A <b>generic type</b>. It's a template: <code>Stack[string]</code> and <code>Stack[int]</code> are two different, real types made from it.</span></li>
+      <li><span><code>func (s *Stack[T]) Push(v T)</code> (line 9)<br>Methods of a generic type repeat the slot name in the receiver: <code>Stack[T]</code>. Inside, <code>T</code> is whatever the stack was made with. (A pointer receiver, chapter 13, because Push changes the stack.)</span></li>
+      <li><span><code>Pop() (T, bool)</code> (line 13)<br>An empty stack has nothing to give. <code>var zero T</code> (line 14) makes the zero value of whatever <code>T</code> is, and the <code>bool</code> says "nothing here", like chapter 12's comma-ok.</span></li>
+      <li><span><code>var parcels Stack[string]</code> (line 24)<br>For a type, you always fill the slot yourself; there's nothing to infer from. Last in, first out: <samp>book true</samp>, then <samp>[lamp kite]</samp>. An empty <code>Stack[int]</code> gives <samp>0 false</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 13: watch the stack grow and shrink" data-tracer="tr-stack" id="tr-stack-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Step through <code>main</code>. Each <code>Stack</code> is drawn with its type written on it, and its <code>items</code> slice next to it.</p>
+    <span class="file-tab">stack.go</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-stack-svg" role="img" aria-label="Memory diagram of the two stacks; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-stack">{"program": "stack.go", "steps": [
+      {"line": 24, "note": "<code>main</code> starts. Nothing exists yet.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 25, "note": "Line 24 makes a <code>Stack[string]</code>: the template with <code>string</code> in the slot. Its zero value has a <code>nil</code> items slice: an empty stack, ready to use.", "output": [], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "val": "nil"}]}}, "changed": ["parcels"]},
+      {"line": 26, "note": "Line 25: <code>Push(\"lamp\")</code>. Inside the method, <code>T</code> is <code>string</code>, so <code>v</code> is a string. <code>append</code> makes a slice holding it.", "output": [], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}]}}, "changed": ["parcels"]},
+      {"line": 27, "note": "Line 26: <code>\"book\"</code> goes on top.", "output": [], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"book\""}]}}},
+      {"line": 28, "note": "Line 27: <code>Pop()</code> takes the <b>top</b> one, the last one pushed: <code>top</code> is <code>\"book\"</code> and <code>ok</code> is <code>true</code>. The slice shrinks back to one item.", "output": [], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "true"}}, "changed": ["top", "ok"]},
+      {"line": 29, "note": "Line 28 prints them: <samp>book true</samp>.", "output": ["book true"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "true"}}},
+      {"line": 30, "note": "Line 29: <code>\"kite\"</code> goes on top of the lamp.", "output": ["book true"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"kite\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "true"}}},
+      {"line": 31, "note": "Line 30 prints the items field directly (allowed here, because <code>main</code> is in the same package): <samp>[lamp kite]</samp>.", "output": ["book true", "[lamp kite]"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"kite\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "true"}}},
+      {"line": 32, "note": "Line 31: the same template with <code>int</code> in the slot. A <code>Stack[int]</code> is a different type from a <code>Stack[string]</code>, built from the same design.", "output": ["book true", "[lamp kite]"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}, {"n": "nums", "ref": "ST2"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"kite\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "true"}, "ST2": {"kind": "Stack[int]", "label": "Stack[int]", "pairs": [{"k": "items", "val": "nil"}]}}, "changed": ["nums"]},
+      {"line": 33, "note": "Line 32: popping an empty stack. <code>Pop</code> returns <code>zero</code>, the zero value of <code>T</code>, which for an <code>int</code> is <code>0</code>, and <code>false</code>. (<code>:=</code> is allowed because <code>n</code> is new; <code>ok</code> is simply reused.)", "output": ["book true", "[lamp kite]"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}, {"n": "nums", "ref": "ST2"}, {"n": "n", "ref": "V3"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"kite\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "false"}, "ST2": {"kind": "Stack[int]", "label": "Stack[int]", "pairs": [{"k": "items", "val": "nil"}]}, "V3": {"kind": "int", "value": "0"}}, "changed": ["n", "ok"]},
+      {"line": null, "note": "Line 33 prints <samp>0 false</samp>. The <code>false</code> is what tells you the 0 isn't a real parcel.", "output": ["book true", "[lamp kite]", "0 false"], "frames": [{"name": "main", "vars": [{"n": "parcels", "ref": "ST1"}, {"n": "top", "ref": "V1"}, {"n": "ok", "ref": "V2"}, {"n": "nums", "ref": "ST2"}, {"n": "n", "ref": "V3"}]}], "objects": {"ST1": {"kind": "Stack[string]", "label": "Stack[string]", "pairs": [{"k": "items", "ref": "A1"}]}, "A1": {"kind": "[]string", "label": "[]string", "items": [{"val": "\"lamp\""}, {"val": "\"kite\""}]}, "V1": {"kind": "string", "value": "\"book\""}, "V2": {"kind": "bool", "value": "false"}, "ST2": {"kind": "Stack[int]", "label": "Stack[int]", "pairs": [{"k": "items", "val": "nil"}]}, "V3": {"kind": "int", "value": "0"}}}
+    ]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 14: two ways to misuse a generic type">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">A filled slot stays filled. And an empty slot can't be used at all.</p>
+    <div class="pair">
+      <div><span class="file-tab">stack_mixed.go</span><pre class="code" data-src="stack_mixed.go"></pre><pre class="term wrap" data-run="stack_mixed.go" data-exit></pre></div>
+      <div><span class="file-tab">stack_bare.go</span><pre class="code" data-src="stack_bare.go"></pre><pre class="term wrap" data-run="stack_bare.go" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>stack_mixed.go</code>: <code>cannot use 42 (untyped int constant) as string value in argument to parcels.Push</code><br>A <code>Stack[string]</code>'s <code>Push</code> takes a <code>string</code>, full stop. With chapter 14's <code>[]any</code> this mistake would compile and blow up later; with generics the Compiler catches it.</span></li>
+      <li><span><code>stack_bare.go</code>: <code>cannot use generic type Stack[T any] without instantiation</code><br><code>Stack</code> alone is only the template. Say which parcels it holds: <code>Stack[string]</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trstack-m" id="ex-trstack"></div>
+  <script type="application/json" id="ex-trstack-m">{"program": "trace_stack.go", "columns": ["n", "popped", "size"], "given": [0], "prompt": "Each number is pushed; each 0 means \"pop one\". Fill in what was popped (<code>-</code> when nothing was) and the stack's size after each round.", "explain": "Push 5 (size 1), push 8 (size 2). The first 0 pops the top, <samp>8</samp>, leaving 1. Push 3 (size 2). The next 0 pops <samp>3</samp>, and the one after pops <samp>5</samp>: size 0. The last 0 finds the stack empty: <code>ok</code> is false, so <code>popped</code> keeps its <samp>-</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: generic methods, new in Go 1.27">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">New in Go 1.27: a <b>method</b> may now have a slot of its own, in square brackets after its name. Here a parcel can be relabelled into a parcel of a different kind.</p>
+    <span class="file-tab">genmethod.go</span>
+    <pre class="code" data-src="genmethod.go"></pre>
+    <pre class="term" data-run="genmethod.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func (p Parcel[T]) Relabel[U any](f func(T) U) Parcel[U]</code> (line 12)<br>Two slots: <code>T</code> comes from the parcel, and <code>U</code> is the method's own, chosen at each call. <code>f</code> is a function from a <code>T</code> to a <code>U</code>.</span></li>
+      <li><span><code>p.Relabel(strings.ToUpper)</code> (line 18)<br><code>ToUpper</code> takes a string and returns a string, so <code>U = string</code>: <samp>KITE</samp>.</span></li>
+      <li><span><code>p.Relabel(func(s string) int { ... })</code> (line 19)<br>This function returns an int, so <code>U = int</code>, and the result is a <samp>main.Parcel[int]</samp> holding <samp>4</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Before Go 1.27, only functions and types could have type parameters, so you'd write <code>Relabel(p, f)</code> as a plain function. Older books still say "methods can't be generic". Version notes are in my notebook.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 16: two limits on generic methods">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Two limits. Interfaces still can't ask for generic methods. And the feature needs a module that says Go 1.27 or later.</p>
+    <span class="file-tab">genmethod_iface.go</span>
+    <pre class="code" data-src="genmethod_iface.go"></pre>
+    <pre class="term wrap" data-run="genmethod_iface.go" data-exit></pre>
+    <p class="caption">Now <code>genmethod.go</code> from panel 15, unchanged, copied into a module whose <code>go.mod</code> says <code>go 1.26</code>: <span class="parity" data-same-src="genmethod.go,genmethod_old.go"></span></p>
+    <pre class="term wrap" data-run="genmethod_old.go" data-exit></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> both commands ran inside <code>~/go-ch20/old</code>, the folder the prompt shows. Before <code>go run .</code>, <code>genmethod_old.go</code> was copied in as <code>old/main.go</code> (the badge above proves it is the same source). Nothing else was added.</p>
+    <ol class="readlist">
+      <li><span><code>interface method must have no type parameters</code><br>An interface lists methods a type must have (chapter 14). A method with its own slot can't be listed there. The second error, <samp>undefined: U</samp>, is the first one's echo: fix the first, and it goes away.</span></li>
+      <li><span><code>generic method requires go1.27 or later (-lang was set to go1.26; check go.mod)</code><br>The <code>go</code> line in <code>go.mod</code> (chapter 15) says which version of the <em>language</em> this module is written in. Even a Go 1.27 compiler holds a 1.26 module to 1.26's rules. Fix: <code>go 1.27</code> in go.mod.</span></li>
+      <li><span>The header now reads <code># example/old</code>, the module's name, because this run is <code>go run .</code> inside the module folder.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-imethod-m" id="ex-imethod"></div>
+  <script type="application/json" id="ex-imethod-m">{"q": "On Go 1.27, which of these compiles?", "options": [
+    {"t": "<code>func (b Box[T]) Map[U any](f func(T) U) Box[U]</code>", "correct": true, "why": "Yes: a method with its own type parameter. Since Go 1.27 a method may declare its own type parameters, as long as the module's go.mod says go 1.27 or later."},
+    {"t": "<code>type Mapper interface { Map[U any](f func(int) U) }</code>", "why": "Interface methods still can't have type parameters: <samp>interface method must have no type parameters</samp>."},
+    {"t": "<code>var b Box</code>, with no type argument", "why": "A generic type must be instantiated: <samp>cannot use generic type Box[T any] without instantiation</samp>."},
+    {"t": "A generic method in a module whose go.mod says <code>go 1.26</code>", "why": "The language version gate refuses it: <samp>generic method requires go1.27 or later</samp>."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · GENERICS IN THE TOOLBOX<small>The slices and maps packages, and when an interface is the better tool</small></h2>
+
+  <section class="panel clean" aria-label="Panel 17: the slices and maps packages">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">You've been using generic functions since chapter 10 without knowing it. The standard packages <code>slices</code> and <code>maps</code> are full of them.</p>
+    <span class="file-tab">stdlib_generic.go</span>
+    <pre class="code" data-src="stdlib_generic.go"></pre>
+    <pre class="term" data-run="stdlib_generic.go"></pre>
+    <ol class="readlist">
+      <li><span><code>slices.Contains</code>, <code>slices.Index</code> (line 11)<br>Declared as <code>func Contains[S ~[]E, E comparable](s S, v E) bool</code>: panel 9's function, with a second slot for the slice type. <samp>true 1</samp>.</span></li>
+      <li><span><code>slices.Min</code>, <code>slices.Max</code> (line 12)<br>Their element gauge is <code>cmp.Ordered</code>, just like our <code>Max</code>: <samp>1 8</samp>.</span></li>
+      <li><span><code>slices.Clone</code>, then <code>slices.Sort</code> (lines 13 and 14)<br>Sorting changes the slice it's given. Cloning first keeps the original order: <samp>[1 2 5 8] [5 2 8 1]</samp>. The same <code>Sort</code> works on strings (line 17).</span></li>
+      <li><span><code>maps.Clone</code> (line 20)<br>A real copy of the map, so changing the backup leaves the stock alone: <samp>3 99</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-slicespkg-m" id="ex-slicespkg"></div>
+  <script type="application/json" id="ex-slicespkg-m">{"program": "predict_slices.go", "prompt": "Four generic helpers on a slice of stops. Type all four lines.", "hint": "<code>Index</code> gives the <b>first</b> match. Indexes start at 0. For strings, \"biggest\" means \"last in dictionary order\".", "explain": "The first <code>\"bakery\"</code> is at index <samp>1</samp>. There is no <code>\"pier\"</code>: <samp>false</samp>. The last word in dictionary order is <samp>zoo</samp>. <code>slices.Sort</code> sorts in place, keeping both bakeries: <samp>[bakery bakery park zoo]</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 18: a slot or a socket">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">Chapter 14 gave you <b>sockets</b> (interfaces). Now you have <b>slots</b> (type parameters). When should you use which? Here are two functions from one program.</p>
+    <span class="file-tab">iface_or_generic.go</span>
+    <pre class="code" data-src="iface_or_generic.go"></pre>
+    <pre class="term" data-run="iface_or_generic.go"></pre>
+    <div class="duo">
+      <div class="duo-card">
+        <p class="stamp">SOCKET</p>
+        <h3>INTERFACE PARAMETER<small><code>func Label(s fmt.Stringer)</code></small></h3>
+        <ul>
+          <li>You only <b>call methods</b> on the value.</li>
+          <li>Each type does the job its own way.</li>
+          <li>Simpler to read; no brackets.</li>
+          <li>Examples: <code>io.Reader</code>, <code>fmt.Stringer</code>, <code>error</code>.</li>
+        </ul>
+      </div>
+      <div class="duo-card dashed">
+        <p class="stamp">SLOT</p>
+        <h3>TYPE PARAMETER<small><code>func Last[T any](items []T) T</code></small></h3>
+        <ul>
+          <li>The same code works on <b>slices, maps or containers</b> of any element.</li>
+          <li>The caller gets back <b>its own type</b>, not an interface box.</li>
+          <li>You need operators like <code>&lt;</code> or <code>+</code>.</li>
+          <li>Examples: <code>slices.Sort</code>, <code>Stack[T]</code>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The Go team's own advice: don't start with type parameters. Write the plain code first. Reach for a slot only when you notice you're about to write the <b>same code twice, differing only in types</b>. Catchphrase: <b>copy twice, then cut a cutter.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-genvsiface-m" id="ex-genvsiface"></div>
+  <script type="application/json" id="ex-genvsiface-m">{"q": "You're writing <code>Announce</code>, which calls <code>.Speak()</code> on whatever animal it's given and prints the result. Dogs, cats and parrots each speak their own way. What should the parameter be?", "options": [
+    {"t": "An interface parameter: <code>func Announce(s Speaker)</code>", "correct": true, "why": "Yes. You only call a method, and each type does it differently. That's exactly what an interface is for, and it's simpler to read."},
+    {"t": "A type parameter: <code>func Announce[T Speaker](s T)</code>", "why": "It would compile and work, but it adds brackets and gains nothing: you only call a method. Save slots for code that works on slices, containers or operators."},
+    {"t": "<code>func Announce(s any)</code> with a type switch", "why": "Then you'd list every animal by hand, and a new animal would mean editing <code>Announce</code>. An interface lets each type bring its own <code>Speak</code>."},
+    {"t": "Three functions: <code>AnnounceDog</code>, <code>AnnounceCat</code>, <code>AnnounceParrot</code>", "why": "That's panel 2's duplication again."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE GUMBALL MACHINE<small>Iterators: range over a function, yield, and break</small></h2>
+
+  <section class="panel pop" aria-label="Panel 19: the gumball machine">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Outside the bakery stands a gumball machine. Turn the crank: one gumball drops. Turn again: another. Walk away, and the machine just stops. It never pours out the whole globe at once.</p>
+    <div class="picscroll"><svg class="pic-mid" viewBox="0 0 460 280" role="img" aria-label="Picture: a gumball machine. Its glass globe holds gumballs labelled yellow, blue, green and pink. A crank on the yellow base is labelled for range: turn the crank. A red gumball has dropped out of the chute along an arrow labelled yield into Scoot's open hand, labelled loop body. A note says: turn, one value; walk away, stop.">
+      <circle cx="150" cy="104" r="84" fill="#F4FAFF" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3"><circle cx="118" cy="84" r="24" fill="#FFE27A"/><circle cx="176" cy="84" r="24" fill="#A8D4FF"/><circle cx="122" cy="138" r="24" fill="#A6E8BF"/><circle cx="178" cy="138" r="24" fill="#FFC4EC"/></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111" text-anchor="middle"><text x="118" y="89">yellow</text><text x="176" y="89">blue</text><text x="122" y="143">green</text><text x="178" y="143">pink</text></g>
+      <path d="M92 182 L208 182 L224 262 L76 262 Z" fill="#FFD60A" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="150" cy="216" r="15" fill="#FFFFFF" stroke="#111" stroke-width="3"/><path d="M150 216 L170 200" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+      <text x="150" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="13" fill="#111">for range</text>
+      <rect x="226" y="226" width="40" height="30" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <path d="M270 240 H340" stroke="#111" stroke-width="4"/><path d="M328 228 l14 12 l-14 12" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text x="304" y="228" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">yield</text>
+      <rect x="280" y="20" width="140" height="56" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/><path d="M352 200 q46 30 92 0" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="398" cy="186" r="20" fill="#FFB0B0" stroke="#111" stroke-width="3"/><text x="398" y="191" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="13" fill="#111">red</text>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle"><text x="398" y="246">loop body:</text><text x="398" y="266">Scoot's hand</text><text x="350" y="44">turn: one value</text><text x="350" y="66">walk away: stop</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Since Go 1.23, a <code>for range</code> loop can crank a <b>function</b>. The function is the machine. Each time it wants to hand out a value, it calls a function named <code>yield</code>, and that runs your loop body once.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>A function you can range over like that is called an <b>iterator</b>. When the loop body says <code>break</code>, the machine gets told to stop.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot points at the gumball machine, smiling.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: a countdown iterator">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">A first machine: it hands out 3, 2, 1.</p>
+    <span class="file-tab">countdown.go</span>
+    <pre class="code" data-src="countdown.go"></pre>
+    <pre class="term" data-run="countdown.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func Countdown(n int) iter.Seq[int]</code> (line 8)<br><code>Countdown</code> doesn't count. It <b>builds the machine and hands it back</b>. <code>iter.Seq[int]</code>, from package <code>iter</code>, is a generic type: "a sequence of ints". It's just a name for the function type <code>func(yield func(int) bool)</code>.</span></li>
+      <li><span><code>return func(yield func(int) bool) { ... }</code> (line 9)<br>The machine itself: a function literal (chapter 17) that takes one argument, <code>yield</code>. <code>yield</code> takes one int and answers with a <code>bool</code>.</span></li>
+      <li><span><code>if !yield(i) { return }</code> (lines 11 to 13)<br>Hand over <code>i</code>. If <code>yield</code> answers <code>false</code>, the loop said "stop", so the machine returns. This one line is the heart of every iterator.</span></li>
+      <li><span><code>for v := range Countdown(3)</code> (line 19)<br>Go calls the machine with a <code>yield</code> it makes from your loop body. Each <code>yield(i)</code> runs the body once with <code>v = i</code>: <samp>3</samp>, <samp>2</samp>, <samp>1</samp>. When the machine's function returns, the loop is over: <samp>liftoff!</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>every crank is a yield; walking away is a false.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean gumball" aria-label="Panel 21: crank the gumball machine, step by step" data-gumball="gb-crank">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">This machine prints what it's doing, so you can see who runs when. Step through it: the machine and the loop body take turns, and Scoot stops at green.</p>
+    <span class="file-tab">crank.go</span>
+    <div class="gb-stage" data-reserve></div>
+    <div class="gb-split"><ol class="tr-code gb-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>Running</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="gb-crank">{"program": "crank.go", "balls": ["red", "blue", "green", "pink"], "steps": [
+      {"line": 23, "run": "main", "chute": null, "hand": null, "eaten": [], "answer": null, "output": [], "note": "<code>main</code> reaches the <code>for range</code>. <code>Gumballs(...)</code> builds the machine, and Go cranks it: it calls the machine with a hidden <code>yield</code> that runs the loop body."},
+      {"line": 11, "run": "machine", "chute": "red", "hand": null, "eaten": [], "answer": null, "output": ["machine: drops red"], "note": "Now the <b>machine</b> runs. Its own <code>for</code> starts with red, and line 11 prints <samp>machine: drops red</samp>."},
+      {"line": 24, "run": "body", "chute": null, "hand": "red", "eaten": [], "answer": null, "output": ["machine: drops red", "Scoot gets red"], "note": "Line 12 calls <code>yield(c)</code>. The machine <b>pauses inside that call</b> while the loop body runs with <code>g = \"red\"</code>: <samp>Scoot gets red</samp>."},
+      {"line": 16, "run": "machine", "chute": null, "hand": null, "eaten": ["red"], "answer": "true", "output": ["machine: drops red", "Scoot gets red", "machine: yield said true"], "note": "Red isn't green, so the body ends normally. That makes <code>yield</code> return <code>true</code>, back in the machine. <code>!yield(c)</code> is false, so the machine carries on to line 16."},
+      {"line": 11, "run": "machine", "chute": "blue", "hand": null, "eaten": ["red"], "answer": null, "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue"], "note": "Next turn of the machine's own loop: blue drops."},
+      {"line": 24, "run": "body", "chute": null, "hand": "blue", "eaten": ["red"], "answer": null, "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue"], "note": "<code>yield(\"blue\")</code> runs the body again."},
+      {"line": 16, "run": "machine", "chute": null, "hand": null, "eaten": ["red", "blue"], "answer": "true", "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true"], "note": "Body done, <code>yield</code> returns <code>true</code>, the machine keeps going."},
+      {"line": 11, "run": "machine", "chute": "green", "hand": null, "eaten": ["red", "blue"], "answer": null, "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true", "machine: drops green"], "note": "Green drops."},
+      {"line": 24, "run": "body", "chute": null, "hand": "green", "eaten": ["red", "blue"], "answer": null, "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true", "machine: drops green", "Scoot gets green"], "note": "The body prints <samp>Scoot gets green</samp>..."},
+      {"line": 26, "run": "body", "chute": null, "hand": "green", "eaten": ["red", "blue"], "answer": "false", "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true", "machine: drops green", "Scoot gets green"], "note": "...and <code>g == \"green\"</code>, so <code>break</code>. Scoot walks away. The body finishes early, and that makes <code>yield</code> return <code>false</code>."},
+      {"line": 13, "run": "machine", "chute": null, "hand": null, "eaten": ["red", "blue", "green"], "answer": "false", "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true", "machine: drops green", "Scoot gets green", "machine: yield said false, stop"], "note": "Back in the machine, <code>!yield(c)</code> is now true. Line 13 prints <samp>machine: yield said false, stop</samp>, and line 14 returns. Pink never drops, and <samp>machine: empty</samp> never prints."},
+      {"line": 29, "run": "main", "done": true, "chute": null, "hand": null, "eaten": ["red", "blue", "green"], "answer": null, "output": ["machine: drops red", "Scoot gets red", "machine: yield said true", "machine: drops blue", "Scoot gets blue", "machine: yield said true", "machine: drops green", "Scoot gets green", "machine: yield said false, stop", "Scoot walks away"], "note": "The machine's function has returned, so the loop is over. <code>main</code> carries on: <samp>Scoot walks away</samp>."}
+    ]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 22: the road between the loop body and the iterator" data-map="map-yield">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Here is every road a <code>for range</code> over an iterator can take. Three programs, the same countdown: one runs to the end, one breaks at 2, and one has a machine that ignores <code>yield</code>'s answer. Pick a road and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapy-t mapy-d"><title id="mapy-t">Map of a range-over-function loop</title><desc id="mapy-d">The loop starts and calls the iterator. The iterator calls yield, which runs the loop body. If the body ends normally, yield returns true and the iterator continues. If the body breaks, yield returns false; the iterator should then return. When the iterator returns, the loop ends and the code after it runs. If the iterator ignores false and calls yield again, the program panics.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-yield">{"seed": 20, "size": [690, 490], "start": [[345, 4], [345, 20]],
+      "states": [
+        {"id": "S0", "x": 190, "y": 24, "w": 310, "h": 56, "label": "THE LOOP STARTS", "sub": "`for v := range Countdown(3)`"},
+        {"id": "MACH", "x": 30, "y": 124, "w": 250, "h": 64, "label": "ITERATOR RUNS", "sub": "`for i := n; i >= 1; i--`"},
+        {"id": "BODY", "x": 410, "y": 124, "w": 250, "h": 64, "label": "LOOP BODY RUNS", "sub": "`fmt.Println(v)`"},
+        {"id": "STOP", "x": 30, "y": 264, "w": 250, "h": 64, "label": "ITERATOR RETURNS", "sub": "its function ends"},
+        {"id": "FALSE", "x": 410, "y": 264, "w": 250, "h": 64, "label": "BREAK", "sub": "yield returns false"},
+        {"id": "AFTER", "x": 30, "y": 404, "w": 250, "h": 64, "label": "AFTER THE LOOP", "sub": "`fmt.Println(\"liftoff!\")`", "kind": "end"},
+        {"id": "PANIC", "x": 410, "y": 404, "w": 250, "h": 64, "label": "YIELDS AGAIN", "sub": "panic", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "MACH", "pts": [[250, 84], [250, 102], [155, 102], [155, 118]], "label": "call it", "lx": 145, "ly": 110, "anchor": "end"},
+        {"id": "t1", "from": "MACH", "to": "BODY", "pts": [[284, 146], [404, 146]], "label": "yield(i)", "lx": 344, "ly": 136, "anchor": "middle"},
+        {"id": "t2", "from": "BODY", "to": "MACH", "pts": [[404, 172], [284, 172]], "label": "true", "lx": 344, "ly": 198, "anchor": "middle"},
+        {"id": "t3", "from": "BODY", "to": "FALSE", "pts": [[535, 192], [535, 258]], "label": "break", "lx": 547, "ly": 230},
+        {"id": "t4", "from": "FALSE", "to": "STOP", "pts": [[404, 296], [284, 296]], "label": "return", "lx": 344, "ly": 286, "anchor": "middle"},
+        {"id": "t5", "from": "MACH", "to": "STOP", "pts": [[155, 192], [155, 258]], "label": "ran out", "lx": 167, "ly": 230},
+        {"id": "t6", "from": "STOP", "to": "AFTER", "pts": [[155, 332], [155, 398]], "label": "loop ends", "lx": 143, "ly": 370, "anchor": "end"},
+        {"id": "t7", "from": "FALSE", "to": "PANIC", "pts": [[535, 332], [535, 398]], "label": "ignores false", "lx": 547, "ly": 370, "bug": true}],
+      "paths": [
+        {"id": "full", "label": "to the end", "program": "countdown.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>countdown.go</code>: <code>Countdown(3)</code> builds the machine, and the loop is ready to crank it."},
+          {"on": ["MACH"], "via": ["t0"], "output": [], "mood": "focus", "note": "Go calls the iterator function with a <code>yield</code> made from the loop body. Inside, <code>i</code> starts at 3."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3"], "note": "<code>yield(3)</code> runs the body with <code>v = 3</code>: <samp>3</samp>."},
+          {"on": ["MACH"], "via": ["t2"], "output": ["3"], "mood": "focus", "note": "The body ended normally, so <code>yield</code> returns <code>true</code>. <code>i--</code> makes 2."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3", "2"], "note": "<code>yield(2)</code>: <samp>2</samp>."},
+          {"on": ["MACH"], "via": ["t2"], "output": ["3", "2"], "mood": "focus", "note": "<code>true</code> again. <code>i</code> is 1."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3", "2", "1"], "note": "<code>yield(1)</code>: <samp>1</samp>."},
+          {"on": ["MACH"], "via": ["t2"], "output": ["3", "2", "1"], "mood": "focus", "note": "<code>true</code>. Now <code>i</code> is 0, and <code>i &gt;= 1</code> is false."},
+          {"on": ["STOP"], "via": ["t5"], "output": ["3", "2", "1"], "note": "The machine ran out of values, so its <code>for</code> ends and its function returns."},
+          {"on": ["AFTER"], "via": ["t6"], "output": ["3", "2", "1", "liftoff!"], "note": "When the iterator returns, the <code>for range</code> is over: <samp>liftoff!</samp>."}]},
+        {"id": "brk", "label": "break at 2", "program": "break_early.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>break_early.go</code>: the same machine, but the body says <code>break</code> after printing 2."},
+          {"on": ["MACH"], "via": ["t0"], "output": [], "mood": "focus", "note": "The iterator starts with <code>i = 3</code>."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3"], "note": "<code>yield(3)</code>: <samp>3</samp>. Not 2, so no break."},
+          {"on": ["MACH"], "via": ["t2"], "output": ["3"], "mood": "focus", "note": "<code>yield</code> returns <code>true</code>; <code>i</code> becomes 2."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3", "2"], "note": "<code>yield(2)</code>: <samp>2</samp>. Now <code>v == 2</code>..."},
+          {"on": ["FALSE"], "via": ["t3"], "output": ["3", "2"], "mood": "surprised", "note": "...so <code>break</code>. The body finishes early, and <code>yield</code> returns <code>false</code> to the machine."},
+          {"on": ["STOP"], "via": ["t4"], "output": ["3", "2"], "mood": "focus", "note": "<code>!yield(i)</code> is true, so the machine does what it's told: <code>return</code>."},
+          {"on": ["AFTER"], "via": ["t6"], "output": ["3", "2", "liftoff!"], "note": "The loop is over: <samp>liftoff!</samp>. The 1 was never even made."}]},
+        {"id": "ign", "label": "machine ignores false", "bug": true, "program": "ignore_yield.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "range function continued iteration after function for loop body returned false"}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>ignore_yield.go</code>: a careless machine. Line 11 calls <code>yield(i)</code> but never looks at its answer."},
+          {"on": ["MACH"], "via": ["t0"], "output": [], "mood": "focus", "note": "The iterator starts with <code>i = 3</code>."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3"], "note": "<code>yield(3)</code>: <samp>3</samp>."},
+          {"on": ["MACH"], "via": ["t2"], "output": ["3"], "mood": "focus", "note": "<code>true</code>, but the machine wasn't listening anyway. <code>i</code> is 2."},
+          {"on": ["BODY"], "via": ["t1"], "output": ["3", "2"], "note": "<code>yield(2)</code>: <samp>2</samp>, then <code>break</code>."},
+          {"on": ["FALSE"], "via": ["t3"], "output": ["3", "2"], "mood": "surprised", "note": "<code>yield</code> returns <code>false</code>. The machine ignores it and loops on, to <code>i = 1</code>."},
+          {"on": ["PANIC"], "via": ["t7"], "output": ["3", "2"], "error": "panic: runtime error: range function continued iteration after function for loop body returned false", "note": "It calls <code>yield(1)</code> after being told to stop. Go refuses to run a body that already said <code>break</code>, and panics. <samp>liftoff!</samp> never prints."}]}
+      ]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-countdown-m" id="ex-countdown"></div>
+  <script type="application/json" id="ex-countdown-m">{"program": "predict_break.go", "prompt": "An iterator of even numbers, and a loop that breaks. Type every line it prints.", "hint": "The machine hands out 0, 2, 4, 6, 8, 10. Look carefully: does the body print <em>before</em> or <em>after</em> it checks for 6?", "explain": "The body checks first and prints second. 0, 2 and 4 are printed. When 6 arrives, <code>break</code> happens before the print, so 6 never appears, <code>yield</code> returns false and the machine returns. Then <samp>done</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-crank-m" id="ex-crank"></div>
+  <script type="application/json" id="ex-crank-m">{"program": "predict_crank.go", "prompt": "The machine and the loop body both print. Who prints when? Type all five lines.", "hint": "Panel 21: the machine prints, then calls <code>yield</code>, which runs the whole body, then the machine carries on. What does the machine print when yield answers false?", "explain": "<samp>bake 1</samp> (machine), <samp>eat 1</samp> (body), <samp>bake 2</samp>, <samp>eat 2</samp>, then the body breaks, so <code>yield(2)</code> returns false and the machine prints <samp>oven off</samp> and returns. Cookies 3 to 5 are never baked."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 23: the machine that would not stop">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <svg class="sfx tr" data-sfx="PANIC!" data-seed="23"></svg>
+    <p class="caption">The careless machine from the third road, run for real.</p>
+    <span class="file-tab">ignore_yield.go</span>
+    <pre class="code" data-src="ignore_yield.go"></pre>
+    <pre class="term wrap" data-run="ignore_yield.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Read it like a detective, top line first. <code>panic: runtime error: range function continued iteration after function for loop body returned false</code>. "Range function" is the iterator. "Continued iteration" means it called <code>yield</code> again. "After the loop body returned false" means after the <code>break</code>.</span></li>
+      <li><span>The trail of calls, newest first: <code>main.main-range1</code> is the loop body, turned into a function by Go (line 17). <code>main.Countdown.func1</code> is the machine, calling it from line 11: there's the bad <code>yield(i)</code>. <code>main.main()</code> started it all on line 17. The <code>+0xc5</code> is a position inside the compiled code; it can differ on your machine.</span></li>
+      <li><span>It compiled without a word. The Compiler can't tell whether you check <code>yield</code>'s answer, so Go checks <b>while the program runs</b>, and stops it loudly rather than letting a broken loop carry on.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The fix is panel 20's heart line: <code>if !yield(i) { return }</code>. Always listen to yield.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillyield-m" id="ex-fillyield"></div>
+  <script type="application/json" id="ex-fillyield-m">{"program": "fill_yield.go", "prompt": "An iterator over the letters of a word. Fill in its return type and the check that makes it stop when the loop breaks.", "blanks": [{"line": 8, "text": "iter.Seq[string]"}, {"line": 11, "text": "!yield(string(r))"}], "explain": "The machine hands out strings, so it is an <code>iter.Seq[string]</code>. Inside, <code>if !yield(string(r)) { return }</code> hands over one letter and stops when told. The loop prints <samp>s-c-o-o-</samp>, breaks at the <code>t</code>, and then prints <samp>!</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-spotyield-m" id="ex-spotyield"></div>
+  <script type="application/json" id="ex-spotyield-m">{"program": "spot_yield.go", "bug": 11, "prompt": "It prints <samp>go</samp> and <samp>stop</samp>, then panics. Click the line with the bug.", "explain": "Line 11 throws away <code>yield</code>'s answer. After <code>break</code> on line 19, <code>yield(\"stop\")</code> returns false, but the machine goes on to call <code>yield(\"wait\")</code>, and Go panics. Write <code>if !yield(w) { return }</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pziter-m" id="ex-pziter"></div>
+  <script type="application/json" id="ex-pziter-m">{"program": "parsons_iter.go", "seed": 3, "pin": [1, 3, 4, 5, 6, 8, 13, 14, 15, 18, 19, 20, 21, 22], "prompt": "Build the inside of a <code>Repeat</code> iterator that hands out the same word several times.", "explain": "The iterator returns the machine, a function taking <code>yield</code>. Inside it, a counting loop calls <code>yield(word)</code> and returns as soon as yield says false. Then the closing braces, from the inside out."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · READY-MADE GUMBALLS<small>iter.Seq2, slices.All, Values, Backward, Collect, Sorted, maps.Keys and laziness</small></h2>
+
+  <section class="panel clean" aria-label="Panel 24: pairs with iter.Seq2">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Some machines drop gumballs <b>in pairs</b>: a number and a stop, a key and a value. That's <code>iter.Seq2</code>, and <code>yield</code> then takes two values.</p>
+    <span class="file-tab">seq2.go</span>
+    <pre class="code" data-src="seq2.go"></pre>
+    <pre class="term" data-run="seq2.go"></pre>
+    <ol class="readlist">
+      <li><span><code>iter.Seq2[int, string]</code> (line 9)<br>A generic type with two slots. It means <code>func(yield func(int, string) bool)</code>. Our <code>Numbered</code> counts from 1 instead of 0: <samp>1 bakery</samp>, <samp>2 library</samp>, <samp>3 park</samp>.</span></li>
+      <li><span><code>slices.All(stops)</code> (line 24)<br>A ready-made <code>Seq2</code> of index and value, the same pairs a plain <code>for i, s := range stops</code> gives: <samp>0:bakery 1:library 2:park</samp>.</span></li>
+      <li><span><code>slices.Backward(stops)</code> (line 28)<br>The same pairs, last first. The indexes stay the real ones: <samp>2:park 1:library 0:bakery</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trseq2-m" id="ex-trseq2"></div>
+  <script type="application/json" id="ex-trseq2-m">{"program": "trace_seq2.go", "columns": ["i", "w", "total"], "given": [1], "prompt": "<code>slices.Backward</code> hands out index and word, last first. Fill in the index and the running total of letters each time round.", "explain": "Backward starts at the last index, 2: <code>\"parcel\"</code> has 6 letters, total <samp>6</samp>. Then index <samp>1</samp>, <code>\"map\"</code>: 6 + 3 = <samp>9</samp>. Then index <samp>0</samp>, <code>\"kite\"</code>: 9 + 4 = <samp>13</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 25: collecting and sorting gumballs">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Iterators and slices trade places easily. And here, at last, is the explanation of a recipe from chapter 12.</p>
+    <span class="file-tab">collect.go</span>
+    <pre class="code" data-src="collect.go"></pre>
+    <pre class="term" data-run="collect.go"></pre>
+    <ol class="readlist">
+      <li><span><code>slices.Collect(Countdown(4))</code> (line 21)<br>Cranks the machine until it's empty and puts every gumball in a new slice: <samp>[4 3 2 1]</samp>.</span></li>
+      <li><span><code>slices.Sorted(...)</code> (line 22)<br>Collects <em>and</em> sorts: <samp>[1 2 3 4]</samp>.</span></li>
+      <li><span><code>slices.Values</code> (line 23)<br>The other way round: a <code>Seq</code> that hands out a slice's values, without the indexes.</span></li>
+      <li><span><code>slices.Sorted(maps.Keys(m))</code> (line 28)<br><code>maps.Keys</code> is an iterator over a map's keys, in no particular order. <code>slices.Sorted</code> collects them into a slice, sorted: <samp>[a b]</samp>. Chapter 12 used this recipe to print a map in a fixed order; now you can read every piece of it. <code>maps.Values</code> works the same way: <samp>[1 2]</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: maps.Keys has no order">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">What if you skip <code>slices.Sorted</code>? This program asks a map for its keys four times in a row. <b>This is one possible run</b>; yours will likely differ.</p>
+    <span class="file-tab">keys_order.go</span>
+    <pre class="code" data-src="keys_order.go"></pre>
+    <pre class="term" data-run="keys_order.go"></pre>
+    <ol class="readlist">
+      <li><span>Same map, same program: the order can change from run to run, and even from one walk to the next inside a single run, so your screen may not match this one. Go deliberately starts each walk through a map at a random place (chapter 12), and <code>maps.Keys</code> walks the map.</span></li>
+      <li><span>So never rely on the order of <code>maps.Keys</code> or <code>maps.Values</code>. When order matters, wrap them in <code>slices.Sorted</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-mapskeys-m" id="ex-mapskeys"></div>
+  <script type="application/json" id="ex-mapskeys-m">{"q": "A map <code>m</code> has the keys <code>\"x\"</code>, <code>\"y\"</code> and <code>\"z\"</code>. What does printing <code>slices.Collect(maps.Keys(m))</code> show?", "options": [
+    {"t": "The three keys in some order, which can change from run to run", "correct": true, "why": "Yes. <code>maps.Keys</code> walks the map, and map order is unspecified (panel 26). <code>slices.Collect</code> keeps whatever order it was given. Use <code>slices.Sorted</code> for <samp>[x y z]</samp> every time."},
+    {"t": "Always <samp>[x y z]</samp>, sorted by the key", "why": "Only with <code>slices.Sorted</code>. <code>Collect</code> doesn't sort."},
+    {"t": "Always the order the keys were written in the map literal", "why": "Maps don't remember insertion order in Go."},
+    {"t": "It doesn't compile: <code>maps.Keys</code> returns a slice, not an iterator", "why": "Since Go 1.23, <code>maps.Keys</code> returns an <code>iter.Seq</code>, which is exactly what <code>slices.Collect</code> takes."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 27: lazy gumballs">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Why bother with machines when slices exist? Because a machine only makes the gumballs you take. Here, "reading a line" is pretended by a function that counts its calls. We want the line <code>"line 3"</code> from a file of a million lines.</p>
+    <span class="file-tab">lazy.go</span>
+    <pre class="code" data-src="lazy.go"></pre>
+    <pre class="term" data-run="lazy.go"></pre>
+    <ol class="readlist">
+      <li><span><code>AllLines(1000000)</code> (line 34)<br>Builds the <em>whole</em> slice before the loop even starts: <samp>slice: lines read = 1000000</samp>. A million lines read, and a million kept in memory, to find the third.</span></li>
+      <li><span><code>Lines(1000000)</code> (line 41)<br>An iterator reads one line per crank. The loop breaks at line 3, yield returns false, and the machine stops: <samp>iterator: lines read = 3</samp>.</span></li>
+      <li><span>This style is called <b>lazy</b>: values are made only when someone asks. The slice style is <b>eager</b>: everything is made up front.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>a machine only makes what you take.</b> Big files, endless sequences, "stop at the first match": that's machine work.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-largefile-m" id="ex-largefile"></div>
+  <script type="application/json" id="ex-largefile-m">{"q": "A log file has 50 million lines. You want the first line that contains <code>ERROR</code>. Which function shape fits best?", "options": [
+    {"t": "<code>func Lines(path string) iter.Seq[string]</code>, an iterator", "correct": true, "why": "Yes. It reads a line only when the loop asks for one, and stops reading the moment you <code>break</code>. Memory stays small."},
+    {"t": "<code>func Lines(path string) []string</code>, a slice of every line", "why": "That reads all 50 million lines and keeps them in memory before your loop sees the first one, even if the error is on line 2."},
+    {"t": "<code>func Lines(path string) map[int]string</code>", "why": "A map is also eager, and it has no order: you couldn't even tell which error came first."},
+    {"t": "It makes no difference: Go is fast enough either way", "why": "Panel 27: a million reads against three. The difference grows with the file."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 28: pulling gumballs one at a time">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">A <code>for range</code> loop <b>pushes</b> gumballs into your body. Once in a while you'd rather <b>pull</b> them out yourself, one at a time, for example to walk two machines side by side. <code>iter.Pull</code> turns a machine into a "next, please" button.</p>
+    <span class="file-tab">pull.go</span>
+    <pre class="code" data-src="pull.go"></pre>
+    <pre class="term" data-run="pull.go"></pre>
+    <ol class="readlist">
+      <li><span><code>next, stop := iter.Pull(Countdown(2))</code> (line 19)<br>Two functions come back. Each <code>next()</code> gives one value and a <code>bool</code>: <samp>2 true</samp>, <samp>1 true</samp>, then <samp>0 false</samp>, meaning "empty" (the 0 is just int's zero value).</span></li>
+      <li><span><code>defer stop()</code> (line 20)<br><code>stop</code> tells the machine you've finished, like a <code>break</code>. Always defer it (chapter 14) so the machine can tidy up, even if you stop early.</span></li>
+      <li><span>You'll rarely need <code>Pull</code>. A plain <code>for range</code> is simpler and is what most code uses.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 29: iterators need go 1.23 in go.mod">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">One last version gate. <code>countdown.go</code> from panel 20, unchanged, copied into a module whose <code>go.mod</code> says <code>go 1.22</code>: <span class="parity" data-same-src="countdown.go,range_old.go"></span></p>
+    <pre class="term wrap" data-run="range_old.go" data-exit></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> both commands ran inside <code>~/go-ch20/old122</code>, the folder the prompt shows. Before <code>go run .</code>, <code>range_old.go</code> was copied in as <code>old122/main.go</code> (the badge above proves it is the same source). Nothing else was added.</p>
+    <ol class="readlist">
+      <li><span><code>cannot range over Countdown(3) (value of func type iter.Seq[int]): requires go1.23 or later (-lang was set to go1.22; check go.mod)</code><br>Ranging over a function arrived in Go 1.23. Like panel 16, the module's <code>go</code> line wins, whatever compiler you use.</span></li>
+      <li><span>Notice the bracket: <samp>value of func type iter.Seq[int]</samp>. Even the Compiler sees an <code>iter.Seq</code> as what it is underneath: a function.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 30: boss level">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="30"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Three questions crack almost everything here. <b>What's in the slot</b>, and does it pass the gauge? <b>Who is running right now</b>, the machine or the body? And <b>did anybody say false</b>?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A generic <code>Filter</code> that wraps one machine in another. Type both lines.", "hint": "<code>Filter</code> hands on only the values <code>keep</code> likes. <code>Collect</code> cranks it to the end. The second loop breaks at the first value bigger than 2.", "explain": "The filter only passes even numbers, so <code>Collect</code> gives <samp>[2 4 6]</samp>. In the loop, 2 isn't bigger than 2, so the next even number, 4, is the first big one: <samp>first big: 4</samp>, then <code>break</code>. Notice <code>keep(v) &amp;&amp; !yield(v)</code>: the filter listens to yield too, so the break reaches all the way back into <code>slices.Values</code>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["n", "v"], "given": [0], "prompt": "Boss 2. A machine that never runs out: Fibonacci numbers, where each one is the sum of the two before. Fill in the value printed each time round.", "explain": "The machine starts with <code>a, b := 0, 1</code> and hands out <code>a</code>, then moves to <code>b, a+b</code>: <samp>0 1 1 2 3 5 8</samp>. The next value, 13, is bigger than 10, so the body breaks before printing, yield returns false and the endless machine returns. Without <code>if !yield(a) { return }</code> it would panic, as in panel 23."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 9, "prompt": "Boss 3. It compiles and runs. The first answer is right, <samp>9</samp>, but the largest of -5, -2 and -9 comes out as <samp>0</samp>. Click the line with the bug.", "explain": "Line 9 starts <code>best</code> at the zero value of <code>T</code>, which is 0 for ints. No negative number is bigger than 0, so 0 wins, and it isn't even in the slice! Start from the first item instead: <code>best := items[0]</code>. The zero value is a fine starting point for a <em>sum</em> (panel 10), but not for a maximum."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 9, "pin": [1, 3, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 21, 22, 23, 26, 27, 28, 29, 30, 31, 32, 33, 34], "prompt": "Boss 4. Give the generic Stack an <code>All</code> method that hands out its parcels from the top down. Put the body of <code>All</code> in order.", "explain": "Return the machine; inside it, count <code>i</code> down from the last index to 0, so the top of the stack comes first, and hand out <code>s.items[i]</code>, stopping when yield says false. That's why the output is <samp>kite book lamp</samp>, the reverse of the pushes. An <code>All</code> method returning an iterator is the Go convention for containers."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. A generic helper that returns any map's keys, sorted. Fill in the gauge the keys need and the iterator over a map's keys.", "blanks": [{"line": 10, "text": "cmp.Ordered"}, {"line": 11, "text": "maps.Keys"}], "explain": "Sorting needs <code>&lt;</code>, so <code>K</code> must be <code>cmp.Ordered</code>; the values can be <code>any</code>. <code>maps.Keys(m)</code> is the iterator, and <code>slices.Sorted</code> collects and sorts it: <samp>[fig kiwi pear]</samp> and <samp>[7 30]</samp>. Both calls infer <code>K</code> and <code>V</code> from the map."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Is a route already in the list?", "expect": "error", "answer": "[]string does not satisfy comparable", "ask": "It doesn't compile. Type the error message (the part after <code>./boss_err.go:16:22: </code>).", "hint": "What is <code>T</code> here: the type of one item of <code>routes</code>? Can two of those be compared with <code>==</code>?", "explain": "<samp>[]string does not satisfy comparable</samp>. Each route is a <code>[]string</code>, and slices can't be compared with <code>==</code> (panel 8). To check routes, compare them yourself with <code>slices.Equal</code>, or pass in a comparison function."}</script>
+
+  <section class="panel pop" aria-label="Panel 31: what you learned">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">What you learned in Chapter 20</p>
+    <ul class="recap">
+      <li><b>ONE CUTTER, MANY DOUGHS</b><code>func Max[T cmp.Ordered](a, b T) T</code> is written once and used with ints, floats, strings and your own cups. <code>T</code> is a type parameter; Go usually infers it, or you write <code>Max[float64]</code>. Generic types like <code>Stack[T]</code> must always be instantiated, and since Go 1.27 a method may have its own slot.</li>
+      <li><b>THE GAUGE DECIDES WHAT YOU MAY DO</b>A constraint is an interface describing a set of types. <code>any</code> allows almost nothing (<samp>type parameter T cannot use operator &gt;</samp>), <code>comparable</code> allows <code>==</code>, <code>cmp.Ordered</code> allows <code>&lt;</code>. A wrong dough is refused at the call: <samp>string does not satisfy Number</samp>.</li>
+      <li><b>A TILDE LETS THE COUSINS IN</b><code>~float64</code> accepts float64 and every type made of it. Forget it and Go says <samp>possibly missing ~</samp>.</li>
+      <li><b>COPY TWICE, THEN CUT A CUTTER</b>Reach for type parameters when the same code works on many element types. If you only call methods, an interface is simpler.</li>
+      <li><b>EVERY CRANK IS A YIELD; WALKING AWAY IS A FALSE</b>An <code>iter.Seq[V]</code> is a function that calls <code>yield</code> once per value. <code>break</code> makes yield return false, and the iterator must stop: <code>if !yield(v) { return }</code>. Ignore it and Go panics: <samp>range function continued iteration</samp>.</li>
+      <li><b>A MACHINE ONLY MAKES WHAT YOU TAKE</b>Iterators are lazy. <code>slices.All</code>, <code>Values</code>, <code>Backward</code>, <code>Collect</code> and <code>Sorted</code> connect them to slices; <code>maps.Keys</code> has no order, so write <code>slices.Sorted(<wbr>maps.Keys(m))</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Cookies cut, gumballs cranked. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 32: next time, branches and plumbing">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">Coming up in Chapter 21: Branches and Plumbing</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><rect x="20" y="20" width="220" height="112" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="4"/><path d="M20 62 H240 M20 98 H240" stroke="#111" stroke-width="3"/><g stroke="#111" stroke-width="3"><rect x="34" y="30" width="16" height="30" fill="#DDE8FF"/><rect x="54" y="34" width="14" height="26" fill="#C9F2D9"/><rect x="72" y="30" width="18" height="30" fill="#FFE1E1"/><rect x="34" y="68" width="16" height="28" fill="#C9F2D9"/><rect x="54" y="70" width="18" height="26" fill="#DDE8FF"/></g><g font-family="Bangers, sans-serif" font-size="18" fill="#111"><text x="150" y="50">v1 SHELF</text><text x="150" y="88">v2 SHELF</text><text x="110" y="124">STAFF ONLY: internal</text></g></svg>
+          <p>How a Go <b>module</b> is shelved like a library: <code>go.mod</code>'s directives, versions, <code>/v2</code>, and the <code>internal/</code> staff room. You've already seen the <code>go</code> line guard two doors today.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><path d="M20 40 H120 V100 H200" fill="none" stroke="#111" stroke-width="14" stroke-linejoin="round"/><path d="M20 40 H120 V100 H200" fill="none" stroke="#DDE8FF" stroke-width="8" stroke-linejoin="round"/><path d="M196 104 L236 104 L228 140 L204 140 Z" fill="#FFD60A" stroke="#111" stroke-width="4" stroke-linejoin="round"/><text x="216" y="96" text-anchor="middle" font-family="Bangers, sans-serif" font-size="16" fill="#111">FLUSH!</text></svg>
+          <p>And <b>plumbing</b>: files, <code>bufio.Scanner</code> (a line-by-line machine, much like today's), a bucket that must be emptied with <code>Flush</code>, command-line flags and exit codes.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today's lazy machine pretended to read a file. Next chapter we open real ones, and find out which shelf every package lives on.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a library bookcase with a v1 shelf, a v2 shelf and a staff-only internal sign; and a pipe pouring into a yellow bucket labelled FLUSH.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch19.html">← Ch 19 · Pipes and Nesting Dolls</a><a class="next" href="ch21.html">Ch 21 · Branches and Plumbing →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: type sets, instantiation, and how range-over-func is built</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Both features are mostly the Compiler's work. The program that runs is ordinary Go.</p></div>
+      </div>
+      <h3>Interfaces describe type sets</h3>
+      <p>Since Go 1.18 the spec defines every interface by its <b>type set</b>. A method interface such as <code>fmt.Stringer</code> has the set of all types with a <code>String() string</code> method. An interface may also list type terms: <code>int</code> (exactly int), <code>~int</code> (every type whose <b>underlying type</b> is int), joined into a union with <code>|</code>. A type satisfies a constraint when it is in the set. Interfaces with type terms, or that embed <code>comparable</code>, may only be used as constraints, never as the type of an ordinary variable: <code>var n Number</code> is a compile error.</p>
+      <h3>Which operations are allowed</h3>
+      <p>Inside a generic function, an operation on a <code>T</code> is allowed only if it is allowed for <b>every</b> type in the constraint's type set. With <code>~int | ~float64</code> that includes <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and <code>&lt;</code>, but not <code>%</code>, because <code>%</code> doesn't work on floats. With <code>any</code>, the set includes types with no operators at all, so only assignment and passing values around remain. <code>comparable</code> is special: it is a built-in interface whose set holds exactly the strictly comparable types.</p>
+      <h3>Type inference</h3>
+      <p>Go infers type arguments from the types of the ordinary arguments (and, since Go 1.21, also from the type a generic function is assigned to). Untyped constants get their default type only if nothing else decides: that's why <code>Max(3, 2.5)</code> becomes <code>float64</code> but <code>Max(n, 2.5)</code> with <code>n int</code> fails. Inference never looks at the result type alone, so a function like <code>func Zero[T any]() T</code> must always be called as <code>Zero[int]()</code>.</p>
+      <h3>How generic code is compiled</h3>
+      <p>The Go toolchain doesn't make a full copy of the function for every type, nor one fully shared version. It groups types by their memory shape (a "GC shape": for example, all pointer types share one), compiles one copy per shape, and passes a hidden dictionary with the details of the exact type. That's why generics are usually about as fast as interfaces, and sometimes faster, but not always as fast as a hand-written copy. Performance is a reason to measure, not a reason to use generics.</p>
+      <h3>What range-over-func turns into</h3>
+      <p>For <code>for v := range seq { body }</code>, the Compiler rewrites the loop body into a hidden function, roughly <code>func(v int) bool { body; return true }</code>, where <code>break</code> becomes <code>return false</code>, and calls <code>seq(thatFunction)</code>. That hidden function is the <code>main.main-range1</code> in panel 23's trace. It also adds a guard: once the body has returned false (or the loop exited by <code>return</code>, <code>goto</code> or a panic), calling it again panics with the message you saw. A <code>return</code> inside the loop body returns from the <b>enclosing</b> function; the Compiler arranges that too.</p>
+      <h3>iter.Pull</h3>
+      <p>Turning a push iterator into a pull one needs the iterator to pause in the middle of its own loop. <code>iter.Pull</code> runs the iterator on a coroutine, a special lightweight goroutine that hands control back and forth with the caller, which is cheaper than a goroutine plus channels. That is also why <code>stop</code> matters: an iterator abandoned half-way would otherwise sit paused for ever.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where generics and iterators show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The <code>slices</code> and <code>maps</code> packages</b> (Go 1.21) are the biggest users: <code>slices.Sort</code>, <code>SortFunc</code>, <code>BinarySearch</code>, <code>Compact</code>, <code>Equal</code>, <code>maps.Clone</code>, <code>maps.Copy</code>. Before generics, code used <code>sort.Ints</code>, <code>sort.Strings</code> and <code>sort.Slice</code> with an <code>any</code> argument.</li>
+        <li><b>Built-in <code>min</code> and <code>max</code></b> (Go 1.21) do what this chapter's <code>Max</code> does, for any number of ordered arguments. Our <code>Max</code> was a lesson, not something to keep.</li>
+        <li><b><code>sync.OnceValue</code></b> and <b><code>atomic.Pointer[T]</code></b> use type parameters so callers get back their own type without assertions (chapter 25). <code>context.WithValue</code> itself is not generic (chapter 26), but people often write small generic helpers around it for the same reason.</li>
+        <li><b>Data structures</b>: sets, ordered maps, caches, trees and queues are the classic case: <code>Set[T comparable]</code> built on <code>map[T]struct{}</code>.</li>
+        <li><b>Iterators in the standard library</b>: <code>strings.Lines</code>, <code>strings.SplitSeq</code> and <code>strings.FieldsSeq</code> (Go 1.24), <code>bytes.Lines</code>, <code>maps.All</code>, <code>slices.Chunk</code>. Containers by convention offer an <code>All()</code> method returning an iterator, like Boss 4's Stack.</li>
+        <li><b>Database rows, file lines, paginated web results</b>: anything that arrives a piece at a time and might be very long fits an iterator. Chapter 21's <code>bufio.Scanner</code> is the older, pre-iterator way of reading lines.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>[T any]</code> is the same as an <code>any</code> parameter."</b> An <code>any</code> parameter gives you a box you must open with an assertion. A type parameter keeps the real type: <code>First(nums)</code> returns an <code>int</code>.</li>
+        <li><b>"With <code>any</code> I can do anything to a T."</b> The opposite: <code>any</code> allows the fewest operations. A wide gauge means a small toolbox.</li>
+        <li><b>"The error is where the Compiler points."</b> For <code>T cannot use operator</code>, the fix is in the constraint on the function's first line, not on the line with the operator.</li>
+        <li><b>"<code>int | float64</code> accepts my <code>type Score int</code>."</b> Only <code>~int</code> does.</li>
+        <li><b>"Generics make code faster."</b> Sometimes; often not. Use them to remove duplication.</li>
+        <li><b>"Every function should be generic, just in case."</b> Write plain code first; generalise when the second copy appears.</li>
+        <li><b>"Methods can never have type parameters."</b> True before Go 1.27. Now they can, but interface methods still can't.</li>
+        <li><b>"An iterator function runs the loop."</b> It's the other way round: the iterator calls <code>yield</code>, and <code>yield</code> runs your loop body. The iterator is in charge, and it pauses inside each <code>yield</code> call.</li>
+        <li><b>"<code>break</code> stops the iterator straight away."</b> <code>break</code> only makes <code>yield</code> return false. The iterator has to notice and return; if it doesn't, Go panics.</li>
+        <li><b>"<code>maps.Keys</code> gives the keys in order."</b> In no particular order. Use <code>slices.Sorted(maps.Keys(m))</code>.</li>
+        <li><b>"An iterator remembers where it stopped."</b> An <code>iter.Seq</code> made by a function like <code>Countdown</code> starts again from the beginning every time you range over it.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Go 1.27.3 and Go 1.24.7</summary>
+    <div class="page-body">
+      <p>Every program in this chapter was also run with Go 1.24.7: the single-file programs against a module file that says <code>go 1.24</code>, and the two small modules (<code>old</code> and <code>old122</code>) with their <code>go.mod</code> lowered to <code>go 1.24</code> where it asked for more, for that run only. Of the 48 programs whose output is fixed, four differed:</p>
+      <ul>
+        <li><b><code>genmethod.go</code></b>: Go 1.24 refuses generic methods before even checking the version: <samp>syntax error: method must have no type parameters</samp>. Go 1.27 runs it.</li>
+        <li><b><code>genmethod_old.go</code></b>: on Go 1.24 the module said <code>go 1.24</code> and gave the same syntax error, at column 27 instead of 1.27's version-gate message at column 28.</li>
+        <li><b><code>ignore_yield.go</code> and <code>spot_yield.go</code></b>: the same panic message and line numbers; two details of the trace differ: Go 1.24 names the iterator's inner function one level deeper (<code>main.main.Countdown.func1</code> instead of <code>main.Countdown.func1</code>, and the same for <code>Words</code>), and the <code>+0x..</code> code offset in the last frame differs, as panel 23 warned.</li>
+      </ul>
+      <p>The capture also lists <code>keys_order.go</code> as different, but that says nothing about versions: it prints map order, which varies from run to run on either version (panel 26), so it is never compared.</p>
+      <p>Version gates: generics arrived in Go 1.18. The <code>cmp</code> package, <code>slices</code>, <code>maps</code> and built-in <code>min</code>/<code>max</code> in 1.21. Range over functions, the <code>iter</code> package, <code>slices.All</code>/<code>Values</code>/<code>Backward</code>/<code>Collect</code>/<code>Sorted</code> and <code>maps.Keys</code>/<code>Values</code> as iterators in 1.23. Generic type aliases in 1.24. Generic methods in 1.27. Each needs the matching <code>go</code> line in <code>go.mod</code>, as panels 16 and 29 show.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir cutters</code>, then <code>cd cutters</code>.</li>
+        <li><code>go mod init example/cutters</code>. It prints <samp>go: creating new go.mod: module example/cutters</samp>. Open <code>go.mod</code>: its <code>go</code> line names your Go version. For generic methods it must be 1.27 or later; for iterators, 1.23 or later.</li>
+        <li>Create <code>main.go</code> and type in <code>number.go</code> from panel 10.</li>
+        <li><code>go run .</code> should print the same four lines as panel 10.</li>
+      </ol>
+      <p class="os-note">Running with <code>go run .</code> inside a module, compile errors start with <code># example/cutters</code> instead of this book's <code># command-line-arguments</code>, as panels 16 and 29 show. The messages and line numbers are the same.</p>
+      <h3>2. Play with it</h3>
+      <ol>
+        <li>Write <code>func Map[T, U any](items []T, f func(T) U) []U</code> and use it to turn <code>[]int{1, 2, 3}</code> into <code>[]string{"1", "2", "3"}</code> with <code>strconv.Itoa</code>.</li>
+        <li>Build <code>type Set[T comparable] struct{ m map[T]struct{} }</code> with <code>Add</code>, <code>Has</code> and an <code>All() iter.Seq[T]</code> method. Print <code>slices.Sorted(s.All())</code>.</li>
+        <li>Write <code>func Range(from, to, step int) iter.Seq[int]</code> and loop over <code>Range(0, 20, 5)</code>.</li>
+        <li>Write <code>func Take[T any](seq iter.Seq[T], n int) iter.Seq[T]</code> and use it with Boss 2's endless <code>Fib()</code>.</li>
+        <li>Try <code>for line := range strings.Lines("a\nb\nc\n")</code> (Go 1.24+).</li>
+      </ol>
+      <h3>3. Break it on purpose</h3>
+      <ol>
+        <li>Change <code>Number</code> to <code>int | float64</code> and sum a <code>[]Celsius</code>. Read <samp>possibly missing ~</samp>.</li>
+        <li>Use <code>%</code> inside <code>Sum</code>. The Compiler refuses, because floats don't have <code>%</code>.</li>
+        <li>Delete the <code>if !</code> check from an iterator and <code>break</code> early. Read the panic.</li>
+        <li>Change your <code>go.mod</code> to <code>go 1.22</code> and range over an iterator. Read the version-gate message, then change it back.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> install from the .msi on go.dev/dl; everything above works the same in PowerShell. <code>go version</code> checks which version you have.</li>
+        <li><b>macOS:</b> install from the .pkg on go.dev/dl, or with Homebrew (<code>brew install go</code>).</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages can be several versions behind: generics need 1.18, iterators 1.23, generic methods 1.27.</li>
+        <li><b>No install?</b> Every single-file program here runs in the Go Playground (go.dev/play), which uses a recent Go release; check the version menu for generic methods.</li>
+      </ul>
+      <p class="os-note">Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>generics</dt><dd>Writing a function or type once with type parameters, so it works for many types.</dd>
+        <dt>type parameter</dt><dd>A stand-in for a type, declared in square brackets: the <code>T</code> in <code>[T any]</code>.</dd>
+        <dt>type parameter list</dt><dd>The square brackets after a function or type name, listing type parameters and their constraints.</dd>
+        <dt>type argument</dt><dd>The real type that fills a type parameter, such as <code>int</code> in <code>Max[int]</code>.</dd>
+        <dt>instantiation</dt><dd>Filling the type parameters with type arguments, making a real function or type: <code>Stack[string]</code>.</dd>
+        <dt>type inference</dt><dd>Go working out the type arguments from the ordinary arguments, so you can write <code>Max(3, 7)</code>.</dd>
+        <dt>constraint</dt><dd>The interface after a type parameter, saying which types may fill it and so what the code may do with them.</dd>
+        <dt>type set</dt><dd>The set of types an interface describes; a type satisfies a constraint when it is in the set.</dd>
+        <dt>satisfy</dt><dd>To pass a constraint's check.</dd>
+        <dt><code>comparable</code></dt><dd>The built-in constraint for types that <code>==</code> and <code>!=</code> work on.</dd>
+        <dt><code>cmp.Ordered</code></dt><dd>The constraint for types that <code>&lt;</code> and <code>&gt;</code> work on: integers, floats and strings.</dd>
+        <dt>union</dt><dd>Type terms joined with <code>|</code> in a constraint, meaning "any one of these".</dd>
+        <dt>tilde <code>~</code></dt><dd>In a constraint, <code>~T</code> means T and every type whose underlying type is T.</dd>
+        <dt>generic type</dt><dd>A type with type parameters, such as <code>Stack[T any]</code>.</dd>
+        <dt>generic method</dt><dd>A method with type parameters of its own (Go 1.27 and later).</dd>
+        <dt>duplication</dt><dd>The same code written more than once.</dd>
+        <dt>iterator</dt><dd>A function you can <code>range</code> over, which hands out values one at a time by calling <code>yield</code>.</dd>
+        <dt><code>yield</code></dt><dd>The function an iterator calls with each value. It runs the loop body and returns false if the loop wants to stop.</dd>
+        <dt><code>iter.Seq[V]</code>, <code>iter.Seq2[K, V]</code></dt><dd>Generic names for iterator function types that hand out one value, or a pair, each time.</dd>
+        <dt>push iterator, pull iterator</dt><dd>Push: the iterator calls your code with each value (<code>for range</code>). Pull: you ask for the next value yourself (<code>iter.Pull</code>).</dd>
+        <dt>lazy, eager</dt><dd>Lazy: values are made only when asked for. Eager: all values are made up front.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/doc/tutorial/generics">Tutorial: Getting started with generics</a>.</li>
+        <li><a href="https://go.dev/blog/intro-generics">An Introduction to Generics</a> and <a href="https://go.dev/blog/when-generics">When To Use Generics</a> (the Go Blog).</li>
+        <li><a href="https://go.dev/blog/range-functions">Range Over Function Types</a> (the Go Blog), the clearest explanation of push and pull iterators.</li>
+        <li><a href="https://go.dev/ref/spec#Type_parameter_declarations">The Go specification: type parameter declarations</a>, <a href="https://go.dev/ref/spec#Interface_types">interface types and type sets</a>, <a href="https://go.dev/ref/spec#Type_inference">type inference</a> and <a href="https://go.dev/ref/spec#For_range">for statements with range clause</a>.</li>
+        <li>Package docs: <a href="https://pkg.go.dev/iter">iter</a>, <a href="https://pkg.go.dev/slices">slices</a>, <a href="https://pkg.go.dev/maps">maps</a> and <a href="https://pkg.go.dev/cmp">cmp</a>.</li>
+        <li><a href="https://go.dev/tour/generics/1">A Tour of Go: Generics</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/generics">Go by Example: Generics</a> and <a href="https://gobyexample.com/range-over-iterators">Range over Iterators</a>.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests">Learn Go with Tests</a>: the "Generics" chapter, which builds a generic stack test-first.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #9, being confused about when to use generics.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch20</code>, which has a <code>go.mod</code> saying <code>module goch20</code> and <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). Two exceptions show version gates: <code>genmethod_old.go</code> is copied to <code>old/main.go</code> in the module <code>/home/you/go-ch20/old</code>, and <code>range_old.go</code> to <code>old122/main.go</code> in <code>/home/you/go-ch20/old122</code>. Both modules' <code>go.mod</code> files were written by the real <code>go mod init</code> (which wrote <code>go 1.27.3</code>) and then edited to <code>go 1.26</code> and <code>go 1.22</code>; each runs as <code>go run .</code>, so its errors carry the module's name as the header. Panic traces show the real paths and a <code>+0x..</code> code offset that differs between machines and versions. <code>keys_order.go</code> prints map order, which varies between runs: it is marked non-deterministic, shown as "one possible run", and never used as an answer. Every program was also run with Go 1.24.7 (see the version notes): the capture lists 5 of 49 programs as different, four real differences plus <code>keys_order.go</code>, whose map order varies on every run anyway.</p>
+  <p>The Max machine, the Stack tracer, the gumball stepper and the iterator road map are teaching models; each checks itself against those runs and shows a badge. The tracer draws each <code>Stack</code> as a box with an arrow to its <code>items</code> slice, although the slice header is stored inside the struct, and it draws the slice's contents without its spare capacity. The gumball stepper and the road map show turns between the loop body and the iterator as separate moments; in the real program the body runs <em>inside</em> the iterator's <code>yield</code> call.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go specification (type parameters, type sets, satisfying constraints, type inference, range over functions); the Go tutorial "Getting started with generics" (from duplicated functions to a type parameter, then a declared constraint with <code>~</code>); the Go Blog posts "When To Use Generics" (write code first; prefer interfaces when you only call methods) and "Range Over Function Types" (push and pull iterators, <code>iter.Seq</code>, <code>iter.Pull</code> and <code>stop</code>, the go 1.23 requirement, and the <code>All</code> method convention); package documentation for <code>iter</code>, <code>slices</code>, <code>maps</code> and <code>cmp</code>; Go by Example, "Generics" and "Range over Iterators"; 100 Go Mistakes #9 (free summary at 100go.co); and, as summarised in this book's research map, A Tour of Go, boot.dev Learn Go, Learn Go with Tests, roadmap.sh and Learning Go, 2nd edition, chapter 8.</p>
+  <p>Scoot, the Compiler, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

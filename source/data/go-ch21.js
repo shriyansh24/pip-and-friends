@@ -1,0 +1,1546 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch21",
+  "versionDifferences": [
+   "get_tidy.go",
+   "leak_fixed.go",
+   "leak_loop.go",
+   "replace.go",
+   "toolchain.go",
+   "work.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): get_tidy.go, leak_fixed.go, leak_loop.go, replace.go, toolchain.go, work.go."
+ },
+ "programs": {
+  "append_log.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n)\n\nfunc logLine(text string) error {\n\tf, err := os.OpenFile(\"visits.log\", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)\n\tif err != nil {\n\t\treturn err\n\t}\n\tdefer f.Close()\n\t_, err = fmt.Fprintln(f, text)\n\treturn err\n}\n\nfunc main() {\n\tos.WriteFile(\"visits.log\", nil, 0o644) // start each run with an empty log\n\n\tlogLine(\"09:00 Ana collected parcel 7\")\n\tlogLine(\"09:30 Bo dropped off parcel 9\")\n\n\tf, err := os.Open(\"visits.log\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\tall, err := io.ReadAll(f)\n\tfmt.Printf(\"%d bytes, err=%v\\n%s\", len(all), err, all)\n}\n",
+   "stdout": "59 bytes, err=<nil>\n09:00 Ana collected parcel 7\n09:30 Bo dropped off parcel 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run append_log.go",
+     "out": "59 bytes, err=<nil>\n09:00 Ana collected parcel 7\n09:30 Bo dropped off parcel 9\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "args.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\tfmt.Println(\"how many:\", len(os.Args))\n\tfmt.Println(\"program: \", filepath.Base(os.Args[0]))\n\tfor i, a := range os.Args[1:] {\n\t\tfmt.Printf(\"arg %d: %q\\n\", i+1, a)\n\t}\n}\n",
+   "stdout": "how many: 4\nprogram:  args\narg 1: \"parcel7\"\narg 2: \"--fragile\"\narg 3: \"12\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run args.go parcel7 --fragile 12",
+     "out": "how many: 4\nprogram:  args\narg 1: \"parcel7\"\narg 2: \"--fragile\"\narg 3: \"12\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tdefer fmt.Println(\"saving the delivery list\")\n\tfmt.Println(\"loading van 4\")\n\tif full := true; full {\n\t\tfmt.Fprintln(os.Stderr, \"van 4 is full\")\n\t\tos.Exit(4)\n\t}\n\tfmt.Println(\"driving\")\n}\n",
+   "stdout": "loading van 4\n",
+   "stderr": "van 4 is full\nexit status 4\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "loading van 4\n",
+     "err": "van 4 is full\nexit status 4\n",
+     "exit": 1,
+     "merged": "loading van 4\nvan 4 is full\nexit status 4\n"
+    }
+   ]
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tstops := flag.Int(\"stops\", 1, \"how many stops\")\n\tvan := flag.String(\"van\", \"V1\", \"which van\")\n\tflag.Parse()\n\tfmt.Printf(\"van %s makes %d stops\\n\", *van, *stops)\n\tfmt.Println(\"extra words:\", flag.Args())\n}\n",
+   "stdout": "van V1 makes 4 stops\nextra words: [fragile]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go -stops 4 fragile",
+     "out": "van V1 makes 4 stops\nextra words: [fragile]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Create(\"route.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\tw := bufio.NewWriter(f)\n\tfmt.Fprintln(w, \"stop 1: bakery\")\n\tw.Flush()\n\tdata, _ := os.ReadFile(\"route.txt\")\n\tfmt.Print(\"route.txt: \", string(data))\n}\n",
+   "stdout": "route.txt: stop 1: bakery\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "route.txt: stop 1: bakery\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc size(name string) int64 {\n\tinfo, err := os.Stat(name)\n\tif err != nil {\n\t\treturn -1\n\t}\n\treturn info.Size()\n}\n\nfunc main() {\n\tf, err := os.Create(\"manifest.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\n\tw := bufio.NewWriter(f)\n\tfmt.Fprintln(w, \"crate 1: books\")\n\tfmt.Fprintln(w, \"crate 2: lamps\")\n\tfmt.Println(\"before Flush:\", size(\"manifest.txt\"))\n\tw.Flush()\n\tfmt.Println(\"after Flush:\", size(\"manifest.txt\"))\n}\n",
+   "stdout": "before Flush: 0\nafter Flush: 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "before Flush: 0\nafter Flush: 30\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tyear := \"2026\"\n\tpath := \"archive\" + year + \"/mar.txt\"\n\tdata, err := os.ReadFile(path)\n\tif err != nil {\n\t\tfmt.Println(\"cannot read the report:\", err)\n\t\treturn\n\t}\n\tfmt.Print(string(data))\n}\n",
+   "stdout": "cannot read the report: open archive2026/mar.txt: no such file or directory\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "cannot read the report: open archive2026/mar.txt: no such file or directory\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"parcels.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\n\tsc := bufio.NewScanner(f)\n\ttotal := 0\n\tfor sc.Scan() {\n\t\twords := len(strings.Fields(sc.Text()))\n\t\ttotal += words\n\t\tfmt.Println(words, total)\n\t}\n}\n",
+   "stdout": "4 4\n4 8\n0 8\n4 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "4 4\n4 8\n0 8\n4 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bucket.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriterSize(os.Stdout, 16) // a tiny bucket: 16 bytes\n\tfor i := 1; i <= 5; i++ {\n\t\tfmt.Fprintf(w, \"parcel %d\\n\", i) // 9 bytes each\n\t}\n}\n",
+   "stdout": "parcel 1\nparcel 2\nparcel 3\nparce",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run bucket.go",
+     "out": "parcel 1\nparcel 2\nparcel 3\nparce",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bucket_flush.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriterSize(os.Stdout, 16) // a tiny bucket: 16 bytes\n\tfor i := 1; i <= 5; i++ {\n\t\tfmt.Fprintf(w, \"parcel %d\\n\", i) // 9 bytes each\n\t}\n\tw.Flush() // empty the bucket into the drain\n}\n",
+   "stdout": "parcel 1\nparcel 2\nparcel 3\nparcel 4\nparcel 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run bucket_flush.go",
+     "out": "parcel 1\nparcel 2\nparcel 3\nparcel 4\nparcel 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "dirs.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\t// MkdirAll makes every missing folder on the way, and is fine if they exist.\n\terr := os.MkdirAll(filepath.Join(\"out\", \"2026\", \"nov\"), 0o755)\n\tfmt.Println(\"MkdirAll:\", err)\n\n\terr = os.Mkdir(\"out\", 0o755) // plain Mkdir refuses a folder that exists\n\tfmt.Println(\"Mkdir:\", err)\n\n\tentries, err := os.ReadDir(\"archive\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfor _, e := range entries {\n\t\tfmt.Println(e.Name(), e.IsDir())\n\t}\n}\n",
+   "stdout": "MkdirAll: <nil>\nMkdir: mkdir out: file exists\n2025 true\n2026 true\nreadme.txt false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run dirs.go",
+     "out": "MkdirAll: <nil>\nMkdir: mkdir out: file exists\n2025 true\n2026 true\nreadme.txt false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "docs.go": {
+   "src": "// Package label prints parcel labels for the depot.\n//\n// Every function returns a string; nothing is printed.\npackage label\n\nimport \"strings\"\n\n// Big returns the label in capital letters, for fragile parcels.\nfunc Big(s string) string {\n\treturn strings.ToUpper(s)\n}\n\n// Shout is the old name for Big.\n//\n// Deprecated: use Big instead.\nfunc Shout(s string) string {\n\treturn Big(s)\n}\n",
+   "stdout": "HANDLE WITH CARE\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go doc ./label",
+     "out": "package label // import \"example/docs/label\"\n\nPackage label prints parcel labels for the depot.\n\nEvery function returns a string; nothing is printed.\n\nfunc Big(s string) string\nfunc Shout(s string) string\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/docs"
+    },
+    {
+     "cmd": "go doc ./label Shout",
+     "out": "package label // import \"example/docs/label\"\n\nfunc Shout(s string) string\n    Shout is the old name for Big.\n\n    Deprecated: use Big instead.\n\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/docs"
+    },
+    {
+     "cmd": "go run .",
+     "out": "HANDLE WITH CARE\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/docs"
+    }
+   ]
+  },
+  "docs/main.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example/docs/label\"\n)\n\nfunc main() {\n\tfmt.Println(label.Big(\"handle with care\"))\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "embed_banner.go": {
+   "src": "package main\n\nimport (\n\t_ \"embed\"\n\t\"fmt\"\n)\n\n//go:embed banner.txt\nvar banner string\n\nfunc main() {\n\tfmt.Print(banner)\n\tfmt.Println(\"banner is\", len(banner), \"bytes, baked into the program\")\n}\n",
+   "stdout": "*** NORTH DEPOT ***\nopen 7 days a week\nbanner is 39 bytes, baked into the program\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run embed_banner.go",
+     "out": "*** NORTH DEPOT ***\nopen 7 days a week\nbanner is 39 bytes, baked into the program\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "embed_fs.go": {
+   "src": "package main\n\nimport (\n\t\"embed\"\n\t\"fmt\"\n)\n\n//go:embed letters/*.txt\nvar letters embed.FS\n\nfunc main() {\n\tentries, _ := letters.ReadDir(\"letters\")\n\tfor _, e := range entries {\n\t\tdata, _ := letters.ReadFile(\"letters/\" + e.Name())\n\t\tfmt.Printf(\"%s: %s\", e.Name(), data)\n\t}\n}\n",
+   "stdout": "ana.txt: Dear Ana, your parcel is here.\nbo.txt: Dear Bo, please sign for parcel 9.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run embed_fs.go",
+     "out": "ana.txt: Dear Ana, your parcel is here.\nbo.txt: Dear Bo, please sign for parcel 9.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "embed_missing.go": {
+   "src": "package main\n\nimport (\n\t_ \"embed\"\n\t\"fmt\"\n)\n\n//go:embed welcome.txt\nvar welcome string\n\nfunc main() {\n\tfmt.Print(welcome)\n}\n",
+   "stdout": "",
+   "stderr": "embed_missing.go:8:12: pattern welcome.txt: no matching files found\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run embed_missing.go",
+     "out": "",
+     "err": "embed_missing.go:8:12: pattern welcome.txt: no matching files found\n",
+     "exit": 1
+    }
+   ]
+  },
+  "env.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tcity := os.Getenv(\"DEPOT_CITY\")\n\tfmt.Printf(\"DEPOT_CITY=%q\\n\", city)\n\n\tshift, ok := os.LookupEnv(\"DEPOT_SHIFT\")\n\tfmt.Printf(\"DEPOT_SHIFT=%q set=%v\\n\", shift, ok)\n\n\tif city == \"\" {\n\t\tcity = \"Porto\" // a default when the variable is missing\n\t}\n\tfmt.Println(\"working in\", city)\n}\n",
+   "stdout": "DEPOT_CITY=\"\"\nDEPOT_SHIFT=\"\" set=false\nworking in Porto\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run env.go",
+     "out": "DEPOT_CITY=\"\"\nDEPOT_SHIFT=\"\" set=false\nworking in Porto\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "env_empty.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tcity := os.Getenv(\"DEPOT_CITY\")\n\tfmt.Printf(\"DEPOT_CITY=%q\\n\", city)\n\n\tshift, ok := os.LookupEnv(\"DEPOT_SHIFT\")\n\tfmt.Printf(\"DEPOT_SHIFT=%q set=%v\\n\", shift, ok)\n\n\tif city == \"\" {\n\t\tcity = \"Porto\" // a default when the variable is missing\n\t}\n\tfmt.Println(\"working in\", city)\n}\n",
+   "stdout": "DEPOT_CITY=\"\"\nDEPOT_SHIFT=\"\" set=true\nworking in Porto\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "DEPOT_SHIFT= go run env.go",
+     "out": "DEPOT_CITY=\"\"\nDEPOT_SHIFT=\"\" set=true\nworking in Porto\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "env_set.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tcity := os.Getenv(\"DEPOT_CITY\")\n\tfmt.Printf(\"DEPOT_CITY=%q\\n\", city)\n\n\tshift, ok := os.LookupEnv(\"DEPOT_SHIFT\")\n\tfmt.Printf(\"DEPOT_SHIFT=%q set=%v\\n\", shift, ok)\n\n\tif city == \"\" {\n\t\tcity = \"Porto\" // a default when the variable is missing\n\t}\n\tfmt.Println(\"working in\", city)\n}\n",
+   "stdout": "DEPOT_CITY=\"Lisbon\"\nDEPOT_SHIFT=\"\" set=false\nworking in Lisbon\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "DEPOT_CITY=Lisbon go run env.go",
+     "out": "DEPOT_CITY=\"Lisbon\"\nDEPOT_SHIFT=\"\" set=false\nworking in Lisbon\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "exit_code.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tfmt.Println(\"checking the van\")\n\tfmt.Fprintln(os.Stderr, \"flat tyre!\")\n\tos.Exit(3)\n}\n",
+   "stdout": "checking the van\n",
+   "stderr": "flat tyre!\nexit status 3\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run exit_code.go",
+     "out": "checking the van\n",
+     "err": "flat tyre!\nexit status 3\n",
+     "exit": 1,
+     "merged": "checking the van\nflat tyre!\nexit status 3\n"
+    }
+   ]
+  },
+  "exit_codes.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tfmt.Println(\"checking the van\")\n\tfmt.Fprintln(os.Stderr, \"flat tyre!\")\n\tos.Exit(3)\n}\n",
+   "stdout": "3\n",
+   "stderr": "flat tyre!\nexit status 3\nflat tyre!\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run exit_code.go",
+     "out": "checking the van\n",
+     "err": "flat tyre!\nexit status 3\n",
+     "exit": 1,
+     "dir": "~/go-ch21"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21"
+    },
+    {
+     "cmd": "go build exit_code.go",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21"
+    },
+    {
+     "cmd": "./exit_code",
+     "out": "checking the van\n",
+     "err": "flat tyre!\n",
+     "exit": 3,
+     "dir": "~/go-ch21"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21"
+    }
+   ]
+  },
+  "exit_defer.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tdefer fmt.Println(\"cleanup: locking the depot\")\n\tfmt.Println(\"working\")\n\tos.Exit(1)\n}\n",
+   "stdout": "working\n",
+   "stderr": "exit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run exit_defer.go",
+     "out": "working\n",
+     "err": "exit status 1\n",
+     "exit": 1,
+     "merged": "working\nexit status 1\n"
+    }
+   ]
+  },
+  "fill_embed.go": {
+   "src": "package main\n\nimport (\n\t_ \"embed\"\n\t\"fmt\"\n\t\"strings\"\n)\n\n//go:embed banner.txt\nvar banner string\n\nfunc main() {\n\tlines := strings.Split(strings.TrimSpace(banner), \"\\n\")\n\tfmt.Println(len(lines), \"lines; first:\", lines[0])\n}\n",
+   "stdout": "2 lines; first: *** NORTH DEPOT ***\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_embed.go",
+     "out": "2 lines; first: *** NORTH DEPOT ***\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_flush.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriter(os.Stdout)\n\tdefer w.Flush()\n\tfor _, city := range []string{\"Lisbon\", \"Porto\", \"Faro\"} {\n\t\tfmt.Fprintln(w, \"route to\", city)\n\t}\n}\n",
+   "stdout": "route to Lisbon\nroute to Porto\nroute to Faro\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_flush.go",
+     "out": "route to Lisbon\nroute to Porto\nroute to Faro\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_join.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\tyear, month := \"2025\", \"feb.txt\"\n\tpath := filepath.Join(\"archive\", year, month)\n\tdata, err := os.ReadFile(path)\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Print(path, \" says: \", string(data))\n}\n",
+   "stdout": "archive/2025/feb.txt says: February: 388 parcels\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_join.go",
+     "out": "archive/2025/feb.txt says: February: 388 parcels\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "flag_bad.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "",
+   "stderr": "flag provided but not defined: -colour\nUsage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+   "exit": 2,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -colour red",
+     "out": "",
+     "err": "flag provided but not defined: -colour\nUsage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+     "exit": 2,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flag_default.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "n=1 color=black loud=false labels=[]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags",
+     "out": "n=1 color=black loud=false labels=[]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flag_eq.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "n=2 color=blue loud=false labels=[\"box1\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -n=2 -color=blue box1",
+     "out": "n=2 color=blue loud=false labels=[\"box1\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flag_ok.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "n=3 color=red loud=false labels=[\"box7\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -n 3 -color red box7",
+     "out": "n=3 color=red loud=false labels=[\"box7\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flag_order.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "n=1 color=black loud=false labels=[\"box7\" \"-n\" \"3\"]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags box7 -n 3",
+     "out": "n=1 color=black loud=false labels=[\"box7\" \"-n\" \"3\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flag_val.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "",
+   "stderr": "invalid value \"many\" for flag -n: parse error\nUsage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+   "exit": 2,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -n many",
+     "out": "",
+     "err": "invalid value \"many\" for flag -n: parse error\nUsage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+     "exit": 2,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flags_tour.go": {
+   "src": "// Command stampflags shows how the flag package reads a command line.\npackage main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tn := flag.Int(\"n\", 1, \"stamps per label\")\n\tcolor := flag.String(\"color\", \"black\", \"ink colour\")\n\tloud := flag.Bool(\"loud\", false, \"shout the labels\")\n\tflag.Parse()\n\n\tfmt.Printf(\"n=%d color=%s loud=%v labels=%q\\n\", *n, *color, *loud, flag.Args())\n}\n",
+   "stdout": "",
+   "stderr": "Usage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go build",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -n 3 -color red box7",
+     "out": "n=3 color=red loud=false labels=[\"box7\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags",
+     "out": "n=1 color=black loud=false labels=[]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -loud box8 box9",
+     "out": "n=1 color=black loud=true labels=[\"box8\" \"box9\"]\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    },
+    {
+     "cmd": "./stampflags -h",
+     "out": "",
+     "err": "Usage of ./stampflags:\n  -color string\n    \tink colour (default \"black\")\n  -loud\n    \tshout the labels\n  -n int\n    \tstamps per label (default 1)\n",
+     "exit": 0,
+     "dir": "~/go-ch21/stampflags"
+    }
+   ]
+  },
+  "flush_file.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Create(\"log.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\n\tw := bufio.NewWriter(f)\n\tfor i := 1; i <= 3; i++ {\n\t\tfmt.Fprintf(w, \"stop %d done\\n\", i)\n\t}\n\tif err := w.Flush(); err != nil {\n\t\tfmt.Println(\"flush failed:\", err)\n\t\treturn\n\t}\n\n\tdata, _ := os.ReadFile(\"log.txt\")\n\tfmt.Printf(\"log.txt holds %d bytes:\\n%s\", len(data), data)\n}\n",
+   "stdout": "log.txt holds 36 bytes:\nstop 1 done\nstop 2 done\nstop 3 done\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run flush_file.go",
+     "out": "log.txt holds 36 bytes:\nstop 1 done\nstop 2 done\nstop 3 done\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "get_tidy.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n\tfmt.Println(stamps.StampDay(\"parcel 43\", \"Mon\"))\n}\n",
+   "stdout": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+   "stderr": "go: downloading example.com/stamps v1.1.0\ngo: downloading example.com/ink v1.0.0\ngo: added example.com/ink v1.0.0\ngo: added example.com/stamps v1.1.0\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go get example.com/stamps@v1.1.0",
+     "out": "",
+     "err": "go: downloading example.com/stamps v1.1.0\ngo: downloading example.com/ink v1.0.0\ngo: added example.com/ink v1.0.0\ngo: added example.com/stamps v1.1.0\n",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    },
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/depot\n\ngo 1.27.3\n\nrequire (\n\texample.com/ink v1.0.0 // indirect\n\texample.com/stamps v1.1.0 // indirect\n)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    },
+    {
+     "cmd": "go mod tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    },
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/depot\n\ngo 1.27.3\n\nrequire example.com/stamps v1.1.0\n\nrequire example.com/ink v1.0.0 // indirect\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    },
+    {
+     "cmd": "cat go.sum",
+     "out": "example.com/ink v1.0.0 h1:8B/XKinVSiKDYZCpj8cXNY3K/VNKdtIUpcDQtAfByrI=\nexample.com/ink v1.0.0/go.mod h1:4VhKQ0qMvwB6zrA5tlz/gY+Xbn9OW3YUP8inQyVR01g=\nexample.com/stamps v1.1.0 h1:jXuWOavLtTcX3ENkDuyfr0z3442fi3MDCR75RYCKetU=\nexample.com/stamps v1.1.0/go.mod h1:w10QHwJH6PEBQdu3oCqfuNmV/w+3RaiVIBQw1vT1er0=\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    },
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+    "stderr": "go: downloading example.com/stamps v1.1.0\ngo: downloading example.com/ink v1.0.0\ngo: added example.com/ink v1.0.0\ngo: added example.com/stamps v1.1.0\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go get example.com/stamps@v1.1.0",
+      "out": "",
+      "err": "go: downloading example.com/stamps v1.1.0\ngo: downloading example.com/ink v1.0.0\ngo: added example.com/ink v1.0.0\ngo: added example.com/stamps v1.1.0\n",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     },
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/depot\n\ngo 1.24\n\nrequire (\n\texample.com/ink v1.0.0 // indirect\n\texample.com/stamps v1.1.0 // indirect\n)\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     },
+     {
+      "cmd": "go mod tidy",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     },
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/depot\n\ngo 1.24\n\nrequire example.com/stamps v1.1.0\n\nrequire example.com/ink v1.0.0 // indirect\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     },
+     {
+      "cmd": "cat go.sum",
+      "out": "example.com/ink v1.0.0 h1:8B/XKinVSiKDYZCpj8cXNY3K/VNKdtIUpcDQtAfByrI=\nexample.com/ink v1.0.0/go.mod h1:4VhKQ0qMvwB6zrA5tlz/gY+Xbn9OW3YUP8inQyVR01g=\nexample.com/stamps v1.1.0 h1:jXuWOavLtTcX3ENkDuyfr0z3442fi3MDCR75RYCKetU=\nexample.com/stamps v1.1.0/go.mod h1:w10QHwJH6PEBQdu3oCqfuNmV/w+3RaiVIBQw1vT1er0=\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     },
+     {
+      "cmd": "go run .",
+      "out": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/depot"
+     }
+    ]
+   }
+  },
+  "depot/main.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n\tfmt.Println(stamps.StampDay(\"parcel 43\", \"Mon\"))\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "library/stamps@v1.1.0/stamps.go": {
+   "src": "// Package stamps prints postage marks on parcel labels.\npackage stamps\n\nimport (\n\t\"example.com/ink\"\n\t\"example.com/stamps/internal/press\"\n)\n\n// Stamp returns the label with a postage mark in front.\nfunc Stamp(label string) string {\n\treturn press.Frame(ink.Mark()) + \" \" + label\n}\n\n// StampDay is like Stamp, and also prints the day.\n// Added in v1.1.0.\nfunc StampDay(label, day string) string {\n\treturn press.Frame(ink.Mark()+\" \"+day) + \" \" + label\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "library/ink@v1.0.0/ink.go": {
+   "src": "// Package ink mixes the ink that stamps are printed with.\npackage ink\n\n// Mark returns the word a stamp prints.\nfunc Mark() string {\n\treturn \"STAMPED\"\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "library/stamps@v1.1.0/internal/press/press.go": {
+   "src": "// Package press frames a mark. Only package stamps may use it.\npackage press\n\n// Frame puts square brackets around s.\nfunc Frame(s string) string {\n\treturn \"[\" + s + \"]\"\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "init_order.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nvar depot = open(\"depot\")\n\nfunc open(name string) string {\n\tfmt.Println(\"1. package variable: opening the\", name)\n\treturn name\n}\n\nfunc init() {\n\tfmt.Println(\"2. first init: sorting the\", depot)\n}\n\nfunc init() {\n\tfmt.Println(\"3. second init: counting stamps\")\n}\n\nfunc main() {\n\tfmt.Println(\"4. main: the\", depot, \"is ready\")\n}\n",
+   "stdout": "1. package variable: opening the depot\n2. first init: sorting the depot\n3. second init: counting stamps\n4. main: the depot is ready\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run init_order.go",
+     "out": "1. package variable: opening the depot\n2. first init: sorting the depot\n3. second init: counting stamps\n4. main: the depot is ready\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "install.go": {
+   "src": "// Command stampcli stamps every label given on the command line.\npackage main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfor _, label := range os.Args[1:] {\n\t\tfmt.Println(stamps.Stamp(label))\n\t}\n}\n",
+   "stdout": "[STAMPED] parcel7\n[STAMPED] parcel8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "export GOBIN=$HOME/go-ch21/inst/bin",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/inst"
+    },
+    {
+     "cmd": "go install example.com/stampcli@v1.0.0",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/inst"
+    },
+    {
+     "cmd": "ls $GOBIN",
+     "out": "stampcli\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/inst"
+    },
+    {
+     "cmd": "$GOBIN/stampcli parcel7 parcel8",
+     "out": "[STAMPED] parcel7\n[STAMPED] parcel8\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/inst"
+    }
+   ]
+  },
+  "library/stampcli@v1.0.0/go.mod": {
+   "src": "module example.com/stampcli\n\ngo 1.22\n\nrequire (\n\texample.com/ink v1.0.0 // indirect\n\texample.com/stamps v1.2.1\n)\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "join.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\tdir := \"archive/\"\n\tfmt.Println(dir + \"/2026/\" + \"mar.txt\")     // glued by hand: a double slash\n\tfmt.Println(\"archive\" + \"2026\" + \"mar.txt\") // glued by hand: no slash at all\n\tfmt.Println(filepath.Join(dir, \"2026\", \"mar.txt\"))\n\n\tp := filepath.Join(\"archive\", \"2026\", \"mar.txt\")\n\tfmt.Println(\"dir: \", filepath.Dir(p))\n\tfmt.Println(\"base:\", filepath.Base(p))\n\tfmt.Println(\"ext: \", filepath.Ext(p))\n}\n",
+   "stdout": "archive//2026/mar.txt\narchive2026mar.txt\narchive/2026/mar.txt\ndir:  archive/2026\nbase: mar.txt\next:  .txt\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run join.go",
+     "out": "archive//2026/mar.txt\narchive2026mar.txt\narchive/2026/mar.txt\ndir:  archive/2026\nbase: mar.txt\next:  .txt\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "join_machine.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\tfmt.Println(filepath.Join(\"archive\", \"2026\", \"mar.txt\"))\n\tfmt.Println(filepath.Join(\"archive/\", \"/2026/\", \"mar.txt\"))\n\tfmt.Println(filepath.Join(\"archive\", \"2026\", \"..\", \"2025\", \"jan.txt\"))\n\tfmt.Println(filepath.Join(\"archive\", \"\", \"readme.txt\"))\n\tfmt.Println(filepath.Join(\"/home/you\", \"go-ch21\"))\n\tfmt.Printf(\"%q\\n\", filepath.Join())\n}\n",
+   "stdout": "archive/2026/mar.txt\narchive/2026/mar.txt\narchive/2025/jan.txt\narchive/readme.txt\n/home/you/go-ch21\n\"\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run join_machine.go",
+     "out": "archive/2026/mar.txt\narchive/2026/mar.txt\narchive/2025/jan.txt\narchive/readme.txt\n/home/you/go-ch21\n\"\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "leak_fixed.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc openFiles() int {\n\tfds, _ := os.ReadDir(\"/proc/self/fd\") // Linux: one entry per open file\n\treturn len(fds)\n}\n\nfunc check(name string) error {\n\tf, err := os.Open(name)\n\tif err != nil {\n\t\treturn err\n\t}\n\tdefer f.Close() // runs when check returns: once per file\n\tfmt.Println(name, \"open files:\", openFiles())\n\treturn nil\n}\n\nfunc main() {\n\tnames := []string{\"parcels.txt\", \"banner.txt\", \"archive/readme.txt\", \"letters/ana.txt\"}\n\tfor _, name := range names {\n\t\tif err := check(name); err != nil {\n\t\t\tfmt.Println(err)\n\t\t\treturn\n\t\t}\n\t}\n}\n",
+   "stdout": "parcels.txt open files: 9\nbanner.txt open files: 9\narchive/readme.txt open files: 9\nletters/ana.txt open files: 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run leak_fixed.go",
+     "out": "parcels.txt open files: 9\nbanner.txt open files: 9\narchive/readme.txt open files: 9\nletters/ana.txt open files: 9\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "parcels.txt open files: 7\nbanner.txt open files: 7\narchive/readme.txt open files: 7\nletters/ana.txt open files: 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run leak_fixed.go",
+      "out": "parcels.txt open files: 7\nbanner.txt open files: 7\narchive/readme.txt open files: 7\nletters/ana.txt open files: 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "leak_loop.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc openFiles() int {\n\tfds, _ := os.ReadDir(\"/proc/self/fd\") // Linux: one entry per open file\n\treturn len(fds)\n}\n\nfunc main() {\n\tnames := []string{\"parcels.txt\", \"banner.txt\", \"archive/readme.txt\", \"letters/ana.txt\"}\n\tfor _, name := range names {\n\t\tf, err := os.Open(name)\n\t\tif err != nil {\n\t\t\tfmt.Println(err)\n\t\t\treturn\n\t\t}\n\t\tdefer f.Close() // runs when main ends, not at the end of this lap\n\t\tfmt.Println(name, \"open files:\", openFiles())\n\t}\n}\n",
+   "stdout": "parcels.txt open files: 9\nbanner.txt open files: 10\narchive/readme.txt open files: 11\nletters/ana.txt open files: 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run leak_loop.go",
+     "out": "parcels.txt open files: 9\nbanner.txt open files: 10\narchive/readme.txt open files: 11\nletters/ana.txt open files: 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "parcels.txt open files: 7\nbanner.txt open files: 8\narchive/readme.txt open files: 9\nletters/ana.txt open files: 10\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run leak_loop.go",
+      "out": "parcels.txt open files: 7\nbanner.txt open files: 8\narchive/readme.txt open files: 9\nletters/ana.txt open files: 10\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "no_flush.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriter(os.Stdout)\n\tfmt.Fprintln(w, \"parcel 1 delivered\")\n\tfmt.Fprintln(w, \"parcel 2 delivered\")\n\tfmt.Fprintln(w, \"parcel 3 delivered\")\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run no_flush.go",
+     "out": "",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_flags.go": {
+   "src": "package main\n\nimport (\n\t\"flag\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tword := flag.String(\"word\", \"beep\", \"what the horn says\")\n\tflag.Parse()\n\tfor _, van := range flag.Args() {\n\t\tfmt.Println(van, \"says\", *word)\n\t}\n}\n",
+   "stdout": "van1 says honk\nvan2 says honk\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run . -word honk van1 van2",
+     "out": "van1 says honk\nvan2 says honk\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/parsons_flags"
+    }
+   ]
+  },
+  "parsons_scan.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"parcels.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\tsc := bufio.NewScanner(f)\n\tfor sc.Scan() {\n\t\tfmt.Println(\">\", sc.Text())\n\t}\n}\n",
+   "stdout": "> Ana, 12 Harbour Road\n> Bo, 3 Mill Lane\n> \n> Cy, 77 Orchard Way\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_scan.go",
+     "out": "> Ana, 12 Harbour Road\n> Bo, 3 Mill Lane\n> \n> Cy, 77 Orchard Way\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_bucket.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriter(os.Stdout)\n\tfmt.Fprintln(w, \"sorting\")\n\tw.Flush()\n\tfmt.Fprintln(w, \"loading\")\n\tfmt.Println(\"waving\")\n\tfmt.Fprintln(w, \"driving\")\n}\n",
+   "stdout": "sorting\nwaving\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_bucket.go",
+     "out": "sorting\nwaving\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_init.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc init() {\n\tfmt.Println(\"lights on\")\n}\n\nfunc main() {\n\tfmt.Println(\"doors open\")\n}\n\nvar bell = ring()\n\nfunc ring() string {\n\tfmt.Println(\"bell rings\")\n\treturn \"ding\"\n}\n\nfunc init() {\n\tfmt.Println(\"kettle on, bell says\", bell)\n}\n",
+   "stdout": "bell rings\nlights on\nkettle on, bell says ding\ndoors open\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_init.go",
+     "out": "bell rings\nlights on\nkettle on, bell says ding\ndoors open\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "replace.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Printf(\"%q\\n\", stamps.Stamp(\"  parcel 42  \"))\n}\n",
+   "stdout": "example.com/stamps v1.2.1 => ../stamps-local\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "\"[STAMPED]   parcel 42  \"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/fixdepot"
+    },
+    {
+     "cmd": "go mod edit -replace example.com/stamps=../stamps-local",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/fixdepot"
+    },
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/depot\n\ngo 1.27.3\n\nrequire example.com/stamps v1.2.1\n\nrequire example.com/ink v1.0.0 // indirect\n\nreplace example.com/stamps => ../stamps-local\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/fixdepot"
+    },
+    {
+     "cmd": "go run .",
+     "out": "\"[STAMPED] parcel 42\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/fixdepot"
+    },
+    {
+     "cmd": "go list -m example.com/stamps",
+     "out": "example.com/stamps v1.2.1 => ../stamps-local\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/fixdepot"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "example.com/stamps v1.2.1 => ../stamps-local\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run .",
+      "out": "\"[STAMPED]   parcel 42  \"\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/fixdepot"
+     },
+     {
+      "cmd": "go mod edit -replace example.com/stamps=../stamps-local",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/fixdepot"
+     },
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/depot\n\ngo 1.24\n\nrequire example.com/stamps v1.2.1\n\nrequire example.com/ink v1.0.0 // indirect\n\nreplace example.com/stamps => ../stamps-local\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/fixdepot"
+     },
+     {
+      "cmd": "go run .",
+      "out": "\"[STAMPED] parcel 42\"\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/fixdepot"
+     },
+     {
+      "cmd": "go list -m example.com/stamps",
+      "out": "example.com/stamps v1.2.1 => ../stamps-local\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/fixdepot"
+     }
+    ]
+   }
+  },
+  "stamps-local/stamps.go": {
+   "src": "// Package stamps prints postage marks on parcel labels.\npackage stamps\n\nimport (\n\t\"strings\"\n\n\t\"example.com/ink\"\n\t\"example.com/stamps/internal/press\"\n)\n\n// Stamp returns the label with a postage mark in front.\nfunc Stamp(label string) string {\n\tlabel = strings.TrimSpace(label) // Scoot's fix: ignore spaces around the label\n\treturn press.Frame(ink.Mark()) + \" \" + label\n}\n\n// StampDay is like Stamp, and also prints the day.\n// Added in v1.1.0.\nfunc StampDay(label, day string) string {\n\treturn press.Frame(ink.Mark()+\" \"+day) + \" \" + label\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "road_break.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps/v2\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\")) // written for v1: one argument\n}\n",
+   "stdout": "",
+   "stderr": "# example/depot\n./main.go:10:27: not enough arguments in call to stamps.Stamp\n\thave (string)\n\twant (string, stamps.Color)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "",
+     "err": "# example/depot\n./main.go:10:27: not enough arguments in call to stamps.Stamp\n\thave (string)\n\twant (string, stamps.Color)\n",
+     "exit": 1,
+     "dir": "~/go-ch21/branch_break"
+    }
+   ]
+  },
+  "road_int.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps/internal/press\"\n)\n\nfunc main() {\n\tfmt.Println(press.Frame(\"FREE POSTAGE\") + \" parcel 42\")\n}\n",
+   "stdout": "",
+   "stderr": "package example/depot\n\tmain.go:6:2: use of internal package example.com/stamps/internal/press not allowed\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "",
+     "err": "package example/depot\n\tmain.go:6:2: use of internal package example.com/stamps/internal/press not allowed\n",
+     "exit": 1,
+     "dir": "~/go-ch21/branch_int"
+    }
+   ]
+  },
+  "road_own.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example/depot/internal/route\"\n)\n\nfunc main() {\n\tfmt.Println(\"parcel 42 goes\", route.Next(\"Lisbon\"))\n}\n",
+   "stdout": "parcel 42 goes north on the A1 to Lisbon\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "parcel 42 goes north on the A1 to Lisbon\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/branch_own"
+    }
+   ]
+  },
+  "branch_own/internal/route/route.go": {
+   "src": "// Package route plans van routes. Only packages inside example/depot may use it.\npackage route\n\n// Next returns the road to take towards city.\nfunc Next(city string) string {\n\treturn \"north on the A1 to \" + city\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "road_v1.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n}\n",
+   "stdout": "[STAMPED] parcel 42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED] parcel 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/branch_v1"
+    }
+   ]
+  },
+  "road_v2.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps/v2\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\", stamps.Blue))\n}\n",
+   "stdout": "[STAMPED in blue] parcel 42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED in blue] parcel 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/branch_v2"
+    }
+   ]
+  },
+  "run_pattern.go": {
+   "src": "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tif err := run(); err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"error:\", err)\n\t\tos.Exit(1)\n\t}\n}\n\nfunc run() error {\n\tdefer fmt.Println(\"cleanup: locking the depot\")\n\tfmt.Println(\"working\")\n\treturn errors.New(\"van 3 has a flat tyre\")\n}\n",
+   "stdout": "working\ncleanup: locking the depot\n",
+   "stderr": "error: van 3 has a flat tyre\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run run_pattern.go",
+     "out": "working\ncleanup: locking the depot\n",
+     "err": "error: van 3 has a flat tyre\nexit status 1\n",
+     "exit": 1,
+     "merged": "working\ncleanup: locking the depot\nerror: van 3 has a flat tyre\nexit status 1\n"
+    }
+   ]
+  },
+  "spot_exit.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tw := bufio.NewWriter(os.Stdout)\n\tdefer w.Flush()\n\n\tfmt.Fprintln(w, \"report: 3 parcels late\")\n\tif late := 3; late > 0 {\n\t\tos.Exit(2)\n\t}\n\tfmt.Fprintln(w, \"all on time\")\n}\n",
+   "stdout": "",
+   "stderr": "exit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_exit.go",
+     "out": "",
+     "err": "exit status 2\n",
+     "exit": 1
+    }
+   ]
+  },
+  "temp.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n\t\"strings\"\n)\n\nfunc main() {\n\tdir, err := os.MkdirTemp(\"\", \"depot-*\") // * becomes random digits\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer os.RemoveAll(dir) // tidy up: delete the folder and everything in it\n\n\tf, err := os.CreateTemp(dir, \"label-*.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Fprintln(f, \"fragile\")\n\tf.Close()\n\n\tname := filepath.Base(f.Name())\n\tfmt.Println(\"folder starts with depot-:\", strings.HasPrefix(filepath.Base(dir), \"depot-\"))\n\tfmt.Println(\"file is label-<digits>.txt:\", strings.HasPrefix(name, \"label-\"), filepath.Ext(name))\n\tdata, _ := os.ReadFile(f.Name())\n\tfmt.Print(\"it holds: \", string(data))\n}\n",
+   "stdout": "folder starts with depot-: true\nfile is label-<digits>.txt: true .txt\nit holds: fragile\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run temp.go",
+     "out": "folder starts with depot-: true\nfile is label-<digits>.txt: true .txt\nit holds: fragile\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "toolchain.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello from the future\")\n}\n",
+   "stdout": "",
+   "stderr": "go: go.mod requires go >= 1.28 (running go 1.27.3; GOTOOLCHAIN=local)\ngo: downloading go1.28.0 (linux/amd64)\ngo: download go1.28.0 for linux/amd64: toolchain not available\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/future\n\ngo 1.28\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/future"
+    },
+    {
+     "cmd": "go run .",
+     "out": "",
+     "err": "go: go.mod requires go >= 1.28 (running go 1.27.3; GOTOOLCHAIN=local)\n",
+     "exit": 1,
+     "dir": "~/go-ch21/future"
+    },
+    {
+     "cmd": "go env GOTOOLCHAIN",
+     "out": "local\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/future"
+    },
+    {
+     "cmd": "GOTOOLCHAIN=auto go run .",
+     "out": "",
+     "err": "go: downloading go1.28.0 (linux/amd64)\ngo: download go1.28.0 for linux/amd64: toolchain not available\n",
+     "exit": 1,
+     "dir": "~/go-ch21/future"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "go: go.mod requires go >= 1.28 (running go 1.24.7; GOTOOLCHAIN=local)\ngo: downloading go1.28.0 (linux/amd64)\ngo: download go1.28.0 for linux/amd64: toolchain not available\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/future\n\ngo 1.28\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/future"
+     },
+     {
+      "cmd": "go run .",
+      "out": "",
+      "err": "go: go.mod requires go >= 1.28 (running go 1.24.7; GOTOOLCHAIN=local)\n",
+      "exit": 1,
+      "dir": "~/go-ch21/future"
+     },
+     {
+      "cmd": "go env GOTOOLCHAIN",
+      "out": "local\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/future"
+     },
+     {
+      "cmd": "GOTOOLCHAIN=auto go run .",
+      "out": "",
+      "err": "go: downloading go1.28.0 (linux/amd64)\ngo: download go1.28.0 for linux/amd64: toolchain not available\n",
+      "exit": 1,
+      "dir": "~/go-ch21/future"
+     }
+    ]
+   }
+  },
+  "trace_scan.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"parcels.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\n\tsc := bufio.NewScanner(f)\n\tn := 0\n\tfor sc.Scan() {\n\t\tn++\n\t\tline := sc.Text()\n\t\tfmt.Println(n, len(line), line == \"\")\n\t}\n}\n",
+   "stdout": "1 20 false\n2 15 false\n3 0 true\n4 18 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_scan.go",
+     "out": "1 20 false\n2 15 false\n3 0 true\n4 18 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_walk.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"io/fs\"\n\t\"path/filepath\"\n\t\"strings\"\n)\n\nfunc main() {\n\tfilepath.WalkDir(\"archive\", func(path string, d fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tdepth := strings.Count(path, string(filepath.Separator))\n\t\tfmt.Println(d.Name(), depth, d.IsDir())\n\t\treturn nil\n\t})\n}\n",
+   "stdout": "archive 0 true\n2025 1 true\nfeb.txt 2 false\njan.txt 2 false\n2026 1 true\nmar.txt 2 false\nreadme.txt 1 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_walk.go",
+     "out": "archive 0 true\n2025 1 true\nfeb.txt 2 false\njan.txt 2 false\n2026 1 true\nmar.txt 2 false\nreadme.txt 1 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v1v2.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n\tstamps2 \"example.com/stamps/v2\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n\tfmt.Println(stamps2.Stamp(\"parcel 42\", stamps2.Red))\n}\n",
+   "stdout": "[STAMPED] parcel 42\n[STAMPED in red] parcel 42\n",
+   "stderr": "go: example.com/stamps@v2.0.0: reading file:///home/you/go-ch21/.proxy/example.com/stamps/@v/v2.0.0.info: no such file or directory\ngo: added example.com/stamps/v2 v2.0.0\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go get example.com/stamps@v2.0.0",
+     "out": "",
+     "err": "go: example.com/stamps@v2.0.0: reading file:///home/you/go-ch21/.proxy/example.com/stamps/@v/v2.0.0.info: no such file or directory\n",
+     "exit": 1,
+     "dir": "~/go-ch21/depot3"
+    },
+    {
+     "cmd": "go get example.com/stamps/v2@v2.0.0",
+     "out": "",
+     "err": "go: added example.com/stamps/v2 v2.0.0\n",
+     "exit": 0,
+     "dir": "~/go-ch21/depot3"
+    },
+    {
+     "cmd": "go list -m all",
+     "out": "example/depot\nexample.com/ink v1.0.0\nexample.com/stamps v1.2.1\nexample.com/stamps/v2 v2.0.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot3"
+    },
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED] parcel 42\n[STAMPED in red] parcel 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot3"
+    }
+   ]
+  },
+  "library/stamps-v2@v2.0.0/stamps.go": {
+   "src": "// Package stamps prints postage marks in colour. This is version 2.\npackage stamps\n\n// Color is an ink colour.\ntype Color string\n\n// The colours a stamp can be.\nconst (\n\tRed  Color = \"red\"\n\tBlue Color = \"blue\"\n)\n\n// Stamp returns the label with a coloured postage mark in front.\n// Version 2 needs the colour: calls written for v1 no longer compile.\nfunc Stamp(label string, c Color) string {\n\treturn \"[STAMPED in \" + string(c) + \"] \" + label\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "library/stamps-v2@v2.0.0/go.mod": {
+   "src": "module example.com/stamps/v2\n\ngo 1.22\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "library/stamps@v1.2.1/go.mod": {
+   "src": "module example.com/stamps\n\ngo 1.22\n\nrequire example.com/ink v1.0.0\n\n// v1.2.0 swapped the label and the day in StampDay.\nretract v1.2.0\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "vendor.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n}\n",
+   "stdout": "[STAMPED] parcel 42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go mod vendor",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/vdepot"
+    },
+    {
+     "cmd": "find vendor -type f | sort",
+     "out": "vendor/example.com/ink/ink.go\nvendor/example.com/stamps/internal/press/press.go\nvendor/example.com/stamps/stamps.go\nvendor/modules.txt\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/vdepot"
+    },
+    {
+     "cmd": "cat vendor/modules.txt",
+     "out": "# example.com/ink v1.0.0\n## explicit; go 1.22\nexample.com/ink\n# example.com/stamps v1.2.1\n## explicit; go 1.22\nexample.com/stamps\nexample.com/stamps/internal/press\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/vdepot"
+    },
+    {
+     "cmd": "GOPROXY=off go run .",
+     "out": "[STAMPED] parcel 42\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/vdepot"
+    }
+   ]
+  },
+  "versions.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n\tfmt.Println(stamps.StampDay(\"parcel 43\", \"Mon\"))\n}\n",
+   "stdout": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+   "stderr": "go: warning: example.com/stamps@v1.2.0: retracted by module author: v1.2.0 swapped the label and the day in StampDay.\ngo: to switch to the latest unretracted version, run:\n\tgo get example.com/stamps@latest\ngo: upgraded example.com/stamps v1.1.0 => v1.2.0\ngo: upgraded example.com/stamps v1.2.0 => v1.2.1\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go list -m all",
+     "out": "example/depot\nexample.com/ink v1.0.0\nexample.com/stamps v1.1.0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go list -m -versions example.com/stamps",
+     "out": "example.com/stamps v1.0.0 v1.1.0 v1.2.1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go get example.com/stamps@v1.2.0",
+     "out": "",
+     "err": "go: warning: example.com/stamps@v1.2.0: retracted by module author: v1.2.0 swapped the label and the day in StampDay.\ngo: to switch to the latest unretracted version, run:\n\tgo get example.com/stamps@latest\ngo: upgraded example.com/stamps v1.1.0 => v1.2.0\n",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED] parcel 42\n[STAMPED parcel 43] Mon\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go get example.com/stamps@latest",
+     "out": "",
+     "err": "go: upgraded example.com/stamps v1.2.0 => v1.2.1\n",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go run .",
+     "out": "[STAMPED] parcel 42\n[STAMPED Mon] parcel 43\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    }
+   ]
+  },
+  "walk.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"io/fs\"\n\t\"path/filepath\"\n)\n\nfunc main() {\n\terr := filepath.WalkDir(\"archive\", func(path string, d fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tkind := \"file\"\n\t\tif d.IsDir() {\n\t\t\tkind = \"DIR \"\n\t\t}\n\t\tfmt.Println(kind, path)\n\t\treturn nil\n\t})\n\tif err != nil {\n\t\tfmt.Println(\"walk failed:\", err)\n\t}\n}\n",
+   "stdout": "DIR  archive\nDIR  archive/2025\nfile archive/2025/feb.txt\nfile archive/2025/jan.txt\nDIR  archive/2026\nfile archive/2026/mar.txt\nfile archive/readme.txt\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run walk.go",
+     "out": "DIR  archive\nDIR  archive/2025\nfile archive/2025/feb.txt\nfile archive/2025/jan.txt\nDIR  archive/2026\nfile archive/2026/mar.txt\nfile archive/readme.txt\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "why.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Println(stamps.Stamp(\"parcel 42\"))\n\tfmt.Println(stamps.StampDay(\"parcel 43\", \"Mon\"))\n}\n",
+   "stdout": "example.com/stamps v1.0.0 v1.1.0 v1.2.0 v1.2.1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go mod why -m example.com/ink",
+     "out": "# example.com/ink\nexample/depot\nexample.com/stamps\nexample.com/ink\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    },
+    {
+     "cmd": "go list -m -retracted -versions example.com/stamps",
+     "out": "example.com/stamps v1.0.0 v1.1.0 v1.2.0 v1.2.1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/depot2"
+    }
+   ]
+  },
+  "work.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/stamps\"\n)\n\nfunc main() {\n\tfmt.Printf(\"%q\\n\", stamps.Stamp(\"  parcel 42  \"))\n}\n",
+   "stdout": "\"[STAMPED]   parcel 42  \"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go work init . ../stamps-local",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/wsdepot"
+    },
+    {
+     "cmd": "cat go.work",
+     "out": "go 1.27.3\n\nuse (\n\t.\n\t../stamps-local\n)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/wsdepot"
+    },
+    {
+     "cmd": "go run .",
+     "out": "\"[STAMPED] parcel 42\"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/wsdepot"
+    },
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/depot\n\ngo 1.27.3\n\nrequire example.com/stamps v1.2.1\n\nrequire example.com/ink v1.0.0 // indirect\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/wsdepot"
+    },
+    {
+     "cmd": "GOWORK=off go run .",
+     "out": "\"[STAMPED]   parcel 42  \"\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch21/wsdepot"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "\"[STAMPED]   parcel 42  \"\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go work init . ../stamps-local",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/wsdepot"
+     },
+     {
+      "cmd": "cat go.work",
+      "out": "go 1.24.7\n\nuse (\n\t.\n\t../stamps-local\n)\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/wsdepot"
+     },
+     {
+      "cmd": "go run .",
+      "out": "\"[STAMPED] parcel 42\"\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/wsdepot"
+     },
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/depot\n\ngo 1.24\nrequire example.com/stamps v1.2.1\n\nrequire example.com/ink v1.0.0 // indirect\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/wsdepot"
+     },
+     {
+      "cmd": "GOWORK=off go run .",
+      "out": "\"[STAMPED]   parcel 42  \"\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch21/wsdepot"
+     }
+    ]
+   }
+  },
+  "write_read.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\t// 1. Create a file (or empty it if it exists) and write to it.\n\tf, err := os.Create(\"notes.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"create failed:\", err)\n\t\treturn\n\t}\n\tfmt.Fprintln(f, \"pick up parcel 7\")\n\tfmt.Fprintln(f, \"deliver parcel 8\")\n\tf.Close()\n\n\t// 2. Open it again and read it line by line.\n\tr, err := os.Open(\"notes.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"open failed:\", err)\n\t\treturn\n\t}\n\tdefer r.Close()\n\n\tsc := bufio.NewScanner(r)\n\tn := 0\n\tfor sc.Scan() {\n\t\tn++\n\t\tfmt.Printf(\"line %d: %s\\n\", n, sc.Text())\n\t}\n\tif err := sc.Err(); err != nil {\n\t\tfmt.Println(\"read failed:\", err)\n\t}\n}\n",
+   "stdout": "line 1: pick up parcel 7\nline 2: deliver parcel 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run write_read.go",
+     "out": "line 1: pick up parcel 7\nline 2: deliver parcel 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

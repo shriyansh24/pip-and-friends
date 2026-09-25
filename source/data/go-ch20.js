@@ -1,0 +1,814 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch20",
+  "versionDifferences": [
+   "genmethod.go",
+   "genmethod_old.go",
+   "ignore_yield.go",
+   "keys_order.go",
+   "spot_yield.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): genmethod.go, genmethod_old.go, ignore_yield.go, keys_order.go, spot_yield.go."
+ },
+ "programs": {
+  "any_eq.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc Contains[T any](items []T, want T) bool {\n\tfor _, v := range items {\n\t\tif v == want {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}\n\nfunc main() {\n\tfmt.Println(Contains([]int{1, 2, 3}, 2))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./any_eq.go:7:6: invalid operation: v == want (incomparable types in type set)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run any_eq.go",
+     "out": "",
+     "err": "# command-line-arguments\n./any_eq.go:7:6: invalid operation: v == want (incomparable types in type set)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "any_gt.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc Max[T any](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tfmt.Println(Max(3, 7))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./any_gt.go:6:5: invalid operation: a > b (type parameter T cannot use operator >)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run any_gt.go",
+     "out": "",
+     "err": "# command-line-arguments\n./any_gt.go:6:5: invalid operation: a > b (type parameter T cannot use operator >)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc Contains[T comparable](items []T, want T) bool {\n\tfor _, v := range items {\n\t\tif v == want {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}\n\nfunc main() {\n\troutes := [][]string{{\"bakery\", \"park\"}, {\"zoo\"}}\n\tfmt.Println(Contains(routes, []string{\"zoo\"}))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./boss_err.go:16:22: []string does not satisfy comparable\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./boss_err.go:16:22: []string does not satisfy comparable\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n\t\"maps\"\n\t\"slices\"\n)\n\nfunc SortedKeys[K cmp.Ordered, V any](m map[K]V) []K {\n\treturn slices.Sorted(maps.Keys(m))\n}\n\nfunc main() {\n\tstock := map[string]int{\"pear\": 3, \"fig\": 1, \"kiwi\": 2}\n\tfmt.Println(SortedKeys(stock))\n\tages := map[int]string{30: \"Ada\", 7: \"Kit\"}\n\tfmt.Println(SortedKeys(ages))\n}\n",
+   "stdout": "[fig kiwi pear]\n[7 30]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go",
+     "out": "[fig kiwi pear]\n[7 30]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(v T) {\n\ts.items = append(s.items, v)\n}\n\nfunc (s *Stack[T]) All() iter.Seq[T] {\n\treturn func(yield func(T) bool) {\n\t\tfor i := len(s.items) - 1; i >= 0; i-- {\n\t\t\tif !yield(s.items[i]) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tvar s Stack[string]\n\ts.Push(\"lamp\")\n\ts.Push(\"book\")\n\ts.Push(\"kite\")\n\tfor p := range s.All() {\n\t\tfmt.Println(p)\n\t}\n}\n",
+   "stdout": "kite\nbook\nlamp\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "kite\nbook\nlamp\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n\t\"slices\"\n)\n\nfunc Filter[T any](seq iter.Seq[T], keep func(T) bool) iter.Seq[T] {\n\treturn func(yield func(T) bool) {\n\t\tfor v := range seq {\n\t\t\tif keep(v) && !yield(v) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tnums := slices.Values([]int{1, 2, 3, 4, 5, 6})\n\teven := func(n int) bool { return n%2 == 0 }\n\tfmt.Println(slices.Collect(Filter(nums, even)))\n\tfor v := range Filter(nums, even) {\n\t\tif v > 2 {\n\t\t\tfmt.Println(\"first big:\", v)\n\t\t\tbreak\n\t\t}\n\t}\n}\n",
+   "stdout": "[2 4 6]\nfirst big: 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "[2 4 6]\nfirst big: 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Largest[T cmp.Ordered](items []T) T {\n\tvar best T\n\tfor _, v := range items {\n\t\tif v > best {\n\t\t\tbest = v\n\t\t}\n\t}\n\treturn best\n}\n\nfunc main() {\n\tfmt.Println(Largest([]int{3, 9, 4}))\n\tfmt.Println(Largest([]int{-5, -2, -9}))\n}\n",
+   "stdout": "9\n0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "9\n0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Fib() iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\ta, b := 0, 1\n\t\tfor {\n\t\t\tif !yield(a) {\n\t\t\t\treturn\n\t\t\t}\n\t\t\ta, b = b, a+b\n\t\t}\n\t}\n}\n\nfunc main() {\n\tn := 0\n\tfor v := range Fib() {\n\t\tn++\n\t\tif v > 10 {\n\t\t\tbreak\n\t\t}\n\t\tfmt.Println(n, v)\n\t}\n}\n",
+   "stdout": "1 0\n2 1\n3 1\n4 2\n5 3\n6 5\n7 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "1 0\n2 1\n3 1\n4 2\n5 3\n6 5\n7 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "break_early.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor v := range Countdown(3) {\n\t\tfmt.Println(v)\n\t\tif v == 2 {\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"liftoff!\")\n}\n",
+   "stdout": "3\n2\nliftoff!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run break_early.go",
+     "out": "3\n2\nliftoff!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "collect.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n\t\"maps\"\n\t\"slices\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfmt.Println(slices.Collect(Countdown(4)))\n\tfmt.Println(slices.Sorted(Countdown(4)))\n\tfor w := range slices.Values([]string{\"hi\", \"yo\"}) {\n\t\tfmt.Print(w, \" \")\n\t}\n\tfmt.Println()\n\tm := map[string]int{\"b\": 2, \"a\": 1}\n\tfmt.Println(slices.Sorted(maps.Keys(m)))\n\tfmt.Println(slices.Sorted(maps.Values(m)))\n}\n",
+   "stdout": "[4 3 2 1]\n[1 2 3 4]\nhi yo \n[a b]\n[1 2]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run collect.go",
+     "out": "[4 3 2 1]\n[1 2 3 4]\nhi yo \n[a b]\n[1 2]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "comparable.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Point struct{ X, Y int }\n\nfunc Contains[T comparable](items []T, want T) bool {\n\tfor _, v := range items {\n\t\tif v == want {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}\n\nfunc main() {\n\tfmt.Println(Contains([]string{\"red\", \"green\"}, \"green\"))\n\tfmt.Println(Contains([]int{1, 2, 3}, 5))\n\tfmt.Println(Contains([]Point{{1, 2}, {3, 4}}, Point{3, 4}))\n}\n",
+   "stdout": "true\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run comparable.go",
+     "out": "true\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "copy_paste.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc MaxInt(a, b int) int {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc MaxFloat(a, b float64) float64 {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc MaxString(a, b string) string {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tfmt.Println(MaxInt(3, 7))\n\tfmt.Println(MaxFloat(2.5, 1.5))\n\tfmt.Println(MaxString(\"apple\", \"pear\"))\n}\n",
+   "stdout": "7\n2.5\npear\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run copy_paste.go",
+     "out": "7\n2.5\npear\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "countdown.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor v := range Countdown(3) {\n\t\tfmt.Println(v)\n\t}\n\tfmt.Println(\"liftoff!\")\n}\n",
+   "stdout": "3\n2\n1\nliftoff!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run countdown.go",
+     "out": "3\n2\n1\nliftoff!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "crank.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Gumballs(colors []string) iter.Seq[string] {\n\treturn func(yield func(string) bool) {\n\t\tfor _, c := range colors {\n\t\t\tfmt.Println(\"machine: drops\", c)\n\t\t\tif !yield(c) {\n\t\t\t\tfmt.Println(\"machine: yield said false, stop\")\n\t\t\t\treturn\n\t\t\t}\n\t\t\tfmt.Println(\"machine: yield said true\")\n\t\t}\n\t\tfmt.Println(\"machine: empty\")\n\t}\n}\n\nfunc main() {\n\tfor g := range Gumballs([]string{\"red\", \"blue\", \"green\", \"pink\"}) {\n\t\tfmt.Println(\"Scoot gets\", g)\n\t\tif g == \"green\" {\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"Scoot walks away\")\n}\n",
+   "stdout": "machine: drops red\nScoot gets red\nmachine: yield said true\nmachine: drops blue\nScoot gets blue\nmachine: yield said true\nmachine: drops green\nScoot gets green\nmachine: yield said false, stop\nScoot walks away\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run crank.go",
+     "out": "machine: drops red\nScoot gets red\nmachine: yield said true\nmachine: drops blue\nScoot gets blue\nmachine: yield said true\nmachine: drops green\nScoot gets green\nmachine: yield said false, stop\nScoot walks away\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_constraint.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Number interface {\n\t~int | ~float64\n}\n\nfunc Average[T Number](nums []T) float64 {\n\tvar total T\n\tfor _, n := range nums {\n\t\ttotal += n\n\t}\n\treturn float64(total) / float64(len(nums))\n}\n\ntype Score int\n\nfunc main() {\n\tfmt.Println(Average([]int{2, 4, 9}))\n\tfmt.Println(Average([]Score{7, 8}))\n}\n",
+   "stdout": "5\n7.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_constraint.go",
+     "out": "5\n7.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_yield.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Letters(word string) iter.Seq[string] {\n\treturn func(yield func(string) bool) {\n\t\tfor _, r := range word {\n\t\t\tif !yield(string(r)) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor l := range Letters(\"scoot\") {\n\t\tif l == \"t\" {\n\t\t\tbreak\n\t\t}\n\t\tfmt.Print(l, \"-\")\n\t}\n\tfmt.Println(\"!\")\n}\n",
+   "stdout": "s-c-o-o-!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_yield.go",
+     "out": "s-c-o-o-!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "first_generic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc First[T any](items []T) T {\n\treturn items[0]\n}\n\nfunc main() {\n\tnums := []int{42, 7, 19}\n\twords := []string{\"cookie\", \"cake\"}\n\tfmt.Println(First(nums))\n\tfmt.Println(First(words))\n\tfmt.Println(First[float64]([]float64{2.5, 9}))\n\tfmt.Printf(\"%T %T\\n\", First(nums), First(words))\n}\n",
+   "stdout": "42\ncookie\n2.5\nint string\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run first_generic.go",
+     "out": "42\ncookie\n2.5\nint string\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "genmethod.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\ntype Parcel[T any] struct {\n\tItem T\n}\n\nfunc (p Parcel[T]) Relabel[U any](f func(T) U) Parcel[U] {\n\treturn Parcel[U]{Item: f(p.Item)}\n}\n\nfunc main() {\n\tp := Parcel[string]{Item: \"kite\"}\n\tbig := p.Relabel(strings.ToUpper)\n\tsize := p.Relabel(func(s string) int { return len(s) })\n\tfmt.Println(big.Item, size.Item)\n\tfmt.Printf(\"%T\\n%T\\n\", big, size)\n}\n",
+   "stdout": "KITE 4\nmain.Parcel[string]\nmain.Parcel[int]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run genmethod.go",
+     "out": "KITE 4\nmain.Parcel[string]\nmain.Parcel[int]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# command-line-arguments\n./genmethod.go:12:27: syntax error: method must have no type parameters\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run genmethod.go",
+      "out": "",
+      "err": "# command-line-arguments\n./genmethod.go:12:27: syntax error: method must have no type parameters\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "genmethod_iface.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Relabeler interface {\n\tRelabel[U any](f func(string) U) U\n}\n\nfunc main() {\n\tvar r Relabeler\n\tfmt.Println(r == nil)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./genmethod_iface.go:6:9: interface method must have no type parameters\n./genmethod_iface.go:6:32: undefined: U\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run genmethod_iface.go",
+     "out": "",
+     "err": "# command-line-arguments\n./genmethod_iface.go:6:9: interface method must have no type parameters\n./genmethod_iface.go:6:32: undefined: U\n",
+     "exit": 1
+    }
+   ]
+  },
+  "genmethod_old.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\ntype Parcel[T any] struct {\n\tItem T\n}\n\nfunc (p Parcel[T]) Relabel[U any](f func(T) U) Parcel[U] {\n\treturn Parcel[U]{Item: f(p.Item)}\n}\n\nfunc main() {\n\tp := Parcel[string]{Item: \"kite\"}\n\tbig := p.Relabel(strings.ToUpper)\n\tsize := p.Relabel(func(s string) int { return len(s) })\n\tfmt.Println(big.Item, size.Item)\n\tfmt.Printf(\"%T\\n%T\\n\", big, size)\n}\n",
+   "stdout": "",
+   "stderr": "# example/old\n./main.go:12:28: generic method requires go1.27 or later (-lang was set to go1.26; check go.mod)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/old\n\ngo 1.26\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch20/old"
+    },
+    {
+     "cmd": "go run .",
+     "out": "",
+     "err": "# example/old\n./main.go:12:28: generic method requires go1.27 or later (-lang was set to go1.26; check go.mod)\n",
+     "exit": 1,
+     "dir": "~/go-ch20/old"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# example/old\n./main.go:12:27: syntax error: method must have no type parameters\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "cat go.mod",
+      "out": "module example/old\n\ngo 1.24",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch20/old"
+     },
+     {
+      "cmd": "go run .",
+      "out": "",
+      "err": "# example/old\n./main.go:12:27: syntax error: method must have no type parameters\n",
+      "exit": 1,
+      "dir": "~/go-ch20/old"
+     }
+    ]
+   }
+  },
+  "iface_or_generic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Parcel struct{ ID int }\n\nfunc (p Parcel) String() string { return fmt.Sprintf(\"parcel #%d\", p.ID) }\n\n// Label only calls a method, so an interface parameter is enough.\nfunc Label(s fmt.Stringer) string {\n\treturn \"[\" + s.String() + \"]\"\n}\n\n// Last works on the slice itself, whatever is inside: a type parameter earns its place.\nfunc Last[T any](items []T) T {\n\treturn items[len(items)-1]\n}\n\nfunc main() {\n\tfmt.Println(Label(Parcel{7}))\n\tfmt.Println(Last([]Parcel{{1}, {2}, {3}}))\n\tfmt.Println(Last([]string{\"a\", \"z\"}))\n}\n",
+   "stdout": "[parcel #7]\nparcel #3\nz\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run iface_or_generic.go",
+     "out": "[parcel #7]\nparcel #3\nz\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ignore_yield.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tyield(i)\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor v := range Countdown(3) {\n\t\tfmt.Println(v)\n\t\tif v == 2 {\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"liftoff!\")\n}\n",
+   "stdout": "3\n2\n",
+   "stderr": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xc5\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run ignore_yield.go",
+     "out": "3\n2\n",
+     "err": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xc5\nexit status 2\n",
+     "exit": 1,
+     "merged": "3\n2\npanic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xc5\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "3\n2\n",
+    "stderr": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.main.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xe6\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run ignore_yield.go",
+      "out": "3\n2\n",
+      "err": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.main.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xe6\nexit status 2\n",
+      "exit": 1,
+      "merged": "3\n2\npanic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/ignore_yield.go:17\nmain.main.Countdown.func1(...)\n\t/home/you/go-ch20/ignore_yield.go:11\nmain.main()\n\t/home/you/go-ch20/ignore_yield.go:17 +0xe6\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "keys_order.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"maps\"\n)\n\nfunc main() {\n\tstock := map[string]int{\"apple\": 5, \"kiwi\": 2, \"lime\": 7, \"fig\": 1, \"pear\": 3}\n\tfor round := 1; round <= 4; round++ {\n\t\tfmt.Print(\"round \", round, \":\")\n\t\tfor k := range maps.Keys(stock) {\n\t\t\tfmt.Print(\" \", k)\n\t\t}\n\t\tfmt.Println()\n\t}\n}\n",
+   "stdout": "round 1: apple kiwi lime fig pear\nround 2: fig pear apple kiwi lime\nround 3: lime fig pear apple kiwi\nround 4: apple kiwi lime fig pear\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run keys_order.go",
+     "out": "round 1: apple kiwi lime fig pear\nround 2: fig pear apple kiwi lime\nround 3: lime fig pear apple kiwi\nround 4: apple kiwi lime fig pear\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "round 1: kiwi lime fig pear apple\nround 2: lime fig pear apple kiwi\nround 3: lime fig pear apple kiwi\nround 4: apple kiwi lime fig pear\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run keys_order.go",
+      "out": "round 1: kiwi lime fig pear apple\nround 2: lime fig pear apple kiwi\nround 3: lime fig pear apple kiwi\nround 4: apple kiwi lime fig pear\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lazy.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nvar reads = 0\n\nfunc readLine(i int) string {\n\treads++\n\treturn fmt.Sprint(\"line \", i)\n}\n\nfunc AllLines(n int) []string {\n\tvar lines []string\n\tfor i := 1; i <= n; i++ {\n\t\tlines = append(lines, readLine(i))\n\t}\n\treturn lines\n}\n\nfunc Lines(n int) iter.Seq[string] {\n\treturn func(yield func(string) bool) {\n\t\tfor i := 1; i <= n; i++ {\n\t\t\tif !yield(readLine(i)) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor _, l := range AllLines(1000000) {\n\t\tif l == \"line 3\" {\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"slice: lines read =\", reads)\n\treads = 0\n\tfor l := range Lines(1000000) {\n\t\tif l == \"line 3\" {\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"iterator: lines read =\", reads)\n}\n",
+   "stdout": "slice: lines read = 1000000\niterator: lines read = 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run lazy.go",
+     "out": "slice: lines read = 1000000\niterator: lines read = 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "max_machine.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Max[T cmp.Ordered](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\ntype Celsius float64\n\nfunc main() {\n\tfmt.Println(\"Max(3, 7) =\", Max(3, 7))\n\tfmt.Println(\"Max(2.5, 1.5) =\", Max(2.5, 1.5))\n\tfmt.Printf(\"Max(\\\"apple\\\", \\\"pear\\\") = %q\\n\", Max(\"apple\", \"pear\"))\n\tfmt.Println(\"Max('a', 'b') =\", Max('a', 'b'))\n\tfmt.Println(\"Max(Celsius(20), Celsius(31)) =\", Max(Celsius(20), Celsius(31)))\n}\n",
+   "stdout": "Max(3, 7) = 7\nMax(2.5, 1.5) = 2.5\nMax(\"apple\", \"pear\") = \"pear\"\nMax('a', 'b') = 98\nMax(Celsius(20), Celsius(31)) = 31\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run max_machine.go",
+     "out": "Max(3, 7) = 7\nMax(2.5, 1.5) = 2.5\nMax(\"apple\", \"pear\") = \"pear\"\nMax('a', 'b') = 98\nMax(Celsius(20), Celsius(31)) = 31\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "max_mixed.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Max[T cmp.Ordered](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tn := 3\n\tfmt.Println(Max(n, 2.5))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./max_mixed.go:17:21: cannot use 2.5 (untyped float constant) as int value in argument to Max (truncated)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run max_mixed.go",
+     "out": "",
+     "err": "# command-line-arguments\n./max_mixed.go:17:21: cannot use 2.5 (untyped float constant) as int value in argument to Max (truncated)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "max_ordered.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Max[T cmp.Ordered](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tfmt.Println(Max(3, 7))\n\tfmt.Println(Max(2.5, 1.5))\n\tfmt.Println(Max(\"apple\", \"pear\"))\n\tfmt.Println(Max[float64](3, 2.5))\n}\n",
+   "stdout": "7\n2.5\npear\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run max_ordered.go",
+     "out": "7\n2.5\npear\n3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "max_struct.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\ntype Point struct{ X, Y int }\n\nfunc Max[T cmp.Ordered](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tfmt.Println(Max(Point{1, 2}, Point{3, 4}))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./max_struct.go:18:17: Point does not satisfy cmp.Ordered (Point missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~string)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run max_struct.go",
+     "out": "",
+     "err": "# command-line-arguments\n./max_struct.go:18:17: Point does not satisfy cmp.Ordered (Point missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~string)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "no_tilde.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Number interface {\n\tint | float64\n}\n\nfunc Sum[T Number](nums []T) T {\n\tvar total T\n\tfor _, n := range nums {\n\t\ttotal += n\n\t}\n\treturn total\n}\n\ntype Celsius float64\n\nfunc main() {\n\ttemps := []Celsius{20.5, 21}\n\tfmt.Println(Sum(temps))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./no_tilde.go:21:17: Celsius does not satisfy Number (possibly missing ~ for float64 in Number)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run no_tilde.go",
+     "out": "",
+     "err": "# command-line-arguments\n./no_tilde.go:21:17: Celsius does not satisfy Number (possibly missing ~ for float64 in Number)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "number.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Number interface {\n\t~int | ~float64\n}\n\nfunc Sum[T Number](nums []T) T {\n\tvar total T\n\tfor _, n := range nums {\n\t\ttotal += n\n\t}\n\treturn total\n}\n\ntype Celsius float64\n\nfunc main() {\n\tfmt.Println(Sum([]int{1, 2, 3}))\n\tfmt.Println(Sum([]float64{1.5, 2.25}))\n\ttemps := []Celsius{20.5, 21}\n\tfmt.Println(Sum(temps))\n\tfmt.Printf(\"%T\\n\", Sum(temps))\n}\n",
+   "stdout": "6\n3.75\n41.5\nmain.Celsius\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run number.go",
+     "out": "6\n3.75\n41.5\nmain.Celsius\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "number_string.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Number interface {\n\t~int | ~float64\n}\n\nfunc Sum[T Number](nums []T) T {\n\tvar total T\n\tfor _, n := range nums {\n\t\ttotal += n\n\t}\n\treturn total\n}\n\nfunc main() {\n\tfmt.Println(Sum([]string{\"a\", \"b\"}))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./number_string.go:18:17: string does not satisfy Number (string missing in ~int | ~float64)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run number_string.go",
+     "out": "",
+     "err": "# command-line-arguments\n./number_string.go:18:17: string does not satisfy Number (string missing in ~int | ~float64)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "parsons_generic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc Count[T comparable](items []T, want T) int {\n\tn := 0\n\tfor _, v := range items {\n\t\tif v == want {\n\t\t\tn++\n\t\t}\n\t}\n\treturn n\n}\n\nfunc main() {\n\tfmt.Println(Count([]string{\"a\", \"b\", \"a\"}, \"a\"))\n\tfmt.Println(Count([]int{7, 7, 7}, 7))\n}\n",
+   "stdout": "2\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_generic.go",
+     "out": "2\n3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_iter.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Repeat(word string, times int) iter.Seq[string] {\n\treturn func(yield func(string) bool) {\n\t\tfor i := 0; i < times; i++ {\n\t\t\tif !yield(word) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor w := range Repeat(\"beep\", 3) {\n\t\tfmt.Println(w)\n\t}\n}\n",
+   "stdout": "beep\nbeep\nbeep\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_iter.go",
+     "out": "beep\nbeep\nbeep\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_break.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Evens(limit int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := 0; i <= limit; i += 2 {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor v := range Evens(10) {\n\t\tif v == 6 {\n\t\t\tbreak\n\t\t}\n\t\tfmt.Println(v)\n\t}\n\tfmt.Println(\"done\")\n}\n",
+   "stdout": "0\n2\n4\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_break.go",
+     "out": "0\n2\n4\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_crank.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Cookies(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := 1; i <= n; i++ {\n\t\t\tfmt.Println(\"bake\", i)\n\t\t\tif !yield(i) {\n\t\t\t\tfmt.Println(\"oven off\")\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor c := range Cookies(5) {\n\t\tfmt.Println(\"eat\", c)\n\t\tif c == 2 {\n\t\t\tbreak\n\t\t}\n\t}\n}\n",
+   "stdout": "bake 1\neat 1\nbake 2\neat 2\noven off\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_crank.go",
+     "out": "bake 1\neat 1\nbake 2\neat 2\noven off\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_infer.go": {
+   "src": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Max[T cmp.Ordered](a, b T) T {\n\tif a > b {\n\t\treturn a\n\t}\n\treturn b\n}\n\nfunc main() {\n\tfmt.Println(Max(3, 2.5))\n\tfmt.Println(Max(\"Zebra\", \"apple\"))\n\tfmt.Println(Max[int](10, 'A'))\n}\n",
+   "stdout": "3\napple\n65\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_infer.go",
+     "out": "3\napple\n65\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_slices.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"slices\"\n)\n\nfunc main() {\n\tstops := []string{\"park\", \"bakery\", \"zoo\", \"bakery\"}\n\tfmt.Println(slices.Index(stops, \"bakery\"))\n\tfmt.Println(slices.Contains(stops, \"pier\"))\n\tfmt.Println(slices.Max(stops))\n\tslices.Sort(stops)\n\tfmt.Println(stops)\n}\n",
+   "stdout": "1\nfalse\nzoo\n[bakery bakery park zoo]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_slices.go",
+     "out": "1\nfalse\nzoo\n[bakery bakery park zoo]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_tilde.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Whole interface {\n\tint | int64\n}\n\nfunc Double[T Whole](n T) T {\n\treturn n * 2\n}\n\ntype Miles int\n\nfunc main() {\n\tvar trip Miles = 21\n\tfmt.Println(Double(trip))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./predict_tilde.go:17:20: Miles does not satisfy Whole (possibly missing ~ for int in Whole)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run predict_tilde.go",
+     "out": "",
+     "err": "# command-line-arguments\n./predict_tilde.go:17:20: Miles does not satisfy Whole (possibly missing ~ for int in Whole)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "pull.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tnext, stop := iter.Pull(Countdown(2))\n\tdefer stop()\n\tv, ok := next()\n\tfmt.Println(v, ok)\n\tv, ok = next()\n\tfmt.Println(v, ok)\n\tv, ok = next()\n\tfmt.Println(v, ok)\n}\n",
+   "stdout": "2 true\n1 true\n0 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run pull.go",
+     "out": "2 true\n1 true\n0 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "range_old.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Countdown(n int) iter.Seq[int] {\n\treturn func(yield func(int) bool) {\n\t\tfor i := n; i >= 1; i-- {\n\t\t\tif !yield(i) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor v := range Countdown(3) {\n\t\tfmt.Println(v)\n\t}\n\tfmt.Println(\"liftoff!\")\n}\n",
+   "stdout": "",
+   "stderr": "# example/old122\n./main.go:19:17: cannot range over Countdown(3) (value of func type iter.Seq[int]): requires go1.23 or later (-lang was set to go1.22; check go.mod)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cat go.mod",
+     "out": "module example/old122\n\ngo 1.22\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch20/old122"
+    },
+    {
+     "cmd": "go run .",
+     "out": "",
+     "err": "# example/old122\n./main.go:19:17: cannot range over Countdown(3) (value of func type iter.Seq[int]): requires go1.23 or later (-lang was set to go1.22; check go.mod)\n",
+     "exit": 1,
+     "dir": "~/go-ch20/old122"
+    }
+   ]
+  },
+  "seq2.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n\t\"slices\"\n)\n\nfunc Numbered(items []string) iter.Seq2[int, string] {\n\treturn func(yield func(int, string) bool) {\n\t\tfor i, s := range items {\n\t\t\tif !yield(i+1, s) {\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}\n}\n\nfunc main() {\n\tstops := []string{\"bakery\", \"library\", \"park\"}\n\tfor n, s := range Numbered(stops) {\n\t\tfmt.Println(n, s)\n\t}\n\tfor i, s := range slices.All(stops) {\n\t\tfmt.Print(i, \":\", s, \" \")\n\t}\n\tfmt.Println()\n\tfor i, s := range slices.Backward(stops) {\n\t\tfmt.Print(i, \":\", s, \" \")\n\t}\n\tfmt.Println()\n}\n",
+   "stdout": "1 bakery\n2 library\n3 park\n0:bakery 1:library 2:park \n2:park 1:library 0:bakery \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run seq2.go",
+     "out": "1 bakery\n2 library\n3 park\n0:bakery 1:library 2:park \n2:park 1:library 0:bakery \n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_any.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc Smallest[T any](items []T) T {\n\tbest := items[0]\n\tfor _, v := range items[1:] {\n\t\tif v < best {\n\t\t\tbest = v\n\t\t}\n\t}\n\treturn best\n}\n\nfunc main() {\n\tfmt.Println(Smallest([]int{4, 2, 9}))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./spot_any.go:8:6: invalid operation: v < best (type parameter T cannot use operator <)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_any.go",
+     "out": "",
+     "err": "# command-line-arguments\n./spot_any.go:8:6: invalid operation: v < best (type parameter T cannot use operator <)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "spot_yield.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"iter\"\n)\n\nfunc Words(list []string) iter.Seq[string] {\n\treturn func(yield func(string) bool) {\n\t\tfor _, w := range list {\n\t\t\tyield(w)\n\t\t}\n\t}\n}\n\nfunc main() {\n\tfor w := range Words([]string{\"go\", \"stop\", \"wait\"}) {\n\t\tfmt.Println(w)\n\t\tif w == \"stop\" {\n\t\t\tbreak\n\t\t}\n\t}\n}\n",
+   "stdout": "go\nstop\n",
+   "stderr": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x125\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_yield.go",
+     "out": "go\nstop\n",
+     "err": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x125\nexit status 2\n",
+     "exit": 1,
+     "merged": "go\nstop\npanic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x125\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "go\nstop\n",
+    "stderr": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.main.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x150\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run spot_yield.go",
+      "out": "go\nstop\n",
+      "err": "panic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.main.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x150\nexit status 2\n",
+      "exit": 1,
+      "merged": "go\nstop\npanic: runtime error: range function continued iteration after function for loop body returned false\n\ngoroutine 1 [running]:\nmain.main-range1(...)\n\t/home/you/go-ch20/spot_yield.go:17\nmain.main.Words.func1(...)\n\t/home/you/go-ch20/spot_yield.go:11\nmain.main()\n\t/home/you/go-ch20/spot_yield.go:17 +0x150\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "stack.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(v T) {\n\ts.items = append(s.items, v)\n}\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tvar zero T\n\tif len(s.items) == 0 {\n\t\treturn zero, false\n\t}\n\ttop := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn top, true\n}\n\nfunc main() {\n\tvar parcels Stack[string]\n\tparcels.Push(\"lamp\")\n\tparcels.Push(\"book\")\n\ttop, ok := parcels.Pop()\n\tfmt.Println(top, ok)\n\tparcels.Push(\"kite\")\n\tfmt.Println(parcels.items)\n\tvar nums Stack[int]\n\tn, ok := nums.Pop()\n\tfmt.Println(n, ok)\n}\n",
+   "stdout": "book true\n[lamp kite]\n0 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run stack.go",
+     "out": "book true\n[lamp kite]\n0 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "stack_bare.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc main() {\n\tvar s Stack\n\tfmt.Println(s)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./stack_bare.go:10:8: cannot use generic type Stack[T any] without instantiation\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run stack_bare.go",
+     "out": "",
+     "err": "# command-line-arguments\n./stack_bare.go:10:8: cannot use generic type Stack[T any] without instantiation\n",
+     "exit": 1
+    }
+   ]
+  },
+  "stack_mixed.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(v T) {\n\ts.items = append(s.items, v)\n}\n\nfunc main() {\n\tvar parcels Stack[string]\n\tparcels.Push(\"lamp\")\n\tparcels.Push(42)\n\tfmt.Println(parcels.items)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./stack_mixed.go:16:15: cannot use 42 (untyped int constant) as string value in argument to parcels.Push\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run stack_mixed.go",
+     "out": "",
+     "err": "# command-line-arguments\n./stack_mixed.go:16:15: cannot use 42 (untyped int constant) as string value in argument to parcels.Push\n",
+     "exit": 1
+    }
+   ]
+  },
+  "stdlib_generic.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"maps\"\n\t\"slices\"\n)\n\nfunc main() {\n\tnums := []int{5, 2, 8, 1}\n\tfmt.Println(slices.Contains(nums, 8), slices.Index(nums, 2))\n\tfmt.Println(slices.Min(nums), slices.Max(nums))\n\tsorted := slices.Clone(nums)\n\tslices.Sort(sorted)\n\tfmt.Println(sorted, nums)\n\twords := []string{\"pear\", \"fig\", \"kiwi\"}\n\tslices.Sort(words)\n\tfmt.Println(words)\n\tstock := map[string]int{\"pens\": 3}\n\tbackup := maps.Clone(stock)\n\tbackup[\"pens\"] = 99\n\tfmt.Println(stock[\"pens\"], backup[\"pens\"])\n}\n",
+   "stdout": "true 1\n1 8\n[1 2 5 8] [5 2 8 1]\n[fig kiwi pear]\n3 99\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run stdlib_generic.go",
+     "out": "true 1\n1 8\n[1 2 5 8] [5 2 8 1]\n[fig kiwi pear]\n3 99\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_seq2.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"slices\"\n)\n\nfunc main() {\n\twords := []string{\"kite\", \"map\", \"parcel\"}\n\ttotal := 0\n\tfor i, w := range slices.Backward(words) {\n\t\ttotal += len(w)\n\t\tfmt.Println(i, w, total)\n\t}\n}\n",
+   "stdout": "2 parcel 6\n1 map 9\n0 kite 13\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_seq2.go",
+     "out": "2 parcel 6\n1 map 9\n0 kite 13\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_stack.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(v T) {\n\ts.items = append(s.items, v)\n}\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tvar zero T\n\tif len(s.items) == 0 {\n\t\treturn zero, false\n\t}\n\ttop := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn top, true\n}\n\nfunc main() {\n\tvar s Stack[int]\n\tfor _, n := range []int{5, 8, 0, 3, 0, 0, 0} {\n\t\tpopped := \"-\"\n\t\tif n == 0 {\n\t\t\tif v, ok := s.Pop(); ok {\n\t\t\t\tpopped = fmt.Sprint(v)\n\t\t\t}\n\t\t} else {\n\t\t\ts.Push(n)\n\t\t}\n\t\tfmt.Println(n, popped, len(s.items))\n\t}\n}\n",
+   "stdout": "5 - 1\n8 - 2\n0 8 1\n3 - 2\n0 3 1\n0 5 0\n0 - 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_stack.go",
+     "out": "5 - 1\n8 - 2\n0 8 1\n3 - 2\n0 3 1\n0 5 0\n0 - 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
