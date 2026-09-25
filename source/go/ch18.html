@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Measuring Cups and Sandwiches</title>
+<meta name="description" content="Chapter 18 of the Go book of Pip &amp; Friends, a comic course: named types as custom-shaped measuring cups (type Celsius float64, the underlying type, conversions, mismatched types, methods on named types), enums with iota (skipping with _, starting at 1, bit flags with 1 &lt;&lt; iota, a String method), type aliases versus new types, unexported types, then struct embedding as a sandwich (promoted fields and methods, embedded interfaces, shadowing, ambiguous selectors, why embedding is not inheritance, and when a named field is safer).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch18.css">
+<script defer src="../data/go-ch18.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch17.html">&larr; Ch 17</a><span aria-current="page">Ch 18 of 28</span><a href="ch19.html">Ch 19 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 18 · INTERMEDIATE</p>
+    <h1 id="cover-h">MEASURING CUPS AND SANDWICHES</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello.</p>
+    <p class="caption blurb">Last chapter, functions learned to carry backpacks. This chapter is about <b>making your own types</b>. First, <b>measuring cups</b>: a <code>Celsius</code> and a <code>Fahrenheit</code> are both just numbers inside, but Go keeps them in differently shaped cups so they can never be mixed by accident. Then numbered tickets (<code>iota</code>), nicknames (aliases), and finally <b>sandwiches</b>: building a big type out of smaller ones with <b>embedding</b>. About 120 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Measuring cups: named types and conversions</a></li>
+      <li><a href="#part-2">The ticket machine: enums with iota</a></li>
+      <li><a href="#part-3">A new cup or a nickname? Aliases and unexported types</a></li>
+      <li><a href="#part-4">The sandwich: struct embedding</a></li>
+      <li><a href="#part-5">Who answers the call? Shadowing, and why embedding is not inheritance</a></li>
+      <li><a href="#part-6">What leaks out of the sandwich: embed or named field?</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · MEASURING CUPS<small>Named types, the underlying type, conversions and methods</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: a burnt cake at the bakery">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot drops a recipe card at the corner bakery. An hour later, a smell of smoke. The card said <b>350</b>. The oven dial counts in <b>Celsius</b>. The card meant <b>Fahrenheit</b>.</p>
+    <ul class="crew" aria-label="Two temperatures">
+      <li><svg class="char" data-char="jelly" data-label="350"></svg><span><b>THE CARD</b>350, meaning °F: a nice warm oven</span></li>
+      <li><svg class="char" data-char="jelly" data-label="350" data-mood="o"></svg><span><b>THE DIAL</b>350, read as °C: a furnace</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Same number, different meaning. Both are just a <code>float64</code>, so nothing stopped the baker pouring one into the other.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>If only the two numbers came in <b>differently shaped cups</b> that refuse to pour into each other...</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: two jelly creatures, the float creature, both labelled 350; the second one looks shocked. Scoot shrugs, worried.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: named types are measuring cups">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Go lets you make exactly those cups. <code>type Celsius float64</code> makes a brand-new type called <code>Celsius</code>. Inside, it holds a <code>float64</code>, but Go treats it as a <b>different type</b> from <code>float64</code> and from any other cup.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 300" role="img" aria-label="Picture: two measuring cups. The left cup is round and labelled CELSIUS with a big degrees C mark. The right cup is a tall square jug labelled FAHRENHEIT with a big degrees F mark. Both stand on one shelf labelled: both made of the same stuff, float64. A straight arrow from one cup to the other is crossed out with the words refused, mismatched types. A curved arrow above goes through a yellow funnel labelled Fahrenheit of c times 9 over 5 plus 32: a conversion. Badge 1 marks the cup shape, badge 2 the shelf, badge 3 the refused arrow and badge 4 the funnel.">
+      <text x="145" y="60" text-anchor="middle" font-family="Bangers, sans-serif" font-size="26" fill="#111">CELSIUS</text>
+      <text x="525" y="60" text-anchor="middle" font-family="Bangers, sans-serif" font-size="26" fill="#111">FAHRENHEIT</text>
+      <path d="M62 74 H228 L210 222 Q208 236 194 236 H96 Q82 236 80 222 Z" fill="#BDE3FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M226 104 Q268 104 262 146 Q256 186 214 184" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round"/>
+      <path d="M74 120 Q110 110 145 120 T216 118" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="7 5"/>
+      <text x="145" y="190" text-anchor="middle" font-family="Bangers, sans-serif" font-size="48" fill="#111">°C</text>
+      <rect x="452" y="74" width="146" height="162" rx="12" fill="#FFE1E1" stroke="#111" stroke-width="4"/>
+      <path d="M452 92 L432 80 L452 112" fill="#FFE1E1" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M598 104 h22 v86 h-22" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M462 126 Q494 116 525 126 T590 124" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="7 5"/>
+      <text x="525" y="190" text-anchor="middle" font-family="Bangers, sans-serif" font-size="48" fill="#111">°F</text>
+      <rect x="232" y="18" width="228" height="32" rx="8" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <text x="346" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">Fahrenheit(c*9/5 + 32)</text>
+      <path d="M280 96 Q344 58 410 96" fill="none" stroke="#111" stroke-width="4"/>
+      <path d="M398 84 l14 14 l-18 4" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M326 52 h36 l-12 18 h-12 z" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <path d="M278 160 H408" stroke="#111" stroke-width="5"/><path d="M396 148 l14 12 l-14 12" fill="none" stroke="#111" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M326 138 l40 40 M366 138 l-40 40" stroke="#111" stroke-width="7" stroke-linecap="round"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111" text-anchor="middle"><text x="344" y="204">refused:</text><text x="344" y="224">mismatched types</text></g>
+      <rect x="40" y="250" width="600" height="36" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text x="340" y="274" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111">both made of the same stuff: float64</text>
+      <circle cx="40" cy="80" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="40" y="88" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">1</text>
+      <circle cx="24" cy="268" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="24" y="276" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">2</text>
+      <circle cx="420" cy="196" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="420" y="204" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">3</text>
+      <circle cx="212" cy="30" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="212" y="38" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">4</text>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The cup's <b>shape</b> is the <b>named type</b>: <code>Celsius</code> or <code>Fahrenheit</code>.</span></li>
+      <li><span>2</span><span>What the cup is made of is the <b>underlying type</b>: here <code>float64</code> for both.</span></li>
+      <li><span>3</span><span>Pouring straight across is <b>refused</b> by the Compiler: mismatched types.</span></li>
+      <li><span>4</span><span>The funnel is a <b>conversion</b>. You write it on purpose, and you say how.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>same stuff, different cup.</b> The numbers are the same kind of thing, but the cups won't mix unless you use the funnel.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: two named types in Go">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Here are the two cups in Go. Inside each cup, everything a <code>float64</code> can do still works.</p>
+    <span class="file-tab">cups.go</span>
+    <pre class="code" data-src="cups.go"></pre>
+    <pre class="term wrap" data-run="cups.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type Celsius float64</code> (line 5)<br>A <b>type definition</b>: "make a new type called <code>Celsius</code>, built from <code>float64</code>". The type you build from is the <b>underlying type</b>. Programmers call the new one a <b>named type</b> (or a <b>defined type</b>).</span></li>
+      <li><span><code>warmer := oven + 20</code> (line 11)<br>A Celsius plus a plain number is fine: the <code>20</code> has no type of its own yet (an untyped constant, chapter 3), so it takes the cup's shape. <code>warmer</code> is a <code>Celsius</code> too.</span></li>
+      <li><span><code>%T</code> (line 13)<br>Prints <samp>main.Celsius main.Fahrenheit</samp>: two different types, both from package <code>main</code>.</span></li>
+      <li><span><code>oven &gt; 100</code>, <code>warmer*2</code> (line 14)<br>Comparing, adding, multiplying: all the <code>float64</code> tricks still work, as long as both sides are the <em>same</em> cup.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-under-m" id="ex-under"></div>
+  <script type="application/json" id="ex-under-m">{"q": "<code>type Miles int</code>. What is the <b>underlying type</b> of <code>Miles</code>?", "options": [
+    {"t": "<code>int</code>", "correct": true, "why": "Yes. The underlying type is the type written after the new name: what the cup is made of. A <code>Miles</code> holds an <code>int</code> inside."},
+    {"t": "<code>Miles</code>", "why": "<code>Miles</code> is the new, named type itself: the shape of the cup. Its underlying type is what it's built from."},
+    {"t": "<code>main.Miles</code>", "why": "That's how <code>%T</code> prints the named type, with its package. The underlying type is <code>int</code>."},
+    {"t": "It has none: a named type is a completely fresh kind of value", "why": "Every named type is built from an existing type. Here it's <code>int</code>, which is why <code>+</code> and <code>&lt;</code> work on Miles."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 4: the cups refuse to mix">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="4"></svg>
+    <p class="caption">Now let's try the baker's mistake in Go: pour the oven setting straight into the recipe, then add them up.</p>
+    <span class="file-tab">mix.go</span>
+    <pre class="code" data-src="mix.go"></pre>
+    <pre class="term wrap" data-run="mix.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Two errors at once. The Compiler checks the whole file before anything runs, and lists every problem it finds, in line order.</span></li>
+      <li><span><code>./mix.go:10:26: cannot use oven (variable of float64 type Celsius) as Fahrenheit value in variable declaration</code><br>Read it like a detective: line 10, column 26 is <code>oven</code>. The bracket describes it fully: a variable whose type is <code>Celsius</code>, made of <code>float64</code>. The recipe box wants a <code>Fahrenheit</code>.</span></li>
+      <li><span><code>./mix.go:11:14: invalid operation: oven + recipe (mismatched types Celsius and Fahrenheit)</code><br><code>+</code> needs both sides to be the same type. Same stuff inside, different cups: refused.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Nothing runs until everything checks out. These two cups don't match. If you really mean to pour, write the conversion yourself, so the reader can see it.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, a checkpoint robot with a red beacon, keeps its gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: conversions are the funnel">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">The funnel is a <b>conversion</b>: write the type's name like a function, <code>Fahrenheit(x)</code>. Go allows it because both cups are made of the same stuff. Two small functions do the real work.</p>
+    <span class="file-tab">convert.go</span>
+    <pre class="code" data-src="convert.go"></pre>
+    <pre class="term wrap" data-run="convert.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func CToF(c Celsius) Fahrenheit</code> (line 8)<br>Does the arithmetic as a <code>Celsius</code>, then pours the result into a <code>Fahrenheit</code> cup. 180 °C is <samp>356</samp> °F.</span></li>
+      <li><span><code>FToC(recipe)</code> (line 16)<br>The way back: 350 °F is <samp>176.66666666666666</samp> °C. That long tail is ordinary float printing (chapter 4).</span></li>
+      <li><span><code>Fahrenheit(oven)</code> (line 17)<br>Look: <samp>180</samp>. A conversion only <b>changes the cup</b>. It doesn't know anything about temperatures, so it does no maths. That's the baker's bug, now written down where you can see it.</span></li>
+      <li><span><code>float64(oven) + 0.5</code> (line 18)<br>Pouring back into a plain <code>float64</code> cup also works: <samp>180.5</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>converting changes the cup, not the number.</b> If the number needs changing, write a function that does the maths, like <code>CToF</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 6: the CToF machine" data-machine="m-conv">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Feed Celsius values into <code>CToF</code>. Out come Fahrenheit values. The last chip tries to feed it a Fahrenheit, from a separate program.</p>
+    <span class="file-tab">conv_machine.go</span>
+    <pre class="code" data-src="conv_machine.go"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-conv">{"label": "CToF(c Celsius)", "program": "conv_machine.go", "examples": [
+      {"in": "Celsius(100)", "out": "212", "expectLine": "CToF(100) = 212", "outKind": "Fahrenheit", "note": "Water boils: 100 °C is 212 °F."},
+      {"in": "Celsius(0)", "out": "32", "expectLine": "CToF(0) = 32", "outKind": "Fahrenheit", "note": "Water freezes: 0 °C is 32 °F."},
+      {"in": "Celsius(-40)", "out": "-40", "expectLine": "CToF(-40) = -40", "outKind": "Fahrenheit", "note": "The one temperature where both scales agree. Same number, still a different cup."},
+      {"in": "Celsius(37)", "out": "98.6", "expectLine": "CToF(37) = 98.6", "outKind": "Fahrenheit", "note": "Body temperature."},
+      {"in": "Celsius(180)", "out": "356", "expectLine": "CToF(180) = 356", "outKind": "Fahrenheit", "note": "The bakery oven, done properly."},
+      {"in": "a Fahrenheit (350)", "error": "cannot use recipe (variable of float64 type Fahrenheit) as Celsius value in argument to CToF", "program": "wrong_arg.go", "note": "The machine's hopper is Celsius-shaped. A Fahrenheit cup doesn't fit, and the Compiler refuses before anything runs (<code>wrong_arg.go</code> line 12). That's the whole point: the burnt cake can't happen by accident."}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotmix-m" id="ex-spotmix"></div>
+  <script type="application/json" id="ex-spotmix-m">{"program": "spot_mix.go", "bug": 11, "prompt": "Three readings from one Celsius thermometer. The Compiler points at line 13. Which line is really wrong?", "explain": "Line 13 is just where the cups meet. The comment says all three readings are Celsius, so the mistake is on line 11: <code>noon</code> was put in a <code>Fahrenheit</code> cup. Make it <code>var noon Celsius = 24</code>. Writing <code>Celsius(noon)</code> on line 13 would compile too, but it would hide the real mistake, and it would do no maths (panel 5)."}</script>
+
+  <div data-ex="predict" data-model="ex-convert-m" id="ex-convert"></div>
+  <script type="application/json" id="ex-convert-m">{"program": "predict_convert.go", "prompt": "Meters and feet, two cups made of <code>float64</code>. Type all three lines.", "hint": "Which line only changes the cup, and which one does real maths? What type does <code>m + 5</code> have?", "explain": "<code>Feet(m)</code> only changes the cup: still <samp>10</samp>. <code>Feet(m * 3.28084)</code> does the maths first (as Meters), then changes the cup: <samp>32.8084</samp>. <code>m + 5</code> is a Meters plus an untyped constant: <samp>15</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 7: methods on named types">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Here's the best part of having your own cup: you can give it <b>methods</b> (chapter 13's verbs). Methods aren't only for structs. Any named type can have them, even one made of a number or a slice.</p>
+    <span class="file-tab">methods.go</span>
+    <pre class="code" data-src="methods.go"></pre>
+    <pre class="term wrap" data-run="methods.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func (c Celsius) String() string</code> (line 8)<br>A <code>String</code> method makes <code>Celsius</code> fit <code>fmt.Stringer</code> (chapter 14), so it prints as <samp>180.0°C</samp>. The <code>float64(c)</code> inside matters: it pours the value into a plain cup first, so formatting it doesn't call <code>String</code> again.</span></li>
+      <li><span><code>func (c Celsius) ToF() Fahrenheit</code> (line 10)<br>Now the conversion lives on the type itself: <code>oven.ToF()</code> reads like a sentence. The result is a <code>Fahrenheit</code>, which has its own <code>String</code>: <samp>356.0°F</samp>.</span></li>
+      <li><span><code>oven.ToF() &gt; 300</code> (line 22)<br>Fahrenheit compared with an untyped constant: <samp>true</samp>.</span></li>
+      <li><span><code>type Shelf []string</code> (line 14)<br>A named slice type. It gets a <code>Count</code> method, and it's still a slice inside: <code>jars[0]</code> is <samp>flour</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 8: you can only add methods to your own types">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Can you give <code>int</code> itself a new method?</p>
+    <span class="file-tab">local_only.go</span>
+    <pre class="code" data-src="local_only.go"></pre>
+    <pre class="term wrap" data-run="local_only.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>cannot define new methods on non-local type int</code><br>"Non-local" means "not declared in this package". <code>int</code> belongs to Go itself. You may only add methods to types declared in your own package.</span></li>
+      <li><span>The fix is this chapter's whole idea: make your own cup first. <code>type Number int</code>, then <code>func (n Number) Double() Number</code> is fine.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>This rule is kind to everyone. If any package could add methods to <code>int</code>, two packages could add two different <code>Double</code>s, and nobody would know which one runs.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillstr-m" id="ex-fillstr"></div>
+  <script type="application/json" id="ex-fillstr-m">{"program": "fill_string.go", "prompt": "Make <code>Kelvin</code> print with its unit. Fill in the method name that <code>fmt</code> looks for, and the plain type to pour into before formatting.", "blanks": [{"line": 7, "text": "String"}, {"line": 8, "text": "float64"}], "explain": "<code>fmt</code> calls a method named exactly <code>String() string</code>. Inside, <code>float64(k)</code> pours the value into a plain cup for <code>%.0f</code>. <code>sun + 28</code> is still a <code>Kelvin</code>, so it prints with the unit too: <samp>5772 K</samp>, then <samp>5800 K</samp>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE TICKET MACHINE<small>Enums with iota: skipping, starting at 1, bit flags and a String method</small></h2>
+
+  <section class="panel pop" aria-label="Panel 9: the deli ticket machine">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">At the deli counter, Scoot pulls a ticket: 0, 1, 2, 3... Every parcel at the depot needs a status too: pending, shipped, delivered.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>A short list of choices that never changes, each with its own name: programmers call that an <b>enum</b> (short for enumeration, "a numbered list").</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Go has no <code>enum</code> keyword. It builds enums from two things you already know: a <b>named type</b> made of <code>int</code>, and a block of <b>constants</b> (chapter 3), numbered by a little ticket machine called <code>iota</code>.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot points ahead, smiling.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: a first enum">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The days of the week, numbered from 0.</p>
+    <span class="file-tab">weekday_plain.go</span>
+    <pre class="code" data-src="weekday_plain.go"></pre>
+    <pre class="term wrap" data-run="weekday_plain.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Sunday Weekday = iota</code> (line 8)<br>Inside a <code>const ( ... )</code> block, <code>iota</code> means "this line's ticket number": 0 on the first line, 1 on the next, and so on.</span></li>
+      <li><span><code>Monday</code>, <code>Tuesday</code>, <code>Wednesday</code> (lines 9 to 11)<br>A line with only a name <b>repeats the line above</b>: type and expression. So <code>Monday</code> is really <code>Monday Weekday = iota</code>, with the next ticket, 1.</span></li>
+      <li><span><code>var today Weekday</code> (line 16)<br>The zero value of a <code>Weekday</code> is 0, which happens to be <code>Sunday</code>: <samp>true</samp>. Keep that in mind: panel 12 has a tip about it.</span></li>
+      <li><span>Without any methods, a Weekday prints as its number: <samp>0 1 3</samp>. Its type is <samp>main.Weekday</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 11: watch iota tick, step by step" data-tracer="tr-iota" id="tr-iota-box">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Step through two <code>const</code> blocks with the Compiler. Watch the <code>iota</code> counter tick once per line, and watch what each name gets. The <code>_</code> lines take a ticket and throw the value away: those boxes fade.</p>
+    <span class="file-tab">iota_tick.go</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-iota-svg" role="img" aria-label="Diagram of constant names and their values; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-iota">{"program": "iota_tick.go", "steps": [
+      {"line": 8, "note": "Before the program runs, the Compiler works out every constant. It reaches the first <code>const</code> block, where <code>iota</code> starts at <b>0</b>.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "0"}}, "changed": ["iota"]},
+      {"line": 9, "note": "Line 8: <code>_ Size = iota</code>. Ticket 0 goes to <code>_</code>, the blank name. The value 0 is thrown away (faded box). That's how you <b>skip</b> a number.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "0"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}}},
+      {"line": 10, "note": "Line 9 is just <code>Small</code>, so it repeats <code>Size = iota</code>. The ticket is now 1: <code>Small</code> is a <code>Size</code> holding <b>1</b>.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "1"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}}, "changed": ["iota", "Small"]},
+      {"line": 11, "note": "Line 10: ticket 2, so <code>Medium</code> is <b>2</b>.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "2"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}}, "changed": ["iota", "Medium"]},
+      {"line": 12, "note": "Line 11 is another <code>_</code>. It still takes a ticket, 3, and throws it away. The blank line in the middle leaves a gap in the numbers.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "3"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}}, "changed": ["iota"]},
+      {"line": 16, "note": "Line 12: ticket 4, so <code>Huge</code> is <b>4</b>, not 3. Then the block closes on line 13.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "4"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}}, "changed": ["iota", "Huge"]},
+      {"line": 17, "note": "A <b>new</b> <code>const</code> block on line 15: the ticket machine resets to 0. Line 16 says <code>Gold = iota + 1</code>, so <code>Gold</code> is 0 + 1 = <b>1</b>. No type is written, so these are untyped constants.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}, {"n": "Gold", "ref": "G1"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "0"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}, "G1": {"kind": "untyped", "label": "Gold", "value": "1"}}, "changed": ["iota", "Gold"]},
+      {"line": 18, "note": "Line 17 repeats <code>= iota + 1</code> with ticket 1: <code>Silver</code> is <b>2</b>.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "iota", "ref": "IO"}, {"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}, {"n": "Gold", "ref": "G1"}, {"n": "Silver", "ref": "G2"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "1"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}, "G1": {"kind": "untyped", "label": "Gold", "value": "1"}, "G2": {"kind": "untyped", "label": "Silver", "value": "2"}}, "changed": ["iota", "Silver"]},
+      {"line": 22, "note": "Line 18: ticket 2, <code>Bronze</code> is <b>3</b>. All constants are settled before the program even starts. <code>iota</code> only exists inside <code>const</code> blocks, so its tag is gone. Now <code>main</code> runs.", "output": [], "frames": [{"name": "constants", "vars": [{"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}, {"n": "Gold", "ref": "G1"}, {"n": "Silver", "ref": "G2"}, {"n": "Bronze", "ref": "G3"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "2"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}, "G1": {"kind": "untyped", "label": "Gold", "value": "1"}, "G2": {"kind": "untyped", "label": "Silver", "value": "2"}, "G3": {"kind": "untyped", "label": "Bronze", "value": "3"}}, "changed": ["Bronze"]},
+      {"line": 23, "note": "Line 22 prints the sizes: <samp>1 2 4</samp>. The gap at 3 is the second <code>_</code>.", "output": ["1 2 4"], "frames": [{"name": "constants", "vars": [{"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}, {"n": "Gold", "ref": "G1"}, {"n": "Silver", "ref": "G2"}, {"n": "Bronze", "ref": "G3"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "2"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}, "G1": {"kind": "untyped", "label": "Gold", "value": "1"}, "G2": {"kind": "untyped", "label": "Silver", "value": "2"}, "G3": {"kind": "untyped", "label": "Bronze", "value": "3"}}},
+      {"line": null, "note": "Line 23 prints the medals: <samp>1 2 3</samp>. Starting at 1 with <code>iota + 1</code> is a common pattern.", "output": ["1 2 4", "1 2 3"], "frames": [{"name": "constants", "vars": [{"n": "Small", "ref": "C1"}, {"n": "Medium", "ref": "C2"}, {"n": "Huge", "ref": "C4"}, {"n": "Gold", "ref": "G1"}, {"n": "Silver", "ref": "G2"}, {"n": "Bronze", "ref": "G3"}]}], "objects": {"IO": {"kind": "int", "label": "ticket", "value": "2"}, "B0": {"kind": "Size", "label": "thrown away", "value": "0"}, "C1": {"kind": "Size", "label": "Small", "value": "1"}, "C2": {"kind": "Size", "label": "Medium", "value": "2"}, "B3": {"kind": "Size", "label": "thrown away", "value": "3"}, "C4": {"kind": "Size", "label": "Huge", "value": "4"}, "G1": {"kind": "untyped", "label": "Gold", "value": "1"}, "G2": {"kind": "untyped", "label": "Silver", "value": "2"}, "G3": {"kind": "untyped", "label": "Bronze", "value": "3"}}}
+    ]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: iota patterns">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Two patterns you'll meet in real Go code: a safe "not set yet" value at 0, and a formula that the following lines repeat.</p>
+    <span class="file-tab">iota_patterns.go</span>
+    <pre class="code" data-src="iota_patterns.go"></pre>
+    <pre class="term wrap" data-run="iota_patterns.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Unknown Status = iota</code> (line 8)<br>Ticket 0 goes to <code>Unknown</code>. A fresh <code>var s Status</code> starts at 0, so it means "unknown" rather than pretending a parcel is pending: <samp>true</samp>. Compare panel 10, where a fresh Weekday quietly became Sunday.</span></li>
+      <li><span><code>KB = 1 &lt;&lt; (10 * (iota + 1))</code> (line 15)<br>Any formula works. <code>&lt;&lt;</code> is the <b>shift</b> operator: <code>1 &lt;&lt; 10</code> moves the 1 ten binary places left, making 1024. <code>MB</code> and <code>GB</code> repeat the formula with tickets 1 and 2: <samp>1048576</samp> and <samp>1073741824</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>one ticket per line, and a bare name repeats the line above.</b> That's all <code>iota</code> is.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-triota-m" id="ex-triota"></div>
+  <script type="application/json" id="ex-triota-m">{"program": "trace_iota.go", "columns": ["name", "value"], "given": [0], "prompt": "The first line of this <code>const</code> block uses <code>iota * 10</code>. Fill in the value each name gets.", "explain": "Every line repeats <code>Level = iota * 10</code> with its own ticket: <code>_</code> takes 0, <code>Low</code> gets 1 × 10 = <samp>10</samp>, <code>Mid</code> gets <samp>20</samp>, the second <code>_</code> swallows 30, and <code>Max</code> gets 4 × 10 = <samp>40</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 13: bit flags are a row of switches">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">Sometimes several choices can be on <b>at the same time</b>: a file can be readable <em>and</em> writable. For that, give each choice its own <b>switch</b> in a row of switches. In binary (counting with only 0 and 1), each switch is one digit, called a <b>bit</b>.</p>
+    <svg class="pic-mid" viewBox="0 0 460 268" role="img" aria-label="Picture: three wall switches in a row. From right to left: Read, worth 1, binary 001; Write, worth 2, binary 010; Exec, worth 4, binary 100. Read and Write are flipped up and say ON; Exec is down and says off. Underneath: Read or Write equals binary 011, which is 3.">
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="80" y="28">EXEC</text><text x="230" y="28">WRITE</text><text x="380" y="28">READ</text></g>
+      <g stroke="#111" stroke-width="4">
+        <rect x="30" y="40" width="100" height="120" rx="12" fill="#FFFFFF" stroke-dasharray="10 6"/>
+        <rect x="180" y="40" width="100" height="120" rx="12" fill="#FFFFFF"/>
+        <rect x="330" y="40" width="100" height="120" rx="12" fill="#FFFFFF"/>
+      </g>
+      <g stroke="#111" stroke-width="3">
+        <rect x="64" y="96" width="32" height="50" rx="6" fill="#F3F3F3"/>
+        <rect x="214" y="54" width="32" height="50" rx="6" fill="#FFD60A"/>
+        <rect x="364" y="54" width="32" height="50" rx="6" fill="#FFD60A"/>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="19" fill="#111" text-anchor="middle"><text x="80" y="84">off</text><text x="230" y="132">ON</text><text x="380" y="132">ON</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle"><text x="80" y="188">4 = 100</text><text x="230" y="188">2 = 010</text><text x="380" y="188">1 = 001</text></g>
+      <rect x="70" y="208" width="320" height="44" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text x="230" y="237" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111">Read | Write = 011 = 3</text>
+    </svg>
+    <ul class="checklist">
+      <li><span><code>Read Perm = 1 &lt;&lt; iota</code> gives 1, 2, 4, 8...: each constant is a single switch.</span></li>
+      <li><span><code>a | b</code> ("or") turns on every switch that's on in either: combining choices.</span></li>
+      <li><span><code>a &amp; b</code> ("and") keeps only switches on in both. <code>mine&amp;Write != 0</code> asks "is the Write switch on?"</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: bit flags in Go">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">File permissions as bit flags. <code>%03b</code> prints a number in binary, padded to 3 digits, so you can see the switches.</p>
+    <span class="file-tab">flags.go</span>
+    <pre class="code" data-src="flags.go"></pre>
+    <pre class="term wrap" data-run="flags.go"></pre>
+    <ol class="readlist">
+      <li><span><samp>1 2 4</samp><br>Tickets 0, 1, 2, each shifted: <code>1 &lt;&lt; 0</code>, <code>1 &lt;&lt; 1</code>, <code>1 &lt;&lt; 2</code>.</span></li>
+      <li><span><code>mine := Read | Write</code> (line 15)<br>Both switches on: <samp>011</samp>.</span></li>
+      <li><span><code>mine&amp;Write != 0</code>, <code>mine&amp;Exec != 0</code> (line 17)<br>Write is on, Exec is off: <samp>true false</samp>.</span></li>
+      <li><span><code>mine |= Exec</code> (line 18)<br>Short for <code>mine = mine | Exec</code>: flip one more switch on. All three on is <samp>111</samp>, which is <samp>7</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-flags-m" id="ex-flags"></div>
+  <script type="application/json" id="ex-flags-m">{"program": "predict_flags.go", "prompt": "Pizza toppings as bit flags. Type all three lines.", "hint": "Work out each topping's switch first: 1, 2, 4, 8. Then add up the switches that are on.", "explain": "Cheese is 1, Ham 2, Olives 4, Onion 8. Cheese | Olives turns on switches 1 and 4: <samp>5</samp>. Ham's switch isn't on: <samp>false</samp>. Onion is ticket 3, so <code>1 &lt;&lt; 3</code> = <samp>8</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: a String method for an enum">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Numbers are fine for the computer, but a person wants to read <samp>Mon</samp>, not <samp>1</samp>. Give the enum a <code>String</code> method.</p>
+    <span class="file-tab">weekday_string.go</span>
+    <pre class="code" data-src="weekday_string.go"></pre>
+    <pre class="term wrap" data-run="weekday_string.go"></pre>
+    <ol class="readlist">
+      <li><span><code>fmt.Println(Monday)</code> (line 26)<br><code>fmt</code> spots the <code>String</code> method and prints <samp>Mon</samp>.</span></li>
+      <li><span><code>%v %d %s</code> (line 27)<br><code>%v</code> and <code>%s</code> use <code>String</code>; <code>%d</code> asks for a <b>number</b>, so it skips <code>String</code> and prints the ticket underneath: <samp>Mon 1 Mon</samp>.</span></li>
+      <li><span><code>Weekday(9)</code> (line 28)<br>Nothing stops anyone converting 9 into a Weekday. The last line of <code>String</code> (line 22) gives an honest answer instead of a blank: <samp>Weekday(9)</samp>.</span></li>
+      <li><span>A slice of Weekdays prints each one with its <code>String</code>: <samp>[Sun Tue]</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 16: how fmt prints a Weekday" data-machine="m-verbs">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The same Weekday, through different <code>fmt</code> doors. Feed each one in and see whether <code>String</code> is used.</p>
+    <span class="file-tab">verbs_machine.go</span>
+    <pre class="code" data-src="verbs_machine.go"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-verbs">{"label": "fmt + String()", "program": "verbs_machine.go", "examples": [
+      {"in": "Println(Monday)", "out": "Mon", "expectLine": "Println(Monday) -> Mon", "outKind": "printed", "note": "<code>Println</code> uses <code>String</code> whenever there is one."},
+      {"in": "%v of Monday", "out": "Mon", "expectLine": "%v of Monday -> Mon", "outKind": "printed", "note": "<code>%v</code> means \"the value, in its usual form\": that's <code>String</code>."},
+      {"in": "%d of Monday", "out": "1", "expectLine": "%d of Monday -> 1", "outKind": "printed", "note": "<code>%d</code> wants a whole number, so <code>fmt</code> prints the ticket underneath and ignores <code>String</code>."},
+      {"in": "%q of Tuesday", "out": "\"Tue\"", "expectLine": "%q of Tuesday -> \"Tue\"", "outKind": "printed", "note": "<code>%q</code> is a string verb: <code>String</code>'s result, in quotes."},
+      {"in": "int(Tuesday)", "out": "2", "expectLine": "int(Tuesday) -> 2", "outKind": "printed", "note": "Pour it into a plain <code>int</code> cup and the method is gone: just 2."},
+      {"in": "Weekday(9)", "out": "Weekday(9)", "expectLine": "Weekday(9) -> Weekday(9)", "outKind": "printed", "note": "Out of range, but still a Weekday. <code>String</code>'s last line reports it honestly."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillenum-m" id="ex-fillenum"></div>
+  <script type="application/json" id="ex-fillenum-m">{"program": "fill_enum.go", "prompt": "A traffic light enum whose names come from a slice. Fill in the ticket machine and the method name <code>fmt</code> looks for.", "blanks": [{"line": 8, "text": "iota"}, {"line": 15, "text": "String"}], "explain": "<code>Red Light = iota</code> numbers the lights 0, 1, 2. <code>String</code> uses the number as an index into <code>names</code>, so Green (2) prints <samp>green</samp> and Red (0) prints <samp>red</samp>. <code>%d</code> skips <code>String</code>: Amber is <samp>1</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzenum-m" id="ex-pzenum"></div>
+  <script type="application/json" id="ex-pzenum-m">{"program": "parsons_enum.go", "seed": 7, "pin": [1, 3, 5, 7, 12, 14, 17], "prompt": "Seat numbers start at 1, with a skipped 0. Put the lines of the <code>const</code> block and of <code>main</code> in order so the program prints the goal output.", "explain": "The line with the type and <code>iota</code> must come first, on the blank name <code>_</code>, to use up ticket 0. Then Window (1), Middle (2), Aisle (3): that's the only order where Aisle is 3 and Window is 1. In <code>main</code>, the aisle line prints first."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 17: Go enums are not locked">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Here's a warning other books often skip. A Go enum is a named number, not a locked list. How strict is it?</p>
+    <div class="pair stack">
+      <div><span class="file-tab">enum_loose.go</span><pre class="code" data-src="enum_loose.go"></pre><pre class="term wrap" data-run="enum_loose.go"></pre></div>
+      <div><span class="file-tab">enum_strict.go</span><pre class="code" data-src="enum_strict.go"></pre><pre class="term wrap" data-run="enum_strict.go" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>plan(42)</code> (<code>enum_loose.go</code>, line 18)<br>It compiles! <code>42</code> is an untyped constant, so it slips into the <code>Weekday</code> cup like the <code>20</code> did in panel 3. There is no day 42, and nobody complained.</span></li>
+      <li><span><code>plan(n)</code> (<code>enum_strict.go</code>, line 18)<br><code>n</code> is a variable of type <code>int</code>: a different cup. <samp>cannot use n (variable of type int) as Weekday value in argument to plan</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>So the cups guard you against mixing <em>variables</em>, but a bare number can still sneak in. Functions that take an enum should cope with values outside the list, like <code>String</code>'s last line does.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · A NEW CUP OR A NICKNAME?<small>Type aliases, what a new type keeps and loses, and unexported types</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 18: a new cup or a nickname">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">One tiny character changes everything. Without <code>=</code> you make a <b>new cup</b>. With <code>=</code> you only stick a <b>nickname label</b> on a cup that already exists. That's a <b>type alias</b>.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <p class="stamp">NEW TYPE</p>
+        <svg class="mini" viewBox="0 0 220 130" aria-hidden="true"><path d="M30 20 H110 L100 106 Q98 116 88 116 H52 Q42 116 40 106 Z" fill="#BDE3FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="132" y="20" width="62" height="96" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="4"/><text x="70" y="78" text-anchor="middle" font-family="Bangers, sans-serif" font-size="26" fill="#111">°C</text><text x="163" y="78" text-anchor="middle" font-family="Bangers, sans-serif" font-size="20" fill="#111">f64</text></svg>
+        <h3>A NEW CUP<small><code>type Celsius float64</code></small></h3>
+        <ul>
+          <li>A different type from <code>float64</code>. Mixing them needs a conversion.</li>
+          <li>You can give it methods.</li>
+          <li>It does <b>not</b> keep the methods of the type it's built from.</li>
+          <li><code>%T</code> prints <code>main.Celsius</code>.</li>
+        </ul>
+      </div>
+      <div class="duo-card dashed">
+        <p class="stamp">ALIAS</p>
+        <svg class="mini" viewBox="0 0 220 130" aria-hidden="true"><rect x="70" y="20" width="80" height="96" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="4"/><text x="110" y="78" text-anchor="middle" font-family="Bangers, sans-serif" font-size="20" fill="#111">f64</text><path d="M150 44 L196 30 L206 58 L160 72 Z" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-linejoin="round"/><text x="180" y="57" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111" transform="rotate(-17 180 52)">Temp</text></svg>
+        <h3>A NICKNAME<small><code>type Temp = float64</code></small></h3>
+        <ul>
+          <li>Exactly the same type as <code>float64</code>, under a second name.</li>
+          <li>Mixes freely with <code>float64</code>: no conversion needed.</li>
+          <li>Has exactly the original's methods; you can't add methods to <code>float64</code> through it (panel 21).</li>
+          <li><code>%T</code> prints <code>float64</code>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>no equals, new cup. Equals, nickname.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: aliases in Go">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Here's the proof, and a surprise: you've used two aliases since chapter 4 without knowing it.</p>
+    <span class="file-tab">alias.go</span>
+    <pre class="code" data-src="alias.go"></pre>
+    <pre class="term wrap" data-run="alias.go"></pre>
+    <ol class="readlist">
+      <li><span><code>%T</code> of <code>c</code> and <code>t</code> (line 12)<br><samp>main.Celsius float64</samp>. The alias <code>Temp</code> doesn't even show up: there is no separate type to name.</span></li>
+      <li><span><code>t + f</code> (line 13)<br>A <code>Temp</code> plus a <code>float64</code> works, because they are the same type: <samp>21.5</samp>. Try <code>c + f</code> and you get panel 4's message.</span></li>
+      <li><span><code>byte</code> and <code>rune</code> (lines 14 to 16)<br>Go declares them as aliases: <code>type byte = uint8</code> and <code>type rune = int32</code>. So <code>%T</code> says <samp>uint8 int32</samp>. <code>any</code> (chapter 14) is an alias too, for <code>interface{}</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: a new type loses the methods">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">A new cup built from <code>Celsius</code> gets Celsius's <em>numbers</em>, but not its <em>methods</em>. An alias of <code>Celsius</code> keeps everything.</p>
+    <span class="file-tab">keep_methods.go</span>
+    <pre class="code" data-src="keep_methods.go"></pre>
+    <pre class="term wrap" data-run="keep_methods.go"></pre>
+    <ol class="readlist">
+      <li><span><code>OvenTemp(180)</code> (line 14)<br><samp>180</samp>, a bare number. <code>type OvenTemp Celsius</code> made a new cup out of the same stuff, a <code>float64</code>, but Celsius's <code>String</code> method didn't come along.</span></li>
+      <li><span><code>Heat(180)</code> (line 15)<br><samp>180.0°C</samp>. <code>Heat</code> <em>is</em> <code>Celsius</code>, so it has <code>String</code>.</span></li>
+      <li><span><code>Celsius(OvenTemp(180))</code> (line 16)<br>Pour it back into the Celsius cup and the method is there again.</span></li>
+    </ol>
+    <span class="file-tab">no_methods.go</span>
+    <pre class="code" data-src="no_methods.go"></pre>
+    <pre class="term wrap" data-run="no_methods.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Calling the method directly makes the loss obvious: <samp>t.String undefined (type OvenTemp has no field or method String)</samp>. A new type is a fresh start; give it its own methods if it needs them.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 21: you can't add methods through a nickname">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">So can a nickname sneak a new method onto <code>float64</code>?</p>
+    <span class="file-tab">alias_method.go</span>
+    <pre class="code" data-src="alias_method.go"></pre>
+    <pre class="term wrap" data-run="alias_method.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>cannot define new methods on non-local type Temp</code><br>Panel 8's rule again. <code>Temp</code> is just another name for <code>float64</code>, which isn't yours. A nickname doesn't make it local.</span></li>
+      <li><span>The second error, on line 11, follows from the first: the method was never made, so <code>t.Show</code> is <samp>undefined</samp>. Fix the first error and the second goes away. Fixing errors from the top is a good habit.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-aliasnew-m" id="ex-aliasnew"></div>
+  <script type="application/json" id="ex-aliasnew-m">{"q": "You're writing a shop program and want prices in <b>cents</b> that can never be mixed up with a stock count by accident. Both are whole numbers. What do you write?", "options": [
+    {"t": "<code>type Cents int</code>", "correct": true, "why": "Yes. A new cup: adding Cents to a plain <code>int</code> count variable is a compile error, and you can give Cents a <code>String</code> method that prints it as dollars and cents."},
+    {"t": "<code>type Cents = int</code>", "why": "That's only a nickname. A Cents would <em>be</em> an int, so mixing prices and counts would compile silently, which is exactly what you wanted to prevent."},
+    {"t": "<code>var Cents int</code>", "why": "That makes a <em>variable</em> called Cents, not a type."},
+    {"t": "<code>const Cents = int</code>", "why": "Constants hold values, not types. This doesn't compile."}]}</script>
+
+  <div data-ex="predict" data-model="ex-alias-m" id="ex-alias"></div>
+  <script type="application/json" id="ex-alias-m">{"program": "predict_alias.go", "prompt": "One new type, one alias. Type both lines.", "hint": "<code>%T</code> prints a new type with its package name. What does it print for a nickname? And can a Points be added to an int?", "explain": "<code>Score</code> is a new type: <samp>main.Score</samp>. <code>Points</code> is a nickname for <code>int</code>, so <code>%T</code> says <samp>int</samp>, and <code>p + n</code> is allowed: <samp>10</samp>. With <code>s + n</code> instead, the Compiler would refuse: mismatched types Score and int."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: unexported types">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Last, chapter 15's capital-letter rule applies to types too. A type whose name starts with a small letter is <b>unexported</b>: only its own package can write its name. Here's a tiny module, <code>pantry</code>, with a package <code>kitchen</code> inside.</p>
+    <span class="file-tab">pantry/kitchen/kitchen.go</span>
+    <pre class="code" data-src="pantry/kitchen/kitchen.go"></pre>
+    <div class="pair stack">
+      <div><span class="file-tab">unexported.go</span><pre class="code" data-src="unexported.go"></pre><pre class="term wrap" data-run="unexported.go"></pre></div>
+      <div><span class="file-tab">unexported_bad.go</span><pre class="code" data-src="unexported_bad.go"></pre><pre class="term wrap" data-run="unexported_bad.go" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>unexported.go</code>: <code>r := kitchen.NewRecipe("pancakes")</code><br>The exported function hands back a <code>recipe</code>. <code>:=</code> never has to write the type's name, so this works, and the exported field and method are usable: <samp>pancakes 3</samp>.</span></li>
+      <li><span><code>unexported_bad.go</code>: <code>var r kitchen.recipe</code> (line 10)<br><samp>name recipe not exported by package kitchen</samp>. Writing the name from outside is not allowed.</span></li>
+      <li><span><code>unexported_bad.go</code>: <code>r.steps</code> (line 11)<br><samp>r.steps undefined (type kitchen.recipe has no field or method steps, but does have method Steps)</samp>. The lower-case field is invisible outside, and the Compiler even points you to the exported <code>Steps</code> method.</span></li>
+      <li><span>Each terminal is one real shell session: it copies its program in as the module's <code>main.go</code>, steps into <code>pantry</code>, and runs <code>go run .</code>. That's why the error header now reads <code># example/pantry</code>, the module's name.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Small letters keep a package's helper types private, so the package can change them later without breaking anyone. Real code usually returns an exported type from an exported function, though: callers can't even write down the type of a value they got back from <code>NewRecipe</code>.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE SANDWICH<small>Struct embedding: promoted fields and methods, embedded interfaces</small></h2>
+
+  <section class="panel pop" aria-label="Panel 23: lunch at the sandwich bar">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Lunch break. Scoot orders a cheese sandwich and notices something: you don't ask "how many calories does the <em>filling of</em> this sandwich have?". You just ask how many the <b>sandwich</b> has.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>A sandwich is built from parts: bread, filling. Whatever the filling has, the whole sandwich has. Its calories, its name.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Go can build types the same way. Put a struct <b>inside</b> another without giving it a field name, and its fields and methods become the outer struct's too. That's called <b>embedding</b>.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot cheers with both arms up.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 24: a sandwich of structs">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">A <code>Sandwich</code> struct with a <code>Bread</code> and a <code>Filling</code> embedded in it. Ask the sandwich for <code>s.Kcal</code>, and Go reaches inside to the filling for you.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 330" role="img" aria-label="Picture: a sandwich drawn as three layers inside a big bracket labelled Sandwich. The top layer is bread, labelled Bread with a field Kind. The middle layer is the filling, labelled Filling with fields Name and Kcal. The bottom layer is bread too. A separate tag, Price, hangs off the bracket: a field of the sandwich itself. On the right, a hand-written note: s.Kcal is short for s.Filling.Kcal, with an arrow reaching into the filling. On the left, the filling has a thought bubble: I don't know I'm in a sandwich. Badges: 1 the outer struct, 2 an embedded struct, 3 the shortcut, 4 the full path.">
+      <path d="M150 30 H120 V300 H150" fill="none" stroke="#111" stroke-width="4"/>
+      <text x="100" y="170" text-anchor="middle" font-family="Bangers, sans-serif" font-size="26" fill="#111" transform="rotate(-90 100 170)">SANDWICH</text>
+      <path d="M170 92 Q170 40 330 40 Q490 40 490 92 Z" fill="#FFF6CC" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text x="330" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">Bread {Kind}</text>
+      <path d="M160 104 Q190 92 220 104 T280 104 T340 104 T400 104 T460 104 T500 104 V176 Q470 188 440 176 T380 176 T320 176 T260 176 T200 176 T160 176 Z" fill="#C9F2D9" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <text x="330" y="136" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">Filling {Name, Kcal}</text>
+      <text x="330" y="160" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">"cheese", 300</text>
+      <rect x="170" y="188" width="320" height="50" rx="16" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <text x="330" y="219" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">Bread (the bottom slice)</text>
+      <rect x="170" y="258" width="130" height="40" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3" stroke-dasharray="8 5"/>
+      <text x="235" y="284" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">Price: 4</text>
+      <path d="M150 278 H170" stroke="#111" stroke-width="3"/>
+      <rect x="520" y="100" width="150" height="72" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="595" y="126">s.Kcal</text><text x="595" y="162">s.Filling.Kcal</text></g>
+      <text x="595" y="145" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">is short for</text>
+      <path d="M520 136 H470" stroke="#111" stroke-width="4"/><path d="M482 126 l-14 10 l14 10" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M520 214 Q520 196 560 196 H640 Q670 196 670 222 Q670 250 640 250 H560 Q520 250 520 228 Z" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <circle cx="506" cy="196" r="6" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+      <g font-family="Shantell Sans, cursive" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="595" y="219">I don't know I'm</text><text x="595" y="238">in a sandwich</text></g>
+      <circle cx="152" cy="22" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="152" y="30" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">1</text>
+      <circle cx="160" cy="140" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="160" y="148" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">2</text>
+      <circle cx="520" cy="96" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="520" y="104" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">3</text>
+      <circle cx="660" cy="176" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="660" y="184" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">4</text>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The <b>outer struct</b>, <code>Sandwich</code>. <code>Price</code> is its own field.</span></li>
+      <li><span>2</span><span>An <b>embedded</b> struct: written in the struct with only its type, no field name.</span></li>
+      <li><span>3</span><span>The <b>shortcut</b>: the filling's fields are <b>promoted</b>, so <code>s.Kcal</code> works.</span></li>
+      <li><span>4</span><span>The <b>full path</b> still works: the embedded field's name is its type's name, <code>Filling</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>the sandwich uses the filling's tools, but the filling never knows it's in a sandwich.</b> Remember the second half; Part 5 is all about it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: embedding in Go">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Back to Scoot's delivery van. A <code>Van</code> has an <code>Engine</code> embedded in it.</p>
+    <span class="file-tab">embed.go</span>
+    <pre class="code" data-src="embed.go"></pre>
+    <pre class="term wrap" data-run="embed.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Engine</code> alone on line 14<br>An <b>embedded field</b>: a type with no field name. Compare <code>Plate string</code> on line 15, which has a name and a type.</span></li>
+      <li><span><code>Van{Engine: Engine{HP: 150}, ...}</code> (line 19)<br>In a struct literal, the embedded field is called by its type's name.</span></li>
+      <li><span><code>v.HP</code> and <code>v.Start()</code> (lines 20 and 21)<br>The engine's field and method are <b>promoted</b>: you can use them as if <code>Van</code> had them itself.</span></li>
+      <li><span><code>v.Engine.HP</code>, <code>v.Engine.Start()</code> (line 22)<br>The long way round gives the same answers.</span></li>
+      <li><span><code>%+v</code> (line 23)<br>Prints field names too: <samp>{Engine:{HP:150} Plate:GO-123}</samp>. The engine is really there, as a field called <code>Engine</code>, inside the van.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 26: inside a sandwich, step by step" data-tracer="tr-sand" id="tr-sand-box">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Step through the sandwich. Watch which box changes when the code writes <code>s.Kcal</code> and <code>s.Kind</code>.</p>
+    <span class="file-tab">sandwich.go</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-sand-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-sand">{"program": "sandwich.go", "steps": [
+      {"line": 21, "note": "The run starts in <code>main</code>.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 22, "note": "Line 21 builds a <code>Sandwich</code>. It has three fields: <code>Bread</code> and <code>Filling</code> (the embedded ones, named after their types) and <code>Price</code>. The parts are drawn as their own boxes so you can see them; really they sit inside the sandwich.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S"}]}], "objects": {"S": {"kind": "struct", "label": "Sandwich", "pairs": [{"k": "Bread", "ref": "B"}, {"k": "Filling", "ref": "F"}, {"k": "Price", "val": "4"}]}, "B": {"kind": "struct", "label": "Bread (inside s)", "pairs": [{"k": "Kind", "val": "\"rye\""}]}, "F": {"kind": "struct", "label": "Filling (inside s)", "pairs": [{"k": "Name", "val": "\"cheese\""}, {"k": "Kcal", "val": "300"}]}}, "changed": ["s"]},
+      {"line": 23, "note": "Line 22: <code>s.Kcal += 50</code>. Sandwich has no <code>Kcal</code> of its own, so Go uses the promoted one: it really means <code>s.Filling.Kcal</code>. The <b>filling's</b> box changes to 350.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S"}]}], "objects": {"S": {"kind": "struct", "label": "Sandwich", "pairs": [{"k": "Bread", "ref": "B"}, {"k": "Filling", "ref": "F"}, {"k": "Price", "val": "4"}]}, "B": {"kind": "struct", "label": "Bread (inside s)", "pairs": [{"k": "Kind", "val": "\"rye\""}]}, "F": {"kind": "struct", "label": "Filling (inside s)", "pairs": [{"k": "Name", "val": "\"cheese\""}, {"k": "Kcal", "val": "350"}]}}, "changed": ["s"]},
+      {"line": 24, "note": "Line 23: <code>s.Kind</code> means <code>s.Bread.Kind</code>. The bread becomes sourdough.", "output": [], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S"}]}], "objects": {"S": {"kind": "struct", "label": "Sandwich", "pairs": [{"k": "Bread", "ref": "B"}, {"k": "Filling", "ref": "F"}, {"k": "Price", "val": "4"}]}, "B": {"kind": "struct", "label": "Bread (inside s)", "pairs": [{"k": "Kind", "val": "\"sourdough\""}]}, "F": {"kind": "struct", "label": "Filling (inside s)", "pairs": [{"k": "Name", "val": "\"cheese\""}, {"k": "Kcal", "val": "350"}]}}, "changed": ["s"]},
+      {"line": 25, "note": "Line 24 reads two promoted fields from the filling: <samp>cheese 350</samp>.", "output": ["cheese 350"], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S"}]}], "objects": {"S": {"kind": "struct", "label": "Sandwich", "pairs": [{"k": "Bread", "ref": "B"}, {"k": "Filling", "ref": "F"}, {"k": "Price", "val": "4"}]}, "B": {"kind": "struct", "label": "Bread (inside s)", "pairs": [{"k": "Kind", "val": "\"sourdough\""}]}, "F": {"kind": "struct", "label": "Filling (inside s)", "pairs": [{"k": "Name", "val": "\"cheese\""}, {"k": "Kcal", "val": "350"}]}}},
+      {"line": null, "note": "Line 25 takes the long paths, <code>s.Filling.Kcal</code> and <code>s.Bread.Kind</code>, and finds the same boxes: <samp>350 sourdough 4</samp>. Short way or long way, it's one filling.", "output": ["cheese 350", "350 sourdough 4"], "frames": [{"name": "main", "vars": [{"n": "s", "ref": "S"}]}], "objects": {"S": {"kind": "struct", "label": "Sandwich", "pairs": [{"k": "Bread", "ref": "B"}, {"k": "Filling", "ref": "F"}, {"k": "Price", "val": "4"}]}, "B": {"kind": "struct", "label": "Bread (inside s)", "pairs": [{"k": "Kind", "val": "\"sourdough\""}]}, "F": {"kind": "struct", "label": "Filling (inside s)", "pairs": [{"k": "Name", "val": "\"cheese\""}, {"k": "Kcal", "val": "350"}]}}}
+    ]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trpromote-m" id="ex-trpromote"></div>
+  <script type="application/json" id="ex-trpromote-m">{"program": "trace_promote.go", "columns": ["trip", "t.Km", "t.Tank.Litres"], "given": [0], "prompt": "A truck with a fuel tank embedded in it. Each trip adds kilometres and burns one litre per 10 km. Fill in each row.", "explain": "<code>t.Litres</code> is the promoted field, the same box as <code>t.Tank.Litres</code>. Trip 100: 100 km, 40 − 10 = <samp>30</samp>. Trip 50: 150 km, 30 − 5 = <samp>25</samp>. Trip 200: 350 km, 25 − 20 = <samp>5</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: the filling's methods work on the filling">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Promoted methods work with pointer receivers too. When you call one through the outer struct, it runs on the part <b>inside</b>.</p>
+    <span class="file-tab">ptr_embed.go</span>
+    <pre class="code" data-src="ptr_embed.go"></pre>
+    <pre class="term wrap" data-run="ptr_embed.go"></pre>
+    <ol class="readlist">
+      <li><span><code>t.Inc()</code> (lines 19 and 20)<br>Go turns it into <code>(&amp;t.Counter).Inc()</code>: the address of the counter inside the turnstile (chapter 13's automatic <code>&amp;</code>). The method's receiver <code>c</code> is that <b>Counter</b>, not the Turnstile.</span></li>
+      <li><span><samp>north 2 2</samp><br>Both calls changed the counter inside <code>t</code>. <code>t.Counter.n</code> works here because this <code>main</code> is in the same package as <code>Counter</code>; from another package, the small-letter <code>n</code> would be hidden.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Inside <code>Inc</code>, the code can only see a <code>Counter</code>. It has no idea there's a <code>Gate</code> next to it. The filling never knows.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: embedding interfaces in interfaces">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Interfaces can be embedded too: a bigger socket made by gluing smaller sockets together. And a struct whose embedded part has the methods fits the socket, thanks to promotion.</p>
+    <span class="file-tab">iface_embed.go</span>
+    <pre class="code" data-src="iface_embed.go"></pre>
+    <pre class="term wrap" data-run="iface_embed.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type OpenCloser interface { Opener; Closer }</code> (lines 8 to 11)<br>The method list of <code>OpenCloser</code> is everything in <code>Opener</code> plus everything in <code>Closer</code>: <code>Open</code> and <code>Close</code>. Go's own library builds its <code>io.ReadWriter</code> exactly like this (chapter 19).</span></li>
+      <li><span><code>Bin</code> embeds <code>Lid</code> (line 19)<br><code>Bin</code> declares no methods of its own, but <code>Open</code> and <code>Close</code> are promoted from <code>Lid</code>. So a <code>Bin</code> fits <code>OpenCloser</code>, and also the smaller <code>Opener</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillembed-m" id="ex-fillembed"></div>
+  <script type="application/json" id="ex-fillembed-m">{"program": "fill_embed.go", "prompt": "A <code>Rider</code> must pedal <em>and</em> ring. Glue the second socket into <code>Rider</code>, and give the bike a bell by embedding it.", "blanks": [{"line": 10, "text": "Ringer"}, {"line": 18, "text": "Bell"}], "explain": "<code>Rider</code> embeds <code>Pedaler</code> and <code>Ringer</code>, so it needs <code>Pedal</code> and <code>Ring</code>. <code>Bike</code> has its own <code>Pedal</code>, and <code>Ring</code> is promoted from the embedded <code>Bell</code>. So <code>Bike{}</code> fits <code>Rider</code>: <samp>whirr ding!</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-spotfield-m" id="ex-spotfield"></div>
+  <script type="application/json" id="ex-spotfield-m">{"program": "spot_field.go", "bug": 10, "prompt": "The bike should ring. The Compiler complains about line 16. Click the line you'd change to fix it.", "explain": "<code>bell Bell</code> on line 10 is a <b>named</b> field, not an embedded one, so nothing is promoted: <samp>b.Ring undefined (type Bike has no field or method Ring)</samp>. Write just <code>Bell</code> on line 10 (embed it) and <code>b.Ring()</code> works. (Changing line 16 to <code>b.bell.Ring()</code> would also compile, which is the trade-off Part 6 is about.)"}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · WHO ANSWERS THE CALL?<small>Shadowing, the lookup road, ambiguous names, and why embedding is not inheritance</small></h2>
+
+  <section class="panel clean" aria-label="Panel 29: the outer struct's own method wins">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">What if the van has its <b>own</b> <code>Start</code>, as well as the engine's?</p>
+    <span class="file-tab">shadow.go</span>
+    <pre class="code" data-src="shadow.go"></pre>
+    <pre class="term wrap" data-run="shadow.go"></pre>
+    <ol class="readlist">
+      <li><span><code>v.Start()</code> (line 22)<br>Go looks at <code>Van</code> first, finds <code>Van</code>'s own <code>Start</code> (line 16), and stops looking. The engine's <code>Start</code> is <b>shadowed</b>: hidden behind the closer one.</span></li>
+      <li><span><code>v.Engine.Start()</code> (lines 17 and 23)<br>Hidden, not gone. The full path still reaches it. Van's <code>Start</code> uses it to add a beep first: <samp>beep beep, then vroom</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 30: the road a method call takes" data-map="map-lookup">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">Here is the road Go follows to answer <code>v.X()</code>. Four programs, alike except for line 22 (and, in "two have it", the Radio's method on line 11). Pick a road and follow Scoot. The Compiler walks this road while checking, before anything runs.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map of how Go finds a method</title><desc id="mapl-d">Line 22 calls v dot X. First Go looks at Van's own methods. If Van has it, Van's method runs. If not, Go looks one layer in, at the embedded Engine and Radio. If exactly one of them has it, that one runs, with the embedded part as its receiver. If two have it, the Compiler stops with ambiguous selector. If none has it, the Compiler stops with undefined.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-lookup">{"seed": 18, "size": [690, 520], "start": [[225, 4], [225, 18]],
+      "states": [
+        {"id": "S0", "x": 115, "y": 22, "w": 220, "h": 56, "label": "CALL v.X()", "sub": "line 22"},
+        {"id": "OWN", "x": 60, "y": 112, "w": 330, "h": 60, "label": "VAN ITSELF?", "sub": "methods declared on Van"},
+        {"id": "RV", "x": 470, "y": 112, "w": 206, "h": 60, "label": "VAN'S RUNS", "sub": "receiver: v", "kind": "end"},
+        {"id": "DEEP", "x": 60, "y": 222, "w": 330, "h": 60, "label": "ONE LAYER IN", "sub": "Engine's and Radio's methods"},
+        {"id": "ONE", "x": 14, "y": 340, "w": 206, "h": 60, "label": "EXACTLY ONE", "sub": "promoted"},
+        {"id": "TWO", "x": 242, "y": 340, "w": 206, "h": 60, "label": "TWO HAVE IT", "sub": "ambiguous selector", "kind": "error"},
+        {"id": "NONE", "x": 470, "y": 340, "w": 206, "h": 60, "label": "NOBODY HAS IT", "sub": "undefined", "kind": "error"},
+        {"id": "RI", "x": 14, "y": 444, "w": 206, "h": 60, "label": "ITS METHOD RUNS", "sub": "receiver: v.Engine", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "OWN", "pts": [[225, 82], [225, 106]], "label": "look", "lx": 237, "ly": 100},
+        {"id": "t1", "from": "OWN", "to": "RV", "pts": [[394, 142], [464, 142]], "label": "found", "lx": 429, "ly": 132, "anchor": "middle"},
+        {"id": "t2", "from": "OWN", "to": "DEEP", "pts": [[225, 176], [225, 216]], "label": "not on Van", "lx": 237, "ly": 202},
+        {"id": "t3", "from": "DEEP", "to": "ONE", "pts": [[117, 286], [117, 334]], "label": "one", "lx": 129, "ly": 316},
+        {"id": "t4", "from": "DEEP", "to": "TWO", "pts": [[345, 286], [345, 334]], "label": "two", "lx": 357, "ly": 316, "bug": true},
+        {"id": "t5", "from": "DEEP", "to": "NONE", "pts": [[394, 252], [573, 252], [573, 334]], "label": "none", "lx": 585, "ly": 316, "bug": true},
+        {"id": "t6", "from": "ONE", "to": "RI", "pts": [[117, 404], [117, 438]], "label": "run", "lx": 129, "ly": 426}],
+      "paths": [
+        {"id": "own", "label": "v.Honk()", "program": "lookup_own.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>lookup_own.go</code>: line 22 calls <code>v.Honk()</code>."},
+          {"on": ["OWN"], "via": ["t0"], "output": [], "mood": "focus", "note": "First stop: does <code>Van</code> itself have a <code>Honk</code>? Yes, line 18 declares one."},
+          {"on": ["RV"], "via": ["t1"], "output": ["Van's Honk: beep"], "note": "Found on the outermost layer, so the search stops. Van's <code>Honk</code> runs: <samp>Van's Honk: beep</samp>."}]},
+        {"id": "promoted", "label": "v.Start()", "program": "lookup_promoted.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>lookup_promoted.go</code>: line 22 calls <code>v.Start()</code>."},
+          {"on": ["OWN"], "via": ["t0"], "output": [], "mood": "focus", "note": "Van declares only <code>Honk</code>. No <code>Start</code> here."},
+          {"on": ["DEEP"], "via": ["t2"], "output": [], "mood": "focus", "note": "One layer in: the embedded <code>Engine</code> has <code>Start</code>; the <code>Radio</code> only has <code>Play</code>."},
+          {"on": ["ONE"], "via": ["t3"], "output": [], "note": "Exactly one match, so <code>v.Start()</code> means <code>v.Engine.Start()</code>."},
+          {"on": ["RI"], "via": ["t6"], "output": ["Engine's Start: vroom"], "note": "The engine's method runs, on the engine inside the van: <samp>Engine's Start: vroom</samp>."}]},
+        {"id": "twice", "label": "two have Start", "bug": true, "program": "lookup_twice.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "ambiguous selector v.Start"}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>lookup_twice.go</code>: a different van, whose Radio also has a <code>Start</code> (line 11). Line 22 calls <code>v.Start()</code>."},
+          {"on": ["OWN"], "via": ["t0"], "output": [], "mood": "focus", "note": "Van itself has no <code>Start</code>."},
+          {"on": ["DEEP"], "via": ["t2"], "output": [], "mood": "focus", "note": "One layer in, <b>both</b> Engine and Radio have a <code>Start</code>, at the same depth."},
+          {"on": ["TWO"], "via": ["t4"], "output": [], "error": "./lookup_twice.go:22:16: ambiguous selector v.Start", "note": "Go refuses to guess. <samp>ambiguous selector</samp> means \"this name could mean two things\". Nothing runs. Fix: say which, <code>v.Engine.Start()</code>, or give Van its own <code>Start</code>."}]},
+        {"id": "missing", "label": "v.Fly()", "bug": true, "program": "lookup_missing.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "v.Fly undefined (type Van has no field or method Fly)"}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>lookup_missing.go</code>: line 22 calls <code>v.Fly()</code>. Vans don't fly."},
+          {"on": ["OWN"], "via": ["t0"], "output": [], "mood": "focus", "note": "No <code>Fly</code> on Van."},
+          {"on": ["DEEP"], "via": ["t2"], "output": [], "mood": "focus", "note": "No <code>Fly</code> on Engine or Radio either."},
+          {"on": ["NONE"], "via": ["t5"], "output": [], "error": "./lookup_missing.go:22:16: v.Fly undefined (type Van has no field or method Fly)", "note": "Nobody has it: <samp>undefined</samp>. The message talks about Van, the type you called it on, even though the search looked inside too."}]}
+      ]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 31: two fillings with the same name">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The same clash happens with fields. Bread has a <code>Name</code>, and so does Filling.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">ambiguous.go</span><pre class="code" data-src="ambiguous.go"></pre><pre class="term wrap" data-run="ambiguous.go" data-exit></pre></div>
+      <div><span class="file-tab">ambiguous_fix.go</span><pre class="code" data-src="ambiguous_fix.go"></pre><pre class="term wrap" data-run="ambiguous_fix.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>ambiguous selector s.Name</code><br>A <b>selector</b> is the <code>.Name</code> part after a dot. Two embedded parts at the same depth both have <code>Name</code>, so <code>s.Name</code> could mean either.</span></li>
+      <li><span>Notice that lines 5 to 11 were fine. A clash is only an error when you actually <b>use</b> the clashing name. <code>ambiguous_fix.go</code> never writes <code>s.Name</code>, so it compiles: <samp>cheese on rye</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>closest layer wins; a tie is an error.</b> Outer beats inner. Two at the same depth? Say which one with the full path.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-which-m" id="ex-which"></div>
+  <script type="application/json" id="ex-which-m">{"program": "predict_which.go", "prompt": "Careful: one of these calls happens <em>inside</em> a Base method. Type all three lines.", "hint": "Line 18 starts at Child. But line 19 calls <code>Hello</code>, which belongs to Base. Inside <code>Hello</code>, what is <code>b</code>?", "explain": "<code>c.Name()</code>: Child's own method wins, <samp>child</samp>. <code>c.Hello()</code> is promoted from Base, so it runs with <code>b</code> = the Base inside <code>c</code>. Inside it, <code>b.Name()</code> asks a <b>Base</b>, which only knows Base's <code>Name</code>: <samp>hello from base</samp>. The full path <code>c.Base.Name()</code> gives <samp>base</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 32: the filling never knows">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">That last answer surprises people who know other languages. Here it is with animals.</p>
+    <span class="file-tab">not_virtual.go</span>
+    <pre class="code" data-src="not_virtual.go"></pre>
+    <pre class="term wrap" data-run="not_virtual.go"></pre>
+    <ol class="readlist">
+      <li><span><code>d.Sound()</code> (line 23)<br>Dog has its own <code>Sound</code>, so it wins: <samp>woof</samp>.</span></li>
+      <li><span><code>d.Introduce()</code> (line 24)<br>Dog has no <code>Introduce</code>, so it's promoted from the Animal inside. It runs with <code>a</code> = that Animal. On line 12, <code>a.Sound()</code> asks the Animal, and an Animal's sound is <samp>...</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>The filling never knows it's in a sandwich! <code>Introduce</code> was written for an Animal. It has no idea a Dog is wrapped around it, so it can never call the Dog's <code>Sound</code>.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Some languages have <b>inheritance</b>: a "child" class can replace a "parent" method, and the parent's own code then calls the child's version. Go has no inheritance. <b>Embedding is not inheritance.</b></p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot, surprised, mouth open, shrugs.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 33: a Dog is not an Animal">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">One more proof. With inheritance, a Dog would count as an Animal. In Go:</p>
+    <span class="file-tab">not_animal.go</span>
+    <pre class="code" data-src="not_animal.go"></pre>
+    <pre class="term wrap" data-run="not_animal.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>cannot use d (variable of struct type Dog) as Animal value in variable declaration</code><br>A Dog <em>contains</em> an Animal. It isn't one. They're two different struct types.</span></li>
+      <li><span>If you want the Animal part, take it out by name: <code>var a Animal = d.Animal</code>.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>A sandwich is not a slice of bread, even though it has one inside. Here's the problem, here's where, and here's a fix: <code>d.Animal</code>.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, red beacon on, gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: share behaviour with an interface instead">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">So how do you write <code>introduce</code> once and have it use each animal's own sound? Not with embedding: with an <b>interface</b> (chapter 14). Ask for "anything that can make a sound".</p>
+    <span class="file-tab">virtual_fix.go</span>
+    <pre class="code" data-src="virtual_fix.go"></pre>
+    <pre class="term wrap" data-run="virtual_fix.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func introduce(name string, s Sounder) string</code> (line 9)<br>It takes whatever fits the <code>Sounder</code> socket. <code>s.Sound()</code> runs the plugged-in type's own method: <samp>Rex says woof</samp>, <samp>Tom says meow</samp>.</span></li>
+      <li><span>No Animal type, no embedding. Small types that each do one job, plus an interface that says what a function needs. Go programmers call this <b>composition over inheritance</b>: build from parts, and connect parts through interfaces.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Rule of thumb: <b>embed to borrow tools; use an interface to swap behaviour.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-inherit-m" id="ex-inherit"></div>
+  <script type="application/json" id="ex-inherit-m">{"q": "<code>type Robot struct{ Machine }</code>. <code>Machine</code> has a method <code>Report()</code> that calls <code>m.Status()</code>. Robot declares its own <code>Status()</code>. What happens when you call <code>robot.Report()</code>?", "options": [
+    {"t": "It calls <b>Machine's</b> <code>Status</code>", "correct": true, "why": "Yes: <code>Report</code> runs on the Machine inside. A promoted method's receiver is the embedded part. Inside <code>Report</code>, <code>m</code> is a Machine, and a Machine doesn't know about Robot's <code>Status</code>."},
+    {"t": "It calls <b>Robot's</b> <code>Status</code>, which overrides it", "why": "That's how inheritance works in some other languages, but embedding is not inheritance. Robot's <code>Status</code> only wins when you call <code>robot.Status()</code> directly."},
+    {"t": "Compile error: <code>Status</code> is ambiguous here", "why": "They're at different depths: Robot's <code>Status</code> is on the outer layer, Machine's is one layer in. Closest wins; only a tie at the same depth is ambiguous."},
+    {"t": "Compile error: Robot has no <code>Report</code> method", "why": "Report is promoted from the embedded Machine, so <code>robot.Report()</code> is fine."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pzcompose-m" id="ex-pzcompose"></div>
+  <script type="application/json" id="ex-pzcompose-m">{"program": "parsons_compose.go", "seed": 4, "pin": [1, 3, 5, 6, 8, 10, 11, 12, 13, 15, 20], "prompt": "A scooter built from parts. Put the four lines of <code>main</code> in order so the output matches.", "explain": "The scooter must exist first. The first print still shows petrol, so it comes before <code>s.Fuel = \"electric\"</code>, which changes the fuel inside the embedded Motor. Then <code>s.Go()</code>, promoted from Motor, reads the new fuel: <samp>runs on electric</samp>."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · WHAT LEAKS OUT OF THE SANDWICH<small>Accidentally exported methods, and choosing between embedding and a named field</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 35: anyone can wipe the logbook">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Promotion is generous. Too generous, sometimes. Scoot's courier record embeds a logbook to save typing...</p>
+    <span class="file-tab">leaky.go</span>
+    <pre class="code" data-src="leaky.go"></pre>
+    <pre class="term wrap" data-run="leaky.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Logbook</code> embedded on line 15<br>Every Logbook method is promoted: <code>Add</code>, <code>Count</code>... and <code>Clear</code>.</span></li>
+      <li><span><code>c.Clear()</code> (line 22)<br>Anyone holding a Courier can now wipe its log: <samp>Scoot 0</samp>. Nobody <em>decided</em> that Couriers should have a <code>Clear</code> button; it came along with the filling.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>No error, no crash. Just a door left open. The sneak critter loves this kind of bug. The book <em>100 Go Mistakes</em> lists it as mistake #10: embedding things that should stay private.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak critter, which stands for logic bugs that don't crash.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: a named field keeps the filling private">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">The fix: keep the logbook as a <b>named</b> field with a small letter, and offer only the methods you mean to offer.</p>
+    <span class="file-tab">sealed.go</span>
+    <pre class="code" data-src="sealed.go"></pre>
+    <pre class="term wrap" data-run="sealed.go"></pre>
+    <span class="file-tab">sealed_bad.go, which adds one line at the end</span>
+    <pre class="term wrap" data-run="sealed_bad.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>log  Logbook</code> (line 15)<br>A field <b>with a name</b>: nothing is promoted. Courier chooses what to offer: <code>Deliver</code> and <code>Delivered</code> (lines 18 and 19), which use <code>c.log</code> inside: <samp>Scoot 2</samp>.</span></li>
+      <li><span><code>c.Clear()</code> now fails: <samp>c.Clear undefined (type Courier has no field or method Clear)</samp>. The door is shut.</span></li>
+      <li><span>One honest detail: inside this one file, <code>main</code> could still write <code>c.log.Clear()</code>, because <code>main</code> is in the same package. From any other package, the small-letter <code>log</code> is invisible (chapter 15).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 37: embed or named field">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">So which do you write? Ask: <b>should every method of the part become a method of the whole?</b></p>
+    <table class="cmp ref-table">
+      <caption class="sr-only">Embed or named field: when to choose each</caption>
+      <thead><tr><th></th><th>Embed: <code>Engine</code></th><th>Named field: <code>engine Engine</code></th></tr></thead>
+      <tbody>
+        <tr><td>Fields and methods</td><td>Promoted to the outer type</td><td>Reached only as <code>v.engine.X</code></td></tr>
+        <tr><td>Helps satisfy interfaces</td><td>✓ yes, promoted methods count</td><td>✗ no, write your own methods</td></tr>
+        <tr><td>Hides the part's methods</td><td>✗ no, everything leaks out</td><td>✓ yes, you choose what to offer</td></tr>
+        <tr><td>Good when</td><td>The whole truly <em>is</em> "the part, plus more"</td><td>The part is an internal detail</td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>A classic real-world case: a <b>lock</b> that stops two couriers changing the same record at once (Go's <code>sync.Mutex</code>, chapter 25). Embed it and every caller gets <code>Lock</code> and <code>Unlock</code> buttons they should never press. Catchphrase: <b>embed what you'd proudly offer; name what you keep in the kitchen.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-embedfield-m" id="ex-embedfield"></div>
+  <script type="application/json" id="ex-embedfield-m">{"q": "A <code>Playlist</code> keeps its songs in a <code>Store</code> type that has <code>Add</code>, <code>Get</code> and <code>DeleteAll</code>. You want users to add and get songs, but never delete everything. How should <code>Playlist</code> hold the store?", "options": [
+    {"t": "A named field, <code>store Store</code>, with its own Add and Get", "correct": true, "why": "Yes: Playlist writes its own <code>Add</code> and <code>Get</code>, which use the field. Nothing is promoted, so <code>DeleteAll</code> stays inside. Playlist offers exactly the two methods it means to."},
+    {"t": "Embed it, so <code>Add</code> and <code>Get</code> come along for free", "why": "Then <code>DeleteAll</code> is promoted too, and every caller can press it: panel 35's leak."},
+    {"t": "Embed it, and add a comment saying \"don't call DeleteAll\"", "why": "Comments don't stop anyone. The method is still promoted and callable."},
+    {"t": "It makes no difference: embedding and named fields behave the same", "why": "They don't. Only embedding promotes fields and methods."}]}</script>
+
+  <div data-ex="choice" data-model="ex-binfacts-m" id="ex-binfacts"></div>
+  <script type="application/json" id="ex-binfacts-m">{"q": "<code>type Bin struct{ Lid }</code> where <code>Lid</code> has <code>Open()</code> and <code>Close()</code>. Which statement is true?", "options": [
+    {"t": "A <code>Bin</code> fits any interface needing just <code>Open</code> and <code>Close</code>", "correct": true, "why": "Yes. Promoted methods count towards interfaces. That's panel 28."},
+    {"t": "A <code>Bin</code> can be used anywhere a <code>Lid</code> is expected", "why": "No: a Bin contains a Lid but isn't one (panel 33). Pass <code>b.Lid</code> instead."},
+    {"t": "Inside <code>Lid</code>'s <code>Open</code>, the receiver is the whole <code>Bin</code>", "why": "The receiver is the Lid inside the bin. The filling never knows."},
+    {"t": "<code>b.Open()</code> must be written out in full as <code>b.Lid.Open()</code> every time", "why": "Both work. The short form is the whole point of promotion."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 38: boss level">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="38"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Three questions crack almost everything here. <b>Which cup</b> is this value in? <b>Which ticket</b> did this line get? And when a method runs, <b>which layer of the sandwich</b> is its receiver?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A coffee cup with a <code>Size</code> embedded in it. <code>Size</code> has a <code>String</code> method; <code>Cup</code> doesn't. Type all three lines.", "hint": "Promoted methods count for interfaces, and <code>fmt.Stringer</code> is an interface. Does <code>Cup</code> have a <code>String</code> method, through promotion? (<code>[...]string{...}</code> is an array of strings, indexed by the size.)", "explain": "Surprise: <code>String</code> is promoted from the embedded <code>Size</code>, so a <code>Cup</code> fits <code>fmt.Stringer</code>, and <code>Println(c)</code> prints only the size: <samp>M</samp>. The shots vanish from the output! <code>%d</code> ignores <code>String</code>: <samp>2 2</samp>. <code>c.Size++</code> moves Medium (2) to Large (3): <samp>L</samp>. To print the whole cup, give <code>Cup</code> its own <code>String</code>, which shadows the promoted one."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["x", "b", "has Fast"], "given": [0], "prompt": "Boss 2. Badges as bit flags: Fast, Safe, Kind. Each round switches one more badge on with <code>|=</code>. Fill in <code>b</code>, and whether the Fast switch is on.", "explain": "Fast is 1, Safe 2, Kind 4. Round 1: Safe on, <code>b</code> = <samp>2</samp>, Fast off: <samp>false</samp>. Round 2: Fast on, 2 | 1 = <samp>3</samp>, <samp>true</samp>. Round 3: Safe again, but it's already on: still <samp>3</samp>. Round 4: Kind on, 3 | 4 = <samp>7</samp>. Switching on a switch that's already on changes nothing."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 9, "prompt": "Boss 3. A fever of 39 °C should say <samp>fever!</samp>. It compiles and runs, but says <samp>all fine: 39</samp>. Click the line with the bug.", "explain": "Line 9 only changes the cup: <code>Fahrenheit(c)</code> turns 39 °C into \"39 °F\", with no maths. That's panel 5's catchphrase: converting changes the cup, not the number. It should be <code>Fahrenheit(c*9/5 + 32)</code>, which gives 102.2 and prints <samp>fever!</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 12, "pin": [1, 3, 5, 6, 7, 9, 11, 12, 13, 14, 16, 23], "prompt": "Boss 4. A lamp with a light embedded in it. Put the six lines of <code>main</code> in order so the output matches.", "explain": "Build the lamp first. It starts off in the hall: <samp>hall false</samp>. Then <code>l.Toggle()</code>, promoted from Light with a pointer receiver, flips the light inside: <samp>hall true</samp>. Then move it to the attic and print the full path: <samp>attic true</samp>. Moving to the attic any earlier would make the second line <samp>attic true</samp> too."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. <code>Reading</code> must print with its unit; <code>Raw</code> must print as a bare number. Fill in the one character that makes <code>Reading</code> a nickname, and the method name.", "blanks": [{"line": 9, "text": "="}, {"line": 7, "text": "String"}], "explain": "<code>type Reading = Celsius</code> is an alias: a Reading <em>is</em> a Celsius and has its <code>String</code> method: <samp>21°C</samp>. <code>type Raw Celsius</code> (no <code>=</code>) is a new cup that doesn't keep methods, so <code>Raw(r)</code> prints <samp>21</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Two enums, one function.", "expect": "error", "answer": "constant 3 of int type Size", "ask": "It doesn't compile. The message reads <code>cannot use Large (…) as Weekday value in argument to plan</code>. Type what goes inside the brackets.", "hint": "The Compiler describes the value fully: is it a constant or a variable, what is its value, and what is its type made of?", "explain": "<samp>cannot use Large (constant 3 of int type Size) as Weekday value in argument to plan</samp>. Unlike the bare <code>42</code> in panel 17, <code>Large</code> is a <b>typed</b> constant: it's already in the <code>Size</code> cup, and a Size isn't a Weekday."}</script>
+
+  <section class="panel pop" aria-label="Panel 39: what you learned">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">What you learned in Chapter 18</p>
+    <ul class="recap">
+      <li><b>SAME STUFF, DIFFERENT CUP</b><code>type Celsius float64</code> makes a new named type with <code>float64</code> as its underlying type. Mixing cups is refused: <samp>mismatched types Celsius and Fahrenheit</samp>. You can give your own types methods, but not <code>int</code>: <samp>cannot define new methods on non-local type</samp>.</li>
+      <li><b>CONVERTING CHANGES THE CUP, NOT THE NUMBER</b><code>Fahrenheit(c)</code> relabels; it does no maths. Put real conversions in functions or methods like <code>CToF</code>.</li>
+      <li><b>ONE TICKET PER LINE</b><code>iota</code> counts lines in a <code>const</code> block from 0 and resets in each block. A bare name repeats the line above. Skip with <code>_</code>, start at 1 with <code>iota + 1</code>, make bit flags with <code>1 &lt;&lt; iota</code>. A <code>String</code> method makes <code>Monday</code> print <samp>Mon</samp>, while <code>%d</code> still prints <samp>1</samp>.</li>
+      <li><b>NO EQUALS, NEW CUP. EQUALS, NICKNAME.</b><code>type A = B</code> is an alias: the same type, the same methods (<code>byte</code>, <code>rune</code> and <code>any</code> are aliases). A new type keeps the numbers but drops the methods. Small-letter types stay inside their package.</li>
+      <li><b>THE FILLING NEVER KNOWS</b>Embedding promotes the part's fields and methods. The closest layer wins; a tie is <samp>ambiguous selector</samp>. A promoted method runs on the part, so a "parent" never calls a "child" method: embedding is not inheritance. Swap behaviour with interfaces.</li>
+      <li><b>EMBED WHAT YOU'D PROUDLY OFFER</b>Everything embedded leaks out of the sandwich. Keep internal parts as named, small-letter fields.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Cups measured, tickets handed out, sandwiches built. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: next time, pipes and nesting dolls">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Coming up in Chapter 19: Pipes and Nesting Dolls</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><rect x="14" y="56" width="70" height="40" rx="6" fill="#BDE3FF" stroke="#111" stroke-width="4"/><rect x="176" y="56" width="70" height="40" rx="6" fill="#C9F2D9" stroke="#111" stroke-width="4"/><path d="M84 68 H176 M84 84 H176" stroke="#111" stroke-width="4"/><rect x="108" y="60" width="44" height="32" rx="4" fill="#FFD60A" stroke="#111" stroke-width="3"/><g font-family="JetBrains Mono, monospace" font-weight="800" font-size="13" fill="#111" text-anchor="middle"><text x="49" y="81">Reader</text><text x="211" y="81">Writer</text></g><text x="130" y="128" text-anchor="middle" font-family="Bangers, sans-serif" font-size="18" fill="#111">io.Copy</text></svg>
+          <p>Tiny one-method interfaces that snap together like <b>pipes</b>: anything that reads, piped into anything that writes. You'll meet the real <code>io.ReadWriter</code>, built by embedding, just like panel 28.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><g stroke="#111" stroke-width="4"><ellipse cx="70" cy="90" rx="46" ry="52" fill="#FFE1E1"/><circle cx="70" cy="40" r="26" fill="#FFE1E1"/><ellipse cx="150" cy="100" rx="34" ry="40" fill="#FFF6CC"/><circle cx="150" cy="62" r="19" fill="#FFF6CC"/><ellipse cx="212" cy="110" rx="22" ry="28" fill="#C9F2D9"/><circle cx="212" cy="84" r="13" fill="#C9F2D9"/></g></svg>
+          <p>And errors wrapped inside errors, like <b>nesting dolls</b>: <code>%w</code>, <code>errors.Is</code> and <code>errors.As</code>, plus the strangest trap in Go: a nil that isn't nil.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>I glued <code>Opener</code> and <code>Closer</code> into one socket today. Next chapter, Go's own sockets: one pipe that carries a letter from any sender to any receiver.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a pipe labelled io.Copy joining a Reader box to a Writer box; and three nesting dolls of shrinking size.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch17.html">← Ch 17 · Backpacks and Buffets</a><a class="next" href="ch19.html">Ch 19 · Pipes and Nesting Dolls →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: named types, constants, iota and embedding</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The cups cost nothing at run time. All of this chapter's checking happens in the Compiler.</p></div>
+      </div>
+      <h3>Named types are free</h3>
+      <p>A <code>Celsius</code> is stored exactly like a <code>float64</code>: eight bytes, no tag saying "Celsius". The type exists only while the Compiler checks the program. A conversion between two types with the same underlying type, such as <code>Fahrenheit(c)</code>, produces no machine instructions at all: the bits stay as they are, and only the Compiler's idea of the type changes. That is why it can't do any maths. (Conversions between <em>different</em> underlying types, such as <code>int</code> to <code>float64</code>, do change the bits.)</p>
+      <h3>Assignability, in the spec's words</h3>
+      <p>The spec allows a value to be assigned to a variable of another type only in a few cases. The two that matter here: the types are <b>identical</b> (which is true for an alias and its original), or one of them is not a named type and both have the same underlying type. That second rule is why a plain <code>[]string</code> literal can be assigned to a <code>Shelf</code> without a conversion, while a <code>Celsius</code> can never be assigned to a <code>Fahrenheit</code>: both are named. An untyped constant is assignable to any type that can represent its value, which is how <code>plan(42)</code> slipped through in panel 17.</p>
+      <h3>iota, exactly</h3>
+      <p>The spec defines <code>iota</code> as the index of the current <b>constant specification</b> (roughly: line) in a <code>const</code> block, starting at 0. It counts specs, not names: in <code>const ( a, b = iota, iota*10; c, d )</code>, <code>a</code> and <code>b</code> share ticket 0, <code>c</code> and <code>d</code> share ticket 1. A spec with no type and no expression repeats the previous spec's type and expressions, which is what makes bare names work. Everything is worked out at compile time, with arbitrary precision: a constant like <code>1 &lt;&lt; 100</code> is allowed, as long as it fits wherever you finally use it.</p>
+      <h3>An embedded field is a real field</h3>
+      <p>Embedding doesn't copy methods into the outer type. The outer struct simply has a field whose name is the type's name (<code>Engine</code>), stored inline, and the Compiler rewrites <code>v.Start()</code> to <code>v.Engine.Start()</code>. The <b>method set</b> rules from chapter 14 then apply: if <code>S</code> embeds <code>T</code>, both <code>S</code> and <code>*S</code> get <code>T</code>'s value-receiver methods, and <code>*S</code> also gets <code>*T</code>'s pointer-receiver methods. If <code>S</code> embeds <code>*T</code>, both get all of them. So in panel 27, <code>Turnstile</code> (a value) does <b>not</b> fit an interface that needs <code>Inc</code>, because <code>Inc</code> has a pointer receiver, but <code>&amp;Turnstile{}</code> does.</p>
+      <h3>Depth and ambiguity</h3>
+      <p>The spec gives every promoted name a <b>depth</b>: the number of embedded fields you pass through to reach it. A name at a shallower depth hides deeper ones. If the shallowest depth has two or more matches, the selector is illegal, but only when used, which is why panel 31's struct compiled until <code>s.Name</code> appeared. Effective Go points out why that rule is useful: an embedded type from another package can gain a new field later without breaking your code, unless you actually use the clashing name.</p>
+      <h3>Why a String method can recurse forever</h3>
+      <p>Inside <code>func (c Celsius) String() string</code>, writing <code>fmt.Sprintf("%v", c)</code> would ask <code>fmt</code> to print a Celsius, which calls <code>String</code>, which calls <code>Sprintf</code>... until the goroutine's stack runs out and the program dies with a stack-overflow fatal error. Converting first, <code>float64(c)</code>, gives <code>fmt</code> a value with no <code>String</code> method. Using a number verb like <code>%f</code> or <code>%d</code> on <code>c</code> directly would also be safe, because number verbs don't call <code>String</code> (panel 16), but the conversion makes the intent obvious.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where named types, enums and embedding show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b><code>time.Duration</code></b> is <code>type Duration int64</code>, counting nanoseconds, with methods like <code>Minutes()</code> and a <code>String()</code> that prints <code>1m30s</code>. <code>time.Month</code> and <code>time.Weekday</code> are iota enums with <code>String</code> methods (chapter 22).</li>
+        <li><b><code>os.FileMode</code></b> and <code>fs.FileMode</code> are bit flags; <code>0644</code> from chapter 14 is three groups of read/write/execute switches written in octal.</li>
+        <li><b><code>http.HandlerFunc</code></b> is a named <em>function</em> type with a method, so a plain function can satisfy the <code>http.Handler</code> interface (chapter 26).</li>
+        <li><b><code>sort.StringSlice</code></b> is a named <code>[]string</code> with methods, much like panel 7's <code>Shelf</code>.</li>
+        <li><b>Embedded interfaces:</b> <code>io.ReadWriter</code>, <code>io.ReadCloser</code> and friends are built exactly like panel 28 (chapter 19).</li>
+        <li><b>Embedded structs:</b> <code>bufio.ReadWriter</code> embeds a <code>*bufio.Reader</code> and a <code>*bufio.Writer</code>. Test helpers often embed an interface in a struct to "pretend" to implement it, overriding only the methods a test needs.</li>
+        <li><b>Generated <code>String</code> methods:</b> the official <code>stringer</code> tool (golang.org/x/tools/cmd/stringer) writes the <code>String</code> method of an iota enum for you, usually run through <code>go generate</code>.</li>
+        <li><b>Aliases during big moves:</b> type aliases were added in Go 1.9 mainly so a type could move from one package to another without breaking callers: the old name becomes an alias of the new one.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>type Celsius float64</code> just gives float64 another name."</b> That's an alias, <code>type Celsius = float64</code>. Without <code>=</code> it's a separate type.</li>
+        <li><b>"A conversion between two temperature types converts the temperature."</b> It only changes the type; the number stays the same.</li>
+        <li><b>"Methods only belong on structs."</b> Any named type declared in your package can have methods: numbers, slices, maps, even functions.</li>
+        <li><b>"A new type built from another keeps its methods."</b> It keeps the underlying type, not the methods. An alias keeps everything.</li>
+        <li><b>"Go enums can only hold the listed values."</b> Any value of the underlying type can be converted in, and an untyped constant can be passed straight in.</li>
+        <li><b>"<code>iota</code> counts names."</b> It counts lines (constant specs) in the block, including <code>_</code> lines, and restarts at 0 in every block.</li>
+        <li><b>"Embedding is inheritance."</b> The outer type isn't a subtype, can't be used as the inner type, and the inner type's methods never call the outer type's methods.</li>
+        <li><b>"An outer method with the same name overrides the inner one everywhere."</b> It only shadows it for calls made on the outer type.</li>
+        <li><b>"Two embedded types with the same field name won't compile."</b> They compile until you use the clashing name without saying which.</li>
+        <li><b>"Embedding is just a shortcut, so it's always harmless."</b> Every exported method of the part becomes part of the whole's public face.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Go 1.27.3 and Go 1.24.7</summary>
+    <div class="page-body">
+      <p>Every program in this chapter was also run with Go 1.24.7: the single-file programs against a module file that says <code>go 1.24</code>, and the <code>pantry</code> module with its <code>go.mod</code> lowered to <code>go 1.24</code> for that run only. <b>All 58 runs gave exactly the same output, compile errors and exit codes on both versions.</b> Nothing in this chapter is new.</p>
+      <p>Version gates that matter here: <code>iota</code>, named types, methods and embedding have been in Go since 1.0. Type aliases arrived in Go 1.9. <code>any</code>, the alias for <code>interface{}</code>, arrived in Go 1.18. Generic type aliases (<code>type Set[T comparable] = map[T]bool</code>) became fully supported in Go 1.24. Generic types and constraints such as <code>~float64</code>, which match "any type whose underlying type is float64", are chapter 20.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir cups</code>, then <code>cd cups</code>.</li>
+        <li><code>go mod init example/cups</code>, which creates the module's <code>go.mod</code> file.</li>
+        <li>Create <code>main.go</code> and type in <code>methods.go</code> from panel 7.</li>
+        <li><code>go run .</code> should print the same four lines as panel 7.</li>
+      </ol>
+      <p class="os-note">Running with <code>go run .</code> inside a module, compile errors start with <code># example/cups</code> instead of this book's <code># command-line-arguments</code>, as panel 22 shows. The messages and line numbers are the same.</p>
+      <h3>2. Play with it</h3>
+      <ol>
+        <li>Add <code>type Kelvin float64</code> with a <code>String</code> method and a <code>ToK()</code> method on <code>Celsius</code> (add 273.15).</li>
+        <li>Write a <code>Status</code> enum for your own parcels with <code>Unknown</code> at 0 and a <code>String</code> method. Print a slice of statuses.</li>
+        <li>Make <code>Perm</code> bit flags from panel 14 and write <code>func (p Perm) String() string</code> that prints <code>rw-</code> style letters.</li>
+        <li>Build a <code>Sandwich</code> that embeds <code>Bread</code> and <code>Filling</code>, give <code>Filling</code> a <code>Describe()</code> method, and call <code>s.Describe()</code>.</li>
+        <li>Give <code>Sandwich</code> its own <code>Describe()</code> that calls <code>s.Filling.Describe()</code> and adds the price.</li>
+      </ol>
+      <h3>3. Break it on purpose</h3>
+      <ol>
+        <li>Add a Celsius to a Fahrenheit. Read <samp>mismatched types</samp>.</li>
+        <li>Try <code>func (n int) Double() int</code>. Read <samp>non-local type</samp>.</li>
+        <li>Give <code>Bread</code> a <code>Name</code> field as well as <code>Filling</code>, then print <code>s.Name</code>. Read <samp>ambiguous selector</samp>.</li>
+        <li>Inside a <code>String</code> method, use <code>fmt.Sprintf("%v", c)</code> instead of converting first. The program runs out of stack and prints a very long trace; press Ctrl+C if it takes a while.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> everything above works the same in PowerShell. To type <code>°</code>, copy it from this page, or write <code>C</code> on its own; the programs don't depend on it.</li>
+        <li><b>macOS:</b> install from the .pkg on go.dev/dl, or with Homebrew (<code>brew install go</code>). <code>go version</code> checks which version you have. Option+Shift+8 types <code>°</code>.</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages can be several versions behind; everything in this chapter works on any Go from 1.18 up.</li>
+        <li><b>No install?</b> Every single-file program here runs in the Go Playground (go.dev/play). The <code>pantry</code> example needs two packages, so it is best run on your own computer.</li>
+      </ul>
+      <p class="os-note">Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>named type, defined type</dt><dd>A type made with <code>type Name Underlying</code>. It is different from every other type, including its underlying type.</dd>
+        <dt>underlying type</dt><dd>The type a named type is built from: what the cup is made of. It decides which operators work.</dd>
+        <dt>type definition</dt><dd>The declaration <code>type Celsius float64</code>, with no <code>=</code>.</dd>
+        <dt>conversion</dt><dd><code>T(x)</code>: the same value as type <code>T</code>. Between types with the same underlying type, it changes only the type.</dd>
+        <dt>non-local type</dt><dd>A type declared in another package (or built into Go). You can't add methods to it.</dd>
+        <dt>enum, enumeration</dt><dd>A fixed list of named choices. In Go: a named integer type plus a block of constants.</dd>
+        <dt><code>iota</code></dt><dd>Inside a <code>const</code> block, the number of the current line (constant spec), from 0.</dd>
+        <dt>blank identifier <code>_</code></dt><dd>A name that throws its value away; in a <code>const</code> block it skips a number.</dd>
+        <dt>bit, bit flag</dt><dd>A bit is one binary digit, 0 or 1. Bit flags give each choice one bit, so several can be on at once.</dd>
+        <dt><code>&lt;&lt;</code>, <code>|</code>, <code>&amp;</code></dt><dd>Shift left; bitwise or (switch on); bitwise and (keep only switches on in both).</dd>
+        <dt>type alias</dt><dd><code>type A = B</code>: a second name for the very same type.</dd>
+        <dt>unexported type</dt><dd>A type whose name starts with a small letter; other packages can't write its name.</dd>
+        <dt>embedding, embedded field</dt><dd>Putting a type in a struct (or an interface in an interface) with no field name. The field's name is the type's name.</dd>
+        <dt>promoted field, promoted method</dt><dd>A field or method of an embedded part that can be used directly on the outer value.</dd>
+        <dt>selector</dt><dd>The <code>.Name</code> after a value: <code>v.HP</code>, <code>v.Start</code>.</dd>
+        <dt>shadowing</dt><dd>A name on a closer layer hiding the same name on a deeper one.</dd>
+        <dt>ambiguous selector</dt><dd>A selector that matches two names at the same depth; a compile error when used.</dd>
+        <dt>inheritance</dt><dd>In some other languages, a class taking over another's methods so that the parent's code can call the child's versions. Go doesn't have it.</dd>
+        <dt>composition</dt><dd>Building a type from smaller parts and connecting behaviour through interfaces.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/ref/spec#Type_definitions">The Go specification: type definitions</a>, <a href="https://go.dev/ref/spec#Alias_declarations">alias declarations</a>, <a href="https://go.dev/ref/spec#Iota">iota</a>, <a href="https://go.dev/ref/spec#Conversions">conversions</a>, <a href="https://go.dev/ref/spec#Struct_types">struct types (embedded fields and promotion)</a> and <a href="https://go.dev/ref/spec#Selectors">selectors (depth and ambiguity)</a>.</li>
+        <li><a href="https://go.dev/doc/effective_go#embedding">Effective Go: Embedding</a> and <a href="https://go.dev/doc/effective_go#constants">Constants</a> (the <code>ByteSize</code> iota example).</li>
+        <li><a href="https://go.dev/tour/methods/3">A Tour of Go: Methods continued</a> (methods on non-struct types).</li>
+        <li><a href="https://pkg.go.dev/golang.org/x/tools/cmd/stringer">The stringer command</a>, which writes enum <code>String</code> methods for you.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/enums">Go by Example: Enums</a> and <a href="https://gobyexample.com/struct-embedding">Struct Embedding</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #10, not being aware of the possible problems with type embedding.</li>
+        <li><a href="https://exercism.org/tracks/go">Exercism Go track</a>: the type definitions and constants concept exercises.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests">Learn Go with Tests</a>: "Structs, methods &amp; interfaces".</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch18</code>, which has a <code>go.mod</code> saying <code>module goch18</code> and <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). The exception is panel 22: the module <code>/home/you/go-ch18/pantry</code>, whose <code>go.mod</code> was written by the real <code>go mod init example/pantry</code> (it says <code>go 1.27.3</code>). <code>unexported.go</code> and <code>unexported_bad.go</code> each run as one real shell session, with every command shown: <code>cp</code> the program to <code>pantry/main.go</code>, <code>cd pantry</code>, then <code>go run .</code>, so their errors carry the header <code># example/pantry</code>. Every program was also run with Go 1.24.7: the single-file programs against a module file that says <code>go 1.24</code>, and the pantry module with its <code>go.mod</code> lowered to <code>go 1.24</code> for that run only, then restored. All 58 runs were identical on both versions (no version differences), and all are deterministic.</p>
+  <p>The two machines, the iota and sandwich tracers and the method-lookup road map are teaching models; each checks itself against those runs and shows a badge. The iota tracer shows the Compiler's work as steps, although constants are settled before the program starts; its <code>ticket</code> box stands for <code>iota</code>. The sandwich tracer draws the embedded <code>Bread</code> and <code>Filling</code> as separate boxes with arrows, although Go stores them inline inside the <code>Sandwich</code>. The lookup map draws one layer of embedding; deeper layers follow the same rule.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go specification (type definitions, alias declarations, iota, constant declarations, conversions, assignability, struct types, selectors, method sets); Effective Go, "Constants" (the <code>ByteSize</code> example, and the warning about <code>Sprintf</code> inside <code>String</code>) and "Embedding" (promoted methods with the inner receiver, and the name-conflict rules); Go by Example, "Enums" (named int type, <code>String</code> via a lookup, the <code>stringer</code> tool) and "Struct Embedding"; A Tour of Go, "Methods" (methods on non-struct types and the local-type rule); 100 Go Mistakes #10, type embedding (free summary at 100go.co); and, as summarised in this book's research map, boot.dev Learn Go, Exercism, roadmap.sh, The Go Programming Language sections 2.5, 3.6.1 and 6.3, Get Programming with Go lesson 23, and Learning Go, 2nd edition, chapter 7.</p>
+  <p>Scoot, the Compiler, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
