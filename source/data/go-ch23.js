@@ -1,0 +1,1175 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch23",
+  "versionDifferences": [
+   "bench.go",
+   "boss_fill.go",
+   "bubble.go",
+   "cover.go",
+   "fuzz_run.go",
+   "panic.go",
+   "sleepy.go",
+   "spot_share.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bench.go, boss_fill.go, bubble.go, cover.go, fuzz_run.go, panic.go, sleepy.go, spot_share.go."
+ },
+ "programs": {
+  "bench.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc BenchmarkFee(b *testing.B) {\n\tfor b.Loop() {\n\t\tFee(8)\n\t}\n}\n\nfunc BenchmarkReceipt(b *testing.B) {\n\tfor b.Loop() {\n\t\tReceipt(\"Professor\", 8)\n\t}\n}\n\nfunc BenchmarkFeeOldStyle(b *testing.B) {\n\tfor i := 0; i < b.N; i++ {\n\t\tFee(8)\n\t}\n}\n",
+   "stdout": "goos: linux\ngoarch: amd64\npkg: example.com/parcel\ncpu: Intel(R) Xeon(R) Processor @ 2.10GHz\nBenchmarkFee-2           \t1000000000\t         1.123 ns/op\nBenchmarkReceipt-2       \t 3962396\t       295.8 ns/op\nBenchmarkFeeOldStyle-2   \t1000000000\t         0.4115 ns/op\nPASS\nok  \texample.com/parcel\t2.806s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd bench",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -bench=.",
+     "out": "goos: linux\ngoarch: amd64\npkg: example.com/parcel\ncpu: Intel(R) Xeon(R) Processor @ 2.10GHz\nBenchmarkFee-2           \t1000000000\t         1.123 ns/op\nBenchmarkReceipt-2       \t 3962396\t       295.8 ns/op\nBenchmarkFeeOldStyle-2   \t1000000000\t         0.4115 ns/op\nPASS\nok  \texample.com/parcel\t2.806s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/bench"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "goos: linux\ngoarch: amd64\npkg: example.com/parcel\ncpu: Intel(R) Xeon(R) Processor @ 2.10GHz\nBenchmarkFee-2           \t608715913\t         2.021 ns/op\nBenchmarkReceipt-2       \t 4807828\t       243.1 ns/op\nBenchmarkFeeOldStyle-2   \t1000000000\t         0.3405 ns/op\nPASS\nok  \texample.com/parcel\t2.805s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd bench",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -bench=.",
+      "out": "goos: linux\ngoarch: amd64\npkg: example.com/parcel\ncpu: Intel(R) Xeon(R) Processor @ 2.10GHz\nBenchmarkFee-2           \t608715913\t         2.021 ns/op\nBenchmarkReceipt-2       \t 4807828\t       243.1 ns/op\nBenchmarkFeeOldStyle-2   \t1000000000\t         0.3405 ns/op\nPASS\nok  \texample.com/parcel\t2.805s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/bench"
+     }
+    ]
+   }
+  },
+  "boss_fill.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"testing/synctest\"\n\t\"time\"\n)\n\nfunc TestBrew(t *testing.T) {\n\tsynctest.Test(t, func(t *testing.T) {\n\t\tstart := time.Now()\n\t\tgot := Brew()\n\t\ttook := time.Since(start)\n\t\tif took != 3*time.Minute {\n\t\t\tt.Errorf(\"took %v, want 3m0s\", took)\n\t\t}\n\t\tt.Logf(\"%s after %v\", got, took)\n\t})\n}\n",
+   "stdout": "=== RUN   TestBrew\n    kettle_test.go:17: tea after 3m0s\n--- PASS: TestBrew (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestBrew\n    kettle_test.go:17: tea after 3m0s\n--- PASS: TestBrew (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/boss_fill"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "FAIL\texample.com/parcel [setup failed]\n",
+    "stderr": "# example.com/parcel\npackage example.com/parcel (test)\n\timports testing/synctest: build constraints exclude all Go files in /usr/local/go1.24.7/src/testing/synctest\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+      "out": "FAIL\texample.com/parcel [setup failed]\n",
+      "err": "# example.com/parcel\npackage example.com/parcel (test)\n\timports testing/synctest: build constraints exclude all Go files in /usr/local/go1.24.7/src/testing/synctest\n",
+      "exit": 0,
+      "dir": "~/go-ch23/boss_fill"
+     }
+    ]
+   }
+  },
+  "boss_fill/kettle.go": {
+   "src": "package parcel\n\nimport \"time\"\n\n// Brew boils the lab kettle (three minutes), then pours.\nfunc Brew() string {\n\ttime.Sleep(3 * time.Minute)\n\treturn \"tea\"\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "boss_parsons.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc FuzzFee(f *testing.F) {\n\tf.Add(3)\n\tf.Add(8)\n\tf.Fuzz(func(t *testing.T, kg int) {\n\t\tif Fee(kg+1) < Fee(kg) {\n\t\t\tt.Errorf(\"Fee(%d) is less than Fee(%d)\", kg+1, kg)\n\t\t}\n\t})\n}\n",
+   "stdout": "=== RUN   FuzzFee\n=== RUN   FuzzFee/seed#0\n=== RUN   FuzzFee/seed#1\n--- PASS: FuzzFee (0.00s)\n    --- PASS: FuzzFee/seed#0 (0.00s)\n    --- PASS: FuzzFee/seed#1 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   FuzzFee\n=== RUN   FuzzFee/seed#0\n=== RUN   FuzzFee/seed#1\n--- PASS: FuzzFee (0.00s)\n    --- PASS: FuzzFee/seed#0 (0.00s)\n    --- PASS: FuzzFee/seed#1 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/boss_parsons"
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestDepot(t *testing.T) {\n\tt.Run(\"north\", func(t *testing.T) {\n\t\tt.Run(\"small\", func(t *testing.T) {})\n\t\tt.Run(\"big\", func(t *testing.T) {\n\t\t\tt.Fatal(\"crate too big\")\n\t\t})\n\t\tt.Run(\"tiny\", func(t *testing.T) {})\n\t})\n\tt.Run(\"south\", func(t *testing.T) {\n\t\tt.Error(\"door stuck\")\n\t\tt.Run(\"small\", func(t *testing.T) {})\n\t})\n}\n",
+   "stdout": "--- FAIL: TestDepot (0.00s)\n--- FAIL: TestDepot/north (0.00s)\n--- PASS: TestDepot/north/small (0.00s)\n--- FAIL: TestDepot/north/big (0.00s)\n--- PASS: TestDepot/north/tiny (0.00s)\n--- FAIL: TestDepot/south (0.00s)\n--- PASS: TestDepot/south/small (0.00s)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | grep -o -- '--- .*'",
+     "out": "--- FAIL: TestDepot (0.00s)\n--- FAIL: TestDepot/north (0.00s)\n--- PASS: TestDepot/north/small (0.00s)\n--- FAIL: TestDepot/north/big (0.00s)\n--- PASS: TestDepot/north/tiny (0.00s)\n--- FAIL: TestDepot/south (0.00s)\n--- PASS: TestDepot/south/small (0.00s)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/boss_predict"
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct{ kg, want int }{{1, 3}, {8, 11}, {10, 15}}\n\tfor _, tc := range tests {\n\t\tgot := Fee(tc.kg)\n\t\tif got != tc.want {\n\t\t\tt.Fatalf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t}\n\t}\n}\n",
+   "stdout": "--- FAIL: TestFee (0.00s)\n    fee_test.go:10: Fee(8) = 16, want 11\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "--- FAIL: TestFee (0.00s)\n    fee_test.go:10: Fee(8) = 16, want 11\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/boss_spot"
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport \"fmt\"\n\n// fee also says which case of the switch ran.\nfunc fee(kg int) (int, string) {\n\tswitch {\n\tcase kg <= 1:\n\t\treturn 3, \"light\"\n\tcase kg <= 5:\n\t\treturn 5, \"medium\"\n\tdefault:\n\t\treturn 5 + 2*(kg-5), \"heavy\"\n\t}\n}\n\nfunc main() {\n\tfor _, kg := range []int{4, 0, 7, 5, 6} {\n\t\tcoins, branch := fee(kg)\n\t\tfmt.Println(kg, coins, branch)\n\t}\n}\n",
+   "stdout": "4 5 medium\n0 3 light\n7 9 heavy\n5 5 medium\n6 7 heavy\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "4 5 medium\n0 3 light\n7 9 heavy\n5 5 medium\n6 7 heavy\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bubble.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"testing/synctest\"\n\t\"time\"\n)\n\nfunc TestDeliver(t *testing.T) {\n\tsynctest.Test(t, func(t *testing.T) {\n\t\tstart := time.Now()\n\t\tgot := Deliver(2)\n\t\ttook := time.Since(start)\n\t\tif got != \"2 stops delivered\" {\n\t\t\tt.Errorf(\"Deliver(2) = %q\", got)\n\t\t}\n\t\tif took != 2*time.Second {\n\t\t\tt.Errorf(\"took %v, want exactly 2s\", took)\n\t\t}\n\t\tt.Logf(\"bubble clock started at %v\", start.UTC())\n\t\tt.Logf(\"took %v of bubble time\", took)\n\t})\n}\n",
+   "stdout": "=== RUN   TestDeliver\n    deliver_test.go:20: bubble clock started at 2000-01-01 00:00:00 +0000 UTC\n    deliver_test.go:21: took 2s of bubble time\n--- PASS: TestDeliver (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd bubble",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestDeliver\n    deliver_test.go:20: bubble clock started at 2000-01-01 00:00:00 +0000 UTC\n    deliver_test.go:21: took 2s of bubble time\n--- PASS: TestDeliver (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/bubble"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "FAIL\texample.com/parcel [setup failed]\n",
+    "stderr": "# example.com/parcel\npackage example.com/parcel (test)\n\timports testing/synctest: build constraints exclude all Go files in /usr/local/go1.24.7/src/testing/synctest\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd bubble",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+      "out": "FAIL\texample.com/parcel [setup failed]\n",
+      "err": "# example.com/parcel\npackage example.com/parcel (test)\n\timports testing/synctest: build constraints exclude all Go files in /usr/local/go1.24.7/src/testing/synctest\n",
+      "exit": 0,
+      "dir": "~/go-ch23/bubble"
+     }
+    ]
+   }
+  },
+  "build_fail.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\tgot := Fee(3)\n\twant := 5\n\tif Fee(3) != want {\n\t\tt.Errorf(\"Fee(3) = %d, want %d\", Fee(3), want)\n\t}\n}\n",
+   "stdout": "FAIL\texample.com/parcel [build failed]\n",
+   "stderr": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:6:2: declared and not used: got\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go test",
+     "out": "FAIL\texample.com/parcel [build failed]\n",
+     "err": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:6:2: declared and not used: got\n",
+     "exit": 1,
+     "dir": "~/go-ch23/buildfail",
+     "merged": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:6:2: declared and not used: got\nFAIL\texample.com/parcel [build failed]\n"
+    }
+   ]
+  },
+  "cache_run.go": {
+   "src": "package greet\n\nimport \"testing\"\n\nfunc TestHello(t *testing.T) {\n\tif got := Hello(\"Scoot\"); got != \"Hello, Scoot!\" {\n\t\tt.Errorf(\"Hello(%q) = %q\", \"Scoot\", got)\n\t}\n}\n",
+   "stdout": "ok  \texample.com/lab/greet\t…s\nok  \texample.com/lab/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd cache",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go clean -testcache",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cache"
+    },
+    {
+     "cmd": "go test ./... | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "ok  \texample.com/lab/greet\t…s\nok  \texample.com/lab/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cache"
+    },
+    {
+     "cmd": "go test ./... | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "ok  \texample.com/lab/greet\t(cached)\nok  \texample.com/lab/parcel\t(cached)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cache"
+    },
+    {
+     "cmd": "go test -count=1 ./... | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "ok  \texample.com/lab/greet\t…s\nok  \texample.com/lab/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cache"
+    }
+   ]
+  },
+  "cache/greet/greet.go": {
+   "src": "package greet\n\n// Hello returns a friendly greeting.\nfunc Hello(name string) string {\n\treturn \"Hello, \" + name + \"!\"\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "cleanup.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"testing\"\n)\n\nfunc TestLabDay(t *testing.T) {\n\tfmt.Println(\"lab: unlock the door\")\n\tt.Cleanup(func() { fmt.Println(\"lab: lock the door\") })\n\tfmt.Println(\"lab: light the burner\")\n\tt.Cleanup(func() { fmt.Println(\"lab: put out the burner\") })\n\tif got := Fee(3); got != 5 {\n\t\tt.Fatalf(\"Fee(3) = %d, want 5\", got)\n\t}\n\tfmt.Println(\"lab: write up the results\")\n}\n",
+   "stdout": "lab: unlock the door\nlab: light the burner\nlab: write up the results\nlab: put out the burner\nlab: lock the door\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd cleanup",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | grep lab:",
+     "out": "lab: unlock the door\nlab: light the burner\nlab: write up the results\nlab: put out the burner\nlab: lock the door\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cleanup"
+    }
+   ]
+  },
+  "cover.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname     string\n\t\tkg, want int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"shoebox\", 3, 5},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tif got := Fee(tc.kg); got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "mode: set\nexample.com/parcel/fee.go:5.2,5.9 1 1\nexample.com/parcel/fee.go:7.3,7.11 1 1\nexample.com/parcel/fee.go:9.3,9.11 1 1\nexample.com/parcel/fee.go:11.3,11.22 1 0\nexample.com/parcel/fee.go:17.2,18.1 1 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd cover",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -cover | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "PASS\ncoverage: 60.0% of statements\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cover"
+    },
+    {
+     "cmd": "go test -coverprofile=cover.out | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "PASS\ncoverage: 60.0% of statements\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cover"
+    },
+    {
+     "cmd": "go tool cover -func=cover.out",
+     "out": "example.com/parcel/fee.go:4:\tFee\t\t75.0%\nexample.com/parcel/fee.go:16:\tInsurance\t0.0%\ntotal:\t\t\t\t(statements)\t60.0%\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cover"
+    },
+    {
+     "cmd": "cat cover.out",
+     "out": "mode: set\nexample.com/parcel/fee.go:5.2,5.9 1 1\nexample.com/parcel/fee.go:7.3,7.11 1 1\nexample.com/parcel/fee.go:9.3,9.11 1 1\nexample.com/parcel/fee.go:11.3,11.22 1 0\nexample.com/parcel/fee.go:17.2,18.1 1 0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/cover"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "mode: set\nexample.com/parcel/fee.go:4.22,5.9 1 1\nexample.com/parcel/fee.go:6.15,7.11 1 1\nexample.com/parcel/fee.go:8.15,9.11 1 1\nexample.com/parcel/fee.go:10.10,11.22 1 0\nexample.com/parcel/fee.go:16.31,18.2 1 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd cover",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -cover | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+      "out": "PASS\ncoverage: 60.0% of statements\nok  \texample.com/parcel\t…s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/cover"
+     },
+     {
+      "cmd": "go test -coverprofile=cover.out | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+      "out": "PASS\ncoverage: 60.0% of statements\nok  \texample.com/parcel\t…s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/cover"
+     },
+     {
+      "cmd": "go tool cover -func=cover.out",
+      "out": "example.com/parcel/fee.go:4:\tFee\t\t75.0%\nexample.com/parcel/fee.go:16:\tInsurance\t0.0%\ntotal:\t\t\t\t(statements)\t60.0%\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/cover"
+     },
+     {
+      "cmd": "cat cover.out",
+      "out": "mode: set\nexample.com/parcel/fee.go:4.22,5.9 1 1\nexample.com/parcel/fee.go:6.15,7.11 1 1\nexample.com/parcel/fee.go:8.15,9.11 1 1\nexample.com/parcel/fee.go:10.10,11.22 1 0\nexample.com/parcel/fee.go:16.31,18.2 1 0\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/cover"
+     }
+    ]
+   }
+  },
+  "cover/fee.go": {
+   "src": "package parcel\n\n// Fee returns the delivery fee, in coins, for a parcel of kg kilograms.\nfunc Fee(kg int) int {\n\tswitch {\n\tcase kg <= 1:\n\t\treturn 3\n\tcase kg <= 5:\n\t\treturn 5\n\tdefault:\n\t\treturn 5 + 2*(kg-5)\n\t}\n}\n\n// Insurance costs 1 coin for every 10 coins of value, rounded up.\nfunc Insurance(value int) int {\n\treturn (value + 9) / 10\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "example.go": {
+   "src": "package parcel_test\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/parcel\"\n)\n\nfunc ExampleFee() {\n\tfmt.Println(parcel.Fee(3))\n\tfmt.Println(parcel.Fee(8))\n\t// Output:\n\t// 5\n\t// 11\n}\n",
+   "stdout": "=== RUN   ExampleFee\n--- PASS: ExampleFee (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd example",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   ExampleFee\n--- PASS: ExampleFee (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/example"
+    }
+   ]
+  },
+  "fatal_sub.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"negative\", -2, 0},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"zero\", 0, 0},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tif tc.kg < 1 {\n\t\t\t\tt.Fatalf(\"Fee(%d): a parcel must weigh something\", tc.kg)\n\t\t\t}\n\t\t\tif got := Fee(tc.kg); got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t\tt.Logf(\"Fee(%d) checked\", tc.kg)\n\t\t})\n\t}\n}\n",
+   "stdout": "=== RUN   TestFee\n=== RUN   TestFee/negative\n    fee_test.go:18: Fee(-2): a parcel must weigh something\n=== RUN   TestFee/shoebox\n    fee_test.go:23: Fee(3) checked\n=== RUN   TestFee/zero\n    fee_test.go:18: Fee(0): a parcel must weigh something\n--- FAIL: TestFee (0.00s)\n    --- FAIL: TestFee/negative (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- FAIL: TestFee/zero (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd fatal_sub",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestFee\n=== RUN   TestFee/negative\n    fee_test.go:18: Fee(-2): a parcel must weigh something\n=== RUN   TestFee/shoebox\n    fee_test.go:23: Fee(3) checked\n=== RUN   TestFee/zero\n    fee_test.go:18: Fee(0): a parcel must weigh something\n--- FAIL: TestFee (0.00s)\n    --- FAIL: TestFee/negative (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- FAIL: TestFee/zero (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fatal_sub"
+    }
+   ]
+  },
+  "fuzz_fixed.go": {
+   "src": "package parcel\n\n// Label shortens a name to fit on a test-tube label: at most 5 letters.\nfunc Label(name string) string {\n\tletters := []rune(name)\n\tif len(letters) > 5 {\n\t\treturn string(letters[:5])\n\t}\n\treturn name\n}\n",
+   "stdout": "=== RUN   FuzzLabel\n=== RUN   FuzzLabel/seed#0\n=== RUN   FuzzLabel/seed#1\n=== RUN   FuzzLabel/2eca2f244792bbe9\n--- PASS: FuzzLabel (0.00s)\n    --- PASS: FuzzLabel/seed#0 (0.00s)\n    --- PASS: FuzzLabel/seed#1 (0.00s)\n    --- PASS: FuzzLabel/2eca2f244792bbe9 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd fuzz_fixed",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   FuzzLabel\n=== RUN   FuzzLabel/seed#0\n=== RUN   FuzzLabel/seed#1\n=== RUN   FuzzLabel/2eca2f244792bbe9\n--- PASS: FuzzLabel (0.00s)\n    --- PASS: FuzzLabel/seed#0 (0.00s)\n    --- PASS: FuzzLabel/seed#1 (0.00s)\n    --- PASS: FuzzLabel/2eca2f244792bbe9 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fuzz_fixed"
+    }
+   ]
+  },
+  "fuzz_replay.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"unicode/utf8\"\n)\n\nfunc FuzzLabel(f *testing.F) {\n\tf.Add(\"Scoot\")\n\tf.Add(\"Professor\")\n\tf.Fuzz(func(t *testing.T, name string) {\n\t\tif !utf8.ValidString(name) {\n\t\t\tt.Skip(\"not text\")\n\t\t}\n\t\tgot := Label(name)\n\t\tif !utf8.ValidString(got) {\n\t\t\tt.Errorf(\"Label(%q) = %q, which is broken text\", name, got)\n\t\t}\n\t})\n}\n",
+   "stdout": "=== RUN   FuzzLabel\n=== RUN   FuzzLabel/seed#0\n=== RUN   FuzzLabel/seed#1\n=== RUN   FuzzLabel/2eca2f244792bbe9\n    label_test.go:17: Label(\"0000¬\") = \"0000\\xc2\", which is broken text\n--- FAIL: FuzzLabel (0.00s)\n    --- PASS: FuzzLabel/seed#0 (0.00s)\n    --- PASS: FuzzLabel/seed#1 (0.00s)\n    --- FAIL: FuzzLabel/2eca2f244792bbe9 (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd fuzz_replay",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "ls testdata/fuzz/FuzzLabel",
+     "out": "2eca2f244792bbe9\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fuzz_replay"
+    },
+    {
+     "cmd": "cat testdata/fuzz/FuzzLabel/2eca2f244792bbe9",
+     "out": "go test fuzz v1\nstring(\"0000¬\")\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fuzz_replay"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   FuzzLabel\n=== RUN   FuzzLabel/seed#0\n=== RUN   FuzzLabel/seed#1\n=== RUN   FuzzLabel/2eca2f244792bbe9\n    label_test.go:17: Label(\"0000¬\") = \"0000\\xc2\", which is broken text\n--- FAIL: FuzzLabel (0.00s)\n    --- PASS: FuzzLabel/seed#0 (0.00s)\n    --- PASS: FuzzLabel/seed#1 (0.00s)\n    --- FAIL: FuzzLabel/2eca2f244792bbe9 (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fuzz_replay"
+    }
+   ]
+  },
+  "fuzz_run.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"unicode/utf8\"\n)\n\nfunc FuzzLabel(f *testing.F) {\n\tf.Add(\"Scoot\")\n\tf.Add(\"Professor\")\n\tf.Fuzz(func(t *testing.T, name string) {\n\t\tif !utf8.ValidString(name) {\n\t\t\tt.Skip(\"not text\")\n\t\t}\n\t\tgot := Label(name)\n\t\tif !utf8.ValidString(got) {\n\t\t\tt.Errorf(\"Label(%q) = %q, which is broken text\", name, got)\n\t\t}\n\t})\n}\n",
+   "stdout": "fuzz: elapsed: 0s, gathering baseline coverage: 0/26 completed\nfuzz: elapsed: 0s, gathering baseline coverage: 26/26 completed, now fuzzing with 2 workers\nfuzz: minimizing 36-byte failing input file\nfuzz: elapsed: 0s, minimizing\n--- FAIL: FuzzLabel (0.11s)\n    --- FAIL: FuzzLabel (0.00s)\n        label_test.go:17: Label(\"0000ڦ\") = \"0000\\xda\", which is broken text\n    \n    Failing input written to testdata/fuzz/FuzzLabel/5b01474046450ba3\n    To re-run:\n    go test -run=FuzzLabel/5b01474046450ba3\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t0.115s\n",
+   "stderr": "",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go test -fuzz=FuzzLabel -fuzztime=10s",
+     "out": "fuzz: elapsed: 0s, gathering baseline coverage: 0/26 completed\nfuzz: elapsed: 0s, gathering baseline coverage: 26/26 completed, now fuzzing with 2 workers\nfuzz: minimizing 36-byte failing input file\nfuzz: elapsed: 0s, minimizing\n--- FAIL: FuzzLabel (0.11s)\n    --- FAIL: FuzzLabel (0.00s)\n        label_test.go:17: Label(\"0000ڦ\") = \"0000\\xda\", which is broken text\n    \n    Failing input written to testdata/fuzz/FuzzLabel/5b01474046450ba3\n    To re-run:\n    go test -run=FuzzLabel/5b01474046450ba3\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t0.115s\n",
+     "err": "",
+     "exit": 1,
+     "dir": "~/go-ch23/fuzz"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "fuzz: elapsed: 0s, gathering baseline coverage: 0/27 completed\nfuzz: elapsed: 0s, gathering baseline coverage: 27/27 completed, now fuzzing with 2 workers\nfuzz: elapsed: 0s, execs: 485 (4114/sec), new interesting: 0 (total: 27)\n--- FAIL: FuzzLabel (0.12s)\n    --- FAIL: FuzzLabel (0.00s)\n        label_test.go:17: Label(\"000끁\") = \"000\\xeb\\x81\", which is broken text\n    \n    Failing input written to testdata/fuzz/FuzzLabel/0734d71e1bf83149\n    To re-run:\n    go test -run=FuzzLabel/0734d71e1bf83149\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t0.122s\n",
+    "stderr": "",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go test -fuzz=FuzzLabel -fuzztime=10s",
+      "out": "fuzz: elapsed: 0s, gathering baseline coverage: 0/27 completed\nfuzz: elapsed: 0s, gathering baseline coverage: 27/27 completed, now fuzzing with 2 workers\nfuzz: elapsed: 0s, execs: 485 (4114/sec), new interesting: 0 (total: 27)\n--- FAIL: FuzzLabel (0.12s)\n    --- FAIL: FuzzLabel (0.00s)\n        label_test.go:17: Label(\"000끁\") = \"000\\xeb\\x81\", which is broken text\n    \n    Failing input written to testdata/fuzz/FuzzLabel/0734d71e1bf83149\n    To re-run:\n    go test -run=FuzzLabel/0734d71e1bf83149\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t0.122s\n",
+      "err": "",
+      "exit": 1,
+      "dir": "~/go-ch23/fuzz"
+     }
+    ]
+   }
+  },
+  "fuzz_seeds.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"unicode/utf8\"\n)\n\nfunc FuzzLabel(f *testing.F) {\n\tf.Add(\"Scoot\")\n\tf.Add(\"Professor\")\n\tf.Fuzz(func(t *testing.T, name string) {\n\t\tif !utf8.ValidString(name) {\n\t\t\tt.Skip(\"not text\")\n\t\t}\n\t\tgot := Label(name)\n\t\tif !utf8.ValidString(got) {\n\t\t\tt.Errorf(\"Label(%q) = %q, which is broken text\", name, got)\n\t\t}\n\t})\n}\n",
+   "stdout": "--- PASS: FuzzLabel (0.00s)\n--- PASS: FuzzLabel/seed#0 (0.00s)\n--- PASS: FuzzLabel/seed#1 (0.00s)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd fuzz",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | grep -o -- '--- .*'",
+     "out": "--- PASS: FuzzLabel (0.00s)\n--- PASS: FuzzLabel/seed#0 (0.00s)\n--- PASS: FuzzLabel/seed#1 (0.00s)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/fuzz"
+    }
+   ]
+  },
+  "fuzz/label.go": {
+   "src": "package parcel\n\n// Label shortens a name to fit on a test-tube label: at most 5 letters.\nfunc Label(name string) string {\n\tif len(name) > 5 {\n\t\treturn name[:5]\n\t}\n\treturn name\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "golden.go": {
+   "src": "package parcel\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestReceipt(t *testing.T) {\n\twant, err := os.ReadFile(\"testdata/receipt.golden\")\n\tif err != nil {\n\t\tt.Fatal(err)\n\t}\n\tgot := Receipt(\"Professor\", 8)\n\tif got != string(want) {\n\t\tt.Errorf(\"Receipt() =\\n%s\\nwant\\n%s\", got, want)\n\t}\n}\n",
+   "stdout": "=== RUN   TestReceipt\n--- PASS: TestReceipt (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd golden",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "ls testdata",
+     "out": "receipt.golden\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/golden"
+    },
+    {
+     "cmd": "cat testdata/receipt.golden",
+     "out": "TO:     Professor\nWEIGHT: 8 kg\nFEE:    11 coins\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/golden"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestReceipt\n--- PASS: TestReceipt (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/golden"
+    }
+   ]
+  },
+  "golden/receipt.go": {
+   "src": "package parcel\n\nimport \"fmt\"\n\n// Receipt returns the text printed on a delivery receipt.\nfunc Receipt(to string, kg int) string {\n\treturn fmt.Sprintf(\"TO:     %s\\nWEIGHT: %d kg\\nFEE:    %d coins\\n\", to, kg, Fee(kg))\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "helper_no.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc checkFee(t *testing.T, kg, want int) {\n\tif got := Fee(kg); got != want {\n\t\tt.Errorf(\"Fee(%d) = %d, want %d\", kg, got, want)\n\t}\n}\n\nfunc TestFee(t *testing.T) {\n\tcheckFee(t, 1, 3)\n\tcheckFee(t, 8, 11)\n\tcheckFee(t, 10, 15)\n}\n",
+   "stdout": "--- FAIL: TestFee (0.00s)\n    fee_test.go:7: Fee(8) = 16, want 11\n    fee_test.go:7: Fee(10) = 20, want 15\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd helper_no",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "--- FAIL: TestFee (0.00s)\n    fee_test.go:7: Fee(8) = 16, want 11\n    fee_test.go:7: Fee(10) = 20, want 15\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/helper_no"
+    }
+   ]
+  },
+  "helper_yes.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc checkFee(t *testing.T, kg, want int) {\n\tt.Helper()\n\tif got := Fee(kg); got != want {\n\t\tt.Errorf(\"Fee(%d) = %d, want %d\", kg, got, want)\n\t}\n}\n\nfunc TestFee(t *testing.T) {\n\tcheckFee(t, 1, 3)\n\tcheckFee(t, 8, 11)\n\tcheckFee(t, 10, 15)\n}\n",
+   "stdout": "--- FAIL: TestFee (0.00s)\n    fee_test.go:14: Fee(8) = 16, want 11\n    fee_test.go:15: Fee(10) = 20, want 15\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd helper_yes",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "--- FAIL: TestFee (0.00s)\n    fee_test.go:14: Fee(8) = 16, want 11\n    fee_test.go:15: Fee(10) = 20, want 15\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/helper_yes"
+    }
+   ]
+  },
+  "http_preview.go": {
+   "src": "package parcel\n\nimport (\n\t\"net/http/httptest\"\n\t\"testing\"\n)\n\nfunc TestHello(t *testing.T) {\n\treq := httptest.NewRequest(\"GET\", \"/hello?name=Scoot\", nil)\n\trec := httptest.NewRecorder()\n\tHello(rec, req)\n\tif got := rec.Body.String(); got != \"Hello, Scoot!\" {\n\t\tt.Errorf(\"body = %q, want %q\", got, \"Hello, Scoot!\")\n\t}\n\tt.Logf(\"status %d, body %q\", rec.Code, rec.Body.String())\n}\n",
+   "stdout": "=== RUN   TestHello\n    hello_test.go:15: status 200, body \"Hello, Scoot!\"\n--- PASS: TestHello (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd httpprev",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestHello\n    hello_test.go:15: status 200, body \"Hello, Scoot!\"\n--- PASS: TestHello (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/httpprev"
+    }
+   ]
+  },
+  "httpprev/hello.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n)\n\n// Hello answers a web request with a greeting.\nfunc Hello(w http.ResponseWriter, r *http.Request) {\n\tfmt.Fprintf(w, \"Hello, %s!\", r.URL.Query().Get(\"name\"))\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "panic.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestShare(t *testing.T) {\n\ttests := []struct {\n\t\tname          string\n\t\tcoins, riders int\n\t\twant          int\n\t}{\n\t\t{\"two riders\", 10, 2, 5},\n\t\t{\"nobody came\", 10, 0, 0},\n\t\t{\"three riders\", 9, 3, 3},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tif got := Share(tc.coins, tc.riders); got != tc.want {\n\t\t\t\tt.Errorf(\"Share(%d, %d) = %d, want %d\", tc.coins, tc.riders, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n\nfunc TestLater(t *testing.T) {\n\tt.Log(\"this test never gets its turn\")\n}\n",
+   "stdout": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered, repanicked]\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x6b6590, 0x6edee0})\n\ttesting/testing.go:2125 +0x232\ntesting.tRunner.func1()\n\ttesting/testing.go:2128 +0x329\npanic({0x6b6590?, 0x6edee0?})\n\truntime/panic.go:859 +0x125\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:2195 +0xea\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:2260 +0x4d4\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cd panic",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "set -o pipefail",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/panic"
+    },
+    {
+     "cmd": "go test -v -trimpath | sed -E 's/\\t[0-9.]+s\\b/\\t…s/; s/0x[0-9a-f]{9,}/0x…/g; s/goroutine [0-9]+/goroutine N/'",
+     "out": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered, repanicked]\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x6b6590, 0x6edee0})\n\ttesting/testing.go:2125 +0x232\ntesting.tRunner.func1()\n\ttesting/testing.go:2128 +0x329\npanic({0x6b6590?, 0x6edee0?})\n\truntime/panic.go:859 +0x125\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:2195 +0xea\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:2260 +0x4d4\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 1,
+     "dir": "~/go-ch23/panic"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered]\n\tpanic: runtime error: integer divide by zero\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x54ff00, 0x69e6d0})\n\ttesting/testing.go:1734 +0x21c\ntesting.tRunner.func1()\n\ttesting/testing.go:1737 +0x35e\npanic({0x54ff00?, 0x69e6d0?})\n\truntime/panic.go:792 +0x132\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:1792 +0xf4\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:1851 +0x413\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+    "stderr": "",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "cd panic",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "set -o pipefail",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/panic"
+     },
+     {
+      "cmd": "go test -v -trimpath | sed -E 's/\\t[0-9.]+s\\b/\\t…s/; s/0x[0-9a-f]{9,}/0x…/g; s/goroutine [0-9]+/goroutine N/'",
+      "out": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered]\n\tpanic: runtime error: integer divide by zero\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x54ff00, 0x69e6d0})\n\ttesting/testing.go:1734 +0x21c\ntesting.tRunner.func1()\n\ttesting/testing.go:1737 +0x35e\npanic({0x54ff00?, 0x69e6d0?})\n\truntime/panic.go:792 +0x132\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:1792 +0xf4\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:1851 +0x413\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+      "err": "",
+      "exit": 1,
+      "dir": "~/go-ch23/panic"
+     }
+    ]
+   }
+  },
+  "panic/share.go": {
+   "src": "package parcel\n\n// Share splits a tip of coins fairly between riders.\nfunc Share(coins, riders int) int {\n\treturn coins / riders\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "parsons_stub.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Clock interface {\n\tNow() time.Time\n}\n\ntype stubClock struct{ t time.Time }\n\nfunc (s stubClock) Now() time.Time {\n\treturn s.t\n}\n\nfunc main() {\n\tvar c Clock = stubClock{time.Date(2026, 11, 8, 7, 30, 0, 0, time.UTC)}\n\tfmt.Println(\"the stub says\", c.Now().Format(\"15:04\"))\n}\n",
+   "stdout": "the stub says 07:30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_stub.go",
+     "out": "the stub says 07:30\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_stub_alt.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Clock interface {\n\tNow() time.Time\n}\n\ntype stubClock struct{ t time.Time }\n\nfunc main() {\n\tvar c Clock = stubClock{time.Date(2026, 11, 8, 7, 30, 0, 0, time.UTC)}\n\tfmt.Println(\"the stub says\", c.Now().Format(\"15:04\"))\n\n}\nfunc (s stubClock) Now() time.Time {\n\treturn s.t\n}\n",
+   "stdout": "the stub says 07:30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_stub_alt.go",
+     "out": "the stub says 07:30\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_build.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"testing\"\n)\n\nfunc TestFee(t *testing.T) {\n\tif got := Fee(3); got != 5 {\n\t\tt.Errorf(\"Fee(3) = %d, want 5\", got)\n\t}\n}\n",
+   "stdout": "FAIL\texample.com/parcel [build failed]\n",
+   "stderr": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:4:2: \"fmt\" imported and not used\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go test",
+     "out": "FAIL\texample.com/parcel [build failed]\n",
+     "err": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:4:2: \"fmt\" imported and not used\n",
+     "exit": 1,
+     "dir": "~/go-ch23/buildfail2",
+     "merged": "# example.com/parcel [example.com/parcel.test]\n./fee_test.go:4:2: \"fmt\" imported and not used\nFAIL\texample.com/parcel [build failed]\n"
+    }
+   ]
+  },
+  "predict_cleanup.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"testing\"\n)\n\nfunc TestSpill(t *testing.T) {\n\tt.Cleanup(func() { fmt.Println(\"lab: mop the floor\") })\n\tfmt.Println(\"lab: fill the beaker\")\n\tt.Cleanup(func() { fmt.Println(\"lab: wash the beaker\") })\n\tif got := Fee(8); got != 11 {\n\t\tt.Fatalf(\"Fee(8) = %d, want 11\", got)\n\t}\n\tfmt.Println(\"lab: label the beaker\")\n}\n",
+   "stdout": "lab: fill the beaker\nlab: wash the beaker\nlab: mop the floor\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd predict_cleanup",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | grep lab:",
+     "out": "lab: fill the beaker\nlab: wash the beaker\nlab: mop the floor\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/predict_cleanup"
+    }
+   ]
+  },
+  "predict_fail.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"pillow\", 2, 5},\n\t\t{\"feather\", 1, 3},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tif got := Fee(tc.kg); got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "--- FAIL: TestFee (0.00s)\n--- PASS: TestFee/pillow (0.00s)\n--- FAIL: TestFee/feather (0.00s)\n--- PASS: TestFee/anvil (0.00s)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd guess",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | grep -o -- '--- .*'",
+     "out": "--- FAIL: TestFee (0.00s)\n--- PASS: TestFee/pillow (0.00s)\n--- FAIL: TestFee/feather (0.00s)\n--- PASS: TestFee/anvil (0.00s)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/guess"
+    }
+   ]
+  },
+  "guess/fee.go": {
+   "src": "package parcel\n\n// Fee returns the delivery fee, in coins, for a parcel of kg kilograms.\nfunc Fee(kg int) int {\n\tswitch {\n\tcase kg < 1:\n\t\treturn 3\n\tcase kg <= 5:\n\t\treturn 5\n\tdefault:\n\t\treturn 5 + 2*(kg-5)\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "race.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"edge of five\", 5, 5},\n\t\t{\"bowling ball\", 8, 11},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tgot := Fee(tc.kg)\n\t\t\tif got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "PASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "go: -race requires cgo; enable cgo by setting CGO_ENABLED=1\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd race",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go env CGO_ENABLED",
+     "out": "0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/race"
+    },
+    {
+     "cmd": "go test -race",
+     "out": "",
+     "err": "go: -race requires cgo; enable cgo by setting CGO_ENABLED=1\n",
+     "exit": 2,
+     "dir": "~/go-ch23/race"
+    },
+    {
+     "cmd": "CGO_ENABLED=1 go test -race | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "PASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/race"
+    }
+   ]
+  },
+  "rack.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"edge of five\", 5, 5},\n\t\t{\"bowling ball\", 8, 11},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tgot := Fee(tc.kg)\n\t\t\tif got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "=== RUN   TestFee\n=== RUN   TestFee/feather\n=== RUN   TestFee/shoebox\n=== RUN   TestFee/edge_of_five\n=== RUN   TestFee/bowling_ball\n    fee_test.go:21: Fee(8) = 16, want 11\n=== RUN   TestFee/anvil\n    fee_test.go:21: Fee(10) = 20, want 15\n--- FAIL: TestFee (0.00s)\n    --- PASS: TestFee/feather (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- PASS: TestFee/edge_of_five (0.00s)\n    --- FAIL: TestFee/bowling_ball (0.00s)\n    --- FAIL: TestFee/anvil (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "cd tubes_bug",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "set -o pipefail",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/tubes_bug"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestFee\n=== RUN   TestFee/feather\n=== RUN   TestFee/shoebox\n=== RUN   TestFee/edge_of_five\n=== RUN   TestFee/bowling_ball\n    fee_test.go:21: Fee(8) = 16, want 11\n=== RUN   TestFee/anvil\n    fee_test.go:21: Fee(10) = 20, want 15\n--- FAIL: TestFee (0.00s)\n    --- PASS: TestFee/feather (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- PASS: TestFee/edge_of_five (0.00s)\n    --- FAIL: TestFee/bowling_ball (0.00s)\n    --- FAIL: TestFee/anvil (0.00s)\nFAIL\nexit status 1\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 1,
+     "dir": "~/go-ch23/tubes_bug"
+    }
+   ]
+  },
+  "tubes_bug/fee.go": {
+   "src": "package parcel\n\n// Fee returns the delivery fee, in coins, for a parcel of kg kilograms.\nfunc Fee(kg int) int {\n\tswitch {\n\tcase kg <= 1:\n\t\treturn 3\n\tcase kg <= 5:\n\t\treturn 5\n\tdefault:\n\t\treturn 5 + 2*kg - 5\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "run_one.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"edge of five\", 5, 5},\n\t\t{\"bowling ball\", 8, 11},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tgot := Fee(tc.kg)\n\t\t\tif got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "=== RUN   TestFee\n=== RUN   TestFee/bowling_ball\n--- PASS: TestFee (0.00s)\n    --- PASS: TestFee/bowling_ball (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tubes",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v -run 'TestFee/bowling' | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestFee\n=== RUN   TestFee/bowling_ball\n--- PASS: TestFee (0.00s)\n    --- PASS: TestFee/bowling_ball (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/tubes"
+    }
+   ]
+  },
+  "sleepy.go": {
+   "src": "package parcel\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestDeliver(t *testing.T) {\n\tstart := time.Now()\n\tgot := Deliver(2)\n\ttook := time.Since(start)\n\tif got != \"2 stops delivered\" {\n\t\tt.Errorf(\"Deliver(2) = %q\", got)\n\t}\n\tt.Logf(\"took %v of real time\", took)\n}\n",
+   "stdout": "=== RUN   TestDeliver\n    deliver_test.go:15: took 2.000122924s of real time\n--- PASS: TestDeliver (2.00s)\nPASS\nok  \texample.com/parcel\t2.003s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd sleepy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v",
+     "out": "=== RUN   TestDeliver\n    deliver_test.go:15: took 2.000122924s of real time\n--- PASS: TestDeliver (2.00s)\nPASS\nok  \texample.com/parcel\t2.003s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/sleepy"
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "=== RUN   TestDeliver\n    deliver_test.go:15: took 2.000548766s of real time\n--- PASS: TestDeliver (2.00s)\nPASS\nok  \texample.com/parcel\t2.014s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd sleepy",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -v",
+      "out": "=== RUN   TestDeliver\n    deliver_test.go:15: took 2.000548766s of real time\n--- PASS: TestDeliver (2.00s)\nPASS\nok  \texample.com/parcel\t2.014s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/sleepy"
+     }
+    ]
+   }
+  },
+  "sleepy/deliver.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\n// Deliver rides to each stop (one second per stop) and reports back.\nfunc Deliver(stops int) string {\n\tfor i := 0; i < stops; i++ {\n\t\ttime.Sleep(time.Second)\n\t}\n\treturn fmt.Sprintf(\"%d stops delivered\", stops)\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "spot_share.go": {
+   "src": "package parcel\n\n// Share splits a tip of coins fairly between riders.\nfunc Share(coins, riders int) int {\n\treturn coins / riders\n}\n",
+   "stdout": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered, repanicked]\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x6b6590, 0x6edee0})\n\ttesting/testing.go:2125 +0x232\ntesting.tRunner.func1()\n\ttesting/testing.go:2128 +0x329\npanic({0x6b6590?, 0x6edee0?})\n\truntime/panic.go:859 +0x125\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:2195 +0xea\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:2260 +0x4d4\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd panic",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v -trimpath | sed -E 's/\\t[0-9.]+s\\b/\\t…s/; s/0x[0-9a-f]{9,}/0x…/g; s/goroutine [0-9]+/goroutine N/'",
+     "out": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered, repanicked]\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x6b6590, 0x6edee0})\n\ttesting/testing.go:2125 +0x232\ntesting.tRunner.func1()\n\ttesting/testing.go:2128 +0x329\npanic({0x6b6590?, 0x6edee0?})\n\truntime/panic.go:859 +0x125\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:2195 +0xea\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:2260 +0x4d4\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/panic"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered]\n\tpanic: runtime error: integer divide by zero\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x54ff00, 0x69e6d0})\n\ttesting/testing.go:1734 +0x21c\ntesting.tRunner.func1()\n\ttesting/testing.go:1737 +0x35e\npanic({0x54ff00?, 0x69e6d0?})\n\truntime/panic.go:792 +0x132\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:1792 +0xf4\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:1851 +0x413\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "cd panic",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23"
+     },
+     {
+      "cmd": "go test -v -trimpath | sed -E 's/\\t[0-9.]+s\\b/\\t…s/; s/0x[0-9a-f]{9,}/0x…/g; s/goroutine [0-9]+/goroutine N/'",
+      "out": "=== RUN   TestShare\n=== RUN   TestShare/two_riders\n=== RUN   TestShare/nobody_came\n--- FAIL: TestShare (0.00s)\n    --- PASS: TestShare/two_riders (0.00s)\n    --- FAIL: TestShare/nobody_came (0.00s)\npanic: runtime error: integer divide by zero [recovered]\n\tpanic: runtime error: integer divide by zero\n\ngoroutine N [running]:\ntesting.tRunner.func1.2({0x54ff00, 0x69e6d0})\n\ttesting/testing.go:1734 +0x21c\ntesting.tRunner.func1()\n\ttesting/testing.go:1737 +0x35e\npanic({0x54ff00?, 0x69e6d0?})\n\truntime/panic.go:792 +0x132\nexample.com/parcel.Share(...)\n\texample.com/parcel/share.go:5\nexample.com/parcel.TestShare.func1(0x…?)\n\texample.com/parcel/share_test.go:17 +0x12c\ntesting.tRunner(0x…, 0x…)\n\ttesting/testing.go:1792 +0xf4\ncreated by testing.(*T).Run in goroutine N\n\ttesting/testing.go:1851 +0x413\nexit status 2\nFAIL\texample.com/parcel\t…s\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/go-ch23/panic"
+     }
+    ]
+   }
+  },
+  "stopwatch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\n// A model of how go test picks how many times to run a benchmark.\n// Pretend one call always takes exactly 2 milliseconds (a slow call).\nfunc main() {\n\tconst cost = 2000000    // nanoseconds per call (pretend): 2 ms\n\tconst goal = 1000000000 // run for at least 1 second = 1e9 ns\n\tn := 1\n\tfor round := 1; ; round++ {\n\t\ttotal := n * cost\n\t\tfmt.Println(round, n, total)\n\t\tif total >= goal {\n\t\t\tbreak\n\t\t}\n\t\tnext := goal * n / total // calls that would fill the goal\n\t\tnext += next / 5         // aim 20% past it\n\t\tnext = min(next, 100*n)  // but grow at most 100 times\n\t\tn = max(next, n+1)\n\t}\n}\n",
+   "stdout": "1 1 2000000\n2 100 200000000\n3 600 1200000000\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run stopwatch.go",
+     "out": "1 1 2000000\n2 100 200000000\n3 600 1200000000\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "stub_broken.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Clock interface {\n\tNow() time.Time\n}\n\n// brokenClock has the right idea but the wrong method name.\ntype brokenClock struct{ t time.Time }\n\nfunc (b brokenClock) Time() time.Time { return b.t }\n\nfunc Greeting(c Clock, name string) string {\n\tif c.Now().Hour() < 12 {\n\t\treturn \"Good morning, \" + name\n\t}\n\treturn \"Hello, \" + name\n}\n\nfunc main() {\n\tc := brokenClock{time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)}\n\tfmt.Println(Greeting(c, \"Scoot\"))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./stub_broken.go:26:23: cannot use c (variable of struct type brokenClock) as Clock value in argument to Greeting: brokenClock does not implement Clock (missing method Now)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run stub_broken.go",
+     "out": "",
+     "err": "# command-line-arguments\n./stub_broken.go:26:23: cannot use c (variable of struct type brokenClock) as Clock value in argument to Greeting: brokenClock does not implement Clock (missing method Now)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "stub_machine.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Clock interface {\n\tNow() time.Time\n}\n\n// stubClock is a stand-in clock: it always says the time it was given.\ntype stubClock struct{ t time.Time }\n\nfunc (s stubClock) Now() time.Time { return s.t }\n\nfunc Greeting(c Clock, name string) string {\n\th := c.Now().Hour()\n\tswitch {\n\tcase h < 12:\n\t\treturn \"Good morning, \" + name\n\tcase h < 18:\n\t\treturn \"Good afternoon, \" + name\n\tdefault:\n\t\treturn \"Good evening, \" + name\n\t}\n}\n\nfunc at(h, m int) stubClock {\n\treturn stubClock{time.Date(2026, 11, 8, h, m, 0, 0, time.UTC)}\n}\n\nfunc main() {\n\tfor _, c := range []stubClock{at(9, 0), at(11, 59), at(12, 0), at(17, 30), at(21, 0)} {\n\t\tfmt.Printf(\"%s -> %s\\n\", c.t.Format(\"15:04\"), Greeting(c, \"Scoot\"))\n\t}\n}\n",
+   "stdout": "09:00 -> Good morning, Scoot\n11:59 -> Good morning, Scoot\n12:00 -> Good afternoon, Scoot\n17:30 -> Good afternoon, Scoot\n21:00 -> Good evening, Scoot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run stub_machine.go",
+     "out": "09:00 -> Good morning, Scoot\n11:59 -> Good morning, Scoot\n12:00 -> Good afternoon, Scoot\n17:30 -> Good afternoon, Scoot\n21:00 -> Good evening, Scoot\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "stubs.go": {
+   "src": "package parcel\n\nimport (\n\t\"fmt\"\n\t\"testing\"\n\t\"time\"\n)\n\n// stubClock always says the same time: a stand-in for the real clock.\ntype stubClock struct{ t time.Time }\n\nfunc (s stubClock) Now() time.Time { return s.t }\n\nfunc TestGreeting(t *testing.T) {\n\ttests := []struct {\n\t\thour int\n\t\twant string\n\t}{\n\t\t{9, \"Good morning, Scoot\"},\n\t\t{12, \"Good afternoon, Scoot\"},\n\t\t{21, \"Good evening, Scoot\"},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(fmt.Sprintf(\"%02d:00\", tc.hour), func(t *testing.T) {\n\t\t\tclock := stubClock{time.Date(2026, 11, 8, tc.hour, 0, 0, 0, time.UTC)}\n\t\t\tif got := Greeting(clock, \"Scoot\"); got != tc.want {\n\t\t\t\tt.Errorf(\"got %q, want %q\", got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "=== RUN   TestGreeting\n=== RUN   TestGreeting/09:00\n=== RUN   TestGreeting/12:00\n=== RUN   TestGreeting/21:00\n--- PASS: TestGreeting (0.00s)\n    --- PASS: TestGreeting/09:00 (0.00s)\n    --- PASS: TestGreeting/12:00 (0.00s)\n    --- PASS: TestGreeting/21:00 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd stub",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestGreeting\n=== RUN   TestGreeting/09:00\n=== RUN   TestGreeting/12:00\n=== RUN   TestGreeting/21:00\n--- PASS: TestGreeting (0.00s)\n    --- PASS: TestGreeting/09:00 (0.00s)\n    --- PASS: TestGreeting/12:00 (0.00s)\n    --- PASS: TestGreeting/21:00 (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/stub"
+    }
+   ]
+  },
+  "stub/greet.go": {
+   "src": "package parcel\n\nimport \"time\"\n\n// Clock tells the time. The real program uses RealClock; tests plug in a stand-in.\ntype Clock interface {\n\tNow() time.Time\n}\n\n// RealClock asks the computer for the time.\ntype RealClock struct{}\n\nfunc (RealClock) Now() time.Time { return time.Now() }\n\n// Greeting picks a hello that suits the time of day.\nfunc Greeting(c Clock, name string) string {\n\th := c.Now().Hour()\n\tswitch {\n\tcase h < 12:\n\t\treturn \"Good morning, \" + name\n\tcase h < 18:\n\t\treturn \"Good afternoon, \" + name\n\tdefault:\n\t\treturn \"Good evening, \" + name\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "table_walk.go": {
+   "src": "package main\n\nimport \"fmt\"\n\n// fee has the bug from the rack: the brackets are missing.\nfunc fee(kg int) int {\n\tswitch {\n\tcase kg <= 1:\n\t\treturn 3\n\tcase kg <= 5:\n\t\treturn 5\n\tdefault:\n\t\treturn 5 + 2*kg - 5\n\t}\n}\n\nfunc main() {\n\ttests := []struct {\n\t\tname     string\n\t\tkg, want int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"bowling\", 8, 11},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tgot := fee(tc.kg)\n\t\tverdict := \"PASS\"\n\t\tif got != tc.want {\n\t\t\tverdict = \"FAIL\"\n\t\t}\n\t\tfmt.Println(tc.name, tc.kg, got, tc.want, verdict)\n\t}\n}\n",
+   "stdout": "feather 1 3 3 PASS\nbowling 8 16 11 FAIL\nshoebox 3 5 5 PASS\nanvil 10 20 15 FAIL\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run table_walk.go",
+     "out": "feather 1 3 3 PASS\nbowling 8 16 11 FAIL\nshoebox 3 5 5 PASS\nanvil 10 20 15 FAIL\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tubes.go": {
+   "src": "package parcel\n\nimport \"testing\"\n\nfunc TestFee(t *testing.T) {\n\ttests := []struct {\n\t\tname string\n\t\tkg   int\n\t\twant int\n\t}{\n\t\t{\"feather\", 1, 3},\n\t\t{\"shoebox\", 3, 5},\n\t\t{\"edge of five\", 5, 5},\n\t\t{\"bowling ball\", 8, 11},\n\t\t{\"anvil\", 10, 15},\n\t}\n\tfor _, tc := range tests {\n\t\tt.Run(tc.name, func(t *testing.T) {\n\t\t\tgot := Fee(tc.kg)\n\t\t\tif got != tc.want {\n\t\t\t\tt.Errorf(\"Fee(%d) = %d, want %d\", tc.kg, got, tc.want)\n\t\t\t}\n\t\t})\n\t}\n}\n",
+   "stdout": "=== RUN   TestFee\n=== RUN   TestFee/feather\n=== RUN   TestFee/shoebox\n=== RUN   TestFee/edge_of_five\n=== RUN   TestFee/bowling_ball\n=== RUN   TestFee/anvil\n--- PASS: TestFee (0.00s)\n    --- PASS: TestFee/feather (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- PASS: TestFee/edge_of_five (0.00s)\n    --- PASS: TestFee/bowling_ball (0.00s)\n    --- PASS: TestFee/anvil (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tubes",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23"
+    },
+    {
+     "cmd": "go test -v | sed 's/\\t[0-9.]*s\\b/\\t…s/'",
+     "out": "=== RUN   TestFee\n=== RUN   TestFee/feather\n=== RUN   TestFee/shoebox\n=== RUN   TestFee/edge_of_five\n=== RUN   TestFee/bowling_ball\n=== RUN   TestFee/anvil\n--- PASS: TestFee (0.00s)\n    --- PASS: TestFee/feather (0.00s)\n    --- PASS: TestFee/shoebox (0.00s)\n    --- PASS: TestFee/edge_of_five (0.00s)\n    --- PASS: TestFee/bowling_ball (0.00s)\n    --- PASS: TestFee/anvil (0.00s)\nPASS\nok  \texample.com/parcel\t…s\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/go-ch23/tubes"
+    }
+   ]
+  },
+  "tubes/fee.go": {
+   "src": "package parcel\n\n// Fee returns the delivery fee, in coins, for a parcel of kg kilograms.\nfunc Fee(kg int) int {\n\tswitch {\n\tcase kg <= 1:\n\t\treturn 3\n\tcase kg <= 5:\n\t\treturn 5\n\tdefault:\n\t\treturn 5 + 2*(kg-5)\n\t}\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

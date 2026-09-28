@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Test Lab</title>
+<meta name="description" content="Chapter 23 of the Go book of Pip &amp; Friends, a comic course: testing in depth as a lab of labelled test tubes. Table-driven tests, t.Run subtests and reading go test -v, -run, t.Fatal vs t.Error, t.Helper, t.Cleanup, testdata and golden files, example functions, -cover, the go test road map, panics in tests, sleeping tests and testing/synctest, stubs through interfaces, httptest, benchmarks with b.Loop, fuzzing, -race and test caching.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch23.css">
+<script defer src="../data/go-ch23.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch23.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch22.html">&larr; Ch 22</a><span aria-current="page">Ch 23 of 28</span><a href="ch24.html">Ch 24 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 23 · INTERMEDIATE</p>
+    <h1 id="cover-h">THE TEST LAB</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello.</p>
+    <p class="caption blurb">In chapter 15 a teacher marked your code against an answer key. Today Scoot visits the Professor's <b>test lab</b>: racks of labelled test tubes, safety rules, a fake clock that skips the waiting, a stopwatch race and a machine that throws strange ingredients at your code. You'll write tests that are quick, clear and hard to fool, and you'll learn to read every line <code>go test</code> prints. About 150 minutes, with 20 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The rack: table tests, subtests and reading <code>go test -v</code></a></li>
+      <li><a href="#part-2">Lab safety: Fatal, Helper, Cleanup and testdata</a></li>
+      <li><a href="#part-3">Examples, coverage and the road map of go test</a></li>
+      <li><a href="#part-4">Stand-ins and fake clocks: panics, sleeps, stubs</a></li>
+      <li><a href="#part-5">The stopwatch race and the fuzz machine</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE RACK OF TEST TUBES<small>Table-driven tests, t.Run subtests, -v and -run</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: Scoot arrives at the test lab">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's fee calculator decides how many coins each parcel costs. One wrong number, and every customer that day pays the wrong price. So every morning, before the first delivery, Scoot takes the calculator to the Professor's lab.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>I wrote my first tests in chapter 15. Now I have twenty cases, a function that sleeps, a clock that changes every second, and a bug that only shows up on Tuesdays.</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Professor says: </span>Then you need a proper lab. Racks for many cases, safety rules, and a few clever instruments. Go has all of them built in: one package, <code>testing</code>, and one command, <code>go test</code>.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, worried. The Professor, in a lab coat, answers calmly.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: a rack of labelled test tubes">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">A chemist doesn't test one sample and go home. She fills a <b>rack of tubes</b>, writes a <b>label</b> on each, notes what should happen, and checks them one by one. A Go table-driven test is that rack.</p>
+    <div class="picscroll"><svg class="pic-wide rack-pic" viewBox="0 0 680 330" role="img" aria-label="Picture: a wooden rack holding four glass test tubes. Each tube has a paper label: feather, shoebox, edge of five and anvil. Inside each tube is a sample with a number on it, the weight: 1, 3, 5 and 10. A dashed line on the glass marks the expected answer: 3, 5, 5 and 15 coins. Under the first three tubes a green stamp says PASS with a tick. The anvil tube is cracked and its stamp says FAIL with a cross. Badge 1 points at a label, badge 2 at a sample, badge 3 at the dashed line, badge 4 at a stamp.">
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="340" y="28">THE RACK: ONE TUBE PER CASE</text></g>
+      <rect x="40" y="226" width="600" height="18" rx="6" fill="#E9DCC3" stroke="#111" stroke-width="4"/>
+      <rect x="60" y="244" width="16" height="40" fill="#E9DCC3" stroke="#111" stroke-width="3"/><rect x="604" y="244" width="16" height="40" fill="#E9DCC3" stroke="#111" stroke-width="3"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M98 70 V210 a26 26 0 0 0 52 0 V70" fill="#C9F2D9"/>
+        <path d="M238 70 V210 a26 26 0 0 0 52 0 V70" fill="#C9F2D9"/>
+        <path d="M378 70 V210 a26 26 0 0 0 52 0 V70" fill="#C9F2D9"/>
+        <path d="M518 70 V210 a26 26 0 0 0 52 0 V70" fill="#FFE1E1"/>
+      </g>
+      <g fill="#fff" stroke="#111" stroke-width="3"><rect x="90" y="60" width="68" height="12" rx="4"/><rect x="230" y="60" width="68" height="12" rx="4"/><rect x="370" y="60" width="68" height="12" rx="4"/><rect x="510" y="60" width="68" height="12" rx="4"/></g>
+      <path d="M570 150 l-12 9 l9 7 l-12 11" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <g fill="#fff" stroke="#111" stroke-width="2.5">
+        <rect x="70" y="86" width="108" height="26" rx="3"/><rect x="210" y="86" width="108" height="26" rx="3"/><rect x="350" y="86" width="108" height="26" rx="3"/><rect x="490" y="86" width="108" height="26" rx="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle"><text x="124" y="104">feather</text><text x="264" y="104">shoebox</text><text x="404" y="104">edge of five</text><text x="544" y="104">anvil</text></g>
+      <g stroke="#111" stroke-width="2" stroke-dasharray="5 4"><path d="M100 140 H148"/><path d="M240 140 H288"/><path d="M380 140 H428"/><path d="M520 140 H568"/></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="124" y="134">want 3</text><text x="264" y="134">want 5</text><text x="404" y="134">want 5</text><text x="544" y="134">want 15</text></g>
+      <g stroke="#111" stroke-width="3" fill="#FFF6CC"><circle cx="124" cy="196" r="17"/><circle cx="264" cy="196" r="17"/><circle cx="404" cy="196" r="17"/><circle cx="544" cy="196" r="17"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle"><text x="124" y="201">1</text><text x="264" y="201">3</text><text x="404" y="201">5</text><text x="544" y="201">10</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="13" fill="#111" text-anchor="middle"><text x="124" y="174">kg</text><text x="264" y="174">kg</text><text x="404" y="174">kg</text><text x="544" y="174">kg</text></g>
+      <g stroke="#111" stroke-width="3"><rect x="84" y="290" width="80" height="30" rx="6" fill="#C9F2D9"/><rect x="224" y="290" width="80" height="30" rx="6" fill="#C9F2D9"/><rect x="364" y="290" width="80" height="30" rx="6" fill="#C9F2D9"/><rect x="504" y="290" width="80" height="30" rx="6" fill="#FFE1E1" stroke-dasharray="7 4"/></g>
+      <g font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle"><text x="124" y="312">✓ PASS</text><text x="264" y="312">✓ PASS</text><text x="404" y="312">✓ PASS</text><text x="544" y="312">✗ FAIL</text></g>
+      <g><circle cx="186" cy="80" r="15" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="160" cy="196" r="15" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="196" cy="140" r="15" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="626" cy="304" r="15" fill="#FFD60A" stroke="#111" stroke-width="3"/></g>
+      <g font-family="Bangers, sans-serif" font-size="19" fill="#111" text-anchor="middle"><text x="186" y="87">1</text><text x="160" y="203">2</text><text x="196" y="147">3</text><text x="626" y="311">4</text></g>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The <b>label</b>: the name you give the case. It is the <code>name</code> field, and <code>go test</code> prints it.</span></li>
+      <li><span>2</span><span>The <b>sample</b>: the input, here the parcel's weight in kilograms.</span></li>
+      <li><span>3</span><span>The line on the glass: the answer you <b>want</b>.</span></li>
+      <li><span>4</span><span>The <b>stamp</b>: PASS or FAIL, printed for every tube separately.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>one tube, one label, one answer.</b> Each case gets a name, and each name gets its own verdict.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a table-driven test with subtests">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">First, the code under test: Scoot's fee rules. Up to 1 kg costs 3 coins, up to 5 kg costs 5, and every kilogram after that adds 2.</p>
+    <span class="file-tab">tubes/fee.go</span>
+    <pre class="code" data-src="tubes/fee.go"></pre>
+    <p class="caption">Now the rack. The file ends in <code>_test.go</code>, so <code>go test</code> compiles it and ordinary builds ignore it (chapter 15).</p>
+    <span class="file-tab">tubes/fee_test.go</span>
+    <pre class="code" data-src="tubes.go"></pre>
+    <pre class="term wrap" data-run="tubes.go"></pre>
+    <ol class="readlist">
+      <li><span><code>tests := []struct{ name string; kg int; want int }{ ... }</code> (lines 6 to 16)<br>The table: a slice of a struct type with no name of its own, an <b>anonymous struct</b> (chapter 12). Each row is one tube: a label, an input and the answer we want. Adding a case is adding one line.</span></li>
+      <li><span><code>for _, tc := range tests</code> (line 17)<br>Walk the rack. <code>tc</code> is short for "test case", a name you'll see in lots of Go code.</span></li>
+      <li><span><code>t.Run(tc.name, func(t *testing.T) { ... })</code> (line 18)<br><code>t.Run</code> starts a <b>subtest</b>: a small test inside the big one, with its own name, its own <code>t</code> and its own verdict. The function literal (chapter 17) is the tube's check.</span></li>
+      <li><span><samp>=== RUN   TestFee/edge_of_five</samp><br>With <code>-v</code> ("verbose", tell me everything) each subtest announces itself when it starts. Its full name is <i>parent/child</i>. Spaces in your label became underscores, so you can paste the name into a command later.</span></li>
+      <li><span><samp>--- PASS: TestFee (0.00s)</samp> and the indented lines<br>The verdicts: the parent first, then each child, indented one step. <samp>(0.00s)</samp> is how long each took: under a hundredth of a second.</span></li>
+      <li><span><samp>ok  	example.com/parcel	…s</samp><br>The whole package passed. The <samp>…s</samp> is explained in the next panel.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 4: two notes about this book's terminals">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">Two honest notes before we go on, because every terminal on this page is a real run.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <p class="stamp">THE …s</p>
+        <p><code>go test</code> ends with the time the whole package took, such as <samp>0.003s</samp>. It changes on every run, so this page pipes the output through <code>sed</code>, a tool that edits text as it flows past: <code>sed 's/\t[0-9.]*s\b/\t…s/'</code> swaps a tab and a time for a tab and <samp>…s</samp>. The command is shown in full each time. On your computer you'll see real numbers.</p>
+      </div>
+      <div class="duo-card">
+        <p class="stamp">THE FOLDERS</p>
+        <p>Each example is a tiny module of its own, made with <code>go mod init example.com/parcel</code>, in a folder such as <code>~/go-ch23/tubes</code>. Each terminal starts in <code>~/go-ch23</code> and walks into the example's folder with <code>cd</code>, then the prompt shows the new folder. <code>go test</code> with no arguments tests the package in the folder you are standing in.</p>
+      </div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-table-m" id="ex-table"></div>
+  <script type="application/json" id="ex-table-m">{"program": "tubes.go", "prompt": "Rebuild the rack. Fill the three blanks so the test prints the goal output.", "blanks": [{"line": 17, "text": "range"}, {"line": 18, "text": "t.Run"}, {"line": 20, "text": "tc.want"}], "explain": "<code>range tests</code> walks the table row by row. <code>t.Run(tc.name, ...)</code> turns each row into a named subtest, which is why every row has its own <samp>=== RUN</samp> and <samp>--- PASS</samp> line. And each row is checked against <em>its own</em> answer, <code>tc.want</code>."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: a tube cracks">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="CRACK!" data-seed="5"></svg>
+    <p class="caption">Next morning Scoot "tidies up" the fee rule and deletes two brackets. Spot the difference from panel 3, on line 11.</p>
+    <span class="file-tab">tubes_bug/fee.go</span>
+    <pre class="code" data-src="tubes_bug/fee.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>5 + 2*kg - 5</code>... that's just <code>2*kg</code>! Multiplication happens before adding, so without the brackets the "minus 5" no longer applies to the kilograms. Will the rack notice?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot looks surprised, mouth open.</p>
+  </section>
+
+  <section class="panel clean rack" aria-label="Panel 6: the test-tube rack from a real run" data-rack="rk-fee">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The same test file, run against the broken <code>fee.go</code>. The rack below is built from the real <code>go test -v</code> output. Step through the tubes in the order Go ran them.</p>
+    <p class="rk-cmd"></p>
+    <div class="rk-stage"><svg class="rk-svg" role="img" aria-label="A rack of test tubes, one per subtest. The text version below lists every tube and its verdict."></svg></div>
+    <div class="rk-log" data-reserve></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next tube <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every tube</summary><table class="transcript"><thead><tr><th>Tube</th><th>Full name</th><th>Verdict</th><th>Log lines</th><th>Why</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="rk-fee">{"program": "rack.go", "test": "TestFee", "tubes": [
+      {"name": "feather", "want": "PASS", "note": "1 kg takes the first <code>case</code>, which wasn't touched: 3 coins, as wanted."},
+      {"name": "shoebox", "want": "PASS", "note": "3 kg takes the second <code>case</code>: 5 coins. Still fine."},
+      {"name": "edge of five", "want": "PASS", "note": "5 kg is exactly on the edge. <code>kg &lt;= 5</code> is true, so it's 5 coins. Edge cases like this one are where off-by-one bugs hide, so a good rack always has one."},
+      {"name": "bowling ball", "want": "FAIL", "note": "8 kg reaches the broken <code>default</code>: <code>5 + 2*8 - 5</code> is 16, not 11. The log line says exactly that."},
+      {"name": "anvil", "want": "FAIL", "note": "10 kg: <code>5 + 20 - 5</code> is 20, not 15. A second tube cracks, and Go still checked it, because <code>t.Errorf</code> lets the run carry on."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: read the failure like a detective">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The real terminal. Read it like a detective: last line first, then work upwards.</p>
+    <pre class="term wrap" data-run="rack.go"></pre>
+    <ol class="readlist">
+      <li><span><code>set -o pipefail</code> (before the test)<br>A shell setting. Without it, a line like <code>go test -v | sed …</code> ends with <code>sed</code>'s exit code, which is 0 even when tests fail. With it, the line's exit code is <code>go test</code>'s own. The road map in panel 21 reads that exit code.</span></li>
+      <li><span><samp>FAIL	example.com/parcel	…s</samp> (last line)<br>The verdict for the whole package. Something in here failed.</span></li>
+      <li><span><samp>exit status 1</samp> and <samp>FAIL</samp><br>The test program that <code>go test</code> built ended with exit code 1: "some test failed". <code>go test</code> itself then exits with 1 too, which is how scripts and build servers notice.</span></li>
+      <li><span><samp>--- FAIL: TestFee (0.00s)</samp><br>A parent fails as soon as any of its subtests fails. Below it, every tube has its own stamp: three <samp>PASS</samp>, two <samp>FAIL</samp>.</span></li>
+      <li><span><samp>    fee_test.go:21: Fee(8) = 16, want 11</samp><br>Each message appears straight under the <samp>=== RUN</samp> line of the tube that wrote it. <samp>fee_test.go:21</samp> is the <code>t.Errorf</code> line in the <em>test</em>, not the bug in <code>fee.go</code>. The test tells you <b>which</b> tube and <b>what</b> went wrong; finding <b>why</b> is your job.</span></li>
+      <li><span>The message itself<br>The house style for test messages is <code>got, want</code>: the call, what it returned, what it should have returned. <samp>Fee(8) = 16, want 11</samp> needs no explaining.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: a new suspect">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Your turn to read a run before it happens. Here is a different broken <code>fee.go</code>. Look hard at line 6.</p>
+    <span class="file-tab">guess/fee.go</span>
+    <pre class="code" data-src="guess/fee.go"></pre>
+    <p class="caption soft">The exercise pipes the output through <code>grep -o -- '--- .*'</code>. <code>grep</code> keeps only the lines that contain <code>--- </code>, and <code>-o</code> prints just the matching part, so the indents disappear. (The <code>--</code> tells grep that what follows is the pattern, not another option.) You only have to type the verdict lines.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-guess-m" id="ex-guess"></div>
+  <script type="application/json" id="ex-guess-m">{"program": "predict_fail.go", "prompt": "Which tubes crack? Type every line that grep keeps.", "hint": "1 kg: is <code>1 &lt; 1</code> true? If not, which <code>case</code> catches it? The parent's line comes first, then the children in table order. Each line ends with <code>(0.00s)</code>.", "explain": "<code>kg &lt; 1</code> is false for 1 kg, so the feather falls through to <code>kg &lt;= 5</code> and costs 5, not 3. Only <samp>TestFee/feather</samp> fails; the pillow (2 kg) and the anvil (10 kg) never touch the broken line. The parent prints first, and fails because one child failed. A single wrong character, <code>&lt;</code> instead of <code>&lt;=</code>, and only an edge case catches it."}</script>
+
+  <section class="panel clean" aria-label="Panel 9: run one tube with -run">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">When one tube cracks, you'll fix the code and re-run just that tube, many times. <code>-run</code> picks tests by name.</p>
+    <pre class="term wrap" data-run="run_one.go"></pre>
+    <ol class="readlist">
+      <li><span><code>-run 'TestFee/bowling'</code><br><code>-run</code> takes a <b>pattern</b> (a regular expression, a small language for matching text). A slash splits it into levels: <code>TestFee</code> must match the top-level test's name, <code>bowling</code> the subtest's name.</span></li>
+      <li><span><samp>TestFee/bowling_ball</samp><br>A pattern only needs to match <em>part</em> of a name, so <code>bowling</code> finds <code>bowling_ball</code>. Add <code>^</code> and <code>$</code> to insist on the whole name: <code>-run '^TestFee$'</code>.</span></li>
+      <li><span>The quotes<br>Single quotes keep the shell from changing anything in the pattern. They matter as soon as your pattern has characters like <code>$</code>, <code>*</code> or a space.</span></li>
+      <li><span>The parent still runs<br><samp>=== RUN   TestFee</samp> appears, because the subtest lives inside it, but only one child is started.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-runpat-m" id="ex-runpat"></div>
+  <script type="application/json" id="ex-runpat-m">{"q": "The package has one test, <code>TestFee</code>, with the five tubes from panel 3. Which command runs <b>only</b> the anvil tube?", "options": [
+    {"t": "<code>go test -v -run 'TestFee/anvil'</code>", "correct": true, "why": "Yes. Level one matches <code>TestFee</code>, level two matches <code>anvil</code>."},
+    {"t": "<code>go test -v -run 'anvil'</code>", "why": "A pattern without a slash is matched against the <b>top-level</b> test names only. No top-level test is called anything like anvil, so nothing runs and Go warns <samp>testing: warning: no tests to run</samp>."},
+    {"t": "<code>go test -v -run 'TestFee'</code>", "why": "That matches the parent, and a parent runs all of its children: all five tubes."},
+    {"t": "<code>go test -v -run 'TestFee anvil'</code>", "why": "A space is just a character in the pattern, so this looks for a test whose name contains <code>TestFee anvil</code>. There isn't one."}]}</script>
+
+  <div data-ex="trace" data-model="ex-walk-m" id="ex-walk"></div>
+  <script type="application/json" id="ex-walk-m">{"program": "table_walk.go", "columns": ["name", "kg", "got", "want", "verdict"], "given": [0, 1, 3], "prompt": "Under the hood, a table test is just a loop. This plain program walks a rack by hand, with the buggy fee rule from panel 5, and prints one row per tube. Fill in <code>got</code> and the verdict for each row.", "explain": "1 kg and 3 kg never reach the broken line: <samp>3</samp> and <samp>5</samp>, both PASS. 8 kg gives <code>5 + 16 - 5 = 16</code> and 10 kg gives <code>5 + 20 - 5 = 20</code>: FAIL twice. Notice that the loop carried on after the first FAIL. That's what <code>t.Errorf</code> does in a real test, and part 2 shows what <code>t.Fatalf</code> does instead."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · LAB SAFETY<small>t.Error vs t.Fatal in subtests, t.Helper, t.Cleanup, testdata and golden files</small></h2>
+
+  <section class="panel pop" aria-label="Panel 10: two safety rules">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The lab has two ways to report trouble. Chapter 15 met them in one test; inside a rack they behave in a way worth seeing.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><rect x="60" y="14" width="100" height="96" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="4"/><rect x="88" y="6" width="44" height="16" rx="4" fill="#ddd" stroke="#111" stroke-width="3"/><path d="M76 44 H144 M76 64 H144 M76 84 H120" stroke="#111" stroke-width="3"/><path d="M150 60 l30 -30 l10 10 l-30 30 l-14 4 Z" fill="#FFD60A" stroke="#111" stroke-width="3" stroke-linejoin="round"/></svg>
+        <p class="stamp">t.Error / t.Errorf</p>
+        <p>Write a note on the clipboard: "this tube is wrong". Then <b>carry on</b> with the rest of this tube's checks. The test is marked failed at the end.</p>
+      </div>
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><path d="M90 20 V80 a18 18 0 0 0 36 0 V20" fill="#FFE1E1" stroke="#111" stroke-width="4" transform="rotate(35 108 60)"/><path d="M40 108 H180" stroke="#111" stroke-width="4"/><path d="M150 96 l8 -10 M162 100 l12 -6 M146 84 l2 -14" stroke="#111" stroke-width="3"/><text x="40" y="40" font-family="Bangers, sans-serif" font-size="22" fill="#111">STOP</text></svg>
+        <p class="stamp">t.Fatal / t.Fatalf</p>
+        <p>Write the note, then <b>put this tube down</b> and walk away from it. Nothing after the <code>Fatal</code> line runs in this function.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>So if one tube calls <code>Fatal</code>... does the whole rack stop?</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: Fatal inside a subtest">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Let's find out. Two tubes hold weights that make no sense, and the test refuses them with <code>t.Fatalf</code>.</p>
+    <span class="file-tab">fatal_sub/fee_test.go</span>
+    <pre class="code" data-src="fatal_sub.go"></pre>
+    <pre class="term wrap" data-run="fatal_sub.go"></pre>
+    <ol class="readlist">
+      <li><span><samp>fee_test.go:18: Fee(-2): a parcel must weigh something</samp><br>Line 18's <code>t.Fatalf</code> ran for the <code>negative</code> tube. Its <code>t.Logf</code> on line 23 never printed: <code>Fatal</code> stopped that function on the spot.</span></li>
+      <li><span><samp>fee_test.go:23: Fee(3) checked</samp><br>The <code>shoebox</code> tube still ran, all the way to the end. <code>t.Logf</code> writes a note that is shown with <code>-v</code> or when the test fails; it never changes the verdict.</span></li>
+      <li><span><samp>=== RUN   TestFee/zero</samp><br>And the third tube ran too, and failed on its own.</span></li>
+      <li><span>Why?<br>Each subtest runs its function separately. <code>t.Fatal</code> ends <b>the function it is called in</b>, which is that tube's function, and nothing more. The parent's loop simply moves on to the next row.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>Fatal drops one tube, not the rack.</b> Use it when the rest of <em>this</em> tube's checks would be meaningless, for example when setup failed.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: a helper function, with and without t.Helper">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Writing the same <code>if got != want</code> check again and again gets boring, so Scoot moves it into a helper function. The second file adds one line, line 6: <code>t.Helper()</code>, so every line after it moves down by one. Both run against the broken fee rule.</p>
+    <div class="pair stack">
+      <div><span class="vs-label">Without t.Helper()</span><pre class="code" data-src="helper_no.go"></pre><pre class="term wrap" data-run="helper_no.go"></pre></div>
+      <div><span class="vs-label">With t.Helper()</span><pre class="code" data-src="helper_yes.go"></pre><pre class="term wrap" data-run="helper_yes.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span>Without <code>t.Helper()</code>: <samp>fee_test.go:7</samp> twice<br>Both failures point at line 7, the <code>t.Errorf</code> inside <code>checkFee</code>. True, but useless: which of the three calls failed?</span></li>
+      <li><span>With <code>t.Helper()</code>: <samp>fee_test.go:14</samp> and <samp>fee_test.go:15</samp><br><code>t.Helper()</code> marks <code>checkFee</code> as a helper, so Go reports the line that <b>called</b> it. Now you can see it was the 8 kg and the 10 kg checks.</span></li>
+      <li><span>No <code>-v</code> here<br>Without <code>-v</code>, a failing run shows only the failures and their messages. Passing tests stay quiet.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-helper-m" id="ex-helper"></div>
+  <script type="application/json" id="ex-helper-m">{"program": "helper_yes.go", "prompt": "Make the failures point at the calls on lines 14 and 15, not at line 7. One blank.", "blanks": [{"line": 6, "text": "t.Helper()", "accept": ["t.Helper();"]}], "explain": "<code>t.Helper()</code>, as the first line of the helper. Go then skips this function when it works out which line to report, and blames the caller: <samp>fee_test.go:14</samp> and <samp>fee_test.go:15</samp>. Every helper that calls <code>t.Error</code> or <code>t.Fatal</code> should start this way."}</script>
+
+  <section class="panel sketch" aria-label="Panel 13: the tidy-up spike">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">A good lab tidies up after every test, even one that went wrong. The Professor keeps a <b>tidy-up spike</b> by the door: whenever you start something that must be undone, you write the undo job on a note and push it onto the spike. When the test ends, the notes come off from the <b>top</b>: last on, first done.</p>
+    <div class="picscroll"><svg class="pic-mid" viewBox="0 0 460 236" role="img" aria-label="Picture: a metal spike on a wooden base with two paper notes pushed onto it. The bottom note, pushed first, says lock the door. The top note, pushed second, says put out the burner. An arrow beside the spike points upward and says: when the test ends, take notes off from the top.">
+      <rect x="90" y="196" width="220" height="22" rx="6" fill="#E9DCC3" stroke="#111" stroke-width="4"/>
+      <path d="M200 196 V30" stroke="#111" stroke-width="5"/><path d="M194 34 L200 14 L206 34 Z" fill="#111"/>
+      <g stroke="#111" stroke-width="3"><path d="M50 146 L346 140 L348 188 L52 192 Z" fill="#FFF6CC"/><path d="M54 84 L350 92 L346 138 L50 132 Z" fill="#DDE8FF"/></g>
+      <g font-family="Shantell Sans, cursive" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="200" y="174">1. lock the door</text><text x="200" y="119">2. put out the burner</text></g>
+      <path d="M392 180 V60" stroke="#111" stroke-width="4"/><path d="M380 74 L392 52 L404 74" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111" text-anchor="middle"><text x="400" y="206">test ends:</text><text x="400" y="226">top note first</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>In Go the spike is <code>t.Cleanup(func() { ... })</code>. It works like <code>defer</code>, but it belongs to the test, and it runs even when the test fails or calls <code>Fatal</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: walk Scoot through a lab day with cleanups" data-walk="walk-clean">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">This test prints with <code>fmt.Println</code>, and the command keeps only the lines starting <code>lab:</code>. Walk it, and watch where Scoot jumps after the last line.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">cleanup/lab_test.go</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-clean">{"program": "cleanup.go", "steps": [
+      {"line": 9, "output": [], "mood": "focus", "arms": "point", "note": "<code>go test</code> calls <code>TestLabDay</code>. The real command is <code>go test -v | grep lab:</code>, so only our <samp>lab:</samp> lines reach the screen."},
+      {"line": 10, "output": ["lab: unlock the door"], "mood": "happy", "arms": "point", "note": "Line 9: <samp>lab: unlock the door</samp>."},
+      {"line": 11, "output": ["lab: unlock the door"], "mood": "focus", "arms": "point", "note": "Line 10 pushes a note onto the spike: a function that locks the door. It is <b>saved</b>, not run, so nothing prints."},
+      {"line": 12, "output": ["lab: unlock the door", "lab: light the burner"], "mood": "happy", "arms": "point", "note": "Line 11: <samp>lab: light the burner</samp>."},
+      {"line": 13, "output": ["lab: unlock the door", "lab: light the burner"], "mood": "focus", "arms": "point", "note": "Line 12 pushes a second note, on top of the first."},
+      {"line": 16, "output": ["lab: unlock the door", "lab: light the burner"], "mood": "happy", "arms": "point", "note": "Line 13: <code>Fee(3)</code> is 5, as it should be, so the <code>Fatalf</code> on line 14 is skipped."},
+      {"line": 17, "output": ["lab: unlock the door", "lab: light the burner", "lab: write up the results"], "mood": "happy", "arms": "point", "note": "Line 16: <samp>lab: write up the results</samp>. The test body is about to end."},
+      {"line": 12, "output": ["lab: unlock the door", "lab: light the burner", "lab: write up the results"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "The test function has returned. Now the notes come off the spike, top first: Scoot jumps back up to line 12's function."},
+      {"line": 10, "output": ["lab: unlock the door", "lab: light the burner", "lab: write up the results", "lab: put out the burner"], "mood": "focus", "arms": "point", "note": "<samp>lab: put out the burner</samp>. Next note down: line 10's function."},
+      {"line": null, "output": ["lab: unlock the door", "lab: light the burner", "lab: write up the results", "lab: put out the burner", "lab: lock the door"], "mood": "happy", "arms": "cheer", "note": "<samp>lab: lock the door</samp>. The spike is empty: the lab is tidy, in the reverse order it was set up."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-spill-m" id="ex-spill"></div>
+  <script type="application/json" id="ex-spill-m">{"program": "predict_cleanup.go", "prompt": "A spill! This test runs against the <b>broken</b> fee rule from panel 5, and the command again keeps only the <samp>lab:</samp> lines. Type them in order.", "hint": "<code>Fee(8)</code> is 16 with the broken rule, so line 13's <code>Fatalf</code> runs. What does <code>Fatal</code> skip, and what does it never skip?", "explain": "<samp>lab: fill the beaker</samp> prints first. Then <code>Fatalf</code> ends the test, so <samp>label the beaker</samp> never prints. But the cleanups still run, top of the spike first: <samp>lab: wash the beaker</samp>, then <samp>lab: mop the floor</samp>. A failing test leaves a tidy lab. That's the point of <code>t.Cleanup</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: more instruments on the bench">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">The <code>t</code> you get in every test has more tools that tidy up after themselves. You don't need them today; know that they exist.</p>
+    <div class="duo">
+      <div class="duo-card"><p class="stamp">t.TempDir()</p><p>Makes a brand-new empty folder for this test and returns its path. It is deleted automatically when the test ends, through <code>t.Cleanup</code>. Perfect for tests that write files.</p></div>
+      <div class="duo-card"><p class="stamp">t.Setenv(k, v)</p><p>Sets an environment variable for this test only, and puts the old value back afterwards.</p></div>
+      <div class="duo-card"><p class="stamp">t.Chdir(dir)</p><p>Moves the test into another folder, and moves it back at the end (Go 1.24).</p></div>
+      <div class="duo-card"><p class="stamp">t.Context()</p><p>A <code>context</code> that is cancelled just before the cleanups run (Go 1.24). Chapter 26 explains contexts.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: the testdata folder and a golden file">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Some answers are too long for a table: a whole receipt, a page of JSON, a picture. Keep the perfect answer in a file, called a <b>golden file</b>, inside a folder named <code>testdata</code>.</p>
+    <span class="file-tab">golden/receipt.go</span>
+    <pre class="code" data-src="golden/receipt.go"></pre>
+    <span class="file-tab">golden/receipt_test.go</span>
+    <pre class="code" data-src="golden.go"></pre>
+    <pre class="term wrap" data-run="golden.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.ReadFile("testdata/receipt.golden")</code> (line 9)<br><code>go test</code> runs each package's tests <b>inside that package's folder</b>, so a path relative to the folder always works, whoever runs the test and from wherever.</span></li>
+      <li><span>Why the name <code>testdata</code>?<br>The go tool ignores any folder called <code>testdata</code> when it looks for packages (and folders starting with <code>.</code> or <code>_</code>). Put anything you like in it: it will never be compiled.</span></li>
+      <li><span><code>t.Fatal(err)</code> (line 11)<br>A missing golden file makes the comparison pointless, so this is a good place for <code>Fatal</code>.</span></li>
+      <li><span>When the receipt changes on purpose<br>You update the golden file. Many projects add their own <code>-update</code> flag to the test that rewrites it; the notebook shows the idea.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · EXAMPLES, COVERAGE AND THE ROAD MAP<small>Example functions as documentation, -cover, and every road go test can take</small></h2>
+
+  <section class="panel clean" aria-label="Panel 17: an example function is documentation that is checked">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Chapter 15 showed that an <code>Example</code> function with an <code>// Output:</code> comment is run and checked. Here's why people write them: they are <b>documentation</b> that can't go out of date.</p>
+    <span class="file-tab">example/example_test.go</span>
+    <pre class="code" data-src="example.go"></pre>
+    <pre class="term wrap" data-run="example.go"></pre>
+    <ol class="readlist">
+      <li><span><code>package parcel_test</code> (line 1)<br>A test file may belong to a second package whose name ends in <code>_test</code>. It sits in the same folder but sees <code>parcel</code> from the <b>outside</b>, exactly like a user: it must import it and write <code>parcel.Fee</code>, and it can't touch lowercase names. That makes the example honest.</span></li>
+      <li><span><code>func ExampleFee()</code> (line 9)<br>The name says what it documents: <code>ExampleFee</code> is shown next to <code>Fee</code> in the package's documentation on pkg.go.dev, together with its output. <code>Example</code> alone documents the whole package; <code>ExampleFee_heavy</code> adds a second example with a suffix.</span></li>
+      <li><span><code>// Output:</code> (lines 12 to 14)<br><code>go test</code> runs the example and compares everything it printed with these lines. If the output can come in any order, write <code>// Unordered output:</code> instead. With no output comment at all, the example is compiled but not run.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 18: three kinds of test in the lab">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">The lab has three kinds of experiment, and each has its own name pattern in a <code>_test.go</code> file. (A fourth, the benchmark, measures speed rather than checking answers: part 5.)</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 110" aria-hidden="true"><g stroke="#111" stroke-width="3.5"><path d="M30 20 V80 a14 14 0 0 0 28 0 V20" fill="#C9F2D9"/><path d="M80 20 V80 a14 14 0 0 0 28 0 V20" fill="#C9F2D9"/><path d="M130 20 V80 a14 14 0 0 0 28 0 V20" fill="#FFE1E1"/><path d="M180 20 V80 a14 14 0 0 0 28 0 V20" fill="#C9F2D9"/></g><path d="M18 100 H214" stroke="#111" stroke-width="5"/></svg>
+        <p class="stamp">TestXxx</p>
+        <p><b>Unit test</b>, <code>func TestXxx(t *testing.T)</code>. You know the inputs and the answers. A rack of tubes, each one checked. Most tests are these.</p>
+      </div>
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 110" aria-hidden="true"><rect x="40" y="10" width="140" height="92" rx="6" fill="#fff" stroke="#111" stroke-width="3.5"/><path d="M56 30 H164 M56 46 H140" stroke="#111" stroke-width="3"/><rect x="56" y="58" width="108" height="34" rx="4" fill="#F3F3F3" stroke="#111" stroke-width="2.5"/><text x="66" y="80" font-family="JetBrains Mono, monospace" font-weight="800" font-size="13" fill="#111">// Output:</text><circle cx="176" cy="18" r="14" fill="#C9F2D9" stroke="#111" stroke-width="3"/><path d="M169 18 l5 5 l9 -10" fill="none" stroke="#111" stroke-width="3"/></svg>
+        <p class="stamp">ExampleXxx</p>
+        <p><b>Example</b>, <code>func ExampleXxx()</code>. A recipe card in the documentation that is also checked, so it can never lie. Shows a reader how to call your code.</p>
+      </div>
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 110" aria-hidden="true"><rect x="20" y="30" width="80" height="62" rx="8" fill="#DDE8FF" stroke="#111" stroke-width="3.5"/><circle cx="60" cy="61" r="16" fill="#fff" stroke="#111" stroke-width="3"/><path d="M60 61 l10 -8" stroke="#111" stroke-width="3"/><path d="M100 50 C130 30 140 70 170 40" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/><g font-family="JetBrains Mono, monospace" font-weight="800" font-size="13" fill="#111"><text x="150" y="30">"ŝ0"</text><text x="160" y="62">""</text><text x="128" y="94">"éé!"</text></g></svg>
+        <p class="stamp">FuzzXxx</p>
+        <p><b>Fuzz test</b>, <code>func FuzzXxx(f *testing.F)</code>. You don't know every input, but you know a rule that must always hold. A machine throws thousands of strange inputs at the code to break the rule.</p>
+      </div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-kinds-m" id="ex-kinds"></div>
+  <script type="application/json" id="ex-kinds-m">{"q": "Scoot writes <code>ParseAddress(s string)</code>, which reads addresses that customers type in. It must <b>never crash</b>, whatever they type: emoji, empty lines, ten thousand commas. Which kind of test fits that promise best?", "options": [
+    {"t": "A fuzz test, <code>FuzzParseAddress</code>, checking a rule", "correct": true, "why": "Yes: the rule is that it never panics and always returns either an address or an error. \"Whatever they type\" is a rule over inputs you can't list. A fuzzer invents strange inputs for you, and keeps any that break the rule as new tubes in <code>testdata</code>."},
+    {"t": "An example, <code>ExampleParseAddress</code>, with its output", "why": "An example is great for showing a reader how to call the function, but it checks one input only."},
+    {"t": "A unit test with a table of ten tricky addresses", "why": "Worth having, and you should write it too. But ten inputs you thought of can't cover what you didn't think of, which is exactly what this promise is about."},
+    {"t": "A benchmark, <code>BenchmarkParseAddress</code>, run often", "why": "A benchmark measures how fast it runs, not whether it crashes on odd input."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 19: coverage, which lines did the tests reach">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Is the rack big enough? <code>-cover</code> asks Go to count which statements the tests actually ran. This package has <code>Fee</code> and a new <code>Insurance</code> function, and the test only checks two light parcels.</p>
+    <span class="file-tab">cover/fee.go</span>
+    <pre class="code" data-src="cover/fee.go"></pre>
+    <span class="file-tab">cover/fee_test.go</span>
+    <pre class="code" data-src="cover.go"></pre>
+    <pre class="term wrap" data-run="cover.go"></pre>
+    <ol class="readlist">
+      <li><span><samp>coverage: 60.0% of statements</samp><br>Of the five statements in the package, the tests ran three. A <b>statement</b> here is one instruction, such as a <code>return</code> or the start of a <code>switch</code>.</span></li>
+      <li><span><code>-coverprofile=cover.out</code><br>Also writes the details to a file. <code>go tool cover -func=cover.out</code> sums them up per function: <samp>Fee 75.0%</samp> (the heavy branch never ran) and <samp>Insurance 0.0%</samp> (nobody called it at all).</span></li>
+      <li><span><code>cat cover.out</code><br>The raw file: each line is a block of code (<code>fee.go:11.3,11.22</code> means line 11, column 3, to line 11, column 22), how many statements it holds, and <samp>1</samp> if it ran or <samp>0</samp> if it didn't. The next panel paints these onto the code.</span></li>
+      <li><span>Seeing it in a browser<br><code>go tool cover -html=cover.out</code> opens the same picture in your web browser.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean cover-box" aria-label="Panel 20: coverage painted onto the code" data-cover="cv-fee">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Built from the real <code>cover.out</code> above: every line a test reached, and every line it never did.</p>
+    <ul class="cv-key"><li class="yes">✓ ran</li><li class="no">✗ never ran</li><li>no mark: not a statement</li></ul>
+    <ol class="cv-lines" aria-label="cover/fee.go with each line marked ran or never ran"></ol>
+    <span class="parity"></span>
+    <details><summary>Text version</summary><div class="cv-text"></div></details>
+    <script type="application/json" id="cv-fee">{"program": "cover.go", "step": 4, "file": "cover/fee.go", "percentStep": 1}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>coverage shows where you never looked, not how well you looked.</b> A line can run in a test whose check is wrong, like chapter 15's test that could never fail. Use coverage to find empty corners, never as a score to chase.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 21: every road go test can take" data-map="map-test">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">What actually happens when you type <code>go test</code>? Here are the roads, each followed by a real run from this chapter. Pick a road and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapt-t mapt-d"><title id="mapt-t">Map of a go test run</title><desc id="mapt-d">go test starts by building the package together with its test files, and runs a few go vet checks. If that fails, the run ends at build failed. If it builds, the test program runs every test. If all pass, it prints ok and exits with 0. If any test fails, it prints FAIL and exits with 1. If a test panics, the whole test program crashes, and go test reports FAIL.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-test">{"seed": 23, "size": [690, 462], "start": [[345, 0], [345, 14]], "states": [{"id": "S0", "x": 220, "y": 18, "w": 250, "h": 56, "label": "GO TEST STARTS", "sub": "you type `go test`"}, {"id": "BUILD", "x": 220, "y": 118, "w": 250, "h": 64, "label": "BUILD AND VET", "sub": "code + `_test.go` files"}, {"id": "BFAIL", "x": 16, "y": 238, "w": 180, "h": 64, "label": "BUILD FAILED", "sub": "`[build failed]`, exit 1", "kind": "error"}, {"id": "RUN", "x": 220, "y": 238, "w": 250, "h": 64, "label": "RUN THE TESTS", "sub": "one by one, in file order"}, {"id": "OK", "x": 16, "y": 382, "w": 200, "h": 64, "label": "ALL PASSED", "sub": "`ok`, exit 0", "kind": "end"}, {"id": "FAIL", "x": 245, "y": 382, "w": 200, "h": 64, "label": "SOME FAILED", "sub": "`FAIL`, exit 1"}, {"id": "PANIC", "x": 474, "y": 382, "w": 200, "h": 64, "label": "A TEST PANICS", "sub": "crash, then `FAIL`", "kind": "error"}], "transitions": [{"id": "t0", "from": "S0", "to": "BUILD", "pts": [[345, 78], [345, 112]], "label": "compile", "lx": 357, "ly": 100}, {"id": "t1", "from": "BUILD", "to": "BFAIL", "pts": [[216, 150], [106, 150], [106, 232]], "label": "error", "lx": 204, "ly": 142, "anchor": "end", "bug": true}, {"id": "t2", "from": "BUILD", "to": "RUN", "pts": [[345, 186], [345, 232]], "label": "it builds", "lx": 357, "ly": 214}, {"id": "t3", "from": "RUN", "to": "OK", "pts": [[262, 306], [262, 334], [116, 334], [116, 376]], "label": "all pass", "lx": 250, "ly": 326, "anchor": "end"}, {"id": "t4", "from": "RUN", "to": "FAIL", "pts": [[345, 306], [345, 376]], "label": "one fails", "lx": 357, "ly": 356}, {"id": "t5", "from": "RUN", "to": "PANIC", "pts": [[428, 306], [428, 334], [574, 334], [574, 376]], "label": "a panic", "lx": 440, "ly": 326, "bug": true}], "paths": [{"id": "pass", "label": "all pass", "program": "tubes.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["S0"], "output": [], "note": "<code>tubes.go<\/code>: panel 3's rack, with the correct fee rule. You type <code>go test -v<\/code> in <code>~/go-ch23/tubes<\/code>."}, {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "Go compiles <code>fee.go<\/code> and <code>fee_test.go<\/code> into one test program, and runs a few <code>go vet<\/code> checks. Nothing to show yet."}, {"on": ["RUN"], "via": ["t2"], "output": ["=== RUN   TestFee", "=== RUN   TestFee/feather", "=== RUN   TestFee/shoebox", "=== RUN   TestFee/edge_of_five", "=== RUN   TestFee/bowling_ball", "=== RUN   TestFee/anvil"], "note": "The test program runs <code>TestFee<\/code>, which starts its five subtests one after another. <code>-v<\/code> announces each."}, {"on": ["OK"], "via": ["t3"], "output": ["=== RUN   TestFee", "=== RUN   TestFee/feather", "=== RUN   TestFee/shoebox", "=== RUN   TestFee/edge_of_five", "=== RUN   TestFee/bowling_ball", "=== RUN   TestFee/anvil", "--- PASS: TestFee (0.00s)", "    --- PASS: TestFee/feather (0.00s)", "    --- PASS: TestFee/shoebox (0.00s)", "    --- PASS: TestFee/edge_of_five (0.00s)", "    --- PASS: TestFee/bowling_ball (0.00s)", "    --- PASS: TestFee/anvil (0.00s)", "PASS", "ok  \texample.com/parcel\t…s"], "note": "Every tube passed: the verdicts, <samp>PASS<\/samp>, and <samp>ok<\/samp> for the package. <code>go test<\/code> exits with 0."}]}, {"id": "fail", "label": "one fails", "program": "rack.go", "expect": {"exit": 1, "stdoutExact": true}, "steps": [{"on": ["S0"], "output": [], "note": "<code>rack.go<\/code>: the same rack against panel 5's broken rule."}, {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "A wrong <em>answer<\/em> isn't a compile error, so the build succeeds."}, {"on": ["RUN"], "via": ["t2"], "output": ["=== RUN   TestFee", "=== RUN   TestFee/feather", "=== RUN   TestFee/shoebox", "=== RUN   TestFee/edge_of_five", "=== RUN   TestFee/bowling_ball", "    fee_test.go:21: Fee(8) = 16, want 11", "=== RUN   TestFee/anvil", "    fee_test.go:21: Fee(10) = 20, want 15"], "mood": "worried", "note": "The tubes run. Two of them call <code>t.Errorf<\/code>, and their messages appear under their <samp>=== RUN<\/samp> lines. The run carries on."}, {"on": ["FAIL"], "via": ["t4"], "output": ["=== RUN   TestFee", "=== RUN   TestFee/feather", "=== RUN   TestFee/shoebox", "=== RUN   TestFee/edge_of_five", "=== RUN   TestFee/bowling_ball", "    fee_test.go:21: Fee(8) = 16, want 11", "=== RUN   TestFee/anvil", "    fee_test.go:21: Fee(10) = 20, want 15", "--- FAIL: TestFee (0.00s)", "    --- PASS: TestFee/feather (0.00s)", "    --- PASS: TestFee/shoebox (0.00s)", "    --- PASS: TestFee/edge_of_five (0.00s)", "    --- FAIL: TestFee/bowling_ball (0.00s)", "    --- FAIL: TestFee/anvil (0.00s)", "FAIL", "exit status 1", "FAIL\texample.com/parcel\t…s"], "mood": "surprised", "note": "Verdicts, <samp>FAIL<\/samp>, <samp>exit status 1<\/samp> from the test program, and <samp>FAIL<\/samp> for the package. <code>go test<\/code> exits with 1."}]}, {"id": "build", "label": "build failed", "program": "build_fail.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "declared and not used: got"}, "steps": [{"on": ["S0"], "output": [], "note": "<code>build_fail.go<\/code>: a test file with a variable <code>got<\/code> that is never used."}, {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "The Compiler reads the test file too, and it is just as strict there."}, {"on": ["BFAIL"], "via": ["t1"], "output": ["FAIL\texample.com/parcel [build failed]"], "error": "./fee_test.go:6:2: declared and not used: got", "note": "The error goes to the error stream, headed <samp># example.com/parcel [example.com/parcel.test]<\/samp>: the package, as built for its test. Then <samp>FAIL\texample.com/parcel [build failed]<\/samp>. Not a single test ran."}]}, {"id": "panic", "label": "a test panics", "bug": true, "program": "panic.go", "expect": {"exit": 1}, "steps": [{"on": ["S0"], "output": [], "note": "<code>panic.go<\/code>: panel 22's tip-sharing rack, where one tube divides by zero."}, {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "Dividing by a variable that happens to be 0 isn't something the Compiler can see. It builds."}, {"on": ["RUN"], "via": ["t2"], "output": ["=== RUN   TestShare", "=== RUN   TestShare/two_riders", "=== RUN   TestShare/nobody_came"], "mood": "worried", "note": "<samp>two_riders<\/samp> passes; <samp>nobody_came<\/samp> starts..."}, {"on": ["PANIC"], "via": ["t5"], "output": ["=== RUN   TestShare", "=== RUN   TestShare/two_riders", "=== RUN   TestShare/nobody_came", "--- FAIL: TestShare (0.00s)", "    --- PASS: TestShare/two_riders (0.00s)", "    --- FAIL: TestShare/nobody_came (0.00s)"], "error": "panic: runtime error: integer divide by zero [recovered, repanicked]", "note": "...and panics. The <code>testing<\/code> package stamps the tube and its parent <samp>FAIL<\/samp>, then the panic crashes the whole test program: <samp>exit status 2<\/samp>. The trace follows (panel 22 reads it), then <samp>FAIL<\/samp> for the package, and <code>go test<\/code> exits with 1. <samp>three_riders<\/samp> and <samp>TestLater<\/samp> never run."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-build-m" id="ex-build"></div>
+  <script type="application/json" id="ex-build-m">{"program": "predict_build.go", "prompt": "This test file never reaches the RUN THE TESTS place.", "expect": "error", "answer": "\"fmt\" imported and not used", "ask": "Type the error message: the part after <code>./fee_test.go:4:2: </code>.", "hint": "Look at the imports on lines 3 to 6, then look for where each one is used. The Compiler is just as strict in test files as anywhere else.", "explain": "<samp>\"fmt\" imported and not used</samp>. Nothing in the file calls <code>fmt.</code> anything, and an unused import is a compile error in Go, in test files too. The whole package then reports <samp>FAIL\texample.com/parcel [build failed]</samp>, and not one test runs: the road ends at BUILD FAILED."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · STAND-INS AND FAKE CLOCKS<small>A panic in the lab, sleeping tests, testing/synctest, stubs through interfaces, httptest</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 22: a panic in the lab">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <svg class="sfx tr" data-sfx="KABOOM!" data-seed="22"></svg>
+    <p class="caption">Scoot adds a function that shares a tip fairly between riders, and a rack for it. One morning, nobody came.</p>
+    <span class="file-tab">panic/share.go</span>
+    <pre class="code" data-src="panic/share.go"></pre>
+    <span class="file-tab">panic/share_test.go</span>
+    <pre class="code" data-src="panic.go"></pre>
+    <pre class="term wrap" data-run="panic.go"></pre>
+    <ol class="readlist">
+      <li><span>The commands<br><code>set -o pipefail</code> keeps <code>go test</code>'s exit code for the whole line, as in panel 7. <code>-trimpath</code> shortens the file paths in the trace (<samp>testing/testing.go</samp> instead of the full path on this computer). The <code>sed</code> also hides the parts that change on every run: long memory addresses become <samp>0x…</samp> and goroutine numbers become <samp>N</samp>.</span></li>
+      <li><span><samp>FAIL	example.com/parcel	…s</samp> and <samp>exit status 2</samp><br>Last lines first. Exit status <b>2</b>, not 1: the test program didn't finish and report, it <b>crashed</b>.</span></li>
+      <li><span><samp>panic: runtime error: integer divide by zero [recovered, repanicked]</samp><br>The real problem: a division by zero (chapter 8). <samp>[recovered, repanicked]</samp> means the <code>testing</code> package caught the panic just long enough to stamp the tube <samp>FAIL</samp>, then let it go on crashing.</span></li>
+      <li><span><samp>example.com/parcel.Share(...)</samp> then <samp>share.go:5</samp><br>Skip the <samp>testing.</samp> and <samp>runtime</samp> lines and look for <b>your</b> package. The crash is on line 5 of <code>share.go</code>, called from line 17 of the test.</span></li>
+      <li><span>What's missing<br>No <samp>three_riders</samp> tube, and no <samp>TestLater</samp> at all. A panic in one test brings down the <b>whole test program</b>, so nothing after it runs. That's very different from <code>Fatal</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-share-m" id="ex-share"></div>
+  <script type="application/json" id="ex-share-m">{"program": "spot_share.go", "bug": 5, "prompt": "The tests in <code>share_test.go</code> are fine: \"nobody came\" really should give 0 coins each. Click the line in <code>share.go</code> that has to change.", "explain": "Line 5 divides by <code>riders</code> without checking it. When nobody came, <code>riders</code> is 0 and the division panics. Guard it first: <code>if riders == 0 { return 0 }</code>. The test found a real bug, which is a test doing its job: before shipping, not on a busy morning."}</script>
+
+  <section class="panel sketch" aria-label="Panel 23: the lab assistant who waits">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Some code waits on purpose: "ride to each stop, one second each". A test for it has to wait too... or does it?</p>
+    <div class="duo">
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><path d="M80 10 H140 M80 110 H140" stroke="#111" stroke-width="5"/><path d="M86 12 C86 50 134 50 134 12 Z M86 108 C86 70 134 70 134 108 Z" fill="#FFF6CC" stroke="#111" stroke-width="3.5"/><path d="M110 46 V74" stroke="#111" stroke-width="3" stroke-dasharray="3 3"/><path d="M96 104 C100 88 120 88 124 104 Z" fill="#E9DCC3"/><text x="150" y="40" font-family="Bangers, sans-serif" font-size="20" fill="#111">Zzz</text></svg>
+        <p class="stamp">REAL TIME</p>
+        <p>The test really waits. Two seconds here, five there: a few hundred tests and the whole suite takes minutes. Worse, a test that checks "it took about two seconds" can fail on a busy computer. Tests like that are called <b>flaky</b>: sometimes pass, sometimes fail, same code.</p>
+      </div>
+      <div class="duo-card">
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><circle cx="110" cy="60" r="50" fill="#DDE8FF" stroke="#111" stroke-width="3.5" stroke-dasharray="10 5"/><circle cx="110" cy="60" r="28" fill="#fff" stroke="#111" stroke-width="3.5"/><path d="M110 60 V40 M110 60 L124 66" stroke="#111" stroke-width="3.5" stroke-linecap="round"/><path d="M160 22 l8 -8 M170 32 l10 -2 M150 14 l2 -10" stroke="#111" stroke-width="3"/></svg>
+        <p class="stamp">A BUBBLE CLOCK</p>
+        <p>Put the test inside a bubble with its own <b>fake clock</b>. When the code sleeps and nothing else in the bubble can happen, the clock simply jumps forward. Two "seconds" pass in no time at all, and always exactly two.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: a test that really sleeps">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">First the slow way. <code>Deliver</code> sleeps one second per stop.</p>
+    <span class="file-tab">sleepy/deliver.go</span>
+    <pre class="code" data-src="sleepy/deliver.go"></pre>
+    <span class="file-tab">sleepy/deliver_test.go</span>
+    <pre class="code" data-src="sleepy.go"></pre>
+    <p class="caption soft">One possible run. These times are real and different every time, so there's no <code>sed</code> here.</p>
+    <pre class="term wrap" data-run="sleepy.go"></pre>
+    <ol class="readlist">
+      <li><span>The time on the <samp>--- PASS: TestDeliver</samp> line<br>The test passed, after really waiting about two seconds.</span></li>
+      <li><span><samp>took …s of real time</samp><br>Never exactly 2 seconds: <code>Sleep</code> waits at least as long as asked, and there's always a little extra. That's why you can't write <code>if took != 2*time.Second</code> against a real clock.</span></li>
+      <li><span>Sleeping in tests has a second, worse form<br>Sleeping "long enough" to wait for something else to finish, such as a goroutine (chapter 24). It's the classic source of flaky tests: <i>100 Go Mistakes</i> lists it as mistake #86.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: the same test in a synctest bubble">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">The same <code>Deliver</code>, unchanged. The test wraps its body in <code>synctest.Test</code>, from the <code>testing/synctest</code> package (Go 1.25).</p>
+    <span class="file-tab">bubble/deliver_test.go</span>
+    <pre class="code" data-src="bubble.go"></pre>
+    <pre class="term wrap" data-run="bubble.go"></pre>
+    <ol class="readlist">
+      <li><span><code>synctest.Test(t, func(t *testing.T) { ... })</code> (line 10)<br>Runs the function in a <b>bubble</b>. Inside, <code>time.Now</code>, <code>time.Sleep</code> and the other time functions use the bubble's fake clock.</span></li>
+      <li><span><samp>bubble clock started at 2000-01-01 00:00:00 +0000 UTC</samp><br>Every bubble's clock starts at midnight on 1 January 2000, UTC. Always the same, so tests are repeatable.</span></li>
+      <li><span><samp>took 2s of bubble time</samp> and <samp>(0.00s)</samp><br>Exactly two seconds of fake time, so line 17 can compare with <code>!=</code>, in less than a hundredth of a second of real time. When <code>Deliver</code> sleeps and nothing else in the bubble can run, the fake clock jumps straight to the moment the sleep ends.</span></li>
+      <li><span>Version gate<br><code>synctest.Test</code> arrived in Go 1.25. On Go 1.24 this test fails to build (see the version notes in the notebook).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>in the bubble, waiting is free.</b> Two seconds, two hours, two days: the test still finishes at once.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sleep-m" id="ex-sleep"></div>
+  <script type="application/json" id="ex-sleep-m">{"q": "A function <code>Remind()</code> waits 10 minutes with <code>time.Sleep</code>, then returns <code>\"time to stretch\"</code>. What is the best way to test it?", "options": [
+    {"t": "Call it inside <code>synctest.Test</code> and check the exact time", "correct": true, "why": "Yes: check the message, and that <code>time.Since(start)</code> is exactly 10 minutes. The bubble's fake clock jumps the 10 minutes at once, and because the clock is fake, \"exactly 10 minutes\" is a fair thing to check."},
+    {"t": "Call it normally; a 10-minute test is fine if you run it at night", "why": "Slow tests stop being run. A test suite should take seconds, so people run it after every change."},
+    {"t": "Call it normally, and check that it took between 9 and 11 minutes", "why": "Still 10 real minutes, and a margin around real time is the classic recipe for a flaky test."},
+    {"t": "Add <code>time.Sleep(10 * time.Minute)</code> to the test as well, so the two match", "why": "That makes the test twice as slow and checks nothing extra. Sleeping in tests is the mistake this part is about."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 26: a stand-in for the clock">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">Not every clock problem is a sleep. Scoot's app says "Good morning" or "Good evening" depending on the time. A test that asks the real clock gives a different answer at breakfast and at dinner. The fix is a <b>stand-in</b>, like a cardboard clock on a film set that always shows the time the scene needs.</p>
+    <div class="picscroll"><svg class="pic-mid" viewBox="0 0 460 250" role="img" aria-label="Picture: in the middle, a machine labelled Greeting with a socket on its left labelled Clock: must have Now(). Above the socket, a real wall clock with moving hands is labelled the real program plugs in RealClock. Below it, a flat cardboard clock stuck at nine o'clock is labelled the test plugs in stubClock at 09:00. Both have the same plug shape. The machine's output says Good morning, Scoot.">
+      <rect x="190" y="80" width="150" height="90" rx="12" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <text x="265" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111">Greeting</text>
+      <text x="265" y="146" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111">(c Clock, name)</text>
+      <rect x="160" y="108" width="34" height="34" rx="4" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111"><text x="196" y="200">socket: a Clock</text><text x="196" y="218">must have Now()</text></g>
+      <circle cx="70" cy="56" r="34" fill="#fff" stroke="#111" stroke-width="4"/><path d="M70 56 V34 M70 56 L86 64" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+      <path d="M104 56 C130 56 140 118 158 122" fill="none" stroke="#111" stroke-width="3"/>
+      <rect x="30" y="170" width="80" height="64" rx="4" fill="#E9DCC3" stroke="#111" stroke-width="3.5" stroke-dasharray="7 4"/><circle cx="70" cy="202" r="24" fill="#fff" stroke="#111" stroke-width="3"/><path d="M70 202 V184 M70 202 H56" stroke="#111" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M110 200 C140 200 140 136 158 130" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111"><text x="8" y="112">real program:</text><text x="8" y="128">RealClock</text><text x="118" y="244">test: stubClock at 09:00</text></g>
+      <path d="M340 125 H380" stroke="#111" stroke-width="4"/><path d="M370 115 l12 10 l-12 10" fill="none" stroke="#111" stroke-width="4"/>
+      <rect x="384" y="94" width="70" height="62" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="13" fill="#111" text-anchor="middle"><text x="419" y="118">Good</text><text x="419" y="134">morning,</text><text x="419" y="150">Scoot</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The trick is chapter 14's interfaces. If <code>Greeting</code> asks for "anything with a <code>Now()</code> method" instead of calling <code>time.Now</code> itself, the test can plug in its own. Handing a function the things it depends on is called <b>dependency injection</b>, and the stand-in is a <b>stub</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 27: the Greeting machine with stub clocks plugged in" data-machine="m-stub">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Plug different stub clocks into <code>Greeting</code> and watch what comes out. The last chip is a clock with the wrong plug.</p>
+    <span class="file-tab">stub_machine.go</span>
+    <pre class="code" data-src="stub_machine.go"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-stub">{"label": "Greeting(clock, name)", "program": "stub_machine.go", "examples": [
+      {"in": "stub at 09:00", "out": "Good morning, Scoot", "expectLine": "09:00 -> Good morning, Scoot", "outKind": "string", "note": "The stub's <code>Now()</code> says 9 o'clock, and <code>9 &lt; 12</code>. Run this test at midnight and it still says morning."},
+      {"in": "stub at 11:59", "out": "Good morning, Scoot", "expectLine": "11:59 -> Good morning, Scoot", "outKind": "string", "note": "One minute before noon: <code>Hour()</code> is still 11."},
+      {"in": "stub at 12:00", "out": "Good afternoon, Scoot", "expectLine": "12:00 -> Good afternoon, Scoot", "outKind": "string", "note": "Exactly noon is the edge: <code>12 &lt; 12</code> is false. Without a stub you'd have to run the test at noon to check this."},
+      {"in": "stub at 17:30", "out": "Good afternoon, Scoot", "expectLine": "17:30 -> Good afternoon, Scoot", "outKind": "string", "note": "<code>Hour()</code> is 17, and <code>17 &lt; 18</code>."},
+      {"in": "stub at 21:00", "out": "Good evening, Scoot", "expectLine": "21:00 -> Good evening, Scoot", "outKind": "string", "note": "Evening, at any time of the real day."},
+      {"in": "brokenClock (has Time(), not Now())", "error": "brokenClock does not implement Clock (missing method Now)", "program": "stub_broken.go", "note": "A stand-in must fit the socket exactly. <code>stub_broken.go</code> names its method <code>Time</code>, so the Compiler refuses it before anything runs."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: the real test with a stub clock">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Now the real package and its rack. <code>Greeting</code> asks for a <code>Clock</code>; the real program passes <code>RealClock{}</code>, and the test passes a stub.</p>
+    <span class="file-tab">stub/greet.go</span>
+    <pre class="code" data-src="stub/greet.go"></pre>
+    <span class="file-tab">stub/greet_test.go</span>
+    <pre class="code" data-src="stubs.go"></pre>
+    <pre class="term wrap" data-run="stubs.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type Clock interface { Now() time.Time }</code> (greet.go, line 6)<br>The socket. It is tiny on purpose: one method, the only thing <code>Greeting</code> needs.</span></li>
+      <li><span><code>type stubClock struct{ t time.Time }</code> (test, lines 10 and 12)<br>The stand-in lives in the test file, so the real program never sees it. Its <code>Now</code> returns whatever time it was built with.</span></li>
+      <li><span><samp>TestGreeting/09:00</samp><br>Subtest names can come from the data: <code>fmt.Sprintf("%02d:00", tc.hour)</code> printed the hour with two digits.</span></li>
+      <li><span>Why not call <code>time.Now</code> and accept any greeting?<br>Then the test checks nothing. A test you can't predict is a test you can't trust.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-stub-m" id="ex-stub"></div>
+  <script type="application/json" id="ex-stub-m">{"program": "parsons_stub.go", "seed": 23, "pin": [1, 3, 4, 5, 6, 8, 9, 10, 12], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 17, 21, 14, 15, 16], "program": "parsons_stub_alt.go"}], "prompt": "Finish the stand-in clock: give <code>stubClock</code> its <code>Now</code> method, then plug a stub into a <code>Clock</code> variable in <code>main</code>.", "explain": "The method: <code>func (s stubClock) Now() time.Time</code> returns the stored time, which is what makes <code>stubClock</code> fit the <code>Clock</code> socket. Then <code>main</code> builds a stub stuck at 07:30, stores it in a <code>Clock</code> variable (allowed only because the method exists), and prints <samp>the stub says 07:30</samp>. Go doesn't care which of the two functions comes first in the file, so putting <code>main</code> first is accepted too."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: a preview of httptest">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">One more stand-in from the standard library, as a preview. A web handler writes its answer to an <code>http.ResponseWriter</code>. The <code>net/http/httptest</code> package gives you a pretend request and a recorder that remembers everything written to it. No server, no network.</p>
+    <span class="file-tab">httpprev/hello.go</span>
+    <pre class="code" data-src="httpprev/hello.go"></pre>
+    <span class="file-tab">httpprev/hello_test.go</span>
+    <pre class="code" data-src="http_preview.go"></pre>
+    <pre class="term wrap" data-run="http_preview.go"></pre>
+    <ol class="readlist">
+      <li><span><code>httptest.NewRequest</code> (line 9) and <code>httptest.NewRecorder</code> (line 10)<br>A request as if a browser had asked for <code>/hello?name=Scoot</code>, and a stand-in for the browser's end of the line.</span></li>
+      <li><span><samp>status 200, body "Hello, Scoot!"</samp><br>The recorder kept the status code (200 means OK) and the body. Chapter 26 builds real web servers and tests them this way.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE STOPWATCH RACE AND THE FUZZ MACHINE<small>Benchmarks with b.Loop, fuzzing, -race and test caching</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 30: the stopwatch race">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">How long does one call to <code>Fee(8)</code> take? Far too little for any stopwatch to see. So the lab runs a <b>stopwatch race</b>: do it once and time it, then many more times, each round sized from the one before, until the whole race lasts at least a second. Then divide the time by the number of laps.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 680 250" role="img" aria-label="Picture: a big stopwatch on the left. To its right, a race track with five lanes, each longer than the one above. Lane labels: round 1, 1 lap; round 2, more laps; round 3, more again; then more rounds; and the last round, which passes the finish line marked 1 second, so the race stops. A note under it says: total time divided by laps equals time per lap, ns per op.">
+      <circle cx="96" cy="130" r="70" fill="#fff" stroke="#111" stroke-width="6"/><rect x="84" y="40" width="24" height="20" rx="4" fill="#FFD60A" stroke="#111" stroke-width="4"/><path d="M150 72 l14 -14" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="3"><path d="M96 70 V80 M156 130 H146 M96 190 V180 M36 130 H46"/></g>
+      <path d="M96 130 L130 100" stroke="#111" stroke-width="5" stroke-linecap="round"/><circle cx="96" cy="130" r="6" fill="#111"/>
+      <g stroke="#111" stroke-width="3" fill="#C9F2D9"><rect x="200" y="40" width="10" height="24" rx="3"/><rect x="200" y="74" width="40" height="24" rx="3"/><rect x="200" y="108" width="120" height="24" rx="3"/><rect x="200" y="142" width="300" height="24" rx="3"/><rect x="200" y="176" width="440" height="24" rx="3" fill="#FFD60A"/></g>
+      <path d="M600 28 V214" stroke="#111" stroke-width="4" stroke-dasharray="8 6"/>
+      <text x="606" y="24" font-family="Bangers, sans-serif" font-size="18" fill="#111">1 SECOND</text>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111"><text x="218" y="58">round 1: 1 lap</text><text x="250" y="92">round 2: more laps</text><text x="330" y="126">round 3: more again</text><text x="510" y="160">…</text><text x="210" y="194">last round: past the line, so stop</text></g>
+      <text x="200" y="236" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">time per lap = total time ÷ laps, printed as ns/op</text>
+    </svg></div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: a real benchmark run">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">A benchmark is a function called <code>BenchmarkXxx</code> that takes a <code>*testing.B</code>. The code to time goes inside <code>for b.Loop() { ... }</code> (Go 1.24).</p>
+    <span class="file-tab">bench/fee_test.go</span>
+    <pre class="code" data-src="bench.go"></pre>
+    <p class="caption soft">One possible run. Benchmark numbers change on every run and on every computer, so nothing on this page uses them as an answer.</p>
+    <pre class="term wrap" data-run="bench.go"></pre>
+    <ol class="readlist">
+      <li><span><code>go test -bench=.</code><br>Benchmarks only run when you ask. <code>-bench</code> takes a pattern like <code>-run</code>; <code>.</code> matches every name. (Ordinary tests run first; this package has none.)</span></li>
+      <li><span><samp>goos</samp>, <samp>goarch</samp>, <samp>pkg</samp>, <samp>cpu</samp><br>Which system, processor and package. Numbers are only comparable on the same machine.</span></li>
+      <li><span><samp>BenchmarkFee-2</samp>, then the laps, then <samp>ns/op</samp><br><samp>-2</samp> is <code>GOMAXPROCS</code>: how many processor cores Go may use (this machine has 2). Then how many times the loop ran, and the average time per run in nanoseconds (billionths of a second).</span></li>
+      <li><span>In this run, <samp>BenchmarkFeeOldStyle</samp> looks faster. It isn't.<br>The old way, <code>for i := 0; i &lt; b.N; i++</code>, never uses <code>Fee</code>'s result, so the Compiler may quietly throw part of the work away, and the stopwatch times an almost empty loop. <code>b.Loop</code> keeps the calls inside it from being optimised away, and also starts the stopwatch only when the loop begins, so setup before it isn't timed. <i>100 Go Mistakes</i> #89 is all about benchmarks that measure the wrong thing.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>a stopwatch race, run until the time is steady.</b> And never trust one race: run it several times (<code>-count=10</code>) and compare. Chapter 28 makes speed work its main topic.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-stopwatch-m" id="ex-stopwatch"></div>
+  <script type="application/json" id="ex-stopwatch-m">{"program": "stopwatch.go", "columns": ["round", "N", "total_ns"], "given": [0], "prompt": "How does Go choose the number of laps? This program is a model of the rule, with a pretend cost of exactly 2 milliseconds per call (a slow call, such as asking a database) and a goal of 1 second. Each round it prints the round, the laps <code>N</code>, and the total time. Fill in the table.", "explain": "Round 1 runs 1 lap: <samp>2000000</samp> ns. To fill a second would take 500 laps, plus 20% is 600, but a round may grow at most 100 times, so round 2 runs <samp>100</samp> laps: <samp>200000000</samp> ns, a fifth of a second. That predicts 500 laps again, plus 20% is 600, and 600 is less than 100 times 100, so round 3 runs <samp>600</samp> laps: <samp>1200000000</samp> ns, past the goal, and the race stops. The 20% margin and the 100× cap are real: Go's <code>testing</code> package uses the same rule (and never runs more than a billion laps), so a single slow first lap can't make it overshoot wildly."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: a fuzz test">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">The fuzz machine. Scoot's labels must be at most five letters, so <code>Label</code> shortens long names. We don't know which names customers will have, but we know one <b>rule</b>: a label made from real text must still be real text.</p>
+    <span class="file-tab">fuzz/label.go</span>
+    <pre class="code" data-src="fuzz/label.go"></pre>
+    <span class="file-tab">fuzz/label_test.go</span>
+    <pre class="code" data-src="fuzz_seeds.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func FuzzLabel(f *testing.F)</code> (line 8)<br>A fuzz test's name starts with <code>Fuzz</code> and it takes a <code>*testing.F</code>.</span></li>
+      <li><span><code>f.Add("Scoot")</code>, <code>f.Add("Professor")</code> (lines 9 and 10)<br>The <b>seed corpus</b>: a few starting inputs. The fuzzer begins from these and changes them bit by bit.</span></li>
+      <li><span><code>f.Fuzz(func(t *testing.T, name string) { ... })</code> (line 11)<br>The <b>fuzz target</b>: an ordinary check that gets one input at a time. Allowed input types are strings, <code>[]byte</code>, numbers and <code>bool</code>.</span></li>
+      <li><span><code>utf8.ValidString</code> (lines 12 and 16)<br>Go strings are bytes, and a letter like é takes two of them (chapter 11). <code>ValidString</code> checks that the bytes make real UTF-8 text. Inputs that aren't text are skipped; outputs that aren't text are a bug.</span></li>
+      <li><span>Plain <code>go test</code><br>Without the <code>-fuzz</code> flag, a fuzz test runs only its seeds, each as a subtest. Fast and repeatable, so it belongs in every normal run.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-seeds-m" id="ex-seeds"></div>
+  <script type="application/json" id="ex-seeds-m">{"program": "fuzz_seeds.go", "prompt": "Plain <code>go test -v</code>, with <code>grep -o -- '--- .*'</code> keeping just the verdict lines, as in panel 8. Type them.", "hint": "Plain go test runs only the seeds. Seeds are named in order, starting at <code>seed#0</code>. Do \"Scoot\" (exactly 5 bytes) or \"Professor\" break the rule?", "explain": "<samp>--- PASS: FuzzLabel (0.00s)</samp> then <samp>FuzzLabel/seed#0</samp> and <samp>FuzzLabel/seed#1</samp>, both passing. \"Scoot\" is short enough to stay whole, and \"Professor\" becomes \"Profe\": plain English letters are one byte each, so cutting after 5 bytes is harmless. The seeds can't see the bug. The fuzzer can."}</script>
+
+  <section class="panel clean" aria-label="Panel 33: the fuzzer finds a bug">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Now switch the machine on for up to ten seconds. One possible run: the fuzzer picks its inputs at random, so every run finds a different one.</p>
+    <pre class="term wrap" data-run="fuzz_run.go"></pre>
+    <p class="caption soft howrun"><b>How this run was really made:</b> so that the input it saves never lands in the <code>fuzz</code> folder that panel 32 tests, the command ran in a scratch copy of that folder (<code>~/go-ch23/.fuzzwork</code>, with any earlier saved inputs deleted first). The prompt shows the folder it was copied from.</p>
+    <ol class="readlist">
+      <li><span><samp>gathering baseline coverage</samp>, then <samp>now fuzzing with 2 workers</samp><br>It first runs the inputs it already knows, then starts changing them, using coverage to tell which new inputs reach new code. <samp>execs</samp> counts how many it tried.</span></li>
+      <li><span><samp>Label("…") = "…\x…", which is broken text</samp><br>It found a name with a character that takes two or more bytes, right where the cut lands, and <code>name[:5]</code> cut that character in half. The <samp>\x</samp> codes are the leftover bytes of the broken character. (<code>%q</code> may also show the found character as a <samp>\u</samp> code if it is one that doesn't print visibly.)</span></li>
+      <li><span><samp>Failing input written to testdata/fuzz/FuzzLabel/…</samp><br>The fuzzer saves the input in the package's <code>testdata</code> folder. From now on, plain <code>go test</code> runs it as one more tube: a <b>regression test</b>, which makes sure a fixed bug never comes back.</span></li>
+      <li><span>Ten seconds?<br>Without <code>-fuzztime</code>, fuzzing runs until it finds a failure or you press Ctrl+C. This run stopped at the first failure.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: the saved input becomes a tube">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">This copy of the package keeps a failing input found by an earlier fuzzing run of the same code. Plain <code>go test</code> now fails every time, with no randomness at all.</p>
+    <pre class="term wrap" data-run="fuzz_replay.go"></pre>
+    <p class="caption">The fix: count letters, not bytes. <code>[]rune(name)</code> splits the string into whole letters (chapter 11).</p>
+    <span class="file-tab">fuzz_fixed/label.go</span>
+    <pre class="code" data-src="fuzz_fixed.go"></pre>
+    <pre class="term wrap" data-run="fuzz_fixed.go"></pre>
+    <ol class="readlist">
+      <li><span><samp>go test fuzz v1</samp> then <samp>string("0000¬")</samp><br>The saved file is plain text: a version line, then one line per argument of the fuzz target, written as Go values.</span></li>
+      <li><span><samp>=== RUN   FuzzLabel/2eca2f244792bbe9</samp><br>The file name became the subtest's name, next to <samp>seed#0</samp> and <samp>seed#1</samp>. Keep the file after the fix: that tube now guards against the bug for ever.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: the race detector needs cgo">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">One more instrument: <code>-race</code> builds the tests with a <b>race detector</b>, a watcher that catches two goroutines touching the same variable at the same time. Races only matter once you have goroutines (chapters 24 and 25), but here is how to switch it on, and the message many people meet first.</p>
+    <pre class="term wrap" data-run="race.go"></pre>
+    <ol class="readlist">
+      <li><span><samp>0</samp>, then <samp>go: -race requires cgo; enable cgo by setting CGO_ENABLED=1</samp><br>The race detector is partly written in C, so it needs <b>cgo</b>, Go's bridge to C, and a C compiler on the computer. On this machine cgo is switched off, as <code>go env CGO_ENABLED</code> shows.</span></li>
+      <li><span><code>CGO_ENABLED=1 go test -race</code><br>Setting the variable for one command switches cgo on, and the tests pass with the detector watching. On most Linux and macOS computers with a C compiler, cgo is on already and plain <code>go test -race</code> just works. On Windows, install a C compiler such as gcc from MinGW-w64 first.</span></li>
+      <li><span>One terminal session<br>These four commands ran one after another in the same shell, as you would type them.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: test caching">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">A module with two packages, <code>parcel</code> and <code>greet</code>. <code>./...</code> means "this folder and every package below it" (chapter 15). Watch the second run.</p>
+    <span class="file-tab">cache/greet/greet.go</span>
+    <pre class="code" data-src="cache/greet/greet.go"></pre>
+    <pre class="term wrap" data-run="cache_run.go"></pre>
+    <p class="caption soft howrun"><b>How this run was really made:</b> the <code>cd cache</code> step also set <code>GOCACHE=$PWD/.gocache</code>, so this demonstration used its own build and test cache folder and emptying it affected nothing else on the machine. On your computer, leave <code>GOCACHE</code> alone.</p>
+    <ol class="readlist">
+      <li><span><code>go clean -testcache</code><br>Empties Go's memory of earlier test results, so this demonstration starts fresh.</span></li>
+      <li><span><samp>(cached)</samp><br>The second <code>go test ./...</code> didn't run anything. Go remembered that these exact packages, with this exact code, test files and flags, passed a moment ago, and printed the old result. Change any of them, or a file inside the module that a test opened, or an environment variable it read, and the package runs again.</span></li>
+      <li><span><code>-count=1</code><br>The usual way to say "really run them". Use it when a test depends on something Go can't see, such as a file outside the module or the network.</span></li>
+      <li><span>Only in package-list mode<br>Caching happens when you name packages (<code>./...</code>, <code>./parcel</code>). Plain <code>go test</code> in a folder, as everywhere else on this page, never caches.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cache-m" id="ex-cache"></div>
+  <script type="application/json" id="ex-cache-m">{"q": "Scoot's test reads <code>/home/scoot/prices.txt</code>, a file outside the module. Scoot edits the file, runs <code>go test ./...</code>, and sees <samp>ok  example.com/lab/parcel  (cached)</samp>. What happened?", "options": [
+    {"t": "Go re-used the old result; <code>-count=1</code> would really run it", "correct": true, "why": "Yes. The cache notices changes to the code, the test files and the flags, and to files <em>inside the module</em> and environment variables that the test read. This prices file is outside the module, so the change went unnoticed. <code>-count=1</code> always runs."},
+    {"t": "The test ran again and passed, and Go printed <code>(cached)</code> because it was fast", "why": "<samp>(cached)</samp> means the test did <b>not</b> run at all this time."},
+    {"t": "The test file is broken; a working test always prints a time", "why": "Nothing is broken. Cached results print <samp>(cached)</samp> instead of a time."},
+    {"t": "Caching only happens on build servers, so this can't be from Scoot's laptop", "why": "Caching happens on every computer, whenever you name packages such as <code>./...</code>."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Three questions crack this level. <b>Which tube am I in</b>, and does <code>Fatal</code> stop it or just note it? <b>What does the run depend on</b>: a clock, a sleep, a random input? And <b>what exactly did go test print</b>, line by line?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. Racks inside racks: subtests can have subtests of their own. The command keeps only the verdict lines, as in panel 8. Type all of them.", "hint": "Verdicts are printed parent first, then children in the order they ran. <code>Fatal</code> in <code>big</code> ends only <code>big</code>. Does <code>tiny</code> still run? And <code>t.Error</code> in <code>south</code> doesn't stop <code>south</code> at all.", "explain": "<samp>TestDepot</samp> fails, because its children do. <samp>north</samp> fails because <samp>north/big</samp> called <code>Fatal</code>; that ended <code>big</code>'s function only, so <samp>north/tiny</samp> still ran and passed. <samp>south</samp> failed through its own <code>t.Error</code>, which doesn't stop anything, so <samp>south/small</samp> ran and passed. Seven lines: one tube's failure climbs up to every parent above it, and nowhere else."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.go", "bug": 10, "prompt": "Boss 2. Against the broken fee rule from panel 5, both 8 kg and 10 kg are wrong. But the report names only <samp>Fee(8)</samp>. Click the line that hides the second failure.", "explain": "Line 10's <code>t.Fatalf</code> stops the <b>whole</b> <code>TestFee</code> here, because there are no subtests: the loop runs directly in the test function. The 10 kg row is never checked, so you fix one bug, run again, find the next... Use <code>t.Errorf</code>, or better, wrap each row in <code>t.Run</code> so every tube gets its own name and verdict (panel 11)."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.go", "prompt": "Boss 3. <code>Brew</code> sleeps for three minutes before it pours. Make the test finish at once, and check that exactly three minutes of fake time passed.", "blanks": [{"line": 10, "text": "synctest.Test"}, {"line": 13, "text": "time.Since"}], "explain": "<code>synctest.Test(t, func(t *testing.T) { ... })</code> puts the body in a bubble with a fake clock, so <code>Brew</code>'s three-minute sleep is skipped in no real time. <code>time.Since(start)</code> then measures bubble time: exactly <samp>3m0s</samp>. The test passes in <samp>(0.00s)</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 4, "pin": [1, 3, 5, 6, 7, 13], "prompt": "Boss 4. A fuzz test for a rule about fees: a heavier parcel never costs less. Put the fuzz target in order.", "explain": "<code>f.Fuzz</code> takes the target: a function with <code>t</code> first, then one fuzzed <code>int</code>. Inside, check the rule for <code>kg</code> and the next kilogram up, and report with <code>t.Errorf</code>. Close the <code>if</code>, then the function literal and the call together with <code>})</code>. Plain <code>go test -v</code> runs the two seeds, 3 and 8: <samp>FuzzFee/seed#0</samp> and <samp>FuzzFee/seed#1</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.go", "columns": ["kg", "coins", "branch"], "given": [0], "prompt": "Boss 5. Coverage by hand. This version of <code>fee</code> also says which <code>case</code> ran. For each weight, fill in the coins and the branch.", "explain": "4 kg: <code>kg &lt;= 5</code>, <samp>5 medium</samp>. 0 kg: <code>kg &lt;= 1</code>, <samp>3 light</samp>. 7 kg: <code>5 + 2*2</code>, <samp>9 heavy</samp>. 5 kg is the edge, still <samp>5 medium</samp>. 6 kg: <samp>7 heavy</samp>. All three branches ran, so a test with these five weights would cover every statement in <code>fee</code>: 100% coverage. Whether its <em>wants</em> are right is another matter, as panel 20 warned."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A test for <code>Reminder()</code>, which looks at <code>time.Now()</code> and returns <code>\"pay rent\"</code> on the 1st of the month and <code>\"\"</code> on other days, passes on the 1st and fails the rest of the month. What is the best fix?", "options": [
+    {"t": "Give <code>Reminder</code> a <code>Clock</code> and use stub clocks", "correct": true, "why": "Yes: test it with stub clocks set to the 1st, the 2nd and the 31st. The test was asking the real calendar. A stub makes each date a fixed tube, including the edges, on any day you run it."},
+    {"t": "Run the test only on the 1st of each month", "why": "Then it checks one case, once a month, and you'd never see the other branch fail."},
+    {"t": "Wrap the test in <code>synctest.Test</code> for a fake clock", "why": "A bubble's clock always starts on 1 January 2000, so this test would always see the 1st. That checks only one branch. A stub lets you choose the date for each tube."},
+    {"t": "Add <code>-count=1</code> so the result is never cached", "why": "Caching isn't the problem: the test really runs, and really sees a different date every day."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 23</p>
+    <ul class="recap">
+      <li><b>ONE TUBE, ONE LABEL, ONE ANSWER</b>A table-driven test lists cases as rows; <code>t.Run(tc.name, ...)</code> makes each a subtest with its own verdict. <code>-v</code> shows <samp>=== RUN   TestFee/edge_of_five</samp> and <samp>--- FAIL: TestFee/bowling_ball</samp>; <code>-run 'TestFee/bowling'</code> runs one tube.</li>
+      <li><b>FATAL DROPS ONE TUBE, NOT THE RACK</b><code>t.Error</code> notes and carries on; <code>t.Fatal</code> ends the function it's in, so only that subtest stops. A panic is worse: it crashes the whole test program (<samp>[recovered, repanicked]</samp>, <samp>exit status 2</samp>). <code>t.Helper()</code> makes failures point at the caller; <code>t.Cleanup</code> tidies up last-in, first-out, even after <code>Fatal</code>.</li>
+      <li><b>COVERAGE SHOWS WHERE YOU NEVER LOOKED</b><code>-cover</code> and <code>go tool cover -func</code> show untested code. Examples are checked documentation; golden files live in <code>testdata/</code>, which the go tool ignores.</li>
+      <li><b>IN THE BUBBLE, WAITING IS FREE</b>Never make tests sleep. <code>synctest.Test</code> gives a fake clock starting at 2000-01-01 that jumps over sleeps. For "what time is it", inject a <code>Clock</code> interface and plug in a stub.</li>
+      <li><b>A STOPWATCH RACE, RUN UNTIL THE TIME IS STEADY</b><code>for b.Loop()</code> and <code>go test -bench=.</code> print laps and <samp>ns/op</samp>, which vary from run to run. A fuzz test (<code>f.Add</code>, <code>f.Fuzz</code>) runs its seeds in every <code>go test</code>; <code>-fuzz</code> hunts for inputs that break a rule and saves them in <code>testdata/fuzz</code> as new tubes.</li>
+      <li><b>(CACHED) MEANS NOTHING RAN</b><code>go test ./...</code> reuses passing results until something it can see changes; <code>-count=1</code> forces a run. <code>-race</code> needs cgo.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every tube labelled, every lab tidy. Tested and delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, helpers and batons">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 24: Helpers and Batons</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><rect x="20" y="96" width="220" height="16" rx="4" fill="#E9DCC3" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="3.5"><circle cx="60" cy="56" r="20" fill="#C9F2D9"/><circle cx="130" cy="56" r="20" fill="#DDE8FF"/><circle cx="200" cy="56" r="20" fill="#FFF6CC"/><path d="M60 76 V96 M130 76 V96 M200 76 V96"/></g><rect x="96" y="118" width="68" height="26" rx="4" fill="#fff" stroke="#111" stroke-width="3"/><text x="130" y="136" text-anchor="middle" font-family="Bangers, sans-serif" font-size="15" fill="#111">CLIPBOARD</text></svg>
+          <p><b>Goroutines</b>: kitchen helpers who cook at the same time, with <code>go f()</code>, and the head chef's clipboard, <code>sync.WaitGroup</code>, that keeps track of who is still cooking.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><path d="M40 100 C80 60 120 60 130 76" fill="none" stroke="#111" stroke-width="4"/><path d="M220 100 C180 60 140 60 130 76" fill="none" stroke="#111" stroke-width="4"/><rect x="108" y="64" width="44" height="18" rx="8" fill="#FFD60A" stroke="#111" stroke-width="3.5" transform="rotate(-15 130 73)"/><text x="130" y="134" text-anchor="middle" font-family="Bangers, sans-serif" font-size="18" fill="#111">HAND OVER THE BATON</text></svg>
+          <p><b>Channels</b>: a relay baton passed hand to hand, and mailboxes with a few slots. Plus <code>select</code>, and the famous <samp>all goroutines are asleep - deadlock!</samp></p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today we kept every test in a fixed order, because order matters for checking. Next chapter, helpers run whenever they like, and "what could this print?" can have more than one right answer.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: three kitchen helpers at a counter with a clipboard below them; and two hands passing a yellow relay baton.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch22.html">← Ch 22 · Customs and Clocks</a><a class="next" href="ch24.html">Ch 24 · Helpers and Batons →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what go test really builds and runs</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span><code>go test</code> is a builder, a runner and a reporter in one command. Knowing which part speaks helps you read its output.</p></div>
+      </div>
+      <h3>A test binary</h3>
+      <p>For each package, <code>go test</code> compiles the package together with its <code>_test.go</code> files, plus a generated <code>main</code> function that knows every <code>Test</code>, <code>Benchmark</code>, <code>Fuzz</code> and <code>Example</code> function it found. That program is the <b>test binary</b>. <code>go test</code> runs it and relays what it prints; the <samp>exit status 1</samp> line is the test binary's own exit, and the final <samp>ok</samp> or <samp>FAIL</samp> line is <code>go test</code>'s summary. <code>go test -c</code> keeps the binary as <code>parcel.test</code>, and you can run it yourself with flags such as <code>./parcel.test -test.v</code>.</p>
+      <h3>vet runs first</h3>
+      <p>Before running, <code>go test</code> runs a small, high-confidence subset of <code>go vet</code> checks (such as wrong <code>Printf</code> verbs). A problem there stops the run with <samp>[build failed]</samp>, as chapter 15 showed. Compile errors do the same.</p>
+      <h3>How a subtest runs</h3>
+      <p>Each <code>t.Run</code> starts its function on a new goroutine and waits for it to finish. That is why <code>t.Fatal</code> only ends one subtest: it calls <code>runtime.Goexit</code>, which ends the current goroutine (running its deferred calls), and the parent carries on. It is also why <code>t.Fatal</code> must be called from the test's own goroutine, never from a goroutine the test started. A panic is different: it is caught just long enough to record the failure, then re-raised, and an unrecovered panic in any goroutine ends the whole program.</p>
+      <h3>Output streaming</h3>
+      <p>With <code>-v</code>, log lines appear as they happen, under the <samp>=== RUN</samp> line of their test, and the <samp>--- PASS/FAIL</samp> verdicts are printed when each test completes, parents after their children have finished. Without <code>-v</code>, only failing tests show their logs.</p>
+      <h3><code>t.Parallel()</code></h3>
+      <p>A test or subtest that calls <code>t.Parallel()</code> pauses until its parent's function has returned, then runs at the same time as the other parallel tests. It can make big suites faster. It also means cleanups registered by the parent run after the parallel children finish. Since Go 1.22 every loop iteration has its own <code>tc</code>, so the old trick of writing <code>tc := tc</code> before <code>t.Run</code> is no longer needed.</p>
+      <h3>How <code>b.Loop</code> chooses N</h3>
+      <p>The ramp-up in panel 30 follows <code>predictN</code> in Go's <code>testing</code> package: aim for the goal time plus 20%, grow at most 100× per round, always at least one more lap than last time, and never more than a billion. The default goal is one second; change it with <code>-benchtime=3s</code> or a fixed count like <code>-benchtime=100x</code>. Add <code>-benchmem</code> to see memory use per lap (chapter 28).</p>
+      <h3>How fuzzing finds things</h3>
+      <p>The fuzzer is <b>coverage-guided</b>: it builds the package with extra counters (that's why the first <code>-fuzz</code> run takes a while to compile), mutates inputs, and keeps any input that reaches code no earlier input reached. Interesting inputs are cached in Go's build cache; failing ones are minimised and written to <code>testdata/fuzz/FuzzXxx/</code>. Fuzzing runs only one fuzz test at a time and only in one package.</p>
+      <h3>Inside a synctest bubble</h3>
+      <p>Time in a bubble advances only when every goroutine in it is <b>durably blocked</b>: sleeping, or waiting on a channel or lock that only another goroutine in the same bubble can release. Real input and output, such as network calls, never counts as durably blocked. <code>synctest.Wait()</code> waits until every other goroutine in the bubble is blocked, which is how tests of concurrent code avoid sleeping. <code>synctest.Test</code> also waits for all goroutines in the bubble to finish, and reports a deadlock if they can't.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: how Go projects test</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Table-driven tests everywhere.</b> The Go standard library and most Go projects use the table-and-<code>t.Run</code> shape from panel 3. A common variation stores cases in a <code>map[string]struct{...}</code>, so the names are the keys; maps have no order (chapter 12), so the tubes then run in a random order, which can catch tests that secretly depend on each other.</li>
+        <li><b>Golden files with an <code>-update</code> flag.</b> A test declares <code>var update = flag.Bool("update", false, "rewrite golden files")</code>; when you run <code>go test -update</code>, it writes the current output into <code>testdata</code> instead of comparing. Review the diff before committing.</li>
+        <li><b>Fakes, stubs and mocks.</b> A <b>stub</b> returns fixed answers (panel 28). A <b>fake</b> is a small working version, like an in-memory database. A <b>mock</b> also records how it was called, so the test can check the calls. Go programmers usually write small hand-made stand-ins behind small interfaces rather than using a mocking library.</li>
+        <li><b><code>testing/fstest</code>, <code>iotest</code>, <code>httptest</code>.</b> The standard library ships stand-ins for file systems, readers that fail on purpose, and web servers and clients.</li>
+        <li><b>Continuous integration.</b> Build servers run <code>go vet ./...</code> and <code>go test -race ./...</code> on every change; the exit code decides whether a change may be merged. Long fuzzing runs happen separately, for example in OSS-Fuzz for open-source projects.</li>
+        <li><b><code>-short</code> and <code>t.Skip</code>.</b> Slow tests check <code>testing.Short()</code> and skip themselves when you run <code>go test -short</code>, so the quick loop stays quick.</li>
+        <li><b><code>-failfast</code>, <code>-shuffle=on</code>, <code>-timeout</code>.</b> Stop after the first failure; run tests in a random order to find hidden dependencies; and kill the test binary if it runs longer than a limit (10 minutes by default), printing every goroutine's stack.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>t.Fatal</code> stops all the tests."</b> It stops the function it is called in: one test or one subtest (panel 11, Boss 1).</li>
+        <li><b>"<code>t.Error</code> stops the test."</b> It marks the test failed and carries on. Use <code>t.Fatal</code> only when continuing makes no sense.</li>
+        <li><b>"A panic in a test is just a failed test."</b> It crashes the whole test binary, and later tests in that package never run (panel 22).</li>
+        <li><b>"The file and line in a failure point at the bug."</b> They point at the check that noticed. Without <code>t.Helper</code> they may even point inside your helper.</li>
+        <li><b>"100% coverage means no bugs."</b> It means every statement ran at least once. Wrong <code>want</code> values, missing cases and wrong rules all survive 100% coverage.</li>
+        <li><b>"A short <code>time.Sleep</code> in a test is harmless."</b> It's slow, and if it waits for something to happen, it's flaky. Use <code>synctest</code>, a stub clock, or wait on the event itself.</li>
+        <li><b>"<code>(cached)</code> means the test ran quickly."</b> It means it didn't run.</li>
+        <li><b>"A benchmark number is the speed of my code."</b> It's one measurement on one machine with one Go version. Repeat it, compare with <code>benchstat</code>, and make sure the loop body really does the work.</li>
+        <li><b>"Fuzzing is just random testing."</b> It is guided by coverage, keeps interesting inputs, and turns every failure into a permanent regression test.</li>
+        <li><b>"Example functions are only for show."</b> With an <code>// Output:</code> comment they are run and checked by <code>go test</code>.</li>
+        <li><b>"The test package can't see unexported names."</b> A test file in <code>package parcel</code> can; one in <code>package parcel_test</code> can't. Both may live in the same folder.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Go 1.27.3 and Go 1.24.7</summary>
+    <div class="page-body">
+      <p>Every program in this chapter was also run with Go 1.24.7, with each module's <code>go.mod</code> lowered to <code>go 1.24</code> for that run only. Eight of 50 runs differed:</p>
+      <ul>
+        <li><b><code>bubble.go</code> and <code>boss_fill.go</code></b>: <code>synctest.Test</code> is new in Go 1.25. On Go 1.24, <code>testing/synctest</code> existed only as an experiment (with a function called <code>Run</code>, behind <code>GOEXPERIMENT=synctest</code>), so the test can't even be set up: <samp>imports testing/synctest: build constraints exclude all Go files</samp> and <samp>FAIL	example.com/parcel [setup failed]</samp>.</li>
+        <li><b><code>panic.go</code> and <code>spot_share.go</code></b>: Go 1.24 printed the panic as <samp>[recovered]</samp> followed by a second <samp>panic:</samp> line; newer versions print the shorter <samp>[recovered, repanicked]</samp>. The <code>testing.go</code> line numbers differ too. Compare:</li>
+      </ul>
+      <pre class="term wrap" data-run="panic.go" data-alt></pre>
+      <ul>
+        <li><b><code>cover.go</code></b>: the same 60.0%, but Go 1.24 starts each block in <code>cover.out</code> at the opening brace or colon before it (for example <code>4.22,5.9</code> instead of <code>5.2,5.9</code>). The coverage picture in panel 20 uses Go 1.27's file.</li>
+        <li><b><code>sleepy.go</code>, <code>bench.go</code> and <code>fuzz_run.go</code></b>: real times, benchmark counts and random fuzz inputs differ on every run, as these panels say.</li>
+      </ul>
+      <p>Version gates for this chapter: subtests arrived in Go 1.7, <code>t.Helper</code> in 1.9, <code>t.Cleanup</code> in 1.14, <code>t.TempDir</code> in 1.15, <code>t.Setenv</code> in 1.17, fuzzing in 1.18, per-iteration loop variables in 1.22, <code>b.Loop</code>, <code>t.Context</code> and <code>t.Chdir</code> in 1.24, and <code>testing/synctest</code> in 1.25.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a package with a rack</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir parcel</code>, then <code>cd parcel</code>, then <code>go mod init example.com/parcel</code>.</li>
+        <li>Create <code>fee.go</code> and <code>fee_test.go</code> from panel 3.</li>
+        <li><code>go test</code> prints <samp>PASS</samp> and <samp>ok</samp> with a time. <code>go test -v</code> shows every tube.</li>
+        <li>Break the rule as in panel 5 and run <code>go test</code> again. Then <code>go test -run 'TestFee/anvil' -v</code>.</li>
+      </ol>
+      <h3>2. Try the instruments</h3>
+      <ol>
+        <li><code>go test -cover</code>, then <code>go test -coverprofile=c.out</code> and <code>go tool cover -html=c.out</code> to see the colours in your browser.</li>
+        <li>Add a benchmark with <code>for b.Loop()</code> and run <code>go test -bench=. -count=3</code>. Notice how the numbers wobble.</li>
+        <li>Add <code>FuzzLabel</code> from panel 32 and run <code>go test -fuzz=FuzzLabel -fuzztime=30s</code>. Look inside <code>testdata/fuzz</code> afterwards. Fuzzing works on Linux, macOS and Windows on 64-bit Intel/AMD and ARM computers.</li>
+        <li>Wrap a test that sleeps in <code>synctest.Test</code> (needs Go 1.25 or later).</li>
+        <li>Run <code>go test ./...</code> twice in a module with two packages and look for <samp>(cached)</samp>.</li>
+      </ol>
+      <h3>3. Break it on purpose</h3>
+      <ol>
+        <li>Remove <code>t.Helper()</code> from a helper and watch the line numbers change.</li>
+        <li>Make a test divide by zero, and add a second test after it. Does the second one run?</li>
+        <li>Put an unused variable in a test file. Read <samp>[build failed]</samp>.</li>
+        <li>Name a test <code>Testfee</code> with a small f. After <code>Test</code> the next letter must not be lowercase, and on recent Go versions <code>go test</code>'s built-in vet checks stop the run with a "malformed name" message instead of silently skipping the test.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> install Go from the .msi on go.dev/dl. In PowerShell, set an environment variable for one session with <code>$env:CGO_ENABLED=1</code>. The race detector needs a C compiler, for example gcc from MinGW-w64, on your PATH.</li>
+        <li><b>macOS:</b> install from the .pkg on go.dev/dl or with Homebrew (<code>brew install go</code>). <code>xcode-select --install</code> gives you the C compiler that <code>-race</code> needs.</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Install <code>gcc</code> from your package manager for <code>-race</code>. Distribution packages can be old: <code>b.Loop</code> needs Go 1.24 and <code>synctest.Test</code> Go 1.25.</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs <code>_test.go</code>-style tests too: if your program has no <code>main</code> function but has <code>Test</code> functions, it runs them.</li>
+      </ul>
+      <p class="os-note">Your times, benchmark numbers, fuzz inputs and goroutine numbers will differ from this page. Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>table-driven test</dt><dd>A test that lists its cases as rows of a table and checks each in a loop.</dd>
+        <dt>anonymous struct</dt><dd>A struct type written out in place, with no name of its own; handy for test tables.</dd>
+        <dt>subtest</dt><dd>A test inside a test, started with <code>t.Run(name, func(t *testing.T) {...})</code>, with its own name and verdict.</dd>
+        <dt>verbose (<code>-v</code>)</dt><dd>Tell me everything: print every test as it starts and every verdict.</dd>
+        <dt><code>-run</code> pattern</dt><dd>A regular expression choosing which tests run; slashes separate the levels of subtests.</dd>
+        <dt>regular expression</dt><dd>A small language for describing text to match, used by <code>-run</code>, <code>-bench</code>, <code>grep</code> and <code>sed</code>.</dd>
+        <dt>helper (<code>t.Helper</code>)</dt><dd>A function marked so that failures are reported at the line that called it.</dd>
+        <dt>cleanup (<code>t.Cleanup</code>)</dt><dd>A function registered to run when the test ends, last registered first, even after a failure.</dd>
+        <dt><code>testdata</code></dt><dd>A folder the go tool ignores, for files that tests read.</dd>
+        <dt>golden file</dt><dd>A saved copy of the correct output, compared against what the code produces.</dd>
+        <dt>external test package</dt><dd>A test file in <code>package name_test</code>, which sees the package from the outside, like a user.</dd>
+        <dt>coverage</dt><dd>Which statements ran during the tests, as a percentage or per line.</dd>
+        <dt>statement</dt><dd>One instruction in a program, such as an assignment, a <code>return</code> or an <code>if</code>.</dd>
+        <dt>test binary</dt><dd>The program <code>go test</code> builds from your package and its tests, then runs.</dd>
+        <dt>flaky test</dt><dd>A test that sometimes passes and sometimes fails with the same code.</dd>
+        <dt>bubble, fake clock</dt><dd>In <code>synctest.Test</code>, an isolated world whose clock starts at 2000-01-01 UTC and jumps forward when everyone is waiting.</dd>
+        <dt>durably blocked</dt><dd>Waiting for something only another goroutine in the same bubble can provide.</dd>
+        <dt>dependency injection</dt><dd>Handing a function the things it depends on, such as a clock, instead of letting it fetch them itself.</dd>
+        <dt>stub</dt><dd>A stand-in that gives fixed answers, used in tests in place of the real thing.</dd>
+        <dt>fake, mock</dt><dd>A fake is a small working stand-in; a mock also records how it was called.</dd>
+        <dt>benchmark</dt><dd>A function <code>BenchmarkXxx(b *testing.B)</code> that measures how long code takes.</dd>
+        <dt><code>ns/op</code></dt><dd>Nanoseconds (billionths of a second) per run of the benchmark loop.</dd>
+        <dt><code>GOMAXPROCS</code></dt><dd>How many processor cores Go may use at once; shown as the <code>-2</code> after a benchmark's name.</dd>
+        <dt>fuzz test, fuzzing</dt><dd>A test <code>FuzzXxx(f *testing.F)</code> whose inputs a fuzzer generates and mutates, looking for ones that break a rule.</dd>
+        <dt>seed corpus</dt><dd>The starting inputs of a fuzz test: <code>f.Add</code> calls and files in <code>testdata/fuzz</code>.</dd>
+        <dt>fuzz target</dt><dd>The function given to <code>f.Fuzz</code>, called once per input.</dd>
+        <dt>regression test</dt><dd>A test that keeps a fixed bug from coming back.</dd>
+        <dt>race detector, data race</dt><dd><code>-race</code> watches for two goroutines using the same variable at the same time without coordination, a data race.</dd>
+        <dt>cgo</dt><dd>Go's bridge to code written in C; needed by the race detector.</dd>
+        <dt>test cache</dt><dd>Go's memory of passing test results in package-list mode; shown as <samp>(cached)</samp>.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://pkg.go.dev/testing">Package testing</a>: every method of <code>T</code>, <code>B</code> and <code>F</code>, subtests, examples, benchmarks and fuzzing.</li>
+        <li><a href="https://pkg.go.dev/testing/synctest">Package testing/synctest</a> and the Go Blog post <a href="https://go.dev/blog/testing-time">Testing Time (and other asynchronicities)</a>.</li>
+        <li><a href="https://go.dev/doc/security/fuzz/">Go Fuzzing</a> and the <a href="https://go.dev/doc/tutorial/fuzz">fuzzing tutorial</a>.</li>
+        <li><a href="https://go.dev/blog/subtests">Using Subtests and Sub-benchmarks</a> and <a href="https://go.dev/blog/examples">Testable Examples in Go</a> (the Go Blog).</li>
+        <li><a href="https://go.dev/blog/cover">The cover story</a> (the Go Blog), and <code>go help test</code> and <code>go help testflag</code> in your terminal.</li>
+        <li><a href="https://pkg.go.dev/net/http/httptest">Package net/http/httptest</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests">Learn Go with Tests</a>: the whole book is built around testing; see "Mocking", "Property-based tests" and the chapters on synctest and benchmarking.</li>
+        <li><a href="https://gobyexample.com/testing-and-benchmarking">Go by Example: Testing and Benchmarking</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #82 to #90, including #86 sleeping in unit tests and #89 writing inaccurate benchmarks.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch23</code>. Each example is its own small module in a subfolder (for example <code>/home/you/go-ch23/tubes</code>) whose <code>go.mod</code> was written by the real <code>go mod init example.com/parcel</code> (or <code>example.com/lab</code>), which wrote <code>go 1.27.3</code>. A test file shown on this page is also linked from the chapter folder under a short name (such as <code>tubes.go</code> for <code>tubes/fee_test.go</code>), so the page and its exercises read exactly the file that ran. Each terminal session starts in <code>/home/you/go-ch23</code> and walks into the example's folder with a <code>cd</code> you can see, and every command is shown exactly as it ran (the exercises' runs were made the same way). Where output carries times, <code>sed</code> replaces them with <samp>…s</samp>, and in panel 22 it also hides memory addresses and goroutine numbers, always in the command you can see. A line that pipes into <code>sed</code> or <code>grep</code> ends with that tool's exit code, except in panels 7 and 22, which first run <code>set -o pipefail</code> so that the exit code the map in panel 21 checks is <code>go test</code>'s own. Panel 36's <code>cd</code> step also pointed <code>GOCACHE</code> at a private folder, as the note under that terminal says. The two build-failure runs (the map's "build failed" road and the exercise after it) ran as <code>cd buildfail &amp;&amp; go test</code> and <code>cd buildfail2 &amp;&amp; go test</code> in one step each, so that the terminal's real interleaving of the two output streams could be recorded. The capture runs with cgo switched off, which is why panel 35 needs <code>CGO_ENABLED=1</code>. The fuzzing run in panel 33 works on a scratch copy of the <code>fuzz</code> folder (<code>/home/you/go-ch23/.fuzzwork</code>), so its saved input never lands in the folder that panel 32 tests; panel 34's <code>fuzz_replay</code> folder holds an input saved by an earlier real fuzzing run of the same code. <code>sleepy.go</code>, <code>bench.go</code> and <code>fuzz_run.go</code> vary between runs: they are marked non-deterministic, shown as "one possible run", and never used as answers. Every program was also run with Go 1.24.7 (see the version notes): 8 of 50 runs differ.</p>
+  <p>The test-tube rack, the coverage picture, the cleanup walker, the go test road map and the Greeting machine are teaching models; each checks itself against those runs and shows a badge. The road map draws building and vetting as one step, and the rack draws only subtests, not the parent. <code>stopwatch.go</code> is a model of the benchmark ramp-up rule with a pretend fixed cost per call; real benchmarks measure real, varying times.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go 1.7, 1.9, 1.14, 1.15, 1.17, 1.18, 1.24 and 1.25 release notes (every version gate in the version notes, such as <code>t.Helper</code> in 1.9, <code>b.Loop</code>, <code>t.Context</code> and <code>t.Chdir</code> in 1.24 and <code>testing/synctest</code> in 1.25, was checked against them on 2026-11-08) and <code>testing/benchmark.go</code> in the Go 1.27.3 source (the lap rule modelled in panel 31's exercise); the <code>testing</code> and <code>testing/synctest</code> package documentation and the output of <code>go help test</code> (caching rules, cacheable flags) and the Go 1.27.3 source of <code>testing.predictN</code> and <code>B.Loop</code>; the Go Blog post "Testing Time (and other asynchronicities)" (why real-time tests are slow or flaky, the bubble clock starting at 2000-01-01, Go 1.25 for <code>synctest.Test</code>); "Go Fuzzing" on go.dev (fuzz test rules, seed corpus, plain <code>go test</code> running seeds, failing inputs in <code>testdata/fuzz</code>, <code>-fuzztime</code>); Go by Example, "Testing and Benchmarking" (from a single test to a table, subtests, then <code>b.Loop</code> benchmarks); 100 Go Mistakes #89 (free summary at 100go.co: timers, micro-benchmark assumptions, compiler optimisations, the observer effect); and, as summarised in this book's research map, Learn Go with Tests (testing fundamentals, mocking, property-based tests, synctest), The Go Programming Language chapter 11, Learning Go 2nd edition chapter 15, 100 Go Mistakes #82 to #90, the Go docs' fuzzing tutorial and coverage article, and roadmap.sh's Go testing topics.</p>
+  <p>Scoot, the Professor, the Compiler and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

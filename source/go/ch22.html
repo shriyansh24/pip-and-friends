@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customs and Clocks</title>
+<meta name="description" content="Chapter 22 of the Go book of Pip &amp; Friends, a comic course: JSON as a customs desk (json.Marshal, json.Unmarshal, struct tags with omitempty and -, unexported fields left undeclared, map[string]any and its float64 numbers, json.Decoder streams, encoding/json/v2's stricter defaults, CSV with encoding/csv), then time as a magic photo (time.Date, the reference layout Mon Jan 2 15:04:05 MST 2006, Parse errors, time zones), Durations, Now, Sleep, Since, timers and tickers, math/rand/v2 with seeded PCG, crypto/rand and the new uuid package, with every classic mistake read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch22.css">
+<script defer src="../data/go-ch22.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch22.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch21.html">&larr; Ch 21</a><span aria-current="page">Ch 22 of 28</span><a href="ch23.html">Ch 23 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 22 · INTERMEDIATE</p>
+    <h1 id="cover-h">CUSTOMS AND CLOCKS</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello with a letter in hand.</p>
+    <p class="caption blurb">Scoot's depot now ships abroad, and every parcel crosses a <b>customs desk</b>. You'll learn to fill in the form other programs read: <b>JSON</b>. Struct tags are the translations next to each field, and private pockets never get declared. Then the clocks: Go describes date formats with a <b>magic photo</b> of one moment in 2006, measures time in <b>Durations</b>, and rolls dice two very different ways. About 130 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The customs desk: json.Marshal and tags</a></li>
+      <li><a href="#part-2">Arrivals: json.Unmarshal and its jams</a></li>
+      <li><a href="#part-3">Streams, v2 and other forms</a></li>
+      <li><a href="#part-4">The magic photo: formatting and parsing time</a></li>
+      <li><a href="#part-5">Stopwatches: Durations</a></li>
+      <li><a href="#part-6">Real clocks, dice and secrets</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE CUSTOMS DESK<small>json.Marshal, struct tags and private pockets</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Scoot meets the customs officer">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Big news at the depot: parcels now go abroad. At the border sits <b>Officer Ines</b>, with a rubber stamp and a very particular form.</p>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">Officer Ines says: </span>Welcome to customs! I don't read Go. I don't read Python or JavaScript either. Every parcel needs a form in <b>JSON</b>, the one language everyone at this border understands.</p>
+      </div>
+      <svg class="char" data-char="officer" data-mood="happy"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>My parcels are Go structs! How do I turn a struct into your form... and your forms back into structs?</p></div>
+    </div>
+    <p class="sr-only">Picture: Officer Ines, a customs officer in a navy cap and jacket with a star badge, raises her red rubber stamp. Scoot shrugs, puzzled.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: what JSON looks like">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft"><b>JSON</b> (say "JAY-son", short for JavaScript Object Notation) is plain text with a few simple rules. Websites, phone apps and config files use it to pass data between programs written in different languages.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">IN GO</span>
+        <span class="sym" aria-hidden="true">Parcel{
+  ID:      7,
+  To:      "Ana",
+  Kg:      2.5,
+  Fragile: true,
+}</span>
+        <h3>A struct value<small>lives in your program's memory</small></h3>
+        <p>Only Go understands it. It has a type, <code>Parcel</code>, with typed fields.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">AS JSON</span>
+        <span class="sym" aria-hidden="true">{"ID":7,"To":"Ana",
+ "Kg":2.5,"Fragile":true}</span>
+        <h3>JSON text<small>just characters, ready to send</small></h3>
+        <p>Any language can read it. Keys are always in double quotes; values are written in a few simple forms.</p>
+      </div>
+    </div>
+    <p class="sr-only">The IN GO card: a Go struct value Parcel with ID 7, To "Ana", Kg 2.5 and Fragile true. The AS JSON card: the same data as JSON text, an object with keys "ID", "To", "Kg" and "Fragile".</p>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th>JSON form</th><th>Looks like</th><th>Usually becomes, in Go</th></tr></thead>
+        <tbody>
+          <tr><td data-th="JSON form">object</td><td data-th="Looks like"><code>{"to": "Ana"}</code></td><td data-th="In Go">a struct, or a map with string keys</td></tr>
+          <tr><td data-th="JSON form">array</td><td data-th="Looks like"><code>[1, 2, 3]</code></td><td data-th="In Go">a slice (or an array)</td></tr>
+          <tr><td data-th="JSON form">string</td><td data-th="Looks like"><code>"Ana"</code></td><td data-th="In Go"><code>string</code></td></tr>
+          <tr><td data-th="JSON form">number</td><td data-th="Looks like"><code>2.5</code></td><td data-th="In Go"><code>int</code>, <code>float64</code> and friends</td></tr>
+          <tr><td data-th="JSON form">true / false</td><td data-th="Looks like"><code>true</code></td><td data-th="In Go"><code>bool</code></td></tr>
+          <tr><td data-th="JSON form">null</td><td data-th="Looks like"><code>null</code></td><td data-th="In Go"><code>nil</code> (a nil slice, map, pointer or interface)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Turning a Go value into JSON text is called <b>encoding</b>, or <b>marshalling</b>. Turning JSON back into a Go value is <b>decoding</b>, or <b>unmarshalling</b>. Go's package for it is <code>encoding/json</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: your first json.Marshal">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption"><code>json.Marshal(v)</code> takes any Go value and gives back the JSON text as a <code>[]byte</code> (a slice of bytes, chapter 11), plus an error.</p>
+    <span class="file-tab">first_marshal.go</span>
+    <pre class="code" data-src="first_marshal.go"></pre>
+    <pre class="term wrap" data-run="first_marshal.go"></pre>
+    <ol class="readlist">
+      <li><span><code>b, err := json.Marshal(p)</code> (line 17)<br>The customs desk reads every field of <code>p</code> and writes the form. Like every Go function that can fail, it returns an error to check (chapter 8).</span></li>
+      <li><span><code>{"ID":7,"To":"Ana","Kg":2.5,"Fragile":true}</code> (line 22)<br><code>string(b)</code> turns the bytes into text for printing. With no instructions, each JSON key is the Go field name, capital letter and all.</span></li>
+      <li><span><code>43 bytes</code> (line 23)<br>No spaces, no newlines: Marshal writes the most compact form. Count them if you like: 43 characters.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 4: the customs form and its translations">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">But the officer wants lowercase keys like <code>"to"</code>, and some boxes left out when empty. You write those instructions in a <b>struct tag</b>: a little string in backquotes after a field's type. It's the translation printed next to each line of the form.</p>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th>Go field and its tag</th><th>On the customs form</th></tr></thead>
+        <tbody>
+          <tr><td data-th="Go field and its tag"><code>ID int `json:"id"`</code></td><td data-th="On the form">declared as <code>"id"</code></td></tr>
+          <tr><td data-th="Go field and its tag"><code>Kg float64 `json:"weight_kg"`</code></td><td data-th="On the form">declared as <code>"weight_kg"</code>: any name you like</td></tr>
+          <tr><td data-th="Go field and its tag"><code>Note string `json:"note,omitempty"`</code></td><td data-th="On the form">declared as <code>"note"</code>, but <b>left off the form</b> when it is empty: <code>""</code>, <code>0</code>, <code>false</code>, nil, or an empty slice or map. (A struct is never "empty"; the notebook shows the <code>omitzero</code> option for that.)</td></tr>
+          <tr><td data-th="Go field and its tag"><code>Secret string `json:"-"`</code></td><td data-th="On the form"><b>never declared</b>: the dash means "skip this field"</td></tr>
+          <tr><td data-th="Go field and its tag"><code>pin string</code> (lowercase)</td><td data-th="On the form"><b>never declared</b>: a private pocket. The officer can't see unexported fields at all</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="verdict-row">
+      <svg class="char" data-char="officer" data-mood="happy" data-prop="form"></svg>
+      <p class="bubble"><span class="sr-only">Officer Ines says: </span>Catchphrase: <b>tags are the translations.</b> The Go name stays in your program; the tag says what to write on my form. The format is exact: <code>json:"name,option"</code>, no spaces.</p>
+    </div>
+    <p class="sr-only">Picture: Officer Ines holds up a form with neat lines on it.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: tags at work">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Two parcels through the same desk: one with every box filled, one with the optional boxes empty.</p>
+    <span class="file-tab">tags.go</span>
+    <pre class="code" data-src="tags.go"></pre>
+    <pre class="term wrap" data-run="tags.go"></pre>
+    <ol class="readlist">
+      <li><span><code>"weight_kg":2.5</code> (line 11)<br>The tag renamed the key. The keys come out in the order of the struct's fields.</span></li>
+      <li><span>No <code>"note"</code> and no <code>"items"</code> on the second line (lines 12 and 13)<br>Parcel 8 has an empty note and a nil slice, and both tags say <code>omitempty</code>, so those boxes are left off.</span></li>
+      <li><span>No <code>"1234"</code> anywhere (line 14)<br><code>json:"-"</code> keeps the secret out of the form, even when it has a value.</span></li>
+      <li><span><code>ja, _ := …</code> (line 20)<br>The <code>_</code> throws the error away. That's only safe because Marshal can't fail for plain fields like these (panel 8 shows one that can).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-ptags-m" id="ex-ptags"></div>
+  <script type="application/json" id="ex-ptags-m">{"program": "predict_tags.go", "prompt": "Scoot has no bike yet and zero trips. What one line does the desk write?", "hint": "Check each tag: which ones say <code>omitempty</code>, and which says <code>-</code>?", "explain": "<code>Bike</code> is empty and has <code>omitempty</code>: left off. <code>Trips</code> is 0, but its tag has no <code>omitempty</code>, so it's declared: <samp>\"trips\":0</samp>. <code>PIN</code> has <code>json:\"-\"</code>: never declared. Result: <samp>{\"name\":\"Scoot\",\"trips\":0}</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-fomit-m" id="ex-fomit"></div>
+  <script type="application/json" id="ex-fomit-m">{"program": "fill_omit.go", "prompt": "Bo has no phone, and the form should then have no <code>\"phone\"</code> box at all. Complete the tag on line 10.", "blanks": [{"line": 10, "text": "phone,omitempty"}], "explain": "The key name first, then a comma, then the option: <code>json:\"phone,omitempty\"</code>. Ana's line keeps her number; Bo's line is just <samp>{\"name\":\"Bo\"}</samp>. No spaces anywhere inside the tag."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 6: the private pocket">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="WHERE?!" data-seed="6"></svg>
+    <p class="caption">Now the classic surprise. <code>name</code> starts with a lowercase letter. Watch what the desk does with it.</p>
+    <span class="file-tab">unexported.go</span>
+    <pre class="code" data-src="unexported.go"></pre>
+    <pre class="term wrap" data-run="unexported.go"></pre>
+    <ol class="readlist">
+      <li><span><code>{"age":3} &lt;nil&gt;</code> (line 16)<br>The name is gone, and the error is <code>nil</code>. No warning, no crash.</span></li>
+      <li><span><code>{Age:3 name:x}</code> (line 17)<br>The value is still in the struct. The desk simply never looked inside that pocket.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Officer Ines says: </span>Lowercase fields are unexported: private to their package (chapter 15). <code>encoding/json</code> is a different package, so it can't see them. I don't open private pockets, and I don't complain about them either.</p></div>
+      <svg class="char" data-char="officer" data-mood="stern"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>capitals cross the border.</b> If a field must be declared, give it a capital letter, and use a tag for the lowercase key.</p></div>
+    </div>
+    <p class="sr-only">Picture: Officer Ines looks stern. Scoot points at the missing field.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: go vet spots tag mistakes">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The Compiler can't help here: a tag is just a string, and an unexported field is legal Go. But <b>Specs</b>, the <code>go vet</code> checker from chapter 2, reads tags. Two mistakes in one struct:</p>
+    <span class="file-tab">vet_tag.go</span>
+    <pre class="code" data-src="vet_tag.go"></pre>
+    <pre class="term wrap" data-run="vet_tag.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>{"id":1,"Item":"tea"}</code><br>The program runs. But the key is <code>"Item"</code>, not <code>"item"</code>, and <code>price</code> is missing.</span></li>
+      <li><span><code>vet_tag.go:10:2: struct field tag `json: "item"` not compatible …: bad syntax</code><br>Line 10 has a space after the colon. A tag with bad syntax is ignored completely, so the Go name was used.</span></li>
+      <li><span><code>vet_tag.go:11:2: struct field price has json tag but is not exported</code><br>Line 11 asks for a JSON name for a private pocket. vet knows that can never work.</span></li>
+    </ol>
+    <div class="verdict-row">
+      <svg class="char" data-char="specs"></svg>
+      <p class="bubble"><span class="sr-only">Specs says: </span>Run <code>go vet</code> before you trust a struct with tags. (<code>go test</code> runs some of my checks for you automatically; chapter 23.)</p>
+    </div>
+    <p class="sr-only">Picture: Specs, a round checker with big glasses, holds a magnifier up to a page.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-slower-m" id="ex-slower"></div>
+  <script type="application/json" id="ex-slower-m">{"program": "spot_lower.go", "bug": 10, "prompt": "The till sends receipts as JSON, but the total never arrives. No error appears. Click the guilty line.", "explain": "Line 10: <code>total</code> starts with a lowercase letter, so <code>encoding/json</code> can't see it, tag or no tag. Fix: <code>Total float64 `json:\"total\"`</code> (and <code>Total: 4.5</code> on line 15). The tag keeps the key lowercase; the capital letter lets it cross the border. <code>go vet</code> would have warned: \"struct field total has json tag but is not exported\"."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 8: the customs desk machine" data-machine="m-marshal">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Feed the desk different Go values and see the form it writes. One of them jams it. Every result comes from <code>marshal_m.go</code> (shown below) or from <code>marshal_chan.go</code>.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-marshal">{"label": "json.Marshal", "program": "marshal_m.go", "examples": [
+      {"in": "Parcel{ID: 7, To: \"Ana\"}", "out": "{\"id\":7,\"to\":\"Ana\"}", "outKind": "JSON object", "note": "A struct becomes an object. The tags <code>json:\"id\"</code> and <code>json:\"to\"</code> chose the keys."},
+      {"in": "[]int{3, 1, 2}", "out": "[3,1,2]", "outKind": "JSON array", "note": "A slice becomes an array, in the same order."},
+      {"in": "map[string]int{\"tea\": 2, \"cake\": 1}", "out": "{\"cake\":1,\"tea\":2}", "outKind": "JSON object", "note": "A map becomes an object too. Its keys are <b>sorted</b>, so the output is the same on every run, even though ranging over a map isn't (chapter 12)."},
+      {"in": "\"say \\\"hi\\\"\"", "out": "\"say \\\"hi\\\"\"", "outKind": "JSON string", "note": "A string gets double quotes, and quotes inside it get a backslash in front, so the officer knows where the string ends."},
+      {"in": "true", "out": "true", "outKind": "JSON true", "note": "Booleans are written as <code>true</code> or <code>false</code>, without quotes."},
+      {"in": "[]string(nil)", "out": "null", "outKind": "JSON null", "note": "A nil slice holds nothing at all, so it's written as <code>null</code>."},
+      {"in": "2.50", "out": "2.5", "outKind": "JSON number", "note": "Numbers are written in their shortest form: the trailing zero goes."},
+      {"in": "make(chan int)", "error": "json: unsupported type: chan int", "program": "marshal_chan.go", "note": "A channel (chapter 24) is a live connection between parts of a running program, not data. There's nothing to write on a form, so Marshal returns an error. Functions jam the same way. That's why you check <code>err</code>."}]}</script>
+    <span class="file-tab">marshal_m.go</span>
+    <pre class="code" data-src="marshal_m.go"></pre>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: pretty forms with MarshalIndent">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Forms can hold forms. A struct field that is itself a struct, or a slice of structs, becomes an object or array inside the object. For people to read it, use <code>json.MarshalIndent(v, prefix, indent)</code>.</p>
+    <span class="file-tab">indent.go</span>
+    <pre class="code" data-src="indent.go"></pre>
+    <pre class="term wrap" data-run="indent.go"></pre>
+    <ol class="readlist">
+      <li><span><code>json.MarshalIndent(o, "", "  ")</code> (line 20)<br>No prefix at the start of each line, and two spaces per level of nesting. Same data as <code>Marshal</code>, just laid out.</span></li>
+      <li><span><code>[]Item{{"tea", 2}, {"cake", 1}}</code> (line 19)<br>Inside a slice literal you can leave out the type of each element. Each <code>Item</code> uses its own tags.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cdash-m" id="ex-cdash"></div>
+  <script type="application/json" id="ex-cdash-m">{"q": "A <code>User</code> struct has an exported field <code>Password string</code>. It must <b>never</b> appear in the JSON, even when it's filled in. What should its tag be?", "options": [
+    {"t": "<code>`json:\"-\"`</code>", "correct": true, "why": "Right. The dash means \"never declare this field\", whatever it holds. (Another fix is to make it unexported, <code>password</code>, if no other package needs it.)"},
+    {"t": "<code>`json:\"password,omitempty\"`</code>", "why": "<code>omitempty</code> only leaves the box off when it's empty. A filled-in password would be declared."},
+    {"t": "<code>`json:\"\"`</code>", "why": "An empty name means \"use the Go field name\", so it would be declared as <code>\"Password\"</code>."},
+    {"t": "No tag: Marshal never writes fields called Password", "why": "Marshal doesn't know what a password is. Every exported field is declared unless a tag says otherwise."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · ARRIVALS<small>json.Unmarshal, its jams, and map[string]any</small></h2>
+
+  <section class="panel pop" aria-label="Panel 10: the arrivals desk">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Parcels come the other way too. A JSON form arrives, and Officer Ines must copy it into one of Scoot's blank Go forms.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Officer Ines says: </span>Hand me your blank form and I'll fill it in. But hand me <b>the form itself</b>, not a photocopy! If I fill in a copy, your form stays blank.</p></div>
+      <svg class="char" data-char="officer" data-mood="happy" data-prop="form"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Chapter 13! Passing <code>p</code> hands over a copy. Passing <code>&amp;p</code>, its <b>address</b>, lets the function change my real <code>p</code>. Catchphrase: <b>hand over the form, not a photocopy.</b></p></div>
+    </div>
+    <p class="sr-only">Picture: Officer Ines holds out a form, ready to fill it in. Scoot points, remembering pointers.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: json.Unmarshal">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption"><code>json.Unmarshal(data, &amp;p)</code> reads JSON text and fills in the struct that <code>&amp;p</code> points to. It returns only an error.</p>
+    <span class="file-tab">unmarshal.go</span>
+    <pre class="code" data-src="unmarshal.go"></pre>
+    <pre class="term wrap" data-run="unmarshal.go"></pre>
+    <ol class="readlist">
+      <li><span><code>[]byte(`{…}`)</code> (line 16)<br>Unmarshal wants bytes. A backquoted string (a <b>raw string</b>) lets the double quotes inside stay as they are.</span></li>
+      <li><span><code>ID:9 To:Bo Kg:1.25</code><br>Each JSON key found its field through the tags.</span></li>
+      <li><span><code>Fragile:false</code><br>The JSON had no <code>"fragile"</code>, so that field kept its zero value.</span></li>
+      <li><span>No <code>colour</code> anywhere<br>The struct has no field for <code>"colour"</code>, so Unmarshal skipped it without complaint. You only receive what your form has boxes for.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 12: Unmarshal fills the form, step by step" data-tracer="tr-unm" id="tr-unm-box">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Step through it. Watch Unmarshal reach <code>p</code> through its address and fill one box at a time.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-unm-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-unm">{"program": "unmarshal.go", "steps": [
+      {"line": 16, "note": "The run starts in <code>main</code>. Line 16 is next.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 17, "note": "Line 16: <code>data</code> names the JSON text as a slice of bytes. (The picture shortens it; the full text is in the code.)", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}}, "changed": ["data"]},
+      {"line": 18, "note": "Line 17: <code>var p Parcel</code> makes a blank form. Every box holds its zero value: 0, an empty string, 0 and false.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "0"}, {"k": "To", "val": "\"\""}, {"k": "Kg", "val": "0"}, {"k": "Fragile", "val": "false"}]}}, "changed": ["p"]},
+      {"line": 18, "note": "Line 18 calls <code>json.Unmarshal(data, &amp;p)</code>. Inside, a pointer named <code>v</code> holds <code>p</code>'s address: its arrow goes to the <b>same</b> form, not a copy.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}, {"name": "json.Unmarshal", "vars": [{"n": "data", "ref": "D"}, {"n": "v", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "0"}, {"k": "To", "val": "\"\""}, {"k": "Kg", "val": "0"}, {"k": "Fragile", "val": "false"}]}}, "changed": ["v"]},
+      {"line": 18, "note": "Unmarshal reads <code>\"id\": 9</code>. The tag <code>json:\"id\"</code> matches field <code>ID</code>, and 9 fits in an <code>int</code>. It writes 9 into <code>p</code> through the pointer.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}, {"name": "json.Unmarshal", "vars": [{"n": "data", "ref": "D"}, {"n": "v", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"\""}, {"k": "Kg", "val": "0"}, {"k": "Fragile", "val": "false"}]}}},
+      {"line": 18, "note": "<code>\"to\": \"Bo\"</code> goes into <code>To</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}, {"name": "json.Unmarshal", "vars": [{"n": "data", "ref": "D"}, {"n": "v", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "0"}, {"k": "Fragile", "val": "false"}]}}},
+      {"line": 18, "note": "<code>\"kg\": 1.25</code> goes into <code>Kg</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}, {"name": "json.Unmarshal", "vars": [{"n": "data", "ref": "D"}, {"n": "v", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "1.25"}, {"k": "Fragile", "val": "false"}]}}},
+      {"line": 18, "note": "<code>\"colour\": \"red\"</code>: no box on this form is called colour, so it's skipped. No key mentions fragile, so <code>Fragile</code> stays <code>false</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}]}, {"name": "json.Unmarshal", "vars": [{"n": "data", "ref": "D"}, {"n": "v", "ref": "P"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "1.25"}, {"k": "Fragile", "val": "false"}]}}},
+      {"line": 19, "note": "Unmarshal returns <code>nil</code>: no problems. Its frame closes, and <code>err</code> holds nil. The filled form is <code>main</code>'s own <code>p</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}, {"n": "err", "ref": "E"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "1.25"}, {"k": "Fragile", "val": "false"}]}, "E": {"kind": "error", "value": "nil", "label": "err"}}, "changed": ["err"]},
+      {"line": 23, "note": "Line 19: <code>err != nil</code> is false, so lines 20 and 21 are skipped.", "output": [], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}, {"n": "err", "ref": "E"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "1.25"}, {"k": "Fragile", "val": "false"}]}, "E": {"kind": "error", "value": "nil", "label": "err"}}},
+      {"line": null, "note": "Line 23: <code>%+v</code> prints each field with its name. Three boxes from the JSON, one zero value, and no colour.", "output": ["{ID:9 To:Bo Kg:1.25 Fragile:false}"], "frames": [{"name": "main", "vars": [{"n": "data", "ref": "D"}, {"n": "p", "ref": "P"}, {"n": "err", "ref": "E"}]}], "objects": {"D": {"kind": "[]byte", "value": "{\"id\": 9, \"to\": \"Bo\", …}", "label": "data"}, "P": {"kind": "struct", "label": "Parcel · p", "pairs": [{"k": "ID", "val": "9"}, {"k": "To", "val": "\"Bo\""}, {"k": "Kg", "val": "1.25"}, {"k": "Fragile", "val": "false"}]}, "E": {"kind": "error", "value": "nil", "label": "err"}}}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-punm-m" id="ex-punm"></div>
+  <script type="application/json" id="ex-punm-m">{"program": "predict_unmarshal.go", "prompt": "This time the form <code>p</code> is <b>already filled in</b> before Unmarshal runs. The JSON only mentions two of its boxes. What are the two lines?", "hint": "Unmarshal writes only the boxes the JSON mentions. What happens to the others?", "explain": "No problems, so <samp>&lt;nil&gt;</samp>. The JSON sets <code>theme</code> and <code>size</code>; <code>Lang</code> isn't mentioned, so it keeps its old value: <samp>en dark 16</samp>. Unmarshal doesn't blank the form first. Handy for \"defaults, then overrides\", and a surprise if you reuse a struct by accident."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 13: the arrivals machine" data-machine="m-unmarshal">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Now feed JSON <b>in</b>. The first four go into a <code>Parcel</code> with tags <code>id</code> and <code>to</code> (<code>unmarshal_m.go</code>). The last three go into a <code>U</code> with fields <code>Name</code> and <code>Age int</code>, and jam the desk.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-unmarshal">{"label": "json.Unmarshal", "program": "unmarshal_m.go", "examples": [
+      {"in": "{\"id\": 9, \"to\": \"Bo\"}", "out": "{ID:9 To:Bo}", "outKind": "Parcel, printed with %+v", "note": "Every key has a box. Spaces between the parts of JSON don't matter."},
+      {"in": "{\"to\": \"Cy\", \"extra\": true}", "out": "{ID:0 To:Cy}", "outKind": "Parcel", "note": "No <code>\"id\"</code>: <code>ID</code> stays 0. <code>\"extra\"</code> has no box: ignored."},
+      {"in": "{\"ID\": 4}", "out": "{ID:4 To:}", "outKind": "Parcel", "note": "The key is <code>\"ID\"</code> but the tag says <code>id</code>. <code>encoding/json</code> matches keys ignoring upper and lower case, so it still fits. (<code>encoding/json/v2</code> is stricter; panel 18.)"},
+      {"in": "{}", "out": "{ID:0 To:}", "outKind": "Parcel", "note": "An empty object is a perfectly good form with nothing filled in: every field keeps its zero value."},
+      {"in": "{\"name\": \"Ana\", \"age\": \"3\"}", "error": "json: cannot unmarshal string into Go struct field U.age of type int", "program": "type_err.go", "note": "<code>\"3\"</code> in quotes is a JSON <b>string</b>, and the box <code>Age</code> only takes an <code>int</code>. Read it like a detective in panel 14."},
+      {"in": "{\"name\": \"Ana\", \"age\": 3", "error": "unexpected end of JSON input", "program": "truncated.go", "note": "The closing <code>}</code> is missing. The text stopped in the middle of the form."},
+      {"in": "{\"name\": \"Ana\", \"age\": 3,}", "error": "invalid character '}' looking for beginning of object key string", "program": "syntax_err.go", "note": "A comma after the last item. Go allows that in its own code, but JSON doesn't: after a comma there must be another key."}]}</script>
+    <span class="file-tab">unmarshal_m.go</span>
+    <pre class="code" data-src="unmarshal_m.go"></pre>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 14: three jams, read like a detective">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="JAM!" data-seed="14"></svg>
+    <p class="caption">Here are the three jams as real runs. Each program stops with <code>log.Fatal(err)</code>, which prints the error to standard error and exits with status 1 (chapter 21). Then <code>go run</code> adds <code>exit status 1</code>.</p>
+    <span class="file-tab">type_err.go</span>
+    <pre class="code" data-src="type_err.go"></pre>
+    <pre class="term wrap" data-run="type_err.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>cannot unmarshal string</code><br>Clue 1: what the JSON <b>had</b>: a string.</span></li>
+      <li><span><code>into Go struct field U.age</code><br>Clue 2: <b>where</b>: type <code>U</code>, and the box declared as <code>age</code>. It names the JSON key from the tag, not the Go field <code>Age</code>.</span></li>
+      <li><span><code>of type int</code><br>Clue 3: what the box <b>wanted</b>. Fix the JSON (<code>"age": 3</code>), or change the field's type.</span></li>
+    </ol>
+    <div class="pair">
+      <div>
+        <p class="vs-label">truncated.go</p>
+        <pre class="term wrap" data-run="truncated.go"></pre>
+      </div>
+      <div>
+        <p class="vs-label">syntax_err.go</p>
+        <pre class="term wrap" data-run="syntax_err.go"></pre>
+      </div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>unexpected end of JSON input</code><br>The text ran out before the form was complete: usually a file cut short or a download that stopped.</span></li>
+      <li><span><code>invalid character '}' looking for beginning of object key string</code><br>It names the character it tripped on, and what it was expecting instead: a key in quotes. The trailing comma is the culprit.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Officer Ines says: </span>I check the whole form before I hand it over. When I stop, I tell you what I found, where, and what I wanted.</p></div>
+      <svg class="char" data-char="officer" data-mood="stern"></svg>
+    </div>
+    <p class="sr-only">Picture: Officer Ines, stern, explains each rejected form.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sptr-m" id="ex-sptr"></div>
+  <script type="application/json" id="ex-sptr-m">{"program": "spot_pointer.go", "bug": 15, "prompt": "The JSON clearly says id 5 and to Di, but the form comes back blank, with an odd error. Click the guilty line.", "explain": "Line 15 passes <code>p</code>, a photocopy of the blank form. Unmarshal can't fill a copy, so it refuses: <samp>json: Unmarshal(non-pointer main.Parcel)</samp>. Fix: pass <code>&amp;p</code>. <code>go vet</code> also catches this one: \"call of Unmarshal passes non-pointer as second argument\"."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: when you don't know the shape: map[string]any">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Sometimes you don't have a form for the JSON: you don't know its keys in advance. Then decode into a <code>map[string]any</code>: string keys, and values of any type (<code>any</code> is the empty interface, chapter 14).</p>
+    <span class="file-tab">anymap.go</span>
+    <pre class="code" data-src="anymap.go"></pre>
+    <pre class="term wrap" data-run="anymap.go"></pre>
+    <ol class="readlist">
+      <li><span><code>map[insured:true kg:2 …]</code> (line 15)<br>Every key arrived. <code>fmt</code> prints maps sorted by key, so this line is the same on every run.</span></li>
+      <li><span><code>kg float64</code> (line 17)<br>Surprise: the JSON number <code>2</code> became a <code>float64</code>, not an <code>int</code>. With no form to say otherwise, every JSON number becomes a <code>float64</code>.</span></li>
+      <li><span><code>tags []interface {}</code><br>An array becomes a slice of <code>any</code> (<code>%T</code> prints its old name, <code>interface {}</code>). An object inside would become another <code>map[string]any</code>, and <code>null</code> becomes <code>nil</code>.</span></li>
+      <li><span><code>m["kg"].(float64)</code> (line 19)<br>To do arithmetic, you must take the value out of the <code>any</code> box with a type assertion (chapter 14). Asking for <code>.(int)</code> here would panic.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pany-m" id="ex-pany"></div>
+  <script type="application/json" id="ex-pany-m">{"program": "predict_any.go", "prompt": "Decode into a <code>map[string]any</code>, then look at the types. What are the three lines?", "hint": "What type does every JSON number become in an <code>any</code>? Then: an <code>any</code> holding that type, compared with the plain number 3, which Go treats as an <code>int</code>.", "explain": "<samp>float64</samp>, then <samp>string</samp>. The last line is the sneaky one: <code>m[\"count\"]</code> holds a <code>float64</code> 3, and <code>3</code> on its own becomes an <code>int</code> when compared with an <code>any</code>. Two interface values are equal only if their types match too (chapter 19's two slots): <samp>false</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 16: a printed form or an open sack">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">So which should you decode into? Think of a printed form versus an open sack.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">PRINTED FORM</span>
+        <span class="sym" aria-hidden="true">var p Parcel</span>
+        <h3>A struct<small>when you know the shape</small></h3>
+        <ul>
+          <li>Each box has a type: <code>Kg</code> really is a <code>float64</code>, <code>ID</code> really is an <code>int</code>.</li>
+          <li>Wrong kinds are caught as errors (panel 14).</li>
+          <li>The Compiler checks every <code>p.To</code> you write; a typo won't compile.</li>
+          <li>Extra keys are ignored.</li>
+        </ul>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">OPEN SACK</span>
+        <span class="sym" aria-hidden="true">var m map[string]any</span>
+        <h3>A map of any<small>when you truly don't know</small></h3>
+        <ul>
+          <li>Takes any object at all, keeping every key.</li>
+          <li>Every number is a <code>float64</code>.</li>
+          <li>Each use needs a type assertion, which can panic or fail.</li>
+          <li>A misspelled key, <code>m["kgg"]</code>, quietly gives <code>nil</code>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Rule of thumb: use a struct whenever you can. Reach for the sack only for truly free-form data, like a settings file where users invent their own keys.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-chmap-m" id="ex-chmap"></div>
+  <script type="application/json" id="ex-chmap-m">{"q": "A weather service always sends <code>{\"city\": \"Oslo\", \"temp\": 21.5, \"rain\": false}</code>, and your program adds up temperatures. What should you decode into?", "options": [
+    {"t": "A struct with a tagged field per key", "correct": true, "why": "Yes: <code>City string</code>, <code>Temp float64</code> and <code>Rain bool</code>, each with a tag. The shape is known, so a form gives you real types, error checks on wrong kinds, and the Compiler's help with every field name."},
+    {"t": "A <code>map[string]any</code>, which accepts anything", "why": "It works, but every use needs <code>m[\"temp\"].(float64)</code>, and a typo in a key silently gives <code>nil</code>. Save the sack for shapes you don't know."},
+    {"t": "A <code>string</code>, cut up with <code>strings.Split</code>", "why": "JSON has quotes, escapes and nesting. Splitting it by hand breaks on the first comma inside a string. Let <code>encoding/json</code> do it."},
+    {"t": "A <code>[]any</code>, one slot per value", "why": "The JSON is an object, not an array, so Unmarshal would return an error."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · STREAMS, V2 AND OTHER FORMS<small>json.Decoder, encoding/json/v2, CSV</small></h2>
+
+  <section class="panel clean" aria-label="Panel 17: a stream of forms with json.Decoder">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Unmarshal needs all the text at once. A <code>json.Decoder</code> instead reads form after form from any <code>io.Reader</code> (chapter 19): a file, a network connection, or here a <code>strings.Reader</code> pretending to be one.</p>
+    <span class="file-tab">decoder.go</span>
+    <pre class="code" data-src="decoder.go"></pre>
+    <pre class="term wrap" data-run="decoder.go"></pre>
+    <ol class="readlist">
+      <li><span><code>json.NewDecoder(feed)</code> (line 20)<br>The decoder sits on the pipe and reads only as much as each form needs.</span></li>
+      <li><span><code>dec.Decode(&amp;s)</code> (line 23)<br>Like Unmarshal: fill the form through its address. Each call reads the <b>next</b> JSON value.</span></li>
+      <li><span><code>err == io.EOF</code> (line 24)<br>When the stream runs out, Decode returns <code>io.EOF</code>, the normal "that's all" from chapter 19. Any other error is a real problem.</span></li>
+      <li><span><code>{"id":3,"hub":"Pune"}</code> (lines 33 and 34)<br>The opposite direction: a <code>json.Encoder</code> writes each value to any <code>io.Writer</code>, followed by a newline.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tdec-m" id="ex-tdec"></div>
+  <script type="application/json" id="ex-tdec-m">{"program": "trace_decoder.go", "columns": ["item", "qty", "total"], "given": [1], "prompt": "Four forms arrive one after another. Each row prints the item (in quotes, as <code>%q</code> does), the quantity, and the running total. The <code>qty</code> column is filled in. Watch out: two forms have a box missing.", "explain": "<samp>\"tea\"</samp> and <samp>\"cake\"</samp> are normal: totals 2 and 5. The third form has no <code>\"item\"</code>, so <code>l.Item</code> is the empty string, <samp>\"\"</samp>, and the total reaches 9. The fourth has no <code>\"qty\"</code>, so it's 0 and the total stays <samp>9</samp>. Each lap starts with a fresh <code>var l Line</code>, so nothing leaks from the form before."}</script>
+
+  <section class="panel clean" aria-label="Panel 18: encoding/json/v2">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Go 1.27 adds <code>encoding/json/v2</code>, a revised JSON package with <b>stricter defaults</b>. The old <code>encoding/json</code> is now built on top of the new one, with the same functions and behaviour. Same inputs, both packages:</p>
+    <span class="file-tab">v2.go</span>
+    <pre class="code" data-src="v2.go"></pre>
+    <pre class="term wrap" data-run="v2.go"></pre>
+    <ol class="readlist">
+      <li><span><code>jsonv1 "encoding/json"</code> (lines 4 and 5)<br>Both packages are called <code>json</code>, so the imports give them new names to tell them apart.</span></li>
+      <li><span><code>v1 label: "tea"</code>, <code>v2 label: ""</code> (lines 17 to 19)<br>v1 matched <code>"LABEL"</code> to the tag <code>label</code>, ignoring case. v2 matches names exactly, so the box stayed empty. Neither reported an error.</span></li>
+      <li><span><code>"tags":null</code> versus <code>"tags":[]</code> (lines 21 to 24)<br>A nil slice: v1 writes <code>null</code>, v2 writes an empty array, which is friendlier for the program on the other side.</span></li>
+      <li><span><code>v2 error: jsontext: duplicate object member name "label"</code> (lines 26 to 28)<br>A form with the same key twice. v1 quietly keeps the last one; v2 refuses.</span></li>
+    </ol>
+    <p class="vs-label">THE SAME PROGRAM ON GO 1.24.7</p>
+    <pre class="term wrap" data-run="v2.go" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Older Go has no <code>encoding/json/v2</code> at all, as the run above shows. This book uses the familiar <code>encoding/json</code> everywhere else: it's what you'll meet in existing code, and you don't have to migrate. The notebook lists more of v2's differences.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor, with glasses and a notebook, explains.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: CSV, the spreadsheet form">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Another form you'll meet at the border: <b>CSV</b> (comma-separated values), what spreadsheets export. One record per line, fields separated by commas. <code>encoding/csv</code> reads and writes it.</p>
+    <span class="file-tab">csv_read.go</span>
+    <pre class="code" data-src="csv_read.go"></pre>
+    <pre class="term wrap" data-run="csv_read.go"></pre>
+    <ol class="readlist">
+      <li><span><code>r.ReadAll()</code> (line 16)<br>Every record, as a <code>[][]string</code>: a slice of rows, each a slice of fields. Every field is a <code>string</code>; turning <code>"2.5"</code> into a number is your job (<code>strconv</code>, chapter 7).</span></li>
+      <li><span><code>2 3 [Bo, Jr. Rome 1]</code><br>Line 13 put <code>"Bo, Jr."</code> in quotes, so its comma belongs to the name. Still 3 fields. Splitting on commas by hand would have got 4.</span></li>
+      <li><span><code>Di,"says ""hi"", twice"</code> (lines 25 to 28)<br>A <code>csv.Writer</code> adds quotes where needed and doubles the quotes inside. It's buffered, like chapter 21's bucket: call <code>Flush</code>, then check <code>w.Error()</code>.</span></li>
+    </ol>
+    <p class="caption soft">A row with a field missing is a jam. Again, last line first:</p>
+    <span class="file-tab">csv_bad.go</span>
+    <pre class="term wrap" data-run="csv_bad.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Line 3 is <code>Bo</code> with no weight: 1 field where the first record had 2. And <b>XML</b>, the older form with angle brackets (<code>&lt;to&gt;Ana&lt;/to&gt;</code>), has its own package, <code>encoding/xml</code>, with tags just like JSON: <code>xml:"to"</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pcsv-m" id="ex-pcsv"></div>
+  <script type="application/json" id="ex-pcsv-m">{"program": "parsons_csv.go", "seed": 4, "pin": [1, 3, 4, 5, 6, 7, 9, 19], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 12, 13, 14, 15, 19], "program": "parsons_csv_alt.go"}], "prompt": "Read two CSV records and print who carries what. Put the lines of <code>main</code> in order; the goal output is below.", "explain": "Make the reader, read all records, check the error (print and <code>return</code>, then close the <code>if</code>), then loop over the rows. Each <code>row</code> is a <code>[]string</code>, so <code>row[0]</code> is the name and <code>row[1]</code> the weight, still as text."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE MAGIC PHOTO<small>time.Date, Format, Parse and time zones</small></h2>
+
+  <section class="panel pop" aria-label="Panel 20: the stamp problem">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Every customs form needs a date stamp. Officer Ines wants it written <code>2026-07-09</code>. Rome wants <code>09/07/2026</code>. The courier app wants <code>Thu 4:45pm</code>.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Other languages use codes like <code>YYYY-MM-DD</code> or <code>%Y-%m-%d</code>. What does Go use?</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Officer Ines says: </span>Go uses something odder, and easier to remember: a <b>photograph</b>. But first, let's see how Go stores a moment in time.</p></div>
+      <svg class="char sm" data-char="officer" data-mood="happy"></svg>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, worried, with three different date styles around. Officer Ines smiles.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: a moment in time with time.Date">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">The <code>time</code> package's <code>time.Time</code> holds one moment. <code>time.Date</code> builds one from its parts: year, month, day, hour, minute, second, nanosecond, and a <b>location</b> (time zone). Our delivery moment for this whole chapter:</p>
+    <span class="file-tab">date.go</span>
+    <pre class="code" data-src="date.go"></pre>
+    <pre class="term wrap" data-run="date.go"></pre>
+    <ol class="readlist">
+      <li><span><code>time.July</code>, <code>time.UTC</code> (line 9)<br>Months are named constants of type <code>time.Month</code>. <b>UTC</b> is the world's reference clock (Coordinated Universal Time), with no daylight saving.</span></li>
+      <li><span><code>2026-07-09 16:45:30 +0000 UTC</code> (line 10)<br>Println shows the date, the 24-hour time, the offset from UTC (<code>+0000</code>, none) and the zone's name.</span></li>
+      <li><span><code>Thursday is day 190 of the year</code> (line 13)<br>A <code>time.Time</code> can tell you its weekday and much more.</span></li>
+      <li><span><code>2026-08-09</code> (lines 15 and 16)<br>July has no 40th day, so <code>time.Date</code> rolls over: 40 July is 9 August. No error, so check your inputs yourself.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 22: the magic photo">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Go keeps one <b>magic photo</b> of a single moment: <b>Mon Jan 2 15:04:05 MST 2006</b>. To describe a format, you show how <em>that</em> moment would look in it. Go then draws your moment the same way.</p>
+    <svg class="pic-wide has-phone" viewBox="0 0 680 270" role="img" aria-label="Picture: a photo in a white frame. Inside, a calendar page shows MON, JAN, a big 2 and 2006, and a clock shows 3:04 with a PM tag. Under the photo is written Mon Jan 2 15:04:05 MST 2006.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="130" y="14" width="420" height="230" rx="10" fill="#FFFFFF" transform="rotate(-2 340 130)"/>
+        <rect x="152" y="32" width="376" height="160" rx="6" fill="#DDE8FF" transform="rotate(-2 340 130)"/>
+      </g>
+      <g transform="rotate(-2 340 130)">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+          <rect x="182" y="48" width="130" height="130" rx="8" fill="#FFFFFF"/>
+          <rect x="182" y="48" width="130" height="34" rx="8" fill="#FF5A4E"/>
+          <circle cx="420" cy="112" r="62" fill="#FFF6CC"/>
+        </g>
+        <text x="247" y="74" font-family="Bangers, sans-serif" font-size="24" fill="#111" text-anchor="middle" letter-spacing="2">JAN · MON</text>
+        <text x="247" y="146" font-family="Bangers, sans-serif" font-size="62" fill="#111" text-anchor="middle">2</text>
+        <text x="247" y="170" font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle">2006</text>
+        <g stroke="#111" stroke-linecap="round" fill="none">
+          <path d="M420 112 L466 112" stroke-width="7"/>
+          <path d="M420 112 L436 60" stroke-width="5"/>
+        </g>
+        <circle cx="420" cy="112" r="6" fill="#111"/>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="420" y="66">12</text><text x="472" y="117">3</text><text x="420" y="168">6</text><text x="368" y="117">9</text></g>
+        <rect x="470" y="150" width="46" height="26" rx="5" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+        <text x="493" y="169" font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle">PM</text>
+        <text x="340" y="228" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111" text-anchor="middle">Mon Jan 2 15:04:05 MST 2006</text>
+      </g>
+    </svg>
+    <svg class="pic-phone" viewBox="0 0 360 330" role="img" aria-label="Picture: a photo in a white frame. Inside, a calendar page shows MON, JAN, a big 2 and 2006, and a clock shows 3:04 with a PM tag. Under the photo is written Mon Jan 2 15:04:05 MST 2006.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="14" y="10" width="332" height="310" rx="10" fill="#FFFFFF"/>
+        <rect x="30" y="26" width="300" height="200" rx="6" fill="#DDE8FF"/>
+        <rect x="44" y="50" width="130" height="150" rx="8" fill="#FFFFFF"/>
+        <rect x="44" y="50" width="130" height="34" rx="8" fill="#FF5A4E"/>
+        <circle cx="256" cy="126" r="58" fill="#FFF6CC"/>
+      </g>
+      <text x="109" y="76" font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle" letter-spacing="2">JAN · MON</text>
+      <text x="109" y="156" font-family="Bangers, sans-serif" font-size="66" fill="#111" text-anchor="middle">2</text>
+      <text x="109" y="186" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle">2006</text>
+      <g stroke="#111" stroke-linecap="round" fill="none"><path d="M256 126 L298 126" stroke-width="7"/><path d="M256 126 L271 78" stroke-width="5"/></g>
+      <circle cx="256" cy="126" r="6" fill="#111"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="256" y="84">12</text><text x="304" y="131">3</text><text x="256" y="178">6</text><text x="208" y="131">9</text></g>
+      <rect x="290" y="176" width="44" height="26" rx="5" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <text x="312" y="195" font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle">PM</text>
+      <text x="180" y="262" font-family="JetBrains Mono, monospace" font-weight="800" font-size="19" fill="#111" text-anchor="middle">Mon Jan 2</text>
+      <text x="180" y="294" font-family="JetBrains Mono, monospace" font-weight="800" font-size="19" fill="#111" text-anchor="middle">15:04:05 MST 2006</text>
+    </svg>
+    <p class="caption soft">Why that moment? Write it the American way, month first, and its parts count up: <b>1 2 3 4 5 6 7</b>.</p>
+    <div class="photo-key">
+      <div><span class="n">1</span><code>01</code><small>month (Jan)</small></div>
+      <div><span class="n">2</span><code>02</code><small>day</small></div>
+      <div><span class="n">3</span><code>03</code><small>hour (3 PM = 15)</small></div>
+      <div><span class="n">4</span><code>04</code><small>minute</small></div>
+      <div><span class="n">5</span><code>05</code><small>second</small></div>
+      <div><span class="n">6</span><code>06</code><small>year (2006)</small></div>
+      <div><span class="n">7</span><code>-0700</code><small>zone (MST is 7 hours behind UTC)</small></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>show the magic photo: 1 2 3 4 5 6 7.</b> For a year, write 2006. For the month, write 01 or Jan. Never YYYY.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: one moment, eleven layouts">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption"><code>t.Format(layout)</code> returns a string. Here our delivery moment, Thursday 9 July 2026 at 16:45:30 UTC, is formatted with eleven layouts. Each line shows the layout, then what Go printed.</p>
+    <span class="file-tab">format.go</span>
+    <pre class="code" data-src="format.go"></pre>
+    <pre class="term wrap" data-run="format.go"></pre>
+    <ol class="readlist">
+      <li><span><code>02/01/2006 => 09/07/2026</code> and <code>01/02/2006 => 07/09/2026</code><br>Day first (Europe) or month first (USA): you choose by where you put 02 and 01.</span></li>
+      <li><span><code>3:04 PM => 4:45 PM</code><br><code>15</code> asks for the 24-hour clock, <code>3</code> or <code>03</code> for the 12-hour clock, and <code>PM</code> adds AM or PM.</span></li>
+      <li><span><code>time.RFC3339</code> and <code>time.Kitchen</code><br>The <code>time</code> package has ready-made layouts. RFC 3339 is the standard for computers: it's what <code>json.Marshal</code> writes for a <code>time.Time</code>. The <code>Z</code> means UTC.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean photobox" aria-label="Panel 24: build your own layout" data-photo="ph-model">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Build your own layout. Each solid piece is part of the magic photo; Go swaps it for the same part of our delivery moment. Dashed pieces are copied as they are. Try a real one first, then mix your own.</p>
+    <div class="ph-wrap"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every piece and what it prints</summary><table class="transcript"><thead><tr><th>Piece</th><th>Meaning</th><th>Prints for Thu 9 July 2026 16:45:30 UTC</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="ph-model">{"tokens": "tokens.go", "start": 0, "strip": [3, 1, 2, 4, 5, 6, 7, 8, 0],
+      "groups": [
+        {"name": "year", "photo": "2006", "items": [{"t": "2006", "say": "4 digits"}, {"t": "06", "say": "2 digits"}]},
+        {"name": "month", "photo": "Jan", "items": [{"t": "01", "say": "number, 2 digits"}, {"t": "1", "say": "number"}, {"t": "Jan", "say": "short name"}, {"t": "January", "say": "full name"}]},
+        {"name": "day", "photo": "2", "items": [{"t": "02", "say": "2 digits"}, {"t": "2", "say": "no padding"}, {"t": "_2", "say": "padded with a space"}]},
+        {"name": "weekday", "photo": "Mon", "items": [{"t": "Mon", "say": "short name"}, {"t": "Monday", "say": "full name"}]},
+        {"name": "hour", "photo": "15", "items": [{"t": "15", "say": "24-hour clock"}, {"t": "03", "say": "12-hour clock, 2 digits"}, {"t": "3", "say": "12-hour clock"}]},
+        {"name": "minute", "photo": "04", "items": [{"t": "04", "say": "2 digits"}]},
+        {"name": "second", "photo": "05", "items": [{"t": "05", "say": "2 digits"}]},
+        {"name": "AM/PM", "photo": "PM", "items": [{"t": "PM", "say": "capitals"}, {"t": "pm", "say": "small letters"}]},
+        {"name": "zone", "photo": "MST", "items": [{"t": "MST", "say": "zone name"}, {"t": "-0700", "say": "offset from UTC"}]}],
+      "seps": [" ", "-", "/", ":", ", "],
+      "literals": ["YYYY", "MM", "DD"],
+      "presets": [
+        {"chips": ["2006", "-", "01", "-", "02"], "program": "format.go"},
+        {"chips": ["02", "/", "01", "/", "2006"], "program": "format.go"},
+        {"chips": ["01", "/", "02", "/", "2006"], "program": "format.go"},
+        {"chips": ["Jan", " ", "2", ", ", "2006"], "program": "format.go"},
+        {"chips": ["Monday", ", ", "2", " ", "January", " ", "2006"], "program": "format.go"},
+        {"chips": ["15", ":", "04"], "program": "format.go"},
+        {"chips": ["3", ":", "04", " ", "PM"], "program": "format.go"},
+        {"chips": ["Mon", " ", "3", ":", "04", "pm"], "program": "format.go"},
+        {"chips": ["2006", "-", "01", "-", "02", " ", "15", ":", "04", ":", "05"], "program": "format.go"},
+        {"chips": ["3", ":", "04", "PM"], "program": "format.go"},
+        {"chips": ["YYYY", "-", "MM", "-", "DD"], "program": "yyyy.go", "line": true}]}</script>
+    <span class="file-tab">tokens.go</span>
+    <pre class="code" data-src="tokens.go"></pre>
+    <pre class="term wrap" data-run="tokens.go"></pre>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pfmt-m" id="ex-pfmt"></div>
+  <script type="application/json" id="ex-pfmt-m">{"program": "predict_format.go", "prompt": "A different moment: 5 March 2026 at 9:07 in the morning. Use the magic photo to work out both lines.", "hint": "Jan → short month name. 2 → day, no padding. 3 → 12-hour hour. pm → am or pm, in small letters. The letters a and t in \"at\" aren't in the photo. In the second layout, 02 is the day and 01 the month.", "explain": "<samp>Mar 5 at 9:07am</samp>: <code>Jan</code> became Mar, <code>2</code> became 5, \"at\" was copied, <code>3:04</code> became 9:07, and <code>pm</code> became am because it's morning. Then <samp>05.03.2026</samp>: day, dot, month, dot, year, each padded to two digits."}</script>
+
+  <div data-ex="fill" data-model="ex-flay-m" id="ex-flay"></div>
+  <script type="application/json" id="ex-flay-m">{"program": "fill_layout.go", "prompt": "Rome's stamp must read <samp>stamped: 09/07/2026 16:45</samp>: day, month, year, then the 24-hour time. Write the layout on line 10.", "blanks": [{"line": 10, "text": "02/01/2006 15:04"}], "explain": "Show the magic photo in Rome's style: day <code>02</code>, month <code>01</code>, year <code>2006</code>, then <code>15:04</code> for the 24-hour clock (<code>03:04</code> would print 04:45)."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 25: the YYYY mistake">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="25"></svg>
+    <p class="caption">Now the most common time mistake in Go: writing the codes other languages use.</p>
+    <span class="file-tab">yyyy.go</span>
+    <pre class="code" data-src="yyyy.go"></pre>
+    <pre class="term wrap" data-run="yyyy.go"></pre>
+    <ol class="readlist">
+      <li><span><code>YYYY-MM-DD</code> (line 10)<br>Printed letter for letter. <code>Y</code>, <code>M</code> on its own and <code>D</code> aren't parts of the magic photo, so Go copies them.</span></li>
+      <li><span><code>DD/MM/YYYY hh:mm</code> (line 11)<br>Same again: no error, no warning, just the letters back.</span></li>
+      <li><span><code>2026-07-09</code> (line 12)<br>The fix: show the photo. (Or use the ready-made <code>time.DateOnly</code>.)</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>I can't stop this one. <code>"YYYY-MM-DD"</code> is a perfectly good string. Only you know it was meant to be a date layout.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="happy" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon green and gate up: the program compiles and runs.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-syyyy-m" id="ex-syyyy"></div>
+  <script type="application/json" id="ex-syyyy-m">{"program": "spot_yyyy.go", "bug": 10, "prompt": "The parcel was delivered at 16:45, but the stamp says <samp>16:07</samp>. Click the guilty line.", "explain": "Line 10's layout says <code>15:01</code>. In the magic photo, <code>01</code> is the <b>month</b>, and July is month 07. Minutes are <code>04</code>: <code>\"2006-01-02 15:04\"</code>. Mixing up 01 and 04 is easy; the photo's counting order 1 2 3 4 5 is the cure."}</script>
+
+  <section class="panel clean" aria-label="Panel 26: reading dates with time.Parse">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">The other direction: <code>time.Parse(layout, text)</code> reads a date from text, using the same magic photo to say what the text looks like. It returns a <code>time.Time</code> and an error.</p>
+    <span class="file-tab">parse.go</span>
+    <pre class="code" data-src="parse.go"></pre>
+    <pre class="term wrap" data-run="parse.go"></pre>
+    <ol class="readlist">
+      <li><span><code>2026-07-09 16:45:00 +0000 UTC &lt;nil&gt;</code> (lines 9 and 10)<br>The text matched the layout. With no zone in the text, Parse assumes UTC.</span></li>
+      <li><span><code>parsing time "07/11/2026" as "2006-01-02": cannot parse "07/11/2026" as "2006"</code> (lines 12 and 13)<br>Read it like a detective: the text, the layout, then the exact spot. Go wanted the year (<code>2006</code>) right at the start and found <code>07/11/2026</code> there instead.</span></li>
+      <li><span><code>day out of range</code> (lines 15 and 16)<br>The shape was right, but February has no 30th. Unlike <code>time.Date</code>, Parse checks.</span></li>
+      <li><span><code>7 November 2026</code> (lines 18 and 19)<br>With a day-first layout, <code>07/11/2026</code> means 7 November. The same text means 11 July with <code>01/02/2006</code>. The text alone can't tell you; the layout decides.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-ppar-m" id="ex-ppar"></div>
+  <script type="application/json" id="ex-ppar-m">{"program": "parsons_parse.go", "seed": 3, "pin": [1, 3, 4, 5, 6, 8, 15], "prompt": "Parse a date, stop politely if it's bad, and print its weekday and date. Put the lines of <code>main</code> in order.", "explain": "Parse first, and check <code>err</code> straight away: print, <code>return</code>, close the <code>if</code>. Only then is <code>t</code> safe to use. 24 December 2026 is a Thursday: <samp>Thursday, 24 December</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: time zones">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">One moment, many wall clocks. <code>t.In(loc)</code> shows the same moment in another <b>location</b>. <code>time.LoadLocation</code> looks a zone up by its official name in the time zone database; <code>time.FixedZone</code> makes a simple one from a name and an offset in seconds.</p>
+    <span class="file-tab">zones.go</span>
+    <pre class="code" data-src="zones.go"></pre>
+    <pre class="term wrap" data-run="zones.go"></pre>
+    <ol class="readlist">
+      <li><span><code>Tokyo: 2026-07-10 01:45:30 +0900 JST</code> (line 18)<br>Already the next day in Tokyo, nine hours ahead. Same moment, different wall clock.</span></li>
+      <li><span><code>Lima: 2026-07-09 11:45:30 -0500 Lima</code> (lines 15 and 19)<br><code>-5*60*60</code> is five hours behind UTC, in seconds. A fixed zone never changes for daylight saving; real places can, which is why LoadLocation exists.</span></li>
+      <li><span><code>same moment? true</code>, <code>== says: false</code> (lines 20 and 21)<br>Compare moments with <code>t.Equal(u)</code>. <code>==</code> also compares the location, so the same moment in two zones isn't <code>==</code>.</span></li>
+      <li><span><code>unknown time zone Mars/Olympus</code> (lines 23 and 24)<br>Names must exist in the database, which is why LoadLocation returns an error.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Depot rule: <b>store and send times in UTC; convert to local time only to show people.</b> These captures run with the computer's zone set to UTC; on your laptop, <code>time.Local</code> is your own zone.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tzon-m" id="ex-tzon"></div>
+  <script type="application/json" id="ex-tzon-m">{"program": "trace_zones.go", "columns": ["city", "offset", "day", "clock"], "given": [0, 1], "prompt": "It's noon UTC on Thursday 9 July. Each row prints a city, its offset from UTC in hours, and the weekday and time on its wall clock (layout <code>\"Mon 15:04\"</code>). The first two columns are filled in.", "explain": "Add the offset to 12:00. Lima, -5: <samp>Thu 07:00</samp>. Oslo, +2: <samp>Thu 14:00</samp>. Dhaka, +6: <samp>Thu 18:00</samp>. Auckland, +12: midnight, which is already <samp>Fri 00:00</samp>."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · STOPWATCHES<small>time.Duration and its arithmetic</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 28: a Duration is a count of nanoseconds">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">A <code>time.Time</code> is a moment. A <b><code>time.Duration</code></b> is a <b>length</b> of time: a stopwatch reading. Underneath it's just a whole number counting <b>nanoseconds</b> (billionths of a second). The package gives you ready-made units:</p>
+    <ol class="ladder" aria-label="time.Nanosecond is 1. times 1000 is time.Microsecond. times 1000 is time.Millisecond. times 1000 is time.Second. times 60 is time.Minute. times 60 is time.Hour.">
+      <li><code>time.Nanosecond</code><small>1</small></li><li class="x" aria-hidden="true">×1000</li>
+      <li><code>time.Microsecond</code><small>1 000</small></li><li class="x" aria-hidden="true">×1000</li>
+      <li><code>time.Millisecond</code><small>1 000 000</small></li><li class="x" aria-hidden="true">×1000</li>
+      <li class="big"><code>time.Second</code><small>1 000 000 000</small></li><li class="x" aria-hidden="true">×60</li>
+      <li class="big"><code>time.Minute</code><small>60 seconds</small></li><li class="x" aria-hidden="true">×60</li>
+      <li class="big"><code>time.Hour</code><small>60 minutes</small></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>So <code>90 * time.Second</code> means "90 of the second-sized units": 90 000 000 000 nanoseconds. Catchphrase: <b>a Duration is a count: always say the unit.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: Durations in action">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Durations print themselves in a friendly way, and you can add them to moments.</p>
+    <span class="file-tab">durations.go</span>
+    <pre class="code" data-src="durations.go"></pre>
+    <pre class="term wrap" data-run="durations.go"></pre>
+    <ol class="readlist">
+      <li><span><code>1m30s</code>, <code>1.5s</code>, <code>2h15m0s</code> (lines 9 to 12)<br>Printing a Duration uses hours, minutes and seconds. Once there are hours, the minutes and seconds are always shown, even when zero.</span></li>
+      <li><span><code>90 1.5</code> and <code>90000000000</code> (lines 13 and 14)<br><code>d.Seconds()</code> and <code>d.Minutes()</code> give <code>float64</code>s. <code>int64(d)</code> shows the raw count of nanoseconds.</span></li>
+      <li><span><code>Sat 04:45</code> and <code>36h0m0s</code> (lines 17 to 19)<br><code>t.Add(d)</code> moves a moment forward by a Duration. <code>u.Sub(t)</code> gives the Duration between two moments.</span></li>
+      <li><span><code>2026-08-09</code> (line 20)<br><code>AddDate(years, months, days)</code> moves by calendar units, which don't have a fixed length (months have 28 to 31 days).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 30: the Duration machine" data-machine="m-dur">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Feed the stopwatch machine some Duration arithmetic. Results come from <code>dur_m.go</code>; the two jams are their own programs.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-dur">{"label": "time.Duration", "program": "dur_m.go", "examples": [
+      {"in": "90 * time.Second", "out": "1m30s", "outKind": "time.Duration", "note": "A plain number times a unit is a Duration: 90 seconds is one minute and thirty seconds."},
+      {"in": "1500 * time.Millisecond", "out": "1.5s", "outKind": "time.Duration", "note": "Under a minute, it shows seconds with a decimal point."},
+      {"in": "2*time.Hour + 30*time.Minute", "out": "2h30m0s", "outKind": "time.Duration", "note": "Durations add like numbers, because they are numbers."},
+      {"in": "45 * time.Minute * 2", "out": "1h30m0s", "outKind": "time.Duration", "note": "Multiply a Duration by a constant to scale it."},
+      {"in": "time.Duration(5)", "out": "5ns", "outKind": "time.Duration", "note": "No unit means nanoseconds. Five billionths of a second: probably not what anyone wanted (panel 31)."},
+      {"in": "(100 * time.Minute).Round(time.Hour)", "out": "2h0m0s", "outKind": "time.Duration", "note": "<code>Round</code> rounds to the nearest multiple of a unit: 1h40m is nearer to 2 hours. <code>Truncate</code> would always round down."},
+      {"in": "time.ParseDuration(\"1h15m\")", "out": "1h15m0s", "expectLine": "1h15m0s <nil>", "outKind": "time.Duration, error nil", "note": "<code>ParseDuration</code> reads the same style back from text, handy for settings: units <code>ns us ms s m h</code>."},
+      {"in": "mins * time.Minute  (mins is an int)", "error": "invalid operation: mins * time.Minute (mismatched types int and time.Duration)", "program": "dur_mismatch.go", "note": "The Compiler refuses: an <code>int</code> variable and a <code>time.Duration</code> are different types, and Go never mixes types silently. Convert first: <code>time.Duration(mins) * time.Minute</code>."},
+      {"in": "time.ParseDuration(\"5 minutes\")", "error": "time: unknown unit \" minutes\" in duration \"5 minutes\"", "program": "parse_dur_bad.go", "note": "Only the short units work, with no spaces: <code>\"5m\"</code>."}]}</script>
+    <span class="file-tab">dur_m.go</span>
+    <pre class="code" data-src="dur_m.go"></pre>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pdur-m" id="ex-pdur"></div>
+  <script type="application/json" id="ex-pdur-m">{"program": "predict_dur.go", "prompt": "150 seconds, three ways. What are the three lines?", "hint": "150 seconds is how many minutes and seconds? <code>Minutes()</code> gives a <code>float64</code>. Halving a Duration halves the count.", "explain": "<samp>2m30s</samp>: 120 seconds make 2 minutes, with 30 left over. <samp>2.5</samp>: two and a half minutes. <samp>1m15s</samp>: half of 150 seconds is 75 seconds."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 31: the bare number trap">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="ZIP!" data-seed="31"></svg>
+    <p class="caption">"Deliver within 30", says the dispatcher, meaning 30 minutes. Go hears something else.</p>
+    <span class="file-tab">bare_int.go</span>
+    <pre class="code" data-src="bare_int.go"></pre>
+    <pre class="term wrap" data-run="bare_int.go"></pre>
+    <ol class="readlist">
+      <li><span><code>deliver within 30ns</code> (line 13)<br>A plain number like <code>30</code> is an untyped constant, so it quietly becomes a <code>time.Duration</code>: 30 <b>nanoseconds</b>. It compiles, and it's wrong. (This is mistake #75 in <i>100 Go Mistakes</i>.)</span></li>
+      <li><span><code>deliver within 30m0s</code> (line 14)<br>Say the unit: <code>30 * time.Minute</code>.</span></li>
+      <li><span><code>time.Duration(mins) * time.Minute</code> (lines 16 and 17)<br>When the number is in an <code>int</code> variable, convert it first. Leave out the conversion and the Compiler stops you:</span></li>
+    </ol>
+    <span class="file-tab">dur_mismatch.go</span>
+    <pre class="code" data-src="dur_mismatch.go"></pre>
+    <pre class="term wrap" data-run="dur_mismatch.go" data-exit></pre>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 14, column 16: an <code>int</code> times a <code>time.Duration</code>. Different types. Here's the fix: <code>time.Duration(mins) * time.Minute</code>. Nothing runs until everything checks out.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red and gate down, prints a note pointing at line 14.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sbare-m" id="ex-sbare"></div>
+  <script type="application/json" id="ex-sbare-m">{"program": "spot_bare.go", "bug": 14, "prompt": "The courier app should give up on a delivery after 5 seconds. It gives up almost instantly. Click the guilty line.", "explain": "Line 14 sets <code>Timeout: 5</code>. The field is a <code>time.Duration</code>, so the bare 5 means 5 nanoseconds: <samp>give up after: 5ns</samp>. Fix: <code>Timeout: 5 * time.Second</code>. A Duration is a count: always say the unit."}</script>
+
+  <div data-ex="fill" data-model="ex-fdur-m" id="ex-fdur"></div>
+  <script type="application/json" id="ex-fdur-m">{"program": "fill_dur.go", "prompt": "Four stops of 15 minutes each. <code>stops</code> is an <code>int</code>. On line 11, turn it into something you can multiply by <code>perStop</code>.", "blanks": [{"line": 11, "text": "time.Duration(stops)"}], "explain": "<code>time.Duration(stops)</code> converts the <code>int</code> 4 into a Duration (4 nanoseconds), and multiplying by 15 minutes scales it: <samp>round trip: 1h0m0s</samp>. Without the conversion: \"mismatched types int and time.Duration\"."}</script>
+
+  <div data-ex="trace" data-model="ex-tadd-m" id="ex-tadd"></div>
+  <script type="application/json" id="ex-tadd-m">{"program": "trace_add.go", "columns": ["leg", "took", "clock"], "given": [0], "prompt": "Scoot leaves at 09:00. Each lap adds the next leg to the clock, then prints the leg number, the leg's Duration, and the clock as <code>15:04</code>. The leg numbers are filled in.", "explain": "<samp>25m0s</samp> → <samp>09:25</samp>. <code>70 * time.Minute</code> prints as <samp>1h10m0s</samp> → <samp>10:35</samp>. <samp>45m0s</samp> → <samp>11:20</samp>. <code>2 * time.Hour</code> prints <samp>2h0m0s</samp> → <samp>13:20</samp>. Once hours appear, the zero minutes and seconds are shown too."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · REAL CLOCKS, DICE AND SECRETS<small>Now, Sleep, Since, tickers, math/rand/v2, crypto/rand, uuid</small></h2>
+
+  <section class="panel clean" aria-label="Panel 32: the real clock with time.Now">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">So far every moment was built with <code>time.Date</code>, so every run printed the same. <code>time.Now()</code> reads the real clock, so this is <b>one possible run</b>: yours will differ.</p>
+    <span class="file-tab">now.go</span>
+    <pre class="code" data-src="now.go"></pre>
+    <pre class="term wrap" data-run="now.go"></pre>
+    <ol class="readlist">
+      <li><span>The <code>m=+…</code> at the end of the first line (line 10)<br>Printing <code>time.Now()</code> adds an <code>m=</code> reading: a <b>monotonic clock</b> that only ever moves forward, counting from the program's start. Go uses it to measure elapsed time, even if someone changes the computer's clock.</span></li>
+      <li><span><code>time.Sleep(250 * time.Millisecond)</code> (line 12)<br>Pause this goroutine for at least a quarter of a second.</span></li>
+      <li><span><code>slept for …</code> (line 13)<br><code>time.Since(start)</code> is <code>time.Now().Sub(start)</code>: never less than the sleep, because <code>Sleep</code> waits at least that long. <code>.Round</code> tidies it for people.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: tickers and timers, a preview">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">A sneak peek. A <b>ticker</b> taps you on the shoulder at a steady beat; a <b>timer</b> rings once. Both deliver their tap on a <b>channel</b>, <code>.C</code>, and <code>&lt;-ticker.C</code> means "wait here until the next tap arrives". Channels are chapter 24's big topic.</p>
+    <span class="file-tab">ticker.go</span>
+    <pre class="code" data-src="ticker.go"></pre>
+    <pre class="term wrap" data-run="ticker.go"></pre>
+    <ol class="readlist">
+      <li><span><code>defer ticker.Stop()</code> (line 10)<br>A ticker keeps ticking until stopped. Stop it when you're done.</span></li>
+      <li><span><code>tick 1</code> … <code>tick 3</code><br>One every 100 ms. The program prints only the counts, never the times, so its output is the same on every run.</span></li>
+      <li><span><code>timer rang</code> (lines 16 to 18)<br>A timer is a one-shot alarm, 50 ms later.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cnow-m" id="ex-cnow"></div>
+  <script type="application/json" id="ex-cnow-m">{"q": "Every exercise in this chapter builds its moments with <code>time.Date(2026, time.July, 9, …)</code>, never <code>time.Now()</code>. Why?", "options": [
+    {"t": "So every run prints the same, checkable answer", "correct": true, "why": "Exactly: the same output on every run means there is one right answer to check. <code>time.Now()</code> changes every run, so its output can't be an answer key. Tests in real projects follow the same idea: they use fixed times (chapter 23)."},
+    {"t": "Because <code>time.Now()</code> only works on some computers", "why": "It works everywhere. The problem is that its answer is different every time you run it."},
+    {"t": "Because <code>time.Date</code> runs faster", "why": "Speed isn't the point. Repeatable output is."},
+    {"t": "Because <code>time.Now()</code> can't be formatted", "why": "It can, with the same layouts: panel 32 formats it with <code>time.RFC3339</code>."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 34: Scoot rolls the dice">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The depot plays a game on Fridays: a random courier wins a free lunch. Scoot needs dice.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Go has two kinds of dice! <code>math/rand/v2</code> for games, simulations and shuffles, and <code>crypto/rand</code> for secrets. Same idea, very different jobs.</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot cheers with both arms up.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: math/rand/v2, three runs">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption"><code>rand.IntN(n)</code> gives a whole number from 0 up to, but not including, <code>n</code>. Here is one possible set of three runs of the same program, one after another:</p>
+    <span class="file-tab">dice.go</span>
+    <pre class="code" data-src="dice.go"></pre>
+    <pre class="term wrap" data-run="dice.go"></pre>
+    <ol class="readlist">
+      <li><span>Different numbers every run<br>The top-level functions are seeded with fresh randomness each time the program starts. You can't predict them, and nor can this book.</span></li>
+      <li><span><code>rand.IntN(6)+1</code> (line 11)<br>0 to 5, plus one: a die from 1 to 6.</span></li>
+      <li><span><code>couriers[rand.IntN(len(couriers))]</code> (line 12)<br>A random valid index picks a random element.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: a seeded generator repeats">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">For a game you can replay, or a simulation you can check, make your own generator with a fixed <b>seed</b> (a starting number). Same seed, same sequence: two real runs, identical.</p>
+    <span class="file-tab">seeded.go</span>
+    <pre class="code" data-src="seeded.go"></pre>
+    <pre class="term wrap" data-run="seeded.go"></pre>
+    <ol class="readlist">
+      <li><span><code>rand.New(rand.NewPCG(1, 2))</code> (line 9)<br>PCG is a fast generator; 1 and 2 are its seed. <code>r.IntN</code> is a method on your own generator.</span></li>
+      <li><span><code>76 61</code> twice (lines 10 and 13)<br>A second generator with the same seed starts the same sequence, in every run and on every computer.</span></li>
+      <li><span><code>r.Shuffle</code> (lines 16 to 18)<br>Shuffles a slice, using a function you give it to swap two elements. Seeded, so the "random" order is <code>[B D C A]</code> every time.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cseed-m" id="ex-cseed"></div>
+  <script type="application/json" id="ex-cseed-m">{"q": "You're writing a maze game, and players can type in a level number to replay exactly the same maze. How should the program get its random numbers?", "options": [
+    {"t": "Its own generator: <code>rand.NewPCG(level, 0)</code>", "correct": true, "why": "Yes: <code>rand.New(rand.NewPCG(level, 0))</code>, with the level number as a <code>uint64</code> seed. The same seed gives the same sequence, so the same level number builds the same maze, on any computer."},
+    {"t": "The top-level <code>rand.IntN</code> function", "why": "It's seeded freshly on every start, so the maze would change every time."},
+    {"t": "<code>crypto/rand</code>, the safest source", "why": "It's designed to be unpredictable and can't be seeded at all. Perfect for secrets, wrong for replays."},
+    {"t": "<code>time.Now().Nanosecond()</code>, used as the maze", "why": "That changes all the time, so nothing could be replayed."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 37: crypto/rand and uuid">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">For anything an attacker must not guess (password reset codes, session keys, tokens), use <code>crypto/rand</code>. And for IDs that must never clash, Go 1.27 adds the <code>uuid</code> package. One possible run:</p>
+    <span class="file-tab">secrets.go</span>
+    <pre class="code" data-src="secrets.go"></pre>
+    <pre class="term wrap" data-run="secrets.go"></pre>
+    <ol class="readlist">
+      <li><span><code>rand.Text()</code> (line 10)<br>A random code made of capital letters and digits, from the operating system's secure randomness. Here <code>rand</code> means <code>crypto/rand</code>: the import on line 4 decides.</span></li>
+      <li><span><code>uuid.New()</code> (line 11)<br>A <b>UUID</b> (universally unique identifier): 128 random-looking bits written as 32 hexadecimal digits in five groups. Generate them anywhere, no central list needed, and they practically never clash. Today <code>New</code> makes version 4; see the <code>4</code> after the second dash.</span></li>
+      <li><span><code>uuid.NewV7()</code> (line 12)<br>Version 7 starts with the current time, so newer IDs sort after older ones, which databases like.</span></li>
+    </ol>
+    <p class="caption soft">Reading a UUID back is deterministic, so this run is the same every time:</p>
+    <span class="file-tab">uuid_parse.go</span>
+    <pre class="code" data-src="uuid_parse.go"></pre>
+    <pre class="term wrap" data-run="uuid_parse.go"></pre>
+    <ol class="readlist">
+      <li><span><code>invalid uuid</code> (lines 12 and 13)<br><code>uuid.Parse</code> checks the shape and returns an error, like <code>time.Parse</code>. <code>uuid.MustParse</code> panics instead, so use it only for values written in your code.</span></li>
+      <li><span><code>true</code> (line 16)<br>Capital or small hex letters mean the same UUID, and UUIDs can be compared with <code>==</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 38: dice for games, the vault for secrets">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">Two packages, two jobs.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">DICE</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><rect x="40" y="20" width="70" height="70" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="5" transform="rotate(-10 75 55)"/><g fill="#111" transform="rotate(-10 75 55)"><circle cx="58" cy="38" r="7"/><circle cx="75" cy="55" r="7"/><circle cx="92" cy="72" r="7"/></g><rect x="120" y="30" width="64" height="64" rx="12" fill="#FFD60A" stroke="#111" stroke-width="5" transform="rotate(8 152 62)"/><g fill="#111" transform="rotate(8 152 62)"><circle cx="138" cy="46" r="6"/><circle cx="166" cy="46" r="6"/><circle cx="138" cy="78" r="6"/><circle cx="166" cy="78" r="6"/></g></svg>
+        <h3><code>math/rand/v2</code><small>games, simulations, shuffles</small></h3>
+        <ul>
+          <li>Fast. Can be seeded to repeat exactly.</li>
+          <li>Its own documentation warns: not for security-sensitive work.</li>
+        </ul>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">VAULT</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><rect x="50" y="12" width="120" height="96" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="5"/><circle cx="110" cy="60" r="28" fill="#FFFFFF" stroke="#111" stroke-width="5"/><path d="M110 60 L110 38 M110 60 L128 70" stroke="#111" stroke-width="5" stroke-linecap="round"/><path d="M60 108 v8 M160 108 v8" stroke="#111" stroke-width="6" stroke-linecap="round"/></svg>
+        <h3><code>crypto/rand</code><small>passwords, tokens, keys</small></h3>
+        <ul>
+          <li>Unpredictable, from the operating system. Can't be seeded.</li>
+          <li><code>uuid.New</code> uses this kind of randomness too.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>dice for games, the vault for secrets.</b></p></div>
+    </div>
+    <p class="sr-only">Pictures: two dice, one white and one yellow; and a blue safe with a round dial.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-crand-m" id="ex-crand"></div>
+  <script type="application/json" id="ex-crand-m">{"q": "A \"forgot my password\" email contains a one-time code. Anyone who guesses it can take over the account. Where should the code come from?", "options": [
+    {"t": "<code>crypto/rand</code>, for example <code>rand.Text()</code>", "correct": true, "why": "Right: the vault. Its output is designed to be unpredictable even to someone who has seen earlier codes."},
+    {"t": "The top-level <code>math/rand/v2</code> functions", "why": "The package's own documentation says its outputs might be easily predictable and not to use it for security-sensitive work. Dice for games only."},
+    {"t": "<code>rand.New(rand.NewPCG(1, 2))</code>", "why": "Worst choice: seeded, so every run produces the same codes. Panel 36 printed 76 61 every time."},
+    {"t": "The current time, formatted with <code>\"150405\"</code>", "why": "Anyone who knows roughly when the email was sent can guess it in a few tries."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 39: boss level">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="39"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Forms and clocks, all mixed up. For every form, ask: capital letters? tags? an address? For every clock: did I show the photo, and did I say the unit?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A delivery record with a <code>time.Time</code> inside. What one line does it print?", "hint": "Check each field: its tag, whether it's empty, whether it's exported. A <code>time.Time</code> is written in the computer standard from panel 23, in quotes.", "explain": "<samp>\"id\":3</samp>, then the time in RFC 3339 as a JSON string: <samp>\"at\":\"2026-07-09T16:45:00Z\"</samp> (<code>Z</code> for UTC). <code>Note</code> is empty with <code>omitempty</code>: left off. <code>pin</code> is lowercase: never declared. No error: <samp>{\"id\":3,\"at\":\"2026-07-09T16:45:00Z\"} &lt;nil&gt;</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["hub", "took", "clock"], "given": [0], "prompt": "Boss 2. A stream of legs, each with minutes. The clock starts at 08:00. Each row prints the hub, the leg as a Duration, and the clock after the leg. The hubs are filled in.", "explain": "40 minutes: <samp>40m0s</samp>, clock <samp>08:40</samp>. 95 minutes is an hour and 35: <samp>1h35m0s</samp>, clock <samp>10:15</samp>. 30 minutes: <samp>30m0s</samp>, clock <samp>10:45</samp>. Decoder, conversion, Add and Format, all in one loop."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 11, "prompt": "Boss 3. The form from Rome says the parcel arrives on 9 July. The program says 7 September. No error at all. Click the guilty line.", "explain": "Line 11 parses with <code>\"01/02/2006\"</code>, month first, so <code>09/07</code> reads as month 9, day 7. Rome writes day first: <code>\"02/01/2006\"</code>. Parse can't spot this mix-up, because both readings are real dates. The layout decides."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 9, "pin": [1, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 24], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 22, 18, 19, 20, 21, 23, 24], "program": "boss_parsons_alt.go"}], "prompt": "Boss 4. Decode a job from JSON, then work out its deadline: 45 minutes after 16:00. Put the moving lines of <code>main</code> in order.", "explain": "Blank form first (<code>var j Job</code>), then Unmarshal into <code>&amp;j</code>, then the error check with its <code>return</code> and closing brace. Only then use <code>j.Mins</code>: convert it, multiply by <code>time.Minute</code>, add to <code>start</code>, and print with <code>15:04</code>: <samp>Ana by 16:45</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. The stamp must come out as <samp>{\"city\":\"Oslo\",\"day\":\"2026-07-09\"}</samp>. Line 11: the tag for <code>Day</code>. Line 16: the layout.", "blanks": [{"line": 11, "text": "json:\"day\""}, {"line": 16, "text": "\"2006-01-02\"", "accept": ["time.DateOnly"]}], "explain": "The tag is the translation: <code>json:\"day\"</code>, written like line 10's. The layout is the magic photo year-month-day, <code>\"2006-01-02\"</code>; the ready-made <code>time.DateOnly</code> is the same string."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Scoot wants a 3-second rest.", "expect": "error", "answer": "mismatched types int and time.Duration", "ask": "It doesn't run. The Compiler explains why, in brackets at the end of its message. Type what's inside the brackets.", "hint": "What type is <code>pause</code>? What type is <code>time.Second</code>?", "explain": "<code>pause := 3</code> makes an <code>int</code> variable, and <code>time.Second</code> is a <code>time.Duration</code>: <samp>invalid operation: pause * time.Second (mismatched types int and time.Duration)</samp> at line 10. Fix: <code>time.Sleep(time.Duration(pause) * time.Second)</code>, or write <code>3 * time.Second</code> directly."}</script>
+
+  <section class="panel pop" aria-label="Panel 40: what you learned">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">What you learned in Chapter 22</p>
+    <ul class="recap">
+      <li><b>CAPITALS CROSS THE BORDER</b><code>json.Marshal</code> writes only exported fields. A lowercase field is silently left out, with no error; <code>go vet</code> warns when it has a tag. Marshal fails only for things like channels and functions.</li>
+      <li><b>TAGS ARE THE TRANSLATIONS</b><code>`json:"name"`</code> renames a key, <code>,omitempty</code> leaves empty values off, and <code>`json:"-"`</code> never declares the field. Exact syntax, no spaces.</li>
+      <li><b>HAND OVER THE FORM, NOT A PHOTOCOPY</b><code>json.Unmarshal(data, &amp;p)</code> needs a pointer. Unknown keys are ignored, missing ones keep their old value. Read errors like a detective: what JSON had, where, what the box wanted. Prefer structs; <code>map[string]any</code> turns every number into <code>float64</code>. <code>json.Decoder</code> reads a stream until <code>io.EOF</code>.</li>
+      <li><b>SHOW THE MAGIC PHOTO: 1 2 3 4 5 6 7</b>Layouts show how <code>Mon Jan 2 15:04:05 MST 2006</code> would look: <code>01/02 03:04:05PM '06 -0700</code>. <code>YYYY</code> prints <code>YYYY</code>. <code>time.Parse</code> uses the same photo and reports where the text didn't fit. Store UTC; compare with <code>Equal</code>.</li>
+      <li><b>A DURATION IS A COUNT: ALWAYS SAY THE UNIT</b><code>90 * time.Second</code> prints <code>1m30s</code>. A bare <code>30</code> is 30 nanoseconds. Convert int variables: <code>time.Duration(n) * time.Minute</code>.</li>
+      <li><b>DICE FOR GAMES, THE VAULT FOR SECRETS</b><code>math/rand/v2</code> for games (seed it with <code>rand.NewPCG</code> to repeat), <code>crypto/rand</code> for anything that must not be guessed, <code>uuid</code> for IDs. <code>time.Now</code>, <code>Sleep</code> and <code>Since</code> read the real clock, so their output changes every run.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every form declared, every stamp dated, every stopwatch with a unit. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 41: next time, the test lab">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">Coming up in Chapter 23: The Test Lab</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><rect x="30" y="100" width="160" height="18" rx="4" fill="#F2C9A0" stroke="#111" stroke-width="5"/><g stroke="#111" stroke-width="5"><path d="M60 20 V90 a12 12 0 0 0 24 0 V20" fill="#C9F2D9"/><path d="M98 20 V90 a12 12 0 0 0 24 0 V20" fill="#FFE1E1"/><path d="M136 20 V90 a12 12 0 0 0 24 0 V20" fill="#C9F2D9"/></g><g font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle"><text x="72" y="60">✓</text><text x="110" y="60">✗</text><text x="148" y="60">✓</text></g></svg>
+          <p><b>Table-driven tests</b>: a rack of labelled test tubes, each one a case that passes or fails, with <code>go test -v</code> telling you exactly which.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><circle cx="110" cy="72" r="46" fill="#FFF6CC" stroke="#111" stroke-width="5"/><rect x="100" y="12" width="20" height="14" rx="3" fill="#FFD60A" stroke="#111" stroke-width="4"/><path d="M110 72 L110 40 M110 72 L132 84" stroke="#111" stroke-width="5" stroke-linecap="round"/></svg>
+          <p><b>Benchmarks</b>: a stopwatch race repeated until the time is steady. And no more <code>time.Now</code> in your answers: tests need fixed clocks, just like this chapter's exercises.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today, forms and clocks. Next time: proving my code works, every time I change it.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a rack of three test tubes marked with a tick, a cross and a tick; and a stopwatch.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch21.html">← Ch 21 · Branches and Plumbing</a><a class="next" href="ch23.html">Ch 23 · The Test Lab →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how the desk reads your struct, what a time.Time holds, and where random numbers come from</summary>
+    <div class="page-body">
+      <h3>Reflection and struct tags</h3>
+      <p><code>json.Marshal</code> takes an <code>any</code>, so it doesn't know your type when it's compiled. At run time it uses the <code>reflect</code> package to list the struct's fields, their types and their tags. A tag is just a string stored with the field; <code>reflect.StructTag.Get("json")</code> parses the <code>key:"value"</code> convention. That's why a malformed tag (panel 7) is silently ignored by Marshal, and only <code>go vet</code> notices. <code>reflect</code> can see unexported fields, but another package can't take their values out as interfaces or set them, so <code>encoding/json</code> skips them. The work of looking up a type's fields is done once per type and cached.</p>
+      <h3>omitempty, omitzero and structs</h3>
+      <p><code>omitempty</code> leaves a field off only when it is <b>empty</b>: <code>false</code>, 0, a nil pointer or interface, or an array, slice, map or string of length zero. A struct is never empty, so a zero <code>time.Time</code> (the year 1, written <code>0001-01-01T00:00:00Z</code>) is still declared. The <code>omitzero</code> option (added in Go 1.24) leaves a field off when it holds its type's zero value, structs included; a type with an <code>IsZero()</code> method, like <code>time.Time</code>, is asked directly. The package documentation now suggests <code>omitzero</code> instead of <code>omitempty</code> for bools, numbers, pointers and interfaces.</p>
+      <span class="file-tab">omit_struct.go</span>
+      <pre class="code" data-src="omit_struct.go"></pre>
+      <pre class="term wrap" data-run="omit_struct.go"></pre>
+      <h3>Why Unmarshal needs a pointer</h3>
+      <p>Go passes arguments by value (chapter 7). <code>Unmarshal(data, p)</code> would receive a copy of the struct inside an <code>any</code>, and anything it wrote would vanish. With <code>&amp;p</code>, it receives an address and writes through it. Rather than silently doing nothing, Unmarshal returns an <code>*json.InvalidUnmarshalError</code>, which prints as <code>json: Unmarshal(non-pointer main.Parcel)</code>.</p>
+      <h3>Custom forms: MarshalJSON and friends</h3>
+      <p>A type can write its own form by having a <code>MarshalJSON() ([]byte, error)</code> method (and read it back with <code>UnmarshalJSON</code>). That's how <code>time.Time</code> becomes an RFC 3339 string. Types with <code>MarshalText</code>, like <code>uuid.UUID</code>, are written as JSON strings. Careful: if you <b>embed</b> a <code>time.Time</code> in your struct (chapter 18), its <code>MarshalJSON</code> is promoted and replaces your whole struct's form, one of the JSON mistakes in <i>100 Go Mistakes</i> (#77).</p>
+      <h3>Numbers, escapes and errors</h3>
+      <ul>
+        <li>Into an <code>any</code>, numbers become <code>float64</code>, which holds whole numbers exactly only up to 2<sup>53</sup>. For big IDs, call <code>dec.UseNumber()</code> on a Decoder to get <code>json.Number</code> strings instead.</li>
+        <li>By default Marshal escapes <code>&lt;</code>, <code>&gt;</code> and <code>&amp;</code> inside strings as <code>\u003c</code>, <code>\u003e</code> and <code>\u0026</code>, so JSON can be pasted safely into a web page. A JSON reader turns them back into the same characters. A <code>json.Encoder</code> can turn this off with <code>SetEscapeHTML(false)</code>.
+          <span class="file-tab">html_escape.go</span>
+          <pre class="code" data-src="html_escape.go"></pre>
+          <pre class="term wrap" data-run="html_escape.go"></pre>
+        </li>
+        <li>A syntax error is a <code>*json.SyntaxError</code> with an <code>Offset</code> field: how many bytes were read before the problem. A wrong kind is a <code>*json.UnmarshalTypeError</code> with <code>Field</code>, <code>Value</code> and <code>Type</code>. Get them with <code>errors.As</code> (chapter 19).</li>
+        <li>Since Go 1.27, <code>encoding/json</code> is implemented on top of the v2 code. The release notes say marshalling and unmarshalling behave as before, unmarshalling is significantly faster, and the exact text of error messages may differ. (Every error message on this page was identical under Go 1.24.7.) Building with <code>GOEXPERIMENT=nojsonv2</code> switches back to the old implementation for now.</li>
+      </ul>
+      <h3>encoding/json/v2's stricter defaults</h3>
+      <p>Besides exact name matching and refusing duplicate names (panel 18), v2 rejects invalid UTF-8 in strings, writes nil slices as <code>[]</code> and nil maps as <code>{}</code>, and has no default form for <code>time.Duration</code> (v1 writes the raw nanosecond count, which surprises readers; v2 asks you to choose with an option). Its functions take options, such as <code>json.MatchCaseInsensitiveNames(true)</code>, and the lower-level <code>encoding/json/jsontext</code> package reads and writes JSON tokens. The <code>v1</code> package's API isn't going away.</p>
+      <h3>What a time.Time holds</h3>
+      <p>A <code>time.Time</code> holds a wall-clock reading (seconds and nanoseconds), sometimes a monotonic clock reading (the <code>m=+…</code> in panel 32), and a pointer to a <code>*time.Location</code>. That pointer is why <code>==</code> can say false for the same moment in two zones: use <code>Equal</code>. <code>time.Now()</code> includes the monotonic reading, which <code>Sub</code> and <code>Since</code> prefer; <code>Round(0)</code>, <code>In</code>, <code>UTC</code> and a JSON round trip drop it. A <code>time.Duration</code> is an <code>int64</code> count of nanoseconds, so it can span about 292 years either way.</p>
+      <h3>How Format reads a layout</h3>
+      <p>Format scans the layout from left to right. At each position it checks whether one of the reference pieces starts there (<code>January</code> before <code>Jan</code>, <code>2006</code> before <code>2</code>, <code>15</code> before <code>1</code>). If so, it writes that part of your time; if not, it copies the character. That's why <code>YYYY</code> is copied, and also why a word like "Monday" in your own text gets replaced. There are a few more pieces than the builder shows: <code>.000</code> for milliseconds, <code>Z07:00</code> (writes <code>Z</code> for UTC), <code>002</code> for the day of the year.</p>
+      <h3>Where the random numbers come from</h3>
+      <p>The top-level <code>math/rand/v2</code> functions draw from a generator the runtime seeds randomly at start-up, safe to call from many goroutines. <code>rand.NewPCG</code> and <code>rand.NewChaCha8</code> make sources you seed yourself; the package documentation calls ChaCha8 "resistant to prediction" and PCG "faster but unfit for security-relevant purposes", and it warns that the package's outputs "might be easily predictable regardless of how it's seeded". Go 1.27 also gives <code>*rand.Rand</code> a generic <code>N</code> method, so <code>r.N(10*time.Second)</code> picks a random Duration. <code>crypto/rand</code> reads from the operating system's secure random source (on Linux, the <code>getrandom</code> system call). The old <code>math/rand</code> (no <code>/v2</code>) still exists; v2 arrived in Go 1.22 with clearer names like <code>IntN</code>.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where forms and clocks show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Web APIs.</b> Nearly every web service speaks JSON. A Go server decodes requests with <code>json.NewDecoder(r.Body)</code> and replies with <code>json.NewEncoder(w)</code> (chapter 26).</li>
+        <li><b>Config and data files.</b> JSON settings files, CSV exports from spreadsheets and banks, and XML in older systems and office documents.</li>
+        <li><b>Logs.</b> Structured logs are often written as one JSON object per line ("JSON Lines"), exactly the stream a Decoder reads. Go's <code>log/slog</code> can write them (chapter 27).</li>
+        <li><b>Timestamps.</b> APIs and databases usually store RFC 3339 times in UTC. Durations in settings are often strings like <code>"30s"</code>, read with <code>time.ParseDuration</code> or <code>flag.Duration</code>.</li>
+        <li><b>Timeouts everywhere.</b> HTTP clients, database calls and contexts all take <code>time.Duration</code>s, so the "bare number" mistake has real costs (chapters 24 to 26).</li>
+        <li><b>IDs.</b> UUIDs name orders, users and uploads. Version 7 is popular for database keys because new IDs sort last.</li>
+        <li><b>Randomness.</b> Shuffles, sampling, test data and retry "jitter" use <code>math/rand/v2</code>; session tokens, reset codes and keys use <code>crypto/rand</code>.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Marshal reports fields it can't write."</b> Unexported fields are skipped silently. Run <code>go vet</code>.</li>
+        <li><b>"A tag makes a lowercase field visible."</b> No: the field must be exported. The tag only renames it.</li>
+        <li><b>"<code>omitempty</code> hides a field."</b> Only when it is empty (<code>""</code>, 0, false, nil, or an empty slice or map), and a struct such as a zero <code>time.Time</code> never counts as empty: use <code>omitzero</code> for that (see "Under the hood"). Use <code>json:"-"</code> to always hide a field.</li>
+        <li><b>"Unmarshal clears the struct first."</b> It writes only the keys present (panel 12's exercise).</li>
+        <li><b>"Unmarshal complains about unknown keys."</b> It ignores them, unless you use a Decoder with <code>DisallowUnknownFields()</code>.</li>
+        <li><b>"JSON numbers in an <code>any</code> are ints."</b> They're <code>float64</code>s.</li>
+        <li><b>"Trailing commas are fine."</b> In Go code, yes; in JSON, they're a syntax error.</li>
+        <li><b>"<code>YYYY-MM-DD</code> is a Go layout."</b> It prints itself. Show the magic photo.</li>
+        <li><b>"<code>01</code> is the first minute."</b> <code>01</code> is the month; minutes are <code>04</code>.</li>
+        <li><b>"<code>==</code> compares moments."</b> Use <code>t.Equal(u)</code>.</li>
+        <li><b>"<code>time.Sleep(5)</code> waits five seconds."</b> Five nanoseconds. Say the unit.</li>
+        <li><b>"Random numbers are random enough for passwords."</b> Only <code>crypto/rand</code>'s are.</li>
+        <li><b>"Seeding with the time makes math/rand secure."</b> No seed makes it secure; the v2 top-level functions are already seeded for you.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>go version</code>. JSON, CSV, time and <code>math/rand/v2</code> work on any recent Go (<code>math/rand/v2</code> needs 1.22, <code>crypto/rand.Text</code> 1.24). The <code>uuid</code> and <code>encoding/json/v2</code> packages need <b>Go 1.27</b>.</li>
+        <li><code>mkdir customs</code>, <code>cd customs</code>, <code>go mod init example/customs</code>.</li>
+        <li>Put <code>tags.go</code> from panel 5 in <code>main.go</code> and run <code>go run .</code>.</li>
+      </ol>
+      <p class="os-note">With <code>go run .</code> inside a module, compile errors start with <code># example/customs</code> instead of this book's <code># command-line-arguments</code>. The messages and line numbers are the same.</p>
+      <h3>2. Customs experiments</h3>
+      <ol>
+        <li>Remove a capital letter from a field, run again, then run <code>go vet</code>.</li>
+        <li>Put a space inside a tag, <code>json: "to"</code>, and watch the key change back to the Go name.</li>
+        <li>Save some JSON in <code>parcel.json</code> and read it: <code>data, err := os.ReadFile("parcel.json")</code> (chapter 14), then Unmarshal.</li>
+        <li>Break the file on purpose: delete the last <code>}</code>, add a trailing comma, put a number in quotes. Read each error like a detective.</li>
+        <li>Use <code>json.NewDecoder(os.Stdin)</code> and type forms by hand; finish with Ctrl+D (macOS, Linux) or Ctrl+Z then Enter (Windows).</li>
+      </ol>
+      <h3>3. Clock experiments</h3>
+      <ol>
+        <li>Print <code>time.Now().Format("Monday 2 January, 15:04")</code>. Then change the layout to match how your country writes dates.</li>
+        <li>Print <code>time.Now()</code> and <code>time.Now().UTC()</code>. On your computer the first is in your own zone (<code>time.Local</code>). Set the <code>TZ</code> environment variable to try others: <code>TZ=Asia/Tokyo go run .</code> (macOS, Linux) or <code>$env:TZ="Asia/Tokyo"; go run .</code> (PowerShell).</li>
+        <li>Time a slow loop: <code>start := time.Now()</code> … <code>fmt.Println(time.Since(start))</code>.</li>
+        <li>Run <code>dice.go</code> a few times, then switch to a seeded generator and run it again.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> install from the .msi on go.dev/dl. Windows has no system zone files in the format Go reads, so <code>time.LoadLocation</code> uses the copy shipped with Go. For a program that must find zones on any machine, add <code>import _ "time/tzdata"</code>, which builds the database into your program (about 450 KB).</li>
+        <li><b>macOS:</b> install the .pkg from go.dev/dl or use Homebrew (<code>brew install go</code>). Zones come from <code>/usr/share/zoneinfo</code>.</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Minimal containers may lack <code>/usr/share/zoneinfo</code> (install <code>tzdata</code>, or use <code>time/tzdata</code>). Distribution Go packages can be old: check <code>go version</code> before trying <code>uuid</code>.</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs most programs here. Its clock is fixed at a moment in 2009, so <code>time.Now</code> programs behave oddly there.</li>
+      </ul>
+      <p class="os-note">This page shows Go 1.27.3. Under Go 1.24.7 every JSON, CSV, time and Duration program gave identical output and identical error messages; <code>uuid_parse.go</code>, <code>secrets.go</code> and <code>v2.go</code> don't build (no such packages), and Go 1.24.7's <code>go vet</code> prints two header lines (<code># command-line-arguments</code> and <code># [command-line-arguments]</code>) and writes <code>./vet_tag.go</code> before each finding.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>JSON</dt><dd>JavaScript Object Notation: a plain-text format for data, with objects, arrays, strings, numbers, true/false and null.</dd>
+        <dt>encode, marshal</dt><dd>Turn a Go value into text such as JSON. <code>json.Marshal</code>.</dd>
+        <dt>decode, unmarshal</dt><dd>Turn text back into a Go value. <code>json.Unmarshal</code>.</dd>
+        <dt>struct tag</dt><dd>A backquoted string after a field's type, such as <code>`json:"to,omitempty"`</code>, read by packages at run time.</dd>
+        <dt><code>omitempty</code></dt><dd>Tag option: leave the field out when it is empty (<code>""</code>, 0, false, nil, or an empty slice or map).</dd><dt><code>omitzero</code></dt><dd>Tag option: leave the field out when it holds its type's zero value, structs included.</dd>
+        <dt><code>json:"-"</code></dt><dd>Tag meaning: never encode or decode this field.</dd>
+        <dt>exported / unexported field</dt><dd>Capital first letter: visible to other packages, including <code>encoding/json</code>. Lowercase: private, so skipped.</dd>
+        <dt>raw string</dt><dd>A string in backquotes; quotes and backslashes inside are taken literally.</dd>
+        <dt><code>map[string]any</code></dt><dd>A map from strings to values of any type; what free-form JSON decodes into.</dd>
+        <dt><code>json.Decoder</code>, <code>json.Encoder</code></dt><dd>Read JSON values one after another from an <code>io.Reader</code>; write them to an <code>io.Writer</code>.</dd>
+        <dt><code>encoding/json/v2</code></dt><dd>Go 1.27's revised JSON package, with stricter defaults.</dd>
+        <dt>CSV</dt><dd>Comma-separated values: one record per line, fields separated by commas, with quotes around fields that contain commas.</dd>
+        <dt><code>time.Time</code></dt><dd>One moment in time, with a location.</dd>
+        <dt>UTC</dt><dd>Coordinated Universal Time: the world's reference clock, with no daylight saving.</dd>
+        <dt>location, time zone</dt><dd>The rules for a place's wall clock: its offset from UTC and daylight saving changes.</dd>
+        <dt>layout, reference time</dt><dd>A format string written as the reference moment <code>Mon Jan 2 15:04:05 MST 2006</code> would look.</dd>
+        <dt>RFC 3339</dt><dd>The standard date-time form computers exchange: <code>2026-07-09T16:45:30Z</code>.</dd>
+        <dt><code>time.Duration</code></dt><dd>A length of time, stored as a count of nanoseconds; prints like <code>1m30s</code>.</dd>
+        <dt>nanosecond</dt><dd>One billionth of a second.</dd>
+        <dt>monotonic clock</dt><dd>A clock that only moves forward, used to measure elapsed time.</dd>
+        <dt>ticker, timer</dt><dd>A steady repeating tap, and a one-time alarm, each delivered on a channel.</dd>
+        <dt>seed</dt><dd>The starting number of a pseudo-random generator; the same seed gives the same sequence.</dd>
+        <dt>PCG</dt><dd>A fast pseudo-random generator in <code>math/rand/v2</code>.</dd>
+        <dt><code>crypto/rand</code></dt><dd>Unpredictable random bytes from the operating system, for secrets.</dd>
+        <dt>UUID</dt><dd>Universally unique identifier: 128 bits written as 32 hex digits in five groups.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://pkg.go.dev/encoding/json">The encoding/json package</a>, <a href="https://pkg.go.dev/encoding/json/v2">encoding/json/v2</a> and <a href="https://pkg.go.dev/encoding/csv">encoding/csv</a>.</li>
+        <li><a href="https://go.dev/blog/json">Go blog: JSON and Go</a>, the classic introduction to Marshal, Unmarshal and decoding unknown shapes.</li>
+        <li><a href="https://pkg.go.dev/time">The time package</a>, including the full list of layout pieces under "Constants".</li>
+        <li><a href="https://pkg.go.dev/math/rand/v2">math/rand/v2</a>, <a href="https://pkg.go.dev/crypto/rand">crypto/rand</a> and <a href="https://pkg.go.dev/uuid">uuid</a>.</li>
+        <li><a href="https://go.dev/blog/randv2">Go blog: Evolving the Go Standard Library with math/rand/v2</a>.</li>
+        <li><a href="https://go.dev/doc/go1.27">Go 1.27 release notes</a>: encoding/json on v2, encoding/json/v2, uuid.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/json">Go by Example: JSON</a>, <a href="https://gobyexample.com/time-formatting-parsing">Time Formatting / Parsing</a>, <a href="https://gobyexample.com/random-numbers">Random Numbers</a>, <a href="https://gobyexample.com/timers">Timers</a> and <a href="https://gobyexample.com/tickers">Tickers</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #75 "Providing a wrong time duration", #76 "time.After and memory leaks" and #77 "JSON handling common mistakes".</li>
+        <li><a href="https://exercism.org/tracks/go">Exercism's Go track</a>, with practice exercises on time and randomness.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch22</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). The computer's zone was UTC (<code>TZ=UTC</code>), and every exercise uses fixed <code>time.Date</code> moments and a seeded generator. Three programs are marked "one possible run" and are never answer keys: <code>now.go</code> (the real clock), <code>dice.go</code> (three real runs in a row, top-level <code>math/rand/v2</code>), and <code>secrets.go</code> (<code>crypto/rand</code> and <code>uuid</code>); <code>seeded.go</code> was run twice to show that it repeats. Panel 7's terminal is a real two-command session: <code>go run vet_tag.go</code>, then <code>go vet vet_tag.go</code>. The jam programs print their errors with <code>log.Fatal</code> after <code>log.SetFlags(0)</code>, in the code you can see, so no timestamps appear. 61 programs were captured.</p>
+  <p>Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code>. The listed differences: <code>uuid_parse.go</code>, <code>secrets.go</code> and <code>v2.go</code> don't build there, because <code>uuid</code> and <code>encoding/json/v2</code> are new in Go 1.27 (panel 18 shows that run); for <code>vet_tag.go</code>, Go 1.24.7's <code>go vet</code> prints two header lines (<code># command-line-arguments</code> and <code># [command-line-arguments]</code>) and writes <code>./vet_tag.go</code> before each of the same two findings; and <code>now.go</code> and <code>dice.go</code> differ because they read the clock and fresh randomness. All JSON, CSV, time and Duration outputs and error messages were identical.</p>
+  <p>The machines, the tracer and the layout builder are teaching models; each checks itself against those runs and shows a badge. The builder takes every piece's text from the real run of <code>tokens.go</code>, copies separators unchanged, and checks its joining rule against eleven real <code>t.Format</code> runs (<code>format.go</code> and <code>yyyy.go</code>). Its pieces can't combine into a different layout piece, so what it shows for your own layouts is what Go prints. In the tracer, <code>json.Unmarshal</code> is drawn as one frame filling one field at a time; the real package works through several internal functions.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go 1.22, 1.24 and 1.27 release notes (the version facts on this page, such as <code>math/rand/v2</code> in 1.22, <code>crypto/rand.Text</code> and <code>omitzero</code> in 1.24, and <code>uuid</code> and <code>encoding/json/v2</code> in 1.27, were checked against them on 2026-11-08); the documentation of <code>encoding/json</code>, <code>encoding/json/v2</code>, <code>encoding/csv</code>, <code>time</code>, <code>math/rand/v2</code>, <code>crypto/rand</code> and <code>uuid</code> (read with <code>go doc</code> from the Go 1.27.3 toolchain); the Go blog's "JSON and Go" and "Evolving the Go Standard Library with math/rand/v2"; Go by Example's list of examples (JSON, XML, Time, Epoch, Time Formatting / Parsing, Random Numbers, Timers, Tickers); 100 Go Mistakes' table of contents (#75 to #77); and, as summarised in this book's research map, The Go Programming Language section 4.5, Learning Go 2nd edition chapter 13, Learn Go with Tests (JSON, time), Exercism's Go track, and roadmap.sh's Go roadmap.</p>
+  <p>Scoot, Officer Ines, the Compiler, Specs, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
