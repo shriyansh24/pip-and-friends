@@ -1,0 +1,89 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch99",
+  "versionDifferences": [
+   "m.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): m.go."
+ },
+ "programs": {
+  "m.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tm := map[string]int{\"a\": 1, \"b\": 2}\n\tfmt.Println(m)\n\ts := []int{1, 2}\n\tfmt.Println(s[5])\n}\n",
+   "stdout": "map[a:1 b:2]\n",
+   "stderr": "panic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0x9c\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run m.go",
+     "out": "map[a:1 b:2]\n",
+     "err": "panic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0x9c\nexit status 2\n",
+     "exit": 1,
+     "merged": "map[a:1 b:2]\npanic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0x9c\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "map[a:1 b:2]\n",
+    "stderr": "panic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0xa7\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run m.go",
+      "out": "map[a:1 b:2]\n",
+      "err": "panic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0xa7\nexit status 2\n",
+      "exit": 1,
+      "merged": "map[a:1 b:2]\npanic: runtime error: index out of range [5] with length 2\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch99/m.go:9 +0xa7\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "unused.go": {
+   "src": "package main\n\nfunc main() {\n\tx := 3\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./unused.go:4:2: declared and not used: x\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run unused.go",
+     "out": "",
+     "err": "# command-line-arguments\n./unused.go:4:2: declared and not used: x\n",
+     "exit": 1
+    }
+   ]
+  },
+  "vetdemo.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tn := 65\n\tfmt.Println(string(rune(n)))\n}\n",
+   "stdout": "A\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go vet vetdemo.go",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go run vetdemo.go",
+     "out": "A\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
