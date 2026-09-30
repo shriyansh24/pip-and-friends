@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docks and Pit Crews</title>
+<meta name="description" content="Chapter 27 of the Go book of Pip &amp; Friends, a comic course: logging, command-line tools, building and shipping as a shipping dock, and code-quality tools as a pit crew. The log package, log.Fatal skipping defers, log/slog structured logging with text and JSON handlers, levels, With, groups and slog.NewMultiHandler, flag subcommands with FlagSet, os/exec, signal.NotifyContext, go build -o, go install, cross-compiling with GOOS and GOARCH, -trimpath, -ldflags -X and build info, then go vet, staticcheck, go fix modernizers, govulncheck, goimports, golangci-lint, go doc and the stdversion check.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch27.css">
+<script defer src="../data/go-ch27.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch27.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch26.html">&larr; Ch 26</a><span aria-current="page">Ch 27 of 28</span><a href="ch28.html">Ch 28 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 27 · INTERMEDIATE</p>
+    <h1 id="cover-h">DOCKS AND PIT CREWS</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello.</p>
+    <p class="caption blurb">Your programs work. Now they have to leave home. Today Scoot runs a <b>shipping dock</b>: a logbook that says what happened while nobody was watching, a front desk with a booth for each job, crates packed for faraway computers with a destination label on each, and a <b>pit crew</b> of mechanics who each check one thing before anything ships. About 150 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The logbook: <code>log</code>, <code>log.Fatal</code> and its trap</a></li>
+      <li><a href="#part-2">Structured logs with <code>log/slog</code></a></li>
+      <li><a href="#part-3">The front desk: subcommands, <code>os/exec</code> and Ctrl+C</a></li>
+      <li><a href="#part-4">Packing and shipping: <code>go build</code>, <code>GOOS</code>/<code>GOARCH</code>, <code>-trimpath</code></a></li>
+      <li><a href="#part-5">The pit crew: vet, staticcheck, go fix, govulncheck and friends</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE DOCK'S LOGBOOK<small>Printf everywhere, the log package, two output streams, and log.Fatal</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: something went wrong at night">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's courier business has grown. A Go program now runs all night at the harbour, loading parcels onto ships. One morning three parcels are missing, and nobody was there to see what happened.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>The program printed lots of things last night. But they scrolled away, and they all look the same: no time, no "how bad", nothing I can search for.</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Professor says: </span>Every harbour keeps a <b>logbook</b>. One line per event: when, how serious, what happened, and the details. A program can keep one too. That's called <b>logging</b>.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, worried. The Professor answers calmly.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: Printf everywhere">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Here is how the night program reported things: <code>fmt.Printf</code> for everything. It works, so what's wrong with it?</p>
+    <span class="file-tab">printf_mess.go</span>
+    <pre class="code" data-src="printf_mess.go"></pre>
+    <pre class="term" data-run="printf_mess.go"></pre>
+    <ol class="readlist">
+      <li><span>No time<br>When did the crate drop? At 2 a.m. or at 5 a.m.? The line doesn't say.</span></li>
+      <li><span>No level<br>"WARNING!!!" and "err:" are made up on the spot. A search for every error has to guess every spelling.</span></li>
+      <li><span>Details buried in sentences<br>Which crate? How heavy? A person can read it; a program searching ten thousand lines can't pick out <code>7</code> and <code>12.5</code> reliably.</span></li>
+      <li><span>The wrong stream<br>These lines go to <b>standard output</b>, the same place as the program's real results. Chapter 1 met the two streams; logs belong on the other one.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Printf is for the program's <b>answer</b>. A logbook is for what <b>happened</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: the log package">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Go's standard library has a simple logbook: the <code>log</code> package. <code>log.Println</code> and <code>log.Printf</code> work like their <code>fmt</code> cousins, with two differences.</p>
+    <span class="file-tab">log_default.go</span>
+    <pre class="code" data-src="log_default.go"></pre>
+    <p class="caption soft">One possible run. The date and time are the moment the program ran, so they are different every time.</p>
+    <pre class="term" data-run="log_default.go"></pre>
+    <ol class="readlist">
+      <li><span>A time stamp<br>Every <code>log</code> line starts with the date and time, to the second. On your computer you'll see your own clock.</span></li>
+      <li><span>The error stream<br>The <code>log</code> lines are drawn in error style: they went to <b>standard error</b>, while <samp>dock opens</samp> went to standard output. You can send the two streams to different places, for example <code>go run log_default.go 2&gt; night.log</code> keeps the screen for answers and fills a file with the log.</span></li>
+      <li><span>A newline for free<br><code>log.Printf</code> adds a newline at the end if your format doesn't have one.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: flags and a prefix">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">You can choose what goes at the start of each line. <code>log.SetFlags(0)</code> turns the time stamp off, and <code>log.SetPrefix</code> adds a label. This book uses <code>SetFlags(0)</code> so that every run prints exactly the same thing and can be checked.</p>
+    <span class="file-tab">log_flags.go</span>
+    <pre class="code" data-src="log_flags.go"></pre>
+    <pre class="term" data-run="log_flags.go"></pre>
+    <ol class="readlist">
+      <li><span><code>log.SetFlags(0)</code> (line 9)<br>A <b>flag</b> here is an on/off switch. <code>0</code> means all switches off: no date, no time. Others include <code>log.Ldate</code>, <code>log.Ltime</code>, <code>log.Lmicroseconds</code>, <code>log.Lshortfile</code> (the file and line that logged) and <code>log.LUTC</code>. Combine them with <code>|</code>, for example <code>log.SetFlags(log.Ltime | log.Lshortfile)</code>.</span></li>
+      <li><span>The order on screen<br>Both streams arrive at the same terminal, in the order they were written. That's why the log lines sit between the two <code>fmt</code> lines.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-stream-m" id="ex-stream"></div>
+  <script type="application/json" id="ex-stream-m">{"q": "Scoot runs <code>go run log_flags.go &gt; out.txt</code>. The <code>&gt;</code> sends <b>standard output</b> into the file <code>out.txt</code>. What stays on the screen?", "program": "log_flags.go", "options": [
+    {"t": "The two <samp>dock:</samp> lines", "correct": true, "why": "Yes. <code>log</code> writes to standard error, which <code>&gt;</code> doesn't touch, so the log lines still appear on the screen. <samp>crates loaded: 12</samp> and <samp>all aboard</samp> go into the file."},
+    {"t": "<samp>crates loaded: 12</samp> and <samp>all aboard</samp>", "why": "Those come from <code>fmt.Println</code>, which writes to standard output, and <code>&gt;</code> sent standard output to the file."},
+    {"t": "Nothing: all four lines go into the file", "why": "Only standard output goes into the file. Standard error has its own redirect, <code>2&gt;</code>."},
+    {"t": "All four lines, and the file stays empty", "why": "<code>&gt;</code> really does capture standard output. Two lines end up in the file."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: log.Fatal skips the deferred calls">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="SLAM!" data-seed="5"></svg>
+    <p class="caption">There's also <code>log.Fatal</code>: write the message, then end the program at once. Scoot uses it when the manifest file is missing. Watch line 11.</p>
+    <span class="file-tab">log_fatal.go</span>
+    <pre class="code" data-src="log_fatal.go"></pre>
+    <pre class="term" data-run="log_fatal.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble shout"><span class="sr-only">Scoot says: </span>Where is <samp>lock the dock gate</samp>?! I deferred it on line 11. The gate is still open!</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><samp>open manifest.txt: no such file or directory</samp><br>The error, written to standard error by <code>log.Fatal(err)</code>.</span></li>
+      <li><span><samp>exit status 1</samp><br><code>log.Fatal</code> is <code>log.Print</code> followed by <code>os.Exit(1)</code>. <code>go run</code> reports the program's exit code.</span></li>
+      <li><span>The missing line<br><code>os.Exit</code> ends the program <b>immediately</b>. Deferred calls run when a function <em>returns</em>, and this function never returns. Chapter 21 saw the same with plain <code>os.Exit</code>. Files aren't closed, buffers aren't flushed, gates aren't locked.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: walk the fix, main calls run" data-walk="walk-run">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The usual fix: put the work in a function <code>run</code> that <b>returns</b> an error, so its deferred calls happen, and let <code>main</code> alone decide to exit. Walk it with Scoot.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">run_err.go</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN (standard output)</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-run">{"program": "run_err.go", "steps": [
+      {"line": 10, "output": [], "mood": "focus", "arms": "point", "note": "The program starts in <code>main</code>."},
+      {"line": 11, "output": [], "mood": "focus", "arms": "point", "note": "Line 10 switches the log's time stamp off."},
+      {"line": 18, "output": [], "mood": "focus", "arms": "point", "note": "Line 11 calls <code>run()</code>. Scoot walks into <code>run</code>."},
+      {"line": 19, "output": [], "mood": "focus", "arms": "point", "note": "Line 18 <b>saves</b> a call for later: lock the gate when <code>run</code> returns. Nothing prints yet."},
+      {"line": 20, "output": ["loading crates"], "mood": "happy", "arms": "point", "note": "Line 19 prints <samp>loading crates</samp>."},
+      {"line": 21, "output": ["loading crates"], "mood": "worried", "mouth": "flat", "arms": "shrug", "note": "Line 20 tries to open the manifest. There is no such file, so <code>err</code> is not <code>nil</code>."},
+      {"line": 22, "output": ["loading crates"], "mood": "worried", "arms": "point", "note": "The <code>if</code> on line 21 is true."},
+      {"line": 18, "output": ["loading crates"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 22 <b>returns</b> the error. Returning is what deferred calls wait for, so Scoot jumps back to line 18's saved call."},
+      {"line": 12, "output": ["loading crates", "lock the dock gate"], "mood": "happy", "arms": "cheer", "note": "<samp>lock the dock gate</samp>. Gate locked. Now <code>run</code> is really finished, and <code>main</code> gets the error: line 11's <code>if</code> is true."},
+      {"line": 13, "output": ["loading crates", "lock the dock gate"], "mood": "focus", "arms": "point", "note": "Line 12 logs <samp>dock: open manifest.txt: no such file or directory</samp> on <b>standard error</b>, so it doesn't appear on this screen, which shows standard output."},
+      {"line": null, "output": ["loading crates", "lock the dock gate"], "mood": "happy", "arms": "down", "note": "Line 13 exits with code 1. <code>main</code> has no deferred calls of its own, so nothing is skipped. Same exit code as <code>log.Fatal</code>, but the gate is locked."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: the real run of the fix">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The real run. Both streams, in order, and the exit code.</p>
+    <pre class="term" data-run="run_err.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>only main may slam the door.</b> Deep inside your program, return errors. One place at the top decides to log and exit. <code>log.Fatal</code> is fine in <code>main</code> itself, when there is nothing left to clean up.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-prun-m" id="ex-prun"></div>
+  <script type="application/json" id="ex-prun-m">{"program": "parsons_run.go", "seed": 7, "pin": [1, 3, 4, 5, 6, 7, 9, 14, 16, 17, 18, 19, 20], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20], "program": "parsons_run_alt.go"}], "prompt": "Put <code>main</code>'s body in order: switch the time stamp off, call <code>run</code>, and slam the door only if it failed.", "explain": "<code>log.SetFlags(0)</code> comes first, so the log line has no time stamp. (Putting it inside the <code>if</code>, just before <code>log.Fatal</code>, works too: it is captured as <code>parsons_run_alt.go</code>.) Then the <code>if</code> with its short statement calls <code>run()</code>; the deferred <samp>gate locked</samp> prints when <code>run</code> returns. Only then does <code>log.Fatal</code> write <samp>crate 7 is leaking</samp> and exit with 1, with nothing left to clean up in <code>main</code>."}</script>
+
+  <div data-ex="predict" data-model="ex-fatal-m" id="ex-fatal"></div>
+  <script type="application/json" id="ex-fatal-m">{"program": "predict_fatal.go", "prompt": "Type exactly what this program prints on <b>standard output</b>. (Its log line goes to standard error; leave it out.)", "hint": "<code>check(3)</code> returns normally, so its deferred line runs. Inside <code>check(0)</code>, <code>log.Fatalf</code> calls <code>os.Exit(1)</code>. Which deferred calls are still waiting at that moment?", "explain": "<samp>B: open the dock</samp>, then <code>check(3)</code> returns and its deferred <samp>D: checked 3</samp> prints. In <code>check(0)</code>, <code>log.Fatalf</code> writes <samp>no crates to ship</samp> to standard error and exits on the spot. Two deferred calls were waiting, <samp>D: checked 0</samp> and <samp>A: switch off the lights</samp>, and neither runs. <samp>C</samp> is never reached. Two lines, and the lights stay on."}</script>
+
+  <div data-ex="choice" data-model="ex-fatalchoice-m" id="ex-fatalchoice"></div>
+  <script type="application/json" id="ex-fatalchoice-m">{"q": "Scoot writes <code>func loadManifest(path string) []Parcel</code> in a package that three different programs use. It can't open the file. What should it do?", "options": [
+    {"t": "Return <code>([]Parcel, error)</code> instead, so each caller decides what to do", "correct": true, "why": "Yes. Library code reports; the program's <code>main</code> decides. One caller may retry, another may show a friendly message, and their deferred cleanups all still run."},
+    {"t": "Call <code>log.Fatal(err)</code> inside <code>loadManifest</code>, so nobody can miss it", "why": "That ends every program that uses the package, skipping all their deferred calls, and no caller gets a chance to recover. It's also very hard to test: the test binary itself would exit."},
+    {"t": "Call <code>log.Println(err)</code>, then return an empty slice", "why": "Now the caller can't tell \"no parcels today\" from \"the file is missing\". The error is written down and then forgotten."},
+    {"t": "Call <code>panic(err)</code>, so it stops with a stack trace", "why": "Panics are for bugs that should never happen (chapter 8). A missing file is an ordinary, expected problem: return an error."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · STRUCTURED LOGS<small>log/slog: key-value pairs, text and JSON handlers, levels, With, groups, NewMultiHandler</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 8: a logbook line with labelled boxes">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">The harbour master doesn't write sentences in the logbook. Every line has the same <b>boxes</b>: how serious, what happened, then labelled details. That's a <b>structured log</b>: a program can read it as easily as a person.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 250" role="img" aria-label="Picture: an open logbook. One line is written across labelled boxes. Box 1, marked level, says WARN. Box 2, marked msg, says crane slow. Box 3 and box 4 are dashed and marked key equals value: crane equals 2, and minutes equals 15. Below, the same line is printed twice: once as text with key equals value pairs, once as JSON with quotes and braces.">
+      <rect x="20" y="20" width="640" height="210" rx="12" fill="#FFFDF4" stroke="#111" stroke-width="4"/>
+      <path d="M340 22 V228" stroke="#111" stroke-width="3" stroke-dasharray="3 6"/>
+      <g font-family="Bangers, sans-serif" font-size="20" fill="#111" text-anchor="middle"><text x="180" y="52">THE DOCK LOGBOOK</text><text x="500" y="52">ONE LINE, FOUR BOXES</text></g>
+      <g stroke="#111" stroke-width="3">
+        <rect x="370" y="70" width="80" height="44" rx="6" fill="#FFF6CC"/>
+        <rect x="460" y="70" width="180" height="44" rx="6" fill="#DDE8FF"/>
+        <rect x="370" y="140" width="125" height="44" rx="6" fill="#C9F2D9" stroke-dasharray="7 4"/>
+        <rect x="505" y="140" width="135" height="44" rx="6" fill="#C9F2D9" stroke-dasharray="7 4"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="410" y="98">WARN</text><text x="550" y="98">crane slow</text><text x="432" y="168">crane=2</text><text x="572" y="168">minutes=15</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="410" y="130">level</text><text x="550" y="130">msg</text><text x="432" y="200">key=value</text><text x="572" y="200">key=value</text></g>
+      <g stroke="#111" stroke-width="2"><path d="M50 84 H310 M50 114 H310 M50 144 H310 M50 174 H310 M50 204 H310"/></g>
+      <g font-family="Shantell Sans, cursive" font-weight="600" font-size="15" fill="#111"><text x="54" y="80">INFO parcel shipped id=42</text><text x="54" y="110">WARN crane slow crane=2</text><text x="54" y="140">INFO parcel shipped id=43</text><text x="54" y="170">ERROR crate dropped id=7</text><text x="54" y="200">INFO parcel shipped id=44</text></g>
+      <g><circle cx="372" cy="70" r="13" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="462" cy="70" r="13" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="372" cy="140" r="13" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="507" cy="140" r="13" fill="#FFD60A" stroke="#111" stroke-width="3"/></g>
+      <g font-family="Bangers, sans-serif" font-size="16" fill="#111" text-anchor="middle"><text x="372" y="76">1</text><text x="462" y="76">2</text><text x="372" y="146">3</text><text x="507" y="146">4</text></g>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The <b>level</b>: how serious. <code>DEBUG</code>, <code>INFO</code>, <code>WARN</code> or <code>ERROR</code>.</span></li>
+      <li><span>2</span><span>The <b>message</b>: a short, fixed sentence. Same event, same words, every time.</span></li>
+      <li><span>3</span><span>An <b>attribute</b>: a key and a value, such as <code>crane=2</code>.</span></li>
+      <li><span>4</span><span>Another attribute. Want every line about crane 2? Search for <code>crane=2</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: slog with the default handler">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Since Go 1.21 the standard library has a structured logger: <code>log/slog</code> ("s" for structured). You give it a message, then <b>pairs</b>: a key, then its value, a key, then its value.</p>
+    <span class="file-tab">slog_default.go</span>
+    <pre class="code" data-src="slog_default.go"></pre>
+    <p class="caption soft">One possible run: the time stamp is the moment it ran.</p>
+    <pre class="term" data-run="slog_default.go"></pre>
+    <ol class="readlist">
+      <li><span><code>"id", 42, "to", "Lisbon"</code><br>Read them two at a time: key <code>id</code>, value <code>42</code>; key <code>to</code>, value <code>"Lisbon"</code>. They come out as <samp>id=42 to=Lisbon</samp>.</span></li>
+      <li><span><samp>INFO</samp>, <samp>WARN</samp><br>The level comes from which function you called: <code>slog.Info</code>, <code>slog.Warn</code>, <code>slog.Error</code>, <code>slog.Debug</code>.</span></li>
+      <li><span>Where's the Debug line?<br>The default logger only shows <code>INFO</code> and above. Debug messages are for when you're hunting a problem; you switch them on when you need them (panel 13).</span></li>
+      <li><span>Same look as <code>log</code><br>Out of the box, slog writes through the <code>log</code> package: same time stamp, same standard error.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: a text handler and a JSON handler">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The part of slog that decides what a line looks like and where it goes is called a <b>handler</b>. Make a logger with <code>slog.New(handler)</code>. Here are the two built-in handlers. The programs differ only on line 10: <code>NewTextHandler</code> or <code>NewJSONHandler</code>.</p>
+    <span class="file-tab">slog_text.go</span>
+    <pre class="code" data-src="slog_text.go"></pre>
+    <pre class="term" data-run="slog_text.go"></pre>
+    <span class="file-tab">slog_json.go (the same file with line 10 changed)</span>
+    <details><summary>Show all of slog_json.go</summary><pre class="code" data-src="slog_json.go"></pre></details>
+    <pre class="term" data-run="slog_json.go"></pre>
+    <ol class="readlist">
+      <li><span><code>slog.NewTextHandler(os.Stdout, opts)</code><br><samp>key=value</samp> pairs, with quotes only where a value has a space: <samp>msg="parcel shipped"</samp>. Easy for people, easy to search.</span></li>
+      <li><span><code>slog.NewJSONHandler(os.Stdout, opts)</code><br>One JSON object per line (chapter 22). Numbers stay numbers (<samp>42</samp>, <samp>12.5</samp>), <code>true</code> stays a boolean. Log-collecting services read this without guessing.</span></li>
+      <li><span><code>ReplaceAttr: noTime</code> (lines 9 and 16 to 22)<br>A hook that sees every attribute before it's written and may change or drop it. Returning an empty <code>slog.Attr{}</code> drops the time, so this book's runs repeat exactly. Real programs keep the time!</span></li>
+      <li><span><code>os.Stdout</code><br>So the exercises can check the lines. In a real program, logs usually go to <code>os.Stderr</code> or a file.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 11: the slog handler machine" data-machine="m-slog">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">The handler as a machine: a logging call goes in, one line comes out. Try each call. The last one jams in a sneaky way.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-slog">{"label": "slog handler", "program": "slog_machine.go", "examples": [
+      {"in": "text.Info(\"shipped\", \"id\", 42)", "out": "level=INFO msg=shipped id=42", "outKind": "text line", "note": "The text handler: level, message, then each pair as <samp>key=value</samp>."},
+      {"in": "text.Info(\"shipped\", \"to\", \"Old Port\")", "out": "level=INFO msg=shipped to=\"Old Port\"", "outKind": "text line", "note": "A value with a space gets quotes, so a program can still tell where it ends."},
+      {"in": "text.Warn(\"late\", \"minutes\", 15)", "out": "level=WARN msg=late minutes=15", "outKind": "text line", "note": "<code>Warn</code> sets the level. The number is written as it is."},
+      {"in": "jsonLog.Info(\"shipped\", \"id\", 42)", "out": "{\"level\":\"INFO\",\"msg\":\"shipped\",\"id\":42}", "outKind": "JSON line", "note": "The same call through the JSON handler: one object, with <samp>42</samp> still a number."},
+      {"in": "text.Info(\"shipped\", \"id\")", "out": "level=INFO msg=shipped !BADKEY=id", "outKind": "text line", "note": "A key with no value! slog doesn't crash. It treats the leftover <code>\"id\"</code> as a value with no key and writes <samp>!BADKEY=id</samp>. The program runs on, and the log is quietly wrong."},
+      {"in": "go vet: slog.Info(\"shipped\", \"id\")", "error": "call to slog.Info missing a final value", "program": "slog_vet.go", "note": "This is why <code>go vet</code> has a <b>slog</b> check: it reads your calls before anything runs and points at the odd one out. Part 5 meets vet's whole crew."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillslog-m" id="ex-fillslog"></div>
+  <script type="application/json" id="ex-fillslog-m">{"program": "fill_slog.go", "prompt": "Make a JSON logger and log a warning with two attributes. Fill the blanks so the program prints the goal line.", "blanks": [{"line": 10, "text": "NewJSONHandler"}, {"line": 11, "text": "Warn"}, {"line": 11, "text": "\"minutes\", 15", "accept": ["\"minutes\",15"]}], "explain": "<code>slog.NewJSONHandler</code> makes JSON lines. <code>logger.Warn</code> gives the level <samp>WARN</samp>. And the second pair is the key <code>\"minutes\"</code> followed by its value <code>15</code>, which JSON keeps as a number: <samp>\"minutes\":15</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-badkey-m" id="ex-badkey"></div>
+  <script type="application/json" id="ex-badkey-m">{"program": "spot_badkey.go", "bug": 13, "prompt": "One of these log lines is broken, although the program runs without an error. Click the line that causes it.", "explain": "Line 13 passes <code>\"id\", id, port</code>: a key, its value, and then a value with no key. slog writes <samp>!BADKEY=Lisbon</samp>. Line 14 shows the fix: <code>\"to\", port</code>. <code>go vet</code> would have flagged line 13 (\"missing a final value\" when the count is odd), and the type-safe form <code>slog.String(\"to\", port)</code> makes this mistake impossible."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: levels are numbers">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Levels are really just numbers: <code>Debug</code> is −4, <code>Info</code> 0, <code>Warn</code> 4, <code>Error</code> 8. A handler has a <b>minimum level</b>; anything below it is skipped before any work is done. The gaps leave room for your own levels in between.</p>
+    <span class="file-tab">slog_levels.go</span>
+    <pre class="code" data-src="slog_levels.go"></pre>
+    <ol class="readlist">
+      <li><span><code>&amp;slog.HandlerOptions{Level: slog.LevelInfo}</code> (line 11)<br>The minimum level. Set <code>slog.LevelDebug</code> while you hunt a bug, <code>slog.LevelWarn</code> when you only want trouble.</span></li>
+      <li><span><code>h.Enabled(ctx, lv)</code> (line 14)<br>Asks the handler: "would you write a line at this level?" Every logging call asks this first.</span></li>
+      <li><span><code>slog.LevelWarn + 2</code><br>A level of your own, between Warn and Error. It prints as <samp>WARN+2</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-levels-m" id="ex-levels"></div>
+  <script type="application/json" id="ex-levels-m">{"program": "slog_levels.go", "columns": ["level", "number", "enabled"], "given": [0], "prompt": "For each level, fill in its number and whether a handler with minimum level Info writes it.", "explain": "Debug is −4, below Info's 0, so <samp>false</samp>. Info itself is enabled: the minimum is \"this level or higher\". Warn is 4, the custom <samp>WARN+2</samp> is 6, Error is 8: all <samp>true</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 13: With and groups">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Every line Scoot logs should say which courier wrote it. Instead of adding <code>"courier", "Scoot"</code> to every call, make a logger that carries it: <code>logger.With(...)</code>. And <code>slog.Group</code> puts related attributes under one name.</p>
+    <span class="file-tab">slog_with.go</span>
+    <pre class="code" data-src="slog_with.go"></pre>
+    <p class="caption soft">The run is hidden this time: it's the answer to the next check.</p>
+    <ol class="readlist">
+      <li><span><code>scoot := base.With("courier", "Scoot")</code> (line 11)<br>A new logger. Every line it writes starts its attributes with <code>courier=Scoot</code>, before the call's own pairs. <code>base</code> itself is unchanged.</span></li>
+      <li><span><code>Level: slog.LevelDebug</code> (line 9)<br>This handler's minimum level is Debug, the lowest of the four.</span></li>
+      <li><span><code>slog.Group("route", "from", "dock", "to", "Lisbon")</code> (line 13)<br>Two attributes under the name <code>route</code>. The text handler writes each key with the group name and a dot in front; the JSON handler nests them inside an object named <code>route</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-with-m" id="ex-with"></div>
+  <script type="application/json" id="ex-with-m">{"program": "slog_with.go", "prompt": "Type the three lines <code>slog_with.go</code> prints. The readlist above has every rule you need.", "hint": "<code>With</code> attributes come first, before the call's own. This handler's minimum level is Debug, so the Debug line is written. A group named <code>route</code> prefixes its keys with <code>route.</code>; a message with a space gets quotes.", "explain": "<samp>level=INFO msg=\"picked up\" courier=Scoot id=42</samp>: quotes because of the space, <samp>courier=Scoot</samp> from <code>With</code>, then the call's own pair. The Debug line appears because the minimum is Debug, and its group becomes <samp>route.from=dock route.to=Lisbon</samp>. <samp>delivered</samp> needs no quotes."}</script>
+
+  <section class="panel clean" aria-label="Panel 14: one logger, two handlers">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Scoot wants readable text on the screen <b>and</b> JSON in a file for the harbour's log collector. Go 1.26 added <code>slog.NewMultiHandler</code>: one logger, several handlers, every line goes to each of them.</p>
+    <span class="file-tab">slog_multi.go</span>
+    <pre class="code" data-src="slog_multi.go"></pre>
+    <pre class="term" data-run="slog_multi.go"></pre>
+    <ol class="readlist">
+      <li><span><code>var logFile strings.Builder</code> (line 12)<br>A stand-in for a file, so the run can print what was "written" to it. A real program would use <code>os.Create("dock.log")</code> here, and close it when done.</span></li>
+      <li><span><code>slog.NewMultiHandler(screen, file)</code> (line 15)<br>Each call goes to both handlers. If each handler had its own minimum level, each would decide for itself.</span></li>
+    </ol>
+    <p class="caption soft">On Go 1.24 this program doesn't even compile, because <code>NewMultiHandler</code> didn't exist yet. Here is the real run on Go 1.24.7, with the chapter's module lowered to <code>go 1.24</code>:</p>
+    <pre class="term" data-run="slog_multi.go" data-alt></pre>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE FRONT DESK<small>Subcommands with flag.FlagSet, usage errors, os/exec, and Ctrl+C with signal.NotifyContext</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 15: a front desk with a booth for each job">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">At the dock's front desk there's one building but several booths: <b>SHIP</b>, <b>TRACK</b>, <b>VERSION</b>. You go to the right booth, and each booth hands you its own little form. Big command-line tools work the same way: <code>go build</code>, <code>go test</code>, <code>git commit</code>. The first word picks the booth, a <b>subcommand</b>; the flags after it fill in that booth's form.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 250" role="img" aria-label="Picture: a dock office with three service booths labelled SHIP, TRACK and VERSION. Under SHIP hangs a form with two boxes, to and kg. Under TRACK hangs a form with one box, id. VERSION has no form. A command typed on a ticket, dock ship -to Porto -kg 3, has arrows: the word ship points to the SHIP booth, and the two flags point into the SHIP form.">
+      <rect x="20" y="40" width="640" height="150" rx="10" fill="#F4F1EA" stroke="#111" stroke-width="4"/>
+      <path d="M10 44 L340 10 L670 44" fill="#E9DCC3" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <g font-family="Bangers, sans-serif" font-size="20" fill="#111" text-anchor="middle"><text x="340" y="36">DOCK OFFICE</text></g>
+      <g stroke="#111" stroke-width="4"><rect x="50" y="60" width="160" height="70" rx="6" fill="#DDE8FF"/><rect x="260" y="60" width="160" height="70" rx="6" fill="#DDE8FF"/><rect x="470" y="60" width="160" height="70" rx="6" fill="#DDE8FF"/></g>
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="130" y="102">SHIP</text><text x="340" y="102">TRACK</text><text x="550" y="102">VERSION</text></g>
+      <g stroke="#111" stroke-width="3"><rect x="70" y="140" width="120" height="44" rx="4" fill="#fff"/><rect x="280" y="140" width="120" height="30" rx="4" fill="#fff"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111"><text x="80" y="158">-to  ____</text><text x="80" y="178">-kg  ____</text><text x="290" y="160">-id  ____</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="550" y="160">(no form)</text></g>
+      <rect x="150" y="206" width="380" height="36" rx="6" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <text x="340" y="230" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">dock ship -to Porto -kg 3</text>
+      <path d="M234 206 C 200 196 160 196 150 186" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/>
+      <path d="M144 190 l6 -8 l4 9" fill="none" stroke="#111" stroke-width="3"/>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Chapter 21 used one form for the whole program, with <code>flag.Int</code>. Now each booth gets its own: a <code>flag.FlagSet</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: the dock tool with subcommands">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Scoot's tool, <code>dock</code>. Read <code>main</code> first: it only picks the booth. Each booth function builds its own form.</p>
+    <span class="file-tab">dock.go</span>
+    <pre class="code" data-src="dock.go"></pre>
+    <pre class="term" data-run="dock.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.Args[1]</code> (line 18)<br><code>os.Args[0]</code> is the program's own name; <code>os.Args[1]</code> is the first word you typed after it: the subcommand. Line 14 checks there <em>is</em> one, before looking.</span></li>
+      <li><span><code>ship(os.Args[2:])</code> (line 20)<br>Hand the booth everything after the subcommand. The slice expression <code>[2:]</code> (chapter 9) drops the program name and the word <code>ship</code>.</span></li>
+      <li><span><code>flag.NewFlagSet("ship", flag.ExitOnError)</code> (line 32)<br>A fresh, empty form named <code>ship</code>. <code>ExitOnError</code> means: if the flags are wrong, print the problem and the usage, then exit with code 2. (<code>ContinueOnError</code> returns an error instead.)</span></li>
+      <li><span><code>fs.String("to", "Lisbon", "destination port")</code> (line 33)<br>Name, default value, help text. It returns a <b>pointer</b> (chapter 13), filled in later, which is why line 36 says <code>*to</code>.</span></li>
+      <li><span><code>fs.Parse(args)</code> (line 35)<br>Reads the flags. Without <code>-to</code>, <code>*to</code> keeps its default: see the second run.</span></li>
+      <li><span><samp>module:</samp> with nothing after it, in the version run<br>Part 4 explains this subcommand. <code>go run dock.go</code> compiles a list of files, not a module, so the build info has no module path to report.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 17: the wrong booth, the wrong form">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Now the mistakes customers make at the desk. Read each like a detective: what's on standard error, and which exit code?</p>
+    <pre class="term" data-run="dock_errs.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>No subcommand<br>Line 15 writes a one-line usage to standard error, and line 16 exits with 2. By custom, exit code <b>2</b> means "you used the command wrong", and 1 means "it tried and failed".</span></li>
+      <li><span><samp>dock: unknown command "fly"</samp><br>The <code>default</code> case. <code>%q</code> puts the word in quotes, so an empty or odd word is still visible.</span></li>
+      <li><span><samp>invalid value "heavy" for flag -kg: parse error</samp><br>The <code>ship</code> form expected a whole number. The FlagSet prints the problem, then <samp>Usage of ship:</samp> with every flag, its type, help text and default, all generated from line 33 and 34. Then it exits with 2.</span></li>
+      <li><span><code>-h</code><br>Asking for help is not an error: the same usage, and exit code 0. <code>-help</code> and <code>--help</code> work too.</span></li>
+      <li><span><samp>exit status 2</samp><br>Under <code>go run</code>, the go command reports the program's exit code and itself exits with 1. A built program (part 4) simply exits with 2.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Answers to standard output, complaints to standard error, and an exit code that says which. Then other programs can use my tool too.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-dockargs-m" id="ex-dockargs"></div>
+  <script type="application/json" id="ex-dockargs-m">{"program": "predict_dock.go", "prompt": "A label form with two flags. Look at the command in the terminal heading of the real run: <code>go run predict_dock.go -fragile -kg 12 Porto Lisbon -kg 5</code>. Type the four lines it prints.", "hint": "A boolean flag needs no value: <code>-fragile</code> alone means true. And the flag package stops reading flags at the <b>first word that isn't a flag</b>. Everything from there on is left over in <code>fs.Args()</code>.", "explain": "<code>-fragile</code> sets true, <code>-kg 12</code> sets 12. Then comes <code>Porto</code>, which isn't a flag, so parsing stops right there. <code>Porto</code>, <code>Lisbon</code>, <code>-kg</code> and <code>5</code> are all left over: <samp>[Porto Lisbon -kg 5]</samp>, four of them. The second <code>-kg 5</code> was never read, so <samp>kg: 12</samp>. Put flags first, then the other words."}</script>
+
+  <div data-ex="parsons" data-model="ex-pflag-m" id="ex-pflag"></div>
+  <script type="application/json" id="ex-pflag-m">{"program": "parsons_flagset.go", "seed": 27, "pin": [1, 3, 4, 5, 6, 8, 13], "prompt": "Build a tiny booth: make the form, add a flag, read it, use it.", "explain": "First the empty form, then a flag on it (you can't add a flag to a form that doesn't exist yet). Then <code>fs.Parse</code> fills it in, and only after that does <code>*kg</code> hold 7. Printing before parsing would print the default, 1."}</script>
+
+  <div data-ex="fill" data-model="ex-fillflag-m" id="ex-fillflag"></div>
+  <script type="application/json" id="ex-fillflag-m">{"program": "fill_flag.go", "prompt": "A track booth with a true/false flag <code>-loud</code>. Fill the blanks.", "blanks": [{"line": 11, "text": "fs.Bool"}, {"line": 12, "text": "fs.Parse"}, {"line": 13, "text": "*loud"}], "explain": "<code>fs.Bool</code> makes a true/false flag; on the command line <code>-loud</code> alone sets it. <code>fs.Parse</code> reads the arguments into the form. And <code>loud</code> is a pointer, so the <code>if</code> tests <code>*loud</code>, the value it points at. (<code>if loud</code> doesn't compile: a pointer isn't a bool.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 18: running another program with os/exec">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Sometimes your tool needs another tool: ring a bell, call <code>git</code>, run a script. The <code>os/exec</code> package starts another program and collects what it prints.</p>
+    <span class="file-tab">exec_echo.go</span>
+    <pre class="code" data-src="exec_echo.go"></pre>
+    <pre class="term" data-run="exec_echo.go"></pre>
+    <ol class="readlist">
+      <li><span><code>exec.Command("echo", "ring", "the", "dock", "bell")</code><br>The program's name, then each argument separately. No shell is involved, so spaces, <code>*</code> and quotes in an argument are passed on exactly as they are. That's safer than gluing a command line together.</span></li>
+      <li><span><code>.Output()</code><br>Runs it, waits, and returns everything it wrote to standard output as bytes: <samp>"ring the dock bell\n"</samp>, newline included.</span></li>
+      <li><span><samp>exec: "teleport": executable file not found in $PATH</samp><br>No program by that name in any folder on the <code>PATH</code> (chapter 1). An ordinary error value: check it like any other.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: closing up when someone presses Ctrl+C">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">When you press <kbd>Ctrl</kbd>+<kbd>C</kbd> in a terminal, the system sends the program a <b>signal</b> called <code>SIGINT</code> ("interrupt"). Normally that kills the program on the spot, deferred calls and all. <code>signal.NotifyContext</code> turns the signal into a cancelled <code>context</code> (chapter 26) instead, so the program can close up properly.</p>
+    <span class="file-tab">signal_self.go</span>
+    <pre class="code" data-src="signal_self.go"></pre>
+    <pre class="term" data-run="signal_self.go"></pre>
+    <ol class="readlist">
+      <li><span><code>signal.NotifyContext(context.Background(), os.Interrupt)</code> (line 12)<br>A context that is cancelled when an interrupt arrives. Add <code>syscall.SIGTERM</code> too for the polite "please stop" that servers and containers receive.</span></li>
+      <li><span>Line 17<br>Nobody can press Ctrl+C during this book's captured run, so the program sends the signal to <b>itself</b>. That's the same signal your keyboard would send.</span></li>
+      <li><span><code>&lt;-ctx.Done()</code> (line 19)<br>Waits until the context is cancelled. A real server would do its work meanwhile, and check <code>ctx.Done()</code> in its loops.</span></li>
+      <li><span><samp>interrupt signal received</samp><br>Since Go 1.26, the context's <b>cause</b> names the signal. Go 1.24 says only <samp>context canceled</samp> (the version notes show both).</span></li>
+      <li><span><code>defer stop()</code> (line 13)<br>Hands the signal back to the default when <code>main</code> returns. Until then, every further Ctrl+C is still caught and does nothing. To let a second Ctrl+C force-quit while closing up, call <code>stop()</code> right after <code>&lt;-ctx.Done()</code> as well (the <code>os/signal</code> documentation advises calling it as soon as you no longer need the signal).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sig-m" id="ex-sig"></div>
+  <script type="application/json" id="ex-sig-m">{"q": "Scoot's night program writes the manifest through a <code>bufio.Writer</code> and has <code>defer w.Flush()</code> in <code>main</code>. The harbour master stops it with Ctrl+C. Without any signal handling, what happens to the lines still in the buffer?", "options": [
+    {"t": "They're lost: the program ends at once, and the deferred Flush never runs", "correct": true, "why": "Yes. A signal's default action ends the process from outside; no Go function returns, so no deferred call runs. With <code>signal.NotifyContext</code>, the program notices, returns from its work, and the deferred <code>Flush</code> happens."},
+    {"t": "Go runs every deferred call before exiting, so they're written", "why": "Deferred calls run when a function returns or panics. An unhandled interrupt does neither: the process is simply stopped."},
+    {"t": "The buffer is flushed automatically when any Go program exits", "why": "A <code>bufio.Writer</code> holds its bytes in memory until <code>Flush</code>. Chapter 21 showed lines missing for exactly this reason."},
+    {"t": "Ctrl+C can't stop a Go program while it is writing a file", "why": "It can, and does, unless the program asks to handle the signal itself."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · PACKING AND SHIPPING<small>go build -o, go install, GOOS and GOARCH, the build road map, -trimpath, -ldflags and build info</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 20: packing crates with destination labels">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">So far every program ran with <code>go run</code>: the go command compiled it into a temporary file, ran it, and threw the file away. Shipping means <b>packing</b> the program into a crate that runs on its own, with no Go installed: an executable, or <b>binary</b>. And each crate gets a <b>destination label</b>: which operating system, and which kind of processor.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 270" role="img" aria-label="Picture: a conveyor belt carries a source file, main.go, into a packing machine labelled go build. Out of it come three wooden crates, each with a label. Crate 1: GOOS linux, GOARCH amd64, for this computer. Crate 2: GOOS windows, GOARCH amd64, file name ending in .exe. Crate 3: GOOS darwin, GOARCH arm64, for a newer Mac. Badge 1 is on the source file, badge 2 on the machine, badge 3 on a label.">
+      <rect x="10" y="200" width="660" height="16" rx="6" fill="#E9DCC3" stroke="#111" stroke-width="4"/>
+      <g fill="#fff" stroke="#111" stroke-width="3"><circle cx="40" cy="226" r="9"/><circle cx="200" cy="226" r="9"/><circle cx="360" cy="226" r="9"/><circle cx="520" cy="226" r="9"/><circle cx="640" cy="226" r="9"/></g>
+      <path d="M30 120 h70 l20 20 v58 h-90 z" fill="#fff" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M100 120 v20 h20" fill="none" stroke="#111" stroke-width="3"/>
+      <g stroke="#111" stroke-width="2.5"><path d="M42 152 H104 M42 166 H96 M42 180 H108"/></g>
+      <text x="75" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">main.go</text>
+      <rect x="150" y="70" width="130" height="128" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+      <rect x="166" y="88" width="98" height="34" rx="6" fill="#fff" stroke="#111" stroke-width="3"/>
+      <text x="215" y="111" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">go build</text>
+      <circle cx="190" cy="160" r="16" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="240" cy="160" r="16" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <g stroke="#111" stroke-width="4"><rect x="310" y="110" width="110" height="88" rx="4" fill="#E9B872"/><rect x="435" y="110" width="110" height="88" rx="4" fill="#E9B872"/><rect x="560" y="110" width="110" height="88" rx="4" fill="#E9B872"/></g>
+      <g fill="#fff" stroke="#111" stroke-width="2.5"><rect x="320" y="124" width="90" height="50" rx="3"/><rect x="445" y="124" width="90" height="50" rx="3"/><rect x="570" y="124" width="90" height="50" rx="3"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="365" y="145">linux</text><text x="365" y="164">amd64</text><text x="490" y="145">windows</text><text x="490" y="164">amd64</text><text x="615" y="145">darwin</text><text x="615" y="164">arm64</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="365" y="98">dock</text><text x="490" y="98">dock.exe</text><text x="615" y="98">dock-mac</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="365" y="256">this computer</text><text x="490" y="256">a Windows PC</text><text x="615" y="256">a newer Mac</text></g>
+      <g><circle cx="30" cy="120" r="14" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="150" cy="70" r="14" fill="#FFD60A" stroke="#111" stroke-width="3"/><circle cx="320" cy="124" r="14" fill="#FFD60A" stroke="#111" stroke-width="3"/></g>
+      <g font-family="Bangers, sans-serif" font-size="17" fill="#111" text-anchor="middle"><text x="30" y="126">1</text><text x="150" y="76">2</text><text x="320" y="130">3</text></g>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The <b>source code</b>: text only you and the Compiler read.</span></li>
+      <li><span>2</span><span><code>go build</code>: compiles everything into one file. Go puts the whole program, the parts of the standard library it uses and the runtime into that file, so the target computer needs nothing else.</span></li>
+      <li><span>3</span><span>The <b>destination label</b>: <code>GOOS</code> (Go's name for the operating system: <code>linux</code>, <code>windows</code>, <code>darwin</code> for macOS) and <code>GOARCH</code> (the processor: <code>amd64</code> for most PCs, <code>arm64</code> for newer Macs, phones and a Raspberry Pi).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: go build -o">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">The dock program now lives in its own module folder, <code>~/go-ch27/dock</code>, as <code>main.go</code> (made with <code>go mod init example.com/dock</code>). Pack it:</p>
+    <pre class="term" data-run="build.go" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> before <code>cd dock</code> finished, the capture also deleted the crates earlier runs had left in the folder (<code>rm -f dock dock.exe dock-mac dock-pi bin/dock</code>, and the empty <code>bin</code> folder), so <code>ls</code> shows only what this <code>go build</code> made. Everything after that is exactly as typed.</p>
+    <ol class="readlist">
+      <li><span><code>go build -o dock</code><br>Compile the package in this folder and write the binary to a file named <code>dock</code> (<code>-o</code> for "output"). Without <code>-o</code>, Go names it after the last part of the module path: also <code>dock</code> here, <code>dock.exe</code> on Windows.</span></li>
+      <li><span>It printed nothing<br>That's success. Like most command-line tools, <code>go build</code> stays quiet when everything worked. The only news is a new file in <code>ls</code>.</span></li>
+      <li><span><code>./dock ship -to Porto -kg 3</code><br>Run the crate itself: no <code>go</code>, no compiling. <code>./</code> means "the file in this folder" (chapter 1).</span></li>
+      <li><span><samp>module: example.com/dock</samp><br>A build of the module knows its module path, where <code>go run dock.go</code> in panel 16 left it empty.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-quiet-m" id="ex-quiet"></div>
+  <script type="application/json" id="ex-quiet-m">{"q": "Scoot types <code>go build -o dock</code> in a folder whose code has no mistakes. What appears on the screen?", "options": [
+    {"t": "Nothing at all; the prompt simply comes back", "correct": true, "why": "Yes, panel 21's real run. Silence means success. Look for the new file with <code>ls</code>, or check the exit code with <code>echo $?</code>: it's 0."},
+    {"t": "<samp>Build successful</samp>", "why": "Many tools in other languages print a message like that. Go's tools follow the Unix habit: say nothing unless something is wrong."},
+    {"t": "The program's output, because building also runs it", "why": "That's <code>go run</code>. <code>go build</code> only packs the crate."},
+    {"t": "A list of every file it compiled", "why": "Only with <code>-v</code> (verbose), which prints package names as they're compiled."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 22: go install">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption"><code>go build</code> leaves the crate where you are. <code>go install</code> builds it and puts it in your toolbox of programs: the folder in <code>GOBIN</code>, or <code>$HOME/go/bin</code> if <code>GOBIN</code> isn't set. Add that folder to your <code>PATH</code> once, and you can type <code>dock</code> from anywhere.</p>
+    <pre class="term" data-run="install.go" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> with <code>cd dock</code>, the capture also deleted any <code>bin/dock</code> left by an earlier run (<code>rm -f bin/dock</code>), so the file in <code>ls bin</code> is the one this <code>go install</code> wrote.</p>
+    <ol class="readlist">
+      <li><span><code>GOBIN=$PWD/bin go install</code><br>Writing <code>NAME=value</code> before a command sets that environment variable for this one command. Here the toolbox is a <code>bin</code> folder inside this folder (<code>$PWD</code> is the folder you're in), so this book's run doesn't touch any other toolbox. Usually you just type <code>go install</code>.</span></li>
+      <li><span>Again, no output<br>Success is quiet here too.</span></li>
+      <li><span><code>go install example.com/tool@v1.2.3</code><br>Chapter 21: install someone else's tool at an exact version, without a module of your own. Part 5 shows a newer way to pin tools.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: cross-compiling with GOOS and GOARCH">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Now the labels. Set <code>GOOS</code> and <code>GOARCH</code> for one command, and the same <code>go build</code> packs a crate for another computer. No extra software, no other machine. That's called <b>cross-compiling</b>.</p>
+    <pre class="term" data-run="cross.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>go env GOOS GOARCH</code><br>This computer's own label: <samp>linux</samp>, <samp>amd64</samp>. It's what <code>go build</code> uses when you don't say.</span></li>
+      <li><span>Three quiet builds<br>Three crates, for Windows, for a Mac with an Apple processor, and for a 64-bit ARM Linux board such as a Raspberry Pi. <code>go tool dist list</code> prints every pair Go can build for.</span></li>
+      <li><span><code>file ... | cut -d, -f1,2</code><br><code>file</code> looks inside a file and says what it is. <code>cut</code> keeps only the first two comma-separated parts, because the full lines also list build IDs that change with every edit. <samp>PE32+</samp> is the Windows program format, <samp>Mach-O</samp> the Mac's, <samp>ELF</samp> Linux's.</span></li>
+      <li><span><samp>cannot execute binary file: Exec format error</samp><br>The ARM crate can't run on this Intel/AMD computer: its instructions are for a different processor. Exit code <b>126</b> is the shell's "found it, but can't run it". (<samp>line 7</samp> is the shell counting this book's commands in one session, not a line of Go.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pi-m" id="ex-pi"></div>
+  <script type="application/json" id="ex-pi-m">{"q": "Scoot's friend has a Raspberry Pi running 64-bit Linux, and Scoot is on a Windows laptop. Which command packs <code>dock</code> for the Pi?", "options": [
+    {"t": "<code>GOOS=linux GOARCH=arm64 go build -o dock-pi</code>", "correct": true, "why": "Yes. Linux is the operating system, <code>arm64</code> the processor. (In Windows PowerShell you'd set them first: <code>$env:GOOS=\"linux\"; $env:GOARCH=\"arm64\"</code>, then <code>go build -o dock-pi</code>.)"},
+    {"t": "<code>GOOS=windows GOARCH=arm64 go build -o dock-pi</code>", "why": "The label is for where the program will <b>run</b>, not where you build it. The Pi runs Linux."},
+    {"t": "<code>GOOS=linux GOARCH=amd64 go build -o dock-pi</code>", "why": "That's Linux on an Intel/AMD processor. The Pi has an ARM processor, and you'd get panel 23's <samp>Exec format error</samp>."},
+    {"t": "Copy the Go source to the Pi; Go programs can't be built for another computer", "why": "They can: that's what <code>GOOS</code> and <code>GOARCH</code> are for, and it's one of Go's best-loved features."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 24: the build-and-ship road map" data-map="map-ship">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Every road a <code>go build</code> can take, each followed by a real run from this chapter. Pick a road and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maps-t maps-d"><title id="maps-t">Map of building and shipping</title><desc id="maps-d">The source code goes into go build. If the Compiler finds an error, the road ends at build failed and no crate is packed. With no labels, go build packs a Linux amd64 binary that runs on this computer. With GOOS=windows it packs a Windows exe. With GOARCH=arm64 it packs an ARM binary that cannot run on this computer.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-ship">{"seed": 27, "size": [690, 470], "start": [[345, 0], [345, 14]], "states": [
+      {"id": "SRC", "x": 220, "y": 18, "w": 250, "h": 56, "label": "MAIN.GO", "sub": "your source code"},
+      {"id": "BUILD", "x": 220, "y": 120, "w": 250, "h": 64, "label": "GO BUILD", "sub": "the Compiler checks"},
+      {"id": "FAIL", "x": 16, "y": 250, "w": 180, "h": 64, "label": "BUILD FAILED", "sub": "no crate packed", "kind": "error"},
+      {"id": "LINUX", "x": 238, "y": 250, "w": 190, "h": 64, "label": "LINUX AMD64", "sub": "runs right here", "kind": "end"},
+      {"id": "WIN", "x": 474, "y": 250, "w": 200, "h": 64, "label": "WINDOWS EXE", "sub": "`file`: PE32+", "kind": "end"},
+      {"id": "PI", "x": 474, "y": 392, "w": 200, "h": 64, "label": "LINUX ARM64", "sub": "can't run here", "kind": "error"}],
+     "transitions": [
+      {"id": "t0", "from": "SRC", "to": "BUILD", "pts": [[345, 78], [345, 114]], "label": "go build", "lx": 357, "ly": 100},
+      {"id": "t1", "from": "BUILD", "to": "FAIL", "pts": [[216, 152], [106, 152], [106, 244]], "label": "error", "lx": 204, "ly": 144, "anchor": "end", "bug": true},
+      {"id": "t2", "from": "BUILD", "to": "LINUX", "pts": [[333, 188], [333, 244]], "label": "no labels", "lx": 321, "ly": 222, "anchor": "end"},
+      {"id": "t3", "from": "BUILD", "to": "WIN", "pts": [[474, 152], [574, 152], [574, 244]], "label": "GOOS=windows", "lx": 486, "ly": 144},
+      {"id": "t4", "from": "BUILD", "to": "PI", "pts": [[448, 188], [448, 424], [468, 424]], "label": "GOARCH=arm64", "lx": 460, "ly": 352, "bug": true}],
+     "paths": [
+      {"id": "native", "label": "no labels", "program": "build.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+        {"on": ["SRC"], "output": [], "note": "<code>build.go</code>: panel 21's session in <code>~/go-ch27/dock</code>."},
+        {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "<code>go build -o dock</code>. The Compiler reads every file of the package. No errors, so it packs the crate, quietly."},
+        {"on": ["LINUX"], "via": ["t2"], "output": ["dock dev", "module: example.com/dock", "built with: go1.27.3", "GOARCH=amd64", "GOOS=linux"], "note": "No labels means this computer's own: <samp>linux</samp>, <samp>amd64</samp>. So <code>./dock version</code> runs right here, and reports the label it was built with."}]},
+      {"id": "win", "label": "GOOS=windows", "program": "road_windows.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+        {"on": ["SRC"], "output": [], "note": "<code>road_windows.go</code>: the same <code>main.go</code>."},
+        {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "<code>GOOS=windows GOARCH=amd64 go build -o dock.exe</code>. Same Compiler, same checks."},
+        {"on": ["WIN"], "via": ["t3"], "output": ["dock.exe: PE32+ executable (console) x86-64, for MS Windows"], "note": "A Windows program. It can't run on this Linux computer, but <code>file</code> confirms what's inside the crate: copy it to a Windows PC and it runs there."}]},
+      {"id": "pi", "label": "GOARCH=arm64", "bug": true, "program": "cross.go", "expect": {"exit": 126, "stderrContains": "Exec format error"}, "steps": [
+        {"on": ["SRC"], "output": [], "note": "<code>cross.go</code>: panel 23's session."},
+        {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "focus", "note": "<code>GOOS=linux GOARCH=arm64 go build -o dock-pi</code>. It builds fine."},
+        {"on": ["PI"], "via": ["t4"], "output": [], "error": "bash: line 7: ./dock-pi: cannot execute binary file: Exec format error", "note": "Then Scoot tries <code>./dock-pi ship</code> here. The crate is fine, but it's for an ARM processor: the shell refuses, exit code 126. Not a Go error at all."}]},
+      {"id": "broken", "label": "build error", "bug": true, "program": "road_broken.go", "expect": {"exit": 1, "stderrContains": "declared and not used: port"}, "steps": [
+        {"on": ["SRC"], "output": [], "note": "<code>road_broken.go</code>: a version with a variable it never uses, in <code>~/go-ch27/broken</code>."},
+        {"on": ["BUILD"], "via": ["t0"], "output": [], "mood": "worried", "note": "<code>GOOS=windows GOARCH=amd64 go build -o dock.exe</code>. A destination label changes the crate, not the rules."},
+        {"on": ["FAIL"], "via": ["t1"], "output": [], "error": "./main.go:7:2: declared and not used: port", "note": "The Compiler stops it before anything is packed: no <code>dock.exe</code> appears. Every destination gets the same checks, so code that builds for one platform almost always builds for all."}]}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 25: a panic that tells everyone where you live">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <svg class="sfx tr" data-sfx="OOPS!" data-seed="25"></svg>
+    <p class="caption">One crate crashes on a customer's computer, and they send Scoot the message. Compare the two builds of the same program.</p>
+    <span class="file-tab">trim/main.go</span>
+    <pre class="code" data-src="trim.go"></pre>
+    <pre class="term" data-run="trim.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>index out of range [3] with length 3</samp><br>The bug: the last crate is number 2, because counting starts at 0 (chapter 9). Read the panic like chapter 8 taught: message, then <samp>main.main()</samp>, then the file and line.</span></li>
+      <li><span><samp>/home/you/go-ch27/trim/main.go:9</samp><br>A normal build writes the <b>full path</b> of every source file into the binary, so traces can point at them. Ship it, and every crash report shows your user name and your folders.</span></li>
+      <li><span><code>-trimpath</code><br>Removes those local paths and uses the module path instead: <samp>example.com/crash/main.go:9</samp>. Still enough to find the line, and nothing about your computer. It also makes builds of the same code on different computers identical.</span></li>
+      <li><span><samp>+0x73</samp><br>Where in the compiled function the crash happened. It changes with the Go version and with your code.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>label the crate, not your house.</b> The destination goes on the box; my home address doesn't.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: a version stamp and the build info inside a binary">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">A customer says "dock is broken". Which <code>dock</code>? Every crate should carry a version number. Two tools: <code>-ldflags "-X ..."</code> stamps a value into a string variable while building, and every Go binary already carries <b>build info</b> that you can read from outside or from inside.</p>
+    <pre class="term" data-run="buildinfo.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>-ldflags="-X main.release=v1.2.0"</code><br>Flags for the <b>linker</b>, the last stage of building, which puts the pieces together. <code>-X</code> replaces the value of the package-level string variable <code>release</code> in package <code>main</code> (dock.go line 11). Without it, it stays <samp>dev</samp>.</span></li>
+      <li><span><code>debug.ReadBuildInfo()</code> (dock.go line 48)<br>Reads the build info from inside the running program: module path, Go version, and settings such as <samp>-trimpath=true</samp>, <samp>GOARCH</samp> and <samp>GOOS</samp>.</span></li>
+      <li><span><code>go version -m dock</code><br>Reads the same info from the outside, from any Go binary, even one you didn't build. <samp>(devel)</samp> means "no version tag": in a git repository with a tag such as <code>v1.2.0</code>, Go fills that in itself, plus the commit.</span></li>
+      <li><span><samp>-ldflags</samp> isn't in the list<br>With <code>-trimpath</code>, Go leaves the <code>-ldflags</code> setting out of the build info (it could contain paths from your computer). Without <code>-trimpath</code>, <code>go version -m</code> lists it too.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-ldflags-m" id="ex-ldflags"></div>
+  <script type="application/json" id="ex-ldflags-m">{"program": "ldflags.go", "prompt": "In <code>~/go-ch27/dock</code>, Scoot runs <code>go build -ldflags=\"-X main.release=v2.0.0\" -o dock</code>, then <code>./dock version | head -2</code> (<code>head -2</code> keeps the first two lines). Type them.", "hint": "Line 47 prints <code>\"dock\"</code> and <code>release</code>. Line 52 prints the module path, and this is a real build of a module.", "explain": "<samp>dock v2.0.0</samp>: the linker replaced <code>\"dev\"</code>. <samp>module: example.com/dock</samp>: a build in the module folder knows its path (only <code>go run dock.go</code> left it empty). No <code>-trimpath</code> this time, but that line came later anyway."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE PIT CREW<small>go vet, staticcheck, go fix, govulncheck, goimports, golangci-lint, the stdversion check and go doc</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 27: a pit stop">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">At a motor race, the car pulls into the pit and a whole crew jumps on it. One checks the tyres, one the fuel, one the brakes. Nobody checks everything; each is an expert at <b>one thing</b>, and together they're fast and thorough.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 230" role="img" aria-label="Picture: a small race car labelled main.go stands in a pit lane. Around it stand four crew members in helmets, each with one tool: a magnifier labelled vet, a spanner labelled staticcheck, a wrench labelled go fix, and a shield labelled govulncheck. Behind them the Compiler's gate is already up: the car passed the Compiler, and the crew checks what the Compiler doesn't.">
+      <rect x="0" y="190" width="680" height="40" fill="#DADADA"/>
+      <path d="M0 190 H680" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3" stroke-dasharray="20 14"><path d="M0 212 H680"/></g>
+      <path d="M220 160 q10 -40 60 -44 h120 q50 4 60 44 z" fill="#FF5A4E" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="200" y="150" width="280" height="26" rx="8" fill="#FF5A4E" stroke="#111" stroke-width="4"/>
+      <rect x="296" y="122" width="88" height="26" rx="6" fill="#fff" stroke="#111" stroke-width="3"/>
+      <text x="340" y="141" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">main.go</text>
+      <g fill="#2B2B2B" stroke="#111" stroke-width="3"><circle cx="250" cy="182" r="20"/><circle cx="430" cy="182" r="20"/></g>
+      <g fill="#DADADA"><circle cx="250" cy="182" r="7"/><circle cx="430" cy="182" r="7"/></g>
+      <g stroke="#111" stroke-width="4">
+        <circle cx="70" cy="80" r="26" fill="#fff"/><circle cx="150" cy="60" r="26" fill="#fff"/><circle cx="530" cy="60" r="26" fill="#fff"/><circle cx="610" cy="80" r="26" fill="#fff"/>
+        <path d="M44 150 q0 -40 26 -40 q26 0 26 40 z" fill="#FFF6CC"/><path d="M124 130 q0 -40 26 -40 q26 0 26 40 z" fill="#DDE8FF"/><path d="M504 130 q0 -40 26 -40 q26 0 26 40 z" fill="#FFF6CC"/><path d="M584 150 q0 -40 26 -40 q26 0 26 40 z" fill="#DDE8FF"/>
+      </g>
+      <g fill="#2B2B2B"><path d="M50 76 q20 -12 40 0 v8 q-20 -8 -40 0 z"/><path d="M130 56 q20 -12 40 0 v8 q-20 -8 -40 0 z"/><path d="M510 56 q20 -12 40 0 v8 q-20 -8 -40 0 z"/><path d="M590 76 q20 -12 40 0 v8 q-20 -8 -40 0 z"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="70" y="172">vet</text><text x="150" y="152">staticcheck</text><text x="530" y="152">go fix</text><text x="610" y="172">govulncheck</text></g>
+      <g stroke="#111" stroke-width="3"><circle cx="104" cy="104" r="10" fill="#fff"/><path d="M110 112 l10 10" stroke-width="5"/><path d="M180 102 l14 -14" stroke-width="5"/><circle cx="198" cy="84" r="7" fill="#FFD60A"/><path d="M498 104 l-14 -14" stroke-width="5"/><path d="M574 108 l0 -12 l12 -6 l12 6 v12 q0 10 -12 14 q-12 -4 -12 -14 z" fill="#C9F2D9"/></g>
+      <g font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle"><text x="340" y="30">THE PIT: EACH CREW MEMBER CHECKS ONE THING</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="happy" data-label="go build"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>The car is legal: right types, nothing unused, every name known. So the gate is up. Whether you're <em>driving it well</em> is a question for the crew.</p></div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="specs"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Specs, the proof-reader, says: </span>You met me in chapter 2: I'm <b>go vet</b>. Today I bring my friends.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler robot with its gate up and a green beacon, and Specs, a round proof-reader with big glasses and a magnifier.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: one go vet run, many checks">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption"><code>go vet</code> is really a crew of its own: dozens of small checkers called <b>analyzers</b>, each looking for one kind of mistake that compiles but is almost certainly wrong. Here's one file that trips six of them.</p>
+    <span class="file-tab">vet_many.go</span>
+    <pre class="code" data-src="vet_many.go"></pre>
+    <pre class="term" data-run="vet_many.go" data-exit></pre>
+    <p class="caption soft">vet runs its analyzers at the same time, so the order of its messages can change from run to run. The command pipes them through <code>sort -t: -k2,2n</code>, which sorts by the number after the first colon: the line. A pipeline's exit code normally comes from its last command, here <code>sort</code>, which is happy; the first step, <code>set -o pipefail</code>, is a bash setting that makes the pipeline fail when any command in it fails, so the exit code below is vet's.</p>
+    <ol class="readlist">
+      <li><span><samp>passes lock by value</samp> and <samp>copies lock value</samp> (lines 14 and 19)<br>The <b>copylocks</b> analyzer. A <code>sync.Mutex</code> (chapter 25) must never be copied: a copy is a second, separate lock, and the protection silently disappears. Pass <code>*Dock</code>.</span></li>
+      <li><span><samp>format %d has arg "twelve" of wrong type string</samp> (line 18)<br>The <b>printf</b> analyzer, from chapter 2.</span></li>
+      <li><span><samp>result of fmt.Sprintf call not used</samp> (line 19)<br><b>unusedresult</b>. <code>Sprintf</code> builds a string and returns it; it prints nothing. Throwing the result away means the line does nothing at all.</span></li>
+      <li><span><samp>call to slog.Info missing a final value</samp> (line 20)<br>The <b>slog</b> analyzer, from panel 11.</span></li>
+      <li><span><samp>self-assignment of d.crates</samp> (line 21)<br><b>assign</b>. Setting something to itself is a typo for something else, every time.</span></li>
+      <li><span>No header, exit code 1<br>vet's messages have no <samp># package</samp> line, unlike the Compiler's (chapter 2). vet exits with 1 when it found something (passed on here thanks to <code>pipefail</code>), so build scripts can stop.</span></li>
+    </ol>
+    <p class="caption soft"><code>go tool vet help</code> lists every analyzer in your Go version. A few run automatically inside <code>go test</code> too (chapter 15), such as printf, slog and stdversion (panel 35). copylocks and unusedresult are not among them: chapters 25 and 26 showed a <code>go test</code> passing while vet still found a copied lock and a lost cancel. Run <code>go vet ./...</code> yourself.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotvet-m" id="ex-spotvet"></div>
+  <script type="application/json" id="ex-spotvet-m">{"program": "spot_vet.go", "bug": 8, "prompt": "This program compiles and runs, but one line prints garbage. <code>go vet</code> would point straight at it. Which line?", "explain": "Line 8 gives <code>%d</code> (a whole number) the string <code>name</code>. <code>fmt</code> doesn't crash: it prints <samp>%!d(string=Scoot)</samp>, its way of saying \"wrong verb for this value\". vet's printf analyzer reports <samp>fmt.Printf format %d has arg name of wrong type string</samp> before you ever run it. Use <code>%s</code>, or <code>%v</code> for any value."}</script>
+
+  <section class="panel clean pitcrew" aria-label="Panel 29: the pit crew checks one program" data-pitcrew="pc-crew">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Now a whole pit stop. This program prints a delivery label in the customer's language, using a module from outside the standard library, <code>golang.org/x/text</code>. It builds and runs. Four crew members inspect it in turn, in one real terminal session in <code>~/go-ch27/crew</code>. Step through them.</p>
+    <div class="pc-stage"><svg class="pc-svg" role="img" aria-label="Four crew members in helmets, one per tool. The text version below lists every tool, its command, the line it flags and its real message."></svg></div>
+    <ol class="pc-code" aria-label="crew/main.go with the line each crew member flags marked"></ol>
+    <div class="pc-out" data-reserve></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next crew member <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every crew member</summary><table class="transcript"><thead><tr><th>Crew</th><th>Command</th><th>Line flagged</th><th>Why (the real output follows on its own row)</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="pc-crew">{"program": "pitcrew.go", "file": "pitcrew.go", "crew": [
+      {"step": 1, "tool": "go vet", "icon": "glass", "role": "suspicious calls", "line": 14, "find": "call to slog.Error missing a final value", "note": "The key <code>\"err\"</code> has no value: the actual <code>err</code> was forgotten. The log would say <samp>!BADKEY=err</samp> and nobody would learn what went wrong."},
+      {"step": 2, "tool": "staticcheck", "icon": "spanner", "role": "bugs and waste", "line": 20, "find": "this value of lang is never used (SA4006)", "note": "<code>lang</code> is set from the customer's language on line 20, then overwritten with <code>\"en\"</code> on line 21 before anyone reads it. Every label comes out in English. The Compiler is happy, because <code>lang</code> <em>is</em> used, on line 22. Each staticcheck message ends with a code like <samp>SA4006</samp> that you can look up at staticcheck.dev."},
+      {"step": 3, "tool": "go fix", "icon": "wrench", "role": "modern idioms", "line": 17, "find": "+\tfor i := range 3 {", "note": "Not a bug: an old-fashioned loop. <code>-diff</code> shows what <code>go fix</code> <em>would</em> change, in the format of a <b>diff</b>: <samp>-</samp> lines go, <samp>+</samp> lines come in. Since Go 1.22 you can range over a number. Run <code>go fix .</code> without <code>-diff</code> to apply it."},
+      {"step": 4, "tool": "govulncheck", "icon": "shield", "role": "known security holes", "line": 12, "find": "GO-2022-1059", "note": "<code>golang.org/x/text</code> v0.3.7 has a published security problem: a crafted language list can make <code>ParseAcceptLanguage</code> very slow. And line 12 really calls it. The fix: upgrade, with <code>go get golang.org/x/text@v0.3.8</code> or later."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: crew tools pinned in go.mod">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption"><code>go vet</code> and <code>go fix</code> come with Go. staticcheck and govulncheck are separate programs, so how did <code>go tool staticcheck</code> work? Since Go 1.24 a module can list the tools it uses in its <code>go.mod</code>, with exact versions, just like the code it imports.</p>
+    <span class="file-tab">crew/go.mod</span>
+    <pre class="code" data-src="crew/go.mod"></pre>
+    <ol class="readlist">
+      <li><span><code>go get -tool honnef.co/go/tools/cmd/staticcheck@v0.8.2</code><br>Adds a <code>tool</code> line and the tool's own requirements (the <samp>// indirect</samp> lines). Everyone who clones the project gets the same version of the same crew.</span></li>
+      <li><span><code>go tool staticcheck .</code><br>Builds the tool if needed (it's cached after the first time), then runs it. <code>go tool</code> with no name lists every tool you can run.</span></li>
+      <li><span><code>require golang.org/x/text v0.3.7</code><br>The old, vulnerable version govulncheck complained about. Changing this line, with <code>go get</code>, is the whole fix.</span></li>
+      <li><span>The other way<br><code>go install honnef.co/go/tools/cmd/staticcheck@latest</code> puts a <code>staticcheck</code> program in <code>$HOME/go/bin</code> for all your projects (panel 22). Simpler, but every project then uses whatever version you happen to have.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: what govulncheck really checked">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Look again at govulncheck's last lines in panel 29. It didn't just list old modules: it checked whether <b>your code actually reaches</b> the broken function.</p>
+    <ol class="readlist">
+      <li><span><samp>Example traces found: #1: main.go:12:46: crew.main calls language.ParseAcceptLanguage</samp><br>The path from your code to the dangerous function. If nothing called it, this wouldn't be listed under "affected".</span></li>
+      <li><span><samp>2 vulnerabilities in modules you require, but your code doesn't appear to call these vulnerabilities</samp><br>Other known problems in <code>x/text</code> v0.3.7, in functions this program never uses. Upgrade anyway when you can, but these aren't an emergency.</span></li>
+      <li><span>Exit code 3<br>govulncheck's "found something that affects you". Build servers stop on it.</span></li>
+      <li><span><code>-db file://$HOME/go-ch27/.vulndb</code><br>govulncheck downloads the Go vulnerability database from vuln.go.dev. This book's capture machine has no internet, so it reads a copy of that database downloaded on 2026-11-08. On your computer just type <code>govulncheck ./...</code> (or <code>go tool govulncheck ./...</code>).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Catchphrase: <b>one crew member, one job.</b> The Compiler, vet, staticcheck, go fix and govulncheck each know one kind of trouble very well. Run them all; none replaces another.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: go fix modernizers">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Go keeps adding nicer ways to write common things: <code>any</code> instead of <code>interface{}</code> (Go 1.18), <code>min</code> and <code>max</code> (1.21), <code>for i := range 3</code> (1.22), <code>strings.SplitSeq</code> (1.24). Go 1.26 rewrote <code>go fix</code> into a set of <b>modernizers</b> that update old code to the new style for you, without changing what it does. Go 1.27 added a few more.</p>
+    <ol class="readlist">
+      <li><span>Only what your module allows<br>A modernizer only suggests features your <code>go.mod</code>'s <code>go</code> line allows. In a module that says <code>go 1.21</code>, it won't suggest <code>range 3</code>.</span></li>
+      <li><span><code>go fix -diff ./...</code><br>Show the changes as a diff, change nothing, and exit with 1 if there would be changes (handy on a build server).</span></li>
+      <li><span><code>go fix ./...</code><br>Apply them. Then read the change, run your tests, and commit it on its own, so it's easy to review.</span></li>
+      <li><span><code>go tool fix help</code><br>Lists every modernizer in your Go version, such as <code>any</code>, <code>minmax</code>, <code>rangeint</code>, <code>stringsseq</code> and <code>waitgroupgo</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-fixp-m" id="ex-fixp-m-box"></div>
+  <script type="application/json" id="ex-fixp-m">{"program": "fix_predict.go", "prompt": "In a module with <code>go 1.27.3</code>, Scoot runs <code>go fix -diff .</code> and keeps only the new lines: <code>grep</code> picks the <samp>+</samp> lines, and <code>sed</code> removes the <samp>+</samp> and the indent. Type what remains, in order.", "hint": "Two lines are old-fashioned. Which word replaced <code>interface{}</code> in Go 1.18? And how can you loop three times since Go 1.22, without a counter you update yourself?", "explain": "<samp>var box any = \"parcel\"</samp>: <code>any</code> is simply another name for <code>interface{}</code>. <samp>for i := range 3 {</samp>: counts 0, 1, 2, exactly like the three-part loop. Same program, same output, newer style. (The diff's header lines start with <samp>+++</samp>, with no space after the <samp>+</samp>, so <code>grep '^+\\s'</code> skips them.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 33: goimports adds the import you forgot">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption"><code>gofmt</code> (Tidy, from chapter 2) fixes spacing. <b>goimports</b> does that too, and also adds missing imports and removes unused ones. Most editors run it every time you save.</p>
+    <span class="file-tab">crew/imp/main.go</span>
+    <pre class="code" data-src="imports.go"></pre>
+    <pre class="term" data-run="imports.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>undefined: strings</samp><br>The Compiler's complaint: <code>strings</code> was used but never imported.</span></li>
+      <li><span><code>go tool goimports -l imp</code><br><code>-l</code> lists the files it would change, like <code>gofmt -l</code>.</span></li>
+      <li><span><code>go tool goimports imp/main.go</code><br>Prints the fixed file: <code>"strings"</code> added, the imports grouped in brackets and sorted. <code>-w</code> would write it back into the file.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 34: golangci-lint, the crew chief">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption"><b>golangci-lint</b> runs many linters (a <b>linter</b> is any tool that checks code without running it) in one go, with one configuration file. Big Go projects use it on every change. This computer has an old copy installed, and that's where Scoot's first try goes wrong.</p>
+    <span class="file-tab">lint/main.go</span>
+    <pre class="code" data-src="lint.go"></pre>
+    <pre class="term wrap" data-run="lint.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version (1.27.3)</samp><br>A linter must understand your code's Go version. The copy in <code>/usr/local/bin</code> was built with Go 1.25 in 2025; it refuses a module that says <code>go 1.27.3</code>. Rule: install a linter built with a Go at least as new as your project. A copy pinned with <code>go get -tool</code> (panel 30) is built by your own Go.</span></li>
+      <li><span><samp>Error return value of `f.WriteString` is not checked (errcheck)</samp><br>The <b>errcheck</b> linter: two calls whose errors vanish. If the disk is full, nobody would know the manifest wasn't saved. The caret points at the exact column.</span></li>
+      <li><span><samp>ineffectual assignment to crates (ineffassign)</samp><br>The 10 is overwritten before anyone reads it, the same mistake staticcheck caught in panel 29.</span></li>
+      <li><span><samp>0 issues.</samp> with <code>quiet.yml</code><br>A configuration that switches off every linter except <code>unused</code>. The code didn't get better; the crew was sent home. That's the classic mistake: <b>disabling linters wholesale</b> to make the noise stop.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-quietlint-m" id="ex-quietlint"></div>
+  <script type="application/json" id="ex-quietlint-m">{"q": "golangci-lint reports 40 errcheck issues in Scoot's project, most of them for <code>fmt.Println</code>, whose error nobody ever checks. What's the best move?", "options": [
+    {"t": "Keep errcheck on, tell it to skip a few harmless functions, and fix the rest", "correct": true, "why": "Yes. Narrow exceptions keep that crew member on duty for the cases that count, like an unchecked <code>WriteString</code> or <code>Close</code> on a file you wrote."},
+    {"t": "Disable errcheck in the config file, so the build passes again", "why": "That's panel 34's <code>quiet.yml</code>: <samp>0 issues.</samp> and every unchecked file write still in the code."},
+    {"t": "Put a <code>//nolint</code> comment on every line it complains about", "why": "Forty silencers is the same as switching it off, only messier. A <code>//nolint:errcheck</code> with a reason is fine for the rare true exception."},
+    {"t": "Stop using linters, because the Compiler already checks errors", "why": "The Compiler doesn't care whether you look at a returned error. Only a linter tells you that you didn't."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 35: the stdversion check in go test">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">A trap with a new crew member. This package uses <code>strings.CutLast</code>, which arrived in Go 1.27, but its <code>go.mod</code> still says <code>go 1.24</code>. The test file is chapter 15's kind.</p>
+    <span class="file-tab">label/label.go</span>
+    <pre class="code" data-src="stdver.go"></pre>
+    <span class="file-tab">label/label_test.go</span>
+    <pre class="code" data-src="label/label_test.go"></pre>
+    <pre class="term" data-run="stdver.go" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> with <code>cd label</code>, the capture also wrote a fresh <code>go.mod</code> saying <code>go 1.24</code> (<code>printf 'module example.com/label\n\ngo 1.24\n' &gt; go.mod</code>), because the <code>go get</code> step of the last run had raised it. The last command's <code>sed</code> replaces the test time with <samp>…s</samp>, so the line is the same on every run.</p>
+    <ol class="readlist">
+      <li><span><code>go build</code> is quiet<br>This computer has Go 1.27.3, which has <code>CutLast</code>, so it compiles. The <code>go</code> line gates language <em>features</em>, not which library functions exist.</span></li>
+      <li><span><samp>strings.CutLast requires go1.27 or later (module is go1.24)</samp><br>But the <code>go.mod</code> promises the code works with Go 1.24, and on a Go 1.24 computer it wouldn't compile. vet's <b>stdversion</b> analyzer spots the broken promise, and since Go 1.27, <code>go test</code> runs it automatically. So the build passes and the test run fails.</span></li>
+      <li><span><code>go get go@1.27.3</code><br>One honest fix: raise the promise. (The other: don't use the new function.) After that the test passes.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-stdver-m" id="ex-stdver"></div>
+  <script type="application/json" id="ex-stdver-m">{"q": "Why did <code>go build</code> succeed in panel 35 while <code>go test</code> failed on the very same code?", "options": [
+    {"t": "<code>go test</code> also runs a few vet checks, and since Go 1.27 that includes stdversion", "correct": true, "why": "Yes. stdversion compares the library functions you use with the <code>go</code> line in go.mod. <code>go build</code> runs only the Compiler. <code>go test</code> also runs a small set of vet analyzers, and their findings stop the run with <samp>[build failed]</samp>."},
+    {"t": "<code>go test</code> picks Go 1.24 because the go.mod file says so", "why": "Both commands use the installed Go 1.27.3 (with <code>GOTOOLCHAIN=local</code>). The <code>go</code> line is a promise about compatibility, not a choice of toolchain."},
+    {"t": "The test file itself has a mistake that <code>go build</code> never reads", "why": "The message points at <code>label.go</code> line 8, not at the test file. After <code>go get go@1.27.3</code> the same test passes."},
+    {"t": "<code>CutLast</code> is a function that only works inside tests", "why": "It's an ordinary function in package <code>strings</code>, usable anywhere in Go 1.27 or later."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 36: go doc, the manual in your terminal">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">One more helper, for before you write code: <code>go doc</code> prints the documentation of any package or function, right in the terminal, for the exact version you use.</p>
+    <span class="file-tab">doc.go</span>
+    <pre class="code" data-src="doc.go"></pre>
+    <pre class="term" data-run="doc.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>go doc strings.CutLast</code><br>The signature and the doc comment: three results, and what happens when the separator isn't there.</span></li>
+      <li><span><code>go doc -ex strings.Cut</code><br>New in Go 1.27: <code>-ex</code> lists the runnable examples (chapter 23) for a function. Pass an example's name, such as <code>go doc strings.ExampleCut</code>, to print its code and output.</span></li>
+      <li><span><code>go doc golang.org/x/text/language@v0.3.8 ParseAcceptLanguage</code><br>Also new in Go 1.27: <code>package@version</code> reads the docs of a version you haven't installed yet, here the fixed one from panel 29.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 37: who catches what">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">The whole crew on one board. Each card says what that crew member looks for, and when to call it.</p>
+    <div class="duo three">
+      <div class="duo-card"><p class="stamp">COMPILER</p><p><code>go build</code>. Wrong types, unknown names, unused variables and imports. Nothing ships until it's happy.</p></div>
+      <div class="duo-card"><p class="stamp">GOFMT / GOIMPORTS</p><p>Spacing, layout, imports. Run on every save. Never changes behaviour.</p></div>
+      <div class="duo-card"><p class="stamp">GO VET</p><p>Code that compiles but is almost surely wrong: Printf verbs, copied locks, slog pairs, unused results. Built in; a few of its checks (printf, slog, stdversion) also run inside <code>go test</code>.</p></div>
+      <div class="duo-card"><p class="stamp">STATICCHECK</p><p>Deeper bugs and waste: values never used, conditions always true, deprecated functions. Codes like <code>SA4006</code>.</p></div>
+      <div class="duo-card"><p class="stamp">GO FIX</p><p>Old style, not bugs. Rewrites code to newer idioms your <code>go</code> line allows.</p></div>
+      <div class="duo-card"><p class="stamp">GOVULNCHECK</p><p>Known security holes in your dependencies and your Go version, and whether your code reaches them.</p></div>
+      <div class="duo-card"><p class="stamp">GOLANGCI-LINT</p><p>Runs many linters (errcheck, ineffassign, staticcheck, ...) with one config. Keep the config strict.</p></div>
+      <div class="duo-card"><p class="stamp">TESTS</p><p><code>go test</code>. Whether the code does what <em>you</em> meant. No linter knows that.</p></div>
+      <div class="duo-card"><p class="stamp">DELVE</p><p><code>dlv</code>, the debugger: pause a running program and look inside. The notebook has a page on it.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-who-m" id="ex-who"></div>
+  <script type="application/json" id="ex-who-m">{"q": "Scoot's project depends on an old version of a compression library that has a published security problem, and one of Scoot's functions calls the affected code. Which crew member reports it?", "options": [
+    {"t": "govulncheck", "correct": true, "why": "Yes. It compares your dependencies' versions with the Go vulnerability database and follows your calls to see if you reach the affected function."},
+    {"t": "go vet", "why": "vet reads your own code for suspicious constructs. It doesn't know which library versions have security problems."},
+    {"t": "go fix", "why": "go fix modernizes style. It doesn't look at dependencies' versions at all."},
+    {"t": "The Compiler", "why": "The code is legal Go, so it compiles. A security hole isn't a type error."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 38: boss level">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="38"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Four questions crack this level. <b>Which stream</b> does each line go to? <b>Who returns</b>, and who slams the door with <code>os.Exit</code>? <b>Where does flag parsing stop</b>? And which crew member would catch the mistake?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. Everything together: a minimum level, <code>With</code>, main-calls-run and a deferred line. Type exactly what this program prints on standard output (the logger writes there too).", "hint": "The handler's minimum level is <b>Warn</b>. What happens to the <code>Info</code> call? And when does <samp>gate locked</samp> print: before or after the <code>Error</code> line in <code>main</code>?", "explain": "The <code>Info</code> line is below the minimum level, so it never appears. <samp>WARN</samp> does, with <samp>dock=3</samp> from <code>With</code> first. Then <code>run</code> returns its error, and returning runs the deferred <samp>gate locked</samp>. Only then does <code>main</code> log the <samp>ERROR</samp> line, quoting the error because it has spaces, and exit with 1. Three lines."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.go", "bug": 17, "prompt": "Boss 2. The manifest lines were written, so why is the screen empty apart from the error? Click the line that loses them.", "explain": "Lines 14 and 15 write into a <code>bufio.Writer</code>, a bucket that only reaches the screen when <code>Flush</code> runs (chapter 21). The flush is deferred on line 13. Then line 17's <code>log.Fatal</code> calls <code>os.Exit</code>, deferred calls never run, and the bucket is thrown away full. Return an error to <code>main</code> instead, or flush before exiting."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.go", "prompt": "Boss 3. A one-booth tool, run as <code>go run boss_fill.go weigh -kg 20</code>. Fill the blanks.", "blanks": [{"line": 10, "text": "os.Args[1]"}, {"line": 12, "text": "flag.NewFlagSet"}, {"line": 14, "text": "os.Args[2:]"}], "explain": "The switch looks at <code>os.Args[1]</code>, the subcommand <code>weigh</code>. <code>flag.NewFlagSet</code> makes the booth's own form. And the form must read only what comes <em>after</em> the subcommand: <code>os.Args[2:]</code>. Pass <code>os.Args[1:]</code> and parsing would stop at the word <code>weigh</code> straight away, leaving <code>-kg 20</code> unread."}</script>
+
+  <div data-ex="spot" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_crew.go", "bug": 11, "prompt": "Boss 4. Pit-crew thinking. A customer in Portugal should get <samp>Olá, Porto!</samp>, but every label says <samp>Hello, Porto!</samp>. The Compiler is happy. Click the line that loses the customer's language.", "explain": "Line 11 sets <code>greeting</code> back to <code>\"Hello\"</code>, so the <code>\"Olá\"</code> from line 9 is thrown away before anyone reads it. It compiles, because <code>greeting</code> <em>is</em> used on line 12. That's exactly the mistake staticcheck caught in panel 29 (<samp>SA4006</samp>: a value that is never used) and golangci-lint's ineffassign in panel 34. Delete line 11 to fix it."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.go", "columns": ["kg", "to", "leftover"], "given": [], "prompt": "Boss 5. Four command lines go through the same <code>ship</code> form (defaults: <code>-kg 1</code>, <code>-to Lisbon</code>). For each, fill in <code>*kg</code>, <code>*to</code> and how many words are left over. The inputs, in order: <code>-kg 4 Porto</code>, <code>Porto -kg 4</code>, <code>-to Faro -kg 2</code>, <code>-kg=9 -to=Braga x y</code>.", "explain": "1: <code>-kg 4</code> is read, then <code>Porto</code> stops parsing: <samp>4 Lisbon 1</samp>. 2: <code>Porto</code> comes first, so parsing stops at once and <em>nothing</em> is read: <samp>1 Lisbon 3</samp>. 3: both flags, in any order: <samp>2 Faro 0</samp>. 4: <code>-name=value</code> works too, and <code>x y</code> are left: <samp>9 Braga 2</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Scoot is about to email <code>dock</code> to a customer with a Windows PC. Which build command is best?", "options": [
+    {"t": "<code>GOOS=windows GOARCH=amd64 go build -trimpath -ldflags=\"-X main.release=v1.3.0\" -o dock.exe</code>", "correct": true, "why": "Yes. The right destination label, no local paths in crash reports, and a version stamp the customer can read with <code>dock version</code> when something goes wrong."},
+    {"t": "<code>go build -trimpath -ldflags=\"-X main.release=v1.3.0\" -o dock.exe</code>", "why": "No <code>GOOS</code>: on Scoot's Linux computer that builds a <b>Linux</b> program, just with a name ending in <code>.exe</code>. Windows can't run it. The name doesn't set the destination; <code>GOOS</code> does."},
+    {"t": "<code>GOOS=windows GOARCH=amd64 go run -ldflags=\"-X main.release=v1.3.0\" dock.go</code>", "why": "<code>go run</code> builds a temporary program and tries to run it here, and a Windows program can't run on Linux. Nothing is left to send."},
+    {"t": "<code>GOOS=windows GOARCH=amd64 go install -trimpath</code>", "why": "It builds for the right computer, but <code>go install</code> puts the crate in Scoot's own toolbox instead of handing over a <code>dock.exe</code> to send, and there's no version stamp."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 39: what you learned">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">What you learned in Chapter 27</p>
+    <ul class="recap">
+      <li><b>PRINTF FOR ANSWERS, LOGS FOR WHAT HAPPENED</b><code>log</code> writes to standard error with a time stamp (<code>log.SetFlags(0)</code> turns it off). <code>log/slog</code> writes structured lines: a level, a message and <code>key, value</code> pairs. <code>NewTextHandler</code> gives <samp>key=value</samp>, <code>NewJSONHandler</code> one JSON object per line. Odd pairs give <samp>!BADKEY</samp>; vet catches them.</li>
+      <li><b>ONLY MAIN MAY SLAM THE DOOR</b><code>log.Fatal</code> is <code>os.Exit(1)</code>: deferred calls never run, buffers aren't flushed. Return errors from <code>run()</code>; let <code>main</code> log and exit. Levels are numbers (Debug −4, Info 0, Warn 4, Error 8); <code>With</code> and <code>Group</code> add attributes; <code>NewMultiHandler</code> (Go 1.26) fans out.</li>
+      <li><b>ONE BOOTH, ONE FORM</b>Subcommands: switch on <code>os.Args[1]</code>, give each a <code>flag.NewFlagSet</code> and parse <code>os.Args[2:]</code>. Parsing stops at the first non-flag word. Usage errors exit with 2. <code>os/exec</code> runs other programs; <code>signal.NotifyContext</code> turns Ctrl+C into a cancelled context.</li>
+      <li><b>LABEL THE CRATE, NOT YOUR HOUSE</b><code>go build -o name</code> packs a binary and prints nothing on success. <code>GOOS</code>/<code>GOARCH</code> cross-compile for any of Go's targets. <code>-trimpath</code> keeps your folders out of panics, <code>-ldflags "-X main.release=..."</code> stamps a version, <code>go version -m</code> and <code>debug.ReadBuildInfo</code> read the build info. <code>go install</code> puts tools in <code>GOBIN</code>.</li>
+      <li><b>ONE CREW MEMBER, ONE JOB</b><code>go vet</code> (analyzers), staticcheck (<code>SA4006</code>), <code>go fix -diff</code> (modernizers), govulncheck (reachable security holes), goimports, golangci-lint (keep it strict). Pin tools with <code>go get -tool</code> and run them with <code>go tool</code>. Since Go 1.27, <code>go test</code> runs the stdversion check.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Logged, labelled, inspected. Shipped!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: next time, stopwatches and code review">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Coming up in Chapter 28, the last one: Stopwatches and Code Review</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><circle cx="130" cy="82" r="52" fill="#fff" stroke="#111" stroke-width="5"/><rect x="118" y="14" width="24" height="16" rx="4" fill="#FFD60A" stroke="#111" stroke-width="4"/><path d="M130 82 L130 46 M130 82 L156 96" stroke="#111" stroke-width="5" stroke-linecap="round"/><circle cx="130" cy="82" r="5" fill="#111"/><g stroke="#111" stroke-width="3"><path d="M130 34 v8 M178 82 h-8 M130 130 v-8 M82 82 h8"/></g></svg>
+          <p><b>Performance</b>: measure first. Benchmarks with <code>-benchmem</code>, allocations per run, <code>strings.Builder</code> vs <code>+=</code>, the stack and the heap, and a first look at <code>pprof</code>.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 260 150" aria-hidden="true"><rect x="40" y="16" width="180" height="120" rx="8" fill="#fff" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="3"><path d="M58 40 H180 M58 60 H200 M58 80 H150 M58 100 H190"/></g><rect x="150" y="70" width="90" height="40" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3"/><text x="195" y="96" text-anchor="middle" font-family="Bangers, sans-serif" font-size="16" fill="#111">REVIEW</text></svg>
+          <p><b>Code review</b>: Scoot and the Professor review a pull request panel by panel. Early returns, small interfaces, good names, shadowed variables, and a gallery of spot-the-bug snippets.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today the crew checked whether my code is <em>right</em>. Next time a stopwatch asks whether it's <em>fast</em>, and a reviewer asks whether a person can read it.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a stopwatch; and a page of code with a sticky note that says REVIEW.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch26.html">← Ch 26 · Walkie-Talkies and Waiters</a><a class="next" href="ch28.html">Ch 28 · Stopwatches and Code Review →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: handlers, binaries, analyzers</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Four machines from this chapter, opened up.</p></div>
+      </div>
+      <h3>How slog is put together</h3>
+      <p>A <code>*slog.Logger</code> is a thin front end. Each call such as <code>logger.Info(msg, args...)</code> first asks the handler <code>Enabled(ctx, level)</code>; if the answer is no, it returns at once, before turning arguments into attributes. Otherwise it builds a <code>slog.Record</code> (time, level, message, attributes) and passes it to the handler's <code>Handle</code> method. <code>slog.Handler</code> is an interface (chapter 14) with four methods, <code>Enabled</code>, <code>Handle</code>, <code>WithAttrs</code> and <code>WithGroup</code>, so anyone can write a handler: one that sends lines to a log service, one that colours the terminal, one that filters. <code>NewMultiHandler</code> is just a handler that calls several others. <code>logger.With(...)</code> calls <code>WithAttrs</code>, so a handler can format those attributes once instead of on every line.</p>
+      <p>The loose <code>"key", value</code> style is convenient but unchecked. The typed style, <code>logger.LogAttrs(ctx, slog.LevelInfo, "shipped", slog.Int("id", 42), slog.String("to", "Lisbon"))</code>, can't produce <samp>!BADKEY</samp> and allocates less memory, which matters in code that logs very often.</p>
+      <h3>What the log package's flags do</h3>
+      <p><code>log</code> keeps one default logger that writes to <code>os.Stderr</code>. <code>log.SetOutput(w)</code> sends it anywhere that has a <code>Write</code> method, such as a file. <code>log.New(w, prefix, flags)</code> makes extra loggers. <code>log.Fatal</code>, <code>log.Fatalf</code> and <code>log.Fatalln</code> print, then call <code>os.Exit(1)</code>; <code>log.Panic</code> prints, then panics, which <em>does</em> run deferred calls. <code>slog.SetDefault(logger)</code> also redirects the old <code>log</code> functions through your slog handler.</p>
+      <h3>Why cross-compiling is so easy in Go</h3>
+      <p>The Go compiler can produce machine code for every supported processor, and the standard library is written in Go (with small pieces of assembly per platform), so it can be compiled for any target on any computer. By default Go programs are <b>statically linked</b>: everything the program needs is inside the one file, so the target computer needs no Go and no extra libraries. The exception is <b>cgo</b>, Go's bridge to C code: with cgo on, you also need a C compiler for the target. This book's captures run with <code>CGO_ENABLED=0</code>, and plain Go programs like <code>dock</code> don't need cgo at all.</p>
+      <h3>Where build info lives</h3>
+      <p><code>go build</code> writes a small block of text into the binary: the Go version, the main module path and version, every dependency module with its version and checksum, and the build settings (<code>-trimpath</code>, <code>CGO_ENABLED</code>, <code>GOOS</code>, <code>GOARCH</code>, <code>GOAMD64</code>, and version-control details such as the commit when you build inside a git repository). <code>go version -m</code> reads that block from the file; <code>debug.ReadBuildInfo</code> reads it from memory. govulncheck can scan a binary the same way: <code>govulncheck -mode=binary ./dock</code>.</p>
+      <h3>How vet, go fix and staticcheck read your code</h3>
+      <p>They all <b>parse</b> your source into a tree, <b>type-check</b> it exactly as the Compiler does, then walk the tree looking for patterns. vet and go fix share one framework, <code>golang.org/x/tools/go/analysis</code>: each analyzer is a small program that reports diagnostics, and some diagnostics carry a <b>suggested fix</b>, a precise text edit. <code>go vet</code> prints diagnostics; <code>go fix</code> applies fixes. staticcheck and most golangci-lint linters use the same framework, which is why they can be mixed. Because these tools must understand the newest syntax, a tool built with an older Go may fail on newer code, as panel 34 showed.</p>
+      <h3>How govulncheck decides "your code is affected"</h3>
+      <p>It loads your module's packages, builds a <b>call graph</b> (who calls whom), and looks up each dependency's version in the Go vulnerability database, which records the affected versions <em>and the affected functions</em>. Only vulnerabilities whose functions your code can reach are listed under symbol results. The database also covers the standard library, so an old Go installation shows up too: the fix is then to update Go.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: logs, tools and releases</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>JSON logs in production, text on your laptop.</b> Services usually log JSON to standard error and let the platform collect it. A command-line option or environment variable picks the handler and the level, so you can switch on Debug lines without changing code.</li>
+        <li><b>Context-aware handlers.</b> Every slog method has a <code>...Context</code> twin, such as <code>logger.InfoContext(ctx, ...)</code>. A custom handler can pull a request ID out of the context (chapter 26) and add it to every line, so one request can be followed through the whole log.</li>
+        <li><b>Never log secrets.</b> Passwords, tokens and personal data end up in log files that many people can read. Give such types a <code>LogValue()</code> method (the <code>slog.LogValuer</code> interface) that returns a masked value.</li>
+        <li><b>Command-line libraries.</b> Many larger Go tools use third-party packages such as Cobra for nested subcommands, shell completion and generated help. Under the hood it's the same idea as panel 16: pick a booth, parse its form.</li>
+        <li><b>Release builds.</b> Projects usually build every platform in a build server, with <code>-trimpath</code> and a version from git tags, and publish one archive per <code>GOOS/GOARCH</code>. Tools such as GoReleaser automate this. <code>-ldflags="-s -w"</code> leaves out debugging information to make files smaller, at the price of less helpful crash reports.</li>
+        <li><b>Graceful shutdown.</b> Servers combine <code>signal.NotifyContext</code> with <code>http.Server.Shutdown(ctx)</code> (chapter 26): stop accepting new requests, finish the ones in flight, then exit.</li>
+        <li><b>The crew on every change.</b> A typical project's build server runs <code>gofmt -l</code> (fails if any file is listed), <code>go vet ./...</code>, a linter, <code>go test -race ./...</code> and <code>govulncheck ./...</code>. Editors run gopls, which shows vet and staticcheck findings as you type.</li>
+        <li><b>Delve, the debugger.</b> <code>go install github.com/go-delve/delve/cmd/dlv@latest</code>, then <code>dlv debug</code> in a package folder starts your program paused. <code>break main.go:20</code> sets a breakpoint; <code>condition 1 crates == 0</code> makes breakpoint 1 stop only when that's true (a <b>conditional breakpoint</b>); <code>continue</code>, <code>next</code>, <code>step</code> and <code>print lang</code> move and look around; <code>goroutines</code> lists every goroutine and <code>goroutine 7</code> switches to one, which helps with chapter 24's helpers. Editors with the Go extension use Delve behind their debug buttons. Delve isn't installed on this book's capture machine, so no Delve output is shown here.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>log.Fatal</code> is a fancy <code>log.Println</code>."</b> It exits the program, skipping every deferred call (panel 5, Boss 2).</li>
+        <li><b>"Logs and output are the same thing."</b> Output is the program's answer, on standard output. Logs describe what happened, on standard error or in a file.</li>
+        <li><b>"slog will complain if I forget a value."</b> It quietly writes <samp>!BADKEY</samp>. vet complains; slog doesn't.</li>
+        <li><b>"Debug lines cost nothing when they're switched off."</b> The call is skipped cheaply, but its arguments are still evaluated first. Don't compute something expensive just to pass it to <code>Debug</code>.</li>
+        <li><b>"Flags can go anywhere."</b> The <code>flag</code> package stops at the first word that isn't a flag (panel 17's predict, Boss 5).</li>
+        <li><b>"Naming the file <code>dock.exe</code> makes it a Windows program."</b> Only <code>GOOS=windows</code> does (Boss 6).</li>
+        <li><b>"A binary built on my Mac runs on any Mac."</b> <code>darwin/arm64</code> and <code>darwin/amd64</code> are different crates. An arm64 crate won't run on an Intel Mac; an amd64 crate runs on Apple silicon only through Apple's Rosetta translator.</li>
+        <li><b>"<code>go build</code> printed nothing, so it didn't work."</b> Silence is success.</li>
+        <li><b>"If it compiles, the linters have nothing to say."</b> Panels 28 and 29: every one of those programs compiled.</li>
+        <li><b>"The go line in go.mod picks which Go runs my code."</b> It's the minimum version you promise to support (and the language features you may use). With <code>GOTOOLCHAIN=auto</code> a newer go line can make the go command download a newer toolchain, but it never makes an old one pretend.</li>
+        <li><b>"govulncheck found nothing, so my program is secure."</b> It only knows <em>published</em> vulnerabilities in Go modules and the standard library. Your own bugs are your tests' job.</li>
+        <li><b>"Turning a linter off fixes the warnings."</b> It hides them (panel 34).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Go 1.27.3 and Go 1.24.7</summary>
+    <div class="page-body">
+      <p>Every program in this chapter was also run with Go 1.24.7, with each module's <code>go.mod</code> lowered to <code>go 1.24</code> for that run only. These differed:</p>
+      <ul>
+        <li><b><code>slog_multi.go</code></b>: <code>slog.NewMultiHandler</code> is new in Go 1.26 (panel 14 shows the compile error).</li>
+        <li><b><code>signal_self.go</code></b>: before Go 1.26, a context from <code>NotifyContext</code> had no cause naming the signal:</li>
+      </ul>
+      <pre class="term" data-run="signal_self.go" data-alt></pre>
+      <ul>
+        <li><b><code>stdver.go</code></b>: on Go 1.24, <code>strings.CutLast</code> doesn't exist, so even <code>go build</code> fails, and <code>go get go@1.27.3</code> is refused:</li>
+      </ul>
+      <pre class="term" data-run="stdver.go" data-alt></pre>
+      <ul>
+        <li><b><code>lint.go</code></b>: with the module lowered to <code>go 1.24</code>, the old golangci-lint 2.5.0 accepts it and finds the same three issues as the new one; the pinned v2.15.0 needs Go 1.26 to build. That's panel 34's rule seen from the other side:</li>
+      </ul>
+      <pre class="term" data-run="lint.go" data-alt></pre>
+      <ul>
+        <li><b><code>pitcrew.go</code>, <code>imports.go</code></b>: staticcheck v0.8.2, govulncheck v1.9.0 and x/tools v0.52.0 need Go 1.26 or later to build. Go 1.24's <code>go fix</code> is the old one, with no <code>-diff</code> and no modernizers (also <code>fix_predict.go</code>). Go 1.24's vet prints <samp># package</samp> header lines that 1.27's doesn't (also <code>slog_vet.go</code>).</li>
+        <li><b><code>doc.go</code></b>: no <code>CutLast</code>, no <code>-ex</code> and no <code>package@version</code> in Go 1.24's <code>go doc</code>.</li>
+        <li><b><code>build.go</code>, <code>buildinfo.go</code>, <code>dock.go</code></b>: the build info says <samp>go1.24.7</samp>; everything else is the same.</li>
+        <li><b><code>trim.go</code></b>: the same panic, at a different <samp>+0x</samp> offset.</li>
+        <li><b><code>vet_many.go</code></b>: the same six findings, with Go 1.24's header lines.</li>
+        <li><b><code>log_default.go</code></b>: only the time stamps. (<code>slog_default.go</code> prints the clock too; in this capture both versions happened to print the same second.)</li>
+      </ul>
+      <p>Version gates for this chapter: <code>log/slog</code> in Go 1.21, <code>for i := range n</code> in 1.22, <code>tool</code> lines in go.mod and <code>go get -tool</code> in 1.24, <code>slog.NewMultiHandler</code>, the cause in <code>signal.NotifyContext</code> and the modernizer <code>go fix</code> in 1.26; <code>go doc -ex</code>, <code>go doc package@version</code>, more modernizers and stdversion in <code>go test</code> in 1.27.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Logs</h3>
+      <ol>
+        <li>Make a folder, <code>cd</code> into it, and run <code>go mod init example.com/dock</code>.</li>
+        <li>Copy <code>slog_text.go</code> from panel 10 into <code>main.go</code> and run <code>go run .</code>. Delete the <code>ReplaceAttr</code> option and run again: now you see your own clock.</li>
+        <li>Change <code>os.Stdout</code> to <code>os.Stderr</code>, then run <code>go run . 2&gt; dock.log</code>. The screen stays empty and <code>dock.log</code> fills up. (PowerShell understands <code>2&gt;</code> too.)</li>
+        <li>Write <code>slog.Info("x", "id")</code> and run <code>go vet .</code>.</li>
+      </ol>
+      <h3>2. A tool with booths</h3>
+      <ol>
+        <li>Put panel 16's <code>dock.go</code> in a new module as <code>main.go</code>. Try <code>go run . ship -kg 3</code>, <code>go run . ship -h</code> and <code>go run . fly</code>.</li>
+        <li><code>go build -o dock</code> (Windows: <code>go build -o dock.exe</code>), then <code>./dock version</code> (Windows: <code>.\dock.exe version</code>).</li>
+        <li><code>go install</code>, then run <code>dock</code> from any folder. If it says "command not found", add the folder from <code>go env GOPATH</code> plus <code>/bin</code> to your PATH: on macOS and Linux add <code>export PATH="$PATH:$(go env GOPATH)/bin"</code> to <code>~/.zshrc</code> or <code>~/.bashrc</code>; on Windows the Go installer usually adds <code>%USERPROFILE%\go\bin</code> for you.</li>
+      </ol>
+      <h3>3. Ship it</h3>
+      <ol>
+        <li>macOS/Linux: <code>GOOS=windows GOARCH=amd64 go build -o dock.exe</code>. Windows PowerShell: <code>$env:GOOS="linux"; $env:GOARCH="arm64"; go build -o dock-pi</code>, then <code>Remove-Item Env:GOOS, Env:GOARCH</code> to go back to normal.</li>
+        <li><code>go tool dist list</code> shows every target. If you have a Raspberry Pi or a second computer, copy a crate across and run it.</li>
+        <li>Build the panicking <code>trim.go</code> with and without <code>-trimpath</code>, and compare the paths.</li>
+        <li><code>go version -m dock</code> on your build, and on any Go program you have installed.</li>
+      </ol>
+      <h3>4. Call the crew</h3>
+      <ol>
+        <li><code>go get -tool honnef.co/go/tools/cmd/staticcheck@latest</code> and <code>go get -tool golang.org/x/vuln/cmd/govulncheck@latest</code>, then <code>go tool staticcheck ./...</code> and <code>go tool govulncheck ./...</code> (this one needs the internet).</li>
+        <li>Put panel 29's program in a module, <code>go get golang.org/x/text@v0.3.7</code>, run govulncheck, then <code>go get golang.org/x/text@latest</code> and run it again.</li>
+        <li><code>go fix -diff ./...</code> on an old project of yours.</li>
+        <li>golangci-lint: install it as its website recommends (a released binary built with a recent Go), or pin it with <code>go get -tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest</code>. The first build downloads many modules and takes a few minutes.</li>
+      </ol>
+      <p class="os-note">Your time stamps, panic offsets, file sizes and vulnerability results will differ from this page: the vulnerability database grows every week. Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>logging, log</dt><dd>Writing down what a program does as it runs, one line per event, for people to read later.</dd>
+        <dt>standard error</dt><dd>The second output stream, for messages about the run rather than results. <code>2&gt;</code> redirects it.</dd>
+        <dt>time stamp</dt><dd>The date and time written at the start of a log line.</dd>
+        <dt>structured log</dt><dd>A log whose lines have fixed fields (level, message, key-value attributes) that programs can read.</dd>
+        <dt>level</dt><dd>How serious a log line is: Debug (−4), Info (0), Warn (4), Error (8).</dd>
+        <dt>attribute</dt><dd>A key and a value attached to a log line, such as <code>id=42</code>.</dd>
+        <dt>handler</dt><dd>The part of slog that decides whether to write a line, what it looks like and where it goes.</dd>
+        <dt><code>!BADKEY</code></dt><dd>What slog writes for a value that has no key.</dd>
+        <dt>subcommand</dt><dd>The first word after a tool's name that picks what it should do, like <code>build</code> in <code>go build</code>.</dd>
+        <dt>FlagSet</dt><dd>A separate set of flags, one per subcommand.</dd>
+        <dt>usage message</dt><dd>The help text a tool prints when it's used wrongly or asked with <code>-h</code>.</dd>
+        <dt>exit code 2</dt><dd>By custom, "the command was used wrongly".</dd>
+        <dt>signal, SIGINT, SIGTERM</dt><dd>A message from the system to a running program; Ctrl+C sends SIGINT, a polite stop request is SIGTERM.</dd>
+        <dt>binary, executable</dt><dd>A file of machine code that runs on its own.</dd>
+        <dt><code>GOOS</code>, <code>GOARCH</code></dt><dd>The target operating system and processor for a build: the destination label.</dd>
+        <dt>cross-compiling</dt><dd>Building a program on one kind of computer for another kind.</dd>
+        <dt><code>GOBIN</code></dt><dd>The folder <code>go install</code> puts programs in; <code>$HOME/go/bin</code> when it's not set.</dd>
+        <dt><code>-trimpath</code></dt><dd>A build flag that removes your computer's folder names from the binary.</dd>
+        <dt>linker, <code>-ldflags</code>, <code>-X</code></dt><dd>The linker joins compiled pieces into one binary; <code>-ldflags</code> passes it options; <code>-X</code> sets a string variable.</dd>
+        <dt>build info</dt><dd>The Go version, modules and settings recorded inside every Go binary.</dd>
+        <dt>static linking</dt><dd>Putting everything a program needs into its one file.</dd>
+        <dt>analyzer</dt><dd>One small checker inside vet, go fix or a linter, looking for one kind of problem.</dd>
+        <dt>linter</dt><dd>A tool that checks code for likely mistakes without running it.</dd>
+        <dt>modernizer</dt><dd>A <code>go fix</code> analyzer that rewrites code into a newer idiom without changing what it does.</dd>
+        <dt>diff</dt><dd>A listing of changes between two versions of a file: <samp>-</samp> lines removed, <samp>+</samp> lines added.</dd>
+        <dt>vulnerability</dt><dd>A known security problem in some versions of a piece of software.</dd>
+        <dt>call graph</dt><dd>A map of which functions call which; govulncheck uses it to see if you reach a vulnerable function.</dd>
+        <dt>tool directive</dt><dd>A <code>tool</code> line in go.mod that pins a program, run with <code>go tool name</code> (Go 1.24).</dd>
+        <dt>stdversion</dt><dd>The vet analyzer that flags standard library names newer than the module's <code>go</code> line.</dd>
+        <dt>debugger, breakpoint</dt><dd>A program (Delve) that pauses yours so you can look inside; a breakpoint is where it pauses.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://pkg.go.dev/log/slog">Package log/slog</a> and the Go Blog post <a href="https://go.dev/blog/slog">Structured Logging with slog</a>; <a href="https://pkg.go.dev/log">package log</a>.</li>
+        <li><a href="https://pkg.go.dev/flag">Package flag</a>, <a href="https://pkg.go.dev/os/exec">os/exec</a> and <a href="https://pkg.go.dev/os/signal">os/signal</a>.</li>
+        <li><a href="https://go.dev/doc/tutorial/compile-install">Tutorial: Compile and install the application</a>, and <code>go help build</code> in your terminal.</li>
+        <li><a href="https://pkg.go.dev/cmd/vet">cmd/vet</a>, <a href="https://go.dev/doc/go1.26">Go 1.26 release notes</a> (the new <code>go fix</code>) and <a href="https://go.dev/doc/go1.27">Go 1.27 release notes</a> (<code>go doc</code>, stdversion).</li>
+        <li><a href="https://go.dev/doc/security/vuln/">Go Vulnerability Management</a> and the <a href="https://go.dev/doc/tutorial/govulncheck">govulncheck tutorial</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/logging">Go by Example</a>: Logging, Command-Line Subcommands, Spawning Processes and Signals.</li>
+        <li><a href="https://staticcheck.dev/docs/checks/">staticcheck's list of checks</a>, each with an explanation, and <a href="https://golangci-lint.run/">golangci-lint's documentation</a>.</li>
+        <li><a href="https://github.com/go-delve/delve/tree/master/Documentation">Delve's documentation</a>, including the command-line reference.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #16 not using linters.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>, <code>CGO_ENABLED=0</code>) on 2026-11-08, in <code>/home/you/go-ch27</code>, whose <code>go.mod</code> was written by the real <code>go mod init goch27</code> (it wrote <code>go 1.27.3</code>). The build, tooling and lint demonstrations use small modules in subfolders (<code>dock</code>, <code>broken</code>, <code>trim</code>, <code>crew</code>, <code>label</code>, <code>lint</code>, <code>fixdemo</code>), each made with the real <code>go mod init</code>; the file a panel shows is linked into its module folder (for example <code>dock/main.go</code> is <code>dock.go</code>, <code>crew/main.go</code> is <code>pitcrew.go</code>), so the page and its exercises read exactly the file that was built. Commands are shown as typed, and each of those sessions starts with a visible <code>cd</code> into its module folder. Three of those <code>cd</code> steps also reset state so runs repeat, each explained in a "How this run was really made" note under its terminal: <code>build.go</code> and <code>install.go</code> delete crates that earlier runs left, and <code>stdver.go</code> writes the <code>go 1.24</code> go.mod that its <code>go get</code> step then upgrades. <code>vet_many.go</code>'s session starts with a visible <code>set -o pipefail</code>, so the exit code shown is vet's, not <code>sort</code>'s. Times are removed only in commands you can see (<code>sed</code>, <code>cut</code>, <code>sort</code>), and the slog programs drop the time with <code>ReplaceAttr</code> in their own code. <code>log_default.go</code> and <code>slog_default.go</code> print the real clock: they are marked non-deterministic, shown as "one possible run", and never used as answers. staticcheck v0.8.2, govulncheck v1.9.0, goimports (x/tools v0.52.0) and golangci-lint v2.15.0 are pinned with <code>tool</code> lines and built by Go 1.27.3; the older golangci-lint 2.5.0 in panel 34 is the copy installed in <code>/usr/local/bin</code> on the capture machine. govulncheck reads a copy of the Go vulnerability database (vuln.go.dev, modified 2026-11-05) saved in <code>/home/you/go-ch27/.vulndb</code>, because the capture runs offline. <code>signal_self.go</code> sends itself SIGINT because nobody can press Ctrl+C during a capture. Every program was also run with Go 1.24.7 (see the version notes).</p>
+  <p>The pit crew, the run walker, the build road map and the slog handler machine are teaching models; each checks itself against those runs and shows a badge. The road map draws vetting, compiling and linking as one GO BUILD step.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go 1.26 release notes (the rewritten <code>go fix</code> built on the analysis framework, <code>slog.NewMultiHandler</code>, <code>NotifyContext</code>'s cause, <code>cmd/doc</code> removed) and Go 1.27 release notes (new modernizers, <code>go doc package@version</code> and <code>-ex</code>, stdversion in <code>go test</code>); the Go Blog post "Structured Logging with slog" (default output, text vs JSON handlers, key-value pairs and the vet check, levels as integers, <code>With</code> and groups, <code>LogAttrs</code> for speed); Go by Example, "Command-Line Subcommands" (one FlagSet per subcommand, <code>ExitOnError</code>, a usage message for a missing or unknown subcommand); the output of <code>go help fix</code>, <code>go tool fix help</code> and <code>go help doc</code> on Go 1.27.3; and, as summarised in this book's research map, Go by Example (Logging, Spawning and Exec'ing Processes, Signals), Learning Go 2nd edition chapters 11 and 13, roadmap.sh's Go topics (slog, building CLIs, building executables, cross-compilation, linters, govulncheck), the go.dev documentation for vet, gopls and diagnostics, and 100 Go Mistakes #16 and #98.</p>
+  <p>Scoot, the Professor, the Compiler, Specs and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
