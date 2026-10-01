@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Helpers and Batons</title>
+<meta name="description" content="Chapter 24 of the Go book of Pip &amp; Friends, a comic course: goroutines as kitchen helpers (go f(), concurrency and parallelism, main returning closes the kitchen), sync.WaitGroup as the head chef's clipboard (Add, Done, Wait and Go 1.25's wg.Go), then channels as relay batons and mailboxes (unbuffered handoffs, buffered capacity, close, comma-ok, range, directional types), select with default and time.After, nil channels, and every classic deadlock and panic read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch24.css">
+<script defer src="../data/go-ch24.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch24.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch23.html">&larr; Ch 23</a><span aria-current="page">Ch 24 of 28</span><a href="ch25.html">Ch 25 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 24 · INTERMEDIATE</p>
+    <h1 id="cover-h">HELPERS AND BATONS</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, cheers with both arms up.</p>
+    <p class="caption blurb">Until now, every Go program you wrote did one thing at a time. Today the depot kitchen hires <b>helpers</b>: functions that run at the same time as each other, called <b>goroutines</b>. You'll learn how the head chef waits for them with a <b>clipboard</b>, how helpers pass results along a <b>channel</b> like runners passing a relay baton, how a <b>mailbox</b> with slots lets them stop waiting for each other, and how <code>select</code> watches several doors at once. You'll also meet the runtime's most famous message: <samp>all goroutines are asleep - deadlock!</samp> About 140 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One cook, many hands: goroutines</a></li>
+      <li><a href="#part-2">The clipboard: sync.WaitGroup</a></li>
+      <li><a href="#part-3">The relay baton: unbuffered channels</a></li>
+      <li><a href="#part-4">The mailbox: buffered channels, close and range</a></li>
+      <li><a href="#part-5">Watching several doors: select</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE COOK, MANY HANDS<small><code>go f()</code>, and why main must not leave early</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: the head chef is swamped">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Lunchtime at the depot kitchen. The head chef cooks every order himself, one after another. The queue reaches the door.</p>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The head chef says: </span>Soup, then salad, then pie, then soup again... I can only stir one pot at a time! While the pie bakes, I just stand there <b>waiting</b>.</p>
+      </div>
+      <svg class="char" data-char="chef"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Need more hands? Just say <b>go</b>! In Go, one little word hires a helper who cooks <em>at the same time</em> as you.</p></div>
+    </div>
+    <p class="sr-only">Picture: the head chef, in a tall white hat, looks flustered. Scoot points at him with a grin.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: one cook versus three helpers, on a timeline">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Each dish takes three minutes. Read each row from left to right, like a clock.</p>
+    <div class="lanes" role="img" aria-label="Timeline. Top row, one cook: soup from minute 0 to 3, salad from 3 to 6, pie from 6 to 9. Below, three helpers: helper 1 cooks soup, helper 2 salad and helper 3 pie, all from minute 0 to 3, then they are idle.">
+      <div class="lane"><b>ONE COOK</b><div class="bars"><span class="bar w1">soup</span><span class="bar w1">salad</span><span class="bar w1">pie</span></div></div>
+      <div class="lane"><b>HELPER 1</b><div class="bars"><span class="bar w1">soup</span><span class="bar gap w2">free</span></div></div>
+      <div class="lane"><b>HELPER 2</b><div class="bars"><span class="bar w1">salad</span><span class="bar gap w2">free</span></div></div>
+      <div class="lane"><b>HELPER 3</b><div class="bars"><span class="bar w1">pie</span><span class="bar gap w2">free</span></div></div>
+      <p class="ticks" aria-hidden="true"><span>0 min</span><span>3</span><span>6</span><span>9</span></p>
+    </div>
+    <div class="helpers-row" aria-hidden="true">
+      <div class="kh"><svg class="char sm" data-char="kitchenhand" data-label="1" data-state="busy"></svg><span>helper 1</span></div>
+      <div class="kh"><svg class="char sm" data-char="kitchenhand" data-label="2" data-state="busy"></svg><span>helper 2</span></div>
+      <div class="kh"><svg class="char sm" data-char="kitchenhand" data-label="3" data-state="busy"></svg><span>helper 3</span></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Three dishes in three minutes instead of nine. Each helper is a <b>goroutine</b> (say "go-routine"): a function call that runs on its own, side by side with the rest of the program.</p></div>
+    </div>
+    <p class="sr-only">Picture: three small round kitchen helpers with chef's hats and numbered aprons, 1, 2 and 3, each stirring a pot.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: the program you know, one step at a time">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">First, the kitchen as it was: one cook. Every program in this book so far ran like this, one line after another.</p>
+    <span class="file-tab">sequential.go</span>
+    <pre class="code" data-src="sequential.go"></pre>
+    <pre class="term wrap" data-run="sequential.go"></pre>
+    <p class="caption soft">The order is always exactly the order of the code: <code>main</code> calls <code>cook("soup")</code> and waits for it to return before calling <code>cook("salad")</code>. The function that runs your whole program, <code>main</code>, is our <b>head chef</b>.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: the go keyword, and a surprise">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Put the word <code>go</code> in front of a function call and Go starts that call as a new goroutine, then carries on <b>immediately</b> without waiting for it. Here is the smallest possible helper.</p>
+    <span class="file-tab">nothing.go</span>
+    <pre class="code" data-src="nothing.go"></pre>
+    <p class="caption soft">One possible run (this program is marked as varying from run to run, so it is never used as an answer key):</p>
+    <pre class="term wrap" data-run="nothing.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Nothing on the screen?! No error either, and exit code 0. Where did my helper go?</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 5: when main returns, the kitchen closes">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="CLICK!" data-seed="5"></svg>
+    <p class="caption">Line 6 hired a helper. Then <code>main</code> reached its closing brace and returned. When <code>main</code> returns, the whole program ends at once, and every goroutine still running is stopped mid-dish. Nobody waits for them, and nobody tells you.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The head chef says: </span>My shift's over, I'm locking up! ...Oh, was someone still cooking?</p></div>
+      <svg class="char" data-char="chef"></svg>
+    </div>
+    <div class="helpers-row" aria-hidden="true">
+      <div class="kh"><svg class="char sm" data-char="kitchenhand" data-label="1" data-state="busy"></svg><span>helper 1</span></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>when main leaves, the kitchen closes.</b> The helper might print first if it's very quick, or it might not get the chance. A program that only works when it's lucky is a broken program.</p></div>
+    </div>
+    <p class="sr-only">Picture: the head chef walks out and flips off the lights while helper 1 is still stirring a pot. A burst says CLICK.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-nothing-m" id="ex-nothing"></div>
+  <script type="application/json" id="ex-nothing-m">{"program": "nothing.go", "q": "You run <code>nothing.go</code> on many different computers. What can it print?", "options": [
+    {"t": "Nothing, or <samp>from goroutine</samp>: whichever happens first", "correct": true, "why": "Right: the helper printing and main returning race each other. Nothing makes main wait, so it's a race between the two, and Go promises neither result."},
+    {"t": "Always <samp>from goroutine</samp>, as the <code>go</code> line runs first", "why": "The <code>go</code> line only <em>starts</em> the helper; main doesn't wait for it to finish, so main can return first."},
+    {"t": "Always nothing, because goroutines can't print", "why": "Goroutines can print like any function. It's only that main may return before this one gets the chance."},
+    {"t": "A compile error: <code>go</code> needs a function you wrote yourself", "why": "<code>go</code> works with any function or method call, including <code>fmt.Println(...)</code>. It compiled and ran with exit code 0."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 6: helpers really do save time">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Is hiring helpers worth it? Each <code>cook()</code> here waits 300 milliseconds, like a pie in the oven. The program times one cook doing three dishes, then three helpers doing one each. (<code>wg.Go</code> and <code>wg.Wait</code> make main wait for the helpers: that's part 2.)</p>
+    <span class="file-tab">speed.go</span>
+    <pre class="code" data-src="speed.go"></pre>
+    <p class="caption soft">One run: real clocks change a little every time, so this is never an answer key. The times are rounded to tenths of a second.</p>
+    <pre class="term wrap" data-run="speed.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>In this run the three waits overlapped, so they took about the time of one. That's the big win: while one helper is waiting (for an oven, a network, a disk), the others keep working.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: concurrency and parallelism">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Two words people mix up. Both are about doing several things, but they're not the same.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">CONCURRENCY</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><circle cx="110" cy="70" r="26" fill="#F7C59F" stroke="#111" stroke-width="5"/><path d="M60 40 Q110 -6 160 40" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="8 7"/><circle cx="60" cy="44" r="13" fill="#FFD60A" stroke="#111" stroke-width="4"/><circle cx="160" cy="44" r="13" fill="#C9F2D9" stroke="#111" stroke-width="4"/><circle cx="110" cy="16" r="13" fill="#FFE1E1" stroke="#111" stroke-width="4"/><path d="M90 100 v14 M130 100 v14" stroke="#111" stroke-width="6" stroke-linecap="round"/></svg>
+        <h3>Dealing with many jobs at once<small>how you organise the work</small></h3>
+        <p>One juggler, three balls. Only one ball is in a hand at any instant, but all three are "in progress". Goroutines let you <b>write</b> a program as several jobs that overlap.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">PARALLELISM</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><circle cx="60" cy="60" r="24" fill="#F7C59F" stroke="#111" stroke-width="5"/><circle cx="160" cy="60" r="24" fill="#F7C59F" stroke="#111" stroke-width="5"/><circle cx="60" cy="18" r="11" fill="#FFD60A" stroke="#111" stroke-width="4"/><circle cx="160" cy="18" r="11" fill="#C9F2D9" stroke="#111" stroke-width="4"/><path d="M50 88 v20 M70 88 v20 M150 88 v20 M170 88 v20" stroke="#111" stroke-width="6" stroke-linecap="round"/></svg>
+        <h3>Doing many jobs at the same instant<small>needs several CPU cores</small></h3>
+        <p>Two jugglers, each with a ball in hand at the same moment. That needs real hardware: a computer's processor has several <b>cores</b>, and each can run code at the same time.</p>
+      </div>
+    </div>
+    <span class="file-tab">cores.go</span>
+    <pre class="code" data-src="cores.go"></pre>
+    <pre class="term wrap" data-run="cores.go"></pre>
+    <p class="caption soft">This book's machine has 2 cores; yours probably has more, so your first two lines will differ. <code>GOMAXPROCS</code> is how many goroutines Go lets run <em>at the same instant</em>; it starts out equal to the number of cores. <code>runtime.NumGoroutine()</code> counts goroutines: right now there's only one, <code>main</code> itself. Main is a goroutine too.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Go's <b>scheduler</b>, part of the runtime built into every Go program, shares those cores among all your goroutines. You write concurrent code; on a machine with several cores, Go runs it in parallel when it can.</p></div>
+    </div>
+    <p class="sr-only">Pictures: one juggler with three balls in the air; two jugglers, each holding a ball at the same time.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-par-m" id="ex-par"></div>
+  <script type="application/json" id="ex-par-m">{"q": "A program starts 50 goroutines on a laptop where <code>GOMAXPROCS</code> is 8. Which is true?", "options": [
+    {"t": "All 50 are in progress, but at most 8 run at once", "correct": true, "why": "Right: the scheduler swaps them in and out. 50 concurrent jobs, up to 8 truly in parallel. Goroutines that are waiting (for a timer, a channel, the network) don't use a core at all."},
+    {"t": "Only the first 8 start, and the other 42 fail", "why": "There's no limit like that: panel 15 starts 10,000. Extra goroutines simply wait for a turn."},
+    {"t": "The program needs 50 cores, or it crashes", "why": "Concurrency doesn't need one core per goroutine. One core can juggle thousands."},
+    {"t": "They run one after another in the order they were started", "why": "The scheduler promises no order at all. Part 2 shows real runs finishing in different orders."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE CLIPBOARD<small>sync.WaitGroup: Add, Done, Wait and wg.Go</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 8: the head chef's clipboard">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">The fix for panel 5: before the head chef goes home, he checks a clipboard listing who is still cooking. In Go the clipboard is a <code>sync.WaitGroup</code>, from the standard library's <code>sync</code> package ("sync" is short for synchronisation: making things happen in a safe order).</p>
+    <div class="duo three">
+      <div class="duo-card"><span class="stamp">ADD</span><h3><code>wg.Add(1)</code><small>before hiring a helper</small></h3><p>Write one more name on the clipboard. The hidden counter goes up by one.</p></div>
+      <div class="duo-card"><span class="stamp">DONE</span><h3><code>wg.Done()</code><small>the helper's last act</small></h3><p>Cross one name off. The counter goes down by one. Usually written <code>defer wg.Done()</code> (chapter 14) so it happens however the helper finishes.</p></div>
+      <div class="duo-card dashed"><span class="stamp">WAIT</span><h3><code>wg.Wait()</code><small>the head chef, at the door</small></h3><p>Blocks (stands still, doing nothing) until the counter is back to 0. If it's already 0, it returns at once.</p></div>
+    </div>
+    <div class="clip" role="img" aria-label="A clipboard titled Still cooking, listing helper 1 soup crossed off, helper 2 salad, helper 3 pie. Counter: 2.">
+      <h3>STILL COOKING</h3>
+      <ol><li><s>helper 1 · soup</s> ✓ done</li><li>helper 2 · salad</li><li>helper 3 · pie</li></ol>
+      <p class="count">counter = 2 → Wait keeps waiting</p>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="chef"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The head chef says: </span>I lock up only when every name is crossed off. Catchphrase: <b>Add before go, Done when finished, Wait before leaving.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: three helpers and a clipboard">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">The loop hires one helper per dish. Each helper is an <b>anonymous function</b> (a function with no name, chapter 17) started with <code>go</code>; the <code>()</code> at the end of line 15 calls it.</p>
+    <span class="file-tab">wg_basic.go</span>
+    <pre class="code" data-src="wg_basic.go"></pre>
+    <p class="caption soft">One possible run:</p>
+    <pre class="term wrap" data-run="wg_basic.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Look at the order of the helper lines: nothing makes them follow the loop, and another run can shuffle them. But <samp>all dishes ready</samp> is last, every time, because line 17 waits for the clipboard to empty. That's the one thing <code>Wait</code> guarantees.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: helpers finish in any order">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">How unpredictable is the order? This program runs four rounds. In each round, five helpers chop vegetables for a while (the <code>chop</code> loop just keeps the CPU busy), then call out their number.</p>
+    <span class="file-tab">order.go</span>
+    <pre class="code" data-src="order.go"></pre>
+    <p class="caption soft">One possible run (never an answer key):</p>
+    <pre class="term wrap" data-run="order.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Four rounds of the same code, and nothing makes the order stay the same from one round to the next. Run it again and you may get others. Catchphrase: <b>helpers finish in any order.</b> If your program needs an order, <em>you</em> must arrange it.</p></div>
+    </div>
+    <p class="caption soft">Two honest notes. First, without the chopping, tiny goroutines often fall into a habitual order, such as the newest one first. <code>order_quick.go</code> is the same program with <code>chop</code> removed; here is one possible run of it. A habit is luck, not a promise: it changes with the machine, the load and the Go version.</p>
+    <span class="file-tab">order_quick.go</span>
+    <pre class="code" data-src="order_quick.go"></pre>
+    <pre class="term wrap" data-run="order_quick.go"></pre>
+    <p class="caption soft">Second, two goroutines printing at once is safe here because each <code>fmt.Print</code> writes its piece in one go; sharing ordinary variables between goroutines is a different story, and chapter 25's whole subject.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-orders-m" id="ex-orders"></div>
+  <script type="application/json" id="ex-orders-m">{"program": "wg_basic.go", "q": "Which of these could a run of <code>wg_basic.go</code> print? (Each answer shows the four lines, separated by slashes.)", "options": [
+    {"t": "salad / soup / pie / all dishes ready", "correct": true, "why": "Possible: the three helpers can finish in any of six orders, and the last line always waits for all of them."},
+    {"t": "soup / all dishes ready / salad / pie", "why": "Impossible: line 17's <code>wg.Wait()</code> doesn't return until all three helpers have called <code>Done</code>, and each prints before its <code>Done</code> runs."},
+    {"t": "all dishes ready", "why": "That's what you'd get without <code>Wait</code> if main won the race (panel 13). With <code>Wait</code>, every helper finishes first."},
+    {"t": "soup / salad / all dishes ready", "why": "Impossible: Wait waits for all three. The pie helper must print before the last line."}]}</script>
+
+  <section class="panel clean tracer" aria-label="Panel 11: the clipboard counter, step by step" data-tracer="tr-wg" id="tr-wg-box">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Printing from helpers gives a jumbled order. A neater pattern: give each helper <b>its own slot</b> to write in, and let only main print, after <code>Wait</code>. Step through one possible run and watch the counter. Each helper gets its own frame, because each goroutine has its own stack of function calls.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-wg-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-wg">{"program": "slots.go", "steps": [{"line": 9, "note": "The run starts in <code>main</code>, the head chef. Line 9 is next.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}}, {"line": 10, "note": "Line 9: <code>dishes</code> names a slice of three orders.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}}, "changed": ["dishes"]}, {"line": 11, "note": "Line 10: <code>ready</code> is a slice with one empty slot per dish. Each helper will write into <b>its own</b> slot.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}}, "changed": ["ready"]}, {"line": 12, "note": "Line 11: a fresh <code>sync.WaitGroup</code>, the clipboard. Its counter starts at 0. (The counter is hidden inside; the picture shows it so you can watch.)", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "0"}]}}, "changed": ["wg"]}, {"line": 14, "note": "First trip round the loop (<code>i</code> is 0, <code>d</code> is \"soup\"). Line 13: <code>wg.Add(1)</code> writes one name on the clipboard: counter 1.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "1"}]}}, "changed": ["wg"]}, {"line": 13, "note": "Line 14: <code>go func() {...}()</code> hires helper 1, a new goroutine with its own copy of <code>i</code> and <code>d</code> (since Go 1.22 every trip round the loop gets fresh variables). Main does <b>not</b> wait: it goes straight on.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "1"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}}, "changed": ["i", "d"]}, {"line": 14, "note": "Second trip: <code>wg.Add(1)</code>, counter 2.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "2"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}}, "changed": ["wg"]}, {"line": 13, "note": "Helper 2 is hired, with <code>i</code> 1 and <code>d</code> \"salad\". The helpers may not have started yet: the scheduler decides when.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}, {"name": "helper 2 · goroutine", "vars": [{"n": "i", "ref": "i1"}, {"n": "d", "ref": "d1"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "2"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}, "i1": {"kind": "int", "value": "1", "label": "helper 2's"}, "d1": {"kind": "string", "value": "\"salad\"", "label": "helper 2's"}}}, {"line": 19, "note": "Third trip: counter 3, and helper 3 is hired. The loop is over.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}, {"name": "helper 2 · goroutine", "vars": [{"n": "i", "ref": "i1"}, {"n": "d", "ref": "d1"}]}, {"name": "helper 3 · goroutine", "vars": [{"n": "i", "ref": "i2"}, {"n": "d", "ref": "d2"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "3"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}, "i1": {"kind": "int", "value": "1", "label": "helper 2's"}, "d1": {"kind": "string", "value": "\"salad\"", "label": "helper 2's"}, "i2": {"kind": "int", "value": "2", "label": "helper 3's"}, "d2": {"kind": "string", "value": "\"pie\"", "label": "helper 3's"}}, "changed": ["wg"]}, {"line": 19, "note": "Line 19: <code>wg.Wait()</code>. The counter is 3, so main <b>waits here</b>, blocked, until it reaches 0.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}, {"name": "helper 2 · goroutine", "vars": [{"n": "i", "ref": "i1"}, {"n": "d", "ref": "d1"}]}, {"name": "helper 3 · goroutine", "vars": [{"n": "i", "ref": "i2"}, {"n": "d", "ref": "d2"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "3"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}, "i1": {"kind": "int", "value": "1", "label": "helper 2's"}, "d1": {"kind": "string", "value": "\"salad\"", "label": "helper 2's"}, "i2": {"kind": "int", "value": "2", "label": "helper 3's"}, "d2": {"kind": "string", "value": "\"pie\"", "label": "helper 3's"}}}, {"line": 19, "note": "In this run helper 2 happens to finish first: it writes <code>ready[1]</code>, and its <code>defer wg.Done()</code> crosses one name off. Counter 2. Its goroutine ends.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}, {"name": "helper 3 · goroutine", "vars": [{"n": "i", "ref": "i2"}, {"n": "d", "ref": "d2"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"salad ✓\""}, {"val": "\"\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "2"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}, "i2": {"kind": "int", "value": "2", "label": "helper 3's"}, "d2": {"kind": "string", "value": "\"pie\"", "label": "helper 3's"}}, "changed": ["ready"]}, {"line": 19, "note": "Helper 3 next: <code>ready[2]</code> is filled. Counter 1.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}, {"name": "helper 1 · goroutine", "vars": [{"n": "i", "ref": "i0"}, {"n": "d", "ref": "d0"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"\""}, {"val": "\"salad ✓\""}, {"val": "\"pie ✓\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "1"}]}, "i0": {"kind": "int", "value": "0", "label": "helper 1's"}, "d0": {"kind": "string", "value": "\"soup\"", "label": "helper 1's"}}, "changed": ["ready"]}, {"line": 20, "note": "Helper 1 last: <code>ready[0]</code>. Counter 0, so <code>Wait</code> returns and main moves on to line 20.", "output": [], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"soup ✓\""}, {"val": "\"salad ✓\""}, {"val": "\"pie ✓\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "0"}]}}, "changed": ["ready", "wg"]}, {"line": null, "note": "Line 20 prints the slice. Another run might finish the helpers in a different order, but the screen is always the same: each helper wrote its own slot, and main printed only after <code>Wait</code>.", "output": ["[soup ✓ salad ✓ pie ✓]"], "frames": [{"name": "main", "vars": [{"n": "dishes", "ref": "D"}, {"n": "ready", "ref": "R"}, {"n": "wg", "ref": "W"}]}], "objects": {"D": {"kind": "[]string", "items": [{"val": "\"soup\""}, {"val": "\"salad\""}, {"val": "\"pie\""}], "label": "dishes · []string"}, "R": {"kind": "[]string", "items": [{"val": "\"soup ✓\""}, {"val": "\"salad ✓\""}, {"val": "\"pie ✓\""}], "label": "ready · []string"}, "W": {"kind": "WaitGroup", "label": "wg · the clipboard", "pairs": [{"k": "counter", "val": "0"}]}}}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pslots-m" id="ex-pslots"></div>
+  <script type="application/json" id="ex-pslots-m">{"program": "predict_slots.go", "prompt": "Three helpers measure three words, each into its own slot. What does main print?", "hint": "Each helper writes <code>len(w)</code> into slot <code>i</code>. Which helper finishes first doesn't matter: slot 0 always belongs to \"go\".", "explain": "<code>len(\"go\")</code> is 2, <code>len(\"chef\")</code> is 4, <code>len(\"pasta\")</code> is 5, each in its own slot, so <samp>[2 4 5] 3</samp> on every run. Main prints only after <code>wg.Wait()</code>, so all three slots are filled."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: wg.Go, the shortcut from Go 1.25">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Writing <code>Add(1)</code>, <code>go</code> and <code>defer Done()</code> every time is easy to get wrong. Since <b>Go 1.25</b>, <code>wg.Go(f)</code> does all three: it adds one to the counter, starts <code>f</code> in a new goroutine, and crosses it off when <code>f</code> returns.</p>
+    <span class="file-tab">wggo.go</span>
+    <pre class="code" data-src="wggo.go"></pre>
+    <pre class="term wrap" data-run="wggo.go"></pre>
+    <p class="caption soft">The same file under Go 1.24.7, which is older than the method:</p>
+    <pre class="term wrap" data-run="wggo.go" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Older Go reads it like a detective would: line 13, column 6, <code>wg.Go undefined</code>, and the reason: the type has no method called <code>Go</code>. You'll meet the long form in lots of existing code, so learn both. The rest of this book uses <code>wg.Go</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fwg-m" id="ex-fwg"></div>
+  <script type="application/json" id="ex-fwg-m">{"program": "fill_wggo.go", "prompt": "Double every price, one helper per price, and print the result only when all are done. Line 13: start a helper on the clipboard. Line 17: wait for all of them.", "blanks": [{"line": 13, "text": "wg.Go"}, {"line": 17, "text": "wg.Wait()"}], "explain": "<code>wg.Go(func() {...})</code> adds to the counter, starts the helper and crosses it off when the function returns. <code>wg.Wait()</code> blocks until the counter is 0, so <samp>[8 18 4]</samp> is printed only after all three slots are filled."}</script>
+
+  <div data-ex="parsons" data-model="ex-pwg-m" id="ex-pwg"></div>
+  <script type="application/json" id="ex-pwg-m">{"program": "parsons_wg.go", "seed": 24, "pin": [1, 3, 4, 5, 6, 8, 9, 10, 20], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 14, 16, 17, 18, 19, 20], "program": "parsons_wg_alt.go"}], "prompt": "The long form, the way older code writes it. Four helpers each square their own number into their own slot. Put the moving lines in order.", "explain": "For each helper: <code>wg.Add(1)</code> first, <b>then</b> <code>go func() {</code>. Inside, <code>defer wg.Done()</code> usually comes first so it runs however the helper ends, then the work. (Writing the work first and the <code>defer</code> second works too here, and is accepted.) <code>}()</code> closes and calls the function, <code>}</code> closes the loop, and only then <code>wg.Wait()</code> and the print: <samp>[0 1 4 9]</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 13: the forgotten Wait">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Mistake one: the clipboard is filled in, but nobody reads it. This is <code>wg_basic.go</code> with line 17, <code>wg.Wait()</code>, left out.</p>
+    <span class="file-tab">missing_wait.go</span>
+    <pre class="code" data-src="missing_wait.go"></pre>
+    <p class="caption soft">One possible run:</p>
+    <pre class="term wrap" data-run="missing_wait.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>In this run it says "all dishes ready", then closes the kitchen with all three helpers still inside. No error, no warning, exit code 0. That's what makes this bug sneaky: the compiler can't know you meant to wait. Some runs might even print a helper's line or two before the end.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 14: crossing off a name that isn't there">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Mistake two: calling <code>Done</code> more times than <code>Add</code> counted. The counter would go below zero, and a WaitGroup refuses: it <b>panics</b> (stops the program with a message, chapter 8).</p>
+    <span class="file-tab">negative.go</span>
+    <pre class="code" data-src="negative.go"></pre>
+    <p class="caption soft">One possible run. The two long hex numbers after <code>Add(</code> change on every run (Go places memory at a random spot each time), so this is never an answer key.</p>
+    <pre class="term wrap" data-run="negative.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Detective time. <b>First line:</b> <samp>panic: sync: negative WaitGroup counter</samp>, the what. <b>Then the goroutine:</b> <samp>goroutine 1 [running]</samp> is main. <b>Then the stack, newest call first:</b> two frames inside Go's own <code>sync</code> package (skip those), then <b>your</b> code: <samp>negative.go:13</samp>, the second <code>wg.Done()</code>. <code>Done</code> is really <code>Add(-1)</code>, which is why the top frame says <code>Add</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sneg-m" id="ex-sneg"></div>
+  <script type="application/json" id="ex-sneg-m">{"program": "spot_negative.go", "bug": 16, "prompt": "Three helpers sign off the clipboard. The panic points at line 12, inside <code>signOff</code>, and at line 19, where Cy signs off. But neither line is where the mistake was made. Click the line that's really wrong.", "explain": "Line 16, <code>clipboard.Add(2)</code>, puts only two names on the clipboard, but three helpers sign off. The third <code>Done</code> (Cy's, line 19 calling line 12) takes the counter below zero. The fix is <code>clipboard.Add(3)</code>. The panic shows where the program noticed; the bug is often earlier. (The clipboard is a package-level variable here, so the hex numbers in this trace stay the same on every run.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 15: goroutines are cheap">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">How many helpers can one kitchen hold? Let's hire ten thousand. Each one writes its number plus one into its own slot, and main adds them up.</p>
+    <span class="file-tab">cheap.go</span>
+    <pre class="code" data-src="cheap.go"></pre>
+    <pre class="term wrap" data-run="cheap.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>1 + 2 + … + 10000 = 50,005,000, so every helper did its job, and it took a blink. A goroutine starts with a tiny stack (a couple of kilobytes) that grows only if it needs to, and the Go scheduler, not the operating system, switches between them. Programs with hundreds of thousands of goroutines are normal. They're cheap, not free: each one you start, you must know how it will finish.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE RELAY BATON<small>channels: make, send, receive, and the handshake</small></h2>
+
+  <section class="panel pop" aria-label="Panel 16: Rosa brings channels">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Slots work when main knows in advance where every result goes. But often a helper needs to <em>hand</em> something to another goroutine: a finished dish, a message, a number. Enter <b>Rosa</b>, who runs the depot's mail.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Rosa says: </span>A <b>channel</b> is a delivery route between goroutines. One goroutine <b>sends</b> a value into it, another <b>receives</b> it out. Every channel carries one type of value: a <code>chan string</code> carries strings, a <code>chan int</code> carries ints.</p></div>
+      <svg class="char" data-char="mailcarrier" data-prop="letter"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>My favourite rule: <b>don't share the note. Send it!</b> Instead of two helpers scribbling on the same desk, one passes the note to the other, and then it's theirs.</p></div>
+    </div>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th>You write</th><th>It means</th><th>Say it as</th></tr></thead>
+        <tbody>
+          <tr><td data-th="You write"><code>ch := make(chan string)</code></td><td data-th="It means">make a new channel that carries strings</td><td data-th="Say it as">"ch is a string channel"</td></tr>
+          <tr><td data-th="You write"><code>ch &lt;- "soup"</code></td><td data-th="It means"><b>send</b>: put "soup" into the channel</td><td data-th="Say it as">"send soup on ch" (the arrow points <em>into</em> ch)</td></tr>
+          <tr><td data-th="You write"><code>msg := &lt;-ch</code></td><td data-th="It means"><b>receive</b>: take the next value out</td><td data-th="Say it as">"receive from ch" (the arrow points <em>out of</em> ch)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sr-only">Picture: Rosa, a mail carrier with curly hair, a navy cap with an envelope badge, a light blue shirt and a brown mailbag, raises a letter. Scoot points to the table.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: your first channel">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">A helper tells main the soup is ready. Read the arrows: line 8 sends into <code>baton</code>, line 10 receives out of it.</p>
+    <span class="file-tab">baton.go</span>
+    <pre class="code" data-src="baton.go"></pre>
+    <pre class="term wrap" data-run="baton.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>No WaitGroup this time, and yet main didn't leave early. Why? Because line 10 <b>waits</b> until a value arrives. A receive with nothing to take stands still. That waiting is called <b>blocking</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 18: the relay baton handshake">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">A channel made with plain <code>make(chan T)</code> is <b>unbuffered</b>: it has no room to store anything. Think of a relay race: the baton never lies on the track. It passes from hand to hand, so both runners must be at the same spot at the same moment.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 210" role="img" aria-label="Three relay pictures. Left: the sender holds out the baton but nobody is there, so the sender waits. Middle: the receiver reaches out but nobody brings a baton, so the receiver waits. Right: both meet and the baton passes from hand to hand; both run on.">
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111">
+        <rect x="6" y="6" width="214" height="198" rx="12" fill="#FFF6CC" stroke="#111" stroke-width="4" stroke-dasharray="10 7"/>
+        <rect x="233" y="6" width="214" height="198" rx="12" fill="#FFF6CC" stroke="#111" stroke-width="4" stroke-dasharray="10 7"/>
+        <rect x="460" y="6" width="214" height="198" rx="12" fill="#C9F2D9" stroke="#111" stroke-width="4"/>
+        <text x="113" y="34" text-anchor="middle" font-size="18">SEND, NOBODY THERE</text>
+        <text x="340" y="34" text-anchor="middle" font-size="18">RECEIVE, NOTHING YET</text>
+        <text x="567" y="34" text-anchor="middle" font-size="18">BOTH MEET</text>
+        <!-- runner 1 waiting with baton -->
+        <circle cx="60" cy="80" r="18" fill="#F7C59F" stroke="#111" stroke-width="4"/>
+        <path d="M60 98 V140 M60 140 L46 172 M60 140 L74 172 M60 112 L96 104" stroke="#111" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <rect x="94" y="96" width="34" height="12" rx="6" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+        <text x="160" y="140" text-anchor="middle" font-size="36">?</text>
+        <text x="113" y="196" text-anchor="middle" font-size="16">⏸ sender waits</text>
+        <!-- runner 2 waiting empty-handed -->
+        <text x="290" y="140" text-anchor="middle" font-size="36">?</text>
+        <circle cx="400" cy="80" r="18" fill="#F7C59F" stroke="#111" stroke-width="4"/>
+        <path d="M400 98 V140 M400 140 L386 172 M400 140 L414 172 M400 112 L360 104" stroke="#111" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <text x="340" y="196" text-anchor="middle" font-size="16">⏸ receiver waits</text>
+        <!-- both meet -->
+        <circle cx="510" cy="80" r="18" fill="#F7C59F" stroke="#111" stroke-width="4"/>
+        <path d="M510 98 V140 M510 140 L496 172 M510 140 L524 172 M510 112 L556 104" stroke="#111" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <circle cx="624" cy="80" r="18" fill="#F7C59F" stroke="#111" stroke-width="4"/>
+        <path d="M624 98 V140 M624 140 L610 172 M624 140 L638 172 M624 112 L578 104" stroke="#111" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <rect x="550" y="96" width="34" height="12" rx="6" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+        <text x="567" y="196" text-anchor="middle" font-size="16">✓ handoff, both go on</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>I wait at the door until someone takes the letter.</b> A send on an unbuffered channel waits for a receiver; a receive waits for a sender. When they meet, the value changes hands and both carry on. That meeting is a <b>handshake</b>, and it also tells each side exactly where the other one is.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean chanstep" aria-label="Panel 19: two handoffs, step by step" data-chanstep="cs-baton">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">A helper passes two batons to main. Step through one possible timing. Watch who is <b>waiting</b> (dashed card) and when a handoff happens. Notice there's never anywhere for a baton to wait on its own.</p>
+    <div class="cs-wrap"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Next line</th><th>Helper</th><th>Channel</th><th>main</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="cs-baton">{"program": "handoff.go", "cap": 0,
+      "left": {"name": "helper", "char": "kitchenhand", "label": "1"},
+      "right": {"name": "main", "char": "chef"},
+      "steps": [
+        {"line": 6, "L": "new", "R": "run", "output": [], "note": "The program starts in <code>main</code>. The helper doesn't exist yet."},
+        {"line": 7, "L": "new", "R": "run", "output": [], "note": "Line 6: <code>baton</code> is an unbuffered channel of strings. Unbuffered means capacity 0: no slots, just a handoff zone."},
+        {"line": 11, "L": "run", "R": "run", "output": [], "note": "Line 7 hires the helper (lines 7 to 10 are its function). Main doesn't wait for it and moves straight to line 11."},
+        {"line": 12, "L": "send", "R": "run", "output": ["main: ready for the baton"], "note": "Main prints. Meanwhile, in this run, the helper reaches line 8, <code>baton &lt;- \"soup\"</code>. Nobody is receiving yet, so the helper <b>waits</b> with the baton held out."},
+        {"line": 12, "L": "run", "R": "run", "hand": "soup", "output": ["main: ready for the baton"], "note": "Main reaches line 12 and receives: <code>&lt;-baton</code>. Sender and receiver meet. Handoff! \"soup\" passes from the helper to main, and both move on."},
+        {"line": 13, "L": "send", "R": "run", "output": ["main: ready for the baton", "main got soup"], "note": "Main prints what it got. The helper is already at line 9 with \"salad\", and waits again: main isn't receiving yet."},
+        {"line": 13, "L": "run", "R": "run", "hand": "salad", "output": ["main: ready for the baton", "main got soup"], "note": "Line 13 receives. They meet: \"salad\" changes hands."},
+        {"line": 14, "L": "done", "R": "run", "output": ["main: ready for the baton", "main got soup", "main got salad"], "note": "The helper's function ends, so its goroutine finishes. Main prints the salad."},
+        {"line": null, "L": "done", "R": "done", "output": ["main: ready for the baton", "main got soup", "main got salad", "finish line"], "note": "Main prints <samp>finish line</samp> and returns. Nobody is left cooking, so nothing was cut off. If the helper had been slower, main would have been the one waiting at line 12: the screen would be exactly the same."}
+      ]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trelay-m" id="ex-trelay"></div>
+  <script type="application/json" id="ex-trelay-m">{"program": "trace_relay.go", "columns": ["n", "total"], "given": [0], "prompt": "A helper passes four numbers along an unbuffered channel, then closes it (closing comes in part 4: it ends the <code>for range</code> loop). Main keeps a running total and prints one row per number. The numbers are filled in.", "explain": "Each number arrives in the order the helper sent it, because there's only one sender and each handoff completes before the next. Totals: 4, then 4 + 1 = 5, then 5 + 6 = 11, then 11 + 2 = 13."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 20: a send with nobody to receive">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <svg class="sfx tr" data-sfx="ZZZ!" data-seed="20"></svg>
+    <p class="caption">What if main sends on an unbuffered channel and no other goroutine exists to receive?</p>
+    <span class="file-tab">deadlock_send.go</span>
+    <pre class="code" data-src="deadlock_send.go"></pre>
+    <pre class="term wrap" data-run="deadlock_send.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Read it like a detective. <b>First line:</b> <samp>fatal error: all goroutines are asleep - deadlock!</samp> Every goroutine (here just main) is blocked, waiting for something that can never happen. <b>Then:</b> <samp>goroutine 1 [chan send]</samp>, main, stuck in a <b>chan send</b>. <b>Then where:</b> <samp>deadlock_send.go:7</samp>. Line 7 waits at the door forever, so <samp>sent!</samp> never prints.</p></div>
+    </div>
+    <p class="caption soft">A <b>deadlock</b> is when goroutines wait for each other (or for nothing) and none can ever move. Go's runtime notices when <em>every</em> goroutine is stuck and stops the program with a <b>fatal error</b>. Unlike a panic, a fatal error can't be caught or recovered. The <code>+0x28</code> at the end is an offset inside the compiled code; it changes between Go versions, so ignore it. As always, <code>go run</code> reports the program's exit code 2 as <samp>exit status 2</samp>.</p>
+    <p class="sr-only">A burst says ZZZ, for goroutines asleep.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-dl-m" id="ex-dl"></div>
+  <script type="application/json" id="ex-dl-m">{"q": "<code>ch := make(chan int)</code> is unbuffered. Which <code>main</code> runs without a deadlock?", "options": [
+    {"t": "<code>go func() { ch &lt;- 1 }()</code> then <code>fmt.Println(&lt;-ch)</code>", "correct": true, "why": "Right: a helper sends while main receives. They meet, and main prints 1."},
+    {"t": "<code>ch &lt;- 1</code> then <code>go func() { fmt.Println(&lt;-ch) }()</code>", "why": "Deadlock. Main blocks on the send at the first line, so it never reaches the line that would start the receiver. Order matters: start the other runner first."},
+    {"t": "<code>ch &lt;- 1</code> then <code>fmt.Println(&lt;-ch)</code>", "why": "Deadlock: with no slots, the send waits for a receiver, and the only goroutine is the one waiting. A single goroutine can't hand a baton to itself."},
+    {"t": "<code>fmt.Println(&lt;-ch)</code> on its own", "why": "Deadlock: main waits to receive, and nobody will ever send. The trace would say <samp>[chan receive]</samp>."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 21: helpers report back on a channel">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Channels can replace slots and the clipboard together. Three helpers each send one result; main receives exactly three times. Every receive waits for some helper, so main can't leave early.</p>
+    <span class="file-tab">helpers_chan.go</span>
+    <pre class="code" data-src="helpers_chan.go"></pre>
+    <pre class="term wrap" data-run="helpers_chan.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The results arrive in any order (6, 10 and 2, in some order), but adding doesn't care about order, so the total is always 18. That's how to get a dependable answer from helpers: <b>collect, then combine</b> in a way where order doesn't matter, or put each result in its own place.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE MAILBOX<small>buffered channels, close, comma-ok, range and one-way channels</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 22: a mailbox with slots">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Give <code>make</code> a second number and the channel gets a <b>buffer</b>: a mailbox with that many slots. <code>make(chan string, 3)</code> holds up to 3 letters. That number is its <b>capacity</b>.</p>
+    <div class="duo three">
+      <div class="duo-card"><span class="stamp">ROOM LEFT</span><h3>send doesn't wait<small>while a slot is free</small></h3><p>The sender drops the letter in and walks on. Nobody needs to be receiving.</p></div>
+      <div class="duo-card"><span class="stamp">LETTERS IN</span><h3>receive doesn't wait<small>while a letter is there</small></h3><p>The receiver takes the <b>oldest</b> letter: first in, first out, like a queue.</p></div>
+      <div class="duo-card dashed"><span class="stamp">FULL / EMPTY</span><h3>then they wait<small>just like the baton</small></h3><p>Sending to a full box waits for a free slot; receiving from an empty box waits for a letter.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Rosa says: </span><code>len(ch)</code> tells you how many letters are in the box right now; <code>cap(ch)</code> how many slots it has. An unbuffered channel is a mailbox with zero slots: <code>cap</code> is 0.</p></div>
+      <svg class="char sm" data-char="mailcarrier" data-prop="letter"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: a buffered channel in one goroutine">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">With slots, even a single goroutine can post and collect. There are no helpers in this program at all.</p>
+    <span class="file-tab">buffered.go</span>
+    <pre class="code" data-src="buffered.go"></pre>
+    <pre class="term wrap" data-run="buffered.go"></pre>
+  </section>
+
+  <section class="panel clean chanstep" aria-label="Panel 24: the mailbox, step by step" data-chanstep="cs-box">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">The same program in slow motion. The slot with the thick outline is the <b>front</b>: the next letter out. Every time the program prints <samp>N of 3</samp>, the badge checks that the picture shows exactly N letters.</p>
+    <div class="cs-wrap"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Next line</th><th>Posting</th><th>Mailbox</th><th>Collecting</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="cs-box">{"program": "buffered.go", "cap": 3, "lenPattern": "(\\d+) of (\\d+)",
+      "left": {"name": "main, posting", "char": "chef"},
+      "right": {"name": "main, collecting", "char": "mailcarrier", "attrs": "data-prop=\"none\""},
+      "steps": [
+        {"line": 6, "L": "idle", "R": "idle", "slots": [], "output": [], "note": "Only one goroutine here: <code>main</code>. The two cards show it posting and collecting at different moments."},
+        {"line": 7, "L": "idle", "R": "idle", "slots": [], "output": [], "note": "Line 6 makes a mailbox with 3 slots, all empty."},
+        {"line": 8, "L": "idle", "R": "idle", "slots": [], "output": ["empty: 0 of 3"], "note": "<code>len(box)</code> is 0, <code>cap(box)</code> is 3."},
+        {"line": 9, "L": "run", "R": "idle", "slots": ["card"], "output": ["empty: 0 of 3"], "note": "Line 8 posts \"card\". A slot was free, so the send finishes at once. Nobody had to receive."},
+        {"line": 10, "L": "run", "R": "idle", "slots": ["card", "bill"], "output": ["empty: 0 of 3"], "note": "\"bill\" goes in behind it."},
+        {"line": 11, "L": "run", "R": "idle", "slots": ["card", "bill", "parcel"], "output": ["empty: 0 of 3"], "note": "\"parcel\" fills the last slot. The box is full: one more send now would wait."},
+        {"line": 12, "L": "idle", "R": "idle", "slots": ["card", "bill", "parcel"], "output": ["empty: 0 of 3", "full: 3 of 3"], "note": "3 letters, 3 slots."},
+        {"line": 13, "L": "idle", "R": "run", "slots": ["bill", "parcel"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card"], "note": "Line 12 receives the <b>oldest</b> letter, \"card\". First in, first out."},
+        {"line": 14, "L": "idle", "R": "idle", "slots": ["bill", "parcel"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3"], "note": "Two left, so one slot is free."},
+        {"line": 15, "L": "run", "R": "idle", "slots": ["bill", "parcel", "postcard"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3"], "note": "Line 14 posts \"postcard\" into the free slot, at the back of the queue."},
+        {"line": 16, "L": "idle", "R": "run", "slots": ["parcel", "postcard"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill"], "note": "Out comes \"bill\"."},
+        {"line": 17, "L": "idle", "R": "run", "slots": ["postcard"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill", "took parcel"], "note": "Then \"parcel\"."},
+        {"line": 18, "L": "idle", "R": "run", "slots": [], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill", "took parcel", "took postcard"], "note": "And \"postcard\", the newest, comes out last. The box is empty: one more receive now would wait."},
+        {"line": null, "L": "done", "R": "done", "slots": [], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill", "took parcel", "took postcard", "left: 0 of 3"], "note": "Empty again, and main returns."}
+      ]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tbox-m" id="ex-tbox"></div>
+  <script type="application/json" id="ex-tbox-m">{"program": "trace_box.go", "columns": ["op", "value", "len"], "given": [0], "prompt": "A mailbox with 3 slots. After each send or receive, the program prints the operation, the value sent or received, and <code>len(box)</code>. Fill in the value and the length for every row.", "explain": "Sends add at the back, receives take from the front. 10 in (1), 20 in (2), out comes the oldest, 10 (1), 30 in (2), out comes 20 (1), out comes 30 (0). The box never fills, so nothing ever waits."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 25: one letter too many">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">A buffer only postpones the waiting. Post a fourth letter into a three-slot box with nobody collecting:</p>
+    <span class="file-tab">overfull.go</span>
+    <pre class="code" data-src="overfull.go"></pre>
+    <pre class="term wrap" data-run="overfull.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Same fatal error as panel 20, same <samp>[chan send]</samp>, but now at line 11, the <b>fourth</b> send. The first three found free slots. Catchphrase: <b>a buffer is a waiting room, not a bottomless bag.</b> A program that only works because the buffer is "big enough" is a deadlock waiting to happen.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pdl-m" id="ex-pdl"></div>
+  <script type="application/json" id="ex-pdl-m">{"program": "predict_deadlock.go", "expect": "error", "answer": "deadlock", "ask": "Does it print <samp>soup</samp>? Or does the runtime stop it? If it stops, type the last word of the error's first line, without the <code>!</code>.", "prompt": "Two slots, three orders, one goroutine.", "hint": "Count the free slots before each send. When the box is full, who could possibly collect?", "explain": "The first two sends fill both slots. The third, at line 9, waits for a free slot, and the only goroutine that could make one is main itself, stuck at line 9. The runtime stops it: <samp>fatal error: all goroutines are asleep - deadlock!</samp> with <samp>goroutine 1 [chan send]</samp>. Line 10 never runs. A capacity of 3, or a receive between the sends, would fix it."}</script>
+
+  <section class="panel sketch" aria-label="Panel 26: close, the no-more-mail flag">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">How does a receiver know the letters have stopped for good, and isn't just waiting for a slow sender? The sender raises a flag: <code>close(ch)</code>.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Rosa says: </span>Flag up means <b>no more mail, ever</b>. Letters already in the box can still be collected. After that, every receive gets an empty envelope at once: the type's <b>zero value</b>, without waiting.</p></div>
+      <svg class="char" data-char="mailcarrier" data-prop="flag"></svg>
+    </div>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th>After <code>close(ch)</code></th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td data-th="After close(ch)">receive, letters still inside</td><td data-th="What happens">you get them, oldest first, as usual</td></tr>
+          <tr><td data-th="After close(ch)">receive, box empty</td><td data-th="What happens">returns <b>immediately</b> with the zero value (<code>0</code>, <code>""</code>, <code>false</code>, <code>nil</code>...)</td></tr>
+          <tr><td data-th="After close(ch)"><code>v, ok := &lt;-ch</code></td><td data-th="What happens"><code>ok</code> is <code>true</code> for a real letter, <code>false</code> for an empty envelope: the comma-ok form (chapter 12 used it for maps)</td></tr>
+          <tr><td data-th="After close(ch)">send</td><td data-th="What happens"><b>panic</b>: <samp>send on closed channel</samp></td></tr>
+          <tr><td data-th="After close(ch)">close again</td><td data-th="What happens"><b>panic</b>: <samp>close of closed channel</samp></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sr-only">Picture: Rosa raises a small red flag on a pole.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: comma-ok after close">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">One letter in, flag up, then two receives with the comma-ok form.</p>
+    <span class="file-tab">closed.go</span>
+    <pre class="code" data-src="closed.go"></pre>
+    <pre class="term wrap" data-run="closed.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><samp>1 true</samp>: a real letter, delivered even though the flag was already up. <samp>0 false</samp>: an empty envelope. Without <code>ok</code> you couldn't tell a real 0 from "closed". Catchphrase: <b>flag up: finish the letters, then empty envelopes.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 28: the receive machine" data-machine="m-recv">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Feed the machine a channel in different states. Each result is a real line from <code>recv_m.go</code>; the two jams are two tiny programs that panic.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-recv">{"label": "<-ch", "program": "recv_m.go", "examples": [
+      {"in": "open, holding 7", "out": "7 true", "outKind": "v, ok", "note": "An open channel with a letter: you get it, and <code>ok</code> is true."},
+      {"in": "closed, 5 still inside", "out": "5 true", "outKind": "v, ok", "note": "Closed, but a letter was posted before the flag went up. It's still delivered, with <code>ok</code> true."},
+      {"in": "closed and empty, chan int", "out": "0 false", "outKind": "v, ok", "note": "Nothing left: the zero value of <code>int</code>, 0, and <code>ok</code> false. No waiting."},
+      {"in": "closed and empty, chan string", "out": "\"\" false", "outKind": "v, ok", "note": "The zero value of <code>string</code> is the empty string (printed with <code>%q</code> so you can see it)."},
+      {"in": "ch <- 2 after close(ch)", "error": "panic: send on closed channel", "program": "send_closed.go", "note": "Posting after the flag is up is a bug, so Go panics. The trace points at <code>send_closed.go:10</code>, the send."},
+      {"in": "close(ch) a second time", "error": "panic: close of closed channel", "program": "close_twice.go", "note": "The flag can go up only once. The trace points at line 9, the second <code>close</code>."}]}</script>
+    <span class="file-tab">recv_m.go</span>
+    <pre class="code" data-src="recv_m.go"></pre>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pclosed-m" id="ex-pclosed"></div>
+  <script type="application/json" id="ex-pclosed-m">{"program": "predict_closed.go", "prompt": "One letter, flag up, two receives. <code>%q</code> prints a string in double quotes. What are the three lines?", "hint": "The first receive finds a real letter. What's the zero value of <code>string</code>? What's <code>len</code> of an empty box?", "explain": "The letter posted before <code>close</code> still arrives: <samp>\"card\" true</samp>. The box is then empty and closed, so the second receive returns at once with <code>\"\"</code> and <code>false</code>: <samp>\"\" false</samp>. Nothing is left inside: <samp>0</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: for range over a channel">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Receiving until the flag goes up is so common that <code>for range</code> does it for you: <code>for m := range mail</code> receives letter after letter, and the loop ends when the channel is closed <b>and</b> empty.</p>
+    <span class="file-tab">rangech.go</span>
+    <pre class="code" data-src="rangech.go"></pre>
+    <pre class="term wrap" data-run="rangech.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The helper posts three letters, then line 11 raises the flag. Main's loop delivers all three, notices the flag, and stops. The order is fixed here because one sender posts them in order.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 30: a range loop that never ends">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The same program, but the helper forgets <code>close(mail)</code>.</p>
+    <span class="file-tab">range_noclose.go</span>
+    <pre class="code" data-src="range_noclose.go"></pre>
+    <pre class="term wrap" data-run="range_noclose.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>All three letters arrive, then main waits for a fourth that will never come. The helper has finished, so main is the last goroutine left, asleep in a <samp>[chan receive]</samp> at line 12, the <code>range</code> line. Catchphrase: <b>range waits for the flag. No flag, no end.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fclose-m" id="ex-fclose"></div>
+  <script type="application/json" id="ex-fclose-m">{"program": "fill_close.go", "prompt": "A countdown helper. Main's <code>for range</code> must end after 1 so that <samp>liftoff</samp> prints. Line 9: what does the sender do after its loop?", "blanks": [{"line": 9, "text": "close(out)"}], "explain": "<code>close(out)</code> after the last send raises the flag. Main's range loop prints 3, 2 and 1, sees the flag, ends, and prints <samp>liftoff</samp>. Without it: panel 30's deadlock. It goes <em>after</em> the loop: inside it, the second send would panic."}</script>
+
+  <div data-ex="predict" data-model="ex-prange-m" id="ex-prange"></div>
+  <script type="application/json" id="ex-prange-m">{"program": "predict_range.go", "prompt": "Three tips in a three-slot box, flag up, then a range loop. What's printed?", "hint": "<code>close</code> doesn't throw away the letters inside. Range collects them oldest first, then stops.", "explain": "The box is closed but still holds 5, 2 and 8, so the loop runs three times: totals 5, 7 and 15. Then the box is closed and empty, the loop ends, and <samp>done</samp> prints. No goroutines needed: the buffer held everything."}</script>
+
+  <section class="panel pop" aria-label="Panel 31: the sender closes">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Who should raise the flag? Only the one who knows there's no more mail: the <b>sender</b>.</p>
+    <div class="duo">
+      <div class="duo-card"><span class="stamp">DO</span><ul><li>Close from the sending side, after the last send.</li><li>Close when a receiver is waiting for the end: a <code>range</code> loop, or a comma-ok check.</li><li>With one sender, that sender closes when it's done.</li></ul></div>
+      <div class="duo-card dashed"><span class="stamp">DON'T</span><ul><li>Close from the receiving side: the sender may still post, and panic.</li><li>Close twice, or close a channel you're not sure is open.</li><li>Close "to tidy up": a channel nobody waits on doesn't need closing; it's cleaned up like any other value.</li></ul></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mailcarrier" data-prop="flag"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Rosa says: </span>Catchphrase: <b>the sender closes.</b> A receiver who closes is like a reader nailing the mailbox shut while the carrier is still on the way.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-scloser-m" id="ex-scloser"></div>
+  <script type="application/json" id="ex-scloser-m">{"program": "spot_closer.go", "bug": 7, "prompt": "The taster samples one dish, then main sends another and panics at line 17. Line 17 is innocent: it's an ordinary send. Click the line that broke the rule.", "explain": "Line 7: the <b>receiver</b>, <code>taster</code>, closes <code>dishes</code>. Main, the sender, doesn't know, and its next send at line 17 panics: <samp>panic: send on closed channel</samp>. The sender closes. Here, main should close <code>dishes</code> when it has nothing more to send, and the taster should just stop receiving."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: one-way channels">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">You can promise, in a function's parameter type, which way a channel is used. <code>chan&lt;- int</code> is <b>send-only</b> (the arrow goes into <code>chan</code>); <code>&lt;-chan int</code> is <b>receive-only</b> (the arrow comes out). An ordinary <code>chan int</code> converts to either one automatically when you pass it.</p>
+    <span class="file-tab">direction.go</span>
+    <pre class="code" data-src="direction.go"></pre>
+    <pre class="term wrap" data-run="direction.go"></pre>
+    <p class="caption soft">Now a function that promised to only send tries to receive:</p>
+    <span class="file-tab">direction_err.go</span>
+    <pre class="code" data-src="direction_err.go"></pre>
+    <pre class="term wrap" data-run="direction_err.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 7, column 16: you can't receive from <code>out</code>, because its type <code>chan&lt;- int</code> is send-only. Nothing runs until everything checks out. Go 1.24 says the same with fewer words: <samp>cannot receive from send-only channel out (variable of type chan&lt;- int)</samp>.</p></div>
+    </div>
+    <p class="caption soft">One-way types turn "who sends, who receives, who closes" into rules the Compiler checks. Notice that <code>produce</code> may close <code>out</code>: closing is a sender's job. A receive-only channel can't be closed at all.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-dir-m" id="ex-dir"></div>
+  <script type="application/json" id="ex-dir-m">{"program": "direction.go", "q": "Inside <code>consume(in &lt;-chan int)</code>, which line would the Compiler accept?", "options": [
+    {"t": "<code>v, ok := &lt;-in</code>", "correct": true, "why": "Receiving is exactly what a receive-only channel is for."},
+    {"t": "<code>in &lt;- 99</code>", "why": "Refused: <code>in</code> is receive-only, so you can't send on it. (Boss 6 shows the real message.)"},
+    {"t": "<code>close(in)</code>", "why": "Refused: closing is the sender's job, and the Compiler won't let you close a receive-only channel."},
+    {"t": "<code>var out chan&lt;- int = in</code>", "why": "Refused: a one-way channel can't be turned into the other direction. Only a two-way <code>chan int</code> converts to a one-way type."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: a goroutine's life, as a map" data-map="map-life">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">Every goroutine is always in one of a few places: running, waiting on a send, waiting on a receive, or finished. If every goroutine ends up waiting with no way out, that's the deadlock. Pick a road to follow <b>main</b> through a real run.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map of a goroutine's life</title><desc id="mapl-d">A goroutine starts and is running. A send with nobody to take it leads to blocked on send; when a receiver takes the value it runs again. A receive with nothing there leads to blocked on receive; when a value arrives or the channel is closed it runs again. When its function returns it is done. If nobody will ever receive, or nobody will ever send, a blocked goroutine can't move again; when every goroutine is stuck, that is the deadlock, a fatal error with exit status 2.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-life">{"seed": 24, "size": [690, 520], "start": [[345, 4], [345, 18]],
+      "states": [
+        {"id": "GO", "x": 230, "y": 22, "w": 230, "h": 56, "label": "STARTED", "sub": "`main` or `go f()`"},
+        {"id": "RUN", "x": 220, "y": 140, "w": 250, "h": 60, "label": "RUNNING", "sub": "doing its own work"},
+        {"id": "DONE", "x": 540, "y": 140, "w": 140, "h": 60, "label": "DONE", "sub": "function returned", "kind": "end"},
+        {"id": "SEND", "x": 14, "y": 290, "w": 270, "h": 60, "label": "BLOCKED ON SEND", "sub": "trace: `[chan send]`"},
+        {"id": "RECV", "x": 406, "y": 290, "w": 270, "h": 60, "label": "BLOCKED ON RECEIVE", "sub": "trace: `[chan receive]`"},
+        {"id": "DEAD", "x": 220, "y": 440, "w": 250, "h": 60, "label": "DEADLOCK", "sub": "fatal error, exit status 2", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "GO", "to": "RUN", "pts": [[345, 82], [345, 134]], "label": "begins", "lx": 357, "ly": 114},
+        {"id": "t5", "from": "RUN", "to": "DONE", "pts": [[474, 170], [534, 170]], "label": "returns", "lx": 476, "ly": 160},
+        {"id": "t1", "from": "RUN", "to": "SEND", "pts": [[240, 204], [240, 284]], "label": ["send, but", "nobody takes it"], "lx": 230, "ly": 232, "anchor": "end"},
+        {"id": "t2", "from": "SEND", "to": "RUN", "pts": [[276, 284], [276, 206]], "label": ["receiver", "takes it"], "lx": 286, "ly": 222},
+        {"id": "t3", "from": "RUN", "to": "RECV", "pts": [[414, 204], [414, 284]], "label": ["receive,", "nothing there"], "lx": 404, "ly": 262, "anchor": "end"},
+        {"id": "t4", "from": "RECV", "to": "RUN", "pts": [[450, 284], [450, 206]], "label": ["value arrives,", "or `close`"], "lx": 460, "ly": 232},
+        {"id": "t6", "from": "SEND", "to": "DEAD", "pts": [[150, 354], [150, 470], [214, 470]], "label": ["nobody will", "ever receive"], "lx": 24, "ly": 404, "bug": true},
+        {"id": "t7", "from": "RECV", "to": "DEAD", "pts": [[540, 354], [540, 470], [476, 470]], "label": ["nobody will", "ever send"], "lx": 552, "ly": 404, "bug": true}],
+      "paths": [
+        {"id": "hand", "label": "a handoff (baton.go)", "program": "baton.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["GO"], "output": [], "note": "<code>baton.go</code> starts in main."},
+          {"on": ["RUN"], "via": ["t0"], "output": [], "note": "Main makes the channel and hires the helper at lines 6 and 7."},
+          {"on": ["RECV"], "via": ["t3"], "output": [], "mood": "focus", "note": "Line 10, <code>msg := &lt;-baton</code>. In this telling the helper hasn't sent yet, so main waits. (If the helper got there first, it would wait on its send instead. Either way, they meet.)"},
+          {"on": ["RUN"], "via": ["t4"], "output": [], "note": "The helper sends <code>\"soup is ready\"</code>. Handoff: main has its value and runs again."},
+          {"on": ["DONE"], "via": ["t5"], "output": ["main got: soup is ready"], "note": "Line 11 prints, and main returns. Exit code 0."}]},
+        {"id": "nosend", "label": "nobody receives (deadlock_send.go)", "program": "deadlock_send.go", "bug": true, "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "goroutine 1 [chan send]:"}, "steps": [
+          {"on": ["GO"], "output": [], "note": "<code>deadlock_send.go</code> starts in main. No helper is ever started."},
+          {"on": ["RUN"], "via": ["t0"], "output": [], "note": "Line 6 makes an unbuffered channel."},
+          {"on": ["SEND"], "via": ["t1"], "output": [], "mood": "worried", "note": "Line 7 sends. Nobody is receiving, so main waits at the door."},
+          {"on": ["DEAD"], "via": ["t6"], "output": [], "error": "fatal error: all goroutines are asleep - deadlock!", "note": "There's no other goroutine that could ever receive. Every goroutine (just main) is asleep, so the runtime stops the program: <samp>goroutine 1 [chan send]</samp>."}]},
+        {"id": "noclose", "label": "nobody closes (range_noclose.go)", "program": "range_noclose.go", "bug": true, "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "goroutine 1 [chan receive]:"}, "steps": [
+          {"on": ["GO"], "output": [], "note": "<code>range_noclose.go</code>: a helper posts three letters but never closes."},
+          {"on": ["RUN"], "via": ["t0"], "output": [], "note": "Main starts the helper and reaches its <code>range</code> loop."},
+          {"on": ["RECV"], "via": ["t3"], "output": [], "note": "The loop receives. Main waits until a letter comes."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["delivered: card"], "note": "\"card\" arrives and is printed."},
+          {"on": ["RECV"], "via": ["t3"], "output": ["delivered: card"], "note": "The loop receives again."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["delivered: card", "delivered: bill"], "note": "\"bill\"."},
+          {"on": ["RECV"], "via": ["t3"], "output": ["delivered: card", "delivered: bill"], "note": "And again."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "note": "\"parcel\". The helper has now finished and is gone."},
+          {"on": ["RECV"], "via": ["t3"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "mood": "worried", "note": "The loop receives a fourth time. No flag, so it waits."},
+          {"on": ["DEAD"], "via": ["t7"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "error": "fatal error: all goroutines are asleep - deadlock!", "note": "Nobody is left to send or close. Deadlock, with <samp>goroutine 1 [chan receive]</samp>. <samp>no more mail</samp> never prints."}]},
+        {"id": "closed", "label": "the flag goes up (rangech.go)", "program": "rangech.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["GO"], "output": [], "note": "<code>rangech.go</code>: the same, but the helper closes the channel after the last letter."},
+          {"on": ["RUN"], "via": ["t0"], "output": [], "note": "Main starts the helper and reaches its <code>range</code> loop."},
+          {"on": ["RECV"], "via": ["t3"], "output": [], "note": "Waiting for the first letter."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "note": "Three times round: wait, receive, print. (Shortened here: it's panel 29's loop.)"},
+          {"on": ["RECV"], "via": ["t3"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "note": "The loop receives once more..."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["delivered: card", "delivered: bill", "delivered: parcel"], "note": "...and finds the flag up and the box empty. The receive returns at once, and <code>range</code> ends the loop."},
+          {"on": ["DONE"], "via": ["t5"], "output": ["delivered: card", "delivered: bill", "delivered: parcel", "no more mail"], "note": "Main prints <samp>no more mail</samp> and returns."}]},
+        {"id": "buf", "label": "room in the box (buffered.go)", "program": "buffered.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["GO"], "output": [], "note": "<code>buffered.go</code>: one goroutine and a three-slot mailbox."},
+          {"on": ["RUN"], "via": ["t0"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill", "took parcel", "took postcard"], "note": "Every send found a free slot and every receive found a letter, so main never blocked once."},
+          {"on": ["DONE"], "via": ["t5"], "output": ["empty: 0 of 3", "full: 3 of 3", "took card", "now: 2 of 3", "took bill", "took parcel", "took postcard", "left: 0 of 3"], "note": "Straight from running to done."}]}
+      ]}</script>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · WATCHING SEVERAL DOORS<small>select, default, time.After and nil channels</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 34: Scoot watches several doors">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">A receive watches one door. But Scoot often waits for whichever comes first: the soup counter, the bread counter, or the clock running out. That's <code>select</code>.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 200" role="img" aria-label="Scoot stands in a hallway facing three doors labelled soup, bread and timer. A letter sticks out under the bread door, so that's the one Scoot will open.">
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111">
+        <rect x="40" y="20" width="130" height="150" rx="8" fill="#DDE8FF" stroke="#111" stroke-width="5"/>
+        <rect x="275" y="20" width="130" height="150" rx="8" fill="#C9F2D9" stroke="#111" stroke-width="5"/>
+        <rect x="510" y="20" width="130" height="150" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="5"/>
+        <circle cx="150" cy="100" r="7" fill="#111"/><circle cx="385" cy="100" r="7" fill="#111"/><circle cx="620" cy="100" r="7" fill="#111"/>
+        <text x="105" y="58" text-anchor="middle" font-size="22">SOUP</text>
+        <text x="340" y="58" text-anchor="middle" font-size="22">BREAD</text>
+        <text x="575" y="58" text-anchor="middle" font-size="22">TIMER</text>
+        <text x="105" y="140" text-anchor="middle" font-size="16">nothing yet</text>
+        <rect x="312" y="158" width="56" height="26" fill="#FFFFFF" stroke="#111" stroke-width="3" transform="rotate(-6 340 171)"/>
+        <path d="M312 158 L340 172 L368 158" fill="none" stroke="#111" stroke-width="3" transform="rotate(-6 340 171)"/>
+        <text x="340" y="140" text-anchor="middle" font-size="16">✓ ready!</text>
+        <text x="575" y="140" text-anchor="middle" font-size="16">ticking…</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>select</code> looks like <code>switch</code> (chapter 5), but every <code>case</code> is a send or a receive. It waits until <b>one</b> of them can go ahead, runs that case, and skips the rest. Catchphrase: <b>select opens the first door that's ready.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: select with two channels">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">A helper sends on <code>soup</code>, then on <code>bread</code>. Main's loop runs <code>select</code> twice and takes whatever is ready.</p>
+    <span class="file-tab">select_two.go</span>
+    <pre class="code" data-src="select_two.go"></pre>
+    <pre class="term wrap" data-run="select_two.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The order is dependable here: the helper is stuck at its first send until main takes the soup, so the bread can't be ready first. In each round, only one door had anything behind it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: when several doors are ready">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">What if <em>both</em> doors are ready at once? Here two mailboxes each hold ten letters, and <code>select</code> picks ten times. The program repeats the experiment three times.</p>
+    <span class="file-tab">select_random.go</span>
+    <pre class="code" data-src="select_random.go"></pre>
+    <p class="caption soft">One possible run (never an answer key):</p>
+    <pre class="term wrap" data-run="select_random.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The Go specification says that when several cases are ready, <code>select</code> chooses one "via a uniform pseudo-random selection". It's a coin toss, on purpose, so no door is ever starved. Never write code that depends on the order of cases in a <code>select</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sel-m" id="ex-sel"></div>
+  <script type="application/json" id="ex-sel-m">{"program": "select_once.go", "q": "Both mailboxes hold a letter before the <code>select</code>. What can this program print?", "options": [
+    {"t": "<samp>apple</samp> on some runs and <samp>banana</samp> on others", "correct": true, "why": "Right: both cases are ready, so select picks one at random each run. It prints exactly one line: a select runs only one case."},
+    {"t": "Always <samp>apple</samp>, because its case is written first", "why": "Order in the code doesn't matter in a select. Panel 36 shows real runs mixing a and b."},
+    {"t": "<samp>apple</samp> then <samp>banana</samp>", "why": "A select runs one case and then it's finished. Getting both would need a loop around it."},
+    {"t": "Nothing: two ready cases cause a deadlock", "why": "Several ready cases is fine; select just picks one. A select deadlocks only when no case can ever proceed and there's no <code>default</code>."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 37: default, don't wait at all">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Add a <code>default</code> case and <code>select</code> never waits: if no door is ready <em>right now</em>, it runs <code>default</code> instead. That's a <b>non-blocking</b> receive (or send).</p>
+    <span class="file-tab">nonblock.go</span>
+    <pre class="code" data-src="nonblock.go"></pre>
+    <pre class="term wrap" data-run="nonblock.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Peek in the box: empty, so <code>default</code> runs and the program keeps going. After line 13 posts a postcard, the same peek finds it. Like checking the mailbox on your way past instead of standing next to it all day.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pnb-m" id="ex-pnb"></div>
+  <script type="application/json" id="ex-pnb-m">{"program": "predict_nonblock.go", "prompt": "A one-slot box, three tries to post without waiting, then one receive. What's printed?", "hint": "A send case can go ahead only if there's a free slot. Nobody receives until the last line.", "explain": "Try 1: the slot is free, so <samp>posted 1</samp>. Tries 2 and 3: the box is full and nobody is receiving, so <code>default</code> runs: <samp>full, skipped 2</samp> and <samp>full, skipped 3</samp>. Finally the box still holds the first letter: <samp>in the box: 1</samp>. Without <code>default</code>, try 2 would deadlock."}</script>
+
+  <section class="panel clean" aria-label="Panel 38: timeouts with time.After">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Waiting forever is rarely what you want. <code>time.After(d)</code> (chapter 22's clocks) returns a channel that receives one value after the Duration <code>d</code>. Put it in a <code>select</code>, and whichever happens first wins: the dish or the timer.</p>
+    <span class="file-tab">timeout.go</span>
+    <pre class="code" data-src="timeout.go"></pre>
+    <pre class="term wrap" data-run="timeout.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>First order: the stew needs 500 ms but we only wait 50 ms, so the timer's door opens first. Second order: 20 ms of cooking against a 1-second timer, so the stew wins. The gaps are wide on purpose, so the result is the same on every run.</p></div>
+    </div>
+    <p class="caption soft">Why does <code>slowCook</code> make its channel with one slot? After the first timeout, nobody will ever receive that stew. With an unbuffered channel, the cook's send would wait forever: a goroutine stuck for the rest of the program, called a <b>goroutine leak</b>. With one slot it drops the stew in and finishes. Chapter 25 is all about stopping goroutines cleanly.</p>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pto-m" id="ex-pto"></div>
+  <script type="application/json" id="ex-pto-m">{"program": "parsons_timeout.go", "seed": 7, "pin": [1, 3, 4, 5, 6, 8, 17, 18, 20], "prompt": "Order a pizza, but give up after 100 milliseconds. The <code>time.After</code> case is pinned in place. Put the other lines of <code>main</code> in order.", "explain": "Make the channel first. Then start the pizza helper: <code>go func() {</code>, its 400 ms sleep, its send, and <code>}()</code>. Then the <code>select</code> with the pizza case above the pinned timer case, and its closing brace. The timer wins: <samp>too slow, ordering elsewhere</samp>. (Here the helper is still asleep when main returns, and is simply stopped: fine for a tiny program, a leak in a long-running one.)"}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 39: the nil channel">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">One last trap. <code>var ch chan int</code> declares a channel but never calls <code>make</code>, so it holds the zero value for channels: <code>nil</code>, a route that leads nowhere.</p>
+    <span class="file-tab">nilchan.go</span>
+    <pre class="code" data-src="nilchan.go"></pre>
+    <pre class="term wrap" data-run="nilchan.go" data-exit></pre>
+    <div class="helpers-row" aria-hidden="true"><svg class="char sm" data-char="ghost"></svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The runtime even says why: <samp>[chan receive (nil chan)]</samp>. Sending to or receiving from a nil channel blocks <b>forever</b>; closing one panics. Catchphrase: <b>no make, no mail.</b> Inside a <code>select</code>, a nil channel's case is simply never chosen, which experts use on purpose to switch a case off.</p></div>
+    </div>
+    <p class="sr-only">Picture: the nil ghost floats above Scoot, who points at the trace in surprise.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tool-m" id="ex-tool"></div>
+  <script type="application/json" id="ex-tool-m">{"q": "A game asks a slow online server for the high-score table, but must show the menu after 2 seconds at the latest, table or not. Which tool fits?", "options": [
+    {"t": "A <code>select</code> with a <code>time.After</code> case", "correct": true, "why": "Right: one case for the reply channel and one for <code>time.After(2 * time.Second)</code>; whichever comes first wins. If the timer wins, show the menu without the table. (Give the reply channel one slot so the late reply doesn't leave a helper stuck forever.)"},
+    {"t": "A plain receive, <code>table := &lt;-reply</code>", "why": "That waits as long as the server takes, maybe forever. There's no way to give up."},
+    {"t": "A <code>select</code> with the reply case and a <code>default</code> case", "why": "<code>default</code> gives up <em>immediately</em>, not after 2 seconds. The table would almost never show."},
+    {"t": "A <code>sync.WaitGroup</code> around the request", "why": "<code>Wait</code> waits for the helper to finish, however long that takes. It has no timeout."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 40: boss level">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="40"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Helpers, batons and mailboxes, all mixed up. For every send, ask: who receives it, and is there room? For every receive: who sends, and who closes? For every helper: who waits for it?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. A two-station kitchen line: one helper makes the numbers 1 to 4, a second doubles each one, and main adds up the results. Then main receives once more with comma-ok. What two lines are printed?", "hint": "Each station closes its own output channel when its input runs out. After main's range loop ends, what is <code>b</code>?", "explain": "The doubler sends 2, 4, 6 and 8, so the sum is 20: <samp>sum 20</samp>. Each sender closes its own channel (<code>numbers</code> closes <code>a</code>, <code>double</code> closes <code>b</code>), which is what ends each range loop. After the loop, <code>b</code> is closed and empty, so the extra receive gets <code>0, false</code> at once: <samp>open? false</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["dish", "action", "detail"], "given": [0], "prompt": "Boss 2. A tray (a channel) with 2 slots. Each dish is posted without waiting; if the tray is full, the oldest dish is served to make room. Each row is the dish, then <code>tray</code> with the length after posting, or <code>swap</code> with the dish that was served.", "explain": "soup: free slot, <samp>tray 1</samp>. pie: <samp>tray 2</samp>, now full. tea: the send case can't go ahead, so <code>default</code> serves the oldest, soup, then posts tea: <samp>swap soup</samp>. jam: full again (pie, tea), so pie is served: <samp>swap pie</samp>. First in, first out, every time."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 15, "prompt": "Boss 3. A chef cooks every order that arrives on <code>orders</code>, then reports on <code>finished</code>. The program dies before printing a single line. Click the line that blocks forever.", "explain": "Line 15 sends on the unbuffered <code>orders</code> before line 16 starts the chef. No receiver exists yet, so main waits at the door forever: <samp>fatal error: all goroutines are asleep - deadlock!</samp> with <samp>goroutine 1 [chan send]</samp> at line 15. Swap lines 15 and 16 and it prints <samp>cooking soup</samp>, then <samp>all orders cooked</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 11, "pin": [1, 3, 5, 12, 18], "prompt": "Boss 4. A helper posts two letters into a mailbox and raises the flag; main counts and prints each delivery, then the total. Put the moving lines in order.", "explain": "The mailbox first. The helper: <code>go func() {</code>, card, bill, <code>close(mail)</code> (the sender closes, after its last send), <code>}()</code>. Then main's range loop: add one to <code>count</code>, print, close the loop, and print the total: <samp>1 card</samp>, <samp>2 bill</samp>, <samp>delivered 2</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. Make each function's parameter promise its direction: <code>send</code> only sends (and closes), <code>show</code> only receives. Write the channel types on lines 5 and 10.", "blanks": [{"line": 5, "text": "chan<- string"}, {"line": 10, "text": "<-chan string"}], "explain": "Send-only is <code>chan&lt;- string</code>: the arrow points into <code>chan</code>. Receive-only is <code>&lt;-chan string</code>: the arrow comes out of it. Main's two-way <code>ch</code> converts to each automatically. Output: <samp>read hello</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. <code>report</code> adds up everything it receives, then tries to send the total back.", "expect": "error", "answer": "cannot send to receive-only channel", "ask": "It doesn't compile. Type what the Compiler says can't be done, from the word <code>cannot</code> to the word <code>channel</code>.", "hint": "Look at the type of <code>in</code>, and at line 10.", "explain": "<code>in</code> is a <code>&lt;-chan int</code>, receive-only, and line 10 sends on it: <samp>invalid operation: cannot send to receive-only channel &lt;-chan int in (variable of type &lt;-chan int)</samp>. (Go 1.24's message leaves out the type the first time.) And even if it compiled, main returns straight after starting <code>report</code>: when main leaves, the kitchen closes."}</script>
+
+  <section class="panel pop" aria-label="Panel 41: what you learned">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">What you learned in Chapter 24</p>
+    <ul class="recap">
+      <li><b>NEED MORE HANDS? JUST SAY GO!</b><code>go f()</code> starts <code>f</code> as a goroutine and carries on at once. Goroutines are cheap; Go's scheduler shares the CPU cores among them (<code>GOMAXPROCS</code> at a time). Concurrency is organising overlapping jobs; parallelism is running them at the same instant.</li>
+      <li><b>WHEN MAIN LEAVES, THE KITCHEN CLOSES</b>The program ends when <code>main</code> returns, and running goroutines are stopped mid-dish. Wait for them: <code>wg.Add(1)</code> before <code>go</code>, <code>defer wg.Done()</code> inside, <code>wg.Wait()</code> before leaving, or just <code>wg.Go(f)</code> (Go 1.25). One <code>Done</code> too many panics: <samp>negative WaitGroup counter</samp>.</li>
+      <li><b>HELPERS FINISH IN ANY ORDER</b>Scheduling order isn't promised. For a dependable result, give each helper its own slot, or collect results and combine them in a way where order doesn't matter.</li>
+      <li><b>I WAIT AT THE DOOR UNTIL SOMEONE TAKES THE LETTER</b>An unbuffered channel is a handshake: send waits for a receiver and receive waits for a sender. A buffered channel, <code>make(chan T, n)</code>, is a mailbox with n slots, first in first out; it waits only when full or empty. When every goroutine waits: <samp>all goroutines are asleep - deadlock!</samp> with <samp>[chan send]</samp> or <samp>[chan receive]</samp>.</li>
+      <li><b>THE SENDER CLOSES</b><code>close(ch)</code> raises the no-more-mail flag: letters inside are still delivered, then receives return the zero value with <code>ok == false</code>, and <code>for v := range ch</code> ends. Send after close or close twice: panic. One-way types (<code>chan&lt;- T</code>, <code>&lt;-chan T</code>) let the Compiler enforce who does what. A nil channel blocks forever.</li>
+      <li><b>SELECT OPENS THE FIRST DOOR THAT'S READY</b><code>select</code> waits for whichever case can go ahead, picking at random among several ready ones; <code>default</code> makes it not wait at all; a <code>time.After</code> case gives up after a timeout.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every helper waited for, every baton handed over, every flag raised by the sender. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 42: next time, keys and conveyor belts">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption soft">Coming up in Chapter 25: Keys and Conveyor Belts</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><rect x="70" y="16" width="80" height="20" rx="4" fill="#F2C9A0" stroke="#111" stroke-width="5"/><path d="M110 36 V54" stroke="#111" stroke-width="5"/><circle cx="110" cy="70" r="16" fill="#FFD60A" stroke="#111" stroke-width="5"/><path d="M110 86 V118 M110 104 h14 M110 114 h10" stroke="#111" stroke-width="6" stroke-linecap="round"/></svg>
+          <p><b>One key on a hook</b>: what goes wrong when two helpers write to the same variable at once (a <b>data race</b>), how <code>go run -race</code> catches it, and how a <code>sync.Mutex</code> lets only one helper in at a time.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><rect x="10" y="70" width="200" height="22" rx="11" fill="#DDE8FF" stroke="#111" stroke-width="5"/><circle cx="30" cy="81" r="6" fill="#111"/><circle cx="110" cy="81" r="6" fill="#111"/><circle cx="190" cy="81" r="6" fill="#111"/><rect x="40" y="40" width="28" height="28" rx="4" fill="#FFD60A" stroke="#111" stroke-width="4"/><rect x="96" y="40" width="28" height="28" rx="4" fill="#C9F2D9" stroke="#111" stroke-width="4"/><rect x="152" y="40" width="28" height="28" rx="4" fill="#FFE1E1" stroke="#111" stroke-width="4"/><path d="M60 110 h100" stroke="#111" stroke-width="4" stroke-dasharray="8 6"/></svg>
+          <p><b>Conveyor belts</b>: worker pools, pipelines and fan-out/fan-in, built from the channels you just learned, plus how to make sure every goroutine you start also stops.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today, helpers that pass notes. Next time: what happens when they share one desk after all.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a key hanging from a hook; three boxes riding a conveyor belt.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch23.html">← Ch 23 · The Test Lab</a><a class="next" href="ch25.html">Ch 25 · Keys and Conveyor Belts →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: the scheduler, what a channel is made of, and how deadlocks are spotted</summary>
+    <div class="page-body">
+      <h3>Goroutines, threads and the scheduler</h3>
+      <p>Your operating system runs <b>threads</b>: each has its own stack, often a megabyte or more, and switching between them goes through the OS. Go puts many goroutines on a few threads. The runtime's scheduler is usually described with three letters: <b>G</b> (a goroutine), <b>M</b> (a machine: an OS thread) and <b>P</b> (a processor: a permission to run Go code). There are <code>GOMAXPROCS</code> Ps. Each P has a queue of runnable Gs, and an M must hold a P to run them. A newly started goroutine goes into a special "run next" spot of the current P, which is why tiny programs so often run the <em>last</em> goroutine started first (try panel 10's <code>order_quick.go</code>). Idle Ps steal work from busy ones. Since Go 1.14 a goroutine that runs too long without pausing can be interrupted, so one busy loop can't hog a core forever.</p>
+      <h3>Small, growable stacks</h3>
+      <p>A goroutine starts with a small stack (a couple of kilobytes) and the runtime grows it, by copying it to a bigger block, when a function call needs more room. That's why ten thousand goroutines (panel 15) cost only a few tens of megabytes at most, and why Go programs can afford a goroutine per network connection.</p>
+      <h3>What a channel is made of</h3>
+      <p>A channel value is a pointer to a small structure in the runtime: a lock, a ring buffer with <code>cap</code> slots (empty for unbuffered channels), counters for the front and back of the queue, a "closed" flag, and two waiting lines, one of blocked senders and one of blocked receivers. A blocked goroutine is <b>parked</b>: taken off its P and put in the waiting line, costing no CPU at all. On an unbuffered channel the runtime copies the value straight from the sender to the waiting receiver. That's also why passing a channel to a function copies only the pointer: both sides share the same channel.</p>
+      <h3>How "all goroutines are asleep" is noticed</h3>
+      <p>The runtime declares a deadlock only when <b>every</b> goroutine is blocked and nothing (no timer, no network, no system call) could ever wake one. If even one goroutine is sleeping in <code>time.Sleep</code> or waiting on the network, the runtime can't be sure, so it says nothing. That's why a stuck helper in a long-running server isn't reported: it just sits there forever, a <b>goroutine leak</b>. Go 1.27 made a goroutine leak profile generally available for finding such goroutines; chapter 25 comes back to it.</p>
+      <h3>WaitGroups and "happens before"</h3>
+      <p>The <code>sync</code> documentation says that the return of a function started with <code>wg.Go</code> "synchronizes before" the return of the <code>Wait</code> call it unblocks. In plain words: everything a helper wrote before finishing is guaranteed to be visible to main after <code>Wait</code>. That's what makes panel 11's slot pattern correct, and not just lucky. Channels give the same guarantee: a send happens before the matching receive completes. The rules are in the Go memory model document.</p>
+      <h3>One variable per loop trip (Go 1.22)</h3>
+      <p>Before Go 1.22, a <code>for</code> loop had a single <code>i</code> shared by every trip, so goroutines started in the loop often all saw its last value. Since Go 1.22 (decided by the <code>go</code> line in <code>go.mod</code>) each trip gets a fresh variable, which is why this chapter's helpers can use <code>i</code> and <code>d</code> directly. Older tutorials pass the value as an argument, <code>go func(i int) {...}(i)</code>, to work around the old rule.</p>
+      <h3>GOMAXPROCS</h3>
+      <p>The default is the number of CPU cores the program may use. Since Go 1.25 it also respects a container's CPU limit on Linux. You can override it with the environment variable <code>GOMAXPROCS=1</code> or by calling <code>runtime.GOMAXPROCS(n)</code>, but you rarely should. With <code>GOMAXPROCS=1</code> goroutines are still concurrent, just never parallel.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where helpers and batons show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Web servers.</b> Go's <code>net/http</code> server runs every incoming request in its own goroutine, so a slow visitor never holds up a fast one (chapter 26).</li>
+        <li><b>Doing many slow things at once.</b> Fetching ten web pages, resizing a folder of photos, querying three databases: start one goroutine per job and collect the results on a channel or into slots, as in panels 11 and 21.</li>
+        <li><b>Timeouts.</b> Every network call needs a "give up after" rule. <code>select</code> with <code>time.After</code> is the basic form; the <code>context</code> package (chapter 26) builds on it and can cancel a whole tree of goroutines at once.</li>
+        <li><b>Queues between parts of a program.</b> A buffered channel lets a fast producer get ahead of a slower consumer by a bounded amount, like a print queue or a log writer.</li>
+        <li><b>Signals.</b> <code>signal.Notify</code> delivers Ctrl+C to your program as a value on a channel, so a server can finish its work and shut down cleanly.</li>
+        <li><b>Tickers.</b> <code>time.NewTicker</code> (chapter 22) sends on a channel at a steady rate: games, dashboards and health checks use it in a <code>select</code> loop.</li>
+        <li><b>"Done" signals.</b> A channel that is only ever closed, never sent on, is a cheap way to tell many goroutines at once that it's time to stop: every receive on it returns immediately after <code>close</code>. Chapter 25 uses this.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>go f()</code> waits for <code>f</code>."</b> It returns at once. Use a WaitGroup or a channel to wait.</li>
+        <li><b>"The program waits for its goroutines before exiting."</b> It ends the moment <code>main</code> returns.</li>
+        <li><b>"Goroutines run in the order I start them."</b> No order is promised (panel 10).</li>
+        <li><b>"Adding <code>time.Sleep</code> makes it wait long enough."</b> It might, on your machine, today. Sleep guesses; WaitGroups and channels know.</li>
+        <li><b>"<code>wg.Add(1)</code> can go inside the goroutine."</b> Then main might reach <code>Wait</code> before the helper has added itself, and leave early. Add before <code>go</code>, or use <code>wg.Go</code>.</li>
+        <li><b>"A buffered channel never blocks."</b> It blocks when full (send) or empty (receive).</li>
+        <li><b>"Closing a channel deletes the values in it."</b> Values already inside are still delivered.</li>
+        <li><b>"You must close every channel."</b> Only when a receiver needs to know the end has come. Unclosed channels are garbage-collected like anything else.</li>
+        <li><b>"The receiver should close when it has had enough."</b> The sender closes. A receiver that closes makes the sender panic.</li>
+        <li><b>"<code>select</code> tries the cases from top to bottom."</b> Among ready cases it picks at random.</li>
+        <li><b>"A deadlock is always reported."</b> Only when <em>every</em> goroutine is stuck. A partly stuck program just hangs, or leaks.</li>
+        <li><b>"More goroutines always means faster."</b> Only when there is waiting to overlap or cores to use. A goroutine per tiny addition costs more than the addition.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>go version</code>. Goroutines, channels and <code>select</code> work in every Go version. <code>for i := range 5</code> needs Go 1.22, and <code>wg.Go</code> needs <b>Go 1.25</b> (panel 12 shows what older Go says).</li>
+        <li><code>mkdir kitchen</code>, <code>cd kitchen</code>, <code>go mod init example/kitchen</code>.</li>
+        <li>Put <code>order.go</code> from panel 10 in <code>main.go</code> and run <code>go run .</code> five times. Write down the orders.</li>
+      </ol>
+      <p class="os-note">With <code>go run .</code> inside a module, compile errors start with <code># example/kitchen</code> instead of this book's <code># command-line-arguments</code>, and panic traces show your own folder's path. The messages and line numbers are the same.</p>
+      <h3>2. Experiments</h3>
+      <ol>
+        <li>Run <code>order.go</code> with only one P. macOS and Linux: <code>GOMAXPROCS=1 go run .</code>. PowerShell: <code>$env:GOMAXPROCS=1; go run .</code> (then <code>Remove-Item Env:GOMAXPROCS</code> to undo). Do the orders change?</li>
+        <li>Delete the <code>chop</code> call and run again. Do you see the newest helper go first?</li>
+        <li>In <code>buffered.go</code>, change the capacity to 2 and predict which line deadlocks before running it.</li>
+        <li>Remove <code>close(mail)</code> from <code>rangech.go</code>, then add a helper that sleeps forever in <code>time.Sleep(time.Hour)</code>. Is the deadlock still reported? (Page 1 explains why not. Stop it with Ctrl+C.)</li>
+        <li>While a program is stuck, macOS and Linux users can press <b>Ctrl+\</b> (backslash): the Go runtime prints every goroutine's stack and its state, such as <samp>[chan receive]</samp>, then exits. It's a quick way to see who is waiting for what.</li>
+        <li>Change <code>timeout.go</code>'s 50 ms to 600 ms and watch the stew win the first race.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> install from the .msi on go.dev/dl. Everything in this chapter behaves the same; only the paths in panic traces look different (<code>C:/Users/…/main.go</code>).</li>
+        <li><b>macOS:</b> install the .pkg from go.dev/dl or use Homebrew (<code>brew install go</code>).</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages can be old: check that <code>go version</code> says 1.25 or later before trying <code>wg.Go</code>.</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs goroutines and channels, and it detects deadlocks too.</li>
+      </ul>
+      <p class="os-note">This page shows Go 1.27.3. Under Go 1.24.7 every program that doesn't use <code>wg.Go</code> printed the same output and the same messages, except that the one-way channel errors leave out the channel's type the first time it's mentioned, and trace offsets such as <code>+0x67</code> differ. The <code>negative WaitGroup counter</code> traces also differ: Go 1.24.7 panics from a different line of <code>waitgroup.go</code> and shows arguments with question marks.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>goroutine</dt><dd>A function call running on its own, alongside the rest of the program, managed by the Go runtime. <code>main</code> is one too.</dd>
+        <dt><code>go</code> statement</dt><dd><code>go f(x)</code>: start <code>f(x)</code> as a new goroutine and continue without waiting.</dd>
+        <dt>concurrency</dt><dd>Structuring a program as several jobs whose lifetimes overlap.</dd>
+        <dt>parallelism</dt><dd>Running several jobs at the same instant, on different CPU cores.</dd>
+        <dt>CPU core</dt><dd>One part of a processor that can run instructions; a processor usually has several.</dd>
+        <dt>scheduler</dt><dd>The part of the Go runtime that decides which goroutine runs on which core, and when.</dd>
+        <dt><code>GOMAXPROCS</code></dt><dd>How many goroutines may run Go code at the same instant; by default, the number of cores available.</dd>
+        <dt><code>sync.WaitGroup</code></dt><dd>A counter for waiting on a group of tasks: <code>Add</code>, <code>Done</code>, <code>Wait</code>, and <code>Go</code> (Go 1.25).</dd>
+        <dt>block (verb)</dt><dd>Not the <code>{ }</code> block of chapter 3: to stop and wait until something happens, using no CPU meanwhile.</dd>
+        <dt>channel</dt><dd>A typed route for passing values between goroutines; made with <code>make(chan T)</code> or <code>make(chan T, n)</code>.</dd>
+        <dt>send, receive</dt><dd><code>ch &lt;- v</code> puts a value into a channel; <code>&lt;-ch</code> takes one out.</dd>
+        <dt>unbuffered channel</dt><dd>A channel with capacity 0: every send waits for a matching receive (a handshake).</dd>
+        <dt>buffered channel, capacity</dt><dd>A channel with n slots; sends wait only when it's full, receives only when it's empty.</dd>
+        <dt><code>close</code></dt><dd>Mark a channel as finished: no more sends; receives drain what's left, then get the zero value.</dd>
+        <dt>comma-ok receive</dt><dd><code>v, ok := &lt;-ch</code>: <code>ok</code> is false when the value came from a closed, empty channel.</dd>
+        <dt>send-only, receive-only</dt><dd>The one-way channel types <code>chan&lt;- T</code> and <code>&lt;-chan T</code>.</dd>
+        <dt>nil channel</dt><dd>A channel variable that was never made; sending or receiving on it blocks forever.</dd>
+        <dt><code>select</code></dt><dd>Waits until one of several sends or receives can proceed and runs that case; random among ready cases.</dd>
+        <dt>non-blocking</dt><dd>An operation that never waits; in Go, a <code>select</code> with a <code>default</code> case.</dd>
+        <dt>timeout</dt><dd>A limit on how long to wait; often a <code>time.After</code> case in a <code>select</code>.</dd>
+        <dt>deadlock</dt><dd>Goroutines waiting for each other (or for nothing) so that none can ever continue.</dd>
+        <dt>fatal error</dt><dd>A runtime failure that stops the program and can't be recovered, unlike a panic.</dd>
+        <dt>goroutine leak</dt><dd>A goroutine that stays blocked forever, holding its memory, because nothing will ever wake it.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/tour/concurrency/1">A Tour of Go: Concurrency</a>, eleven runnable slides from goroutines to <code>select</code>.</li>
+        <li><a href="https://go.dev/ref/spec#Channel_types">The Go specification</a>: Channel types, Send statements, Receive operator, Go statements and Select statements.</li>
+        <li><a href="https://go.dev/doc/effective_go#concurrency">Effective Go: Concurrency</a>, where "share memory by communicating" comes from (written before Go 1.22's loop change).</li>
+        <li><a href="https://pkg.go.dev/sync#WaitGroup">sync.WaitGroup</a> and <a href="https://go.dev/ref/mem">the Go memory model</a>.</li>
+        <li><a href="https://go.dev/blog/codelab-share">Go blog: Share Memory By Communicating</a> and <a href="https://go.dev/blog/concurrency-timeouts">Go Concurrency Patterns: Timing out, moving on</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/goroutines">Go by Example</a>: Goroutines, Channels, Channel Buffering, Channel Synchronization, Channel Directions, Select, Timeouts, Non-Blocking Channel Operations, Closing Channels, Range over Channels and WaitGroups.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests">Learn Go with Tests</a>: the "Concurrency" and "Select" chapters, which build both test-first.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries), the concurrency chapters: #55 "Mixing up concurrency and parallelism", #56 "Thinking concurrency is always faster", #71 "Misusing sync.WaitGroup" and #64 to #67 on select and channels.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>, <code>CGO_ENABLED=0</code>) on 2026-11-08, in <code>/home/you/go-ch24</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). Runs happen in a fresh process namespace with the operating system's address randomisation off (Go still randomises where its own heap starts, which is why <code>negative.go</code>'s addresses vary), on a machine with 2 CPU cores. 52 programs were captured. Nine are marked "one possible run" and are never answer keys, because goroutine scheduling, <code>select</code>'s random choice, clocks or memory addresses make them vary: <code>nothing.go</code>, <code>wg_basic.go</code>, <code>order.go</code>, <code>order_quick.go</code>, <code>missing_wait.go</code>, <code>negative.go</code> (its hex arguments change every run), <code>speed.go</code>, <code>select_random.go</code> and <code>select_once.go</code>. Every other program gave identical output on two runs; <code>timeout.go</code> and <code>parsons_timeout.go</code> use timing gaps of hundreds of milliseconds so that the same case always wins.</p>
+  <p>Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code>. The listed differences: <code>wggo.go</code>, <code>cheap.go</code>, <code>order.go</code>, <code>order_quick.go</code>, <code>speed.go</code>, <code>fill_wggo.go</code> and <code>predict_slots.go</code> don't build there, because <code>WaitGroup.Go</code> is new in Go 1.25 (panel 12 shows that run); <code>direction_err.go</code> and <code>boss_err.go</code> report the same error with slightly different wording; the panic and deadlock traces (<code>close_twice.go</code>, <code>send_closed.go</code>, <code>spot_closer.go</code>, <code>nilchan.go</code>, <code>range_noclose.go</code>, <code>negative.go</code>, <code>spot_negative.go</code>) differ only in code offsets and in the lines of Go's own <code>waitgroup.go</code>; and the "one possible run" programs <code>wg_basic.go</code>, <code>select_once.go</code> and <code>select_random.go</code> differ as expected: 19 programs in all. Every program's own output, and every panic and fatal-error message, was otherwise identical.</p>
+  <p>The tracer, the two channel steppers, the receive machine and the map are teaching models; each checks itself against those runs and shows a badge. The steppers and the tracer show one possible timing of the goroutines; their screens match the real output, which is the same for every timing. In the tracer, the WaitGroup's counter is drawn as a field so you can watch it; the real counter is hidden inside the type. The channel stepper is this chapter's own widget (<code>assets/ext/go-ch24.js</code>): it checks every screen line against the capture and, for the mailbox, that each printed <samp>N of 3</samp> matches the number of letters drawn.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go 1.14, 1.22, 1.25 and 1.27 release notes (checked on 2026-11-08 for preemptible goroutines in 1.14, per-iteration loop variables in 1.22, <code>WaitGroup.Go</code> and container-aware <code>GOMAXPROCS</code> in 1.25, and the goroutine leak profile in 1.27); the documentation of <code>sync</code> (read with <code>go doc sync.WaitGroup</code> from the Go 1.27.3 toolchain); Go by Example's Timeouts page and its list of concurrency examples; and, as summarised in this book's research map, A Tour of Go (Concurrency), the Go specification (Select statements), Effective Go (Concurrency), The Go Programming Language sections 8.1 to 8.7, Concurrency in Go chapters 2 and 3, Learn Go with Tests (Concurrency, Select), boot.dev Learn Go chapter 13, Get Programming with Go lesson 30, Learning Go 2nd edition chapter 12, Ardan Labs' goroutines material, and 100 Go Mistakes (#55, #56, #64 to #67, #71).</p>
+  <p>Scoot, Rosa, the head chef, the kitchen helpers, the Compiler, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

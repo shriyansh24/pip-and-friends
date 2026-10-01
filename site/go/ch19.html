@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipes and Nesting Dolls</title>
+<meta name="description" content="Chapter 19 of the Go book of Pip &amp; Friends, a comic course: small one-method interfaces, io.Reader and io.Writer, io.Copy as a pipe between any reader and any writer, an interface value as a two-slot box and the typed-nil trap, accept interfaces and return structs, consumer-side interfaces, the compile-time check, then error design as nesting dolls: wrapping with %w, errors.Is, errors.As, errors.AsType, sentinel errors, custom error types, errors.Join, handling an error once, panic versus error, and recover in a deferred function, with every classic mistake read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch19.css">
+<script defer src="../data/go-ch19.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch19.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch18.html">&larr; Ch 18</a><span aria-current="page">Ch 19 of 28</span><a href="ch20.html">Ch 20 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 19 · INTERMEDIATE</p>
+    <h1 id="cover-h">PIPES AND NESTING DOLLS</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello with a letter in hand.</p>
+    <p class="caption blurb">Chapter 14 showed you plugs: interfaces. Today you meet the two most famous plugs in Go, <b>Reader</b> and <b>Writer</b>, and join them with a <b>pipe</b>. You'll open up an interface value and find two slots inside, which explains Go's sneakiest trap. Then errors grow up: you'll pack one error inside another like <b>nesting dolls</b>, open them to find the one you want, and learn when a program should give up loudly with <code>panic</code>, and how <code>recover</code> catches it. About 120 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One-method plugs: Reader, Writer and the pipe</a></li>
+      <li><a href="#part-2">The two-slot box and the nil trap</a></li>
+      <li><a href="#part-3">Designing with plugs</a></li>
+      <li><a href="#part-4">Nesting dolls: wrapping errors</a></li>
+      <li><a href="#part-5">Handle it once</a></li>
+      <li><a href="#part-6">Panic and recover</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE-METHOD PLUGS<small>io.Writer, io.Reader and io.Copy</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: the depot gets pneumatic tubes">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's depot has installed a network of <b>tubes</b>. Letters whoosh from the sorting room to the front desk, to the archive, to the shredder.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Every station has the same little socket. Anything that can <b>take</b> letters plugs in at one end. Anything that can <b>hand out</b> letters plugs in at the other.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>The tube doesn't care what's on either end. Desk, archive, shredder: same socket, same tube.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot points at the new tubes, amazed.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: two tiny plugs">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Go's standard library has those two sockets. Each is an interface with <b>just one method</b>. They live in the package <code>io</code> (input and output).</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">TAKES BYTES</span>
+        <span class="sym" aria-hidden="true">type Writer interface {
+  Write(p []byte) (n int, err error)
+}</span>
+        <h3>io.Writer<small>anything you can write to</small></h3>
+        <p>"Here are some bytes, please take them." It answers how many it took (<code>n</code>) and whether anything went wrong (<code>err</code>). The screen, a file, a buffer in memory and a network connection are all Writers.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">HANDS OUT BYTES</span>
+        <span class="sym" aria-hidden="true">type Reader interface {
+  Read(p []byte) (n int, err error)
+}</span>
+        <h3>io.Reader<small>anything you can read from</small></h3>
+        <p>"Here's an empty bucket <code>p</code>, please fill it." It answers how many bytes it put in (<code>n</code>), and says <code>io.EOF</code> ("end of file") when there are no more. A <code>strings.Reader</code> (made from a string), a file and the keyboard are all Readers.</p>
+      </div>
+    </div>
+    <p class="sr-only">The two declarations: type Writer interface with one method, Write(p []byte) (n int, err error); and type Reader interface with one method, Read(p []byte) (n int, err error).</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>A <b>byte</b> is one small number from 0 to 255; text is stored as bytes (chapter 11). Catchphrase: <b>the smaller the plug, the more things fit.</b> One method is easy for anything to have.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: one function, three Writers">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption"><code>fmt.Fprintf</code> is <code>Printf</code> with an extra first argument: <b>where</b> to write. It accepts any <code>io.Writer</code>. So does <code>greet</code>.</p>
+    <span class="file-tab">writers.go</span>
+    <pre class="code" data-src="writers.go"></pre>
+    <pre class="term" data-run="writers.go"></pre>
+    <ol class="readlist">
+      <li><span><code>greet(w io.Writer, …)</code> (line 12)<br>The parameter's type is the plug, not a particular device. Whatever goes in must have a <code>Write</code> method.</span></li>
+      <li><span><code>Hi Ana, …</code> (line 17)<br><code>os.Stdout</code> is the screen ("standard output"). It's a <code>*os.File</code>, which has a <code>Write</code> method, so it fits.</span></li>
+      <li><span><code>the buffer holds 28 bytes</code> (lines 19 to 21)<br>A <code>bytes.Buffer</code> is a growable box of bytes in memory. Bo's greeting went in there, not to the screen: 28 bytes, counting the newline.</span></li>
+      <li><span><code>the builder says: …</code> (lines 23 to 25)<br>A <code>strings.Builder</code> collects writes into one string. We pass <code>&amp;buf</code> and <code>&amp;sb</code> because their <code>Write</code> methods have pointer receivers (chapter 14's pointer plug).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-wset-m" id="ex-wset"></div>
+  <script type="application/json" id="ex-wset-m">{"q": "<code>type Shredder struct{}</code> has exactly one method: <code>func (s Shredder) Write(p []byte) (int, error)</code>. Can you call <code>fmt.Fprintln(Shredder{}, \"top secret\")</code>?", "options": [
+    {"t": "Yes: it has the method <code>io.Writer</code> asks for", "correct": true, "why": "Right. Satisfaction is implicit (chapter 14): the method's name and shape match, so <code>Shredder{}</code> fits the <code>io.Writer</code> plug. No <code>implements</code> paperwork."},
+    {"t": "No: it must say <code>implements io.Writer</code> first", "why": "Go has no <code>implements</code> keyword. Having the right method is all it takes."},
+    {"t": "No: only files and the screen can be Writers", "why": "Any type with <code>Write(p []byte) (int, error)</code> is a Writer, including types you make yourself."},
+    {"t": "Only if <code>Shredder</code> also has a <code>Read</code> method", "why": "That would make it a Reader too, but <code>io.Writer</code> asks for <code>Write</code> only. One method, one plug."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: your own Writer">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Make your own Writer: a <code>Shouter</code> that passes everything on IN CAPITALS. It wraps another Writer, the way a funnel fits on a tube.</p>
+    <span class="file-tab">shout.go</span>
+    <pre class="code" data-src="shout.go"></pre>
+    <pre class="term" data-run="shout.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func (s Shouter) Write(p []byte) (int, error)</code> (line 15)<br>Exactly the shape <code>io.Writer</code> wants, so <code>Shouter</code> is a Writer.</span></li>
+      <li><span><code>s.out.Write(bytes.ToUpper(p))</code> (line 16)<br>Capitalise the bytes, then hand them to the Writer inside, here <code>os.Stdout</code>. Its answer (how many, any error) is passed straight back.</span></li>
+      <li><span><code>PARCEL FOR ROOM 7</code> (lines 21 and 22)<br><code>fmt.Fprintln</code> and <code>fmt.Fprintf</code> never heard of <code>Shouter</code>. They just call its <code>Write</code>. Line 23 uses plain <code>Println</code>, which goes straight to the screen.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillw-m" id="ex-fillw"></div>
+  <script type="application/json" id="ex-fillw-m">{"program": "fill_write.go", "prompt": "<code>Tally</code> is a Writer that only counts bytes. Line 10: write the method name and its shape, as <code>io.Writer</code> asks. Line 12: report that every byte was taken, with no error.", "blanks": [{"line": 10, "text": "Write(p []byte) (int, error)", "accept": ["Write(p []byte) (n int, err error)"]}, {"line": 12, "text": "len(p), nil"}], "explain": "The method must be called <code>Write</code>, take a <code>[]byte</code> and return <code>(int, error)</code>. A Writer should say it took all <code>len(p)</code> bytes, unless it fails. \"hello\" is 5 bytes and \" world\" is 6: <samp>bytes written: 11</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 5: reading in buckets">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">The other plug. <code>strings.NewReader</code> turns a string into a Reader. You hand <code>Read</code> an empty bucket, and it fills as much as fits.</p>
+    <span class="file-tab">read_chunks.go</span>
+    <pre class="code" data-src="read_chunks.go"></pre>
+    <pre class="term" data-run="read_chunks.go"></pre>
+    <ol class="readlist">
+      <li><span><code>buf := make([]byte, 3)</code> (line 11)<br>A bucket with room for 3 bytes. <code>Read</code> never grows it; it fills what's there.</span></li>
+      <li><span><code>n=3 got "par"</code>, <code>"cel"</code>, then <code>n=2 got "s!"</code> (line 13)<br>Each call carries on where the last stopped. Only 2 bytes were left for the third trip, so <code>n</code> is 2. That's why you must use <code>buf[:n]</code>, never the whole bucket.</span></li>
+      <li><span><code>n=0 … err=EOF</code> (line 15)<br>The string is used up. <code>io.EOF</code> is a special error value meaning "the end, as expected". It isn't a failure: it's how a Reader says "that's all".</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Golden rule for Readers: <b>first use the <code>n</code> bytes you got, then look at <code>err</code>.</b> Some Readers hand over the last bytes and <code>io.EOF</code> in the same call.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tread-m" id="ex-tread"></div>
+  <script type="application/json" id="ex-tread-m">{"program": "trace_read.go", "columns": ["n", "chunk", "err"], "given": [0], "prompt": "Read <code>\"Scoot!!\"</code> (7 bytes) with a 2-byte bucket. Each row is one call to <code>Read</code>: how many bytes, what they were (in quotes, like <code>%q</code> prints them), and the error. The <code>n</code> column is filled in.", "explain": "Two bytes a trip: <samp>\"Sc\"</samp>, <samp>\"oo\"</samp>, <samp>\"t!\"</samp>, then only one is left: <samp>\"!\"</samp>. All four come with <samp>&lt;nil&gt;</samp>. The fifth call finds nothing: <samp>\"\"</samp> and <samp>EOF</samp>. Seven bytes, five calls."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: io.Copy, the pipe">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Now join a Reader to a Writer. <code>io.Copy(dst, src)</code> is the tube: it reads from <code>src</code> and writes to <code>dst</code>, over and over, until <code>src</code> says <code>io.EOF</code>.</p>
+    <span class="file-tab">copy.go</span>
+    <pre class="code" data-src="copy.go"></pre>
+    <pre class="term" data-run="copy.go"></pre>
+    <ol class="readlist">
+      <li><span><code>io.Copy(os.Stdout, src)</code> (line 13)<br>Destination first, source second, like <code>dst = src</code>. The address went from a string to the screen without your code touching a single byte.</span></li>
+      <li><span><code>copied 27 bytes, err: &lt;nil&gt;</code> (line 14)<br><code>io.Copy</code> returns how many bytes it moved and an error. Reaching <code>io.EOF</code> is the normal way to finish, so it reports <code>nil</code>, not EOF.</span></li>
+      <li><span><code>buffer: into a buffer</code> (lines 16 to 20)<br>Same pipe, different ends: a fresh Reader into a <code>bytes.Buffer</code>. The error is checked, as chapter 8 taught.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: the pipe picture">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Because both ends are tiny plugs, <code>io.Copy</code> joins <b>any</b> Reader to <b>any</b> Writer. You can even add a section of tube in the middle: a Reader that wraps another Reader.</p>
+    <svg class="pic-wide has-phone" viewBox="0 0 680 230" role="img" aria-label="Picture: on the left a tank labelled Reader, with examples strings.Reader, a file and the keyboard. A tube runs right through a middle section labelled wrapping Reader, for example rot13, then on to a screen labelled Writer, with examples os.Stdout, a file and a bytes.Buffer. A pump on the tube is labelled io.Copy. The title says any Reader, any Writer.">
+      <text x="340" y="30" font-family="Bangers, sans-serif" font-size="26" fill="#111" text-anchor="middle" letter-spacing="1">ANY READER → ANY WRITER</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="16" y="56" width="170" height="120" rx="16" fill="#DDE8FF"/>
+        <rect x="186" y="100" width="62" height="32" fill="#F4F1EA"/>
+        <rect x="248" y="78" width="170" height="76" rx="14" fill="#FFF6CC"/>
+        <rect x="418" y="100" width="70" height="32" fill="#F4F1EA"/>
+        <rect x="488" y="56" width="176" height="120" rx="16" fill="#FFFFFF"/>
+        <circle cx="453" cy="116" r="20" fill="#FFD60A"/>
+      </g>
+      <path d="M443 116 h20 m-7 -7 l7 7 -7 7" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="101" y="86">READER</text><text x="333" y="106">WRAPPING READER</text><text x="576" y="86">WRITER</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="101" y="114">strings.Reader</text><text x="101" y="138">a file</text><text x="101" y="162">the keyboard</text>
+        <text x="333" y="136">rot13Reader</text>
+        <text x="576" y="114">os.Stdout</text><text x="576" y="138">a file</text><text x="576" y="162">bytes.Buffer</text>
+      </g>
+      <text x="453" y="88" font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle">io.Copy</text>
+      <text x="340" y="212" font-family="Comic Neue, sans-serif" font-weight="700" font-size="19" fill="#111" text-anchor="middle">Read on one side, Write on the other, until io.EOF</text>
+    </svg>
+    <svg class="pic-phone" viewBox="0 0 360 520" role="img" aria-label="Picture: on the left a tank labelled Reader, with examples strings.Reader, a file and the keyboard. A tube runs right through a middle section labelled wrapping Reader, for example rot13, then on to a screen labelled Writer, with examples os.Stdout, a file and a bytes.Buffer. A pump on the tube is labelled io.Copy. The title says any Reader, any Writer.">
+      <text x="180" y="30" font-family="Bangers, sans-serif" font-size="24" fill="#111" text-anchor="middle" letter-spacing="1">ANY READER → ANY WRITER</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="40" y="46" width="280" height="120" rx="16" fill="#DDE8FF"/>
+        <rect x="160" y="166" width="40" height="34" fill="#F4F1EA"/>
+        <rect x="60" y="200" width="240" height="80" rx="14" fill="#FFF6CC"/>
+        <rect x="160" y="280" width="40" height="70" fill="#F4F1EA"/>
+        <rect x="40" y="350" width="280" height="130" rx="16" fill="#FFFFFF"/>
+        <circle cx="180" cy="315" r="20" fill="#FFD60A"/>
+      </g>
+      <path d="M180 305 v20 m-7 -7 l7 7 7 -7" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="180" y="76">READER</text><text x="180" y="230">WRAPPING READER</text><text x="180" y="380">WRITER</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle">
+        <text x="180" y="104">strings.Reader</text><text x="180" y="128">a file</text><text x="180" y="152">the keyboard</text>
+        <text x="180" y="262">rot13Reader</text>
+        <text x="180" y="410">os.Stdout</text><text x="180" y="436">a file</text><text x="180" y="462">bytes.Buffer</text>
+      </g>
+      <text x="212" y="321" font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">io.Copy</text>
+      <text x="180" y="508" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111" text-anchor="middle">Read, then Write, until io.EOF</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>A Reader that wraps a Reader is still a Reader. So you can snap sections together: unzip, then decode, then count, then copy to a file. Each section only knows the plug in front of it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean pipebox" aria-label="Panel 8: step through the pipe" data-pipe="pipe-rot13">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">A secret message travels through a <code>rot13Reader</code>, which swaps each letter for the one 13 places along (A↔N, B↔O …). This section of tube is narrow: at most 5 bytes per trip. Step through the trips. In the picture, <code>·</code> is a space and <code>⏎</code> is the newline.</p>
+    <span class="file-tab">rot13.go</span>
+    <div class="pipe-split"><ol class="tr-code pipe-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="pipe-svg" role="img" aria-label="The pipe for the current step: the reader's remaining bytes, the bytes in the filter, and what has reached the screen. The narration and the text version below describe it."></svg></div>
+    <ul class="pipe-key" aria-label="Key to the picture">
+      <li>thick tube and yellow filter: a trip is happening now</li>
+      <li>dashed tube: nothing is moving</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>What happens</th><th>The pipe</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="pipe-rot13">{"program": "rot13.go", "source": "Uryyb, Fpbbg!\n", "width": 5, "filter": "rot13Reader", "wrapVar": "pipe",
+      "copiedLine": "copied {n} bytes, err: <nil>", "tripsLine": "trips: [{trips}]",
+      "startLines": [39, 40], "tripLines": [28, 30, 32, 34, 35], "eofLines": [30, 34, 35], "doneLines": [42, 43],
+      "notes": {
+        "start": "Lines 39 and 40: the secret sits in a <code>strings.Reader</code>, and <code>pipe</code> wraps it. Line 41 calls <code>io.Copy(os.Stdout, pipe)</code>, and nothing has moved yet.",
+        "trip": "Trip {n}: <code>io.Copy</code> calls <code>pipe.Read</code> with a big bucket. Line 28 trims it to 5 bytes, line 30 asks the <code>strings.Reader</code>, and {k} bytes come back: {in}. Line 32 scrambles each one: {out}. Line 34 records the trip, and <code>io.Copy</code> writes the bytes to the screen.",
+        "eof": "The <code>strings.Reader</code> is empty, so its <code>Read</code> gives 0 bytes and <code>io.EOF</code>. The filter passes that on. <code>io.Copy</code> sees EOF, the normal end, and stops.",
+        "done": "<code>io.Copy</code> returns {total} and <code>nil</code>. Lines 42 and 43 print the total and the trips the filter recorded. Every number matches what the picture showed."}}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pcopy-m" id="ex-pcopy"></div>
+  <script type="application/json" id="ex-pcopy-m">{"program": "predict_copy.go", "prompt": "A <code>bytes.Buffer</code> is a Writer <em>and</em> a Reader. Line 16 copies it to the screen. What are the three lines?", "hint": "\"tea\" is 3 bytes. Then <code>Fprint</code> adds \" and cake\". Reading from a buffer takes the bytes out of it.", "explain": "<samp>3 &lt;nil&gt;</samp>: three bytes copied in, ending normally. Line 15 adds more, and line 16 copies everything out: <samp>tea and cake</samp>. Reading <b>drains</b> a buffer, like pouring out a jug: <samp>left: 0</samp>. (Line 16 ignores io.Copy's error, which is common when writing to the screen.)"}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE TWO-SLOT BOX<small>What's inside an interface value, and the nil trap</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 9: an interface value has two slots">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">Chapter 14 said an interface value holds a type tag and a value. Picture it as a box with <b>two slots</b>. A variable of type <code>io.Writer</code> is such a box.</p>
+    <div class="slotrow">
+      <div class="slotbox">
+        <h3>var w io.Writer</h3>
+        <div class="slots"><div><span class="lab">TYPE</span><span class="none">(empty)</span></div><div><span class="lab">VALUE</span><span class="none">(empty)</span></div></div>
+        <p class="verdict">w == nil → <b>true</b></p>
+      </div>
+      <div class="slotbox">
+        <h3>w = os.Stdout</h3>
+        <div class="slots"><div><span class="lab">TYPE</span><code>*os.File</code></div><div><span class="lab">VALUE</span><code>the screen</code></div></div>
+        <p class="verdict">w == nil → <b>false</b></p>
+      </div>
+      <div class="slotbox trap">
+        <h3>w = n &nbsp;(n is a nil *Note)</h3>
+        <div class="slots"><div><span class="lab">TYPE</span><code>*main.Note</code></div><div><span class="lab">VALUE</span><svg class="char" data-char="ghost"></svg></div></div>
+        <p class="verdict">w == nil → <b>false!</b></p>
+      </div>
+    </div>
+    <p class="sr-only">Three two-slot boxes. First: var w io.Writer, both slots empty, w == nil is true. Second: w = os.Stdout, type slot *os.File, value slot the screen, w == nil is false. Third: w = n where n is a nil pointer to Note: the type slot says *main.Note and the value slot holds the nil ghost; w == nil is still false.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>An interface is <code>nil</code> only when <b>both</b> slots are empty. A ghost in the value slot doesn't count: the type slot has a label on it. Catchphrase: <b>an empty box has no type and no value.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: proof with a real run">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The same three boxes in a real program. <code>%T</code> prints the type slot, and <code>%v</code> the value.</p>
+    <span class="file-tab">two_slots.go</span>
+    <pre class="code" data-src="two_slots.go"></pre>
+    <pre class="term" data-run="two_slots.go"></pre>
+    <ol class="readlist">
+      <li><span><code>&lt;nil&gt; &lt;nil&gt; nil? true</code> (lines 17 and 18)<br>Nothing in either slot. Only now is <code>w == nil</code> true.</span></li>
+      <li><span><code>*os.File screen nil? false</code> (lines 20 and 21)<br>A type and a real value.</span></li>
+      <li><span><code>*main.Note &lt;nil&gt; nil? false</code> (lines 23 to 25)<br>The value printed is <code>&lt;nil&gt;</code>, yet <code>w == nil</code> is <b>false</b>, because the type slot now says <code>*main.Note</code>. The value slot holds a nil pointer: a ghost with a name tag.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-slots-m" id="ex-slots"></div>
+  <script type="application/json" id="ex-slots-m">{"q": "<code>var s fmt.Stringer</code>, then <code>var p *Point</code> (a nil pointer, and <code>*Point</code> has a <code>String()</code> method), then <code>s = p</code>. What is in the two slots of <code>s</code>, and what does <code>s == nil</code> say?", "options": [
+    {"t": "Type <code>*Point</code>, value nil, so <code>s == nil</code> is false", "correct": true, "why": "Yes. Assigning <code>p</code> fills the type slot with <code>*Point</code>, even though the pointer itself is nil. One slot full means the box isn't empty."},
+    {"t": "Both slots empty: <code>s == nil</code> is <code>true</code>", "why": "That was true before <code>s = p</code>. Assigning a typed value always fills the type slot, nil pointer or not."},
+    {"t": "Type <code>fmt.Stringer</code>, value nil: <code>true</code>", "why": "The type slot holds the <b>concrete</b> type of what's inside (<code>*Point</code>), never the interface's own name."},
+    {"t": "It doesn't compile: you can't put a nil pointer in an interface", "why": "You can, and it compiles without a word. That's exactly what makes the trap sneaky."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 11: the typed nil trap">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tr" data-sfx="HUH?!" data-seed="11"></svg>
+    <p class="caption">Now the famous trap. <code>check</code> starts with "no problem yet" in a typed pointer, and returns it as an <code>error</code>. A 5 kg parcel is fine... so why is it rejected?</p>
+    <span class="file-tab">typed_nil.go</span>
+    <pre class="code" data-src="typed_nil.go"></pre>
+    <pre class="term" data-run="typed_nil.go"></pre>
+    <ol class="readlist">
+      <li><span><code>err == nil: false</code> (line 20)<br>No problem was found, so <code>e</code> stayed nil. But <code>return e</code> (line 15) put it in an <code>error</code> box, and the type slot got <code>*main.CheckErr</code>.</span></li>
+      <li><span><code>type *main.CheckErr, value &lt;nil&gt;</code> (line 21)<br>The two slots, printed. It even <em>prints</em> <code>&lt;nil&gt;</code>, which makes the bug hard to see.</span></li>
+      <li><span><code>parcel rejected!</code> (lines 22 and 23)<br>Every caller who writes <code>if err != nil</code>, which is every Go programmer, now thinks something went wrong.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>I can't refuse this: it's perfectly legal Go. A <code>*CheckErr</code> has an <code>Error</code> method, so it fits the <code>error</code> plug, nil or not.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon yellow, gate up: the program compiles.</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 12: the trap in memory" data-tracer="tr-nil" id="tr-nil-box">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Step through it. Watch the moment <code>return e</code> builds a two-slot <code>error</code> box: the type slot gets a label, the value slot gets the ghost.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-nil-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-nil">{"program": "typed_nil.go", "steps": [
+      {"line": 19, "note": "The run starts in <code>main</code>. Line 19 is about to call <code>check(5)</code>.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 11, "note": "<code>check(5)</code> opens a frame with <code>kg</code> holding 5.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "check(5)", "vars": [{"n": "kg", "ref": "K"}]}], "objects": {"K": {"kind": "int", "value": "5", "label": "kg"}}, "changed": ["kg"]},
+      {"line": 12, "note": "Line 11: <code>var e *CheckErr</code> makes a pointer variable holding <code>nil</code>: \"no problem found yet\". So far, so good: it's a plain pointer, not an interface.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "check(5)", "vars": [{"n": "kg", "ref": "K"}, {"n": "e", "ref": "E"}]}], "objects": {"K": {"kind": "int", "value": "5", "label": "kg"}, "E": {"kind": "*CheckErr", "value": "nil", "label": "e"}}, "changed": ["e"]},
+      {"line": 15, "note": "Line 12: is 5 greater than 20? No. Line 13 is skipped, and <code>e</code> stays nil.", "output": [], "frames": [{"name": "main", "vars": []}, {"name": "check(5)", "vars": [{"n": "kg", "ref": "K"}, {"n": "e", "ref": "E"}]}], "objects": {"K": {"kind": "int", "value": "5", "label": "kg"}, "E": {"kind": "*CheckErr", "value": "nil", "label": "e"}}},
+      {"line": 20, "note": "Line 15: <code>return e</code>. The function's result type is <code>error</code>, so Go builds a <b>two-slot box</b>: type slot <code>*main.CheckErr</code>, value slot <code>e</code>'s nil. The frame closes and <code>main</code>'s <code>err</code> names the box. It is <b>not</b> an empty box.", "output": [], "frames": [{"name": "main", "vars": [{"n": "err", "ref": "I"}]}], "objects": {"I": {"kind": "error", "label": "error box · err", "pairs": [{"k": "type", "val": "*main.CheckErr"}, {"k": "value", "val": "nil"}]}}, "changed": ["err"]},
+      {"line": 21, "note": "Line 20 asks <code>err == nil</code>: are <b>both</b> slots empty? The type slot isn't. <samp>err == nil: false</samp>.", "output": ["err == nil: false"], "frames": [{"name": "main", "vars": [{"n": "err", "ref": "I"}]}], "objects": {"I": {"kind": "error", "label": "error box · err", "pairs": [{"k": "type", "val": "*main.CheckErr"}, {"k": "value", "val": "nil"}]}}},
+      {"line": 22, "note": "Line 21 prints the two slots. <code>%v</code> tries to call <code>Error()</code> on a nil pointer; <code>fmt</code> notices and prints <samp>&lt;nil&gt;</samp> instead of crashing.", "output": ["err == nil: false", "type *main.CheckErr, value <nil>"], "frames": [{"name": "main", "vars": [{"n": "err", "ref": "I"}]}], "objects": {"I": {"kind": "error", "label": "error box · err", "pairs": [{"k": "type", "val": "*main.CheckErr"}, {"k": "value", "val": "nil"}]}}},
+      {"line": 23, "note": "Line 22: <code>err != nil</code> is true, so the <code>if</code> body runs.", "output": ["err == nil: false", "type *main.CheckErr, value <nil>"], "frames": [{"name": "main", "vars": [{"n": "err", "ref": "I"}]}], "objects": {"I": {"kind": "error", "label": "error box · err", "pairs": [{"k": "type", "val": "*main.CheckErr"}, {"k": "value", "val": "nil"}]}}},
+      {"line": null, "note": "Line 23: <samp>parcel rejected!</samp> A perfectly good parcel, turned away by a box that only <em>looked</em> empty.", "output": ["err == nil: false", "type *main.CheckErr, value <nil>", "parcel rejected!"], "frames": [{"name": "main", "vars": [{"n": "err", "ref": "I"}]}], "objects": {"I": {"kind": "error", "label": "error box · err", "pairs": [{"k": "type", "val": "*main.CheckErr"}, {"k": "value", "val": "nil"}]}}}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: the fix">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The fix: when there's no problem, write <code>return nil</code> in a function whose result is <code>error</code>. A bare <code>nil</code> there is an empty box.</p>
+    <div class="pair">
+      <div>
+        <p class="vs-label">TRAP: return e</p>
+        <span class="file-tab">typed_nil.go</span>
+        <pre class="term wrap" data-run="typed_nil.go"></pre>
+      </div>
+      <div>
+        <p class="vs-label">FIX: return nil</p>
+        <span class="file-tab">typed_nil_fix.go</span>
+        <pre class="term wrap" data-run="typed_nil_fix.go"></pre>
+      </div>
+    </div>
+    <span class="file-tab">typed_nil_fix.go</span>
+    <pre class="code" data-src="typed_nil_fix.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Rule of thumb: <b>a function that returns <code>error</code> should say <code>return nil</code>, never return a typed pointer that happens to be nil.</b> Keep concrete error pointers inside the function, and return them only when they're real.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pnil-m" id="ex-pnil"></div>
+  <script type="application/json" id="ex-pnil-m">{"program": "predict_nil.go", "prompt": "<code>deliver</code> returns a <code>*LateErr</code>, not an <code>error</code>. Watch what happens on line 20, when its answer goes into an <code>error</code> box. What are the three lines?", "hint": "Line 18 compares a plain pointer. Line 21 compares a two-slot box. Line 24 prints a real late error.", "explain": "<code>p</code> is a plain pointer, and it's nil: <samp>true</samp>. On line 20 the nil pointer goes into an <code>error</code> box, which gets the type <code>*main.LateErr</code>: <samp>false</samp>. On line 23, 45 minutes is late, so a real error prints: <samp>late by 45 min</samp>. Returning <code>*LateErr</code> instead of <code>error</code> is exactly how typed nils sneak into boxes."}</script>
+
+  <div data-ex="spot" data-model="ex-snil-m" id="ex-snil"></div>
+  <script type="application/json" id="ex-snil-m">{"program": "spot_nil.go", "bug": 14, "prompt": "Ana filled in her name, yet the form says <samp>form rejected: &lt;nil&gt;</samp>. No compile error, no panic. Click the guilty line.", "explain": "Line 14 returns <code>problem</code>, a <code>*FormErr</code> that is nil when nothing is missing. In an <code>error</code> box it has a type, so <code>err != nil</code> is true, and printing it shows <samp>&lt;nil&gt;</samp>. Fix: <code>return &amp;FormErr{Field: \"name\"}</code> inside the <code>if</code>, and <code>return nil</code> at the end."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · DESIGNING WITH PLUGS<small>Where interfaces belong, and when not to make one</small></h2>
+
+  <section class="panel clean" aria-label="Panel 14: accept interfaces, return structs">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Two habits experienced Go programmers share. <b>Accept interfaces</b>: ask for the smallest plug you need. <b>Return structs</b>: hand back the real thing, with all its buttons.</p>
+    <span class="file-tab">accept_iface.go</span>
+    <pre class="code" data-src="accept_iface.go"></pre>
+    <pre class="term" data-run="accept_iface.go"></pre>
+    <ol class="readlist">
+      <li><span><code>report(w io.Writer, …)</code> (line 11)<br><code>report</code> only ever calls <code>Write</code> (through <code>Fprintf</code>), so it asks for just that. Lines 32 and 35 hand it the screen and a <code>*Log</code>. Tests can hand it a <code>bytes.Buffer</code> and check what came out. (Chapter 23 uses the same idea with a stub and <code>httptest</code>'s recorder.)</span></li>
+      <li><span><code>func NewLog() *Log</code> (line 21)<br>It returns the concrete <code>*Log</code>, not <code>io.Writer</code>. If it returned <code>io.Writer</code>, line 36 couldn't call <code>log.Count()</code>: the plug only has one button, <code>Write</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 15: define the interface where it's used">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">In Go, the code that <b>uses</b> a plug usually defines it. The dispatcher needs one thing from a courier, so it writes a one-method interface right next to <code>dispatch</code>.</p>
+    <span class="file-tab">consumer.go</span>
+    <pre class="code" data-src="consumer.go"></pre>
+    <pre class="term" data-run="consumer.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type deliverer interface</code> (lines 7 to 9)<br>Lower-case name: it's the dispatcher's private business. <code>Bike</code> and <code>Drone</code> never mention it, and they don't need to.</span></li>
+      <li><span><code>PumpTyres</code> (line 20)<br>A bike has other methods, and that's fine. The plug asks for <code>Deliver</code> only. The smaller the plug, the more things fit.</span></li>
+      <li><span>Two real types (lines 27 and 28)<br>A bike and a drone both deliver. Two implementations are a good sign the interface earns its keep.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 16: three plug rules">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">Three rules to carry around.</p>
+    <div class="duo three">
+      <div class="duo-card">
+        <span class="stamp">ACCEPT</span>
+        <h3>ACCEPT INTERFACES<small>ask for the smallest plug</small></h3>
+        <p>A parameter typed <code>io.Writer</code> works with the screen, files, buffers and tests. A parameter typed <code>*os.File</code> works with files only.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">RETURN</span>
+        <h3>RETURN STRUCTS<small>hand back the real thing</small></h3>
+        <p>Callers get every method and field. They can always put it in a plug-shaped box themselves. (The big exception: <code>error</code>, which functions return as the interface.)</p>
+      </div>
+      <div class="duo-card">
+        <span class="stamp">WAIT</span>
+        <h3>DON'T POLLUTE<small>no plug before two devices</small></h3>
+        <p>Making an interface for a type that has only one implementation, "just in case", is called <b>interface pollution</b>. Write the concrete type first; add a plug when a second device turns up.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>accept plugs, hand back the real thing.</b> Go's own proverb says it shorter: "The bigger the interface, the weaker the abstraction."</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-where-m" id="ex-where"></div>
+  <script type="application/json" id="ex-where-m">{"q": "Package <code>billing</code> needs to send receipts, and only ever calls <code>Send(to, text string) error</code>. Package <code>mail</code> has a big <code>Client</code> type with 14 methods. Where should the one-method <code>sender</code> interface be declared?", "options": [
+    {"t": "In <code>billing</code>, next to the code that calls <code>Send</code>", "correct": true, "why": "Yes. The consumer knows exactly what it needs: one method. <code>mail.Client</code> fits automatically, and tests in <code>billing</code> can pass a tiny fake sender."},
+    {"t": "In <code>mail</code>, as a 14-method <code>ClientInterface</code>", "why": "A 14-method plug is hard for anything else to fit, including test fakes. And <code>billing</code> needs only one of them."},
+    {"t": "Nowhere: <code>billing</code> must take a <code>*mail.Client</code>", "why": "That works, but now <code>billing</code> can only ever send through that one client, and tests must use a real mail client."},
+    {"t": "In a new shared package that both of them import", "why": "Go doesn't need that. Satisfaction is implicit, so the interface can live where it's used, and <code>mail</code> never has to know about it."}]}</script>
+
+  <div data-ex="choice" data-model="ex-pollute-m" id="ex-pollute"></div>
+  <script type="application/json" id="ex-pollute-m">{"q": "You're writing a small program with one <code>Store</code> struct that saves notes to a file. A friend says: \"Always add <code>type StoreInterface interface { … }</code> with all its methods, and use that everywhere.\" What's the Go-style answer?", "options": [
+    {"t": "Not yet: use <code>Store</code> until something else needs the plug", "correct": true, "why": "Yes. Use the concrete <code>Store</code>, and add a small interface when a second kind of store, or a test fake, needs one. An interface with one implementation adds a layer to read through and buys nothing. Interfaces are discovered when a second device appears, not invented up front."},
+    {"t": "Yes: every struct should have a matching interface, just in case", "why": "That's the interface-pollution habit some other languages encourage. In Go, implicit satisfaction means you can add the plug later without touching <code>Store</code>."},
+    {"t": "Yes, but name it <code>IStore</code>, as other languages do", "why": "The name isn't the problem, and Go style avoids <code>I</code> prefixes anyway. The problem is making the plug before anything needs it."},
+    {"t": "No: interfaces are only for the standard library", "why": "Your own code can define interfaces, like panel 15's <code>deliverer</code>. Just define them when they're needed, where they're used."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 17: a compile-time check">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="CLUNK!" data-seed="17"></svg>
+    <p class="caption">Sometimes you want proof, before anything runs, that your type fits a plug. Go programmers write a line that asks the Compiler. It looks strange, so read it slowly.</p>
+    <span class="file-tab">check_bad.go</span>
+    <pre class="code" data-src="check_bad.go"></pre>
+    <pre class="term wrap" data-run="check_bad.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>var _ io.Writer = (*Logger)(nil)</code> (line 16)<br>"Make a variable of type <code>io.Writer</code>, give it a nil <code>*Logger</code>, and throw the variable away" (the name <code>_</code> means "don't keep it"). It costs nothing when the program runs; its only job is to make the Compiler check the fit.</span></li>
+      <li><span><code>wrong type for method Write</code><br><code>Logger</code> has a <code>Write</code>, but it takes a <code>string</code> and returns only an <code>error</code>. The <code>have</code> and <code>want</code> lines show both shapes, one above the other.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 16, column 19: <code>*Logger does not implement io.Writer</code>. You <b>have</b> <code>Write(string) error</code>; the plug <b>wants</b> <code>Write([]byte) (int, error)</code>. Fix the method, and this line compiles silently.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, keeps its gate down.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fcheck-m" id="ex-fcheck"></div>
+  <script type="application/json" id="ex-fcheck-m">{"program": "fill_check.go", "prompt": "<code>Upper</code> has a value-receiver <code>Write</code>. Fill in line 15 so the Compiler checks that <code>Upper</code> fits the Writer plug.", "blanks": [{"line": 15, "text": "io.Writer"}], "explain": "<code>var _ io.Writer = Upper{}</code>: a throw-away variable of the plug type, given an <code>Upper</code>. Because <code>Write</code> has a value receiver, a plain <code>Upper{}</code> fits; with a pointer receiver you'd write <code>(*Upper)(nil)</code>. It compiles, and the program prints <samp>QUIET PLEASE</samp>."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · NESTING DOLLS<small>Wrapping errors with %w, and opening them again</small></h2>
+
+  <section class="panel pop" aria-label="Panel 18: an error with no story">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Monday morning. Scoot's shift won't start, and the only clue is this:</p>
+    <span class="file-tab">no_context.go</span>
+    <pre class="code" data-src="no_context.go"></pre>
+    <pre class="term" data-run="no_context.go"></pre>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>"open nope: no such file or directory". Which step opened <code>nope</code>? Starting the shift? Reading settings? In a big program, that one line could come from fifty places.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Each function passed the error up untouched. Nobody added a note saying what they were doing.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, frowning, puzzled by the bare error.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: wrapping with %w">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Chapter 8 added notes with <code>%v</code>. There's a better verb for errors: <code>%w</code> ("wrap"). You used it once in chapter 16's heist (panel 20); here's what it really does. The message looks the same, but the <b>original error is kept inside</b>.</p>
+    <span class="file-tab">wrap.go</span>
+    <pre class="code" data-src="wrap.go"></pre>
+    <pre class="term" data-run="wrap.go"></pre>
+    <ol class="readlist">
+      <li><span><code>loading config: open nope: no such file or directory</code> (line 13)<br>The new error's text is your note, a colon, then the old error's text. Now you know which step failed.</span></li>
+      <li><span><code>err == fs.ErrNotExist: false</code> (line 22)<br><code>fs.ErrNotExist</code> is the standard library's "file doesn't exist" error. But <code>err</code> is the <b>outer</b> wrapper, a different value. <code>==</code> only looks at the outside.</span></li>
+      <li><span><code>errors.Is(err, fs.ErrNotExist): true</code> (line 23)<br><code>errors.Is</code> looks inside the wrapper, and inside that, until it finds a match. Always use it instead of <code>==</code> for errors.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 20: nesting dolls">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Picture a set of nesting dolls. Every <code>%w</code> paints a new, bigger doll around the old one, with a label. <code>errors.Is</code> opens the dolls one by one, looking for the one you asked about.</p>
+    <svg class="pic-wide has-phone" viewBox="0 0 680 280" role="img" aria-label="Picture: three nesting dolls in a row, from biggest to smallest. The biggest is labelled loading config, made by fmt.Errorf with percent w. The middle one is labelled open nope, an *fs.PathError made by os.Open. The smallest is labelled no such file or directory, the system's error, which counts as fs.ErrNotExist. Arrows labelled Unwrap lead from each doll to the next smaller one.">
+      <text x="340" y="30" font-family="Bangers, sans-serif" font-size="26" fill="#111" text-anchor="middle" letter-spacing="1">EACH %w ADDS A DOLL</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M40 210 Q34 112 82 106 H178 Q226 112 220 210 Z" fill="#F2C9A0"/><circle cx="130" cy="78" r="40" fill="#F2C9A0"/>
+        <path d="M290 210 Q285 134 324 130 H396 Q435 134 430 210 Z" fill="#FFF6CC"/><circle cx="360" cy="104" r="30" fill="#FFF6CC"/>
+        <path d="M520 210 Q516 156 546 152 H594 Q624 156 620 210 Z" fill="#C9F2D9"/><circle cx="570" cy="132" r="22" fill="#C9F2D9"/>
+      </g>
+      <g stroke="#111" stroke-width="2.5" fill="#FFFFFF"><circle cx="130" cy="78" r="25"/><circle cx="360" cy="104" r="19"/><circle cx="570" cy="132" r="14"/></g>
+      <g fill="#111"><circle cx="122" cy="74" r="3"/><circle cx="138" cy="74" r="3"/><circle cx="354" cy="101" r="2.6"/><circle cx="366" cy="101" r="2.6"/><circle cx="566" cy="130" r="2.2"/><circle cx="574" cy="130" r="2.2"/></g>
+      <g font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle"><text x="130" y="176">1</text><text x="360" y="186">2</text><text x="570" y="196">3</text></g>
+      <g stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M232 160 H276 m-9 -9 l9 9 -9 9"/><path d="M442 172 H506 m-9 -9 l9 9 -9 9"/></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle"><text x="254" y="148">Unwrap</text><text x="474" y="160">Unwrap</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="130" y="236">"loading config:"</text><text x="360" y="236">"open nope:"</text><text x="570" y="236">"no such file…"</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">
+        <text x="130" y="260">fmt.Errorf with %w</text><text x="360" y="260">*fs.PathError from os.Open</text><text x="570" y="260">counts as fs.ErrNotExist</text>
+      </g>
+    </svg>
+    <svg class="pic-phone" viewBox="0 0 360 470" role="img" aria-label="Picture: three nesting dolls in a row, from biggest to smallest. The biggest is labelled loading config, made by fmt.Errorf with percent w. The middle one is labelled open nope, an *fs.PathError made by os.Open. The smallest is labelled no such file or directory, the system's error, which counts as fs.ErrNotExist. Arrows labelled Unwrap lead from each doll to the next smaller one.">
+      <text x="180" y="30" font-family="Bangers, sans-serif" font-size="24" fill="#111" text-anchor="middle" letter-spacing="1">EACH %w ADDS A DOLL</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M20 160 Q16 92 50 88 H110 Q144 92 140 160 Z" fill="#F2C9A0"/><circle cx="80" cy="66" r="28" fill="#F2C9A0"/>
+        <path d="M30 300 Q27 246 54 243 H96 Q123 246 120 300 Z" fill="#FFF6CC"/><circle cx="75" cy="226" r="21" fill="#FFF6CC"/>
+        <path d="M40 430 Q38 390 58 387 H86 Q106 390 104 430 Z" fill="#C9F2D9"/><circle cx="72" cy="374" r="16" fill="#C9F2D9"/>
+      </g>
+      <g font-family="Bangers, sans-serif" font-size="20" fill="#111" text-anchor="middle"><text x="80" y="140">1</text><text x="75" y="285">2</text><text x="72" y="420">3</text></g>
+      <g stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M80 170 V200 m-8 -8 l8 8 8 -8"/><path d="M75 310 V340 m-8 -8 l8 8 8 -8"/></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111"><text x="94" y="192">Unwrap</text><text x="90" y="332">Unwrap</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111"><text x="156" y="104">"loading config:"</text><text x="140" y="250">"open nope:"</text><text x="122" y="392">"no such file…"</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111"><text x="156" y="128">fmt.Errorf with %w</text><text x="140" y="274">*fs.PathError</text><text x="140" y="294">from os.Open</text><text x="122" y="416">counts as</text><text x="122" y="436">fs.ErrNotExist</text></g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>os.Open</code> already made two dolls: a "path error" that remembers <code>open</code> and <code>nope</code>, around the system's own error. Your <code>%w</code> added the third. Catchphrase: <b><code>%w</code> keeps the doll inside; <code>errors.Is</code> opens them all.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean dollbox" aria-label="Panel 21: errors.Is opens the dolls" data-dolls="dolls-stamp">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">A parcel without a stamp, wrapped twice. The program prints every doll by unwrapping one layer at a time, then asks <code>errors.Is</code> two questions. Pick a question and open the dolls.</p>
+    <span class="file-tab">dolls.go</span>
+    <pre class="code" data-src="dolls.go"></pre>
+    <pre class="term" data-run="dolls.go"></pre>
+    <div class="paths" role="group" aria-label="Choose a question"><span class="label">ASK:</span></div>
+    <div class="stage" data-reserve><svg class="dolls-svg" role="img" aria-label="The dolls for the current step: which are opened, which one is being checked, and whether it matched. The narration and the text version below describe it."></svg></div>
+    <p class="dolls-result" data-reserve></p>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the dolls and every step</summary><ol class="dolls-list"></ol><table class="transcript"><caption>Chosen search</caption><thead><tr><th>Step</th><th>Doll</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="dolls-stamp">{"program": "dolls.go",
+      "dolls": [
+        {"text": "route B: parcel 42: no stamp", "made": "fmt.Errorf(\"route B: %w\", inner)"},
+        {"text": "parcel 42: no stamp", "made": "fmt.Errorf(\"parcel 42: %w\", ErrNoStamp)"},
+        {"text": "no stamp", "made": "ErrNoStamp"}],
+      "searches": [
+        {"id": "stamp", "label": "errors.Is(err, ErrNoStamp)", "target": "ErrNoStamp", "match": 2, "line": "Is ErrNoStamp: true"},
+        {"id": "heavy", "label": "errors.Is(err, ErrTooHeavy)", "target": "ErrTooHeavy", "match": null, "line": "Is ErrTooHeavy: false"}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: %w versus %v">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">So what's the real difference between <code>%w</code> and chapter 8's <code>%v</code>? Not the text. Only what's kept inside.</p>
+    <span class="file-tab">wrap_v.go</span>
+    <pre class="code" data-src="wrap_v.go"></pre>
+    <pre class="term" data-run="wrap_v.go"></pre>
+    <ol class="readlist">
+      <li><span><code>same text? true</code> (line 17)<br>Both messages read exactly the same, letter for letter.</span></li>
+      <li><span><code>w Is ErrNotExist? true</code> (line 18)<br><code>%w</code> put the original doll inside the new one.</span></li>
+      <li><span><code>v Is ErrNotExist? false</code> (line 19)<br><code>%v</code> only copied the <b>words</b> onto a brand-new doll. Nothing is inside to find.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 23: the errors.Is machine" data-machine="m-is">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Feed the <code>errors.Is</code> machine an error and a target. <code>wrapped</code> was made with <code>%w</code>, <code>flat</code> with <code>%v</code>. One input uses <code>==</code> instead, for comparison.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-is">{"label": "errors.Is", "program": "is_machine.go", "examples": [
+      {"in": "ErrNoStamp, ErrNoStamp", "out": "true", "expectLine": "errors.Is(ErrNoStamp, ErrNoStamp) = true", "outKind": "bool", "note": "An error <b>is</b> itself. The first doll checked is the error you handed in."},
+      {"in": "wrapped, ErrNoStamp", "out": "true", "expectLine": "errors.Is(wrapped, ErrNoStamp) = true", "outKind": "bool", "note": "The outer doll isn't it, so the machine unwraps and finds <code>ErrNoStamp</code> inside."},
+      {"in": "wrapped == ErrNoStamp", "out": "false", "expectLine": "wrapped == ErrNoStamp = false", "outKind": "bool", "note": "Not the machine at all: <code>==</code> compares only the outside doll. That's the classic mistake."},
+      {"in": "flat, ErrNoStamp", "out": "false", "expectLine": "errors.Is(flat, ErrNoStamp) = false", "outKind": "bool", "note": "<code>%v</code> copied the words but kept nothing inside, so there's no doll to find."},
+      {"in": "nil, ErrNoStamp", "out": "false", "expectLine": "errors.Is(nil, ErrNoStamp) = false", "outKind": "bool", "note": "No error at all: nothing to open. <code>errors.Is</code> is safe to call on <code>nil</code>."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pis-m" id="ex-pis"></div>
+  <script type="application/json" id="ex-pis-m">{"program": "predict_is.go", "prompt": "<code>buy</code> fails, <code>shop</code> wraps it, <code>trip</code> wraps that. What are the three lines?", "hint": "Each <code>%w</code> adds its note in front. Then: is the outer doll the same value as <code>ErrClosed</code>? Is <code>ErrClosed</code> somewhere inside?", "explain": "The notes stack up from the outside in: <samp>trip: shop: shop closed</samp>. The outer doll is a new error, so <code>==</code> says <samp>false</samp>. <code>errors.Is</code> opens two dolls and finds <code>ErrClosed</code>: <samp>true</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-fwrap-m" id="ex-fwrap"></div>
+  <script type="application/json" id="ex-fwrap-m">{"program": "fill_wrap.go", "prompt": "Line 14: add the parcel number as context and keep the original error inside. Line 22: check for <code>ErrFlat</code> the right way.", "blanks": [{"line": 14, "text": "%w"}, {"line": 22, "text": "errors.Is"}], "explain": "<code>%w</code> wraps (with <code>%v</code> the check on line 22 would print false). <code>errors.Is(err, ErrFlat)</code> opens the dolls and finds the flat tyre: <samp>parcel 7: flat tyre</samp>, then <samp>true</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 24: sentinel errors">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">A <b>sentinel error</b> is a fixed error value made once, in a package-level variable, so callers can ask "was it <em>this</em> one?". By custom its name starts with <code>Err</code>. <code>io.EOF</code> and <code>fs.ErrNotExist</code> are sentinels.</p>
+    <span class="file-tab">sentinel.go</span>
+    <pre class="code" data-src="sentinel.go"></pre>
+    <pre class="term" data-run="sentinel.go"></pre>
+    <ol class="readlist">
+      <li><span><code>var ( ErrNotFound = …; ErrNoAccess = … )</code> (lines 9 to 12)<br>Made once when the program starts. Every <code>return</code> uses these exact values, so they can be recognised later.</span></li>
+      <li><span><code>%w</code> on lines 18 and 22<br>The locker number is added as context, and the sentinel stays inside.</span></li>
+      <li><span><code>switch { case errors.Is(…): … }</code> (lines 30 to 38)<br>A tidy way to react differently to each kind of problem. The <code>err != nil</code> case catches anything unexpected; <code>default</code> is the happy path.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: custom error types and errors.As">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Sometimes the caller needs <b>details</b>, not just "which error". Make a <b>custom error type</b>: a struct with an <code>Error()</code> method. Then <code>errors.As</code> finds a doll of that <em>type</em> and hands it over.</p>
+    <span class="file-tab">custom.go</span>
+    <pre class="code" data-src="custom.go"></pre>
+    <pre class="term" data-run="custom.go"></pre>
+    <ol class="readlist">
+      <li><span><code>type WeightErr struct{ Kg, Max int }</code> (lines 9 to 15)<br>With an <code>Error()</code> method on <code>*WeightErr</code>, a <code>*WeightErr</code> fits the <code>error</code> plug, and carries two numbers.</span></li>
+      <li><span><code>errors.As(err, &amp;we)</code> (lines 28 to 31)<br>"Open the dolls until one is a <code>*WeightErr</code>; if found, put it in <code>we</code> and say true." You pass <code>&amp;we</code>, the address of your variable, so <code>As</code> can fill it in.</span></li>
+      <li><span><code>errors.AsType[*WeightErr](err)</code> (lines 33 to 35)<br>New in Go 1.26: the same search, but you name the type in square brackets and get the doll back as a result. No extra variable, no <code>&amp;</code>. (Square brackets mean "for this type": generics, chapter 20.)</span></li>
+    </ol>
+    <p class="caption">With Go 1.24.7, building against a <code>go 1.24</code> module, <code>AsType</code> doesn't exist yet:</p>
+    <pre class="term" data-run="custom.go" data-alt data-exit></pre>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 26: Is or As?">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">Three ways to design your errors, and the question each one answers.</p>
+    <div class="cmp-wrap"><table class="cmp">
+      <thead><tr><th>Design</th><th>Looks like</th><th>Caller asks</th><th>Use it when</th></tr></thead>
+      <tbody>
+        <tr><td data-th="Design"><b>Sentinel</b></td><td data-th="Looks like"><code>var ErrNotFound = errors.New("not found")</code></td><td data-th="Caller asks"><code>errors.Is(err, ErrNotFound)</code></td><td data-th="Use it when">Callers only need to know <em>which</em> problem it was.</td></tr>
+        <tr><td data-th="Design"><b>Custom type</b></td><td data-th="Looks like"><code>type WeightErr struct{ Kg, Max int }</code></td><td data-th="Caller asks"><code>errors.As(err, &amp;we)</code> or <code>errors.AsType[*WeightErr](err)</code></td><td data-th="Use it when">Callers need <em>details</em> to decide what to do.</td></tr>
+        <tr><td data-th="Design"><b>Opaque</b></td><td data-th="Looks like"><code>fmt.Errorf("parse %q: %v", s, err)</code></td><td data-th="Caller asks">only <code>err != nil</code></td><td data-th="Use it when">Callers just report it; you keep the freedom to change the inside later.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>Is</code> asks "is this exact doll inside?". <code>As</code> asks "is a doll of this <b>type</b> inside? Give it to me."</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-kind-m" id="ex-kind"></div>
+  <script type="application/json" id="ex-kind-m">{"q": "Your upload function can fail because a file is bigger than the limit. Callers want to show \"Your file is 12 MB; the limit is 10 MB.\" Which design fits best?", "options": [
+    {"t": "A custom type: <code>type TooBigErr struct{ Size, Limit int }</code>", "correct": true, "why": "Yes. The caller needs two numbers, and a custom type carries them. The caller finds it with <code>errors.As</code>, or <code>errors.AsType</code>, which hands the struct back, fields and all."},
+    {"t": "A sentinel, <code>var ErrTooBig = errors.New(\"file too big\")</code>", "why": "A sentinel says <em>which</em> problem, but carries no numbers. The caller couldn't say 12 MB or 10 MB."},
+    {"t": "An opaque error made with <code>fmt.Errorf(\"too big: %d\", size)</code>", "why": "The number is in the text, but the caller would have to cut it out of a string. Fragile: change the wording and the caller breaks."},
+    {"t": "A panic that reports both sizes", "why": "A big file is bad luck, not a bug. Bad luck gets an error value (part 6)."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pas-m" id="ex-pas"></div>
+  <script type="application/json" id="ex-pas-m">{"program": "parsons_as.go", "seed": 4, "pin": [1, 3, 4, 5, 6, 8, 10, 12, 19, 21, 22, 23, 24], "prompt": "A late parcel earns a refund; any other problem doesn't. <code>main</code> calls <code>refund</code> twice, once with a wrapped <code>*LateErr</code> and once with a plain error. Put the lines of <code>refund</code> in order: look for a <code>*LateErr</code> inside with <code>errors.AsType</code>, leave early if there isn't one, then use its <code>Mins</code>.", "explain": "Search first: <code>late, ok := errors.AsType[*LateErr](err)</code>. If <code>!ok</code>, print and <code>return</code>, the early exit from chapter 8. After the <code>if</code>, <code>late</code> is a real <code>*LateErr</code>: <samp>refund for 12 minutes</samp>. The second call finds no <code>*LateErr</code>, so it takes the early exit: <samp>no refund: parcel 4: lost</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: errors.Join">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">A form can have several problems at once. <code>errors.Join</code> puts many errors into one, like a <b>gift basket</b> of dolls. <code>errors.Is</code> searches every doll in the basket.</p>
+    <span class="file-tab">join.go</span>
+    <pre class="code" data-src="join.go"></pre>
+    <pre class="term" data-run="join.go"></pre>
+    <ol class="readlist">
+      <li><span><code>errors.Join(errs...)</code> (line 18)<br>Chapter 17's buffet plate: any number of errors. With none at all, <code>Join</code> returns <code>nil</code>, so the happy path still says "no error".</span></li>
+      <li><span>Two lines printed by line 23<br>A joined error prints one error per line, in the order they were added.</span></li>
+      <li><span><code>no name? true</code> and <code>all good? true</code> (lines 25 and 26)<br><code>errors.Is</code> found <code>ErrNoName</code> in the basket. And a valid form really returned an empty box.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tjoin-m" id="ex-tjoin"></div>
+  <script type="application/json" id="ex-tjoin-m">{"program": "trace_join.go", "columns": ["kg", "problems", "Join is nil"], "given": [0], "prompt": "A weight must be above 0 and at most 20. Each lap prints the weight, how many errors are collected so far, and whether <code>errors.Join(errs...)</code> is <code>nil</code>. The <code>kg</code> column is filled in.", "explain": "4 is fine: 0 problems, and joining nothing gives <samp>nil</samp> → <samp>true</samp>. 25 is too heavy: 1, <samp>false</samp>. 0 is too light: 2. 9 is fine, but the earlier problems are still collected: 2, <samp>false</samp>. 30: 3, <samp>false</samp>. Once one error is in, the basket is never empty again."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · HANDLE IT ONCE<small>Context, wrap or not, and the log-and-return mistake</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 28: one problem, three alarms">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <svg class="sfx tr" data-sfx="BEEP BEEP!" data-seed="28"></svg>
+    <p class="caption">One bad parcel id. Every function along the way logs it <b>and</b> passes it up. (The <code>log</code> package writes to standard error, the screen's second channel for problems. <code>SetFlags(0)</code> turns off its timestamps.)</p>
+    <span class="file-tab">twice.go</span>
+    <pre class="code" data-src="twice.go"></pre>
+    <pre class="term" data-run="twice.go"></pre>
+    <ol class="readlist">
+      <li><span>Three lines for one problem (lines 11, 19 and 28)<br>Whoever reads the log thinks three things went wrong. In a busy server, logs fill with copies, and the real story gets buried.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>It's like phoning the depot about one flat tyre, then phoning again, then again. Report it once, with the whole story.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: handle it once">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">The fix: each function does <b>one</b> of two things. Either it <b>handles</b> the error (logs it, retries, uses a default) and stops, or it <b>returns</b> it with context. Never both.</p>
+    <span class="file-tab">once.go</span>
+    <pre class="code" data-src="once.go"></pre>
+    <pre class="term" data-run="once.go"></pre>
+    <ol class="readlist">
+      <li><span><code>return fmt.Errorf(…)</code> (lines 10 and 17)<br>The lower functions just return, adding what they were doing.</span></li>
+      <li><span><code>ERROR: deliver: parcel -1: bad id</code> (line 25)<br>One line, at the top, with the whole story read from the outside in.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>handle it once.</b> Log it or return it, never both.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-stwice-m" id="ex-stwice"></div>
+  <script type="application/json" id="ex-stwice-m">{"program": "spot_twice.go", "bug": 11, "prompt": "Checking out with a negative amount prints two warnings for one problem. Click the line that should go.", "explain": "Line 11 prints the warning <b>and</b> line 12 returns the error, so <code>main</code> reports it again on line 26. <code>charge</code> should just return it; <code>checkout</code> adds context; <code>main</code> handles it once: <samp>warning: checkout: negative amount</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 30: good context">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">How to write good context, and when to hide the doll.</p>
+    <ul class="checklist">
+      <li><b>Say what you were doing, with which input.</b> <code>"loading config %q: %w"</code> beats <code>"error: %w"</code>.</li>
+      <li><b>Skip "failed to" and "error:".</b> Every layer would add it again: <samp>failed to deliver: failed to save: …</samp>. The text is already an error.</li>
+      <li><b>Small letter, no full stop</b> (chapter 8), because your words become part of someone else's sentence.</li>
+      <li><b>Wrap with <code>%w</code></b> when callers may need to check what's inside: <code>io.EOF</code>, <code>fs.ErrNotExist</code>, your own sentinels and types.</li>
+      <li><b>Use <code>%v</code> on purpose</b> at the edge of your package to hide an inner detail, such as which database library you use. Anything wrapped with <code>%w</code> becomes something callers can depend on, so it becomes part of your promise to them.</li>
+      <li><b>Don't wrap a sentinel you document</b> as "returned as is", like <code>io.EOF</code> from a <code>Read</code>: callers compare it with <code>==</code>.</li>
+    </ul>
+  </section>
+
+  <div data-ex="choice" data-model="ex-wrapv-m" id="ex-wrapv"></div>
+  <script type="application/json" id="ex-wrapv-m">{"q": "Your package <code>orders</code> uses a database library inside. A query fails with that library's <code>sqlite.ErrBusy</code>. You don't want users of <code>orders</code> to depend on which database you use. What should <code>orders.Save</code> return?", "options": [
+    {"t": "<code>fmt.Errorf(\"save order %d: %v\", id, err)</code>", "correct": true, "why": "Yes. <code>%v</code> keeps the words for people reading logs, but hides the inner doll, so callers can't write <code>errors.Is(err, sqlite.ErrBusy)</code> and get stuck with your choice of database."},
+    {"t": "<code>fmt.Errorf(\"save order %d: %w\", id, err)</code>", "why": "That makes <code>sqlite.ErrBusy</code> findable, so callers will start checking for it. Switch databases later and their code silently stops working."},
+    {"t": "<code>err</code> itself, passed up unchanged", "why": "No context, and the inner error is fully exposed. The worst of both."},
+    {"t": "<code>nil</code>, after logging the error", "why": "Then the caller thinks the order was saved. Never swallow an error you didn't handle."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 31: the proof-reader spots a bad wrap">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">One more wrapping mistake, and a checker that catches it. <code>DiskFull</code>'s <code>Error</code> method has a <b>value</b> receiver, but <code>backup</code> wraps a <b>pointer</b> to the error, <code>&amp;err</code>.</p>
+    <span class="file-tab">wrap_ptr.go</span>
+    <pre class="code" data-src="wrap_ptr.go"></pre>
+    <pre class="term wrap" data-run="wrap_ptr.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>disk C full? false</code> (go run)<br>The text looks right, but the doll inside is a <code>*DiskFull</code>, a pointer. <code>errors.Is</code> compares it with the value <code>ErrDiskC</code>, a <code>DiskFull</code>, and they aren't equal.</span></li>
+      <li><span><code>%w wants operand of error type DiskFull, not pointer type *DiskFull (defeats errors.Is)</code> (go vet)<br>Line 17, column 29 is the <code>%w</code> verb in the format string; the operand it complains about is <code>&amp;err</code>, a little further along. Fix: wrap <code>err</code> itself.</span></li>
+    </ol>
+    <div class="verdict-row">
+      <svg class="char" data-char="specs"></svg>
+      <p class="caption soft">Specs, the <code>go vet</code> proof-reader, learned this check in Go 1.27. The Compiler can't refuse it, because a <code>*DiskFull</code> is a perfectly good <code>error</code> too. Go 1.24.7's vet said nothing at all about this file:</p>
+    </div>
+    <p class="sr-only">Picture: Specs, a round proof-reader with big glasses and a magnifier.</p>
+    <pre class="term wrap" data-run="wrap_ptr.go" data-alt data-exit></pre>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · PANIC AND RECOVER<small>The fire alarm, and catching it</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 32: receipt or fire alarm">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">Chapter 14 said: bad luck gets an error, only a bug gets <code>panic</code>. Here's how to tell them apart.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">ERROR VALUE</span>
+        <h3>A RECEIPT<small>expected bad luck</small></h3>
+        <ul>
+          <li>The file isn't there.</li>
+          <li>The user typed "ten" instead of 10.</li>
+          <li>The network is down; the parcel is too heavy.</li>
+        </ul>
+        <p>Return an <code>error</code>. The caller decides what to do.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">PANIC</span>
+        <h3>A FIRE ALARM<small>a bug, or "impossible"</small></h3>
+        <ul>
+          <li>An index past the end of a slice.</li>
+          <li>A nil pointer used.</li>
+          <li>A <code>switch</code> case that can never happen, happened.</li>
+        </ul>
+        <p>The program can't sensibly go on. Everyone stops.</p>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>panic for bugs, errors for bad luck.</b> If a caller could reasonably expect it, it's an error.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-panic-m" id="ex-panic"></div>
+  <script type="application/json" id="ex-panic-m">{"q": "A function reads a price that the user typed. The user typed <code>abc</code>. What should the function do?", "options": [
+    {"t": "Return an error the caller can act on", "correct": true, "why": "Yes, for example one that reads <code>parse price \"abc\": invalid syntax</code>. Users mistype all the time: that's expected bad luck, so it gets a receipt. The caller can ask again."},
+    {"t": "<code>panic(\"bad price\")</code>, so the problem is loud", "why": "That crashes the whole program over a typo. Panics are for bugs and impossible situations."},
+    {"t": "Return 0 and no error, so nothing breaks", "why": "Then a typo silently becomes a free item. Never hide a problem behind a zero value (chapter 8)."},
+    {"t": "Call <code>recover()</code> to catch the typo", "why": "There's nothing to recover from: no panic happened. <code>recover</code> only does anything inside a deferred function during a panic."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 33: recover in a deferred function">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">When a function panics, Go starts <b>unwinding</b>: it leaves functions one by one, running each one's deferred calls (chapter 14's sticky notes) on the way out. A deferred function can call <code>recover()</code> to <b>stop</b> the panic.</p>
+    <span class="file-tab">recover.go</span>
+    <pre class="code" data-src="recover.go"></pre>
+    <pre class="term" data-run="recover.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>10</code> (line 16)<br>No panic. The deferred function still runs as <code>safeGet</code> returns, but <code>recover()</code> gives <code>nil</code>, so it does nothing.</span></li>
+      <li><span><code>recovered: runtime error: index out of range [1] with length 0</code> (lines 7 and 8)<br>Line 12 panics. On the way out, the deferred function runs; <code>recover()</code> hands back the panic's value and the panic <b>stops</b>.</span></li>
+      <li><span><code>-1</code> (line 9)<br>The result has a name, <code>v</code> (line 5), so the deferred function can set what <code>safeGet</code> returns. Then <code>safeGet</code> returns normally.</span></li>
+      <li><span><code>still running</code> and <code>exit status 0</code><br>The program carried on as if nothing had happened.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 34: the map of a panic" data-map="map-panic">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">Two programs, one with a deferred <code>recover</code> and one without. Pick a road and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapp-t mapp-d"><title id="mapp-t">Map of a panic and recover</title><desc id="mapp-d">main calls the function, which indexes the slice. If the index is in range, the value is returned and main carries on. If it is out of range, the function panics; Go unwinds and runs the deferred calls. If a deferred call's recover catches the panic, the function returns normally and main carries on. If nothing catches it, the program crashes with exit status 2.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-panic">{"seed": 19, "size": [690, 600], "start": [[345, 4], [345, 18]],
+      "states": [
+        {"id": "S0", "x": 215, "y": 20, "w": 260, "h": 56, "label": "CALL", "sub": "`get` or `safeGet`"},
+        {"id": "IX", "x": 215, "y": 112, "w": 260, "h": 56, "label": "s[i]", "sub": "index the slice"},
+        {"id": "OK", "x": 14, "y": 210, "w": 300, "h": 62, "label": "RETURN s[i]", "sub": "i is in range"},
+        {"id": "PN", "x": 380, "y": 210, "w": 260, "h": 62, "label": "PANIC!", "sub": "index out of range"},
+        {"id": "DF", "x": 380, "y": 310, "w": 260, "h": 62, "label": "DEFERRED CALLS RUN", "sub": "while it unwinds"},
+        {"id": "RC", "x": 380, "y": 410, "w": 260, "h": 62, "label": "recover() CATCHES IT", "sub": "v = -1, normal return"},
+        {"id": "E", "x": 14, "y": 410, "w": 300, "h": 62, "label": "BACK IN main", "sub": "the next line runs"},
+        {"id": "CR", "x": 330, "y": 520, "w": 260, "h": 62, "label": "CRASH", "sub": "exit status 2", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "IX", "pts": [[345, 80], [345, 106]], "label": "", "lx": 357, "ly": 98},
+        {"id": "t1", "from": "IX", "to": "OK", "pts": [[280, 172], [280, 190], [164, 190], [164, 204]], "label": "in range", "lx": 60, "ly": 196},
+        {"id": "t2", "from": "IX", "to": "PN", "pts": [[410, 172], [410, 190], [510, 190], [510, 204]], "label": "out of range", "lx": 524, "ly": 196, "bug": true},
+        {"id": "t3", "from": "PN", "to": "DF", "pts": [[510, 276], [510, 304]], "label": "unwind", "lx": 522, "ly": 296},
+        {"id": "t4", "from": "DF", "to": "RC", "pts": [[510, 376], [510, 404]], "label": "caught", "lx": 522, "ly": 396},
+        {"id": "t5", "from": "RC", "to": "E", "pts": [[380, 441], [318, 441]], "label": "", "lx": 330, "ly": 432},
+        {"id": "t6", "from": "OK", "to": "E", "pts": [[164, 276], [164, 404]], "label": "return 10", "lx": 176, "ly": 344},
+        {"id": "t7", "from": "DF", "to": "CR", "pts": [[640, 341], [672, 341], [672, 551], [594, 551]], "label": "not caught", "lx": 560, "ly": 500, "bug": true}],
+      "paths": [
+        {"id": "rec", "label": "with recover", "program": "recover.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "Line 16 calls <code>safeGet([]int{10}, 0)</code>. Line 6 sticks the deferred function on the door first."},
+          {"on": ["IX"], "via": ["t0"], "output": [], "mood": "focus", "note": "Line 12: <code>s[0]</code>. The slice has one element, so index 0 is fine."},
+          {"on": ["OK"], "via": ["t1"], "output": [], "note": "It returns 10. On the way out the deferred function runs, but <code>recover()</code> is <code>nil</code>: no panic to catch."},
+          {"on": ["E"], "via": ["t6"], "output": ["10"], "note": "Back in <code>main</code>, line 16 prints <samp>10</samp>."},
+          {"on": ["S0"], "output": ["10"], "note": "Line 17 calls <code>safeGet(nil, 1)</code>. Again the deferred function goes on the door first."},
+          {"on": ["IX"], "via": ["t0"], "output": ["10"], "mood": "focus", "note": "Line 12: <code>s[1]</code> on a nil slice, length 0."},
+          {"on": ["PN"], "via": ["t2"], "output": ["10"], "mood": "worried", "note": "Index 1 is out of range. <b>Panic!</b> Line 12 never finishes."},
+          {"on": ["DF"], "via": ["t3"], "output": ["10"], "mood": "focus", "note": "Go leaves <code>safeGet</code> and peels its notes off the door: the deferred function from line 6 runs."},
+          {"on": ["RC"], "via": ["t4"], "output": ["10", "recovered: runtime error: index out of range [1] with length 0"], "note": "Line 7: <code>recover()</code> returns the panic's value, a runtime error. The panic stops. Line 8 prints it, and line 9 sets the result <code>v</code> to -1."},
+          {"on": ["E"], "via": ["t5"], "output": ["10", "recovered: runtime error: index out of range [1] with length 0", "-1"], "note": "<code>safeGet</code> returns normally with -1, and line 17 prints <samp>-1</samp>."},
+          {"on": ["E"], "output": ["10", "recovered: runtime error: index out of range [1] with length 0", "-1", "still running"], "note": "Line 18: <samp>still running</samp>. Exit status 0."}]},
+        {"id": "none", "label": "no recover", "bug": true, "program": "no_recover.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "panic: runtime error: index out of range [1] with length 0"}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>no_recover.go</code>: line 10 calls <code>get([]int{10}, 0)</code>. No defer anywhere."},
+          {"on": ["IX"], "via": ["t0"], "output": [], "mood": "focus", "note": "Line 6: <code>s[0]</code> is fine."},
+          {"on": ["OK"], "via": ["t1"], "output": [], "note": "It returns 10."},
+          {"on": ["E"], "via": ["t6"], "output": ["10"], "note": "Line 10 prints <samp>10</samp>."},
+          {"on": ["S0"], "output": ["10"], "note": "Line 11 calls <code>get(nil, 1)</code>."},
+          {"on": ["IX"], "via": ["t0"], "output": ["10"], "mood": "focus", "note": "Line 6: <code>s[1]</code> on an empty slice."},
+          {"on": ["PN"], "via": ["t2"], "output": ["10"], "mood": "worried", "note": "<b>Panic!</b> Index out of range."},
+          {"on": ["DF"], "via": ["t3"], "output": ["10"], "mood": "worried", "note": "Go unwinds through <code>get</code>, then <code>main</code>. Neither has deferred calls, so nothing can catch it."},
+          {"on": ["CR"], "via": ["t7"], "output": ["10"], "error": "panic: runtime error: index out of range [1] with length 0", "note": "The panic reaches the top: the program crashes and prints the report on stderr, then <code>go run</code> says <code>exit status 2</code>. <samp>still running</samp> never prints."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-prec-m" id="ex-prec"></div>
+  <script type="application/json" id="ex-prec-m">{"program": "predict_recover.go", "prompt": "<code>risky</code> panics when it gets 0. Its deferred function catches the panic and sets the named result <code>msg</code>. What are the three lines?", "hint": "With 3: no panic, return \"ok\". With 0: the panic skips line 14, and the deferred function decides what <code>msg</code> is.", "explain": "<samp>ok</samp> first. Then <code>panic(\"zero parcels\")</code>: the deferred function runs, <code>recover()</code> returns <code>\"zero parcels\"</code>, and <code>msg</code> becomes <samp>caught: zero parcels</samp>. The panic is over, so <code>main</code> carries on: <samp>done</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 35: recover in the wrong place">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <svg class="sfx tr" data-sfx="CRASH!" data-seed="35"></svg>
+    <p class="caption">A common slip: calling <code>recover()</code> at the top of the function, as if it were a safety net you switch on.</p>
+    <span class="file-tab">recover_early.go</span>
+    <pre class="code" data-src="recover_early.go"></pre>
+    <pre class="term" data-run="recover_early.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Line 6 runs first, when nothing has panicked yet. <code>recover()</code> returns <code>nil</code> and that's the end of it.</span></li>
+      <li><span>Line 9 panics later, and no deferred function is waiting to catch it. Read the report like a detective: the crime is on the first line, the scene is <code>recover_early.go:9</code>, and the footprints lead back to <code>main</code> at line 13. The <code>+0x…</code> numbers are code offsets that differ on your machine.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>recover only works inside a deferred function.</b> Only deferred calls run during a panic, so that's the only place a catch can happen. And it only catches panics in its own goroutine: chapter 24 explains goroutines.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: turning a panic back into an error">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">A real pattern: deep helper code panics to bail out fast, and the public function turns the panic back into an ordinary <code>error</code> so callers never see a crash. Go's own <code>text/template</code> works like this inside (and <code>encoding/json</code> did in Go 1.24, this book's comparison version).</p>
+    <span class="file-tab">recover_err.go</span>
+    <pre class="code" data-src="recover_err.go"></pre>
+    <pre class="term" data-run="recover_err.go"></pre>
+    <ol class="readlist">
+      <li><span><code>panic(err)</code> (line 11)<br>The helper gives up loudly the moment a word isn't a number.</span></li>
+      <li><span><code>total, err = 0, fmt.Errorf("sum: %v", r)</code> (line 20)<br>The deferred function catches it and fills in <code>sum</code>'s named results: no total, and a real error.</span></li>
+      <li><span><code>0 sum: strconv.Atoi: parsing "two": invalid syntax</code><br>From outside, <code>sum</code> behaves like any well-mannered Go function: a value and an error.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Keep such a panic inside your own package, and always turn it back into an error before you return. Effective Go puts it this way: a library should not let a panic escape as its way of reporting ordinary problems to callers.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor, with glasses and a notebook, explains.</p>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-precp-m" id="ex-precp"></div>
+  <script type="application/json" id="ex-precp-m">{"program": "parsons_recover.go", "seed": 6, "pin": [1, 3, 5, 12, 14, 15, 16, 17], "prompt": "Put the lines of <code>guard</code> in order so that its panic is caught and the depot keeps running. The goal output is below.", "explain": "The deferred function must be stuck on the door <b>before</b> the panic: <code>defer func() {</code>, then <code>if r := recover(); r != nil {</code>, the <code>Println</code>, and the closing <code>}</code> and <code>}()</code>. Then <code>panic(\"conveyor jammed\")</code>. With the panic first, the defer line would never run."}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Pipes, boxes, dolls and alarms, all mixed up. For every error, ask: what's in its two slots? What dolls are inside? And who handles it?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. <code>track</code> has two ways out. Watch both of them. What are the three lines?", "hint": "id 7 returns a wrapped sentinel. id 5 skips both <code>if</code>s and returns <code>te</code>, a nil <code>*TrackErr</code>... as an <code>error</code>.", "explain": "<samp>track 7: parcel lost</samp>, and <code>errors.Is</code> finds <code>ErrLost</code> inside: <samp>true</samp>. But <code>track(5)</code> returns the nil pointer <code>te</code> in an <code>error</code> box, whose type slot says <code>*main.TrackErr</code>: <samp>false</samp>. The typed-nil trap hides behind a happy path."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["depth", "== ErrLate", "Is ErrLate"], "given": [0], "prompt": "Boss 2. The loop unwraps one doll per lap. Each row prints the depth, whether that doll <code>==</code> <code>ErrLate</code>, and whether <code>errors.Is(doll, ErrLate)</code>. The <code>depth</code> column is filled in.", "explain": "Only the innermost doll (depth 2) <b>is</b> <code>ErrLate</code>, so <code>==</code> is <samp>false</samp>, <samp>false</samp>, <samp>true</samp>. <code>errors.Is</code> opens dolls, so from any layer it finds <code>ErrLate</code> inside: <samp>true</samp> on every row."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 19, "prompt": "Boss 3. Slot 9 is busy, so Scoot should hear \"try another slot\". Instead the program prints <samp>give up: slot 9: courier busy</samp>. Click the guilty line.", "explain": "Line 19 compares with <code>==</code>, but <code>book</code> wrapped <code>ErrBusy</code> (line 12), so the outer doll is a different value. Fix: <code>if errors.Is(err, ErrBusy) {</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 8, "pin": [1, 3, 4, 5, 6, 7, 8, 10, 14, 15, 18, 20, 22, 23, 24, 25], "prompt": "Boss 4. <code>load</code> reads an orders file. Add context with <code>%w</code> <b>only when reading failed</b>, and treat a missing file as \"no orders yet\". <code>main</code> tries a missing file and then <code>orders.txt</code>, which exists. Put the moving lines of <code>load</code> in order.", "explain": "Read, then wrap only on failure: <code>if err != nil { err = fmt.Errorf(\"reading orders: %w\", err) }</code>. Because <code>%w</code> kept the doll inside, <code>errors.Is(err, fs.ErrNotExist)</code> still finds it: <samp>no orders yet: reading orders: open missing.txt: no such file or directory</samp>, then <code>return</code>. For <code>orders.txt</code>, <code>err</code> stays <code>nil</code>: <samp>orders loaded, err = &lt;nil&gt;</samp>. Wrapping without the <code>if</code> would turn that <code>nil</code> into a real error that prints <code>reading orders: %!w(&lt;nil&gt;)</code>: <code>%w</code> of <code>nil</code> is still a non-nil error, so wrap only when <code>err != nil</code>."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. Get the status code out of the wrapped error with <code>errors.As</code>. Line 18: the type of the variable to fill. Line 19: what to hand <code>errors.As</code>.", "blanks": [{"line": 18, "text": "*CodeErr"}, {"line": 19, "text": "&ce"}], "explain": "The error inside is a <code>*CodeErr</code> (line 13 wraps <code>&amp;CodeErr{…}</code>), so the variable must be a <code>*CodeErr</code>. <code>errors.As</code> needs its <b>address</b>, <code>&amp;ce</code>, to fill it in: <samp>server said 404</samp>. With Go 1.26 or later: <code>ce, ok := errors.AsType[*CodeErr](err)</code>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. <code>unload</code> defers <code>recover</code> itself. Does that catch the panic?", "expect": "error", "answer": "panic: crate dropped", "ask": "It prints one line, then something goes to stderr. Type the first line of what goes to stderr.", "hint": "The rule is that <code>recover</code> must be <b>called by</b> a deferred function. Here <code>recover</code> <em>is</em> the deferred function, called by Go itself.", "explain": "<samp>unloading</samp>, then a crash: <samp>panic: crate dropped</samp>, at <code>boss_err.go:7</code>, and <samp>exit status 2</samp>. <code>defer recover()</code> doesn't count: <code>recover</code> wasn't called by a deferred function, so it returns <code>nil</code> and the panic goes on. Write <code>defer func() { recover() }()</code>, or better, check its result as in panel 33."}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 19</p>
+    <ul class="recap">
+      <li><b>THE SMALLER THE PLUG, THE MORE THINGS FIT</b><code>io.Writer</code> and <code>io.Reader</code> have one method each. The screen, files, <code>bytes.Buffer</code>, <code>strings.Builder</code> and your own types fit. <code>io.Copy(dst, src)</code> pipes any Reader into any Writer until <code>io.EOF</code>. Use the <code>n</code> bytes first, then look at <code>err</code>.</li>
+      <li><b>AN EMPTY BOX HAS NO TYPE AND NO VALUE</b>An interface value has two slots. It's <code>nil</code> only when both are empty. A nil pointer returned as <code>error</code> is <em>not</em> nil: write <code>return nil</code>.</li>
+      <li><b>ACCEPT PLUGS, HAND BACK THE REAL THING</b>Accept interfaces, return structs. Define small interfaces where they're used, once a second device appears. <code>var _ io.Writer = (*T)(nil)</code> asks the Compiler to check the fit.</li>
+      <li><b>%w KEEPS THE DOLL INSIDE; errors.Is OPENS THEM ALL</b>Wrap with <code>fmt.Errorf("context: %w", err)</code>. Check with <code>errors.Is</code> (sentinels like <code>ErrNotFound</code>) or <code>errors.As</code> / <code>errors.AsType</code> (custom types), never <code>==</code>. <code>errors.Join</code> puts many errors in one, printed one per line.</li>
+      <li><b>HANDLE IT ONCE</b>Log it or return it with context, never both. Use <code>%v</code> on purpose to hide an inner detail. <code>go vet</code> catches <code>%w</code> with a pointer to an error.</li>
+      <li><b>PANIC FOR BUGS, ERRORS FOR BAD LUCK</b>A panic unwinds the stack, running deferred calls. <code>recover()</code> stops it only when called inside a deferred function, in the same goroutine.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every tube connected, every box checked for ghosts, every doll opened. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, cutters and gumballs">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 20: Cutters and Gumballs</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><path d="M40 20 H180 L196 60 L180 110 H40 L24 60 Z" fill="#FFF6CC" stroke="#111" stroke-width="5" stroke-linejoin="round"/><rect x="82" y="44" width="56" height="32" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-dasharray="7 5"/><text x="110" y="68" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle">T</text></svg>
+          <p><b>Generics</b>: a cookie cutter with an adjustable slot. Write <code>Max</code> once, and use it for ints, floats and strings, while the Compiler still refuses the wrong shapes.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><circle cx="110" cy="48" r="40" fill="#DDE8FF" stroke="#111" stroke-width="5"/><g stroke="#111" stroke-width="3"><circle cx="96" cy="40" r="9" fill="#FFD60A"/><circle cx="120" cy="34" r="9" fill="#F2C9A0"/><circle cx="112" cy="58" r="9" fill="#C9F2D9"/></g><path d="M80 86 H140 L150 122 H70 Z" fill="#F2C9A0" stroke="#111" stroke-width="5" stroke-linejoin="round"/><circle cx="110" cy="104" r="8" fill="#FFFFFF" stroke="#111" stroke-width="3"/></svg>
+          <p><b>Iterators</b>: a gumball machine you crank. Each crank calls <code>yield</code> and out comes the next value, ready for a <code>for range</code> loop.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today, plugs and dolls. Next time: one tool that fits many types, and loops that crank out values.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a cookie cutter with an adjustable slot marked T; and a gumball machine full of coloured balls.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch18.html">← Ch 18 · Measuring Cups and Sandwiches</a><a class="next" href="ch20.html">Ch 20 · Cutters and Gumballs →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: the two words of an interface, how io.Copy finds shortcuts, and how errors.Is walks the chain</summary>
+    <div class="page-body">
+      <h3>An interface value is two machine words</h3>
+      <p>In the Go runtime, a non-empty interface such as <code>io.Writer</code> is stored as two pointer-sized words: a pointer to an <b>itab</b> (a small table naming the concrete type and listing the addresses of its methods), and a pointer to the data. An empty interface (<code>any</code>) stores a pointer to the type itself instead of an itab. The "two slots" in panel 9 are exactly these words. <code>w == nil</code> compares both words with zero, which is why a non-nil type word makes the whole value non-nil even when the data word is zero.</p>
+      <h3>Why fmt printed &lt;nil&gt; instead of crashing</h3>
+      <p>In panel 11, <code>%v</code> called <code>(*CheckErr).Error</code> on a nil pointer, which read <code>e.Reason</code> and panicked. <code>fmt</code> wraps calls to <code>Error</code> and <code>String</code> in its own recover. If the panic came from a nil pointer receiver, it prints <code>&lt;nil&gt;</code>; for any other panic it prints a <code>%!v(PANIC=Error method: …)</code> note. Helpful for logging, but it also hides the bug.</p>
+      <h3>How io.Copy picks a route</h3>
+      <p><code>io.Copy</code> first checks whether the source has a <code>WriteTo</code> method (an <code>io.WriterTo</code>), or the destination has a <code>ReadFrom</code> method (an <code>io.ReaderFrom</code>). If so, it lets them do the copy themselves, which can be much faster; for example, copying between two files on Linux can happen inside the kernel. Otherwise it uses a 32 KB buffer and loops: Read, Write, repeat. That's why panel 8's narrow filter really did make three trips: the buffer was big, but <code>rot13Reader.Read</code> only ever filled 5 bytes of it.</p>
+      <h3>The Reader contract, exactly</h3>
+      <p><code>Read</code> may return <code>n &gt; 0</code> together with a non-nil error, including <code>io.EOF</code>. It may return fewer bytes than the buffer holds, even if more are coming. It should not return <code>0, nil</code> except when the buffer has length 0. So the correct loop is: process <code>buf[:n]</code>, <em>then</em> check <code>err</code>. <code>io.ReadAll</code>, <code>io.ReadFull</code> and <code>bufio.Scanner</code> (chapter 21) do that bookkeeping for you.</p>
+      <h3>What %w builds</h3>
+      <p><code>fmt.Errorf</code> with one <code>%w</code> returns a value of an unexported type <code>*fmt.wrapError</code> holding the message and the inner error, with an <code>Unwrap() error</code> method. With two or more <code>%w</code> verbs (allowed since Go 1.20) it returns <code>*fmt.wrapErrors</code>, whose <code>Unwrap() []error</code> returns all of them. <code>errors.Join</code> also returns a value with <code>Unwrap() []error</code>; its <code>Error()</code> joins the messages with newlines.</p>
+      <h3>How errors.Is walks</h3>
+      <p><code>errors.Is(err, target)</code> checks, at each doll: is it <code>== target</code> (when the type is comparable)? Does it have an <code>Is(error) bool</code> method that says yes? If not, it unwraps: one inner error, or for a <code>Unwrap() []error</code> each inner error in turn, depth first. That's how panel 19 matched: <code>os.Open</code>'s innermost doll is a <code>syscall.Errno</code> (<code>ENOENT</code>), whose <code>Is</code> method says "yes, I count as <code>fs.ErrNotExist</code>". <code>errors.As</code> walks the same way but checks the type, or an <code>As(any) bool</code> method.</p>
+      <h3>Why the pointer wrap defeated errors.Is</h3>
+      <p>In panel 31 the inner doll was a <code>*DiskFull</code> and the target a <code>DiskFull</code>. Interface comparison first compares the type words, which differ, so the answer is false. Go 1.27's vet printf check reports a <code>%w</code> operand whose type is a pointer to a type that already satisfies <code>error</code>.</p>
+      <h3>Panics, unwinding and recover</h3>
+      <p>A panic stops the current function, then runs its deferred calls, then does the same in the caller, and so on up the goroutine's stack. If a deferred function calls <code>recover()</code> while this is happening, the panic stops, <code>recover</code> returns the value that was passed to <code>panic</code>, and the function that deferred it returns normally to its caller, with whatever its named results now hold. <code>recover</code> returns <code>nil</code> when there is no panic, or when it isn't called directly by a deferred function (so <code>defer recover()</code> doesn't work, as Boss 6 showed). Since Go 1.21, <code>panic(nil)</code> becomes a <code>*runtime.PanicNilError</code>, so <code>recover()</code> never returns nil for a real panic. Some failures cannot be recovered at all: running out of memory, a stack overflow (chapter 17) and concurrent map writes are fatal errors, not panics.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where readers, writers and wrapped errors show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Files and the network.</b> <code>*os.File</code> and every network connection (<code>net.Conn</code>) are both Readers and Writers. An HTTP response body is an <code>io.ReadCloser</code> (Reader plus <code>Close</code>), and a web handler writes its reply to an <code>http.ResponseWriter</code>, which is a Writer (chapter 26).</li>
+        <li><b>Snap-together pipelines.</b> <code>gzip.NewReader(f)</code> unzips while you read; <code>io.TeeReader</code> copies everything it reads to a Writer; <code>io.MultiWriter</code> writes to several Writers at once; <code>io.LimitReader</code> stops after N bytes; <code>bufio.NewReader</code> adds a buffer (chapter 21 uses its cousins <code>bufio.Scanner</code> and <code>bufio.Writer</code>).</li>
+        <li><b>Testing output.</b> Pass a <code>bytes.Buffer</code> where real code passes <code>os.Stdout</code>, then compare <code>buf.String()</code> with what you expected. That's "accept interfaces" paying off; chapter 23 uses the same idea with a stub and <code>httptest</code>'s recorder.</li>
+        <li><b>Composed interfaces.</b> <code>io.ReadWriter</code>, <code>io.ReadCloser</code> and <code>io.WriteCloser</code> are small interfaces embedded together (chapter 18's embedding).</li>
+        <li><b>Sentinels you'll meet.</b> <code>io.EOF</code>, <code>io.ErrUnexpectedEOF</code>, <code>fs.ErrNotExist</code>, <code>fs.ErrPermission</code>, <code>sql.ErrNoRows</code>, <code>http.ErrServerClosed</code>, <code>context.Canceled</code> and <code>context.DeadlineExceeded</code> (those two in chapter 26).</li>
+        <li><b>Error types you'll meet.</b> <code>*fs.PathError</code> (operation, path and inner error), <code>*strconv.NumError</code>, <code>*json.SyntaxError</code> (with the byte offset; chapter 22) and <code>*net.OpError</code>. Get at them with <code>errors.As</code> or <code>errors.AsType</code>.</li>
+        <li><b>Servers recover per request.</b> Go's HTTP server recovers a panic in a handler, logs it, and closes that one connection, so one bad request can't take down the whole server.</li>
+        <li><b>Validation</b> code often collects every problem with <code>errors.Join</code> so a user sees all of them at once.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>io.EOF</code> means something broke."</b> It's the normal end of input. <code>io.Copy</code> and <code>io.ReadAll</code> even report <code>nil</code> when they reach it.</li>
+        <li><b>"<code>Read</code> fills the whole buffer."</b> It may fill less. Always use <code>buf[:n]</code>.</li>
+        <li><b>"A nil pointer in an interface is a nil interface."</b> Only when both slots are empty. Return <code>nil</code> explicitly.</li>
+        <li><b>"If it prints <code>&lt;nil&gt;</code>, it is nil."</b> Panel 11 printed <code>&lt;nil&gt;</code> while <code>err != nil</code> was true.</li>
+        <li><b>"Every type needs an interface, for testing."</b> Define interfaces where they're used, when they're needed. Implicit satisfaction lets you add them later.</li>
+        <li><b>"<code>%w</code> changes the message."</b> The text is identical to <code>%v</code>; only what's kept inside differs.</li>
+        <li><b>"<code>err == ErrNotFound</code> is fine."</b> Only until someone adds context. <code>errors.Is</code> works both before and after.</li>
+        <li><b>"Always wrap with <code>%w</code>."</b> Wrapping makes the inner error part of your package's promise. Use <code>%v</code> when callers shouldn't depend on it.</li>
+        <li><b>"Logging an error is handling it, so I should also return it."</b> Do one or the other. Logging and returning gives duplicate reports.</li>
+        <li><b>"<code>recover()</code> anywhere catches panics."</b> Only when called by a deferred function, during the panic, in the same goroutine.</li>
+        <li><b>"Panics are Go's exceptions; use them for errors."</b> Go uses error values for expected problems. Panics are for bugs, and recovered panics are rare and local.</li>
+        <li><b>"<code>errors.As</code> takes the variable."</b> It takes a <b>pointer</b> to it: <code>errors.As(err, &amp;target)</code>. Passing the variable itself panics at run time. <code>errors.AsType</code> avoids that mistake entirely.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>go version</code>. Everything here needs Go 1.20 or later (<code>errors.Join</code>), except two things. <code>errors.AsType</code> needs Go 1.26 or later (with an older <code>go</code> line in <code>go.mod</code>, <code>go vet</code> warns). The pointer-wrap check needs Go 1.27's vet and a <code>go.mod</code> that says <code>go 1.27</code> or later. (We checked those two <code>go.mod</code> cases by hand on Go 1.27.3; they aren't among this page's captured runs.)</li>
+        <li><code>mkdir pipes</code>, <code>cd pipes</code>, <code>go mod init example/pipes</code>. It prints <samp>go: creating new go.mod: module example/pipes</samp>.</li>
+        <li>Create <code>main.go</code> with <code>rot13.go</code> from panel 8 and run <code>go run .</code>. You should see <samp>Hello, Scoot!</samp> and <samp>trips: [5 5 4 0]</samp>.</li>
+      </ol>
+      <p class="os-note">With <code>go run .</code> inside a module, compile errors start with <code># example/pipes</code> instead of this book's <code># command-line-arguments</code>. The messages and line numbers are the same.</p>
+      <h3>2. Pipe real things</h3>
+      <ol>
+        <li>Pipe the keyboard to the screen: <code>io.Copy(os.Stdout, os.Stdin)</code>. Type lines; finish with Ctrl+D (macOS, Linux) or Ctrl+Z then Enter (Windows).</li>
+        <li>Pipe a file: open it with <code>os.Open</code> (check <code>err</code>, <code>defer f.Close()</code>) and <code>io.Copy(os.Stdout, f)</code>.</li>
+        <li>Put your <code>rot13Reader</code> around <code>os.Stdin</code>. Type a message, and type its output back in: rot13 twice gives the original.</li>
+        <li>Remove the 5-byte limit and print <code>pipe.trips</code> again. How many trips now?</li>
+      </ol>
+      <h3>3. Catch the traps</h3>
+      <ol>
+        <li>Type in panel 11's <code>typed_nil.go</code>. Change <code>return e</code> to an <code>if e == nil { return nil }</code> guard and watch it print <samp>true</samp>.</li>
+        <li>Wrap an error three times with <code>%w</code> and print each layer with <code>errors.Unwrap</code> in a loop, like <code>dolls.go</code>.</li>
+        <li>Swap one <code>%w</code> for <code>%v</code> and watch <code>errors.Is</code> turn false.</li>
+        <li>Run <code>go vet</code> on <code>wrap_ptr.go</code> (panel 31). Fix it and run <code>go vet</code> again: no output means no complaints.</li>
+        <li>Try <code>errors.As(err, we)</code> without the <code>&amp;</code>. It compiles; <code>go vet</code> warns, and running it panics with a message about a non-nil pointer.</li>
+      </ol>
+      <h3>4. Read the docs from the terminal</h3>
+      <p><code>go doc io.Reader</code> gives the full Reader contract; <code>go doc io.Copy</code>, <code>go doc errors.Is</code>, <code>go doc errors.AsType</code> and <code>go doc errors.Join</code> describe the rest. <code>go doc builtin.recover</code> explains recover's rules.</p>
+      <ul>
+        <li><b>Windows:</b> install from the .msi on go.dev/dl. The missing-file error reads <samp>open nope: The system cannot find the file specified.</samp>, but <code>errors.Is(err, fs.ErrNotExist)</code> is still <code>true</code>: the sentinel check works on every system, the words don't.</li>
+        <li><b>macOS:</b> install the .pkg from go.dev/dl or use Homebrew (<code>brew install go</code>).</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages can be old: check <code>go version</code> before trying <code>errors.AsType</code>.</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs every program here except those that open files.</li>
+      </ul>
+      <p class="os-note">Message wording can shift between Go versions; this page shows Go 1.27.3. Go 1.24.7 differed in three ways: <code>errors.AsType</code> was undefined, its vet missed the pointer wrap, and panic reports had different code offsets.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>byte</dt><dd>One small number from 0 to 255. Text, pictures and files are all stored as bytes.</dd>
+        <dt><code>io.Writer</code></dt><dd>The one-method interface <code>Write(p []byte) (n int, err error)</code>: anything you can write bytes to.</dd>
+        <dt><code>io.Reader</code></dt><dd>The one-method interface <code>Read(p []byte) (n int, err error)</code>: anything you can read bytes from.</dd>
+        <dt><code>io.EOF</code></dt><dd>"End of file": the error value a Reader returns when there's nothing more. The normal way to finish.</dd>
+        <dt><code>io.Copy</code></dt><dd>Reads from a Reader and writes to a Writer until EOF; returns the byte count and an error.</dd>
+        <dt><code>os.Stdout</code>, standard error</dt><dd>The screen as a Writer, and its second channel used for problems and logs.</dd>
+        <dt><code>bytes.Buffer</code>, <code>strings.Builder</code></dt><dd>In-memory Writers; a Buffer is also a Reader, and reading drains it.</dd>
+        <dt>wrapping Reader / Writer</dt><dd>A Reader or Writer that holds another one and changes the bytes on the way through.</dd>
+        <dt>interface value</dt><dd>A two-slot box: the concrete type, and the value. <code>nil</code> only when both are empty.</dd>
+        <dt>typed nil</dt><dd>A nil pointer stored in an interface. The interface isn't nil, because its type slot is filled.</dd>
+        <dt>accept interfaces, return structs</dt><dd>Ask for the smallest interface you need; hand back concrete types.</dd>
+        <dt>consumer-side interface</dt><dd>An interface declared by the code that uses it, listing only what it needs.</dd>
+        <dt>interface pollution</dt><dd>Making interfaces before anything needs them, typically with only one implementation.</dd>
+        <dt>compile-time check</dt><dd><code>var _ I = (*T)(nil)</code>: a throw-away line that makes the Compiler confirm <code>*T</code> satisfies <code>I</code>.</dd>
+        <dt>wrap, <code>%w</code></dt><dd>Make a new error with context that keeps the old error inside, so it can still be found.</dd>
+        <dt>error chain</dt><dd>The nesting dolls: an error, the error it wraps, the one that wraps, and so on.</dd>
+        <dt><code>errors.Unwrap</code></dt><dd>Opens one doll: returns the wrapped error, or <code>nil</code>.</dd>
+        <dt><code>errors.Is</code></dt><dd>Is this exact error anywhere in the chain?</dd>
+        <dt><code>errors.As</code>, <code>errors.AsType</code></dt><dd>Is an error of this type anywhere in the chain? If so, hand it over. <code>AsType</code> (Go 1.26) returns it directly.</dd>
+        <dt>sentinel error</dt><dd>A fixed error value in a package variable, named <code>ErrSomething</code>, checked with <code>errors.Is</code>.</dd>
+        <dt>custom error type</dt><dd>Your own type with an <code>Error() string</code> method, carrying details; found with <code>errors.As</code>.</dd>
+        <dt>opaque error</dt><dd>An error callers should only report, not inspect.</dd>
+        <dt><code>errors.Join</code></dt><dd>Combines several errors into one; prints one per line; <code>nil</code> if all are nil.</dd>
+        <dt>handle once</dt><dd>Each function either deals with an error or returns it with context, never both.</dd>
+        <dt>unwinding</dt><dd>During a panic, leaving functions one by one and running their deferred calls.</dd>
+        <dt><code>recover</code></dt><dd>Built-in function that stops a panic and returns its value, when called by a deferred function.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/tour/methods/21">A Tour of Go: Readers</a>, the <a href="https://go.dev/tour/methods/23">rot13Reader exercise</a> and <a href="https://go.dev/tour/methods/12">interface values with nil underlying values</a>.</li>
+        <li><a href="https://pkg.go.dev/io">The io package</a> (the full Reader and Writer contracts) and <a href="https://pkg.go.dev/errors">the errors package</a> (Is, As, AsType, Join, Unwrap).</li>
+        <li><a href="https://go.dev/blog/go1.13-errors">Go blog: Working with Errors in Go 1.13</a>, on wrapping, Is, As and when to wrap.</li>
+        <li><a href="https://go.dev/doc/faq#nil_error">Go FAQ: Why is my nil error value not equal to nil?</a></li>
+        <li><a href="https://go.dev/doc/effective_go#interfaces_and_types">Effective Go: interfaces</a>, <a href="https://go.dev/doc/effective_go#blank_implements">interface checks</a>, <a href="https://go.dev/doc/effective_go#errors">errors</a>, <a href="https://go.dev/doc/effective_go#panic">panic</a> and <a href="https://go.dev/doc/effective_go#recover">recover</a>.</li>
+        <li><a href="https://go.dev/blog/defer-panic-and-recover">Go blog: Defer, Panic, and Recover</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/errors">Go by Example: Errors</a>, <a href="https://gobyexample.com/custom-errors">Custom Errors</a>, <a href="https://gobyexample.com/panic">Panic</a> and <a href="https://gobyexample.com/recover">Recover</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #5 interface pollution, #6 interface on the producer side, #7 returning interfaces, #45 returning a nil receiver, and #48 to #54 on errors.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/dependency-injection">Learn Go with Tests: Dependency Injection</a>, which tests output by passing a <code>bytes.Buffer</code> as an <code>io.Writer</code>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch19</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). Panel 31's terminal is a real two-command session: <code>go run wrap_ptr.go</code>, then <code>go vet wrap_ptr.go</code>; Go 1.27.3's vet prints its finding without a header line. Panic reports show the real file paths and code offsets of these runs; those numbers differ on other machines. The <code>log</code> programs turn timestamps off with <code>log.SetFlags(0)</code>, in the code you can see, so every run prints the same. No file named <code>nope</code> or <code>missing.txt</code> exists in the folder; <code>orders.txt</code> (two lines) does, for Boss 4. 45 programs were captured, and all are deterministic.</p>
+  <p>Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code>. 39 gave identical results. The six listed differences: <code>custom.go</code> and <code>parsons_as.go</code> don't compile, because <code>errors.AsType</code> arrived in Go 1.26 (panel 25 shows that run); Go 1.24.7's vet says nothing about <code>wrap_ptr.go</code>, whose check arrived in Go 1.27 (panel 31 shows it); and three panic reports (<code>no_recover.go</code>, <code>recover_early.go</code>, <code>boss_err.go</code>) are identical except for their code offsets.</p>
+  <p>The pipe, the nesting dolls, the tracer, the map and the machine are teaching models; each checks itself against those runs and shows a badge. The pipe works out its trips from the source text and the filter's width, then checks the delivered bytes, the total and the trip sizes against what <code>rot13.go</code> itself printed. The dolls check each doll's text against the program's own unwrap loop, and each answer against its printed <code>true</code> or <code>false</code>. In the tracer an interface value is drawn as one box with two rows, type and value; in memory it is two machine words (the notebook explains).</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): A Tour of Go (Readers, the rot13Reader exercise, interface values with nil underlying values); the <code>io</code> and <code>errors</code> package documentation; the Go blog's "Working with Errors in Go 1.13" (Damien Neil and Jonathan Amsterdam, 2019) and "Defer, Panic, and Recover" (Andrew Gerrand, 2010); the Go FAQ entry on nil error values; Effective Go (interfaces, interface checks, errors, panic, recover); Anton Zhiyanov's write-up of the accepted <code>errors.AsType</code> proposal for Go 1.26; Go by Example, "Errors", "Custom Errors", "Panic" and "Recover"; 100 Go Mistakes, #5 to #7, #45 and #48 to #54; Learn Go with Tests, "Dependency Injection"; and, as summarised in this book's research map, The Go Programming Language sections 5.4, 5.9, 5.10, 7.5, 7.7, 7.11 and 7.12, Learning Go 2nd edition chapters 7, 9 and 13, Exercism's error-wrapping concept, boot.dev Learn Go and Ardan Labs' error-handling material.</p>
+  <p>Scoot, the Compiler, Specs, the Professor, the ghost and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

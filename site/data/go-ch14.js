@@ -1,0 +1,1034 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch14",
+  "versionDifferences": [
+   "any_add.go",
+   "assert_panic.go",
+   "boss_err.go",
+   "impossible.go",
+   "locker_bug.go",
+   "spot_assert.go",
+   "spot_close.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): any_add.go, assert_panic.go, boss_err.go, impossible.go, locker_bug.go, spot_assert.go, spot_close.go."
+ },
+ "programs": {
+  "any_add.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar box any = 41\n\tfmt.Println(box + 1)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./any_add.go:7:14: invalid operation: box + 1 (mismatched types any and untyped int)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run any_add.go",
+     "out": "",
+     "err": "# command-line-arguments\n./any_add.go:7:14: invalid operation: box + 1 (mismatched types any and untyped int)\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# command-line-arguments\n./any_add.go:7:14: invalid operation: box + 1 (mismatched types any and int)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run any_add.go",
+      "out": "",
+      "err": "# command-line-arguments\n./any_add.go:7:14: invalid operation: box + 1 (mismatched types any and int)\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "any_box.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar box any\n\tfmt.Printf(\"%v %T\\n\", box, box)\n\tbox = 42\n\tfmt.Printf(\"%v %T\\n\", box, box)\n\tbox = \"hello\"\n\tfmt.Printf(\"%v %T\\n\", box, box)\n\tthings := []any{3.5, true, 'A', []int{1, 2}}\n\tfor _, t := range things {\n\t\tfmt.Printf(\"%v %T\\n\", t, t)\n\t}\n}\n",
+   "stdout": "<nil> <nil>\n42 int\nhello string\n3.5 float64\ntrue bool\n65 int32\n[1 2] []int\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run any_box.go",
+     "out": "<nil> <nil>\n42 int\nhello string\n3.5 float64\ntrue bool\n65 int32\n[1 2] []int\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "assert.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar box any = 42\n\tn := box.(int)\n\tfmt.Println(n + 1)\n\ts, ok := box.(string)\n\tfmt.Printf(\"%q %v\\n\", s, ok)\n\tm, ok := box.(int)\n\tfmt.Println(m, ok)\n}\n",
+   "stdout": "43\n\"\" false\n42 true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run assert.go",
+     "out": "43\n\"\" false\n42 true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "assert_machine.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc try(box any) {\n\tn, ok := box.(int)\n\tfmt.Printf(\"%#v -> %d %v\\n\", box, n, ok)\n}\n\nfunc main() {\n\ttry(42)\n\ttry(\"hi\")\n\ttry(3.5)\n\ttry(-7)\n}\n",
+   "stdout": "42 -> 42 true\n\"hi\" -> 0 false\n3.5 -> 0 false\n-7 -> -7 true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run assert_machine.go",
+     "out": "42 -> 42 true\n\"hi\" -> 0 false\n3.5 -> 0 false\n-7 -> -7 true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "assert_panic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar box any = \"hello\"\n\tfmt.Println(\"opening the box...\")\n\tn := box.(int)\n\tfmt.Println(n + 1)\n}\n",
+   "stdout": "opening the box...\n",
+   "stderr": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x5f\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run assert_panic.go",
+     "out": "opening the box...\n",
+     "err": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x5f\nexit status 2\n",
+     "exit": 1,
+     "merged": "opening the box...\npanic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x5f\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "opening the box...\n",
+    "stderr": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x65\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run assert_panic.go",
+      "out": "opening the box...\n",
+      "err": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x65\nexit status 2\n",
+      "exit": 1,
+      "merged": "opening the box...\npanic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/assert_panic.go:8 +0x65\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tprices := []any{4, 2.5, 3}\n\ttotal := 0\n\tfor _, p := range prices {\n\t\ttotal += p.(int)\n\t}\n\tfmt.Println(total)\n}\n",
+   "stdout": "",
+   "stderr": "panic: interface conversion: interface {} is float64, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/boss_err.go:9 +0xd0\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "",
+     "err": "panic: interface conversion: interface {} is float64, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/boss_err.go:9 +0xd0\nexit status 2\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "panic: interface conversion: interface {} is float64, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/boss_err.go:9 +0xdb\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run boss_err.go",
+      "out": "",
+      "err": "panic: interface conversion: interface {} is float64, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/boss_err.go:9 +0xdb\nexit status 2\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Shouter interface {\n\tShout() string\n}\n\ntype Fan struct {\n\tTeam string\n}\n\nfunc (f Fan) Shout() string {\n\treturn \"GO \" + f.Team + \"!\"\n}\n\nfunc main() {\n\tcrowd := []any{Fan{Team: \"RED\"}, \"quiet\", Fan{Team: \"BLUE\"}}\n\tfor _, c := range crowd {\n\t\tif s, ok := c.(Shouter); ok {\n\t\t\tfmt.Println(s.Shout())\n\t\t}\n\t}\n}\n",
+   "stdout": "GO RED!\nGO BLUE!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go",
+     "out": "GO RED!\nGO BLUE!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{ Name string }\ntype Robot struct{ Model int }\ntype Cow struct{}\n\nfunc (d Dog) Speak() string   { return d.Name + \" says woof\" }\nfunc (r Robot) Speak() string { return fmt.Sprintf(\"R-%d says beep boop\", r.Model) }\nfunc (Cow) Speak() string     { return \"the cow says moo\" }\n\nfunc main() {\n\tvar s Speaker = Dog{Name: \"Rex\"}\n\tdefer fmt.Println(\"last:\", s.Speak())\n\ts = Robot{Model: 9}\n\tdefer fmt.Println(\"middle:\", s.Speak())\n\ts = Cow{}\n\tfmt.Println(\"first:\", s.Speak())\n}\n",
+   "stdout": "first: the cow says moo\nmiddle: R-9 says beep boop\nlast: Rex says woof\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "first: the cow says moo\nmiddle: R-9 says beep boop\nlast: Rex says woof\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Parcel struct {\n\tID int\n}\n\nfunc (p Parcel) String() string {\n\treturn fmt.Sprintf(\"#%d\", p.ID)\n}\n\nfunc main() {\n\tvar items []fmt.Stringer\n\tfor id := 1; id <= 3; id++ {\n\t\tp := Parcel{ID: id * 10}\n\t\titems = append(items, p)\n\t\tdefer fmt.Println(\"unload\", p)\n\t}\n\tfmt.Println(items)\n\tfmt.Println(len(items), \"loaded\")\n}\n",
+   "stdout": "[#10 #20 #30]\n3 loaded\nunload #30\nunload #20\nunload #10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "[#10 #20 #30]\n3 loaded\nunload #30\nunload #20\nunload #10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype LateError struct {\n\tMinutes int\n}\n\nfunc (e LateError) error() string {\n\treturn fmt.Sprintf(\"late by %d minutes\", e.Minutes)\n}\n\nfunc arrive(minutes int) error {\n\tif minutes > 0 {\n\t\treturn LateError{Minutes: minutes}\n\t}\n\treturn nil\n}\n\nfunc main() {\n\tfmt.Println(arrive(0))\n\tfmt.Println(arrive(15))\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./boss_spot.go:15:10: cannot use LateError{…} (value of struct type LateError) as error value in return statement: LateError does not implement error (missing method Error)\n\t\thave error() string\n\t\twant Error() string\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "",
+     "err": "# command-line-arguments\n./boss_spot.go:15:10: cannot use LateError{…} (value of struct type LateError) as error value in return statement: LateError does not implement error (missing method Error)\n\t\thave error() string\n\t\twant Error() string\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Shape interface {\n\tArea() int\n}\n\ntype Square struct{ Side int }\ntype Rect struct{ W, H int }\n\nfunc (s Square) Area() int { return s.Side * s.Side }\nfunc (r Rect) Area() int   { return r.W * r.H }\n\nfunc main() {\n\ttotal := 0\n\tfor _, s := range []Shape{Square{3}, Rect{2, 5}, Square{1}} {\n\t\ttotal += s.Area()\n\t\tkind := \"rect\"\n\t\tif _, ok := s.(Square); ok {\n\t\t\tkind = \"square\"\n\t\t}\n\t\tfmt.Println(kind, s.Area(), total)\n\t}\n}\n",
+   "stdout": "square 9 9\nrect 10 19\nsquare 1 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "square 9 9\nrect 10 19\nsquare 1 20\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "cat_missing.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Cat struct {\n\tName string\n}\n\nfunc (c Cat) Meow() string {\n\treturn c.Name + \" says meow\"\n}\n\nfunc main() {\n\tvar s Speaker = Cat{Name: \"Tom\"}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./cat_missing.go:18:18: cannot use Cat{…} (value of struct type Cat) as Speaker value in variable declaration: Cat does not implement Speaker (missing method Speak)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run cat_missing.go",
+     "out": "",
+     "err": "# command-line-arguments\n./cat_missing.go:18:18: cannot use Cat{…} (value of struct type Cat) as Speaker value in variable declaration: Cat does not implement Speaker (missing method Speak)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "choice_convert.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar v any = 3\n\tn := int(v)\n\tfmt.Println(n)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./choice_convert.go:7:11: cannot convert v (variable of interface type any) to type int: need type assertion\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run choice_convert.go",
+     "out": "",
+     "err": "# command-line-arguments\n./choice_convert.go:7:11: cannot convert v (variable of interface type any) to type int: need type assertion\n",
+     "exit": 1
+    }
+   ]
+  },
+  "choir.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{ Name string }\ntype Robot struct{ Model int }\n\nfunc (d Dog) Speak() string   { return d.Name + \" says woof\" }\nfunc (r Robot) Speak() string { return fmt.Sprintf(\"R-%d says beep boop\", r.Model) }\n\nfunc announce(s Speaker) {\n\tfmt.Println(\"Now hear this:\", s.Speak())\n}\n\nfunc main() {\n\tchoir := []Speaker{Dog{Name: \"Rex\"}, Robot{Model: 7}, Dog{Name: \"Bo\"}}\n\tfor i, s := range choir {\n\t\tfmt.Println(i, s.Speak())\n\t}\n\tannounce(choir[1])\n\tfmt.Println(len(choir), \"speakers\")\n}\n",
+   "stdout": "0 Rex says woof\n1 R-7 says beep boop\n2 Bo says woof\nNow hear this: R-7 says beep boop\n3 speakers\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run choir.go",
+     "out": "0 Rex says woof\n1 R-7 says beep boop\n2 Bo says woof\nNow hear this: R-7 says beep boop\n3 speakers\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "clock_wrong.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Clock struct{}\n\nfunc (c Clock) Speak() int {\n\treturn 12\n}\n\nfunc main() {\n\tvar s Speaker = Clock{}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./clock_wrong.go:16:18: cannot use Clock{} (value of struct type Clock) as Speaker value in variable declaration: Clock does not implement Speaker (wrong type for method Speak)\n\t\thave Speak() int\n\t\twant Speak() string\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run clock_wrong.go",
+     "out": "",
+     "err": "# command-line-arguments\n./clock_wrong.go:16:18: cannot use Clock{} (value of struct type Clock) as Speaker value in variable declaration: Clock does not implement Speaker (wrong type for method Speak)\n\t\thave Speak() int\n\t\twant Speak() string\n",
+     "exit": 1
+    }
+   ]
+  },
+  "create_write.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc writeLog(name string, stops []string) error {\n\tf, err := os.Create(name)\n\tif err != nil {\n\t\treturn err\n\t}\n\tdefer f.Close()\n\tfor i, s := range stops {\n\t\tfmt.Fprintf(f, \"stop %d: %s\\n\", i+1, s)\n\t}\n\treturn nil\n}\n\nfunc main() {\n\terr := writeLog(\"log.txt\", []string{\"Elm St\", \"Oak Ave\", \"Pine Rd\"})\n\tif err != nil {\n\t\tfmt.Println(\"cannot write:\", err)\n\t\treturn\n\t}\n\tdata, err := os.ReadFile(\"log.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"cannot read:\", err)\n\t\treturn\n\t}\n\tfmt.Print(string(data))\n}\n",
+   "stdout": "stop 1: Elm St\nstop 2: Oak Ave\nstop 3: Pine Rd\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run create_write.go",
+     "out": "stop 1: Elm St\nstop 2: Oak Ave\nstop 3: Pine Rd\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "defer_args.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tx := 1\n\tdefer fmt.Println(\"deferred x =\", x)\n\tx = 2\n\tfmt.Println(\"x =\", x)\n}\n",
+   "stdout": "x = 2\ndeferred x = 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run defer_args.go",
+     "out": "x = 2\ndeferred x = 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "defer_basic.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"open the depot\")\n\tdefer fmt.Println(\"lock the door\")\n\tfmt.Println(\"sort the parcels\")\n\tfmt.Println(\"load the van\")\n}\n",
+   "stdout": "open the depot\nsort the parcels\nload the van\nlock the door\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run defer_basic.go",
+     "out": "open the depot\nsort the parcels\nload the van\nlock the door\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "defer_loop.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfor i := 0; i < 3; i++ {\n\t\tdefer fmt.Println(\"defer\", i)\n\t}\n\tfmt.Println(\"end of main\")\n}\n",
+   "stdout": "end of main\ndefer 2\ndefer 1\ndefer 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run defer_loop.go",
+     "out": "end of main\ndefer 2\ndefer 1\ndefer 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "defer_return.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc deliver(parcel string, kg int) {\n\tdefer fmt.Println(\"log:\", parcel)\n\tif kg > 30 {\n\t\tfmt.Println(\"too heavy:\", parcel)\n\t\treturn\n\t}\n\tfmt.Println(\"delivered:\", parcel)\n}\n\nfunc main() {\n\tdeliver(\"books\", 4)\n\tdeliver(\"piano\", 200)\n\tfmt.Println(\"route finished\")\n}\n",
+   "stdout": "delivered: books\nlog: books\ntoo heavy: piano\nlog: piano\nroute finished\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run defer_return.go",
+     "out": "delivered: books\nlog: books\ntoo heavy: piano\nlog: piano\nroute finished\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "door.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"arrive at the depot\")\n\tdefer fmt.Println(\"lock the door\")\n\tdefer fmt.Println(\"lights off\")\n\tdefer fmt.Println(\"feed the cat\")\n\tfmt.Println(\"deliver the parcels\")\n}\n",
+   "stdout": "arrive at the depot\ndeliver the parcels\nfeed the cat\nlights off\nlock the door\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run door.go",
+     "out": "arrive at the depot\ndeliver the parcels\nfeed the cat\nlights off\nlock the door\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "error_iface.go": {
+   "src": "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n)\n\ntype TooHeavy struct {\n\tKg int\n}\n\nfunc (e TooHeavy) Error() string {\n\treturn fmt.Sprintf(\"parcel too heavy: %d kg (limit 30)\", e.Kg)\n}\n\nfunc weigh(kg int) error {\n\tif kg > 30 {\n\t\treturn TooHeavy{Kg: kg}\n\t}\n\treturn nil\n}\n\nfunc main() {\n\tfmt.Println(weigh(12))\n\terr := weigh(45)\n\tfmt.Println(err)\n\tfmt.Printf(\"%T\\n\", err)\n\tfmt.Printf(\"%T\\n\", errors.New(\"lost\"))\n}\n",
+   "stdout": "<nil>\nparcel too heavy: 45 kg (limit 30)\nmain.TooHeavy\n*errors.errorString\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run error_iface.go",
+     "out": "<nil>\nparcel too heavy: 45 kg (limit 30)\nmain.TooHeavy\n*errors.errorString\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_amp.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Counter interface {\n\tTick() int\n}\n\ntype Clicker struct {\n\tn int\n}\n\nfunc (c *Clicker) Tick() int {\n\tc.n++\n\treturn c.n\n}\n\nfunc main() {\n\tvar c Counter = &Clicker{}\n\tc.Tick()\n\tfmt.Println(c.Tick())\n}\n",
+   "stdout": "2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_amp.go",
+     "out": "2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_error.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype NoAddress struct {\n\tParcel string\n}\n\nfunc (e NoAddress) Error() string {\n\treturn \"no address on \" + e.Parcel\n}\n\nfunc check(parcel, address string) error {\n\tif address == \"\" {\n\t\treturn NoAddress{Parcel: parcel}\n\t}\n\treturn nil\n}\n\nfunc main() {\n\tfmt.Println(check(\"box 1\", \"9 Pine Rd\"))\n\tfmt.Println(check(\"box 2\", \"\"))\n}\n",
+   "stdout": "<nil>\nno address on box 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_error.go",
+     "out": "<nil>\nno address on box 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_file.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\terr := os.WriteFile(\"todo.txt\", []byte(\"feed the cat\\n\"), 0644)\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdata, err := os.ReadFile(\"todo.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Printf(\"%q\\n\", string(data))\n}\n",
+   "stdout": "\"feed the cat\\n\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_file.go",
+     "out": "\"feed the cat\\n\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_switch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{}\n\nfunc (Dog) Speak() string { return \"woof\" }\n\nfunc sound(v any) string {\n\tswitch x := v.(type) {\n\tcase Speaker:\n\t\treturn x.Speak()\n\tcase string:\n\t\treturn \"a note saying \" + x\n\tdefault:\n\t\treturn \"silence\"\n\t}\n}\n\nfunc main() {\n\tfmt.Println(sound(Dog{}))\n\tfmt.Println(sound(\"hi\"))\n\tfmt.Println(sound(99))\n}\n",
+   "stdout": "woof\na note saying hi\nsilence\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_switch.go",
+     "out": "woof\na note saying hi\nsilence\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "iface_value.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{ Name string }\ntype Robot struct{ Model int }\n\nfunc (d Dog) Speak() string {\n\treturn d.Name + \" says woof\"\n}\n\nfunc (r Robot) Speak() string {\n\treturn fmt.Sprintf(\"R-%d beeps\", r.Model)\n}\n\nfunc main() {\n\tvar s Speaker\n\tfmt.Println(s == nil)\n\ts = Dog{Name: \"Rex\"}\n\tfmt.Printf(\"%T %v\\n\", s, s)\n\ts = Robot{Model: 7}\n\tfmt.Printf(\"%T %v\\n\", s, s)\n\tfmt.Println(s == nil)\n}\n",
+   "stdout": "true\nmain.Dog {Rex}\nmain.Robot {7}\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run iface_value.go",
+     "out": "true\nmain.Dog {Rex}\nmain.Robot {7}\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "impossible.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc arrow(dir int) string {\n\tswitch dir {\n\tcase 0:\n\t\treturn \"north\"\n\tcase 1:\n\t\treturn \"east\"\n\tcase 2:\n\t\treturn \"south\"\n\tcase 3:\n\t\treturn \"west\"\n\t}\n\tpanic(fmt.Sprintf(\"impossible direction %d\", dir))\n}\n\nfunc main() {\n\tfor turn := range 6 {\n\t\tfmt.Println(turn, arrow(turn%4))\n\t}\n\tfmt.Println(arrow(7))\n}\n",
+   "stdout": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\n",
+   "stderr": "panic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x56c278?)\n\t/home/you/go-ch14/impossible.go:16 +0x7e\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xc5\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run impossible.go",
+     "out": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\n",
+     "err": "panic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x56c278?)\n\t/home/you/go-ch14/impossible.go:16 +0x7e\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xc5\nexit status 2\n",
+     "exit": 1,
+     "merged": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\npanic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x56c278?)\n\t/home/you/go-ch14/impossible.go:16 +0x7e\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xc5\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\n",
+    "stderr": "panic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x4dc318?)\n\t/home/you/go-ch14/impossible.go:16 +0xc8\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xd4\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run impossible.go",
+      "out": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\n",
+      "err": "panic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x4dc318?)\n\t/home/you/go-ch14/impossible.go:16 +0xc8\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xd4\nexit status 2\n",
+      "exit": 1,
+      "merged": "0 north\n1 east\n2 south\n3 west\n4 north\n5 east\npanic: impossible direction 7\n\ngoroutine 1 [running]:\nmain.arrow(0x4dc318?)\n\t/home/you/go-ch14/impossible.go:16 +0xc8\nmain.main()\n\t/home/you/go-ch14/impossible.go:23 +0xd4\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "locker_bug.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Locker struct {\n\tname string\n}\n\nfunc openLocker(name string) (*Locker, error) {\n\tif name != \"A1\" {\n\t\treturn nil, fmt.Errorf(\"no locker called %s\", name)\n\t}\n\treturn &Locker{name: name}, nil\n}\n\nfunc (l *Locker) Close() {\n\tfmt.Println(\"closing locker\", l.name)\n}\n\nfunc main() {\n\tl, err := openLocker(\"B7\")\n\tdefer l.Close()\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Println(\"using locker\", l.name)\n}\n",
+   "stdout": "error: no locker called B7\n",
+   "stderr": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc74]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x34\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0xcb\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run locker_bug.go",
+     "out": "error: no locker called B7\n",
+     "err": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc74]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x34\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0xcb\nexit status 2\n",
+     "exit": 1,
+     "merged": "error: no locker called B7\npanic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc74]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x34\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0xcb\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "error: no locker called B7\n",
+    "stderr": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x32\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0x10e\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run locker_bug.go",
+      "out": "error: no locker called B7\n",
+      "err": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x32\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0x10e\nexit status 2\n",
+      "exit": 1,
+      "merged": "error: no locker called B7\npanic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Locker).Close(0x0?)\n\t/home/you/go-ch14/locker_bug.go:17 +0x32\nmain.main()\n\t/home/you/go-ch14/locker_bug.go:25 +0x10e\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "locker_fix.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Locker struct {\n\tname string\n}\n\nfunc openLocker(name string) (*Locker, error) {\n\tif name != \"A1\" {\n\t\treturn nil, fmt.Errorf(\"no locker called %s\", name)\n\t}\n\treturn &Locker{name: name}, nil\n}\n\nfunc (l *Locker) Close() {\n\tfmt.Println(\"closing locker\", l.name)\n}\n\nfunc main() {\n\tl, err := openLocker(\"B7\")\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tdefer l.Close()\n\tfmt.Println(\"using locker\", l.name)\n}\n",
+   "stdout": "error: no locker called B7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run locker_fix.go",
+     "out": "error: no locker called B7\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "locker_ok.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Locker struct {\n\tname string\n}\n\nfunc openLocker(name string) (*Locker, error) {\n\tif name != \"A1\" {\n\t\treturn nil, fmt.Errorf(\"no locker called %s\", name)\n\t}\n\treturn &Locker{name: name}, nil\n}\n\nfunc (l *Locker) Close() {\n\tfmt.Println(\"closing locker\", l.name)\n}\n\nfunc main() {\n\tl, err := openLocker(\"A1\")\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tdefer l.Close()\n\tfmt.Println(\"using locker\", l.name)\n}\n",
+   "stdout": "using locker A1\nclosing locker A1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run locker_ok.go",
+     "out": "using locker A1\nclosing locker A1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "nil_close.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"nope.txt\")\n\tfmt.Println(err)\n\tfmt.Println(f == nil)\n\tfmt.Println(f.Close())\n}\n",
+   "stdout": "open nope.txt: no such file or directory\ntrue\ninvalid argument\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run nil_close.go",
+     "out": "open nope.txt: no such file or directory\ntrue\ninvalid argument\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "panic_now.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tdefer fmt.Println(\"deferred: still runs\")\n\tfmt.Println(\"checking the parcel\")\n\tpanic(\"something went wrong\")\n}\n",
+   "stdout": "checking the parcel\ndeferred: still runs\n",
+   "stderr": "panic: something went wrong\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/panic_now.go:8 +0x98\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run panic_now.go",
+     "out": "checking the parcel\ndeferred: still runs\n",
+     "err": "panic: something went wrong\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/panic_now.go:8 +0x98\nexit status 2\n",
+     "exit": 1,
+     "merged": "checking the parcel\ndeferred: still runs\npanic: something went wrong\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/panic_now.go:8 +0x98\nexit status 2\n"
+    }
+   ]
+  },
+  "parsons_open.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"deliveries.txt\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\tsc := bufio.NewScanner(f)\n\tsc.Scan()\n\tfmt.Println(\"first stop:\", sc.Text())\n}\n",
+   "stdout": "first stop: 12 Elm St\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_open.go",
+     "out": "first stop: 12 Elm St\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_stringer.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Coins int\n\nfunc (c Coins) String() string {\n\treturn fmt.Sprintf(\"%d coins\", int(c))\n}\n\nfunc main() {\n\tpurse := Coins(40)\n\tpurse += 2\n\tvar s fmt.Stringer = purse\n\tfmt.Println(s)\n}\n",
+   "stdout": "42 coins\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_stringer.go",
+     "out": "42 coins\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_stringer_early.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Coins int\n\nfunc (c Coins) String() string {\n\treturn fmt.Sprintf(\"%d coins\", int(c))\n}\n\nfunc main() {\n\tpurse := Coins(40)\n\tvar s fmt.Stringer = purse\n\tpurse += 2\n\tfmt.Println(s)\n}\n",
+   "stdout": "40 coins\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_stringer_early.go",
+     "out": "40 coins\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "plug.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct {\n\tName string\n}\n\nfunc (d Dog) Speak() string {\n\treturn d.Name + \" says woof\"\n}\n\ntype Robot struct {\n\tModel int\n}\n\nfunc (r Robot) Speak() string {\n\treturn fmt.Sprintf(\"R-%d says beep boop\", r.Model)\n}\n\nfunc main() {\n\tvar s Speaker\n\ts = Dog{Name: \"Rex\"}\n\tfmt.Println(s.Speak())\n\ts = Robot{Model: 7}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "Rex says woof\nR-7 says beep boop\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run plug.go",
+     "out": "Rex says woof\nR-7 says beep boop\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_assert.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar box any = \"parcel\"\n\ts, ok := box.(string)\n\tfmt.Println(len(s), ok)\n\tn, ok := box.(int)\n\tfmt.Println(n, ok)\n}\n",
+   "stdout": "6 true\n0 false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_assert.go",
+     "out": "6 true\n0 false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_defer.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tdefer fmt.Println(\"C\")\n\tfmt.Println(\"A\")\n\tdefer fmt.Println(\"D\")\n\tfmt.Println(\"B\")\n}\n",
+   "stdout": "A\nB\nD\nC\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_defer.go",
+     "out": "A\nB\nD\nC\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_nested.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc helper() {\n\tdefer fmt.Println(\"helper: note\")\n\tfmt.Println(\"helper: work\")\n}\n\nfunc main() {\n\tdefer fmt.Println(\"main: note\")\n\thelper()\n\tfmt.Println(\"main: work\")\n}\n",
+   "stdout": "helper: work\nhelper: note\nmain: work\nmain: note\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_nested.go",
+     "out": "helper: work\nhelper: note\nmain: work\nmain: note\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_plug.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Greeter interface {\n\tGreet() string\n}\n\ntype English struct{}\ntype Pirate struct{ Name string }\n\nfunc (e English) Greet() string { return \"Hello\" }\nfunc (p Pirate) Greet() string  { return \"Ahoy, \" + p.Name }\n\nfunc main() {\n\tvar g Greeter = Pirate{Name: \"Mo\"}\n\tfmt.Println(g.Greet())\n\tg = English{}\n\tfmt.Println(g.Greet() + \"!\")\n}\n",
+   "stdout": "Ahoy, Mo\nHello!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_plug.go",
+     "out": "Ahoy, Mo\nHello!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_recover.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc check(n int) {\n\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\tfmt.Println(\"caught:\", r)\n\t\t}\n\t}()\n\tif n < 0 {\n\t\tpanic(\"negative\")\n\t}\n\tfmt.Println(\"ok\", n)\n}\n\nfunc main() {\n\tcheck(5)\n\tcheck(-1)\n\tfmt.Println(\"end\")\n}\n",
+   "stdout": "ok 5\ncaught: negative\nend\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_recover.go",
+     "out": "ok 5\ncaught: negative\nend\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_type.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{ Name string }\ntype Robot struct{ Model int }\n\nfunc (d Dog) Speak() string   { return \"woof\" }\nfunc (r Robot) Speak() string { return \"beep\" }\n\nfunc main() {\n\tvar s Speaker = Robot{Model: 3}\n\tfmt.Printf(\"%T %v\\n\", s, s)\n\ts = Dog{Name: \"Bo\"}\n\tfmt.Println(s, s.Speak())\n}\n",
+   "stdout": "main.Robot {3}\n{Bo} woof\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_type.go",
+     "out": "main.Robot {3}\n{Bo} woof\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ptr_fix.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct {\n\tName  string\n\tBarks int\n}\n\nfunc (d *Dog) Speak() string {\n\td.Barks++\n\treturn fmt.Sprintf(\"%s says woof (bark %d)\", d.Name, d.Barks)\n}\n\nfunc main() {\n\trex := Dog{Name: \"Rex\"}\n\tvar s Speaker = &rex\n\tfmt.Println(s.Speak())\n\tfmt.Println(s.Speak())\n\tfmt.Println(rex.Barks)\n}\n",
+   "stdout": "Rex says woof (bark 1)\nRex says woof (bark 2)\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ptr_fix.go",
+     "out": "Rex says woof (bark 1)\nRex says woof (bark 2)\n2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ptr_recv.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct {\n\tName  string\n\tBarks int\n}\n\nfunc (d *Dog) Speak() string {\n\td.Barks++\n\treturn fmt.Sprintf(\"%s says woof (bark %d)\", d.Name, d.Barks)\n}\n\nfunc main() {\n\tvar s Speaker = Dog{Name: \"Rex\"}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./ptr_recv.go:20:18: cannot use Dog{…} (value of struct type Dog) as Speaker value in variable declaration: Dog does not implement Speaker (method Speak has pointer receiver)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run ptr_recv.go",
+     "out": "",
+     "err": "# command-line-arguments\n./ptr_recv.go:20:18: cannot use Dog{…} (value of struct type Dog) as Speaker value in variable declaration: Dog does not implement Speaker (method Speak has pointer receiver)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "ptr_string.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Player struct {\n\tName  string\n\tLevel int\n}\n\nfunc (p *Player) String() string {\n\treturn fmt.Sprintf(\"%s (level %d)\", p.Name, p.Level)\n}\n\nfunc main() {\n\thero := Player{Name: \"Rin\", Level: 3}\n\tfmt.Println(hero)\n\tfmt.Println(&hero)\n}\n",
+   "stdout": "{Rin 3}\nRin (level 3)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ptr_string.go",
+     "out": "{Rin 3}\nRin (level 3)\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "read_missing.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tdata, err := os.ReadFile(\"nope.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"read failed:\", err)\n\t\treturn\n\t}\n\tfmt.Print(string(data))\n}\n",
+   "stdout": "read failed: open nope.txt: no such file or directory\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run read_missing.go",
+     "out": "read failed: open nope.txt: no such file or directory\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "recover_peek.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc risky() {\n\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\tfmt.Println(\"recovered:\", r)\n\t\t}\n\t}()\n\tfmt.Println(\"about to panic\")\n\tpanic(\"lost the parcel\")\n}\n\nfunc main() {\n\trisky()\n\tfmt.Println(\"main keeps going\")\n}\n",
+   "stdout": "about to panic\nrecovered: lost the parcel\nmain keeps going\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run recover_peek.go",
+     "out": "about to panic\nrecovered: lost the parcel\nmain keeps going\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "scan_lines.go": {
+   "src": "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tf, err := os.Open(\"deliveries.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"cannot open:\", err)\n\t\treturn\n\t}\n\tdefer f.Close()\n\n\tscanner := bufio.NewScanner(f)\n\tn := 0\n\tfor scanner.Scan() {\n\t\tn++\n\t\tfmt.Println(n, scanner.Text())\n\t}\n\tif err := scanner.Err(); err != nil {\n\t\tfmt.Println(\"read error:\", err)\n\t}\n\tfmt.Println(n, \"deliveries\")\n}\n",
+   "stdout": "1 12 Elm St\n2 4 Oak Ave\n3 9 Pine Rd\n3 deliveries\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cat deliveries.txt",
+     "out": "12 Elm St\n4 Oak Ave\n9 Pine Rd\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go run scan_lines.go",
+     "out": "1 12 Elm St\n2 4 Oak Ave\n3 9 Pine Rd\n3 deliveries\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "socket.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{ Name string }\ntype Robot struct{ Model int }\ntype Kettle struct{}\n\nfunc (d Dog) Speak() string    { return d.Name + \" says woof\" }\nfunc (r Robot) Speak() string  { return fmt.Sprintf(\"R-%d says beep boop\", r.Model) }\nfunc (k Kettle) Speak() string { return \"the kettle says wheee\" }\n\nfunc plugIn(s Speaker) {\n\tfmt.Println(s.Speak())\n}\n\nfunc main() {\n\tplugIn(Dog{Name: \"Rex\"})\n\tplugIn(Robot{Model: 7})\n\tplugIn(Kettle{})\n}\n",
+   "stdout": "Rex says woof\nR-7 says beep boop\nthe kettle says wheee\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run socket.go",
+     "out": "Rex says woof\nR-7 says beep boop\nthe kettle says wheee\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_assert.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tstock := map[string]any{\"pens\": 12, \"label\": \"aisle 3\"}\n\tpens := stock[\"pens\"].(int)\n\tfmt.Println(\"pens:\", pens)\n\tlabel := stock[\"label\"].(int)\n\tfmt.Println(\"label:\", label)\n}\n",
+   "stdout": "pens: 12\n",
+   "stderr": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x25f\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_assert.go",
+     "out": "pens: 12\n",
+     "err": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x25f\nexit status 2\n",
+     "exit": 1,
+     "merged": "pens: 12\npanic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x25f\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "pens: 12\n",
+    "stderr": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x252\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run spot_assert.go",
+      "out": "pens: 12\n",
+      "err": "panic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x252\nexit status 2\n",
+      "exit": 1,
+      "merged": "pens: 12\npanic: interface conversion: interface {} is string, not int\n\ngoroutine 1 [running]:\nmain.main()\n\t/home/you/go-ch14/spot_assert.go:9 +0x252\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "spot_close.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Tap struct {\n\troom string\n}\n\nfunc openTap(room string) (*Tap, error) {\n\tif room == \"attic\" {\n\t\treturn nil, fmt.Errorf(\"no tap in the %s\", room)\n\t}\n\treturn &Tap{room: room}, nil\n}\n\nfunc (t *Tap) Close() {\n\tfmt.Println(\"tap closed in the\", t.room)\n}\n\nfunc water(room string) {\n\tt, err := openTap(room)\n\tdefer t.Close()\n\tif err != nil {\n\t\tfmt.Println(\"skip:\", err)\n\t\treturn\n\t}\n\tfmt.Println(\"watering the\", room)\n}\n\nfunc main() {\n\twater(\"kitchen\")\n\twater(\"attic\")\n}\n",
+   "stdout": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\n",
+   "stderr": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc94]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x34\nmain.water({0x49d1ac, 0x5})\n\t/home/you/go-ch14/spot_close.go:25 +0xcc\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_close.go",
+     "out": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\n",
+     "err": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc94]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x34\nmain.water({0x49d1ac, 0x5})\n\t/home/you/go-ch14/spot_close.go:25 +0xcc\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n",
+     "exit": 1,
+     "merged": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\npanic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x49cc94]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x34\nmain.water({0x49d1ac, 0x5})\n\t/home/you/go-ch14/spot_close.go:25 +0xcc\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n"
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\n",
+    "stderr": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x32\nmain.water({0x4b6fd0?, 0x5?})\n\t/home/you/go-ch14/spot_close.go:25 +0x164\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run spot_close.go",
+      "out": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\n",
+      "err": "panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x32\nmain.water({0x4b6fd0?, 0x5?})\n\t/home/you/go-ch14/spot_close.go:25 +0x164\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n",
+      "exit": 1,
+      "merged": "watering the kitchen\ntap closed in the kitchen\nskip: no tap in the attic\npanic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x494a12]\n\ngoroutine 1 [running]:\nmain.(*Tap).Close(0x0?)\n\t/home/you/go-ch14/spot_close.go:17 +0x32\nmain.water({0x4b6fd0?, 0x5?})\n\t/home/you/go-ch14/spot_close.go:25 +0x164\nmain.main()\n\t/home/you/go-ch14/spot_close.go:32 +0x30\nexit status 2\n"
+     }
+    ]
+   }
+  },
+  "spot_typo.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Duck struct {\n\tName string\n}\n\nfunc (d Duck) speak() string {\n\treturn d.Name + \" says quack\"\n}\n\nfunc main() {\n\tvar s Speaker = Duck{Name: \"Dot\"}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./spot_typo.go:18:18: cannot use Duck{…} (value of struct type Duck) as Speaker value in variable declaration: Duck does not implement Speaker (missing method Speak)\n\t\thave speak() string\n\t\twant Speak() string\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run spot_typo.go",
+     "out": "",
+     "err": "# command-line-arguments\n./spot_typo.go:18:18: cannot use Duck{…} (value of struct type Duck) as Speaker value in variable declaration: Duck does not implement Speaker (missing method Speak)\n\t\thave speak() string\n\t\twant Speak() string\n",
+     "exit": 1
+    }
+   ]
+  },
+  "spot_typo_fixed.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Duck struct {\n\tName string\n}\n\nfunc (d Duck) Speak() string {\n\treturn d.Name + \" says quack\"\n}\n\nfunc main() {\n\tvar s Speaker = Duck{Name: \"Dot\"}\n\tfmt.Println(s.Speak())\n}\n",
+   "stdout": "Dot says quack\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_typo_fixed.go",
+     "out": "Dot says quack\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "stringer_socket.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Temp float64\n\nfunc (t Temp) String() string {\n\treturn fmt.Sprintf(\"%.1f°C\", float64(t))\n}\n\nfunc main() {\n\ttoday := Temp(21.5)\n\tfmt.Println(today)\n\tvar s fmt.Stringer = today\n\tfmt.Println(s.String())\n\tweek := []Temp{19, 22, 18.5}\n\tfmt.Println(week)\n\tfmt.Println(float64(today))\n}\n",
+   "stdout": "21.5°C\n21.5°C\n[19.0°C 22.0°C 18.5°C]\n21.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run stringer_socket.go",
+     "out": "21.5°C\n21.5°C\n[19.0°C 22.0°C 18.5°C]\n21.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_choir.go": {
+   "src": "package main\n\nimport \"fmt\"\n\ntype Speaker interface {\n\tSpeak() string\n}\n\ntype Dog struct{}\ntype Cow struct{}\ntype Robot struct{}\n\nfunc (Dog) Speak() string   { return \"woof\" }\nfunc (Cow) Speak() string   { return \"moo\" }\nfunc (Robot) Speak() string { return \"beep\" }\n\nfunc main() {\n\tband := []Speaker{Cow{}, Robot{}, Dog{}, Cow{}}\n\tfor i, s := range band {\n\t\tfmt.Printf(\"%d %T %s\\n\", i, s, s.Speak())\n\t}\n}\n",
+   "stdout": "0 main.Cow moo\n1 main.Robot beep\n2 main.Dog woof\n3 main.Cow moo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_choir.go",
+     "out": "0 main.Cow moo\n1 main.Robot beep\n2 main.Dog woof\n3 main.Cow moo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_defer.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ttotal := 0\n\tfor _, n := range []int{5, 3, 2} {\n\t\ttotal += n\n\t\tdefer fmt.Println(n, total)\n\t}\n\ttotal = 100\n}\n",
+   "stdout": "2 10\n3 8\n5 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_defer.go",
+     "out": "2 10\n3 8\n5 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_switch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfor _, v := range []any{7, \"go\", true, 2.5, -3} {\n\t\tvar kind, out string\n\t\tswitch x := v.(type) {\n\t\tcase int:\n\t\t\tkind, out = \"int\", fmt.Sprint(x*2)\n\t\tcase string:\n\t\t\tkind, out = \"string\", fmt.Sprint(len(x))\n\t\tcase bool:\n\t\t\tkind, out = \"bool\", fmt.Sprint(!x)\n\t\tdefault:\n\t\t\tkind, out = \"other\", \"?\"\n\t\t}\n\t\tfmt.Println(v, kind, out)\n\t}\n}\n",
+   "stdout": "7 int 14\ngo string 2\ntrue bool false\n2.5 other ?\n-3 int -6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_switch.go",
+     "out": "7 int 14\ngo string 2\ntrue bool false\n2.5 other ?\n-3 int -6\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ts_int.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar v any = 7\n\tswitch x := v.(type) {\n\tcase int:\n\t\tfmt.Println(\"an int, doubled:\", x*2)\n\tcase string:\n\t\tfmt.Println(\"a string of length\", len(x))\n\tdefault:\n\t\tfmt.Printf(\"something else: %T\\n\", x)\n\t}\n\tfmt.Println(\"done\")\n}\n",
+   "stdout": "an int, doubled: 14\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ts_int.go",
+     "out": "an int, doubled: 14\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ts_other.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar v any = 2.5\n\tswitch x := v.(type) {\n\tcase int:\n\t\tfmt.Println(\"an int, doubled:\", x*2)\n\tcase string:\n\t\tfmt.Println(\"a string of length\", len(x))\n\tdefault:\n\t\tfmt.Printf(\"something else: %T\\n\", x)\n\t}\n\tfmt.Println(\"done\")\n}\n",
+   "stdout": "something else: float64\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ts_other.go",
+     "out": "something else: float64\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ts_string.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tvar v any = \"Scoot\"\n\tswitch x := v.(type) {\n\tcase int:\n\t\tfmt.Println(\"an int, doubled:\", x*2)\n\tcase string:\n\t\tfmt.Println(\"a string of length\", len(x))\n\tdefault:\n\t\tfmt.Printf(\"something else: %T\\n\", x)\n\t}\n\tfmt.Println(\"done\")\n}\n",
+   "stdout": "a string of length 5\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ts_string.go",
+     "out": "a string of length 5\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "typeswitch.go": {
+   "src": "package main\n\nimport \"fmt\"\n\nfunc describe(v any) string {\n\tswitch x := v.(type) {\n\tcase int:\n\t\treturn fmt.Sprintf(\"int %d, doubled %d\", x, x*2)\n\tcase string:\n\t\treturn fmt.Sprintf(\"string %q with %d bytes\", x, len(x))\n\tcase bool:\n\t\tif x {\n\t\t\treturn \"bool: yes\"\n\t\t}\n\t\treturn \"bool: no\"\n\tcase nil:\n\t\treturn \"nothing at all\"\n\tdefault:\n\t\treturn fmt.Sprintf(\"something else: %T\", x)\n\t}\n}\n\nfunc main() {\n\tfmt.Println(describe(21))\n\tfmt.Println(describe(\"go\"))\n\tfmt.Println(describe(true))\n\tfmt.Println(describe(nil))\n\tfmt.Println(describe(4.5))\n}\n",
+   "stdout": "int 21, doubled 42\nstring \"go\" with 2 bytes\nbool: yes\nnothing at all\nsomething else: float64\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run typeswitch.go",
+     "out": "int 21, doubled 42\nstring \"go\" with 2 bytes\nbool: yes\nnothing at all\nsomething else: float64\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "write_read.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tnote := \"Hi from Scoot!\\nBack at 5.\\n\"\n\terr := os.WriteFile(\"hello.txt\", []byte(note), 0644)\n\tif err != nil {\n\t\tfmt.Println(\"write failed:\", err)\n\t\treturn\n\t}\n\tdata, err := os.ReadFile(\"hello.txt\")\n\tif err != nil {\n\t\tfmt.Println(\"read failed:\", err)\n\t\treturn\n\t}\n\tfmt.Print(string(data))\n\tfmt.Println(len(data), \"bytes\")\n}\n",
+   "stdout": "Hi from Scoot!\nBack at 5.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run write_read.go",
+     "out": "Hi from Scoot!\nBack at 5.\n26 bytes\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "cat hello.txt",
+     "out": "Hi from Scoot!\nBack at 5.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

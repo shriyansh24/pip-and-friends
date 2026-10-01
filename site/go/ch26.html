@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Walkie-Talkies and Waiters</title>
+<meta name="description" content="Chapter 26 of the Go book of Pip &amp; Friends, a comic course: the context package as a walkie-talkie network (Background, WithCancel, WithTimeout, WithDeadline, Done, Err, DeadlineExceeded, cancellation flowing down a tree, Cause, values, and the classic mistakes vet and the Compiler catch), then HTTP as a restaurant (handlers, ServeMux patterns with methods and wildcards, status codes, httptest, JSON APIs, clients with timeouts and contexts, middleware, and the missing return after http.Error).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch26.css">
+<script defer src="../data/go-ch26.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch26.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch25.html">&larr; Ch 25</a><span aria-current="page">Ch 26 of 28</span><a href="ch27.html">Ch 27 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 26 · INTERMEDIATE</p>
+    <h1 id="cover-h">WALKIE-TALKIES AND WAITERS</h1>
+    <div class="cast-row">
+      <svg class="char radio big" data-char="radioset" data-label="HQ"></svg>
+      <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="cheer"></svg>
+      <svg class="char sm" data-char="tablewaiter" data-prop="tray"></svg>
+    </div>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, cheers between a yellow walkie-talkie labelled HQ and Wes the waiter, who holds up a covered plate.</p>
+    <p class="caption blurb">Your goroutines can now work side by side. Today they get <b>walkie-talkies</b>: Go's <code>context</code> package, which lets one part of a program tell every helper it started to stop, and which gives slow jobs a time limit. Then we open a <b>restaurant</b>: you'll write a web server whose host reads each order and seats it with the right waiter, test it without any network, and visit it as a customer with a timeout of your own. Along the way: <samp>context deadline exceeded</samp>, <samp>405 Method Not Allowed</samp>, and the one-word bug that serves a customer two answers at once. About 150 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">HQ calls it off: context and cancel</a></li>
+      <li><a href="#part-2">Running out of time: timeouts, deadlines and the family tree</a></li>
+      <li><a href="#part-3">Radio discipline: the mistakes the Compiler and vet catch</a></li>
+      <li><a href="#part-4">The restaurant: handlers, the host and the waiters</a></li>
+      <li><a href="#part-5">Eating out: clients, timeouts and middleware</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · HQ CALLS IT OFF<small>context.Background, WithCancel, Done and Err</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: the order is cancelled, but the couriers are already out">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Monday at the depot. Scoot has just sent three couriers across town to collect a big order. Then the phone rings.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>The customer cancelled! Call your couriers back before they waste the whole afternoon.</p></div>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Call them how? They're three streets away, and one of them sent a helper of their own! I can't shout that far.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor holds a phone and points at the door. Scoot shrugs, worried.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the walkie-talkie network">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">The fix: before anyone leaves, HQ hands each courier a <b>walkie-talkie</b> tuned to its channel. Couriers who send helpers hand them a walkie-talkie too, tuned to theirs. When HQ presses the big <b>ABORT</b> button, every radio on the network crackles at once.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 250" role="img" aria-label="A radio tower labelled HQ, Background, sends waves to three couriers, each holding a walkie-talkie. One courier has handed a second walkie-talkie to a helper. A big red ABORT button sits at the foot of the tower. Arrows show the abort signal travelling from HQ down to every courier and on to the helper, never back up.">
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111">
+        <path d="M70 200 L100 60 L130 200 Z M82 150 H118 M90 110 H110" fill="none" stroke="#111" stroke-width="5" stroke-linejoin="round"/>
+        <circle cx="100" cy="52" r="10" fill="#FF5A4E" stroke="#111" stroke-width="4"/>
+        <path d="M120 40 q14 12 0 24 M132 30 q24 22 0 44 M80 40 q-14 12 0 24" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round"/>
+        <text x="100" y="228" text-anchor="middle" font-size="18">HQ</text>
+        <text x="100" y="246" text-anchor="middle" font-size="15" font-family="JetBrains Mono, monospace">Background()</text>
+        <rect x="4" y="176" width="58" height="34" rx="8" fill="#FF5A4E" stroke="#111" stroke-width="4"/>
+        <text x="33" y="199" text-anchor="middle" font-size="16" font-family="Bangers, Impact, sans-serif" letter-spacing="1">ABORT</text>
+        <!-- three couriers with radios -->
+        <g stroke="#111" stroke-width="4">
+          <rect x="300" y="26" width="26" height="40" rx="6" fill="#FFD60A"/><rect x="300" y="106" width="26" height="40" rx="6" fill="#FFD60A"/><rect x="300" y="186" width="26" height="40" rx="6" fill="#FFD60A"/>
+          <rect x="560" y="106" width="26" height="40" rx="6" fill="#FFD60A"/>
+        </g>
+        <g fill="#F7C59F" stroke="#111" stroke-width="4"><circle cx="276" cy="40" r="15"/><circle cx="276" cy="120" r="15"/><circle cx="276" cy="200" r="15"/><circle cx="536" cy="120" r="15"/></g>
+        <path d="M148 80 Q220 40 262 42 M150 120 H258 M148 160 Q220 200 262 200" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="10 7"/>
+        <path d="M254 34 l10 8 -12 6 M252 114 l10 6 -10 6 M254 192 l10 8 -12 4" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M336 126 H520" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="10 7"/><path d="M512 118 l10 8 -10 8" fill="none" stroke="#111" stroke-width="4"/>
+        <text x="350" y="52" font-size="17">courier 1</text>
+        <text x="420" y="112" text-anchor="middle" font-size="17">courier 2 hands</text>
+        <text x="420" y="150" text-anchor="middle" font-size="17">a radio to a helper</text>
+        <text x="350" y="212" font-size="17">courier 3</text>
+        <text x="600" y="132" font-size="17">helper</text>
+        <text x="560" y="210" text-anchor="middle" font-size="16">abort flows DOWN,</text>
+        <text x="560" y="230" text-anchor="middle" font-size="16">never back up</text>
+      </g>
+    </svg></div>
+    <div class="duo">
+      <div class="duo-card"><span class="stamp">THE RADIO</span><h3>a <code>context.Context</code><small>one per job, passed along</small></h3><p>A small value you hand to every function doing a piece of the job. It doesn't carry the work; it carries <b>news about the work</b>: “stop now”, and “you have until 9:30”.</p></div>
+      <div class="duo-card dashed"><span class="stamp">THE BUTTON</span><h3><code>cancel()</code><small>only the one who made the radio has it</small></h3><p>Pressing it closes the radio's <b>Done</b> channel. Everyone listening hears it, and so does every radio handed out further down the line.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>HQ says abort, and every radio on the channel hears it.</b> In Go, the network is the <code>context</code> package, from the standard library. People just say “ctx” (say “context”).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a context, a cancel button, and Err">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Four new names. <code>context.Background()</code> is the base station: an empty context that is never cancelled. <code>context.WithCancel(parent)</code> makes a new radio tuned to the parent, and returns <b>two</b> values: the new context, and its cancel function. <code>ctx.Done()</code> returns a channel that closes on abort. <code>ctx.Err()</code> says why it closed, or <code>nil</code> if it hasn't.</p>
+    <span class="file-tab">radio.go</span>
+    <pre class="code" data-src="radio.go"></pre>
+    <pre class="term" data-run="radio.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Before the button: <samp>&lt;nil&gt;</samp>, meaning “no error, still on air”. After: <samp>context canceled</samp>. (Go spells it with one L, American style.) Pressing the button a second time is fine: nothing changes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: walk Scoot through radio.go" data-walk="walk-radio">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Walk Scoot through it one line at a time. Watch when the screen changes, and what <code>Err()</code> says each time.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">radio.go</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-radio">{"program": "radio.go", "steps": [
+      {"line": 9, "output": [], "mood": "focus", "arms": "point", "note": "Scoot starts at the top of <code>main</code>. Line 9 is next. The screen is empty."},
+      {"line": 10, "output": [], "mood": "happy", "arms": "point", "note": "Line 9: <code>hq</code> is the Background context, the HQ base station. It is never cancelled and has no time limit. Every family of contexts starts from it."},
+      {"line": 11, "output": [], "mood": "happy", "arms": "point", "note": "Line 10: <code>WithCancel(hq)</code> hands back two things: <code>ctx</code>, a new radio tuned to HQ, and <code>cancel</code>, its ABORT button. The button is an ordinary function."},
+      {"line": 13, "output": ["before: <nil>"], "mood": "happy", "mouth": "shout", "arms": "point", "note": "Line 11: nobody has pressed the button, so <code>ctx.Err()</code> is <code>nil</code>, which <code>Println</code> shows as <samp>&lt;nil&gt;</samp>."},
+      {"line": 14, "output": ["before: <nil>"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 13: <code>cancel()</code>. The button is pressed and ctx's Done channel closes. Nothing is printed."},
+      {"line": 16, "output": ["before: <nil>", "after: context canceled"], "mood": "focus", "arms": "point", "note": "Line 14: now <code>Err()</code> says why: <samp>context canceled</samp>. That's the text of the error value <code>context.Canceled</code>."},
+      {"line": 17, "output": ["before: <nil>", "after: context canceled"], "mood": "happy", "arms": "point", "note": "Line 16: a receive from <code>ctx.Done()</code> would wait while the channel is open. It's closed, so the receive returns at once. (Chapter 24: a receive on a closed channel never waits.)"},
+      {"line": 19, "output": ["before: <nil>", "after: context canceled", "the Done channel is closed"], "mood": "happy", "arms": "point", "note": "Line 17 prints."},
+      {"line": 20, "output": ["before: <nil>", "after: context canceled", "the Done channel is closed"], "mood": "happy", "arms": "shrug", "note": "Line 19: pressing the button again is allowed. It does nothing: a cancel function is safe to call any number of times."},
+      {"line": null, "output": ["before: <nil>", "after: context canceled", "the Done channel is closed", "again: context canceled"], "mood": "happy", "mouth": "shout", "arms": "cheer", "note": "Line 20: still cancelled. A cancelled context stays cancelled for ever; there's no un-cancel. To start again, make a new one."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-err-m" id="ex-err"></div>
+  <script type="application/json" id="ex-err-m">{"q": "You make <code>ctx, cancel</code> with <code>context.WithCancel</code> from Background and, before calling <code>cancel</code>, print <code>ctx.Err()</code>. What do you see?", "options": [
+    {"t": "<samp>&lt;nil&gt;</samp>, because nothing has gone wrong yet", "correct": true, "why": "Right. <code>Err()</code> stays <code>nil</code> until the context is cancelled or its time runs out. Panel 3's first line shows it."},
+    {"t": "<samp>context canceled</samp>, because a cancel function exists", "why": "Having the button isn't pressing it. Only calling <code>cancel()</code> changes <code>Err()</code>."},
+    {"t": "A compile error: you must call <code>cancel</code> first", "why": "Go doesn't force an order. You may read <code>Err()</code> whenever you like; it just reports the current state."},
+    {"t": "The program waits until someone calls <code>cancel</code>", "why": "<code>Err()</code> never waits. It's receiving from <code>ctx.Done()</code> that waits while the context is still live."}]}</script>
+
+  <section class="panel clean machine" aria-label="Panel 5: the Err machine" data-machine="m-err">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Feed the machine a context in different states and see what <code>ctx.Err()</code> answers. Every answer is a real line printed by <code>err_m.go</code>, below.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-err">{"label": "ctx.Err()", "program": "err_m.go", "examples": [
+      {"in": "context.Background()", "out": "<nil>", "expectLine": "Background: <nil>", "outKind": "error (none)", "note": "The base station is never cancelled, so its <code>Err()</code> is always <code>nil</code>."},
+      {"in": "fresh WithCancel ctx", "out": "<nil>", "expectLine": "fresh: <nil>", "outKind": "error (none)", "note": "Still on air: nobody pressed the button."},
+      {"in": "after cancel()", "out": "context canceled", "expectLine": "after cancel(): context canceled", "outKind": "context.Canceled", "note": "The button was pressed. The error value is <code>context.Canceled</code>."},
+      {"in": "cancel() called twice", "out": "context canceled", "expectLine": "cancel() twice: context canceled", "outKind": "context.Canceled", "note": "The second press changes nothing. The first reason sticks."},
+      {"in": "WithTimeout, time ran out", "out": "context deadline exceeded", "expectLine": "time ran out: context deadline exceeded", "outKind": "context.DeadlineExceeded", "note": "A timer pressed the button for you (part 2). The reason is different: <code>context.DeadlineExceeded</code>."},
+      {"in": "child of a cancelled parent", "out": "context canceled", "expectLine": "child of a canceled parent: context canceled", "outKind": "context.Canceled", "note": "Nobody touched the child's own button. Its parent was cancelled, and that reaches every child."}]}</script>
+    <span class="file-tab">err_m.go</span>
+    <pre class="code" data-src="err_m.go"></pre>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pcancel-m" id="ex-pcancel"></div>
+  <script type="application/json" id="ex-pcancel-m">{"program": "predict_cancel.go", "prompt": "<code>check</code> uses a <code>select</code> with <code>default</code> (chapter 24) to peek at the Done channel without waiting. What are the four lines?", "hint": "<code>default</code> runs when no other case is ready. When is a receive from <code>ctx.Done()</code> ready?", "explain": "Before <code>cancel()</code>: <code>Err()</code> is nil, so <samp>true</samp>, and Done is open, so the receive isn't ready and <code>default</code> prints <samp>open</samp>. After <code>cancel()</code> Done is closed, the receive is ready at once: <samp>closed</samp>. Last, <samp>context canceled</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: a team that listens for the abort">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Now a real listener. The <code>team</code> goroutine keeps sending numbered reports. Its <code>select</code> watches two doors: “HQ took my report” and “the radio says abort”. HQ (that's <code>main</code>) takes three reports, then presses the button.</p>
+    <span class="file-tab">team.go</span>
+    <pre class="code" data-src="team.go"></pre>
+    <pre class="term" data-run="team.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Why a <b>channel</b> that <b>closes</b>? Because closing reaches <em>everyone</em>: a hundred goroutines can all wait on <code>&lt;-ctx.Done()</code>, and one <code>cancel()</code> wakes every one of them. A send could only wake one. The context doesn't stop anyone by force: each goroutine must <b>listen</b> and then stop itself, as lines 12 to 15 do.</p></div>
+    </div>
+    <p class="caption soft">The order is the same on every run. After the third report, <code>main</code> stops receiving, so the team's <code>reports &lt;- n</code> can't go ahead; only the Done case can, and only after line 30 presses the button. Note the first parameter of <code>team</code>: <code>ctx context.Context</code>. That's where a context always goes.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: always hand the button back">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">One rule with no exceptions: <b>every cancel function you get, you call</b>, even when the job finishes normally. A context keeps a little bookkeeping alive (a link from its parent, and for timeouts a running timer) until it is cancelled. The easy way is to write <code>defer cancel()</code> on the very next line.</p>
+    <div class="duo">
+      <div class="duo-card"><span class="stamp">DO</span><span class="sym">ctx, cancel := context.WithTimeout(
+    parent, time.Second)
+defer cancel()</span><p>The button is pressed when the function returns, however it returns. Pressing it after the job is done is harmless.</p></div>
+      <div class="duo-card dashed"><span class="stamp">DON'T</span><span class="sym">ctx, _ := context.WithTimeout(
+    parent, time.Second)</span><p>Throwing the button away leaks the context until its timer fires (or for ever, with <code>WithCancel</code>). Part 3 shows who catches this.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>every radio you hand out comes back: <code>defer cancel()</code>.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fcancel-m" id="ex-fcancel"></div>
+  <script type="application/json" id="ex-fcancel-m">{"program": "fill_cancel.go", "prompt": "Make a context with a one-second limit, and make sure its button is pressed when <code>main</code> returns. Fill the call on line 10 and line 11.", "blanks": [{"line": 10, "text": "context.WithTimeout", "accept": ["context.WithTimeout"]}, {"line": 11, "text": "defer cancel()"}], "explain": "<code>context.WithTimeout(parent, d)</code> returns the context and its cancel function; <code>defer cancel()</code> presses the button on the way out. <code>Deadline()</code> reports <samp>true</samp> because a limit is set, and the context is still open a moment later: <samp>still open: true</samp>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · RUNNING OUT OF TIME<small>WithTimeout, WithDeadline, ctx first, and the family tree</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 8: a kitchen timer and a closing time">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">Most aborts aren't a person pressing a button. They're a <b>clock</b>. The context package has two kinds, and both press the button for you when the time comes.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">TIMEOUT</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><circle cx="110" cy="66" r="44" fill="#FFFFFF" stroke="#111" stroke-width="5"/><path d="M110 66 V36 M110 66 L132 78" stroke="#111" stroke-width="5" stroke-linecap="round"/><rect x="100" y="10" width="20" height="12" rx="3" fill="#FF5A4E" stroke="#111" stroke-width="4"/><path d="M80 32 a40 40 0 0 1 60 0" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 6"/></svg>
+        <h3><code>WithTimeout(parent, 50*time.Millisecond)</code><small>“give up 50 ms from now”</small></h3>
+        <p>A kitchen timer: a <b>length of time</b>, counted from the moment you make it.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">DEADLINE</span>
+        <svg class="mini" viewBox="0 0 220 120" aria-hidden="true"><rect x="40" y="24" width="140" height="80" rx="12" fill="#DDE8FF" stroke="#111" stroke-width="5"/><text x="110" y="78" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="34" fill="#111">22:00</text><path d="M60 24 V12 M160 24 V12" stroke="#111" stroke-width="5" stroke-linecap="round"/></svg>
+        <h3><code>WithDeadline(parent, closingTime)</code><small>“give up at 22:00”</small></h3>
+        <p>A closing time: a <b>moment on the clock</b>, a <code>time.Time</code>. <code>WithTimeout(p, d)</code> is just <code>WithDeadline(p, time.Now().Add(d))</code>.</p>
+      </div>
+    </div>
+    <p class="caption soft">When the time comes, <code>Err()</code> gives a different reason from a pressed button: <samp>context deadline exceeded</samp>, the error value <code>context.DeadlineExceeded</code>. You still get a cancel function, and you still call it: pressing it early, when the job finishes in time, stops the timer.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: giving up on the stew">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">The stew takes 2 seconds (<code>time.After</code> from chapter 24 stands in for slow work). Scoot will only wait 50 milliseconds. Whichever door opens first wins the <code>select</code>.</p>
+    <span class="file-tab">timeout.go</span>
+    <pre class="code" data-src="timeout.go"></pre>
+    <pre class="term" data-run="timeout.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>After 50 ms the timer closes Done, so that case wins: <samp>gave up waiting</samp>. Then <code>errors.Is</code> (chapter 19) confirms the reason is <code>context.DeadlineExceeded</code>: <samp>true</samp>. The 50 ms against 2 s gap is huge on purpose, so the same door wins on every run.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: a deadline on the clock">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The same idea with a clock time. <code>ctx.Deadline()</code> tells a function how long it has: the time, and <code>true</code>, if a deadline is set; <code>false</code> if not.</p>
+    <span class="file-tab">deadline.go</span>
+    <pre class="code" data-src="deadline.go"></pre>
+    <pre class="term" data-run="deadline.go"></pre>
+    <p class="caption soft">Line 19 waits until closing time; the last line checks that Done closed at the deadline, never before it. Background has no deadline, so its <code>ok</code> is <samp>false</samp>.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tvd-m" id="ex-tvd"></div>
+  <script type="application/json" id="ex-tvd-m">{"q": "The depot's online shop must stop taking orders when the shop closes at 22:00 tonight, however long each order takes. Which context fits best?", "options": [
+    {"t": "<code>context.WithDeadline(ctx, closing)</code>, with <code>closing</code> set to 22:00", "correct": true, "why": "Right: the limit is a moment on the clock, which is exactly what a deadline is."},
+    {"t": "<code>context.WithTimeout(ctx, 22*time.Hour)</code>, counted from right now", "why": "That means “22 hours from now”, which would be tomorrow afternoon unless you started at midnight."},
+    {"t": "<code>context.WithCancel(ctx)</code>, with nothing else added to it", "why": "That has no clock at all. Someone would have to remember to press the button at 22:00."},
+    {"t": "<code>context.Background()</code>, checked now and then with <code>Deadline()</code>", "why": "Background never has a deadline: <code>Deadline()</code> returns <code>false</code>, as panel 10 shows."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 11: ctx goes first">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Real programs don't put the <code>select</code> in <code>main</code>. They write functions that <b>accept</b> a context and respect it. Here <code>cook</code> takes as long as a dish needs, unless its radio says stop. One context gives the <em>whole meal</em> a 300 ms budget.</p>
+    <span class="file-tab">cook.go</span>
+    <pre class="code" data-src="cook.go"></pre>
+    <pre class="term" data-run="cook.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Toast fits. The stew needs 2 s, so at 300 ms the budget runs out and <code>cook</code> returns early with the reason wrapped in <code>%w</code>. Tea would take 10 ms, but the budget is already spent, so it fails at once. Catchphrase: <b>ctx goes first.</b></p></div>
+    </div>
+    <ol class="rules">
+      <li>A function that might be slow takes <code>ctx context.Context</code> as its <b>first</b> parameter, named <code>ctx</code>.</li>
+      <li>It passes that same <code>ctx</code> (or a context made from it) to everything it calls.</li>
+      <li>It watches <code>ctx.Done()</code> while it waits, and returns <code>ctx.Err()</code> (wrapped is fine) when told to stop.</li>
+      <li>It never stores the ctx for later (part 3 shows why).</li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-psel-m" id="ex-psel"></div>
+  <script type="application/json" id="ex-psel-m">{"program": "predict_select.go", "prompt": "One pizza waits in a buffered channel (chapter 24). The loop runs the same <code>select</code> twice. What are the two lines?", "hint": "First time round, which doors are open? Second time round, the box is empty: which door opens, and when?", "explain": "First time, the pizza is ready and the timer hasn't fired, so <samp>got pizza</samp>. Second time, the channel is empty and nobody will ever send, so the <code>select</code> waits until the 300 ms timer closes Done: <samp>stopped: context deadline exceeded</samp>. Without the context, that second receive would wait for ever."}</script>
+
+  <div data-ex="parsons" data-model="ex-pto-m" id="ex-pto"></div>
+  <script type="application/json" id="ex-pto-m">{"program": "parsons_timeout.go", "seed": 26, "pin": [1, 3, 4, 5, 6, 7, 9, 11, 15, 18], "prompt": "Wait at most 100 ms for a pizza that takes a second, then ask for a refund. The <code>defer cancel()</code> and <code>case &lt;-ctx.Done():</code> lines are fixed in place. Put the moving lines in order.", "explain": "Make the context just above the fixed <code>defer cancel()</code>, which presses the button on the way out. Then the <code>select</code>: the slow pizza's case and its print go above the fixed Done case, the refund print below it, and <code>}</code> closes the select. The timer wins: <samp>refund: context deadline exceeded</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 12: contexts form a family tree">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Every context except Background is made <b>from a parent</b>, so contexts form a family tree. Two rules make the whole package work.</p>
+    <div class="picscroll"><svg class="fig pic-wide" tabindex="0" viewBox="0 0 680 230" role="img" aria-label="A tree. Background at the top; under it HQ; under HQ two children, kitchen and bar; under kitchen, oven. HQ is crossed out and labelled cancelled; the cross spreads to kitchen, oven and bar. A second picture shows only kitchen crossed out: oven under it is crossed out too, but HQ above it and bar beside it stay live.">
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111">
+        <text x="170" y="22" text-anchor="middle" font-size="18">RULE 1: abort flows down</text>
+        <text x="510" y="22" text-anchor="middle" font-size="18">RULE 2: never up, never sideways</text>
+        <g stroke="#111" stroke-width="4">
+          <path d="M170 64 V82 M170 112 L100 142 M170 112 L240 142 M100 172 V190" fill="none"/>
+          <path d="M510 64 V82 M510 112 L440 142 M510 112 L580 142 M440 172 V190" fill="none"/>
+        </g>
+        <g stroke="#111" stroke-width="4">
+          <rect x="110" y="36" width="120" height="28" rx="8" fill="#F3F3F3"/><rect x="450" y="36" width="120" height="28" rx="8" fill="#F3F3F3"/>
+          <rect x="125" y="84" width="90" height="28" rx="8" fill="#FFE1E1" stroke-width="6"/><rect x="465" y="84" width="90" height="28" rx="8" fill="#C9F2D9"/>
+          <rect x="50" y="142" width="100" height="30" rx="8" fill="#FFE1E1" stroke-width="6"/><rect x="390" y="142" width="100" height="30" rx="8" fill="#FFE1E1" stroke-width="6"/>
+          <rect x="195" y="142" width="90" height="30" rx="8" fill="#FFE1E1" stroke-width="6"/><rect x="535" y="142" width="90" height="30" rx="8" fill="#C9F2D9"/>
+          <rect x="55" y="190" width="90" height="30" rx="8" fill="#FFE1E1" stroke-width="6"/><rect x="395" y="190" width="90" height="30" rx="8" fill="#FFE1E1" stroke-width="6"/>
+        </g>
+        <g font-size="16" text-anchor="middle">
+          <text x="170" y="56">Background</text><text x="510" y="56">Background</text>
+          <text x="170" y="104">✖ HQ</text><text x="510" y="104">✓ HQ</text>
+          <text x="100" y="163">✖ kitchen</text><text x="440" y="163">✖ kitchen</text>
+          <text x="240" y="163">✖ bar</text><text x="580" y="163">✓ bar</text>
+          <text x="100" y="211">✖ oven</text><text x="440" y="211">✖ oven</text>
+        </g>
+        <text x="300" y="104" font-size="15">← cancel() here</text>
+        <text x="300" y="211" font-size="15" text-anchor="middle">✖ cancelled</text>
+        <text x="300" y="228" font-size="15" text-anchor="middle">✓ still live</text>
+        <text x="640" y="211" font-size="15" text-anchor="end">cancel() on kitchen →</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span><b>Rule 1:</b> cancelling a context cancels all its children, grandchildren and so on, immediately. <b>Rule 2:</b> it never touches its parent or its brothers and sisters. A child can also be <em>stricter</em> than its parent, with a shorter timeout, but never looser: if the parent stops, the child stops too.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 13: the family tree in memory, step by step" data-tracer="tr-tree" id="tr-tree-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Step through three generations: HQ, a kitchen made from it, and an oven made from the kitchen with a one-hour timeout. Each context keeps an arrow to its <b>parent</b>. Then HQ presses its button. (The real types also keep a list of their children, which is how the abort travels down; the picture leaves that out to stay readable.)</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-tree-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-tree">{"program": "tree.go", "steps": [{"line": 10, "note": "The run starts in <code>main</code>. Line 10 is next. No contexts exist yet.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}}, {"line": 11, "note": "Line 10: <code>WithCancel</code> makes a new context <b>H</b> whose parent is <b>B</b>, the Background base station. It also hands back <code>stopHQ</code>, H's ABORT button. H's Done channel is open and <code>Err()</code> is nil.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}}, "changed": ["hq", "stopHQ"]}, {"line": 12, "note": "Line 11: <b>K</b> is made <em>from</em> H, so H is its parent. Every context except Background has exactly one parent: together they form a family tree.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}}, "changed": ["kitchen", "stopKitchen"]}, {"line": 13, "note": "Line 12: <code>defer stopKitchen()</code> doesn't run anything yet. It's a promise: press K's button when <code>main</code> returns.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}}}, {"line": 14, "note": "Line 13: <b>O</b> is made from K with <code>WithTimeout</code>: a <b>timerCtx</b>, which also carries a deadline one hour away. A timeout is a cancel button that a timer presses for you.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}, "changed": ["oven", "stopOven"]}, {"line": 16, "note": "Line 14: another promise, <code>defer stopOven()</code>.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "open"}, {"k": "Err()", "val": "nil"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}}, {"line": 17, "note": "Line 16: HQ presses its ABORT button, <code>stopHQ()</code>. H is canceled, and <b>before the call returns</b>, so are its children and grandchildren: K and O. Their Done channels close and <code>Err()</code> becomes <samp>context canceled</samp>. O's deadline was an hour away; that doesn't matter, its parent said stop.", "output": [], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}, "changed": ["hq", "kitchen", "oven"]}, {"line": 18, "note": "Line 17 prints H's error.", "output": ["hq: context canceled"], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}}, {"line": 19, "note": "Line 18: K, the child, was canceled too.", "output": ["hq: context canceled", "kitchen: context canceled"], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}}, {"line": null, "note": "Line 19: and the grandchild. Then <code>main</code> returns and the deferred calls run, <code>stopOven()</code> first, then <code>stopKitchen()</code>. Both contexts are already canceled, so the calls just tidy up; calling a cancel function again is always safe. Background, B, is never canceled.", "output": ["hq: context canceled", "kitchen: context canceled", "oven: context canceled"], "frames": [{"name": "main", "vars": [{"n": "hq", "ref": "H"}, {"n": "stopHQ", "ref": "F1"}, {"n": "kitchen", "ref": "K"}, {"n": "stopKitchen", "ref": "F2"}, {"n": "oven", "ref": "O"}, {"n": "stopOven", "ref": "F3"}]}], "objects": {"B": {"kind": "context", "label": "Background · B", "pairs": [{"k": "Done", "val": "never closes"}, {"k": "Err()", "val": "nil"}]}, "H": {"kind": "cancelCtx", "label": "hq's context · H", "pairs": [{"k": "parent", "ref": "B"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F1": {"kind": "func", "value": "cancel", "label": "stops H"}, "K": {"kind": "cancelCtx", "label": "kitchen's context · K", "pairs": [{"k": "parent", "ref": "H"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F2": {"kind": "func", "value": "cancel", "label": "stops K"}, "O": {"kind": "timerCtx", "label": "oven's context · O", "pairs": [{"k": "parent", "ref": "K"}, {"k": "deadline", "val": "in 1 hour"}, {"k": "Done", "val": "closed"}, {"k": "Err()", "val": "context canceled"}]}, "F3": {"kind": "func", "value": "cancel", "label": "stops O"}}}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-ttree-m" id="ex-ttree"></div>
+  <script type="application/json" id="ex-ttree-m">{"program": "trace_tree.go", "columns": ["context", "state"], "given": [0], "prompt": "Four contexts: <code>kitchen</code> and <code>bar</code> are children of <code>hq</code>, and <code>oven</code> is a child of <code>kitchen</code>. Only <code>stopKitchen()</code> is pressed. Fill in each context's state, <code>live</code> or <code>stopped</code>.", "explain": "Cancelling <code>kitchen</code> stops it and its child <code>oven</code> (rule 1). Its parent <code>hq</code> and its sibling <code>bar</code> are untouched (rule 2): <samp>hq live</samp>, <samp>kitchen stopped</samp>, <samp>oven stopped</samp>, <samp>bar live</samp>."}</script>
+
+  <section class="panel clean radiochain" aria-label="Panel 14: the abort travels through three nested calls" data-radiochain="rc-chain">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Now the walkie-talkies in a real chain of calls: <code>main</code> (HQ) calls <code>region</code>, which calls <code>team</code>, which calls <code>scout</code>. Each passes its ctx down as the first argument; <code>team</code> also makes its own stricter radio with a one-minute limit. When the scout is in place, HQ's radio operator (a little goroutine) presses ABORT. Step through it and watch every radio's <code>ctx.Err()</code>.</p>
+    <div class="rc-wrap"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Next line</th><th>HQ</th><th>region</th><th>team</th><th>scout</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="rc-chain">{"program": "chain.go",
+      "nodes": [
+        {"id": "hq", "name": "HQ", "sub": "<code>main</code> · WithCancel"},
+        {"id": "region", "name": "region", "sub": "<code>region(ctx)</code> · HQ's ctx", "parent": "hq"},
+        {"id": "team", "name": "team", "sub": "<code>team(ctx)</code> · own ctx, 1 min limit", "parent": "region"},
+        {"id": "scout", "name": "scout", "sub": "<code>scout(ctx)</code> · team's ctx", "parent": "team"}],
+      "steps": [
+        {"line": 31, "state": {"hq": "run"}, "canceled": [], "output": [], "note": "The run starts in <code>main</code>, our HQ. Nobody else is on the air yet."},
+        {"line": 32, "state": {"hq": "run"}, "canceled": [], "output": [], "note": "Line 31: HQ's radio and its ABORT button, <code>cancel</code>."},
+        {"line": 33, "state": {"hq": "run"}, "canceled": [], "output": [], "note": "Line 32: a <code>ready</code> channel, so the scout can say “in position”."},
+        {"line": 38, "state": {"hq": "run"}, "canceled": [], "output": [], "note": "Lines 33 to 37 start HQ's radio operator, a goroutine that waits at line 34 for the scout's <code>ready</code>, then presses the button. Main goes straight on."},
+        {"line": 10, "state": {"hq": "wait", "region": "run"}, "canceled": [], "output": [], "note": "Line 38 calls <code>region(ctx, ready)</code>. HQ now waits for <code>region</code> to return. <code>region</code> uses HQ's own ctx: same radio channel."},
+        {"line": 11, "state": {"hq": "wait", "region": "run"}, "canceled": [], "output": ["region: listening"], "note": "Line 10 prints."},
+        {"line": 16, "state": {"hq": "wait", "region": "wait", "team": "run"}, "canceled": [], "output": ["region: listening"], "note": "Line 11 calls <code>team(ctx, ready)</code>, passing the ctx down."},
+        {"line": 18, "state": {"hq": "wait", "region": "wait", "team": "run"}, "canceled": [], "output": ["region: listening"], "note": "Line 16: the team makes its <b>own</b> radio from the one it was given, with a one-minute limit. Its new <code>ctx</code> is a child of HQ's. Line 17 promises to press the team's own button on the way out."},
+        {"line": 19, "state": {"hq": "wait", "region": "wait", "team": "run"}, "canceled": [], "output": ["region: listening", "team: listening (my own limit: 1 minute)"], "note": "Line 18 prints."},
+        {"line": 24, "state": {"hq": "wait", "region": "wait", "team": "wait", "scout": "run"}, "canceled": [], "output": ["region: listening", "team: listening (my own limit: 1 minute)"], "note": "Line 19 calls <code>scout</code> with the team's radio."},
+        {"line": 25, "state": {"hq": "wait", "region": "wait", "team": "wait", "scout": "run"}, "canceled": [], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening"], "note": "Line 24 prints."},
+        {"line": 26, "state": {"hq": "cancel", "region": "wait", "team": "wait", "scout": "wait"}, "canceled": [], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!"], "note": "Line 25: the scout sends <code>ready</code>, and the operator wakes up and shouts <samp>HQ: abort!</samp> (line 35). The scout moves on to line 26, <code>&lt;-ctx.Done()</code>, and waits: Done is still open."},
+        {"line": 27, "state": {"hq": "cancel", "region": "wait", "team": "wait", "scout": "stop"}, "canceled": ["hq", "region", "team", "scout"], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!"], "note": "Line 36: <code>cancel()</code>. HQ's Done closes, and before <code>cancel</code> even returns, so does the team's child radio. Every <code>Err()</code> now says <samp>context canceled</samp>, all at the same moment. The scout's receive returns: it heard the abort."},
+        {"line": 20, "state": {"hq": "wait", "region": "wait", "team": "run", "scout": "back"}, "canceled": ["hq", "region", "team", "scout"], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!", "scout: stopping: context canceled"], "note": "Line 27 prints the reason. It's <samp>context canceled</samp> from HQ, not the team's own deadline: the parent's reason travels down. The scout returns."},
+        {"line": 12, "state": {"hq": "wait", "region": "run", "team": "back", "scout": "back"}, "canceled": ["hq", "region", "team", "scout"], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!", "scout: stopping: context canceled", "team: scout is back"], "note": "Line 20 prints. Then the team returns, and its deferred <code>cancel()</code> runs: harmless, the radio was already cancelled, but it stops the one-minute timer."},
+        {"line": 39, "state": {"hq": "run", "region": "back", "team": "back", "scout": "back"}, "canceled": ["hq", "region", "team", "scout"], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!", "scout: stopping: context canceled", "team: scout is back", "region: team is back"], "note": "Line 12 prints, and <code>region</code> returns to HQ."},
+        {"line": null, "state": {"hq": "back", "region": "back", "team": "back", "scout": "back"}, "canceled": ["hq", "region", "team", "scout"], "output": ["region: listening", "team: listening (my own limit: 1 minute)", "scout: listening", "HQ: abort!", "scout: stopping: context canceled", "team: scout is back", "region: team is back", "HQ: everyone is back: context canceled"], "note": "Line 39: everyone came home, in reverse order of leaving. The abort reached every radio at once; the <em>reactions</em> took turns, because only the scout was listening, and each caller waited for its callee to return."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-plocal-m" id="ex-plocal"></div>
+  <script type="application/json" id="ex-plocal-m">{"program": "predict_local.go", "prompt": "This time nobody presses HQ's button. The team gives the scout its own 50 ms radio. What are the two lines?", "hint": "Whose timer runs out? Which way does cancellation flow?", "explain": "The team's child context times out after 50 ms, so the scout hears <samp>scout: context deadline exceeded</samp>. That never flows <em>up</em>: HQ's context is untouched, so <samp>hq: &lt;nil&gt;</samp>. (HQ's own button is pressed only by the <code>defer</code>, after the print.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 15: saying why, with Cause">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption"><code>Err()</code> only ever says “canceled” or “deadline exceeded”. Since Go 1.20 you can attach your own reason: <code>WithCancelCause</code> gives a button that takes an error, and <code>context.Cause(ctx)</code> reads it back.</p>
+    <span class="file-tab">cause.go</span>
+    <pre class="code" data-src="cause.go"></pre>
+    <pre class="term" data-run="cause.go"></pre>
+    <p class="caption soft"><code>Err()</code> stays the standard value, so code that checks <code>errors.Is(err, context.Canceled)</code> keeps working; <code>Cause</code> gives the detail. For a context with no cause, <code>Cause</code> returns the same as <code>Err()</code>. There are also <code>WithTimeoutCause</code> and <code>WithDeadlineCause</code>. Good to know they exist; most code never needs them.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: values on the radio, sparingly">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">A context can also carry a few <b>values</b> along the chain, like an order ticket number pinned to the radio. <code>WithValue(parent, key, value)</code> makes a child holding one; <code>ctx.Value(key)</code> looks it up, asking the parent if the child doesn't have it.</p>
+    <span class="file-tab">values.go</span>
+    <pre class="code" data-src="values.go"></pre>
+    <pre class="term" data-run="values.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Use values <b>sparingly</b>: only for facts about the request itself that cross many calls, such as a request ID for the logs. Never for ordinary inputs a function needs: those belong in its parameters, where the Compiler checks them. <code>Value</code> returns <code>any</code> (it can be missing: the pie got <code>nil</code>), so you need the comma-ok type assertion of line 11 (chapter 14). The key is a private empty struct type, <code>ticketKey</code>, so no other package can clash with it.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · RADIO DISCIPLINE<small>the forgotten button, the thrown-away button, and the radio in a drawer</small></h2>
+
+  <section class="panel pop alarm" aria-label="Panel 17: the Compiler spots a button nobody presses">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="HALT!" data-seed="17"></svg>
+    <p class="caption">Mistake one: make a context and forget its button completely.</p>
+    <span class="file-tab">forgot_cancel.go</span>
+    <pre class="code" data-src="forgot_cancel.go"></pre>
+    <pre class="term" data-run="forgot_cancel.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="go build" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Nothing runs until everything checks out. Line 10, column 7: <code>cancel</code> is <samp>declared and not used</samp>. You asked for the button and never pressed it. Add <code>defer cancel()</code> on line 11.</p></div>
+    </div>
+    <p class="caption soft">Go's famous “declared and not used” rule (chapter 3) turns out to be a lifesaver here. Read it like a detective: the file, then line 10, column 7, which is where the name <code>cancel</code> starts.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 18: go vet catches the thrown-away button">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Mistake two, the sneaky version: silence the Compiler by throwing the button into the blank identifier <code>_</code>. It compiles. It runs. And it's still a leak. This terminal session runs the program, then <code>go vet</code> (Specs, chapter 2's proof-reader), which checks for mistakes the Compiler allows.</p>
+    <span class="file-tab">lostcancel.go</span>
+    <pre class="code" data-src="lostcancel.go"></pre>
+    <pre class="term" data-run="lostcancel.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Specs says: </span>Line 10, column 7: <samp>the cancel function returned by context.WithTimeout should be called, not discarded, to avoid a context leak</samp>. That's my <b>lostcancel</b> check. <code>go test</code> doesn't run it for you, so run <code>go vet ./...</code> before you commit.</p></div>
+    </div>
+    <p class="caption soft">A <b>context leak</b>: the context and its timer stay alive, and its parent keeps it in its list of children, until the timeout fires. With <code>WithCancel</code>, which has no timer, that's for ever. One leak is small; one per web request adds up. <code>go vet</code> exits with status 1 when it finds something; <code>go run</code> was happy.</p>
+    <p class="caption">Tests won't save you here either. The same mistake in a tiny package, <code>kitchen</code>, with a test that passes:</p>
+    <span class="file-tab">kitchen/kitchen.go</span>
+    <pre class="code" data-src="kitchen/kitchen.go"></pre>
+    <span class="file-tab">kitchen/kitchen_test.go</span>
+    <pre class="code" data-src="kitchen/kitchen_test.go"></pre>
+    <p class="caption soft">One possible run: the time at the end of the <samp>ok</samp> line changes from run to run. <code>-count=1</code> makes <code>go test</code> really run the test instead of reusing a result it remembers.</p>
+    <pre class="term" data-run="kitchen_vet.go" data-exit></pre>
+    <p class="caption soft"><code>go test</code> runs only a few of vet's checks by itself, and <b>lostcancel</b> isn't one of them, so the test passes with no warning. Plain <code>go vet .</code> finds the thrown-away button on line 11.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-searly-m" id="ex-searly"></div>
+  <script type="application/json" id="ex-searly-m">{"program": "spot_early.go", "bug": 21, "prompt": "Soup takes 10 ms and the budget is a whole second, yet the soup always fails. Click the line that's wrong.", "explain": "Line 21 presses the button <em>immediately</em>, so the context is cancelled before <code>cook</code> even starts: <samp>soup: context canceled</samp>. It should be <code>defer cancel()</code>, which waits until <code>main</code> returns. Same letters, very different moment."}</script>
+
+  <section class="panel pop" aria-label="Panel 19: the radio in a drawer">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Mistake three: storing a context in a struct. The oven below keeps the radio it was given at startup in a field, and uses it for every bake. The fix, PASSED TO EACH CALL, takes a fresh ctx as the first parameter of each call.</p>
+    <div class="pair">
+      <div><p class="vs-label">STORED IN THE STRUCT</p><span class="file-tab">ctx_struct.go</span><pre class="code" data-src="ctx_struct.go"></pre><pre class="term" data-run="ctx_struct.go"></pre></div>
+      <div><p class="vs-label">PASSED TO EACH CALL</p><span class="file-tab">ctx_param.go</span><pre class="code" data-src="ctx_param.go"></pre><pre class="term" data-run="ctx_param.go"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The cake failed even though it's a brand-new bake! The oven was still listening to a radio from 200 ms ago, whose time had run out. A context belongs to <b>one job</b>, not to an object that lives for many jobs. Don't put the radio in a drawer: <b>ctx goes first</b>, in every call.</p></div>
+    </div>
+    <p class="caption soft">No tool flags this one: it compiles, vet is quiet, and the program misbehaves only later. The Go team's guidance in the <code>context</code> documentation says it plainly: do not store contexts inside a struct type; pass a context explicitly to each function that needs it.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-where-m" id="ex-where"></div>
+  <script type="application/json" id="ex-where-m">{"q": "You're writing <code>func (s *Shop) Deliver(...)</code>, which may be slow. Where should its context come from?", "options": [
+    {"t": "A first parameter: <code>Deliver(ctx context.Context, parcel string)</code>", "correct": true, "why": "Right: the caller decides the deadline for <em>this</em> delivery and passes it in. That's the convention every Go package follows."},
+    {"t": "A field <code>s.ctx</code>, set once when the shop opens in the morning", "why": "That's panel 19's bug: every delivery would share one old radio, and once it's cancelled every later call fails."},
+    {"t": "<code>context.Background()</code>, made fresh inside <code>Deliver</code> each time", "why": "Then nobody can ever cancel it or give it a time limit: the chain is cut. Boss 3 shows that bug."},
+    {"t": "A package-level variable, <code>var shopCtx context.Context</code>", "why": "Same problem as the field, shared by the whole program. A context belongs to one job."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE RESTAURANT<small>handlers, status codes, ServeMux patterns and httptest</small></h2>
+
+  <section class="panel pop" aria-label="Panel 20: welcome to the restaurant">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">The depot opens a restaurant next door, and it runs exactly like the web. A <b>client</b> (a browser, an app, another program) is a customer. A <b>server</b> is the restaurant: a program that waits for orders and answers each one. The language they speak is <b>HTTP</b>.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Hana says: </span>I'm Hana, the host. Every order that comes in, I read two things: <b>what kind</b> of order it is, and <b>which table</b> it's for. Then I send it to the right waiter. In Go, I'm a <code>ServeMux</code>.</p></div>
+      <svg class="char" data-char="maitred" data-prop="point"></svg>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="tablewaiter" data-prop="note"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wes says: </span>And I'm Wes, a waiter. I take one kind of order, get it made in the kitchen, and bring back a plate with a <b>status code</b> on its label. In Go, a waiter is a <b>handler</b>.</p></div>
+    </div>
+    <div class="cast-row" aria-hidden="true">
+      <svg class="char sm" data-char="kitchenhand" data-label="1" data-state="busy"></svg>
+      <svg class="char sm" data-char="kitchenhand" data-label="2" data-state="done"></svg>
+    </div>
+    <p class="sr-only">Picture: Hana, a host with a dark bob, a purple waistcoat and a bow tie, points to a table, holding a red menu. Wes, a waiter in a black waistcoat with a towel over his arm, writes on a notepad. Behind them two kitchen helpers cook.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 21: an order ticket and a plate">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Every visit is one <b>request</b> (the order ticket the customer hands in) and one <b>response</b> (the plate that comes back).</p>
+    <div class="duo">
+      <div class="slip">
+        <h3>REQUEST · the order ticket</h3>
+        <dl>
+          <dt>METHOD</dt><dd>what kind of order: <code>GET</code> (bring me something), <code>POST</code> (here's something new), <code>PUT</code>, <code>DELETE</code>…</dd>
+          <dt>PATH</dt><dd>which table: <code>/hello/gopher</code>, <code>/orders</code></dd>
+          <dt>HEADERS</dt><dd>notes in the margin, like <code>Content-Type: application/json</code></dd>
+          <dt>BODY</dt><dd>optional: the order itself, for example some JSON</dd>
+        </dl>
+      </div>
+      <div class="slip dashed">
+        <h3>RESPONSE · the plate</h3>
+        <dl>
+          <dt>STATUS</dt><dd>a three-digit code on the plate's label: <code>200</code> OK, <code>404</code> not found…</dd>
+          <dt>HEADERS</dt><dd>labels on the plate, like <code>Content-Type: text/plain</code></dd>
+          <dt>BODY</dt><dd>the food: text, HTML, JSON or a picture</dd>
+        </dl>
+      </div>
+    </div>
+    <p class="caption soft">The first digit of the status code says who's happy:</p>
+    <div class="families">
+      <div class="family ok"><b>2xx ✓</b><span>it worked: 200 OK, 201 Created</span></div>
+      <div class="family"><b>3xx ↪</b><span>look somewhere else: 301 Moved</span></div>
+      <div class="family mine"><b>4xx ✎</b><span>the customer's mistake: 400, 401, 404, 405</span></div>
+      <div class="family kitchen"><b>5xx ✖</b><span>the kitchen's mistake: 500</span></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: status codes have names">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Go's <code>net/http</code> package knows every code's standard name, and has a named constant for each, like <code>http.StatusNotFound</code>. Use the constants in your code: they say what they mean.</p>
+    <span class="file-tab">status.go</span>
+    <pre class="code" data-src="status.go"></pre>
+    <pre class="term" data-run="status.go"></pre>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: your first handler, and a practice customer">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">A handler is a function with exactly this shape: <code>func(w http.ResponseWriter, r *http.Request)</code>. <code>r</code> is the order ticket; <code>w</code> is the plate you fill. Anything you print into <code>w</code> becomes the body. To try it without a network, the <code>net/http/httptest</code> package gives a pretend order ticket, <code>NewRequest</code>, and a pretend customer that records the plate, <code>NewRecorder</code>.</p>
+    <span class="file-tab">hello.go</span>
+    <pre class="code" data-src="hello.go"></pre>
+    <pre class="term" data-run="hello.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="tablewaiter" data-prop="tray"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wes says: </span>I never set a status, and the recorder says <samp>200</samp>: if a waiter writes a body without choosing a code, the plate goes out as <b>200 OK</b>. <code>fmt.Fprintln</code> (chapter 19's writer trick) works on <code>w</code> because a <code>ResponseWriter</code> is an <code>io.Writer</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: the host reads method and path">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Now the host. <code>http.NewServeMux()</code> makes one; <code>HandleFunc(pattern, handler)</code> tells her which waiter takes which orders. Since Go 1.22 a pattern can start with a <b>method</b>, and a path part in braces like <code>{name}</code> is a <b>wildcard</b> that matches any one segment. The waiter reads it with <code>r.PathValue("name")</code>.</p>
+    <span class="file-tab">diner.go</span>
+    <pre class="code" data-src="diner.go"></pre>
+    <pre class="term" data-run="diner.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="maitred" data-prop="menu"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Hana says: </span>Four orders, four answers. <samp>GET /hello/gopher</samp> fits the first pattern, and <code>{name}</code> caught <code>gopher</code>. <samp>POST /orders</samp> goes to the order waiter, who sets <samp>201</samp> Created with <code>w.WriteHeader</code>. A POST to the hello table? I know that table, but not for that kind of order: <samp>405 Method Not Allowed</samp>. And <code>/menu</code> isn't a table I know at all: <samp>404</samp>.</p></div>
+    </div>
+    <p class="caption soft">Catchphrase: <b>the host reads two things: the method and the path.</b> <code>try</code> trims the newline that the 404 and 405 bodies end with, so each answer fits on one line.</p>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 25: the restaurant as a machine" data-machine="m-diner">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">From outside, the whole restaurant is one machine: an order ticket goes in, a status code and a body come out. Feed it orders. Every answer is a real line from <code>diner.go</code>'s run above.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-diner">{"label": "diner", "program": "diner.go", "examples": [
+      {"in": "GET /hello/gopher", "out": "200 hello gopher", "expectLine": "GET /hello/gopher -> 200 hello gopher", "outKind": "status + body", "note": "Hana matches <code>GET /hello/{name}</code> and seats it with <code>greet</code>, which reads <code>{name}</code> and writes the body."},
+      {"in": "POST /orders", "out": "201 order placed", "expectLine": "POST /orders -> 201 order placed", "outKind": "status + body", "note": "The order waiter chooses <samp>201</samp> Created, the usual answer when something new was made."},
+      {"in": "POST /hello/gopher", "out": "405 Method Not Allowed", "expectLine": "POST /hello/gopher -> 405 Method Not Allowed", "outKind": "status + body", "note": "The path is known, the method isn't. The mux answers by itself; no waiter is involved."},
+      {"in": "GET /menu", "out": "404 404 page not found", "expectLine": "GET /menu -> 404 404 page not found", "outKind": "status + body", "note": "No pattern has this path. The body really is <samp>404 page not found</samp>, so the line shows 404 twice."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pmux-m" id="ex-pmux"></div>
+  <script type="application/json" id="ex-pmux-m">{"program": "predict_mux.go", "prompt": "One pattern, <code>GET /tables/{n}</code>, and three orders. The program prints only each status code. What are the three numbers?", "hint": "For each order ask: does any pattern have this path? If yes, does the method match?", "explain": "<samp>200</samp>: <code>GET /tables/4</code> fits, with <code>{n}</code> = 4. <samp>405</samp>: <code>PUT /tables/4</code> has a known path but the wrong method. <samp>404</samp>: <code>/tables</code> with no number is a different path; a wildcard must match a whole, non-empty segment."}</script>
+
+  <div data-ex="fill" data-model="ex-froute-m" id="ex-froute"></div>
+  <script type="application/json" id="ex-froute-m">{"program": "fill_route.go", "prompt": "Serve <code>GET /soup/tomato</code>, <code>GET /soup/pea</code> and so on with one pattern, and read the flavor in the handler. Fill the pattern on line 11 and the call on line 12.", "blanks": [{"line": 11, "text": "\"GET /soup/{flavor}\"", "accept": ["\"GET /soup/{flavor}\""]}, {"line": 12, "text": "r.PathValue(\"flavor\")"}], "explain": "The method, a space, then the path with a wildcard: <code>\"GET /soup/{flavor}\"</code>. Inside the handler, <code>r.PathValue(\"flavor\")</code> gives the segment that matched: <samp>200 one bowl of tomato</samp>. The name in the braces and the name you ask for must be the same."}</script>
+
+  <section class="panel sketch" aria-label="Panel 26: the host's map of roads" data-map="map-mux">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">Every order takes one road through the restaurant. Pick a road to follow Scoot with an order; each road is checked against a real request made with <code>httptest</code> (the four tiny programs <code>route_*.go</code>, each <code>diner.go</code> with a single order).</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapm-t mapm-d"><title id="mapm-t">Map of how the host routes an order</title><desc id="mapm-d">An order arrives with a method and a path. The host first looks for a pattern with that path. If none has it, the answer is 404 Not Found. If one has it, the host checks the method. If no pattern with that path allows the method, the answer is 405 Method Not Allowed with an Allow header. Otherwise the order goes to the matching waiter: greet for GET /hello/{name}, or placeOrder for POST /orders, and the waiter's status and body are sent back.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-mux">{"seed": 26, "size": [690, 590], "start": [[345, 2], [345, 14]],
+      "states": [
+        {"id": "REQ", "x": 210, "y": 18, "w": 270, "h": 58, "label": "AN ORDER ARRIVES", "sub": "`METHOD /path`"},
+        {"id": "PATH", "x": 190, "y": 132, "w": 310, "h": 60, "label": "HOST CHECKS THE PATH", "sub": "does any pattern have it?"},
+        {"id": "NF", "x": 10, "y": 262, "w": 230, "h": 60, "label": "404 NOT FOUND", "sub": "`404 page not found`", "kind": "refuse"},
+        {"id": "METH", "x": 330, "y": 262, "w": 340, "h": 60, "label": "HOST CHECKS THE METHOD", "sub": "does that pattern allow it?"},
+        {"id": "NA", "x": 10, "y": 392, "w": 226, "h": 60, "label": "405 NOT ALLOWED", "sub": "header `Allow: GET, HEAD`", "kind": "refuse"},
+        {"id": "GREET", "x": 248, "y": 392, "w": 206, "h": 60, "label": "WAITER greet", "sub": "`GET /hello/{name}`"},
+        {"id": "ORDER", "x": 466, "y": 392, "w": 216, "h": 60, "label": "WAITER placeOrder", "sub": "`POST /orders`"},
+        {"id": "SENT", "x": 300, "y": 512, "w": 360, "h": 60, "label": "THE WAITER'S PLATE", "sub": "status code + body", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "REQ", "to": "PATH", "pts": [[345, 80], [345, 126]], "label": "hands over the ticket", "lx": 357, "ly": 108},
+        {"id": "t1", "from": "PATH", "to": "NF", "pts": [[230, 196], [230, 222], [125, 222], [125, 256]], "label": "no pattern has this path", "lx": 140, "ly": 246, "bug": true},
+        {"id": "t2", "from": "PATH", "to": "METH", "pts": [[460, 196], [460, 256]], "label": ["a pattern has", "this path"], "lx": 472, "ly": 220},
+        {"id": "t3", "from": "METH", "to": "NA", "pts": [[350, 326], [350, 356], [125, 356], [125, 386]], "label": "wrong method", "lx": 140, "ly": 348, "bug": true},
+        {"id": "t4", "from": "METH", "to": "GREET", "pts": [[420, 326], [420, 386]], "label": "GET", "lx": 380, "ly": 378, "anchor": "end"},
+        {"id": "t5", "from": "METH", "to": "ORDER", "pts": [[590, 326], [590, 386]], "label": "POST", "lx": 602, "ly": 362},
+        {"id": "t6", "from": "GREET", "to": "SENT", "pts": [[380, 456], [380, 506]], "label": "200", "lx": 392, "ly": 488},
+        {"id": "t7", "from": "ORDER", "to": "SENT", "pts": [[590, 456], [590, 506]], "label": "201", "lx": 602, "ly": 488}],
+      "paths": [
+        {"id": "get", "label": "GET /hello/gopher", "program": "route_get.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["REQ"], "output": [], "note": "An order ticket: method <code>GET</code>, path <code>/hello/gopher</code>."},
+          {"on": ["PATH"], "via": ["t0"], "output": [], "note": "Hana looks for a pattern whose path fits. <code>/hello/{name}</code> does: the wildcard swallows <code>gopher</code>."},
+          {"on": ["METH"], "via": ["t2"], "output": [], "note": "That pattern says <code>GET</code>, and this is a GET."},
+          {"on": ["GREET"], "via": ["t4"], "output": [], "note": "Seated with <code>greet</code>, which reads <code>r.PathValue(\"name\")</code>."},
+          {"on": ["SENT"], "via": ["t6"], "output": ["GET /hello/gopher -> 200 hello gopher"], "note": "The waiter wrote a body without choosing a status, so it goes out as 200: <samp>hello gopher</samp>."}]},
+        {"id": "post", "label": "POST /orders", "program": "route_order.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["REQ"], "output": [], "note": "Method <code>POST</code>, path <code>/orders</code>."},
+          {"on": ["PATH"], "via": ["t0"], "output": [], "note": "<code>/orders</code> is an exact match for a pattern's path."},
+          {"on": ["METH"], "via": ["t2"], "output": [], "note": "That pattern says <code>POST</code>: a match."},
+          {"on": ["ORDER"], "via": ["t5"], "output": [], "note": "Seated with <code>placeOrder</code>."},
+          {"on": ["SENT"], "via": ["t7"], "output": ["POST /orders -> 201 order placed"], "note": "It calls <code>w.WriteHeader(http.StatusCreated)</code> first, then writes the body."}]},
+        {"id": "wrong", "label": "POST /hello/gopher", "program": "route_405.go", "bug": true, "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["REQ"], "output": [], "note": "Method <code>POST</code>, path <code>/hello/gopher</code>."},
+          {"on": ["PATH"], "via": ["t0"], "output": [], "mood": "focus", "note": "The path fits <code>/hello/{name}</code>."},
+          {"on": ["METH"], "via": ["t2"], "output": [], "mood": "worried", "note": "But that pattern only takes <code>GET</code> (and <code>HEAD</code>, which comes free with every GET pattern). No pattern allows POST here."},
+          {"on": ["NA"], "via": ["t3"], "output": ["POST /hello/gopher -> 405 Method Not Allowed"], "note": "Hana answers by herself: <samp>405 Method Not Allowed</samp>, with an <code>Allow</code> header listing what would work (panel 27)."}]},
+        {"id": "nf", "label": "GET /menu", "program": "route_404.go", "bug": true, "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["REQ"], "output": [], "note": "Method <code>GET</code>, path <code>/menu</code>."},
+          {"on": ["PATH"], "via": ["t0"], "output": [], "mood": "worried", "note": "Neither pattern has the path <code>/menu</code>. The method doesn't even get looked at."},
+          {"on": ["NF"], "via": ["t1"], "output": ["GET /menu -> 404 404 page not found"], "note": "<samp>404</samp>, with the body <samp>404 page not found</samp>."}]}
+      ]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-troutes-m" id="ex-troutes"></div>
+  <script type="application/json" id="ex-troutes-m">{"program": "trace_routes.go", "columns": ["method", "path", "status"], "given": [0, 1], "prompt": "Three patterns: <code>GET /menu</code>, <code>POST /orders</code> and <code>DELETE /orders/{id}</code>. Each handler does nothing, so a match gives the default status. Fill in each order's status code.", "explain": "<samp>200</samp> for <code>GET /menu</code> (a handler that writes nothing still answers 200). <code>POST /menu</code>: path known, method not: <samp>405</samp>. <code>POST /orders</code>: <samp>200</samp>. <code>DELETE /orders/9</code> matches the wildcard: <samp>200</samp>. <code>GET /orders/9</code>: that path only allows DELETE: <samp>405</samp>. <code>/bill</code> isn't known at all: <samp>404</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: more pattern tricks">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Three more pattern rules. When two patterns both fit, the <b>more specific</b> one wins, whatever order you registered them in. A wildcard ending in <code>...</code> swallows the whole rest of the path. And a pattern of just <code>/</code> matches every path nobody else claimed: the front door.</p>
+    <span class="file-tab">patterns.go</span>
+    <pre class="code" data-src="patterns.go"></pre>
+    <pre class="term" data-run="patterns.go"></pre>
+    <p class="caption soft"><code>/dishes/special</code> fits both line 18 and line 19, and the exact one wins. Then the 405 answer from panel 24, looked at more closely: the mux also adds an <code>Allow</code> header saying which methods that path does take.</p>
+    <span class="file-tab">allow.go</span>
+    <pre class="code" data-src="allow.go"></pre>
+    <pre class="term" data-run="allow.go"></pre>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: the shortcut, and a real server">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">You'll often see <code>http.HandleFunc</code> with no mux in sight. It registers on a ready-made host, <code>http.DefaultServeMux</code>. To open a real restaurant, a program calls <code>http.ListenAndServe(":8080", nil)</code>, where <code>nil</code> means “use the default host”, and then waits for customers until you stop it.</p>
+    <span class="file-tab">default_mux.go</span>
+    <pre class="code" data-src="default_mux.go"></pre>
+    <pre class="term" data-run="default_mux.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The last line is a comment because a real server never finishes, and this book only shows programs that really ran to the end. The Lab page in the notebook runs one on your own computer. In bigger programs, prefer your own <code>NewServeMux()</code>: any package you import could quietly register routes on the default one.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: a waiter is anything with ServeHTTP">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Under the hood, a handler is an <b>interface</b> (chapter 14's wall socket), with one method:</p>
+    <span class="sym">type Handler interface {
+	ServeHTTP(ResponseWriter, *Request)
+}</span>
+    <p class="caption">Any type with that method can be a waiter. Here a <code>Menu</code> struct is one, registered with <code>mux.Handle</code> (no <code>Func</code>).</p>
+    <span class="file-tab">handler_type.go</span>
+    <pre class="code" data-src="handler_type.go"></pre>
+    <pre class="term" data-run="handler_type.go"></pre>
+    <p class="caption">And a plain function? <code>http.HandlerFunc</code> is a named <b>function type</b> (chapters 17 and 18) whose <code>ServeHTTP</code> method just calls the function. Converting <code>ping</code> to it turns a function into a Handler. That's what <code>HandleFunc</code> does for you.</p>
+    <span class="file-tab">handlerfunc.go</span>
+    <pre class="code" data-src="handlerfunc.go"></pre>
+    <pre class="term" data-run="handlerfunc.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="maitred" data-prop="menu"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Hana says: </span>Fun fact: I'm a Handler too! A <code>*ServeMux</code> has a <code>ServeHTTP</code> method, which is why the programs call <code>mux.ServeHTTP(rec, req)</code>. A host is a waiter who passes every order on.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-iface-m" id="ex-iface"></div>
+  <script type="application/json" id="ex-iface-m">{"q": "Which of these can be passed to <code>mux.Handle(\"GET /x\", h)</code>?", "options": [
+    {"t": "A value of any type that has the method <code>ServeHTTP(http.ResponseWriter, *http.Request)</code>", "correct": true, "why": "Right: <code>Handle</code> takes an <code>http.Handler</code>, and Go interfaces are satisfied implicitly. No <code>implements</code> keyword needed."},
+    {"t": "Only a function declared as <code>func(w http.ResponseWriter, r *http.Request)</code>", "why": "A bare function goes to <code>HandleFunc</code>. <code>Handle</code> wants a Handler, so you'd wrap it: <code>http.HandlerFunc(f)</code>."},
+    {"t": "Only types from the <code>net/http</code> package", "why": "Your own <code>Menu</code> type worked in panel 29. Any package's type can satisfy the interface."},
+    {"t": "Any struct, because the mux reads its fields", "why": "The mux never looks inside. It only calls <code>ServeHTTP</code>, so that method must exist."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 30: a JSON API">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Programs talk to each other in JSON (chapter 22's customs form). A JSON API handler decodes the request body into a struct, and encodes its answer. <code>json.NewDecoder(r.Body)</code> reads straight from the body; <code>json.NewEncoder(w)</code> writes straight onto the plate.</p>
+    <span class="file-tab">json_api.go</span>
+    <pre class="code" data-src="json_api.go"></pre>
+    <pre class="term" data-run="json_api.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="tablewaiter" data-prop="note"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wes says: </span>A good order: <samp>201</samp>, labelled <code>application/json</code>, and a JSON body (the map's keys come out sorted). A bad one, where <code>qty</code> is a word: <code>http.Error</code> sends <samp>400</samp> and a plain-text message, and then line 20 <b>returns</b>. Remember that <code>return</code>.</p></div>
+    </div>
+    <p class="caption soft">The order matters on the plate: set headers first, then <code>WriteHeader</code>, then the body. Once the first byte of body is written, the status and headers have already gone out.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 31: the missing return">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="OOPS!" data-seed="31"></svg>
+    <p class="caption">Now leave that <code>return</code> out. <code>http.Error</code> doesn't stop your function: it only writes onto the plate. The waiter carries on to line 15 and serves a second answer on the same plate.</p>
+    <span class="file-tab">missing_return.go</span>
+    <pre class="code" data-src="missing_return.go"></pre>
+    <pre class="term" data-run="missing_return.go"></pre>
+    <p class="caption">The same handler in a real server (an <code>httptest.NewServer</code>, part 5), where the server also notices the second status and writes a warning to standard error. <code>log.SetFlags(0)</code> removes the log's date and time so the run is the same every time.</p>
+    <span class="file-tab">missing_return_srv.go</span>
+    <pre class="code" data-src="missing_return_srv.go"></pre>
+    <pre class="term" data-run="missing_return_srv.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Detective time. The customer got <samp>400 Bad Request</samp> <em>and</em> <samp>ordered 0</samp>: two answers on one plate. The server's warning names the culprit: <samp>superfluous response.WriteHeader call from main.order (missing_return_srv.go:17)</samp>. Line 17 tried to set a second status, too late. The real mistake is just above it: line 15 needed a <code>return</code>. Catchphrase: <b>http.Error writes; return leaves.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sreturn-m" id="ex-sreturn"></div>
+  <script type="application/json" id="ex-sreturn-m">{"program": "spot_return.go", "bug": 12, "prompt": "A booking with no name gets a 400, yet the body also says a table was booked for nobody. Click the line that needs a <code>return</code> after it.", "explain": "Line 12 sends the 400 and its message, but the function keeps going and line 14 writes <samp>table booked for \"\"</samp> onto the same plate. Add <code>return</code> right after <code>http.Error</code> on line 12. (With a recorder there's no warning at all, because the handler never calls <code>WriteHeader</code> a second time: only the doubled body gives it away.)"}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · EATING OUT<small>http.Get, closing bodies, timeouts, contexts and middleware</small></h2>
+
+  <section class="panel pop" aria-label="Panel 32: Scoot becomes the customer">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">So far a pretend customer ate at a pretend table. Now Scoot visits a <b>real</b> restaurant, over a real network connection. <code>httptest.NewServer(handler)</code> opens one on your own computer, at a random free <b>port</b> (a numbered door on a computer), and gives its address in <code>srv.URL</code>.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="happy" data-arms="wave"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The address looks like <code>http://127.0.0.1:</code> plus a port number that changes on every run, so this book never prints it. <code>127.0.0.1</code> means “this same computer”: no internet needed, and nothing leaves the machine.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Hana says: </span>Same host, same waiters, a real front door. And always a <code>defer srv.Close()</code> to lock up afterwards.</p></div>
+      <svg class="char sm" data-char="maitred" data-prop="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: http.Get, and giving the plate back">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption"><code>http.Get(url)</code> sends a GET and returns a <code>*http.Response</code> and an error. The body is a stream (an <code>io.ReadCloser</code>, chapter 19): you read it, here all at once with <code>io.ReadAll</code>, and then you <b>close</b> it.</p>
+    <span class="file-tab">client_get.go</span>
+    <pre class="code" data-src="client_get.go"></pre>
+    <pre class="term" data-run="client_get.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>resp.Status</code> is the code and its name, <samp>200 OK</samp>; <code>resp.StatusCode</code> is just the number. Nobody set a <code>Content-Type</code>, so the server sniffed the body and labelled it <samp>text/plain; charset=utf-8</samp>. Catchphrase: <b>finished your plate? Give it back: <code>defer resp.Body.Close()</code>.</b></p></div>
+    </div>
+    <p class="caption soft">Why close? The connection to the server can be reused for your next order, but only once the body is closed. A program that forgets keeps connections and memory tied up, and a long-running one eventually runs out. Close it right after checking the error, with <code>defer</code>. (The response also has a <code>Date</code> header that changes every second; this book never prints it.)</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fbody-m" id="ex-fbody"></div>
+  <script type="application/json" id="ex-fbody-m">{"program": "fill_body.go", "prompt": "Order fresh bread from the test bakery. Fill line 16 to send the GET, and line 21 so the body is closed when <code>main</code> returns.", "blanks": [{"line": 16, "text": "http.Get"}, {"line": 21, "text": "defer resp.Body.Close()"}], "explain": "<code>http.Get(srv.URL + \"/bread\")</code> sends the order; after the error check, <code>defer resp.Body.Close()</code> hands the plate back on the way out. Output: <samp>200 fresh bread</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 34: closing a body that isn't there">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Mistake: put the <code>defer</code> <em>before</em> the error check. If the request fails, <code>resp</code> is <code>nil</code>, and <code>resp.Body</code> crashes. This session runs <code>go vet</code> first, then the program, aimed at port 0, where no restaurant can ever be.</p>
+    <span class="file-tab">resp_vet.go</span>
+    <pre class="code" data-src="resp_vet.go"></pre>
+    <pre class="term" data-run="resp_vet.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char" data-char="specs"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">go vet says: </span>Line 12: <samp>using resp before checking for errors</samp>. That's my <b>httpresponse</b> check, and it caught the crash before it happened.</p></div>
+    </div>
+    <p class="caption soft">The run proves vet right. Read it like a detective: <samp>panic: runtime error: invalid memory address or nil pointer dereference</samp>, in <samp>goroutine 1</samp>, at <samp>main.fetch()</samp>, <samp>resp_vet.go:12</samp>. <code>defer</code> evaluates <code>resp.Body</code> immediately, while <code>resp</code> is still <code>nil</code>. The rule: <b>check err first, then defer the close.</b></p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: a 404 is not an error">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">A surprise for many beginners: if the server answers at all, even with 404 or 500, <code>http.Get</code> returns <code>err == nil</code>. An error only means “no answer came back”: no connection, a timeout, a broken reply. This server has an empty host, so every path is 404.</p>
+    <span class="file-tab">client_404.go</span>
+    <pre class="code" data-src="client_404.go"></pre>
+    <pre class="term" data-run="client_404.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The waiter came back and said “we don't have that”. That's an answer, not a lost order. So always check <b>both</b>: <code>err</code> for “did anyone answer?”, and <code>resp.StatusCode</code> for “what did they say?”.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 36: the customer who would wait for ever">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption"><code>http.Get</code> uses <code>http.DefaultClient</code>, and the default client has <b>no timeout at all</b>. If a server accepts the order and never serves it, your program waits for ever. Make your own client with a <code>Timeout</code>. Here the kitchen would take 5 seconds; the customer waits 200 ms.</p>
+    <span class="file-tab">client_timeout.go</span>
+    <pre class="code" data-src="client_timeout.go"></pre>
+    <pre class="term" data-run="client_timeout.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Client errors are <code>*url.Error</code> values, so <code>errors.As</code> (chapter 19) can open them: the operation was a <samp>Get</samp>, it was a <samp>timeout</samp>, and the reason inside is a <samp>context deadline exceeded</samp>. The whole error message would include the random port, so the program prints only the parts that never change.</p></div>
+    </div>
+    <p class="caption soft">Look at the last line: the <b>server</b> noticed too. Every incoming request carries a context, <code>r.Context()</code>, which is cancelled when the customer goes away. A good handler listens to it (line 18) and stops cooking for nobody. Walkie-talkies, on both sides of the counter. The kitchen's message travels through a channel so it prints in the same place on every run.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-client-m" id="ex-client"></div>
+  <script type="application/json" id="ex-client-m">{"q": "Your program calls a weather service with <code>http.Get</code> every minute. One night the service hangs: it accepts connections and never answers. What happens to your program?", "options": [
+    {"t": "That call waits for ever: the default client has no timeout", "correct": true, "why": "Right. <code>http.DefaultClient</code> has a zero <code>Timeout</code>, which means no limit. Use <code>&amp;http.Client{Timeout: ...}</code> or a request context with a deadline (panel 37)."},
+    {"t": "It gets an error after 30 seconds, the standard HTTP timeout", "why": "There's no such standard. Go's default client waits as long as it takes."},
+    {"t": "It gets a 504 Gateway Timeout status code made up by Go", "why": "A 504 would have to come from a server (a gateway). Your own client never invents status codes."},
+    {"t": "It crashes with a panic as soon as the service stops answering", "why": "Nothing crashes: the goroutine simply blocks, quietly. That's what makes this bug so hard to notice."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 37: a request that carries a radio">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">The walkie-talkie way: <code>http.NewRequestWithContext</code>, called with <code>ctx</code>, a method, a URL and a body, builds a request that carries a context, and <code>client.Do(req)</code> sends it. When the context is cancelled or its time runs out, the request is abandoned. Unlike a client's fixed <code>Timeout</code>, the context can come from your caller, so the deadline of the whole job reaches the network call.</p>
+    <span class="file-tab">client_ctx.go</span>
+    <pre class="code" data-src="client_ctx.go"></pre>
+    <pre class="term" data-run="client_ctx.go"></pre>
+    <p class="caption soft">The error <code>Do</code> returns wraps the context's reason, so <code>errors.Is(err, context.DeadlineExceeded)</code> is <samp>true</samp>. In a server, pass <code>r.Context()</code> (or a context made from it) to the calls a handler makes, and the whole chain stops when the customer leaves.</p>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pclient-m" id="ex-pclient"></div>
+  <script type="application/json" id="ex-pclient-m">{"program": "parsons_client.go", "seed": 7, "pin": [1, 3, 4, 5, 6, 7, 8, 9, 11, 18, 19, 20, 22, 23, 24, 25, 26, 28, 29, 30, 31], "prompt": "A careful customer: the GET, the error check, and the plate handed back. <code>main</code> calls <code>get</code> twice: once at a real test restaurant, and once at port 0, where nobody can answer. Put the moving lines of <code>get</code> in order.", "explain": "First <code>client.Get</code>. Check the error: print <samp>no answer</samp>, then <code>return</code>. Only after the <code>}</code>, <code>defer resp.Body.Close()</code>, because <code>resp</code> is <code>nil</code> when <code>err</code> isn't (panel 34): with the <code>defer</code> above the check, the second call would crash. Output: <samp>200 today: soup</samp>, then <samp>no answer</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 38: middleware, the nesting dolls of the restaurant">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">Some jobs belong to <em>every</em> order: writing it in the log book, checking a membership card, timing it. Instead of copying that into every waiter, wrap the waiter. A <b>middleware</b> is a function that takes a Handler and returns a new Handler that does something, calls the inner one, and maybe does something after. Like chapter 19's nesting dolls, each wraps the next.</p>
+    <span class="file-tab">middleware.go</span>
+    <pre class="code" data-src="middleware.go"></pre>
+    <pre class="term" data-run="middleware.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="maitred" data-prop="menu"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Hana says: </span>Line 35 builds the dolls: <code>logger</code> outside, <code>members</code> inside it, the <code>lounge</code> waiter in the middle. An order goes in through every layer and comes back out in reverse. A layer can also <b>stop</b> the order: without a gold card, <code>members</code> answers <samp>401</samp> and returns, so the lounge never hears about it. But the logger still writes its <samp>out</samp> line.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pmw-m" id="ex-pmw"></div>
+  <script type="application/json" id="ex-pmw-m">{"program": "predict_mw.go", "prompt": "Two layers, <code>A</code> outside and <code>B</code> inside, around a handler that prints <code>serve</code>. What are the five lines?", "hint": "<code>wrap(\"A\", wrap(\"B\", core))</code>: which one gets the order first? Each layer prints before and after calling the next.", "explain": "The order enters the outer doll first: <samp>open A</samp>, <samp>open B</samp>, then the handler: <samp>serve</samp>. On the way out the dolls close in reverse: <samp>close B</samp>, <samp>close A</samp>. The outermost middleware is the first in and the last out."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 39: background work on a request's radio">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">A last trap, where both halves of the chapter meet. After someone pays, the waiter starts a goroutine to email a receipt, and hands it the request's context, <code>r.Context()</code>. That sounds tidy. But the server cancels a request's context as soon as the handler returns, which here is straight away.</p>
+    <div class="pair">
+      <div><p class="vs-label">THE REQUEST'S RADIO</p><span class="file-tab">bg_request.go</span><pre class="code" data-src="bg_request.go"></pre><pre class="term" data-run="bg_request.go"></pre></div>
+      <div><p class="vs-label">WITHOUT ITS CANCEL</p><span class="file-tab">bg_fixed.go</span><pre class="code" data-src="bg_fixed.go"></pre><pre class="term" data-run="bg_fixed.go"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The customer paid, the plate went out, the request's radio said abort, and the receipt was lost. The fix, WITHOUT ITS CANCEL, line 24, wraps <code>r.Context()</code> in <code>context.WithoutCancel</code> (Go 1.21): a child that keeps the parent's values but ignores its cancel and deadline. Work that must outlive the request needs its own radio.</p></div>
+    </div>
+    <p class="caption soft">The two files are the same except line 24. In a real program, give that background job its own limit too, by wrapping the result once more in <code>context.WithTimeout</code> (say, ten seconds), so it can't run for ever.</p>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 40: boss level">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="40"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Radios and restaurants, all mixed up. For every context ask: who holds the button, which way does the abort flow, and is the chain unbroken? For every order: which path, which method, and does the waiter <code>return</code>?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. Three patterns and four orders. Each line is the status code and the trimmed body. What are the four lines?", "hint": "<code>/dishes/special</code> fits two patterns: which is more specific? Is there any pattern that allows DELETE?", "explain": "<samp>200 special</samp>: the exact path beats the wildcard. <samp>200 dish 9</samp>: the wildcard pattern. <samp>405 Method Not Allowed</samp>: <code>/dishes/9</code> is a known path, but only for GET. <samp>200 new dish</samp>: <code>POST /dishes</code> matches its own pattern exactly (the waiter writes no status, so 200)."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["round", "context", "state"], "given": [0, 1], "prompt": "Boss 2. <code>a</code> (50 ms) and <code>b</code> (1 hour) are children of <code>root</code>; <code>a1</code> is a child of <code>a</code>. Main waits until <code>a1</code> is done, prints every state, presses <code>stopRoot</code>, and prints again. <code>state</code> says <code>live</code>, <code>timeout</code> or <code>canceled</code>.", "explain": "Round 1: <code>a</code>'s timer fired, so <samp>a timeout</samp> and its child <samp>a1 timeout</samp>; <samp>root live</samp> and <samp>b live</samp> (never up, never sideways). Round 2, after <code>stopRoot()</code>: <samp>root canceled</samp> and <samp>b canceled</samp>, but <code>a</code> and <code>a1</code> stay <samp>timeout</samp>: a context's first reason sticks for ever. (The second <code>stopRoot()</code>, in round 2, does nothing.)"}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 20, "prompt": "Boss 3. The whole meal has a 100 ms budget, yet the 300 ms stew is served anyway, long after the deadline. Click the line that breaks the radio chain.", "explain": "Line 20 passes <code>context.Background()</code> instead of the <code>ctx</code> that <code>serve</code> was given. The stew's radio has no deadline, so it cooks for the full 300 ms: <samp>stew ready</samp>, then <samp>served after the deadline: true</samp>. Pass <code>ctx</code> and it prints <samp>stew canceled</samp> at 100 ms. Inside a function that has a ctx, <code>context.Background()</code> almost always cuts the chain."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 41, "pin": [1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 16, 24, 26, 27, 28, 29, 30, 31, 32], "prompt": "Boss 4. A JSON order handler: decode the body, answer 400 if it isn't valid JSON, otherwise 201 and a summary. Put the handler's moving lines in order.", "explain": "Declare <code>o</code>, decode into it, and in the error branch call <code>http.Error</code> and <b>then</b> <code>return</code>. After the <code>}</code>, choose the status with <code>WriteHeader(http.StatusCreated)</code> before writing the body. Output: <samp>201 3 x pie</samp>, then <samp>400 bad order</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. Ask for a table with a two-second limit that travels with the request. Fill line 18 (make the context), line 21 (build the request with it) and line 31 (give the plate back).", "blanks": [{"line": 18, "text": "context.WithTimeout"}, {"line": 21, "text": "http.NewRequestWithContext"}, {"line": 31, "text": "defer resp.Body.Close()"}], "explain": "<code>context.WithTimeout</code> makes the radio (and <code>defer cancel()</code> on line 19 hands its button back); <code>http.NewRequestWithContext(ctx, \"GET\", url, nil)</code> attaches it to the request; <code>DefaultClient.Do</code> sends it; <code>defer resp.Body.Close()</code> after the error check. Output: <samp>200 your table is ready</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Line 12 is meant to wait until the context is done.", "expect": "error", "answer": "cannot receive from non-channel", "ask": "It doesn't compile. Type the four words the Compiler uses to say what's wrong, from <code>cannot</code> to <code>non-channel</code>.", "hint": "Is <code>ctx.Done</code> a channel, or something that gives you one?", "explain": "<code>Done</code> is a <b>method</b>: <code>ctx.Done</code> without parentheses is the method itself, a value of type <code>func() &lt;-chan struct{}</code>, and you can't receive from a function. The Compiler says <samp>invalid operation: cannot receive from non-channel</samp>, at line 12, column 4. Call it: <code>&lt;-ctx.Done()</code>. (Go 1.24's message is slightly shorter: it doesn't repeat the type before the name.)"}</script>
+
+  <section class="panel pop" aria-label="Panel 41: what you learned">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">What you learned in Chapter 26</p>
+    <ul class="recap">
+      <li><b>HQ SAYS ABORT, AND EVERY RADIO ON THE CHANNEL HEARS IT</b>A <code>context.Context</code> carries “stop now” and “you have until…” through a program. <code>context.Background()</code> is the root; <code>WithCancel</code>, <code>WithTimeout</code> and <code>WithDeadline</code> make children. <code>ctx.Done()</code> is a channel that closes on abort; <code>ctx.Err()</code> is <code>nil</code>, then <samp>context canceled</samp> or <samp>context deadline exceeded</samp>. Goroutines must listen and stop themselves. The abort flows down to every descendant at once, never up or sideways, and the first reason sticks. <code>context.Cause</code> carries your own reason; values travel along too, but use them sparingly.</li>
+      <li><b>EVERY RADIO YOU HAND OUT COMES BACK: <code>defer cancel()</code></b>Forget the button and the Compiler says <samp>declared and not used: cancel</samp>; throw it into <code>_</code> and <code>go vet</code> reports a context leak. Don't call it too early, and don't put a ctx in a struct.</li>
+      <li><b>CTX GOES FIRST</b>Slow functions take <code>ctx context.Context</code> as their first parameter and pass it down, unbroken. <code>context.Background()</code> inside such a function cuts the chain. Work that must outlive a request uses <code>context.WithoutCancel</code>.</li>
+      <li><b>THE HOST READS TWO THINGS: THE METHOD AND THE PATH</b>A handler is <code>func(w http.ResponseWriter, r *http.Request)</code>, or any type with <code>ServeHTTP</code>. A <code>ServeMux</code> routes patterns like <code>"GET /hello/{name}"</code> (read with <code>r.PathValue</code>); the most specific pattern wins; unknown path: 404; known path, wrong method: 405 with <code>Allow</code>. <code>httptest</code> tests it all with no network. Middleware wraps handlers like nesting dolls.</li>
+      <li><b>HTTP.ERROR WRITES; RETURN LEAVES</b>Always <code>return</code> after <code>http.Error</code>: it only writes onto the plate, and a waiter who carries on serves two answers at once.</li>
+      <li><b>FINISHED YOUR PLATE? GIVE IT BACK</b>On the client side: check <code>err</code>, then <code>defer resp.Body.Close()</code>. A 404 is an answer, not an error; and the default client has no timeout, so use <code>http.Client{Timeout: …}</code> or <code>NewRequestWithContext</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every radio handed back, every order seated at the right table, every plate returned. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 42: next time, docks and pit crews">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption soft">Coming up in Chapter 27: Docks and Pit Crews</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><rect x="30" y="50" width="70" height="56" rx="4" fill="#F2C9A0" stroke="#111" stroke-width="5"/><rect x="120" y="50" width="70" height="56" rx="4" fill="#DDE8FF" stroke="#111" stroke-width="5"/><rect x="40" y="62" width="50" height="16" fill="#FFFFFF" stroke="#111" stroke-width="3"/><rect x="130" y="62" width="50" height="16" fill="#FFFFFF" stroke="#111" stroke-width="3"/><path d="M10 112 H210" stroke="#111" stroke-width="6" stroke-linecap="round"/><path d="M110 20 V44 M98 32 H122" stroke="#111" stroke-width="5" stroke-linecap="round"/></svg>
+          <p><b>The shipping dock</b>: structured logs with <code>log/slog</code>, command-line flags, <code>go build</code> and <code>go install</code>, and labelling the same program for Windows, macOS and Linux with <code>GOOS</code> and <code>GOARCH</code>. Plus <code>signal.NotifyContext</code>: Ctrl+C as a walkie-talkie abort.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><circle cx="70" cy="90" r="26" fill="#9AA3AE" stroke="#111" stroke-width="5"/><circle cx="150" cy="90" r="26" fill="#9AA3AE" stroke="#111" stroke-width="5"/><circle cx="70" cy="90" r="9" fill="#FFFFFF" stroke="#111" stroke-width="4"/><circle cx="150" cy="90" r="9" fill="#FFFFFF" stroke="#111" stroke-width="4"/><path d="M40 60 H180 L160 36 H70 Z" fill="#FF5A4E" stroke="#111" stroke-width="5" stroke-linejoin="round"/><path d="M190 20 l-14 30" stroke="#111" stroke-width="6" stroke-linecap="round"/></svg>
+          <p><b>The pit crew</b>: <code>go vet</code> brings friends. staticcheck, govulncheck, <code>go fix</code> and the debugger each inspect one thing, so your programs leave the garage in shape.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today, a restaurant that runs on my laptop. Next time: packing it into a box that runs anywhere.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: two labelled crates on a dock; a race car with its wheels being checked.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch25.html">← Ch 25 · Keys and Conveyor Belts</a><a class="next" href="ch27.html">Ch 27 · Docks and Pit Crews →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how cancellation travels, and what a server does with each order</summary>
+    <div class="page-body">
+      <h3>What a context really is</h3>
+      <p><code>context.Context</code> is an interface with four methods: <code>Deadline()</code>, <code>Done()</code>, <code>Err()</code> and <code>Value(key)</code>. Background is an empty implementation that never closes. <code>WithCancel</code> returns a small struct (the runtime calls it a <code>cancelCtx</code>) holding a pointer to its parent, a lazily made <code>done</code> channel, the error, and a set of its children. <code>WithTimeout</code> and <code>WithDeadline</code> wrap one of those with a timer (<code>timerCtx</code>), and <code>WithValue</code> makes a link that holds one key and value and forwards everything else to its parent (<code>valueCtx</code>). That's why <code>Value</code> lookups walk up the chain one link at a time: fine for a few values, slow for many.</p>
+      <h3>How cancellation reaches every child</h3>
+      <p>When a child is made, it registers itself in its nearest cancellable ancestor's children set. <code>cancel()</code> takes a lock, sets the error, closes the <code>done</code> channel, then calls cancel on every child, recursively, and finally removes itself from its parent's set. All of that happens inside the call, which is why panel 14's radios all changed at once. Calling <code>cancel</code> is what removes the child from its parent's set; forgetting it is what “context leak” means: the parent keeps the child (and its timer) alive.</p>
+      <p>If a parent isn't one of the standard types, the package starts a goroutine to watch the parent's <code>Done</code> channel instead. Since Go 1.21, <code>context.AfterFunc(ctx, f)</code> runs <code>f</code> in its own goroutine once ctx is done, for cleanup that must happen on cancellation.</p>
+      <h3>Closing, not sending</h3>
+      <p>Done is closed rather than sent on because a close wakes every receiver, present and future, and costs nothing per listener. A context never needs to know who is listening. The flip side is that the context can't <em>force</em> anything: a goroutine that never looks at <code>Done</code> carries on regardless. Cancellation in Go is always cooperative.</p>
+      <h3>What the server does with each order</h3>
+      <p><code>http.Server</code> accepts connections in a loop and runs <b>each connection in its own goroutine</b> (chapter 24's helpers), so one slow customer never holds up the others. For every request it builds an <code>*http.Request</code> whose context is cancelled when the client's connection closes or when <code>ServeHTTP</code> returns (panel 39). Your handler may run on many goroutines at the same time, so any data it shares needs chapter 25's locks.</p>
+      <p>If a handler panics, the server recovers, logs <code>http: panic serving …</code> and closes that connection, rather than crashing the whole program. A <code>ResponseWriter</code> buffers the first few kilobytes; the status line and headers go out when the buffer fills, when you call <code>WriteHeader</code> or <code>Flush</code>, or when the handler returns. After that, a second <code>WriteHeader</code> can only be logged as “superfluous”.</p>
+      <h3>How the mux chooses</h3>
+      <p>Since Go 1.22 a pattern is <code>[METHOD ][HOST]/[PATH]</code>. If two patterns both match a request, the one that matches a strict subset of the other's requests wins: <code>/dishes/special</code> beats <code>/dishes/{id}</code>. If neither is more specific (say <code>/a/{x}</code> and <code>/{y}/b</code>), registering the second one <b>panics</b> at startup with a message naming both, so conflicts are found before any customer arrives. A pattern ending in a slash, like <code>/static/</code>, matches everything below it; <code>{$}</code> at the end matches only the exact path. A <code>GET</code> pattern also answers <code>HEAD</code>. Setting <code>GODEBUG=httpmuxgo121=1</code> restores the old, method-less rules.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where radios and restaurants show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Every request has a deadline.</b> Servers set limits on the <code>http.Server</code> itself (<code>ReadHeaderTimeout</code>, <code>ReadTimeout</code>, <code>WriteTimeout</code>, <code>IdleTimeout</code>), and handlers pass <code>r.Context()</code> into database and network calls, so an abandoned request stops costing anything.</li>
+        <li><b>Graceful shutdown.</b> <code>srv.Shutdown(ctx)</code> stops accepting new customers, lets current orders finish, and gives up when <code>ctx</code> expires. Chapter 27 pairs it with <code>signal.NotifyContext</code>, which turns Ctrl+C into a cancelled context.</li>
+        <li><b>Database calls.</b> <code>database/sql</code> has <code>QueryContext</code>, <code>ExecContext</code> and friends; many other libraries take a ctx first, exactly like panel 11's <code>cook</code>.</li>
+        <li><b>Fan-out with a shared deadline.</b> A search page might ask three services at once with one context; when the first error or the deadline arrives, cancelling the context stops the other two. The <code>errgroup</code> package from chapter 25 does this with <code>errgroup.WithContext</code>.</li>
+        <li><b>Middleware everywhere.</b> Logging, request IDs (often stored with <code>context.WithValue</code>), authentication, panic recovery, compression and rate limiting are usually middleware, stacked like panel 38.</li>
+        <li><b>Testing handlers.</b> <code>httptest.NewRecorder</code> in unit tests (chapter 23's table-driven style works well: method, path, want status, want body) and <code>httptest.NewServer</code> for testing your HTTP clients against a fake service.</li>
+        <li><b>Frameworks.</b> Since Go 1.22's patterns, many small and medium services use the standard <code>ServeMux</code> directly; routers such as chi stay close to the same <code>http.Handler</code> interface, so everything in this chapter carries over.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>“Cancelling a context stops the goroutines using it.”</b> It only closes a channel. Each goroutine must watch <code>Done</code> and return.</li>
+        <li><b>“If the job finished, I don't need to call cancel.”</b> You do: calling it releases the context's place in its parent and its timer. <code>defer cancel()</code>.</li>
+        <li><b>“Cancelling a child tells the parent.”</b> Cancellation flows down only.</li>
+        <li><b>“A child with a longer timeout outlives its parent.”</b> It stops when its parent stops, whichever comes first.</li>
+        <li><b>“context.Value is a handy way to pass parameters.”</b> Only for request-scoped facts like an ID. Inputs go in parameters, where types are checked.</li>
+        <li><b>“I'll keep the context in my struct to save typing.”</b> Panel 19. Pass it to each call.</li>
+        <li><b>“http.Error ends the handler.”</b> It writes; you still need <code>return</code>.</li>
+        <li><b>“http.Get returns an error for a 404.”</b> Only for no answer at all. Check <code>StatusCode</code>.</li>
+        <li><b>“Go's HTTP client times out by itself.”</b> The default client never does.</li>
+        <li><b>“I only need to close the body if I read it.”</b> Close it whenever <code>err</code> is <code>nil</code>, read or not.</li>
+        <li><b>“The order I register patterns in decides who wins.”</b> The most specific pattern wins, whatever the order; true conflicts panic at registration.</li>
+        <li><b>“r.Context() is fine for work that continues after the response.”</b> It's cancelled when the handler returns. Use <code>context.WithoutCancel</code>, with a timeout of its own.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. A real restaurant on your computer</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app) and check <code>go version</code>. Method and wildcard patterns need <b>Go 1.22</b> or later; <code>WithoutCancel</code> and <code>AfterFunc</code> need 1.21; <code>WithCancelCause</code> needs 1.20.</li>
+        <li><code>mkdir diner</code>, <code>cd diner</code>, <code>go mod init example/diner</code>.</li>
+        <li>Copy <code>default_mux.go</code> from panel 28 into <code>main.go</code>, delete the three lines that use the recorder, and remove the <code>//</code> in front of <code>http.ListenAndServe(":8080", nil)</code>. (Remove the now-unused imports, or the Compiler will tell you which ones.)</li>
+        <li><code>go run .</code> The program prints nothing and keeps running: it's waiting for customers.</li>
+        <li>Open a browser at <code>http://localhost:8080/<wbr>hello/gopher</code>. You'll see <samp>hello gopher</samp>. Try <code>/hello/</code> and <code>/menu</code> too.</li>
+        <li>From a second terminal, use <code>curl</code> (built into Windows 10 and later, macOS and most Linux systems): <code>curl -i localhost:8080/hello/gopher</code> shows the status line and headers, including the <code>Date</code> this book never prints. <code>curl -i -X POST localhost:8080/hello/gopher</code> shows the <samp>405</samp> and its <code>Allow</code> header. On Windows PowerShell, type <code>curl.exe</code>, because plain <code>curl</code> may be an alias for a different command.</li>
+        <li>Stop the server with <b>Ctrl+C</b>.</li>
+      </ol>
+      <p class="os-note"><b>Windows:</b> the first time a program listens on a port, Windows Defender Firewall may ask whether to allow it. Choosing private networks is enough; <code>localhost</code> works either way. Writing <code>"localhost:8080"</code> instead of <code>":8080"</code> also avoids the question, because then only your own computer can connect. <b>macOS</b> may show a similar dialog. <b>Linux</b> doesn't ask; ports below 1024 need extra permission, so stick to 8080.</p>
+      <h3>2. Experiments</h3>
+      <ol>
+        <li>Add <code>mux.HandleFunc("GET /dishes/{id}", ...)</code> and <code>mux.HandleFunc("GET /{x}/special", ...)</code> to a fresh mux and run it. Read the panic message: Go refuses two patterns where neither is more specific.</li>
+        <li>In <code>client_timeout.go</code>, change the client's <code>Timeout</code> to 10 seconds and watch the stew arrive after 5. Then remove <code>Timeout</code> entirely and change the stew to <code>time.Hour</code>: the program hangs (stop it with Ctrl+C). That's the default client.</li>
+        <li>In <code>chain.go</code>, give the team a 50 ms limit instead of a minute. Which reason does the scout print now, and does HQ's <code>Err()</code> change?</li>
+        <li>Run <code>go vet</code> on your diner. Then add two lines to a handler, <code>ctx, _ := context.WithTimeout(r.Context(), time.Second)</code> and <code>fmt.Fprintln(w, ctx.Err())</code>, and run it again. (The second line uses <code>ctx</code>. Without it, the unused <code>ctx</code> stops the Compiler first, as an unused name did in panel 17, and vet never gets to its check.)</li>
+        <li>Write a test file, <code>main_test.go</code>, that builds your mux and checks three orders with <code>httptest.NewRecorder</code>, table-driven like chapter 23. Run <code>go test</code>.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> install from the .msi on go.dev/dl. Paths in panic traces look like <code>C:/Users/…/main.go</code>; everything else matches.</li>
+        <li><b>macOS:</b> the .pkg from go.dev/dl, or <code>brew install go</code>.</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages can be old: check for 1.22 or later before trying method patterns.</li>
+        <li><b>No install?</b> The Go Playground (go.dev/play) runs the <code>httptest</code> programs in this chapter, though not a server you can visit from your browser.</li>
+      </ul>
+      <p class="os-note">This page shows Go 1.27.3. With <code>go vet</code>, Go 1.27.3 prints just the finding, as shown; Go 1.24.7 adds two header lines, <code># command-line-arguments</code> and <code># [command-line-arguments]</code>, (or the package's name, for the <code>kitchen</code> module) and starts the file name with <code>./</code>. Go 1.24.7's message for Boss 6 leaves out the type before <code>ctx.Done</code>. Everything else printed the same output under both versions.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>context (<code>context.Context</code>)</dt><dd>A value passed through a program that carries cancellation, a deadline, and a few request-scoped values.</dd>
+        <dt><code>context.Background()</code></dt><dd>The empty root context: never cancelled, no deadline, no values.</dd>
+        <dt>cancel function</dt><dd>The function returned by <code>WithCancel</code>, <code>WithTimeout</code> or <code>WithDeadline</code> that cancels the new context. Always call it, usually with <code>defer</code>.</dd>
+        <dt><code>ctx.Done()</code></dt><dd>A channel that is closed when the context is cancelled or times out.</dd>
+        <dt><code>ctx.Err()</code></dt><dd><code>nil</code> while the context is live; afterwards <code>context.Canceled</code> or <code>context.DeadlineExceeded</code>.</dd>
+        <dt>timeout, deadline</dt><dd>A length of time from now, or a moment on the clock, after which a context is cancelled automatically.</dd>
+        <dt>parent, child context</dt><dd>A context made from another; cancelling a parent cancels its children, never the reverse.</dd>
+        <dt>context leak</dt><dd>A context whose cancel function is never called, so it and its timer stay alive longer than needed.</dd>
+        <dt><code>context.Cause</code></dt><dd>Reads the error given to a <code>WithCancelCause</code> cancel function (or a timeout's cause).</dd>
+        <dt><code>context.WithoutCancel</code></dt><dd>Makes a child that keeps its parent's values but is never cancelled by it.</dd>
+        <dt>HTTP</dt><dd>The protocol browsers and servers use: a request goes out, a response comes back.</dd>
+        <dt>client, server</dt><dd>The program that sends requests (the customer), and the program that answers them (the restaurant).</dd>
+        <dt>request, response</dt><dd>The order ticket (method, path, headers, body) and the plate (status code, headers, body).</dd>
+        <dt>method</dt><dd>What kind of request: <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>HEAD</code> and others.</dd>
+        <dt>path</dt><dd>The part of a web address after the host and port, like <code>/hello/gopher</code>.</dd>
+        <dt>status code</dt><dd>A three-digit number saying how a request went: 2xx success, 3xx elsewhere, 4xx client's mistake, 5xx server's mistake.</dd>
+        <dt>header</dt><dd>A named note on a request or response, like <code>Content-Type</code> or <code>Allow</code>.</dd>
+        <dt>handler</dt><dd>Anything with a <code>ServeHTTP(w, r)</code> method; also a function of that shape, through <code>http.HandlerFunc</code>.</dd>
+        <dt><code>ServeMux</code> (mux)</dt><dd>A request router: it matches each request's method and path against patterns and calls the matching handler.</dd>
+        <dt>pattern, wildcard</dt><dd>A routing rule like <code>"GET /hello/{name}"</code>; <code>{name}</code> matches one path segment, <code>{rest...}</code> the remainder.</dd>
+        <dt><code>httptest</code></dt><dd>The standard package for testing HTTP code: <code>NewRequest</code>, <code>NewRecorder</code>, and <code>NewServer</code> for a real local server.</dd>
+        <dt>port</dt><dd>A numbered door on a computer that a server listens on, like 8080.</dd>
+        <dt>JSON API</dt><dd>A server whose requests and responses carry JSON for other programs to read.</dd>
+        <dt>middleware</dt><dd>A function that wraps a handler with extra work before and after it, returning a new handler.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://pkg.go.dev/context">The <code>context</code> package</a>, including the rules for using contexts at the top of its documentation.</li>
+        <li><a href="https://go.dev/blog/context">Go blog: Go Concurrency Patterns: Context</a>, and <a href="https://go.dev/blog/context-and-structs">Contexts and structs</a>, on why a context shouldn't live in a struct.</li>
+        <li><a href="https://pkg.go.dev/net/http">The <code>net/http</code> package</a> (see <code>ServeMux</code> for the pattern rules) and <a href="https://pkg.go.dev/net/http/httptest"><code>net/http/httptest</code></a>.</li>
+        <li><a href="https://go.dev/blog/routing-enhancements">Go blog: Routing Enhancements for Go 1.22</a>, which introduced methods and wildcards in patterns.</li>
+        <li><a href="https://go.dev/doc/articles/wiki/">Writing Web Applications</a>, the official tutorial that builds a small wiki server.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/context">Go by Example</a>: Context, HTTP Client and HTTP Server.</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests">Learn Go with Tests</a>: the “Context” and “HTTP Server” chapters, which build both test-first with <code>httptest</code>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #60 “Misunderstanding Go contexts”, #61 “Propagating an inappropriate context”, #80 “Forgetting the return statement after replying to an HTTP request” and #81 “Using the default HTTP client and server”.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>, <code>CGO_ENABLED=0</code>) on 2026-11-08, in <code>/home/you/go-ch26</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code>; <code>lostcancel.go</code> and <code>resp_vet.go</code> are terminal sessions that also run <code>go vet</code>. <code>kitchen_vet.go</code> is the session in panel 18 (<code>cd kitchen</code>, <code>go test -count=1</code>, <code>go vet .</code>) in the small module <code>kitchen</code>; its <code>kitchen.go</code> is also kept as <code>kitchen_vet.go</code>, the file the capture tool names the session after. That <code>go test</code> runs only some vet checks, and not lostcancel, is also what Go 1.27.3's own source says (the <code>-lostcancel</code> line is commented out of <code>defaultVetFlags</code> in <code>cmd/go/internal/test/test.go</code>). Runs happen in a fresh process namespace with address randomisation off, on a machine with 2 CPU cores. 60 programs were captured, plus <code>kitchen/kitchen.go</code> and <code>kitchen/kitchen_test.go</code> recorded as source. Only one varies from run to run, <code>kitchen_vet.go</code> (the test time on <code>go test</code>'s <samp>ok</samp> line), and it is shown as “one possible run”; every other program gave identical output on two runs. All HTTP traffic stays on the machine: handlers are called through <code>httptest.NewRecorder</code>, or a real <code>httptest.NewServer</code> on a random local port that is never printed, and no response's <code>Date</code> header is shown. Programs that race a timer use gaps of at least 100 ms against seconds (50 ms against 2 s in <code>timeout.go</code>) so the same case wins every time.</p>
+  <p>Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code>. Four differ: <code>boss_err.go</code> (the Compiler's message leaves out the type before <code>ctx.Done</code>), <code>lostcancel.go</code>, <code>kitchen_vet.go</code> and <code>resp_vet.go</code> (Go 1.24.7's <code>go vet</code> adds two header lines and a <code>./</code> before the file name; the panic in <code>resp_vet.go</code> differs only in a code address). Every other program printed the same output under both versions.</p>
+  <p>The walker, the Err and restaurant machines, the tracer, the map and the cancellation stepper are teaching models; each checks itself against those runs and shows a badge. In the tracer, each context is drawn with its parent, Done and Err as fields so you can watch them; the real types keep these in unexported fields, plus a set of children. The cancellation stepper is this chapter's own widget (<code>assets/ext/go-ch26.js</code>): it checks every screen line against the capture, that a cancelled context's children are cancelled in the same step, and that nothing becomes live again. Its picture shows one function per radio; <code>region</code> really shares HQ's context, and <code>scout</code> shares the team's.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the documentation of <code>context</code>, <code>net/http</code> (<code>ServeMux</code>) and <code>net/http/httptest</code>, read with <code>go doc</code> from the Go 1.27.3 toolchain; and, as summarised in this book's research map, Go by Example (Context, HTTP Client, HTTP Server), Learn Go with Tests (Context, HTTP Server, Revisiting HTTP Handlers), Concurrency in Go chapter 4, Learning Go 2nd edition chapters 13 and 14, The Go Programming Language sections 1.5 to 1.7 and 7.7, boot.dev's HTTP servers and clients courses, the official “Writing Web Applications” tutorial, roadmap.sh's Go roadmap (context, net/http), Ardan Labs' context material, and 100 Go Mistakes (#60, #61, #80, #81).</p>
+  <p>Scoot, Hana the host, Wes the waiter, the kitchen helpers, the walkie-talkies, the Compiler, Specs (go vet), the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

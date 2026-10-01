@@ -1,0 +1,1013 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "go",
+  "capturedWith": [
+   "Go 1.27.3",
+   "Go 1.24.7"
+  ],
+  "primary": "Go 1.27.3",
+  "date": "2026-11-08",
+  "workdir": "/home/you/go-ch22",
+  "versionDifferences": [
+   "dice.go",
+   "now.go",
+   "secrets.go",
+   "uuid_parse.go",
+   "v2.go",
+   "vet_tag.go"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): dice.go, now.go, secrets.go, uuid_parse.go, v2.go, vet_tag.go."
+ },
+ "programs": {
+  "anymap.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tdata := []byte(`{\"to\": \"Ana\", \"kg\": 2, \"tags\": [\"fragile\", \"gift\"], \"insured\": true, \"note\": null}`)\n\tvar m map[string]any\n\tif err := json.Unmarshal(data, &m); err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Println(m)\n\tfor _, k := range []string{\"to\", \"kg\", \"tags\", \"insured\", \"note\"} {\n\t\tfmt.Printf(\"%-8s %-14T %v\\n\", k, m[k], m[k])\n\t}\n\tkg := m[\"kg\"].(float64)\n\tfmt.Println(\"double weight:\", kg*2)\n}\n",
+   "stdout": "map[insured:true kg:2 note:<nil> tags:[fragile gift] to:Ana]\nto       string         Ana\nkg       float64        2\ntags     []interface {} [fragile gift]\ninsured  bool           true\nnote     <nil>          <nil>\ndouble weight: 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run anymap.go",
+     "out": "map[insured:true kg:2 note:<nil> tags:[fragile gift] to:Ana]\nto       string         Ana\nkg       float64        2\ntags     []interface {} [fragile gift]\ninsured  bool           true\nnote     <nil>          <nil>\ndouble weight: 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bare_int.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc deliverWithin(limit time.Duration) {\n\tfmt.Println(\"deliver within\", limit)\n}\n\nfunc main() {\n\tdeliverWithin(30) // meant: 30 minutes\n\tdeliverWithin(30 * time.Minute)\n\n\tmins := 30\n\tdeliverWithin(time.Duration(mins) * time.Minute)\n}\n",
+   "stdout": "deliver within 30ns\ndeliver within 30m0s\ndeliver within 30m0s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run bare_int.go",
+     "out": "deliver within 30ns\ndeliver within 30m0s\ndeliver within 30m0s\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_err.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tpause := 3\n\ttime.Sleep(pause * time.Second)\n\tfmt.Println(\"rested\")\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./boss_err.go:10:13: invalid operation: pause * time.Second (mismatched types int and time.Duration)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run boss_err.go",
+     "out": "",
+     "err": "# command-line-arguments\n./boss_err.go:10:13: invalid operation: pause * time.Second (mismatched types int and time.Duration)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_fill.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Stamp struct {\n\tCity string `json:\"city\"`\n\tDay  string `json:\"day\"`\n}\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\ts := Stamp{City: \"Oslo\", Day: t.Format(\"2006-01-02\")}\n\tb, _ := json.Marshal(s)\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\"city\":\"Oslo\",\"day\":\"2026-07-09\"}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_fill.go",
+     "out": "{\"city\":\"Oslo\",\"day\":\"2026-07-09\"}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Job struct {\n\tTo   string `json:\"to\"`\n\tMins int    `json:\"mins\"`\n}\n\nfunc main() {\n\tstart := time.Date(2026, time.July, 9, 16, 0, 0, 0, time.UTC)\n\tvar j Job\n\terr := json.Unmarshal([]byte(`{\"to\": \"Ana\", \"mins\": 45}`), &j)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tdue := start.Add(time.Duration(j.Mins) * time.Minute)\n\tfmt.Println(j.To, \"by\", due.Format(\"15:04\"))\n}\n",
+   "stdout": "Ana by 16:45\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons.go",
+     "out": "Ana by 16:45\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons_alt.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Job struct {\n\tTo   string `json:\"to\"`\n\tMins int    `json:\"mins\"`\n}\n\nfunc main() {\n\tstart := time.Date(2026, time.July, 9, 16, 0, 0, 0, time.UTC)\n\tvar j Job\n\terr := json.Unmarshal([]byte(`{\"to\": \"Ana\", \"mins\": 45}`), &j)\n\tdue := start.Add(time.Duration(j.Mins) * time.Minute)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Println(j.To, \"by\", due.Format(\"15:04\"))\n}\n",
+   "stdout": "Ana by 16:45\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_parsons_alt.go",
+     "out": "Ana by 16:45\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Delivery struct {\n\tID   int       `json:\"id\"`\n\tAt   time.Time `json:\"at\"`\n\tNote string    `json:\"note,omitempty\"`\n\tpin  string\n}\n\nfunc main() {\n\td := Delivery{ID: 3, At: time.Date(2026, time.July, 9, 16, 45, 0, 0, time.UTC), pin: \"77\"}\n\tb, err := json.Marshal(d)\n\tfmt.Println(string(b), err)\n}\n",
+   "stdout": "{\"id\":3,\"at\":\"2026-07-09T16:45:00Z\"} <nil>\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_predict.go",
+     "out": "{\"id\":3,\"at\":\"2026-07-09T16:45:00Z\"} <nil>\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\t// The form from Rome is written day/month/year.\n\tform := \"09/07/2026\"\n\tarrives, err := time.Parse(\"01/02/2006\", form)\n\tif err != nil {\n\t\tfmt.Println(\"bad date:\", err)\n\t\treturn\n\t}\n\tfmt.Println(\"arrives on\", arrives.Format(\"2 January 2006\"))\n}\n",
+   "stdout": "arrives on 7 September 2026\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_spot.go",
+     "out": "arrives on 7 September 2026\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"strings\"\n\t\"time\"\n)\n\ntype Leg struct {\n\tHub  string `json:\"hub\"`\n\tMins int    `json:\"mins\"`\n}\n\nfunc main() {\n\tdec := json.NewDecoder(strings.NewReader(`{\"hub\":\"Oslo\",\"mins\":40} {\"hub\":\"Rome\",\"mins\":95} {\"hub\":\"Lima\",\"mins\":30}`))\n\tclock := time.Date(2026, time.July, 9, 8, 0, 0, 0, time.UTC)\n\tfor {\n\t\tvar leg Leg\n\t\tif err := dec.Decode(&leg); err == io.EOF {\n\t\t\tbreak\n\t\t} else if err != nil {\n\t\t\tfmt.Println(\"error:\", err)\n\t\t\treturn\n\t\t}\n\t\ttook := time.Duration(leg.Mins) * time.Minute\n\t\tclock = clock.Add(took)\n\t\tfmt.Println(leg.Hub, took, clock.Format(\"15:04\"))\n\t}\n}\n",
+   "stdout": "Oslo 40m0s 08:40\nRome 1h35m0s 10:15\nLima 30m0s 10:45\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run boss_trace.go",
+     "out": "Oslo 40m0s 08:40\nRome 1h35m0s 10:15\nLima 30m0s 10:45\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "csv_bad.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/csv\"\n\t\"fmt\"\n\t\"log\"\n\t\"strings\"\n)\n\nfunc main() {\n\tlog.SetFlags(0)\n\tr := csv.NewReader(strings.NewReader(\"name,kg\\nAna,3\\nBo\\n\"))\n\trows, err := r.ReadAll()\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(rows)\n}\n",
+   "stdout": "",
+   "stderr": "record on line 3: wrong number of fields\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run csv_bad.go",
+     "out": "",
+     "err": "record on line 3: wrong number of fields\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "csv_read.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/csv\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc main() {\n\tdata := `name,city,kg\nAna,Oslo,2.5\n\"Bo, Jr.\",Rome,1\nCy,Lima,4`\n\tr := csv.NewReader(strings.NewReader(data))\n\trows, err := r.ReadAll()\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfor i, row := range rows {\n\t\tfmt.Println(i, len(row), row)\n\t}\n\n\tw := csv.NewWriter(os.Stdout)\n\tw.Write([]string{\"name\", \"note\"})\n\tw.Write([]string{\"Di\", `says \"hi\", twice`})\n\tw.Flush()\n\tif err := w.Error(); err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t}\n}\n",
+   "stdout": "0 3 [name city kg]\n1 3 [Ana Oslo 2.5]\n2 3 [Bo, Jr. Rome 1]\n3 3 [Cy Lima 4]\nname,note\nDi,\"says \"\"hi\"\", twice\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run csv_read.go",
+     "out": "0 3 [name city kg]\n1 3 [Ana Oslo 2.5]\n2 3 [Bo, Jr. Rome 1]\n3 3 [Cy Lima 4]\nname,note\nDi,\"says \"\"hi\"\", twice\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "date.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tfmt.Println(t)\n\tfmt.Println(t.Year(), t.Month(), t.Day())\n\tfmt.Println(t.Hour(), t.Minute(), t.Second())\n\tfmt.Println(t.Weekday(), \"is day\", t.YearDay(), \"of the year\")\n\n\tlater := time.Date(2026, time.July, 40, 0, 0, 0, 0, time.UTC)\n\tfmt.Println(later.Format(time.DateOnly))\n}\n",
+   "stdout": "2026-07-09 16:45:30 +0000 UTC\n2026 July 9\n16 45 30\nThursday is day 190 of the year\n2026-08-09\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run date.go",
+     "out": "2026-07-09 16:45:30 +0000 UTC\n2026 July 9\n16 45 30\nThursday is day 190 of the year\n2026-08-09\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "decoder.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strings\"\n)\n\ntype Scan struct {\n\tID  int    `json:\"id\"`\n\tHub string `json:\"hub\"`\n}\n\nfunc main() {\n\tfeed := strings.NewReader(`{\"id\": 1, \"hub\": \"Oslo\"}\n{\"id\": 1, \"hub\": \"Rome\"}\n{\"id\": 2, \"hub\": \"Lima\"}`)\n\tdec := json.NewDecoder(feed)\n\tfor {\n\t\tvar s Scan\n\t\terr := dec.Decode(&s)\n\t\tif err == io.EOF {\n\t\t\tbreak\n\t\t}\n\t\tif err != nil {\n\t\t\tfmt.Println(\"error:\", err)\n\t\t\treturn\n\t\t}\n\t\tfmt.Printf(\"parcel %d reached %s\\n\", s.ID, s.Hub)\n\t}\n\tenc := json.NewEncoder(os.Stdout)\n\tenc.Encode(Scan{ID: 3, Hub: \"Pune\"})\n}\n",
+   "stdout": "parcel 1 reached Oslo\nparcel 1 reached Rome\nparcel 2 reached Lima\n{\"id\":3,\"hub\":\"Pune\"}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run decoder.go",
+     "out": "parcel 1 reached Oslo\nparcel 1 reached Rome\nparcel 2 reached Lima\n{\"id\":3,\"hub\":\"Pune\"}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "dice.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"math/rand/v2\"\n)\n\nfunc main() {\n\tcouriers := []string{\"Scoot\", \"Ana\", \"Bo\"}\n\tfmt.Println(rand.IntN(100), rand.IntN(100))\n\tfmt.Println(\"die:\", rand.IntN(6)+1)\n\tfmt.Println(\"courier:\", couriers[rand.IntN(len(couriers))])\n}\n",
+   "stdout": "36 6\ndie: 3\ncourier: Bo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run dice.go",
+     "out": "44 3\ndie: 3\ncourier: Ana\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go run dice.go",
+     "out": "93 35\ndie: 1\ncourier: Ana\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go run dice.go",
+     "out": "36 6\ndie: 3\ncourier: Bo\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "83 26\ndie: 2\ncourier: Ana\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run dice.go",
+      "out": "95 1\ndie: 6\ncourier: Bo\n",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "go run dice.go",
+      "out": "3 58\ndie: 6\ncourier: Bo\n",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "go run dice.go",
+      "out": "83 26\ndie: 2\ncourier: Ana\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "dur_m.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tfmt.Println(90 * time.Second)\n\tfmt.Println(1500 * time.Millisecond)\n\tfmt.Println(2*time.Hour + 30*time.Minute)\n\tfmt.Println(45 * time.Minute * 2)\n\tfmt.Println(time.Duration(5))\n\tfmt.Println((100 * time.Minute).Round(time.Hour))\n\td, err := time.ParseDuration(\"1h15m\")\n\tfmt.Println(d, err)\n}\n",
+   "stdout": "1m30s\n1.5s\n2h30m0s\n1h30m0s\n5ns\n2h0m0s\n1h15m0s <nil>\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run dur_m.go",
+     "out": "1m30s\n1.5s\n2h30m0s\n1h30m0s\n5ns\n2h0m0s\n1h15m0s <nil>\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "dur_mismatch.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc deliverWithin(limit time.Duration) {\n\tfmt.Println(\"deliver within\", limit)\n}\n\nfunc main() {\n\tmins := 30\n\tdeliverWithin(mins * time.Minute)\n}\n",
+   "stdout": "",
+   "stderr": "# command-line-arguments\n./dur_mismatch.go:14:16: invalid operation: mins * time.Minute (mismatched types int and time.Duration)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run dur_mismatch.go",
+     "out": "",
+     "err": "# command-line-arguments\n./dur_mismatch.go:14:16: invalid operation: mins * time.Minute (mismatched types int and time.Duration)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "durations.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\td := 90 * time.Second\n\tfmt.Println(d)\n\tfmt.Println(1500 * time.Millisecond)\n\tfmt.Println(2*time.Hour + 15*time.Minute)\n\tfmt.Println(d.Seconds(), d.Minutes())\n\tfmt.Println(int64(d))\n\n\tstart := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tdue := start.Add(36 * time.Hour)\n\tfmt.Println(due.Format(\"Mon 15:04\"))\n\tfmt.Println(due.Sub(start))\n\tfmt.Println(start.AddDate(0, 1, 0).Format(time.DateOnly))\n}\n",
+   "stdout": "1m30s\n1.5s\n2h15m0s\n90 1.5\n90000000000\nSat 04:45\n36h0m0s\n2026-08-09\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run durations.go",
+     "out": "1m30s\n1.5s\n2h15m0s\n90 1.5\n90000000000\nSat 04:45\n36h0m0s\n2026-08-09\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_dur.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tstops := 4\n\tperStop := 15 * time.Minute\n\ttotal := time.Duration(stops) * perStop\n\tfmt.Println(\"round trip:\", total)\n}\n",
+   "stdout": "round trip: 1h0m0s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_dur.go",
+     "out": "round trip: 1h0m0s\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_layout.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tfmt.Println(\"stamped:\", t.Format(\"02/01/2006 15:04\"))\n}\n",
+   "stdout": "stamped: 09/07/2026 16:45\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_layout.go",
+     "out": "stamped: 09/07/2026 16:45\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_omit.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Contact struct {\n\tName  string `json:\"name\"`\n\tPhone string `json:\"phone,omitempty\"`\n}\n\nfunc main() {\n\ta, _ := json.Marshal(Contact{Name: \"Ana\", Phone: \"555-0101\"})\n\tb, _ := json.Marshal(Contact{Name: \"Bo\"})\n\tfmt.Println(string(a))\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\"name\":\"Ana\",\"phone\":\"555-0101\"}\n{\"name\":\"Bo\"}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run fill_omit.go",
+     "out": "{\"name\":\"Ana\",\"phone\":\"555-0101\"}\n{\"name\":\"Bo\"}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "first_marshal.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID      int\n\tTo      string\n\tKg      float64\n\tFragile bool\n}\n\nfunc main() {\n\tp := Parcel{ID: 7, To: \"Ana\", Kg: 2.5, Fragile: true}\n\tb, err := json.Marshal(p)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Println(string(b))\n\tfmt.Println(len(b), \"bytes\")\n}\n",
+   "stdout": "{\"ID\":7,\"To\":\"Ana\",\"Kg\":2.5,\"Fragile\":true}\n43 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run first_marshal.go",
+     "out": "{\"ID\":7,\"To\":\"Ana\",\"Kg\":2.5,\"Fragile\":true}\n43 bytes\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "format.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tlayouts := []string{\n\t\t\"2006-01-02\",\n\t\t\"02/01/2006\",\n\t\t\"01/02/2006\",\n\t\t\"Jan 2, 2006\",\n\t\t\"Monday, 2 January 2006\",\n\t\t\"15:04\",\n\t\t\"3:04 PM\",\n\t\t\"Mon 3:04pm\",\n\t\t\"2006-01-02 15:04:05\",\n\t\ttime.RFC3339,\n\t\ttime.Kitchen,\n\t}\n\tfor _, layout := range layouts {\n\t\tfmt.Println(layout, \"=>\", t.Format(layout))\n\t}\n}\n",
+   "stdout": "2006-01-02 => 2026-07-09\n02/01/2006 => 09/07/2026\n01/02/2006 => 07/09/2026\nJan 2, 2006 => Jul 9, 2026\nMonday, 2 January 2006 => Thursday, 9 July 2026\n15:04 => 16:45\n3:04 PM => 4:45 PM\nMon 3:04pm => Thu 4:45pm\n2006-01-02 15:04:05 => 2026-07-09 16:45:30\n2006-01-02T15:04:05Z07:00 => 2026-07-09T16:45:30Z\n3:04PM => 4:45PM\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run format.go",
+     "out": "2006-01-02 => 2026-07-09\n02/01/2006 => 09/07/2026\n01/02/2006 => 07/09/2026\nJan 2, 2006 => Jul 9, 2026\nMonday, 2 January 2006 => Thursday, 9 July 2026\n15:04 => 16:45\n3:04 PM => 4:45 PM\nMon 3:04pm => Thu 4:45pm\n2006-01-02 15:04:05 => 2026-07-09 16:45:30\n2006-01-02T15:04:05Z07:00 => 2026-07-09T16:45:30Z\n3:04PM => 4:45PM\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "html_escape.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tb, err := json.Marshal(\"<b>Tea & cake</b>\")\n\tfmt.Println(string(b), err)\n}\n",
+   "stdout": "\"\\u003cb\\u003eTea \\u0026 cake\\u003c/b\\u003e\" <nil>\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run html_escape.go",
+     "out": "\"\\u003cb\\u003eTea \\u0026 cake\\u003c/b\\u003e\" <nil>\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "indent.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Item struct {\n\tName string `json:\"name\"`\n\tQty  int    `json:\"qty\"`\n}\n\ntype Order struct {\n\tID    int    `json:\"id\"`\n\tItems []Item `json:\"items\"`\n}\n\nfunc main() {\n\to := Order{ID: 12, Items: []Item{{\"tea\", 2}, {\"cake\", 1}}}\n\tb, _ := json.MarshalIndent(o, \"\", \"  \")\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\n  \"id\": 12,\n  \"items\": [\n    {\n      \"name\": \"tea\",\n      \"qty\": 2\n    },\n    {\n      \"name\": \"cake\",\n      \"qty\": 1\n    }\n  ]\n}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run indent.go",
+     "out": "{\n  \"id\": 12,\n  \"items\": [\n    {\n      \"name\": \"tea\",\n      \"qty\": 2\n    },\n    {\n      \"name\": \"cake\",\n      \"qty\": 1\n    }\n  ]\n}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "marshal_chan.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n)\n\nfunc main() {\n\tlog.SetFlags(0)\n\tb, err := json.Marshal(make(chan int))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "",
+   "stderr": "json: unsupported type: chan int\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run marshal_chan.go",
+     "out": "",
+     "err": "json: unsupported type: chan int\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "marshal_m.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID int    `json:\"id\"`\n\tTo string `json:\"to\"`\n}\n\nfunc show(v any) {\n\tb, err := json.Marshal(v)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Println(string(b))\n}\n\nfunc main() {\n\tshow(Parcel{ID: 7, To: \"Ana\"})\n\tshow([]int{3, 1, 2})\n\tshow(map[string]int{\"tea\": 2, \"cake\": 1})\n\tshow(\"say \\\"hi\\\"\")\n\tshow(true)\n\tshow([]string(nil))\n\tshow(2.50)\n}\n",
+   "stdout": "{\"id\":7,\"to\":\"Ana\"}\n[3,1,2]\n{\"cake\":1,\"tea\":2}\n\"say \\\"hi\\\"\"\ntrue\nnull\n2.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run marshal_m.go",
+     "out": "{\"id\":7,\"to\":\"Ana\"}\n[3,1,2]\n{\"cake\":1,\"tea\":2}\n\"say \\\"hi\\\"\"\ntrue\nnull\n2.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "now.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tstart := time.Now()\n\tfmt.Println(\"now:\", start)\n\tfmt.Println(\"in UTC:\", start.UTC().Format(time.RFC3339))\n\ttime.Sleep(250 * time.Millisecond)\n\tfmt.Println(\"slept for\", time.Since(start))\n\tfmt.Println(\"rounded:\", time.Since(start).Round(10*time.Millisecond))\n}\n",
+   "stdout": "now: 2026-11-08 18:57:35.049154319 +0000 UTC m=+0.000020398\nin UTC: 2026-11-08T18:57:35Z\nslept for 250.546124ms\nrounded: 250ms\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run now.go",
+     "out": "now: 2026-11-08 18:57:35.049154319 +0000 UTC m=+0.000020398\nin UTC: 2026-11-08T18:57:35Z\nslept for 250.546124ms\nrounded: 250ms\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "now: 2026-11-08 18:57:35.707408291 +0000 UTC m=+0.000021994\nin UTC: 2026-11-08T18:57:35Z\nslept for 250.639467ms\nrounded: 250ms\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "go run now.go",
+      "out": "now: 2026-11-08 18:57:35.707408291 +0000 UTC m=+0.000021994\nin UTC: 2026-11-08T18:57:35Z\nslept for 250.639467ms\nrounded: 250ms\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "omit_struct.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Delivery struct {\n\tID   int       `json:\"id\"`\n\tNote string    `json:\"note,omitempty\"`\n\tAt   time.Time `json:\"at,omitempty\"`\n\tDone time.Time `json:\"done,omitzero\"`\n}\n\nfunc main() {\n\tb, _ := json.Marshal(Delivery{ID: 1}) // Note, At and Done all hold zero values\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\"id\":1,\"at\":\"0001-01-01T00:00:00Z\"}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run omit_struct.go",
+     "out": "{\"id\":1,\"at\":\"0001-01-01T00:00:00Z\"}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parse.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt, err := time.Parse(\"2006-01-02 15:04\", \"2026-07-09 16:45\")\n\tfmt.Println(t, err)\n\n\t_, err = time.Parse(\"2006-01-02\", \"07/11/2026\")\n\tfmt.Println(err)\n\n\t_, err = time.Parse(\"2006-01-02\", \"2026-02-30\")\n\tfmt.Println(err)\n\n\td, err := time.Parse(\"02/01/2006\", \"07/11/2026\")\n\tfmt.Println(d.Format(\"2 January 2006\"), err)\n}\n",
+   "stdout": "2026-07-09 16:45:00 +0000 UTC <nil>\nparsing time \"07/11/2026\" as \"2006-01-02\": cannot parse \"07/11/2026\" as \"2006\"\nparsing time \"2026-02-30\": day out of range\n7 November 2026 <nil>\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parse.go",
+     "out": "2026-07-09 16:45:00 +0000 UTC <nil>\nparsing time \"07/11/2026\" as \"2006-01-02\": cannot parse \"07/11/2026\" as \"2006\"\nparsing time \"2026-02-30\": day out of range\n7 November 2026 <nil>\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parse_dur_bad.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"log\"\n\t\"time\"\n)\n\nfunc main() {\n\tlog.SetFlags(0)\n\td, err := time.ParseDuration(\"5 minutes\")\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(d)\n}\n",
+   "stdout": "",
+   "stderr": "time: unknown unit \" minutes\" in duration \"5 minutes\"\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run parse_dur_bad.go",
+     "out": "",
+     "err": "time: unknown unit \" minutes\" in duration \"5 minutes\"\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "parsons_csv.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/csv\"\n\t\"fmt\"\n\t\"strings\"\n)\n\nfunc main() {\n\tr := csv.NewReader(strings.NewReader(\"Ana,2\\nBo,5\\n\"))\n\trows, err := r.ReadAll()\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfor _, row := range rows {\n\t\tfmt.Println(row[0], \"carries\", row[1], \"kg\")\n\t}\n}\n",
+   "stdout": "Ana carries 2 kg\nBo carries 5 kg\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_csv.go",
+     "out": "Ana carries 2 kg\nBo carries 5 kg\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_csv_alt.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/csv\"\n\t\"fmt\"\n\t\"strings\"\n)\n\nfunc main() {\n\tr := csv.NewReader(strings.NewReader(\"Ana,2\\nBo,5\\n\"))\n\trows, err := r.ReadAll()\n\tfor _, row := range rows {\n\t\tfmt.Println(row[0], \"carries\", row[1], \"kg\")\n\t}\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n}\n",
+   "stdout": "Ana carries 2 kg\nBo carries 5 kg\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_csv_alt.go",
+     "out": "Ana carries 2 kg\nBo carries 5 kg\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_parse.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt, err := time.Parse(\"2006-01-02\", \"2026-12-24\")\n\tif err != nil {\n\t\tfmt.Println(\"bad date:\", err)\n\t\treturn\n\t}\n\tfmt.Println(t.Format(\"Monday, 2 January\"))\n}\n",
+   "stdout": "Thursday, 24 December\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run parsons_parse.go",
+     "out": "Thursday, 24 December\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_any.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tvar m map[string]any\n\tif err := json.Unmarshal([]byte(`{\"count\": 3, \"name\": \"tea\"}`), &m); err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Printf(\"%T\\n\", m[\"count\"])\n\tfmt.Printf(\"%T\\n\", m[\"name\"])\n\tfmt.Println(m[\"count\"] == 3)\n}\n",
+   "stdout": "float64\nstring\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_any.go",
+     "out": "float64\nstring\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_dur.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\td := 150 * time.Second\n\tfmt.Println(d)\n\tfmt.Println(d.Minutes())\n\tfmt.Println(d / 2)\n}\n",
+   "stdout": "2m30s\n2.5\n1m15s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_dur.go",
+     "out": "2m30s\n2.5\n1m15s\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_format.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.March, 5, 9, 7, 0, 0, time.UTC)\n\tfmt.Println(t.Format(\"Jan 2 at 3:04pm\"))\n\tfmt.Println(t.Format(\"02.01.2006\"))\n}\n",
+   "stdout": "Mar 5 at 9:07am\n05.03.2026\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_format.go",
+     "out": "Mar 5 at 9:07am\n05.03.2026\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_tags.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Courier struct {\n\tName  string `json:\"name\"`\n\tBike  string `json:\"bike,omitempty\"`\n\tTrips int    `json:\"trips\"`\n\tPIN   string `json:\"-\"`\n}\n\nfunc main() {\n\tc := Courier{Name: \"Scoot\", Trips: 0, PIN: \"0042\"}\n\tb, _ := json.Marshal(c)\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\"name\":\"Scoot\",\"trips\":0}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_tags.go",
+     "out": "{\"name\":\"Scoot\",\"trips\":0}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_unmarshal.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Prefs struct {\n\tLang  string `json:\"lang\"`\n\tTheme string `json:\"theme\"`\n\tSize  int    `json:\"size\"`\n}\n\nfunc main() {\n\tp := Prefs{Lang: \"en\", Theme: \"light\", Size: 12}\n\terr := json.Unmarshal([]byte(`{\"theme\": \"dark\", \"size\": 16}`), &p)\n\tfmt.Println(err)\n\tfmt.Println(p.Lang, p.Theme, p.Size)\n}\n",
+   "stdout": "<nil>\nen dark 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run predict_unmarshal.go",
+     "out": "<nil>\nen dark 16\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "secrets.go": {
+   "src": "package main\n\nimport (\n\t\"crypto/rand\"\n\t\"fmt\"\n\t\"uuid\"\n)\n\nfunc main() {\n\tfmt.Println(\"reset code:\", rand.Text())\n\tfmt.Println(\"uuid.New():  \", uuid.New())\n\tfmt.Println(\"uuid.NewV7():\", uuid.NewV7())\n}\n",
+   "stdout": "reset code: VVKC654HNMK7BS46YI3CA7J4T7\nuuid.New():   2a153996-9899-4654-b8cf-9702ae07bd4c\nuuid.NewV7(): 01a1bc86-09cc-7ac4-8e0e-812ce9a5fa38\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run secrets.go",
+     "out": "reset code: VVKC654HNMK7BS46YI3CA7J4T7\nuuid.New():   2a153996-9899-4654-b8cf-9702ae07bd4c\nuuid.NewV7(): 01a1bc86-09cc-7ac4-8e0e-812ce9a5fa38\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "secrets.go:6:2: package uuid is not in std (/usr/local/go1.24.7/src/uuid)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run secrets.go",
+      "out": "",
+      "err": "secrets.go:6:2: package uuid is not in std (/usr/local/go1.24.7/src/uuid)\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "seeded.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"math/rand/v2\"\n)\n\nfunc main() {\n\tr := rand.New(rand.NewPCG(1, 2))\n\tfmt.Println(r.IntN(100), r.IntN(100))\n\n\tagain := rand.New(rand.NewPCG(1, 2))\n\tfmt.Println(again.IntN(100), again.IntN(100))\n\n\tdeck := []string{\"A\", \"B\", \"C\", \"D\"}\n\tr.Shuffle(len(deck), func(i, j int) {\n\t\tdeck[i], deck[j] = deck[j], deck[i]\n\t})\n\tfmt.Println(deck)\n}\n",
+   "stdout": "76 61\n76 61\n[B D C A]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run seeded.go",
+     "out": "76 61\n76 61\n[B D C A]\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go run seeded.go",
+     "out": "76 61\n76 61\n[B D C A]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_bare.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype Config struct {\n\tRetries int\n\tTimeout time.Duration\n}\n\nfunc main() {\n\tc := Config{Retries: 3, Timeout: 5}\n\tfmt.Println(\"retries:\", c.Retries)\n\tfmt.Println(\"give up after:\", c.Timeout)\n}\n",
+   "stdout": "retries: 3\ngive up after: 5ns\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_bare.go",
+     "out": "retries: 3\ngive up after: 5ns\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_lower.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Receipt struct {\n\tShop  string  `json:\"shop\"`\n\ttotal float64 `json:\"total\"`\n\tPaid  bool    `json:\"paid\"`\n}\n\nfunc main() {\n\tr := Receipt{Shop: \"Tea Hut\", total: 4.5, Paid: true}\n\tb, _ := json.Marshal(r)\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "{\"shop\":\"Tea Hut\",\"paid\":true}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_lower.go",
+     "out": "{\"shop\":\"Tea Hut\",\"paid\":true}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_pointer.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID int    `json:\"id\"`\n\tTo string `json:\"to\"`\n}\n\nfunc main() {\n\tvar p Parcel\n\terr := json.Unmarshal([]byte(`{\"id\": 5, \"to\": \"Di\"}`), p)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t}\n\tfmt.Printf(\"%+v\\n\", p)\n}\n",
+   "stdout": "error: json: Unmarshal(non-pointer main.Parcel)\n{ID:0 To:}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_pointer.go",
+     "out": "error: json: Unmarshal(non-pointer main.Parcel)\n{ID:0 To:}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_yyyy.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tdelivered := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tstamp := delivered.Format(\"2006-01-02 15:01\")\n\tfmt.Println(\"delivered at\", stamp)\n}\n",
+   "stdout": "delivered at 2026-07-09 16:07\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run spot_yyyy.go",
+     "out": "delivered at 2026-07-09 16:07\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "syntax_err.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n)\n\ntype U struct {\n\tName string `json:\"name\"`\n\tAge  int    `json:\"age\"`\n}\n\nfunc main() {\n\tlog.SetFlags(0)\n\tvar u U\n\terr := json.Unmarshal([]byte(`{\"name\": \"Ana\", \"age\": 3,}`), &u)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Printf(\"%+v\\n\", u)\n}\n",
+   "stdout": "",
+   "stderr": "invalid character '}' looking for beginning of object key string\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run syntax_err.go",
+     "out": "",
+     "err": "invalid character '}' looking for beginning of object key string\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "tags.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID     int      `json:\"id\"`\n\tTo     string   `json:\"to\"`\n\tKg     float64  `json:\"weight_kg\"`\n\tNote   string   `json:\"note,omitempty\"`\n\tItems  []string `json:\"items,omitempty\"`\n\tSecret string   `json:\"-\"`\n}\n\nfunc main() {\n\ta := Parcel{ID: 7, To: \"Ana\", Kg: 2.5, Note: \"ring twice\", Items: []string{\"book\", \"tea\"}, Secret: \"1234\"}\n\tb := Parcel{ID: 8, To: \"Bo\", Kg: 1}\n\tja, _ := json.Marshal(a) // Marshal can't fail for these field types\n\tjb, _ := json.Marshal(b)\n\tfmt.Println(string(ja))\n\tfmt.Println(string(jb))\n}\n",
+   "stdout": "{\"id\":7,\"to\":\"Ana\",\"weight_kg\":2.5,\"note\":\"ring twice\",\"items\":[\"book\",\"tea\"]}\n{\"id\":8,\"to\":\"Bo\",\"weight_kg\":1}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run tags.go",
+     "out": "{\"id\":7,\"to\":\"Ana\",\"weight_kg\":2.5,\"note\":\"ring twice\",\"items\":[\"book\",\"tea\"]}\n{\"id\":8,\"to\":\"Bo\",\"weight_kg\":1}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ticker.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tticker := time.NewTicker(100 * time.Millisecond)\n\tdefer ticker.Stop()\n\tfor i := 1; i <= 3; i++ {\n\t\t<-ticker.C // wait here for the next tick\n\t\tfmt.Println(\"tick\", i)\n\t}\n\n\ttimer := time.NewTimer(50 * time.Millisecond)\n\t<-timer.C // a timer rings once\n\tfmt.Println(\"timer rang\")\n}\n",
+   "stdout": "tick 1\ntick 2\ntick 3\ntimer rang\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run ticker.go",
+     "out": "tick 1\ntick 2\ntick 3\ntimer rang\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tokens.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\ttokens := []string{\n\t\t\"2006\", \"06\", // year\n\t\t\"01\", \"1\", \"Jan\", \"January\", // month\n\t\t\"02\", \"2\", \"_2\", // day\n\t\t\"Mon\", \"Monday\", // weekday\n\t\t\"15\", \"03\", \"3\", // hour\n\t\t\"04\", \"05\", // minute, second\n\t\t\"PM\", \"pm\", // half of the day\n\t\t\"MST\", \"-0700\", // zone\n\t}\n\tfor _, tok := range tokens {\n\t\tfmt.Printf(\"%s => [%s]\\n\", tok, t.Format(tok))\n\t}\n}\n",
+   "stdout": "2006 => [2026]\n06 => [26]\n01 => [07]\n1 => [7]\nJan => [Jul]\nJanuary => [July]\n02 => [09]\n2 => [9]\n_2 => [ 9]\nMon => [Thu]\nMonday => [Thursday]\n15 => [16]\n03 => [04]\n3 => [4]\n04 => [45]\n05 => [30]\nPM => [PM]\npm => [pm]\nMST => [UTC]\n-0700 => [+0000]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run tokens.go",
+     "out": "2006 => [2026]\n06 => [26]\n01 => [07]\n1 => [7]\nJan => [Jul]\nJanuary => [July]\n02 => [09]\n2 => [9]\n_2 => [ 9]\nMon => [Thu]\nMonday => [Thursday]\n15 => [16]\n03 => [04]\n3 => [4]\n04 => [45]\n05 => [30]\nPM => [PM]\npm => [pm]\nMST => [UTC]\n-0700 => [+0000]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_add.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tclock := time.Date(2026, time.July, 9, 9, 0, 0, 0, time.UTC)\n\tlegs := []time.Duration{25 * time.Minute, 70 * time.Minute, 45 * time.Minute, 2 * time.Hour}\n\tfor i, leg := range legs {\n\t\tclock = clock.Add(leg)\n\t\tfmt.Println(i+1, leg, clock.Format(\"15:04\"))\n\t}\n}\n",
+   "stdout": "1 25m0s 09:25\n2 1h10m0s 10:35\n3 45m0s 11:20\n4 2h0m0s 13:20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_add.go",
+     "out": "1 25m0s 09:25\n2 1h10m0s 10:35\n3 45m0s 11:20\n4 2h0m0s 13:20\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_decoder.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"strings\"\n)\n\ntype Line struct {\n\tItem string `json:\"item\"`\n\tQty  int    `json:\"qty\"`\n}\n\nfunc main() {\n\tdec := json.NewDecoder(strings.NewReader(`{\"item\":\"tea\",\"qty\":2} {\"item\":\"cake\",\"qty\":3} {\"qty\":4} {\"item\":\"jam\"}`))\n\ttotal := 0\n\tfor {\n\t\tvar l Line\n\t\tif err := dec.Decode(&l); err == io.EOF {\n\t\t\tbreak\n\t\t} else if err != nil {\n\t\t\tfmt.Println(\"error:\", err)\n\t\t\treturn\n\t\t}\n\t\ttotal += l.Qty\n\t\tfmt.Printf(\"%q %d %d\\n\", l.Item, l.Qty, total)\n\t}\n}\n",
+   "stdout": "\"tea\" 2 2\n\"cake\" 3 5\n\"\" 4 9\n\"jam\" 0 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_decoder.go",
+     "out": "\"tea\" 2 2\n\"cake\" 3 5\n\"\" 4 9\n\"jam\" 0 9\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_zones.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tnoon := time.Date(2026, time.July, 9, 12, 0, 0, 0, time.UTC)\n\tcities := []string{\"Lima\", \"Oslo\", \"Dhaka\", \"Auckland\"}\n\thours := []int{-5, 2, 6, 12}\n\tfor i, city := range cities {\n\t\tzone := time.FixedZone(city, hours[i]*60*60)\n\t\tfmt.Println(city, hours[i], noon.In(zone).Format(\"Mon 15:04\"))\n\t}\n}\n",
+   "stdout": "Lima -5 Thu 07:00\nOslo 2 Thu 14:00\nDhaka 6 Thu 18:00\nAuckland 12 Fri 00:00\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run trace_zones.go",
+     "out": "Lima -5 Thu 07:00\nOslo 2 Thu 14:00\nDhaka 6 Thu 18:00\nAuckland 12 Fri 00:00\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "truncated.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n)\n\ntype U struct {\n\tName string `json:\"name\"`\n\tAge  int    `json:\"age\"`\n}\n\nfunc main() {\n\tlog.SetFlags(0)\n\tvar u U\n\terr := json.Unmarshal([]byte(`{\"name\": \"Ana\", \"age\": 3`), &u)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Printf(\"%+v\\n\", u)\n}\n",
+   "stdout": "",
+   "stderr": "unexpected end of JSON input\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run truncated.go",
+     "out": "",
+     "err": "unexpected end of JSON input\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "type_err.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n)\n\ntype U struct {\n\tName string `json:\"name\"`\n\tAge  int    `json:\"age\"`\n}\n\nfunc main() {\n\tlog.SetFlags(0)\n\tvar u U\n\terr := json.Unmarshal([]byte(`{\"name\": \"Ana\", \"age\": \"3\"}`), &u)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Printf(\"%+v\\n\", u)\n}\n",
+   "stdout": "",
+   "stderr": "json: cannot unmarshal string into Go struct field U.age of type int\nexit status 1\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run type_err.go",
+     "out": "",
+     "err": "json: cannot unmarshal string into Go struct field U.age of type int\nexit status 1\n",
+     "exit": 1
+    }
+   ]
+  },
+  "unexported.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype U struct {\n\tAge  int `json:\"age\"`\n\tname string\n}\n\nfunc main() {\n\tu := U{Age: 3, name: \"x\"}\n\tb, err := json.Marshal(u)\n\tfmt.Println(string(b), err)\n\tfmt.Printf(\"%+v\\n\", u)\n}\n",
+   "stdout": "{\"age\":3} <nil>\n{Age:3 name:x}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run unexported.go",
+     "out": "{\"age\":3} <nil>\n{Age:3 name:x}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "unmarshal.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID      int     `json:\"id\"`\n\tTo      string  `json:\"to\"`\n\tKg      float64 `json:\"kg\"`\n\tFragile bool    `json:\"fragile\"`\n}\n\nfunc main() {\n\tdata := []byte(`{\"id\": 9, \"to\": \"Bo\", \"kg\": 1.25, \"colour\": \"red\"}`)\n\tvar p Parcel\n\terr := json.Unmarshal(data, &p)\n\tif err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Printf(\"%+v\\n\", p)\n}\n",
+   "stdout": "{ID:9 To:Bo Kg:1.25 Fragile:false}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run unmarshal.go",
+     "out": "{ID:9 To:Bo Kg:1.25 Fragile:false}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "unmarshal_m.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Parcel struct {\n\tID int    `json:\"id\"`\n\tTo string `json:\"to\"`\n}\n\nfunc show(text string) {\n\tvar p Parcel\n\tif err := json.Unmarshal([]byte(text), &p); err != nil {\n\t\tfmt.Println(\"error:\", err)\n\t\treturn\n\t}\n\tfmt.Printf(\"%+v\\n\", p)\n}\n\nfunc main() {\n\tshow(`{\"id\": 9, \"to\": \"Bo\"}`)\n\tshow(`{\"to\": \"Cy\", \"extra\": true}`)\n\tshow(`{\"ID\": 4}`)\n\tshow(`{}`)\n}\n",
+   "stdout": "{ID:9 To:Bo}\n{ID:0 To:Cy}\n{ID:4 To:}\n{ID:0 To:}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run unmarshal_m.go",
+     "out": "{ID:9 To:Bo}\n{ID:0 To:Cy}\n{ID:4 To:}\n{ID:0 To:}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "uuid_parse.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"uuid\"\n)\n\nfunc main() {\n\tid, err := uuid.Parse(\"f47ac10b-58cc-4372-a567-0e02b2c3d479\")\n\tfmt.Println(id, err)\n\n\t_, err = uuid.Parse(\"not-a-uuid\")\n\tfmt.Println(err)\n\n\tfmt.Println(uuid.Nil())\n\tfmt.Println(id == uuid.MustParse(\"F47AC10B-58CC-4372-A567-0E02B2C3D479\"))\n}\n",
+   "stdout": "f47ac10b-58cc-4372-a567-0e02b2c3d479 <nil>\ninvalid uuid\n00000000-0000-0000-0000-000000000000\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run uuid_parse.go",
+     "out": "f47ac10b-58cc-4372-a567-0e02b2c3d479 <nil>\ninvalid uuid\n00000000-0000-0000-0000-000000000000\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "uuid_parse.go:5:2: package uuid is not in std (/usr/local/go1.24.7/src/uuid)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run uuid_parse.go",
+      "out": "",
+      "err": "uuid_parse.go:5:2: package uuid is not in std (/usr/local/go1.24.7/src/uuid)\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "v2.go": {
+   "src": "package main\n\nimport (\n\tjsonv1 \"encoding/json\"\n\tjsonv2 \"encoding/json/v2\"\n\t\"fmt\"\n)\n\ntype Box struct {\n\tLabel string   `json:\"label\"`\n\tTags  []string `json:\"tags\"`\n}\n\nfunc main() {\n\tin := []byte(`{\"LABEL\": \"tea\"}`)\n\tvar a, b Box\n\tfmt.Println(jsonv1.Unmarshal(in, &a), jsonv2.Unmarshal(in, &b))\n\tfmt.Printf(\"v1 label: %q\\n\", a.Label)\n\tfmt.Printf(\"v2 label: %q\\n\", b.Label)\n\n\tout1, _ := jsonv1.Marshal(Box{Label: \"cake\"})\n\tout2, _ := jsonv2.Marshal(Box{Label: \"cake\"})\n\tfmt.Println(\"v1:\", string(out1))\n\tfmt.Println(\"v2:\", string(out2))\n\n\tdup := []byte(`{\"label\": \"a\", \"label\": \"b\"}`)\n\tfmt.Println(\"v1 error:\", jsonv1.Unmarshal(dup, &a))\n\tfmt.Println(\"v2 error:\", jsonv2.Unmarshal(dup, &b))\n}\n",
+   "stdout": "<nil> <nil>\nv1 label: \"tea\"\nv2 label: \"\"\nv1: {\"label\":\"cake\",\"tags\":null}\nv2: {\"label\":\"cake\",\"tags\":[]}\nv1 error: <nil>\nv2 error: jsontext: duplicate object member name \"label\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run v2.go",
+     "out": "<nil> <nil>\nv1 label: \"tea\"\nv2 label: \"\"\nv1: {\"label\":\"cake\",\"tags\":null}\nv2: {\"label\":\"cake\",\"tags\":[]}\nv1 error: <nil>\nv2 error: jsontext: duplicate object member name \"label\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "v2.go:5:2: package encoding/json/v2 is not in std (/usr/local/go1.24.7/src/encoding/json/v2)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run v2.go",
+      "out": "",
+      "err": "v2.go:5:2: package encoding/json/v2 is not in std (/usr/local/go1.24.7/src/encoding/json/v2)\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "vet_tag.go": {
+   "src": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"fmt\"\n)\n\ntype Order struct {\n\tID    int    `json:\"id\"`\n\tItem  string `json: \"item\"`\n\tprice int    `json:\"price\"`\n}\n\nfunc main() {\n\tb, _ := json.Marshal(Order{ID: 1, Item: \"tea\", price: 3})\n\tfmt.Println(string(b))\n}\n",
+   "stdout": "",
+   "stderr": "vet_tag.go:10:2: struct field tag `json: \"item\"` not compatible with reflect.StructTag.Get: bad syntax for struct tag value\nvet_tag.go:11:2: struct field price has json tag but is not exported\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "go run vet_tag.go",
+     "out": "{\"id\":1,\"Item\":\"tea\"}\n",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "go vet vet_tag.go",
+     "out": "",
+     "err": "vet_tag.go:10:2: struct field tag `json: \"item\"` not compatible with reflect.StructTag.Get: bad syntax for struct tag value\nvet_tag.go:11:2: struct field price has json tag but is not exported\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Go 1.24.7",
+    "stdout": "",
+    "stderr": "# command-line-arguments\n# [command-line-arguments]\n./vet_tag.go:10:2: struct field tag `json: \"item\"` not compatible with reflect.StructTag.Get: bad syntax for struct tag value\n./vet_tag.go:11:2: struct field price has json tag but is not exported\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "go run vet_tag.go",
+      "out": "{\"id\":1,\"Item\":\"tea\"}\n",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "go vet vet_tag.go",
+      "out": "",
+      "err": "# command-line-arguments\n# [command-line-arguments]\n./vet_tag.go:10:2: struct field tag `json: \"item\"` not compatible with reflect.StructTag.Get: bad syntax for struct tag value\n./vet_tag.go:11:2: struct field price has json tag but is not exported\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "yyyy.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\tfmt.Println(t.Format(\"YYYY-MM-DD\"))\n\tfmt.Println(t.Format(\"DD/MM/YYYY hh:mm\"))\n\tfmt.Println(t.Format(\"2006-01-02\"))\n}\n",
+   "stdout": "YYYY-MM-DD\nDD/MM/YYYY hh:mm\n2026-07-09\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run yyyy.go",
+     "out": "YYYY-MM-DD\nDD/MM/YYYY hh:mm\n2026-07-09\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "zones.go": {
+   "src": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc main() {\n\tt := time.Date(2026, time.July, 9, 16, 45, 30, 0, time.UTC)\n\ttokyo, err := time.LoadLocation(\"Asia/Tokyo\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tlima := time.FixedZone(\"Lima\", -5*60*60)\n\n\tfmt.Println(\"UTC:  \", t)\n\tfmt.Println(\"Tokyo:\", t.In(tokyo))\n\tfmt.Println(\"Lima: \", t.In(lima))\n\tfmt.Println(\"same moment?\", t.Equal(t.In(tokyo)))\n\tfmt.Println(\"== says:\", t == t.In(tokyo))\n\n\t_, err = time.LoadLocation(\"Mars/Olympus\")\n\tfmt.Println(err)\n}\n",
+   "stdout": "UTC:   2026-07-09 16:45:30 +0000 UTC\nTokyo: 2026-07-10 01:45:30 +0900 JST\nLima:  2026-07-09 11:45:30 -0500 Lima\nsame moment? true\n== says: false\nunknown time zone Mars/Olympus\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "go run zones.go",
+     "out": "UTC:   2026-07-09 16:45:30 +0000 UTC\nTokyo: 2026-07-10 01:45:30 +0900 JST\nLima:  2026-07-09 11:45:30 -0500 Lima\nsame moment? true\n== says: false\nunknown time zone Mars/Olympus\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

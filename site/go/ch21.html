@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Branches and Plumbing</title>
+<meta name="description" content="Chapter 21 of the Go book of Pip &amp; Friends, a comic course: modules in depth as a library with branch shelves (module paths, semantic versions, go get pkg@version, go.mod and go.sum, // indirect, go list -m, retracted versions, the /v2 shelf, internal/ staff rooms, package names, init, doc comments, replace, workspaces, vendoring, go install, GOTOOLCHAIN), then files and the operating system as plumbing (os.Open, os.Create, os.OpenFile, bufio.Scanner, bufio.Writer and Flush, io.ReadAll, filepath.Join and WalkDir, folders, temporary files, os.Args, the flag package, environment variables, exit codes, os.Exit skipping deferred calls, and //go:embed), with every classic mistake read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch21.css">
+<script defer src="../data/go-ch21.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch21.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch20.html">&larr; Ch 20</a><span aria-current="page">Ch 21 of 28</span><a href="ch22.html">Ch 22 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 21 · INTERMEDIATE</p>
+    <h1 id="cover-h">BRANCHES AND PLUMBING</h1>
+    <svg class="char lg" data-char="courier" data-mood="happy" data-mouth="shout" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, waves hello with a letter in hand.</p>
+    <p class="caption blurb">Chapter 15 gave your code a building with rooms. Today that building joins a <b>library with branches</b>: other people borrow your code, you borrow theirs, and every version gets its own place on a shelf. You'll use <code>go get</code>, read <code>go.mod</code> and <code>go.sum</code> line by line, open a brand-new shelf for version 2, and lock a staff-only room. Then you'll meet the <b>plumbing</b>: files, buffered buckets that must be emptied, paths, folders, command-line flags, environment variables and exit codes. About 140 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Library branches: versions, go get, go.mod and go.sum</a></li>
+      <li><a href="#part-2">A new shelf for version 2</a></li>
+      <li><a href="#part-3">Staff only: internal, names, init and doc comments</a></li>
+      <li><a href="#part-4">Your own copy: replace, workspaces, vendor, install, toolchains</a></li>
+      <li><a href="#part-5">The plumbing: files, scanners and the bucket</a></li>
+      <li><a href="#part-6">Paths, arguments, environment and exits</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · LIBRARY BRANCHES<small>Modules people share, version numbers, go get, go.mod and go.sum</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Scoot's code goes out on loan">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot wrote a little package, <code>stamps</code>, that prints postage marks on labels. Now three other depots use it too.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>Yesterday I changed one little thing in <code>Stamp</code>, and Bo's depot stopped printing labels. Bo didn't even ask for my change!</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>I need a way to say "this is the copy from Monday" and "this is the new one", so everyone can pick the copy they trust.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, worried.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: a library with branches">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Picture Go's module system as a <b>library</b>. A <b>module</b> is a book series with a name on its spine. Each <b>version</b> is one printing of that series, and printings never change once they're on the shelf. (These library shelves hold module versions; they aren't chapter 9's slice shelf.)</p>
+    <svg class="pic-wide has-phone" viewBox="0 0 680 330" role="img" aria-label="Picture: a library shelf labelled example.com/stamps holds four books: v1.0.0, v1.1.0, v1.2.0 with a red slip saying retracted, and v1.2.1. A second shelf in a separate branch is labelled example.com/stamps/v2 and holds v2.0.0. At the right is a door marked staff only, internal. A sign says each printing never changes; a big change gets a new shelf.">
+      <text x="340" y="30" font-family="Bangers, sans-serif" font-size="26" fill="#111" text-anchor="middle" letter-spacing="1">THE MODULE LIBRARY</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="16" y="50" width="380" height="150" rx="10" fill="#F4F1EA"/>
+        <rect x="16" y="182" width="380" height="18" fill="#C9A27E"/>
+        <rect x="40" y="86" width="64" height="96" rx="4" fill="#DDE8FF"/>
+        <rect x="120" y="80" width="64" height="102" rx="4" fill="#DDE8FF"/>
+        <rect x="200" y="90" width="64" height="92" rx="4" fill="#FFE1E1"/>
+        <rect x="280" y="76" width="64" height="106" rx="4" fill="#DDE8FF"/>
+        <rect x="420" y="50" width="150" height="150" rx="10" fill="#FFF6CC"/>
+        <rect x="420" y="182" width="150" height="18" fill="#C9A27E"/>
+        <rect x="462" y="74" width="66" height="108" rx="4" fill="#C9F2D9"/>
+        <rect x="592" y="70" width="74" height="130" rx="6" fill="#FFFFFF"/>
+        <circle cx="654" cy="140" r="5" fill="#111"/>
+        <rect x="196" y="120" width="72" height="24" rx="3" fill="#FFFFFF" stroke-dasharray="5 4"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="72" y="140" font-size="15">v1.0.0</text><text x="152" y="140" font-size="15">v1.1.0</text><text x="232" y="112" font-size="15">v1.2.0</text><text x="312" y="140" font-size="15">v1.2.1</text>
+        <text x="495" y="140" font-size="15">v2.0.0</text>
+        <text x="206" y="226" font-size="16">example.com/stamps</text>
+        <text x="495" y="226" font-size="14">example.com/</text><text x="495" y="244" font-size="14">stamps/v2</text>
+        <text x="629" y="226" font-size="14">internal/</text>
+      </g>
+      <text x="232" y="137" font-family="Comic Neue, sans-serif" font-weight="700" font-size="12" fill="#111" text-anchor="middle">RETRACTED</text>
+      <g font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle"><text x="206" y="72">SHELF v1</text><text x="495" y="68">SHELF v2</text><text x="629" y="96">STAFF</text><text x="629" y="116">ONLY</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111" text-anchor="middle">
+        <text x="340" y="282">A printing never changes once it's on the shelf.</text>
+        <text x="340" y="308">A change that breaks old readers gets a whole new shelf.</text>
+      </g>
+    </svg>
+    <svg class="pic-phone" viewBox="0 0 360 560" role="img" aria-label="Picture: a library shelf labelled example.com/stamps holds four books: v1.0.0, v1.1.0, v1.2.0 with a red slip saying retracted, and v1.2.1. A second shelf in a separate branch is labelled example.com/stamps/v2 and holds v2.0.0. Below is a door marked staff only, internal. A sign says each printing never changes; a big change gets a new shelf.">
+      <text x="180" y="30" font-family="Bangers, sans-serif" font-size="24" fill="#111" text-anchor="middle" letter-spacing="1">THE MODULE LIBRARY</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="16" y="48" width="328" height="150" rx="10" fill="#F4F1EA"/>
+        <rect x="16" y="180" width="328" height="18" fill="#C9A27E"/>
+        <rect x="30" y="84" width="66" height="96" rx="4" fill="#DDE8FF"/>
+        <rect x="108" y="78" width="66" height="102" rx="4" fill="#DDE8FF"/>
+        <rect x="186" y="88" width="66" height="92" rx="4" fill="#FFE1E1"/>
+        <rect x="264" y="74" width="66" height="106" rx="4" fill="#DDE8FF"/>
+        <rect x="175" y="116" width="88" height="27" rx="3" fill="#FFFFFF" stroke-dasharray="5 4"/>
+        <rect x="16" y="260" width="200" height="150" rx="10" fill="#FFF6CC"/>
+        <rect x="16" y="392" width="200" height="18" fill="#C9A27E"/>
+        <rect x="80" y="284" width="70" height="108" rx="4" fill="#C9F2D9"/>
+        <rect x="244" y="270" width="96" height="140" rx="6" fill="#FFFFFF"/>
+        <circle cx="326" cy="345" r="5" fill="#111"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="63" y="140" font-size="15">v1.0.0</text><text x="141" y="140" font-size="15">v1.1.0</text><text x="219" y="110" font-size="15">v1.2.0</text><text x="297" y="140" font-size="15">v1.2.1</text>
+        <text x="115" y="344" font-size="15">v2.0.0</text>
+        <text x="180" y="224" font-size="17">example.com/stamps</text>
+        <text x="116" y="436" font-size="16">example.com/stamps/v2</text>
+        <text x="292" y="436" font-size="15">internal/</text>
+      </g>
+      <text x="219" y="135" font-family="Comic Neue, sans-serif" font-weight="700" font-size="14" fill="#111" text-anchor="middle">RETRACTED</text>
+      <g font-family="Bangers, sans-serif" font-size="18" fill="#111" text-anchor="middle"><text x="180" y="70">SHELF v1</text><text x="116" y="280">SHELF v2</text><text x="292" y="300">STAFF</text><text x="292" y="320">ONLY</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111" text-anchor="middle">
+        <text x="180" y="482">A printing never changes</text><text x="180" y="504">once it's on the shelf.</text>
+        <text x="180" y="532">A breaking change gets a new shelf.</text>
+      </g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>So Bo can keep borrowing <b>v1.0.0</b> while I print <b>v1.1.0</b>. Bo's copy never changes under Bo's feet. Catchphrase: <b>a printing never changes; a breaking change gets a new shelf.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: reading a version number">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Go versions follow <b>semantic versioning</b> ("semver"): a <code>v</code>, then three numbers. Each number is a promise to the people borrowing your code.</p>
+    <p class="sv-big" aria-hidden="true">v1.4.2</p>
+    <div class="semver">
+      <div class="sv-part"><span class="lab">MAJOR</span><b>1</b><p>Goes up when old code that uses you might <b>break</b>: a function removed, renamed, or given a new parameter.</p></div>
+      <div class="sv-part"><span class="lab">MINOR</span><b>4</b><p>Goes up when you <b>add</b> something new and everything old still works.</p></div>
+      <div class="sv-part"><span class="lab">PATCH</span><b>2</b><p>Goes up for a <b>fix</b> that doesn't change what the code promises.</p></div>
+    </div>
+    <p class="sr-only">The version v1.4.2 split into three parts: major 1, minor 4, patch 2, with what each one promises.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Two special cases. Versions starting with <code>v0</code>, like <code>v0.3.1</code>, promise nothing yet: anything may change. And a dash adds a <b>pre-release</b> tag, like <code>v1.5.0-beta.1</code>, which comes <em>before</em> <code>v1.5.0</code>, and <code>@latest</code> skips it while a normal release exists.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor, with glasses and a notebook, explains.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-semver-m" id="ex-semver"></div>
+  <script type="application/json" id="ex-semver-m">{"q": "<code>stamps</code> is at <code>v1.0.0</code>. Scoot <b>adds</b> a new function, <code>StampDay</code>, and changes nothing else. What should the next version be?", "keepOrder": true, "options": [
+    {"t": "<code>v1.0.1</code>", "why": "A patch is for fixes. Adding a new function is a new feature, which is what the middle number is for."},
+    {"t": "<code>v1.1.0</code>", "correct": true, "why": "Right. Something new was added, and every program that used <code>v1.0.0</code> still works: bump MINOR, and reset PATCH to 0."},
+    {"t": "<code>v2.0.0</code>", "why": "MAJOR goes up only when old code might break. Nothing that worked before stops working here."},
+    {"t": "<code>v1.0.0</code> again, with the new code", "why": "Never. A printing never changes once it's on the shelf. Go even records each version's fingerprint (go.sum), so a changed copy is caught."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: the library and the borrower">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Here is <code>stamps</code> at version <code>v1.1.0</code>, as its author published it. Its <b>module path</b>, <code>example.com/stamps</code>, is the name on the spine: it says where the code lives. Real modules usually have paths like <code>github.com/scoot/stamps</code>.</p>
+    <span class="file-tab">stamps v1.1.0 · stamps.go</span>
+    <pre class="code" data-src="library/stamps@v1.1.0/stamps.go"></pre>
+    <p class="caption">And here is Scoot's new depot program, which wants to borrow it. Its own module is called <code>example/depot</code>.</p>
+    <span class="file-tab">depot/main.go</span>
+    <pre class="code" data-src="get_tidy.go"></pre>
+    <ol class="readlist">
+      <li><span><code>import "example.com/stamps"</code> (main.go, line 6)<br>An import path that starts with a domain name, like <code>example.com</code>, belongs to <b>another module</b>. Go has to fetch it.</span></li>
+      <li><span><code>"example.com/ink"</code> (stamps.go, line 5)<br>The borrowed module borrows too: <code>stamps</code> uses a third module, <code>ink</code>, for the word STAMPED. A module you borrow because of another module is called a <b>dependency of a dependency</b>.</span></li>
+      <li><span><code>"example.com/stamps/internal/press"</code> (line 6)<br>A package inside the stamps module. The word <code>internal</code> matters: part 3 explains.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Where does Go fetch modules from? Normally from a <b>module proxy</b>, <code>proxy.golang.org</code>, a big public library that keeps every printing. In this chapter the library is a folder on our own computer that answers the same questions, so every command really ran, with no internet.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: go get borrows a version">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption"><code>go get <i>path</i>@<i>version</i></code> borrows one exact printing and writes it down in <code>go.mod</code>. Then <code>go mod tidy</code> (chapter 15) tidies the list. Read the whole session.</p>
+    <pre class="term wrap" data-run="get_tidy.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/depot</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache of its own, emptied with <code>go clean -modcache</code> first, so these download lines are real). Before the first command, the depot's go.mod lost its <code>stamps</code> and <code>ink</code> requirements and go.sum was deleted, so every run starts from the same place.</p>
+    <ol class="readlist">
+      <li><span><code>go: downloading …</code><br>The computer had never seen these modules, so Go downloaded both: <code>stamps</code>, and the <code>ink</code> it needs. A second time, they come from the <b>module cache</b>, a folder on your computer, and no download lines appear.</span></li>
+      <li><span><code>go: added example.com/stamps v1.1.0</code><br>The exact version you asked for. Without <code>@v1.1.0</code>, <code>go get</code> picks the newest good one.</span></li>
+      <li><span>First <code>cat go.mod</code>: both say <code>// indirect</code><br><code>go get</code> just writes the requirements down; it doesn't look at which ones your code imports. That's why <code>stamps</code> is wrongly marked here.</span></li>
+      <li><span>Second <code>cat go.mod</code>, after <code>go mod tidy</code><br>Tidy read your imports: <code>stamps</code> is now a plain requirement in the first block, and only <code>ink</code> keeps <code>// indirect</code>, in a block of its own.</span></li>
+      <li><span><code>go run .</code><br>The borrowed code runs: <samp>[STAMPED] parcel 42</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 6: go.mod is the borrowing card, go.sum the fingerprints">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">Two files, two jobs. Both belong in your project, next to your code, and both go into version control.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">BORROWING CARD</span>
+        <h3><code>go.mod</code><small>what you borrow, and which printing</small></h3>
+        <ul>
+          <li><code>require example.com/stamps v1.1.0</code>: "this module needs stamps, <b>at least</b> v1.1.0".</li>
+          <li><code>// indirect</code>: a comment meaning "none of <em>my</em> packages import this; something I borrow needs it". It's listed so the build is exactly the same everywhere.</li>
+          <li>Two <code>require</code> blocks: direct first, indirect second. That's just how <code>go mod tidy</code> sorts them.</li>
+        </ul>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">FINGERPRINTS</span>
+        <h3><code>go.sum</code><small>a checksum for every printing</small></h3>
+        <ul>
+          <li>Each line is a module, a version and an <code>h1:</code> hash: a fingerprint of the files.</li>
+          <li>Two lines per version: one for all the files, one (<code>/go.mod</code>) for just its go.mod.</li>
+          <li>If a download ever has a different fingerprint, Go stops with a <b>SECURITY ERROR</b> instead of building. A printing never changes, and go.sum checks it.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>You never write go.sum by hand. <code>go get</code> and <code>go mod tidy</code> keep it up to date. You just commit it.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-indirect-m" id="ex-indirect"></div>
+  <script type="application/json" id="ex-indirect-m">{"q": "After <code>go mod tidy</code>, Scoot's go.mod says <code>require example.com/ink v1.0.0 // indirect</code>. What does that mean?", "options": [
+    {"t": "<code>stamps</code> imports it; the depot doesn't", "correct": true, "why": "Exactly. No package in <code>example/depot</code> imports <code>ink</code>. <code>// indirect</code> marks a dependency of a dependency. It's still a real requirement: the build uses that exact version."},
+    {"t": "<code>ink</code> is optional and Go may skip it in a build", "why": "Nothing in go.mod is optional. Without <code>ink</code>, <code>stamps</code> can't build, and neither can the depot."},
+    {"t": "<code>ink</code> failed to download, so Go noted it", "why": "A failed download is an error, not a comment. <code>go run .</code> worked, so <code>ink</code> was there."},
+    {"t": "You may delete the line; it's only a comment", "why": "Only the <code>// indirect</code> part is a comment. The <code>require</code> line itself matters; <code>go mod tidy</code> would put it straight back."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 7: browsing the shelf, and a bad printing">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A second depot folder, still on <code>v1.1.0</code>. <code>go list -m</code> lists <b>modules</b>. Then Scoot tries the newer printings.</p>
+    <pre class="term wrap" data-run="versions.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/depot2</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). Before the first command, go.mod was set back to <code>stamps v1.1.0</code> and go.sum restored from a saved copy. The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>go list -m all</code><br>Every module in the build: your own first (no version: it's the one you're working on), then each borrowed module and the exact version chosen.</span></li>
+      <li><span><code>go list -m -versions example.com/stamps</code><br>The printings on the shelf: <samp>v1.0.0 v1.1.0 v1.2.1</samp>. Where's <code>v1.2.0</code>? Hidden, because its author <b>retracted</b> it.</span></li>
+      <li><span><code>go get example.com/stamps@v1.2.0</code><br>You can still ask for it by name, and Go obeys, but it warns you, quoting the author's reason, and tells you the fix.</span></li>
+      <li><span><code>[STAMPED parcel 43] Mon</code><br>There's the bug: the label and the day are swapped.</span></li>
+      <li><span><code>go get example.com/stamps@latest</code><br><code>@latest</code> means the newest printing that isn't retracted: <code>v1.2.0 =&gt; v1.2.1</code>, and the labels are right again.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: why is ink here?">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Two more questions you can ask the go command. Why is a module in my build at all? And what is <em>really</em> on the shelf?</p>
+    <pre class="term wrap" data-run="why.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> the same starting state as the session above (<code>~/go-ch21/depot2</code> reset to <code>stamps v1.1.0</code>), with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>go mod why -m example.com/ink</code><br>The chain of imports that pulls <code>ink</code> in: your depot imports <code>stamps</code>, which imports <code>ink</code>. That's exactly what <code>// indirect</code> was telling you.</span></li>
+      <li><span><code>-retracted</code><br>Shows every printing, retracted ones included: <samp>v1.2.0</samp> is back in the list.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-retract-m" id="ex-retract"></div>
+  <script type="application/json" id="ex-retract-m">{"q": "The author published <code>v1.2.1</code> with <code>retract v1.2.0</code> in its go.mod. Bo's depot already requires <code>v1.2.0</code>. What happens to Bo?", "options": [
+    {"t": "Bo's build still works; asking for v1.2.0 warns", "correct": true, "why": "Right, and <code>@latest</code> skips v1.2.0 from now on. A retraction is a warning label, not a recall. Printings never change or vanish, so nobody's build breaks; people are just steered away."},
+    {"t": "v1.2.0 is deleted from the library, so Bo's build fails", "why": "Printings are never deleted: that would break everyone using them. The proxy keeps v1.2.0 forever."},
+    {"t": "Go quietly swaps Bo's v1.2.0 for the fixed v1.2.1", "why": "Go never changes your versions behind your back. Bo upgrades by running <code>go get example.com/stamps@latest</code>."},
+    {"t": "Nothing at all: retract is just a comment in go.mod", "why": "<code>retract</code> is a real directive. It hides the version from lists and <code>@latest</code>, and makes <code>go get</code> print a warning."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 9: every line a go.mod can have">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">The Professor's page on <code>go.mod</code>. Each line starts with a word called a <b>directive</b>. Here is the author's go.mod for <code>stamps v1.2.1</code>:</p>
+    <span class="file-tab">stamps v1.2.1 · go.mod</span>
+    <pre class="code" data-src="library/stamps@v1.2.1/go.mod"></pre>
+    <div class="cmp-wrap"><table class="cmp">
+      <caption class="sr-only">go.mod directives</caption>
+      <thead><tr><th>Directive</th><th>Example</th><th>What it says</th></tr></thead>
+      <tbody>
+        <tr><td data-th="Directive"><code>module</code></td><td data-th="Example"><code>module example.com/stamps</code></td><td data-th="What it says">The module path: the name on the spine. Exactly one.</td></tr>
+        <tr><td data-th="Directive"><code>go</code></td><td data-th="Example"><code>go 1.27.3</code></td><td data-th="What it says">The oldest Go this module needs, and which language rules apply.</td></tr>
+        <tr><td data-th="Directive"><code>toolchain</code></td><td data-th="Example"><code>toolchain go1.27.3</code></td><td data-th="What it says">The Go release the authors suggest using (part 4).</td></tr>
+        <tr><td data-th="Directive"><code>require</code></td><td data-th="Example"><code>require example.com/ink v1.0.0</code></td><td data-th="What it says">A module this one needs, at least at this version.</td></tr>
+        <tr><td data-th="Directive"><code>replace</code></td><td data-th="Example"><code>replace example.com/stamps =&gt; ../stamps-local</code></td><td data-th="What it says">Use a different copy instead, for example a folder on your disk (part 4).</td></tr>
+        <tr><td data-th="Directive"><code>exclude</code></td><td data-th="Example"><code>exclude example.com/ink v1.0.1</code></td><td data-th="What it says">Never use this one version.</td></tr>
+        <tr><td data-th="Directive"><code>retract</code></td><td data-th="Example"><code>retract v1.2.0</code></td><td data-th="What it says">"Don't use my v1.2.0": written by the module's own author.</td></tr>
+        <tr><td data-th="Directive"><code>tool</code></td><td data-th="Example"><code>tool golang.org/x/tools/cmd/stringer</code></td><td data-th="What it says">A command-line tool the project uses, run with <code>go tool</code>.</td></tr>
+        <tr><td data-th="Directive"><code>godebug</code></td><td data-th="Example"><code>godebug panicnil=1</code></td><td data-th="What it says">Switch back an old behaviour that a newer Go changed.</td></tr>
+        <tr><td data-th="Directive"><code>ignore</code></td><td data-th="Example"><code>ignore ./node_modules</code></td><td data-th="What it says">Folders the go command should skip.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Two rules to remember. <code>replace</code> and <code>exclude</code> only count in the module you're building: when someone borrows <em>your</em> module, your replace lines are ignored. And <code>retract</code> only makes sense in the author's own module, about its own versions. Edit go.mod with <code>go get</code>, <code>go mod tidy</code> and <code>go mod edit</code>; you rarely need to type in it.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor explains.</p>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · A NEW SHELF FOR VERSION 2<small>Breaking changes, the /v2 path, and using two versions at once</small></h2>
+
+  <section class="panel pop" aria-label="Panel 10: a change that would break everyone">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Scoot wants coloured stamps: <code>Stamp(label, colour)</code>. But every depot calls <code>Stamp(label)</code> with one argument.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>If I put that in <code>v1.3.0</code>, every depot that runs <code>go get @latest</code> stops compiling. That breaks the minor-version promise. Watch what an old one-argument call does against the new code:</p>
+      </div>
+    </div>
+    <span class="file-tab">branch_break/main.go</span>
+    <pre class="code" data-src="road_break.go"></pre>
+    <pre class="term" data-run="road_break.go" data-exit></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> <code>go run .</code> inside <code>~/go-ch21/branch_break</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where, and here's a fix. Line 10, column 27: you <b>have</b> one string, the function <b>wants</b> a string and a <code>stamps.Color</code>. The header <code># example/depot</code> names the package I was checking.</p></div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: Scoot points thoughtfully; the Compiler, a checkpoint robot with a red beacon, keeps its gate down.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 11: the import compatibility rule">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">Go's answer is one rule, the <b>import compatibility rule</b>: if the new code has the <em>same import path</em> as the old, it must still work for old callers. A breaking version therefore gets a <b>different import path</b>, ending in <code>/v2</code>.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <span class="stamp">SHELF v1</span>
+        <span class="sym" aria-hidden="true">import "example.com/stamps"</span>
+        <h3>v0.x.x and v1.x.x<small>no suffix</small></h3>
+        <p>Every v1 printing keeps the old promises. Fixes and additions only.</p>
+      </div>
+      <div class="duo-card dashed">
+        <span class="stamp">SHELF v2</span>
+        <span class="sym" aria-hidden="true">import "example.com/stamps/v2"</span>
+        <h3>v2.x.x<small>a /v2 on the end of the path</small></h3>
+        <p>A new shelf, with new promises. To Go it's a different module, so it can't break anyone on shelf v1.</p>
+      </div>
+    </div>
+    <p class="sr-only">Two cards. Shelf v1: import "example.com/stamps", for versions v0 and v1, no suffix. Shelf v2: import "example.com/stamps/v2", for versions v2.x.x.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Different path, different shelf. Old depots keep their v1 books; new depots opt in to v2 by changing one import line. The package inside is still called <code>stamps</code>: the <code>/v2</code> is only part of the address.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: borrowing from both shelves">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Here is <code>stamps</code> v2.0.0. Look at its go.mod first: the module path itself ends in <code>/v2</code>.</p>
+    <span class="file-tab">stamps v2.0.0 · go.mod</span>
+    <pre class="code" data-src="library/stamps-v2@v2.0.0/go.mod"></pre>
+    <span class="file-tab">stamps v2.0.0 · stamps.go</span>
+    <pre class="code" data-src="library/stamps-v2@v2.0.0/stamps.go"></pre>
+    <p class="caption">A third depot uses <b>both</b> shelves in one program. Two packages are both called <code>stamps</code>, so the second gets a nickname in the import: <code>stamps2</code>.</p>
+    <span class="file-tab">depot3/main.go</span>
+    <pre class="code" data-src="v1v2.go"></pre>
+    <pre class="term wrap" data-run="v1v2.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/depot3</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). Before the first command, go.mod lost its <code>stamps/v2</code> requirement and go.sum was restored from a saved copy. The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>go get example.com/stamps@v2.0.0</code> fails<br>Read it like a detective: Go asked the library for printing <code>v2.0.0</code> <em>on the v1 shelf</em> and found no such file. (The real proxy.golang.org words it differently, but the meaning is the same.) Version 2 isn't on that shelf, it's on its own.</span></li>
+      <li><span><code>go get example.com/stamps/v2@v2.0.0</code><br>Right shelf: <samp>go: added example.com/stamps/v2 v2.0.0</samp>.</span></li>
+      <li><span><code>go list -m all</code><br>Both are in the build at once: <code>example.com/stamps v1.2.1</code> and <code>example.com/stamps/v2 v2.0.0</code>. To Go they are two separate modules.</span></li>
+      <li><span><code>stamps2 "example.com/stamps/v2"</code> (line 7)<br>A name before an import path renames the package in this file. Without it, two packages called <code>stamps</code> would clash.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fv2-m" id="ex-fv2"></div>
+  <script type="application/json" id="ex-fv2-m">{"program": "v1v2.go", "prompt": "Fill in line 7 so the nickname <code>stamps2</code> means version 2 of the stamps module, and line 12 so the stamp is red.", "blanks": [{"line": 7, "text": "example.com/stamps/v2"}, {"line": 12, "text": "stamps2.Red"}], "explain": "Version 2 lives at the module path plus <code>/v2</code>: <code>\"example.com/stamps/v2\"</code>. Its colours are constants of type <code>Color</code> in that package, so through the nickname they're <code>stamps2.Red</code> and <code>stamps2.Blue</code>. The run printed <samp>[STAMPED in red] parcel 42</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 13: how an author opens shelf v2">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">What Scoot did, as the author of <code>stamps</code>, to release version 2.</p>
+    <ol class="checklist">
+      <li>Decide it's really worth it. Every user has to change their imports to move to v2, so authors try hard to keep v1 working instead.</li>
+      <li>Change the first line of go.mod to <code>module example.com/stamps/v2</code>.</li>
+      <li>Update imports <b>inside</b> the module too: a package that imported <code>example.com/<wbr>stamps/<wbr>internal/<wbr>press</code> now imports <code>example.com/<wbr>stamps/<wbr>v2/<wbr>internal/<wbr>press</code>.</li>
+      <li>Make the breaking change, and write down what callers must change.</li>
+      <li>Tag the release <code>v2.0.0</code> in the repository (for example <code>git tag v2.0.0</code>, then push the tag). The proxy finds it there.</li>
+      <li>Keep fixing v1 if people need it: tags like <code>v1.2.2</code> still go on shelf v1.</li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Many projects keep v2 on a separate branch of their repository; others put it in a <code>v2/</code> folder. Both work: what matters is the module line and the tag.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor explains.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-major-m" id="ex-major"></div>
+  <script type="application/json" id="ex-major-m">{"q": "Which of these changes to a <code>v1</code> module needs a new major version, <code>v2</code>?", "options": [
+    {"t": "Renaming the exported function <code>Stamp</code> to <code>Mark</code>", "correct": true, "why": "Yes. Every caller that wrote <code>stamps.Stamp(...)</code> would stop compiling: that breaks the promise of shelf v1."},
+    {"t": "Adding a new exported function <code>Mark</code> next to <code>Stamp</code>", "why": "Adding never breaks old callers. That's a minor version: v1.x.0."},
+    {"t": "Fixing a bug inside <code>Stamp</code> without changing how it's called", "why": "A fix that keeps the promises is a patch: v1.x.y."},
+    {"t": "Renaming an <b>unexported</b> helper, <code>frame</code> to <code>box</code>", "why": "Nobody outside the package can see lowercase names (chapter 15), so nobody can break. No new version is even needed for that alone."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · STAFF ONLY<small>internal/ packages, good package names, init, and doc comments</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 14: the staff-only room">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">Chapter 15's capital letters hide <em>names</em> inside one package. Sometimes a whole <em>package</em> should be private: shared by your own packages, but closed to the public. Put it in a folder called <code>internal</code>.</p>
+    <pre class="tree" aria-label="Folder tree of the stamps module">stamps/                    <i>← module example.com/stamps</i>
+├── go.mod
+├── stamps.go              <i>← package stamps: on the public shelf</i>
+└── internal/              <i>← the staff-only room</i>
+    └── press/
+        └── press.go       <i>← package press</i></pre>
+    <div class="duo">
+      <div class="duo-card"><span class="stamp">THE RULE</span><p>A package with <code>internal</code> in its path may be imported only by code inside the folder that <b>contains</b> that <code>internal</code> folder.</p></div>
+      <div class="duo-card dashed"><span class="stamp">SO HERE</span><p>Anything under <code>stamps/</code> may import <code>example.com/<wbr>stamps/<wbr>internal/<wbr>press</code>. Scoot's depot, in another module, may not: the go command refuses to build it.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Why bother? Because everything you export is a promise (part 1). Code in <code>internal</code> can change any day without a new major version, because no outsider can depend on it. Catchphrase: <b>internal is the staff room: only the building's own people get in.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pint-m" id="ex-pint"></div>
+  <script type="application/json" id="ex-pint-m">{"program": "road_int.go", "expect": "error", "answer": "use of internal package example.com/stamps/internal/press not allowed", "ask": "This program sits in Scoot's module, <code>example/depot</code>, and the go command refuses to build it. Its error line has the shape <code>use of internal package PATH not allowed</code>. Type that line for this program, with the real path (leave out the <code>main.go:6:2:</code> part).", "hint": "Who owns the folder called <code>internal</code> in that path? Is <code>main.go</code> inside that owner's folder?", "explain": "<samp>use of internal package example.com/stamps/internal/press not allowed</samp>. The <code>internal</code> folder belongs to the stamps module, and the depot is a different module. The build stops at the import line, so nothing prints."}</script>
+
+  <section class="panel sketch" aria-label="Panel 15: which imports get built" data-map="map-shelves">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">Four depot programs, each importing from a different place. Every road was really built. Pick one and follow Scoot.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maps-t maps-d"><title id="maps-t">Map of which imports get built</title><desc id="maps-d">main.go in the module example/depot is built, and Go reads each import path. A path to a public shelf, like example.com/stamps or example.com/stamps/v2, is built and the program runs. A path with internal in it leads to a staff room, where Go checks whether main.go is inside the folder that holds that internal folder. If it is, as with example/depot/internal/route, the program is built and runs. If not, as with example.com/stamps/internal/press, the Compiler refuses and nothing runs.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Scoot is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-shelves">{"seed": 21, "size": [690, 520], "start": [[345, 4], [345, 18]],
+      "states": [
+        {"id": "S0", "x": 225, "y": 22, "w": 240, "h": 56, "label": "MAIN.GO", "sub": "module `example/depot`"},
+        {"id": "IMP", "x": 175, "y": 112, "w": 340, "h": 58, "label": "IMPORT PATH", "sub": "which shelf or room?"},
+        {"id": "SH", "x": 14, "y": 214, "w": 300, "h": 62, "label": "PUBLIC SHELF", "sub": "`stamps` or `stamps/v2`"},
+        {"id": "ST", "x": 376, "y": 214, "w": 300, "h": 62, "label": "STAFF ROOM", "sub": "path has `internal`"},
+        {"id": "CK", "x": 376, "y": 318, "w": 300, "h": 62, "label": "SAME BUILDING?", "sub": "inside internal's parent?"},
+        {"id": "RUN", "x": 14, "y": 438, "w": 300, "h": 62, "label": "BUILT AND RUN", "sub": "exit code 0", "kind": "end"},
+        {"id": "NO", "x": 376, "y": 438, "w": 300, "h": 62, "label": "COMPILER REFUSES", "sub": "nothing runs, exit 1", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "IMP", "pts": [[345, 82], [345, 106]], "label": "reads", "lx": 357, "ly": 100},
+        {"id": "t1", "from": "IMP", "to": "SH", "pts": [[250, 174], [250, 192], [164, 192], [164, 208]], "label": "public", "lx": 70, "ly": 198},
+        {"id": "t2", "from": "IMP", "to": "ST", "pts": [[440, 174], [440, 192], [526, 192], [526, 208]], "label": "internal", "lx": 538, "ly": 198},
+        {"id": "t3", "from": "ST", "to": "CK", "pts": [[526, 280], [526, 312]], "label": "check", "lx": 538, "ly": 302},
+        {"id": "t4", "from": "SH", "to": "RUN", "pts": [[164, 280], [164, 432]], "label": "builds", "lx": 176, "ly": 360},
+        {"id": "t5", "from": "CK", "to": "RUN", "pts": [[376, 349], [345, 349], [345, 469], [318, 469]], "label": "yes", "lx": 352, "ly": 404},
+        {"id": "t6", "from": "CK", "to": "NO", "pts": [[526, 384], [526, 432]], "label": "no", "lx": 538, "ly": 414, "bug": true}],
+      "paths": [
+        {"id": "v1", "label": "example.com/stamps", "program": "road_v1.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>branch_v1/main.go</code> is being built, in the module <code>example/depot</code>."},
+          {"on": ["IMP"], "via": ["t0"], "output": [], "mood": "focus", "note": "Its import: <code>\"example.com/stamps\"</code>. Another module's path, with no <code>internal</code> in it."},
+          {"on": ["SH"], "via": ["t1"], "output": [], "note": "Shelf v1, version <code>v1.2.1</code> (go.mod says so). Public packages are for everyone."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["[STAMPED] parcel 42"], "note": "Built and run: <samp>[STAMPED] parcel 42</samp>. Inside, <code>stamps</code> used its own <code>internal/press</code>: allowed, because <code>stamps</code> is in the same building."}]},
+        {"id": "v2", "label": "example.com/stamps/v2", "program": "road_v2.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>branch_v2/main.go</code> is being built."},
+          {"on": ["IMP"], "via": ["t0"], "output": [], "mood": "focus", "note": "Its import: <code>\"example.com/stamps/v2\"</code>. The <code>/v2</code> picks the other shelf."},
+          {"on": ["SH"], "via": ["t1"], "output": [], "note": "Shelf v2, version <code>v2.0.0</code>. The package is still called <code>stamps</code>, so the code says <code>stamps.Stamp(…, stamps.Blue)</code>."},
+          {"on": ["RUN"], "via": ["t4"], "output": ["[STAMPED in blue] parcel 42"], "note": "Built and run: <samp>[STAMPED in blue] parcel 42</samp>."}]},
+        {"id": "own", "label": "example/depot/internal/route", "program": "road_own.go", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>branch_own/main.go</code> is being built. This depot has its own staff room: <code>internal/route</code>."},
+          {"on": ["IMP"], "via": ["t0"], "output": [], "mood": "focus", "note": "Its import: <code>\"example/depot/internal/route\"</code>."},
+          {"on": ["ST"], "via": ["t2"], "output": [], "note": "The path contains <code>internal</code>, so it's a staff room. Go checks who's asking."},
+          {"on": ["CK"], "via": ["t3"], "output": [], "mood": "focus", "note": "The <code>internal</code> folder sits in the module's top folder, <code>example/depot</code>. <code>main.go</code> lives in that same folder: same building."},
+          {"on": ["RUN"], "via": ["t5"], "output": ["parcel 42 goes north on the A1 to Lisbon"], "note": "Built and run: <samp>parcel 42 goes north on the A1 to Lisbon</samp>. Your own staff can use your own staff room."}]},
+        {"id": "int", "label": "example.com/stamps/internal/press", "bug": true, "program": "road_int.go", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "use of internal package example.com/stamps/internal/press not allowed"}, "steps": [
+          {"on": ["S0"], "output": [], "note": "<code>branch_int/main.go</code> is being built. It wants free postage from Scoot's printing press."},
+          {"on": ["IMP"], "via": ["t0"], "output": [], "mood": "focus", "note": "Its import: <code>\"example.com/stamps/internal/press\"</code>."},
+          {"on": ["ST"], "via": ["t2"], "output": [], "note": "A staff room. Whose? The <code>internal</code> folder belongs to <code>example.com/stamps</code>."},
+          {"on": ["CK"], "via": ["t3"], "output": [], "mood": "worried", "note": "<code>main.go</code> is in <code>example/depot</code>, not inside <code>example.com/stamps</code>. Not the same building."},
+          {"on": ["NO"], "via": ["t6"], "output": [], "error": "main.go:6:2: use of internal package example.com/stamps/internal/press not allowed", "note": "Refused before anything is compiled, and nothing runs. Read it like a detective: line 6, column 2 is the import line itself, and the message names the package and the reason."}]}]}</script>
+    <p class="os-note howrun"><b>How this run was really made:</b> each road is a real <code>go run .</code> inside its own folder (<code>~/go-ch21/branch_v1</code>, <code>branch_v2</code>, <code>branch_own</code>, <code>branch_int</code>), with the chapter's offline library settings set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first build that needs a module prints them.</p>
+  </section>
+
+
+  <section class="panel sketch" aria-label="Panel 16: naming packages">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">A package name is read at every call: <code>stamps.Stamp</code>, <code>strings.ToUpper</code>. Good names make those calls read like plain English.</p>
+    <div class="cmp-wrap"><table class="cmp">
+      <thead><tr><th>Instead of</th><th>Prefer</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td data-th="Instead of"><code>util.FormatLabel</code></td><td data-th="Prefer"><code>label.Format</code></td><td data-th="Why">"util", "common", "helpers" and "misc" say nothing about what's inside, and soon hold everything.</td></tr>
+        <tr><td data-th="Instead of"><code>stamps.StampsStamp</code></td><td data-th="Prefer"><code>stamps.Stamp</code></td><td data-th="Why">The package name is already in front. Don't say it twice ("stutter").</td></tr>
+        <tr><td data-th="Instead of"><code>package parcelHelpers</code></td><td data-th="Prefer"><code>package parcel</code></td><td data-th="Why">Short, lowercase, one word, no underscores or capitals.</td></tr>
+        <tr><td data-th="Instead of"><code>package models</code></td><td data-th="Prefer"><code>package route</code>, <code>package invoice</code></td><td data-th="Why">Name a package for what it <b>provides</b>, not for what kind of code is in it.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>A useful test: say the call out loud. <code>route.Next("Lisbon")</code> sounds like a sentence. <code>util.Do(x)</code> sounds like a shrug.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-name-m" id="ex-name"></div>
+  <script type="application/json" id="ex-name-m">{"q": "Scoot has functions that weigh parcels and work out postage. Which package name follows Go's advice best?", "options": [
+    {"t": "<code>postage</code>, so calls read <code>postage.For(weight)</code>", "correct": true, "why": "Short, lowercase, and named for what it provides. The call reads like a phrase."},
+    {"t": "<code>utils</code>, for all the helpers", "why": "It says nothing about what's inside, so it ends up as a junk drawer that every package imports."},
+    {"t": "<code>postageUtils</code>, to be extra clear", "why": "Package names are lowercase single words; and \"utils\" adds nothing."},
+    {"t": "<code>postage</code>, with a function called <code>PostageFor</code>", "why": "Good package name, but <code>postage.PostageFor</code> stutters. Call it <code>postage.For</code>."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 17: init runs before main">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">A function called <code>init</code> is special: you never call it. Go runs it <b>automatically</b>, before <code>main</code>. A file may have several. Package-level variables are set up even earlier.</p>
+    <span class="file-tab">init_order.go</span>
+    <pre class="code" data-src="init_order.go"></pre>
+    <pre class="term" data-run="init_order.go"></pre>
+    <ol class="readlist">
+      <li><span><code>var depot = open("depot")</code> (line 5)<br>Package-level variables get their values first. This one calls <code>open</code>, so step 1 prints before anything else.</span></li>
+      <li><span>Two <code>func init()</code>, lines 12 and 16<br>Then every <code>init</code> runs, in the order they appear in the file. Both can already use <code>depot</code>.</span></li>
+      <li><span><code>func main()</code> (line 20)<br>Only now does the program "start". In a bigger program, every imported package gets this whole treatment first, before your package does.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: walk Scoot through the start-up" data-walk="walk-init">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Walk it. Watch how far Scoot gets before <code>main</code> even begins.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">init_order.go</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-init">{"program": "init_order.go", "steps": [
+      {"line": 5, "output": [], "mood": "focus", "arms": "point", "note": "The program starts, but not at <code>main</code>. First, package-level variables: line 5 needs the value of <code>open(\"depot\")</code>."},
+      {"line": 8, "output": [], "mood": "focus", "arms": "point", "note": "So <code>open</code> runs, with <code>name</code> set to <code>\"depot\"</code>."},
+      {"line": 9, "output": ["1. package variable: opening the depot"], "mood": "happy", "arms": "point", "note": "Step 1 is on the screen. Next, <code>open</code> returns the name, and <code>depot</code> holds <code>\"depot\"</code>."},
+      {"line": 13, "output": ["1. package variable: opening the depot"], "mood": "focus", "arms": "point", "note": "Variables are ready. Now the <code>init</code> functions, top to bottom: the first one, line 12."},
+      {"line": 17, "output": ["1. package variable: opening the depot", "2. first init: sorting the depot"], "mood": "happy", "arms": "point", "note": "The first <code>init</code> printed step 2. Now the second <code>init</code>, line 16."},
+      {"line": 21, "output": ["1. package variable: opening the depot", "2. first init: sorting the depot", "3. second init: counting stamps"], "mood": "happy", "arms": "point", "note": "Every <code>init</code> is done. Only now does Go call <code>main</code>."},
+      {"line": null, "output": ["1. package variable: opening the depot", "2. first init: sorting the depot", "3. second init: counting stamps", "4. main: the depot is ready"], "mood": "happy", "arms": "cheer", "note": "<code>main</code> printed step 4 and returned. Three lines ran before <code>main</code> did, and nobody called them."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pinit-m" id="ex-pinit"></div>
+  <script type="application/json" id="ex-pinit-m">{"program": "predict_init.go", "prompt": "The pieces are in a strange order on purpose. What are the four lines, in the order they print?", "hint": "Order of business: package-level variables first (wherever they are in the file), then every <code>init</code> from top to bottom, then <code>main</code>.", "explain": "<code>bell</code> is a package-level variable, so <code>ring</code> runs first: <samp>bell rings</samp>. Then the two <code>init</code>s in file order: <samp>lights on</samp>, then <samp>kettle on, bell says ding</samp>. <code>main</code> comes last: <samp>doors open</samp>. Where a function sits in the file doesn't matter; what kind of thing it is does."}</script>
+
+  <section class="panel sketch" aria-label="Panel 19: why to go easy on init">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">So <code>init</code> is handy. Why do experienced Go programmers avoid it?</p>
+    <ol class="checklist">
+      <li><b>It's invisible.</b> Nothing in <code>main</code> says it runs. A reader has to search every file of every imported package to know what happened before line 1 of <code>main</code>.</li>
+      <li><b>It can't return an error.</b> If opening a file or reading a setting fails inside <code>init</code>, the only options are to ignore it or to <code>panic</code>, and the program dies before <code>main</code> starts.</li>
+      <li><b>It runs even in tests,</b> every time the package's tests run (tests are chapter 23), whether a test needs it or not.</li>
+      <li><b>It creates hidden global state,</b> package variables that any code can lean on, which makes order bugs hard to find.</li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Prefer a plain function you call yourself, like <code>cfg, err := loadConfig()</code> at the top of <code>main</code>: visible, testable, and it returns an error. Keep <code>init</code> for small, certain set-up, such as filling a lookup table. You'll still see one common use: <code>import _ "image/png"</code>, where the underscore imports a package <em>only</em> for its <code>init</code>, which registers the PNG decoder.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor explains.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: doc comments">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">A comment directly above <code>package</code>, or above an exported name, is a <b>doc comment</b>. <code>go doc</code> and pkg.go.dev show it to everyone who borrows your code.</p>
+    <span class="file-tab">docs/label/label.go</span>
+    <pre class="code" data-src="docs.go"></pre>
+    <pre class="term" data-run="docs.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> each command ran inside <code>~/go-ch21/docs</code>, the folder the prompt shows (a <code>cd docs</code> before each one); nothing else was added.</p>
+    <ol class="readlist">
+      <li><span><code>// Package label …</code> (lines 1 to 3)<br>A package comment starts with "Package" and the name. A line with just <code>//</code> starts a new paragraph.</span></li>
+      <li><span><code>// Big returns …</code> (line 8)<br>Start with the name, and say what it does in a full sentence. <code>go doc ./label</code> lists the exported names; ask for one name to read its comment.</span></li>
+      <li><span><code>Deprecated:</code> (line 15)<br>A paragraph starting with <code>Deprecated:</code> marks an old name that still works but shouldn't be used. Editors and pkg.go.dev show it crossed out or hidden.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · YOUR OWN COPY<small>replace, workspaces, vendoring, go install and GOTOOLCHAIN</small></h2>
+
+  <section class="panel clean" aria-label="Panel 21: replace, to test a fix">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Scoot finds a bug in <code>stamps</code>: spaces around a label are kept. The fix is one line, in a local copy of the module, the folder <code>stamps-local</code>. How can the depot try it <em>before</em> a new printing exists?</p>
+    <span class="file-tab">stamps-local/stamps.go</span>
+    <pre class="code" data-src="stamps-local/stamps.go"></pre>
+    <span class="file-tab">fixdepot/main.go</span>
+    <pre class="code" data-src="replace.go"></pre>
+    <pre class="term wrap" data-run="replace.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/fixdepot</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). Before the first command, any <code>replace</code> line left from an earlier run was removed with <code>go mod edit -dropreplace</code>. The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span>First <code>go run .</code><br><code>%q</code> prints the result in quotes so you can see the spaces: <samp style="white-space:pre">"[STAMPED]   parcel 42  "</samp>. That's the bug.</span></li>
+      <li><span><code>go mod edit -replace example.com/stamps=../stamps-local</code><br>Adds one line to go.mod: "wherever you'd use <code>example.com/stamps</code>, use the folder <code>../stamps-local</code> instead". It prints nothing.</span></li>
+      <li><span>Second <code>go run .</code><br><samp>"[STAMPED] parcel 42"</samp>: the fixed copy was used. The <code>require</code> line didn't change.</span></li>
+      <li><span><code>go list -m example.com/stamps</code><br><samp>v1.2.1 =&gt; ../stamps-local</samp>: the arrow shows the swap.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Careful: that <code>replace</code> line now sits in go.mod, and a folder path like <code>../stamps-local</code> means nothing on anyone else's computer. Remove it with <code>go mod edit -dropreplace example.com/stamps</code> before you share.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: a workspace, without touching go.mod">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">A tidier way to work on two modules at once: a <b>workspace</b>. It lives in its own file, <code>go.work</code>, and leaves go.mod alone.</p>
+    <pre class="term" data-run="work.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/wsdepot</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). Before the first command, any go.work and go.work.sum left from an earlier run were deleted. The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>go work init . ../stamps-local</code><br>Creates <code>go.work</code>, listing the modules you're working on together: this one (<code>.</code>) and the local stamps.</span></li>
+      <li><span><code>use ( … )</code><br>Inside the workspace, imports of <code>example.com/stamps</code> find the local copy, because it's one of the modules in <code>use</code>.</span></li>
+      <li><span><code>cat go.mod</code><br>No <code>replace</code>. Nothing that will be shared has changed.</span></li>
+      <li><span><code>GOWORK=off go run .</code><br>Setting the variable <code>GOWORK</code> to <code>off</code> for one command ignores go.work: the shelf copy again, spaces and all.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>go.work is a note on <b>my</b> desk, not on the borrowing card. Most projects never commit it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 23: three ways to use a different copy">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Three tools that change <em>where code comes from</em>, and when to reach for each.</p>
+    <div class="cmp-wrap"><table class="cmp">
+      <thead><tr><th>Tool</th><th>Lives in</th><th>Use it when</th></tr></thead>
+      <tbody>
+        <tr><td data-th="Tool"><code>replace</code></td><td data-th="Lives in">go.mod (shared)</td><td data-th="Use it when">Everyone building this module must use a different copy: a fork with a fix the author hasn't released yet. Or briefly, while testing.</td></tr>
+        <tr><td data-th="Tool"><code>go work</code></td><td data-th="Lives in">go.work (usually not shared)</td><td data-th="Use it when">You are changing two or more modules together on your own computer.</td></tr>
+        <tr><td data-th="Tool"><code>go mod vendor</code></td><td data-th="Lives in">a <code>vendor/</code> folder</td><td data-th="Use it when">The project must build with no network at all, or a company wants every line of borrowed code in its own repository.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-repwork-m" id="ex-repwork"></div>
+  <script type="application/json" id="ex-repwork-m">{"q": "Scoot is changing <code>stamps</code> and the depot <b>together</b> this afternoon, on one laptop, and wants to share neither change yet. What fits best?", "options": [
+    {"t": "A workspace made with <code>go work init</code>", "correct": true, "why": "Yes: <code>go work init . ../stamps-local</code>. go.work points the build at the local copy without changing go.mod, so nothing shared is touched, and you delete or ignore it when you're done."},
+    {"t": "A <code>replace</code> line in the depot's go.mod", "why": "It works, but it edits a file you'll commit, and a local folder path breaks for everyone else if it slips in. Better for a fix everyone must use."},
+    {"t": "<code>go mod vendor</code> in the depot", "why": "Vendoring copies the <b>released</b> code into your project. It doesn't point at your work-in-progress copy."},
+    {"t": "Publish <code>v1.2.2</code> after every small edit", "why": "Printings never change, so each experiment would stay on the shelf forever. Try things locally first."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 24: vendoring">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption"><code>go mod vendor</code> copies every package your build needs into a folder called <code>vendor</code>, inside your project.</p>
+    <pre class="term" data-run="vendor.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/vdepot</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>find vendor -type f | sort</code><br>Only the packages the build needs are copied: <code>ink</code>, <code>stamps</code> and its <code>internal/press</code>, each in a folder named after its import path.</span></li>
+      <li><span><code>vendor/modules.txt</code><br>The vendor folder's own list: which module and version each package came from. <code>## explicit</code> means go.mod requires it.</span></li>
+      <li><span><code>GOPROXY=off go run .</code><br>With downloads switched off for this command, the build still works: when a <code>vendor</code> folder exists, the go command builds from it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: go install puts a program on your computer">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Some modules are <b>programs</b> rather than libraries. <code>go install <i>path</i>@<i>version</i></code> downloads one, builds it, and puts the finished program in a folder called <code>GOBIN</code>.</p>
+    <span class="file-tab">stampcli v1.0.0 · main.go</span>
+    <pre class="code" data-src="install.go"></pre>
+    <pre class="term" data-run="install.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/inst</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder). The cache was filled first and that step's output thrown away, so no <samp>go: downloading</samp> lines appear; on your computer, the first command that needs a module prints them.</p>
+    <ol class="readlist">
+      <li><span><code>export GOBIN=$HOME/go-ch21/inst/bin</code><br>Normally you skip this: <code>GOBIN</code> defaults to <code>go/bin</code> in your home folder. Here it points at a folder inside the chapter, so you can see exactly what arrives.</span></li>
+      <li><span><code>go install example.com/stampcli@v1.0.0</code><br>Silent on success. With <code>@version</code> it ignores the current folder's go.mod, so it works from anywhere.</span></li>
+      <li><span><code>$GOBIN/stampcli parcel7 parcel8</code><br>A real program now, no <code>go run</code> needed. Put the GOBIN folder on your <code>PATH</code> and you can just type <code>stampcli</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Rule of thumb: <code>go get</code> changes <b>your module's</b> borrowing card. <code>go install</code> puts a <b>program</b> on your computer and leaves go.mod alone.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: a module from the future">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="HALT!" data-seed="26"></svg>
+    <p class="caption">This module's go.mod asks for Go 1.28. The Go here is 1.27.3. Go 1.28 hasn't been released yet.</p>
+    <pre class="term wrap" data-run="toolchain.go" data-exit></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session in <code>~/go-ch21/future</code>, with the chapter's offline library settings, set hidden at the start (<code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code>, and a module cache inside the chapter folder), and <code>GOTOOLCHAIN=local</code> set for the whole book, as <code>go env</code> shows.</p>
+    <ol class="readlist">
+      <li><span><code>go: go.mod requires go &gt;= 1.28 (running go 1.27.3; GOTOOLCHAIN=local)</code><br>The <code>go</code> line is a minimum. The message says what was needed, what is running, and why it didn't fetch a newer one: <code>GOTOOLCHAIN=local</code>.</span></li>
+      <li><span><code>go env GOTOOLCHAIN</code><br>This book's machine sets <code>local</code>: "only ever use the Go that's installed". A fresh install says <code>auto</code>.</span></li>
+      <li><span><code>GOTOOLCHAIN=auto go run .</code><br>With <code>auto</code>, an older Go <b>downloads</b> the newer release it needs, like a module, and runs it. Here it tried: <samp>go: downloading go1.28.0</samp>, but there's no such release yet, so: <samp>toolchain not available</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The optional <code>toolchain</code> line in go.mod names the release a project would <em>like</em> people to use, for example <code>toolchain go1.27.3</code> under <code>go 1.27</code>. With <code>GOTOOLCHAIN=auto</code>, an older Go switches to it. You'll see Go update these lines itself when <code>go get</code> pulls in a module that needs a newer Go.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor explains. A burst says HALT.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tc-m" id="ex-tc"></div>
+  <script type="application/json" id="ex-tc-m">{"q": "Your Go is 1.27.3 with the default setting, <code>GOTOOLCHAIN=auto</code>. You clone a project whose go.mod says <code>go 1.28.1</code>, months from now, after that release exists. What happens on <code>go build</code>?", "options": [
+    {"t": "It fetches Go 1.28.1 and builds with that", "correct": true, "why": "Yes: it downloads the Go 1.28.1 toolchain. With <code>auto</code>, the installed go command fetches the toolchain the module needs (from the same proxy as modules) and hands the build over to it."},
+    {"t": "It builds with 1.27.3 and hopes for the best", "why": "Never. The go line is a minimum; Go refuses or upgrades, it doesn't guess."},
+    {"t": "It stops with <code>go.mod requires go &gt;= 1.28.1</code>", "why": "That's what happens with <code>GOTOOLCHAIN=local</code>, as in panel 26. The default, <code>auto</code>, downloads instead."},
+    {"t": "It quietly edits go.mod down to <code>go 1.27</code>", "why": "Go never lowers a module's requirements for you."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE PLUMBING<small>Files, line-by-line reading, and the bucket you must empty</small></h2>
+
+  <section class="panel pop" aria-label="Panel 27: the Plumber arrives">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">The depot's records are piling up. Scoot calls in the Plumber, who has fitted pipes in every building in town.</p>
+    <div class="scene">
+      <svg class="char plumber" viewBox="0 0 140 190" aria-hidden="true">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M36 182 v-14 h28 v14 Z M76 182 v-14 h28 v14 Z" fill="#2B2B2B"/>
+          <path d="M40 170 V112 Q40 96 56 96 H84 Q100 96 100 112 V170 Z" fill="#FFD60A"/>
+          <path d="M46 170 V122 H94 V170 Z" fill="#7FB2FF"/>
+          <path d="M70 170 V140" fill="none"/>
+          <path d="M52 122 L50 98 M88 122 L90 98" fill="none"/>
+          <rect x="60" y="128" width="20" height="14" rx="3" fill="#DDE8FF"/>
+          <path d="M40 112 Q22 124 26 146" fill="none"/>
+          <path d="M100 112 Q118 118 120 98" fill="none"/>
+          <circle cx="70" cy="62" r="27" fill="#F2C9A0"/>
+          <path d="M42 50 Q44 26 70 26 Q96 26 98 50 Z" fill="#7FB2FF"/>
+          <path d="M40 50 H104" fill="none"/>
+          <path d="M56 74 Q70 90 84 74" fill="none"/>
+          <path d="M120 100 L129 70" fill="none" stroke-width="9"/>
+          <path d="M122 58 a10 10 0 1 0 16 6 l-6 -2 -2 -8 Z" fill="#F4F1EA"/>
+        </g>
+        <circle cx="60" cy="62" r="3.5" fill="#111"/><circle cx="80" cy="62" r="3.5" fill="#111"/>
+      </svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">The Plumber says: </span>Every system I build has the same three parts. <b>Taps</b> give you water. <b>Drains</b> take it away. And in between, sometimes, a <b>bucket</b>, so you don't run to the drain with every cupful.</p>
+        <p class="bubble"><span class="sr-only">The Plumber says: </span>One rule, and I'll say it twice: <b>a bucket doesn't empty itself.</b></p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: the Plumber, in a blue cap and blue overalls over a yellow shirt, holds up a wrench.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 28: the plumbing picture">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">In Go, the water is bytes. Chapter 19's <code>io.Reader</code> is a tap and <code>io.Writer</code> is a drain. The package <code>bufio</code> ("buffered I/O") adds the helpers in between.</p>
+    <svg class="pic-wide has-phone" viewBox="0 0 680 330" role="img" aria-label="Picture: on the left, three taps labelled Readers: a file from os.Open, the keyboard os.Stdin, and strings.NewReader. Their pipe runs into a sieve labelled bufio.Scanner, which hands out one line at a time. On the right, a bucket labelled bufio.Writer, with a lever labelled Flush, sits above two drains labelled Writers: the screen os.Stdout and a file from os.Create. The caption says taps give bytes, drains take bytes, and a bucket saves trips but must be emptied with Flush.">
+      <text x="340" y="28" font-family="Bangers, sans-serif" font-size="26" fill="#111" text-anchor="middle" letter-spacing="1">TAPS, A SIEVE, A BUCKET, DRAINS</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="16" y="50" width="196" height="170" rx="14" fill="#DDE8FF"/>
+        <path d="M212 135 H246" fill="none"/>
+        <path d="M246 96 H330 L310 176 H266 Z" fill="#FFF6CC"/>
+        <path d="M262 112 H314 M258 128 H318 M262 144 H312 M266 160 H308" fill="none" stroke-width="2.5" stroke-dasharray="4 4"/>
+        <path d="M288 176 V200" fill="none"/>
+        <path d="M410 70 L428 170 H556 L574 70" fill="#FFF6CC"/>
+        <path d="M440 66 Q492 36 544 66" fill="none"/>
+        <path d="M570 96 h22 l12 -14" fill="none"/>
+        <circle cx="607" cy="80" r="8" fill="#FFD60A"/>
+        <path d="M492 170 V196" fill="none"/>
+        <rect x="400" y="196" width="264" height="24" rx="6" fill="#F4F1EA"/>
+      </g>
+      <g font-family="Bangers, sans-serif" font-size="20" fill="#111" text-anchor="middle"><text x="114" y="76">TAPS (READERS)</text><text x="288" y="86">SIEVE</text><text x="378" y="112">BUCKET</text><text x="532" y="246">DRAINS (WRITERS)</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="114" y="110">os.Open(file)</text><text x="114" y="140">os.Stdin</text><text x="114" y="170">strings.NewReader</text>
+        <text x="288" y="222">bufio.Scanner</text>
+        <text x="492" y="120">bufio.Writer</text>
+        <text x="626" y="64">Flush</text>
+        <text x="460" y="272">os.Stdout</text><text x="604" y="272">os.Create</text>
+      </g>
+      <text x="288" y="242" font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">one line at a time</text>
+      <text x="492" y="150" font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">saves trips</text>
+      <text x="340" y="314" font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111" text-anchor="middle">A bucket saves trips to the drain. It only empties when full, or when you Flush it.</text>
+    </svg>
+    <svg class="pic-phone" viewBox="0 0 360 620" role="img" aria-label="Picture: at the top, three taps labelled Readers: a file from os.Open, the keyboard os.Stdin, and strings.NewReader. Their pipe runs into a sieve labelled bufio.Scanner, which hands out one line at a time. Below, a bucket labelled bufio.Writer, with a lever labelled Flush, sits above two drains labelled Writers: the screen os.Stdout and a file from os.Create. The caption says a bucket saves trips but must be emptied with Flush.">
+      <text x="180" y="28" font-family="Bangers, sans-serif" font-size="22" fill="#111" text-anchor="middle" letter-spacing="1">TAPS, SIEVE, BUCKET, DRAINS</text>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="40" y="44" width="280" height="140" rx="14" fill="#DDE8FF"/>
+        <path d="M180 184 V206" fill="none"/>
+        <path d="M130 206 H230 L210 276 H150 Z" fill="#FFF6CC"/>
+        <path d="M146 222 H214 M150 238 H210 M154 254 H206" fill="none" stroke-width="2.5" stroke-dasharray="4 4"/>
+        <path d="M110 360 L124 460 H236 L250 360" fill="#FFF6CC"/>
+        <path d="M134 356 Q180 326 226 356" fill="none"/>
+        <path d="M250 386 h34 l12 -14" fill="none"/>
+        <circle cx="299" cy="370" r="8" fill="#FFD60A"/>
+        <path d="M180 460 V486" fill="none"/>
+        <rect x="40" y="486" width="280" height="24" rx="6" fill="#F4F1EA"/>
+      </g>
+      <g font-family="Bangers, sans-serif" font-size="19" fill="#111" text-anchor="middle"><text x="180" y="70">TAPS (READERS)</text><text x="62" y="410">BUCKET</text><text x="180" y="536">DRAINS (WRITERS)</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle">
+        <text x="180" y="102">os.Open(file)</text><text x="180" y="130">os.Stdin</text><text x="180" y="158">strings.NewReader</text>
+        <text x="180" y="300">bufio.Scanner</text>
+        <text x="180" y="410">bufio.Writer</text>
+        <text x="312" y="398">Flush</text>
+        <text x="110" y="562">os.Stdout</text><text x="250" y="562">os.Create</text>
+      </g>
+      <text x="180" y="320" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">sieve: one line at a time</text>
+      <text x="180" y="596" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">It only empties when full, or on Flush.</text>
+    </svg>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: write a file, then read it line by line">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Chapter 14 read a file line by line with <code>os.Open</code> and a <code>bufio.Scanner</code>. Here's the full round trip: create a file, write to it, then scan it back, one line at a time.</p>
+    <span class="file-tab">write_read.go</span>
+    <pre class="code" data-src="write_read.go"></pre>
+    <pre class="term" data-run="write_read.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.Create("notes.txt")</code> (line 11)<br>Opens a file for writing, as a drain. If it exists, it's emptied first; if not, it's made. <code>*os.File</code> is a Writer, so <code>fmt.Fprintln(f, …)</code> writes into it.</span></li>
+      <li><span><code>f.Close()</code> (line 18)<br>Hand the file back to the operating system. A program may only have a limited number of files open, so close every one you open.</span></li>
+      <li><span><code>os.Open</code>, then <code>defer r.Close()</code> (lines 21 to 26)<br>Opens for reading only, as a tap. Chapter 14's order: open, check <code>err</code>, then defer the close.</span></li>
+      <li><span><code>for sc.Scan() { … sc.Text() … }</code> (lines 30 to 33)<br>A recap from chapter 14: <code>Scan</code> moves to the next line and says <code>true</code>, or <code>false</code> when the file is finished. <code>Text</code> gives that line <b>without</b> its newline.</span></li>
+      <li><span><code>sc.Err()</code> (line 34)<br>When the loop stops, ask why. At the normal end of the file it's <code>nil</code>. A real read problem would show up here, not in <code>Scan</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pscan-m" id="ex-pscan"></div>
+  <script type="application/json" id="ex-pscan-m">{"program": "parsons_scan.go", "seed": 4, "pin": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 20], "prompt": "Print every line of <code>parcels.txt</code> with <code>&gt;</code> in front. Put the moving lines of <code>main</code> in order. The goal output is below.", "explain": "Open the tap first (line 10), so <code>err</code> can be checked and the close deferred. Then make the scanner from <code>f</code>, loop with <code>for sc.Scan() {</code>, print <code>sc.Text()</code> inside, and close the loop. The empty third line of the file comes out as a lone <samp>&gt;</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: the file being read">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The file <code>parcels.txt</code> ships with the programs. It has four lines, and the third is empty.</p>
+    <span class="file-tab">trace_scan.go</span>
+    <pre class="code" data-src="trace_scan.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The sieve hands you one line per lap, newline already removed. An empty line still counts as a lap: <code>Scan</code> says <code>true</code>, and <code>Text</code> is <code>""</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tscan-m" id="ex-tscan"></div>
+  <script type="application/json" id="ex-tscan-m">{"program": "trace_scan.go", "columns": ["n", "len(line)", "empty?"], "given": [0], "prompt": "Each lap prints the line number, how many bytes are in the line (without its newline), and whether the line is empty. The lines of <code>parcels.txt</code> are: <code>Ana, 12 Harbour Road</code>, <code>Bo, 3 Mill Lane</code>, an empty line, and <code>Cy, 77 Orchard Way</code>. The <code>n</code> column is filled in.", "explain": "<code>Ana, 12 Harbour Road</code> is 20 bytes, <code>Bo, 3 Mill Lane</code> is 15, the empty line is <samp>0 true</samp>, and <code>Cy, 77 Orchard Way</code> is 18. The newline is never part of <code>sc.Text()</code>, so it's never counted."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 31: three lines, and nothing on the screen">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="DRIP" data-seed="31"></svg>
+    <p class="caption">Writing many small pieces straight to a file or the screen means many trips to the operating system. A <code>bufio.Writer</code> collects them in a bucket first. Scoot tries one:</p>
+    <span class="file-tab">no_flush.go</span>
+    <pre class="code" data-src="no_flush.go"></pre>
+    <pre class="term" data-run="no_flush.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span>Nothing on the screen, and exit code 0<br>No error, no warning, no crash. Three lines went into the bucket (its default size is 4096 bytes), the bucket never filled, and nobody emptied it.</span></li>
+      <li><span>Line 13 is the last line of <code>main</code><br>When <code>main</code> returns, the program ends. A <code>bufio.Writer</code> doesn't flush itself when the program stops, so its bytes vanish.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>The worst kind of bug: silent. With a big report, most lines appear (each time the bucket fills, it empties), and only the last few go missing. Next panel: watch it happen.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean bucketbox" aria-label="Panel 32: step through the bucket" data-bucket="bucket-model">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">A tiny 16-byte bucket, five writes of 9 bytes each. Pick a road: without <code>Flush</code>, or with it. In the picture, <code>·</code> is a space and <code>⏎</code> is the newline.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="bucket-split">
+      <div><span class="file-tab bucket-tab">bucket.go</span><ol class="tr-code bucket-code"></ol></div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <div class="stage" data-reserve><svg class="bucket-svg" role="img" aria-label="The bucket for the current step: the bytes inside it, whether it is pouring into the drain, and what has reached the screen. The narration and the text version below describe it."></svg></div>
+    <ul class="bucket-key" aria-label="Key to the picture">
+      <li>thick drain and the word POURING: bytes are going to the screen now</li>
+      <li>dashed drain: nothing is moving</li>
+      <li>dashed box: an empty byte in the bucket</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>What happens</th><th>Bucket and screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="bucket-model">{"size": 16, "writes": ["parcel 1\n", "parcel 2\n", "parcel 3\n", "parcel 4\n", "parcel 5\n"],
+      "paths": [
+        {"id": "no", "label": "bucket.go: no Flush", "program": "bucket.go", "flush": false, "startLine": 10, "writeLine": 12, "endLine": 14},
+        {"id": "yes", "label": "bucket_flush.go: with Flush", "program": "bucket_flush.go", "flush": true, "startLine": 10, "writeLine": 12, "flushLine": 14, "endLine": 15}]}</script>
+    <p class="caption">The two real runs. The one without <code>Flush</code> really does stop in the middle of a word.</p>
+    <div class="pair">
+      <div><span class="vs-label">WITHOUT FLUSH</span><pre class="term wrap" data-run="bucket.go"></pre></div>
+      <div><span class="vs-label">WITH FLUSH</span><pre class="term wrap" data-run="bucket_flush.go"></pre></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pbucket-m" id="ex-pbucket"></div>
+  <script type="application/json" id="ex-pbucket-m">{"program": "predict_bucket.go", "prompt": "Two drains to the same screen: the bucket <code>w</code> (default size, 4096 bytes), and plain <code>fmt.Println</code>, which goes straight to the screen. What appears?", "hint": "Only a Flush (or a full bucket) moves bytes from <code>w</code> to the screen. How many times is <code>w</code> flushed, and when?", "explain": "<samp>sorting</samp> reaches the screen at line 12's <code>Flush</code>. <samp>waving</samp> goes straight there with <code>Println</code>. <code>loading</code> and <code>driving</code> sit in the bucket, which is never flushed again, so they're lost when <code>main</code> returns."}</script>
+
+  <section class="panel clean" aria-label="Panel 33: emptying the bucket properly">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">The fix: call <code>Flush</code> when you've finished writing, and check its error. <code>Flush</code> is where the real writing happens, so it's where a full disk would be reported.</p>
+    <span class="file-tab">flush_file.go</span>
+    <pre class="code" data-src="flush_file.go"></pre>
+    <pre class="term" data-run="flush_file.go"></pre>
+    <ol class="readlist">
+      <li><span><code>w := bufio.NewWriter(f)</code> (line 17)<br>A bucket over the file's drain. Writes go to <code>w</code>, never to <code>f</code> directly.</span></li>
+      <li><span><code>if err := w.Flush(); err != nil</code> (line 21)<br>Empty the bucket into the file, and find out whether it worked.</span></li>
+      <li><span><code>log.txt holds 36 bytes</code><br>Three lines of 12 bytes. Read back right after <code>Flush</code>, they're all in the file.</span></li>
+      <li><span><code>defer f.Close()</code> (line 15) runs last<br>Order matters: flush the bucket <b>before</b> the file closes. A deferred <code>Close</code> runs at the very end, after the <code>Flush</code> on line 21.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>a bucket doesn't empty itself. Flush it.</b> For a quick program, <code>defer w.Flush()</code> right after making the writer is fine; for files you care about, call <code>Flush</code> yourself and check the error.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fflush-m" id="ex-fflush"></div>
+  <script type="application/json" id="ex-fflush-m">{"program": "fill_flush.go", "prompt": "Line 10: put a bucket over the screen. Line 11: make sure the bucket is emptied when <code>main</code> returns.", "blanks": [{"line": 10, "text": "bufio.NewWriter(os.Stdout)"}, {"line": 11, "text": "w.Flush()"}], "explain": "<code>bufio.NewWriter(os.Stdout)</code> wraps the screen in a 4096-byte bucket. <code>defer w.Flush()</code> runs as <code>main</code> returns, after the loop, so all three routes reach the screen: <samp>route to Lisbon</samp>, <samp>route to Porto</samp>, <samp>route to Faro</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 34: OpenFile, and reading everything at once">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption"><code>os.Create</code> always empties the file. To <b>add</b> to the end of a log instead, use <code>os.OpenFile</code> with <b>flags</b> saying exactly how to open it.</p>
+    <span class="file-tab">append_log.go</span>
+    <pre class="code" data-src="append_log.go"></pre>
+    <pre class="term" data-run="append_log.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.O_APPEND|os.O_CREATE|os.O_WRONLY</code> (line 10)<br>Three flags joined with <code>|</code>: write at the end, create the file if it's missing, open for writing only. (<code>os.Create</code> is just <code>OpenFile</code> with <code>O_RDWR|O_CREATE|O_TRUNC</code>; <code>O_TRUNC</code> is the "empty it first" flag.)</span></li>
+      <li><span><code>0o644</code> (line 10)<br>The <b>permissions</b> a new file gets, written in octal (base 8): the owner may read and write, everyone else may only read. It's ignored when the file already exists.</span></li>
+      <li><span><code>os.WriteFile("visits.log", nil, 0o644)</code> (line 20)<br>Empties the log at the start, so every run prints the same. Without it, each run would add two more lines.</span></li>
+      <li><span><code>io.ReadAll(f)</code> (line 31)<br>Drinks the whole tap at once into a <code>[]byte</code>. Like <code>io.Copy</code>, reaching the end isn't an error: <samp>err=&lt;nil&gt;</samp>. Fine for small files; for huge ones, use a Scanner.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 35: a leak in a loop">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <svg class="sfx tr" data-sfx="LEAK!" data-seed="35"></svg>
+    <p class="caption">Chapter 14 said "<code>defer f.Close()</code> right after a successful open". Here's where that habit bites: inside a loop. Linux lists a program's open files in the folder <code>/proc/self/fd</code>, so both programs can count them.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">leak_loop.go</span><pre class="code" data-src="leak_loop.go"></pre><pre class="term wrap" data-run="leak_loop.go"></pre></div>
+      <div><span class="file-tab">leak_fixed.go</span><pre class="code" data-src="leak_fixed.go"></pre><pre class="term wrap" data-run="leak_fixed.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>leak_loop.go</code>: <code>9, 10, 11, 12</code><br>A deferred call runs when the <b>function</b> returns, not when the loop's lap ends. Every file stays open until <code>main</code> finishes. With four files that's harmless; with 100,000 log files the program hits the system's limit, and the operating system refuses to open any more files.</span></li>
+      <li><span><code>leak_fixed.go</code>: <code>9, 9, 9, 9</code><br>Moving the body into its own function, <code>check</code>, gives each file its own function to return from, so each <code>defer</code> closes its file at the end of every lap.</span></li>
+      <li><span>Why 9 on the first lap?<br>The keyboard, the screen and the error stream are open from the start; add the file just opened, the folder being listed, and a few the Go runtime keeps for itself. The exact number differs between systems and Go versions; the <b>growth</b> is the point.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-leak-m" id="ex-leak"></div>
+  <script type="application/json" id="ex-leak-m">{"q": "A loop opens 50,000 small files, one per lap, each with <code>defer f.Close()</code> inside the loop body, all in <code>main</code>. What's the problem?", "options": [
+    {"t": "Every file stays open until <code>main</code> returns", "correct": true, "why": "Yes, so the program can run out of open-file slots. Deferred calls pile up on the function, not the lap. Put the body in its own function (like <code>check</code>), or call <code>f.Close()</code> at the end of each lap."},
+    {"t": "Nothing: <code>defer</code> runs at the end of each lap", "why": "That's the trap. <code>defer</code> belongs to the surrounding <b>function</b>. Panel 35's count went 9, 10, 11, 12."},
+    {"t": "Go closes files automatically when the variable <code>f</code> is reused", "why": "Reassigning <code>f</code> doesn't close the old file. Closing is always your job."},
+    {"t": "It doesn't compile: <code>defer</code> isn't allowed inside loops", "why": "It compiles fine, which is why this bug is so easy to write."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · PATHS, ARGUMENTS, EXITS<small>filepath, folders, temporary files, os.Args, flag, environment variables, exit codes and go:embed</small></h2>
+
+  <section class="panel clean" aria-label="Panel 36: building paths">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">A <b>path</b> says where a file lives: folders, then the file's name, joined by a separator. Linux and macOS use <code>/</code>; Windows uses <code>\</code>. Gluing paths together with <code>+</code> goes wrong in both directions:</p>
+    <span class="file-tab">join.go</span>
+    <pre class="code" data-src="join.go"></pre>
+    <pre class="term" data-run="join.go"></pre>
+    <ol class="readlist">
+      <li><span><code>archive//2026/mar.txt</code> (line 10)<br>One slash too many. Linux happens to forgive this one; other tools and other systems may not.</span></li>
+      <li><span><code>archive2026mar.txt</code> (line 11)<br>No slashes at all: a file that doesn't exist. Boss 3 shows how this one fails.</span></li>
+      <li><span><code>filepath.Join</code> (line 12)<br>Puts exactly one separator between the parts, the right one for the system the program runs on, and tidies up doubled slashes.</span></li>
+      <li><span><code>Dir</code>, <code>Base</code>, <code>Ext</code> (lines 15 to 17)<br>Take a path apart: the folder part, the last part, and the extension (with its dot).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>Join paths, don't glue them.</b> On Windows the same program prints <code>archive\2026\mar.txt</code>, and that's exactly right there.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 37: the filepath.Join machine" data-machine="m-join">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Feed the <code>filepath.Join</code> machine some parts. It joins them and <b>cleans</b> the result: no doubled slashes, no empty parts, and <code>..</code> ("the folder above") worked out.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-join">{"label": "filepath.Join", "program": "join_machine.go", "examples": [
+      {"in": "\"archive\", \"2026\", \"mar.txt\"", "out": "archive/2026/mar.txt", "outKind": "string", "note": "The everyday case: one <code>/</code> between each part."},
+      {"in": "\"archive/\", \"/2026/\", \"mar.txt\"", "out": "archive/2026/mar.txt", "outKind": "string", "note": "Extra slashes on the parts don't matter. Same answer as before."},
+      {"in": "\"archive\", \"2026\", \"..\", \"2025\", \"jan.txt\"", "out": "archive/2025/jan.txt", "outKind": "string", "note": "<code>..</code> means \"go up one folder\", so <code>2026/..</code> cancels out."},
+      {"in": "\"archive\", \"\", \"readme.txt\"", "out": "archive/readme.txt", "outKind": "string", "note": "Empty parts are skipped."},
+      {"in": "\"/home/you\", \"go-ch21\"", "out": "/home/you/go-ch21", "outKind": "string", "note": "A path starting with <code>/</code> is <b>absolute</b>: it starts at the top of the disk. One without is <b>relative</b>: it starts in the current folder."},
+      {"in": "(no parts at all)", "out": "\"\"", "outKind": "empty string", "note": "Nothing to join gives the empty string, printed here with <code>%q</code> so you can see it."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fjoin-m" id="ex-fjoin"></div>
+  <script type="application/json" id="ex-fjoin-m">{"program": "fill_join.go", "prompt": "Line 11: build the path from <code>\"archive\"</code>, <code>year</code> and <code>month</code>, the safe way.", "blanks": [{"line": 11, "text": "filepath.Join"}], "explain": "<code>filepath.Join(\"archive\", year, month)</code> gives <code>archive/2025/feb.txt</code> here, and <code>archive\\2025\\feb.txt</code> on Windows. The file exists, so the program prints <samp>archive/2025/feb.txt says: February: 388 parcels</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 38: walking a folder tree">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">The chapter folder has an <code>archive</code> with a folder per year. <code>filepath.WalkDir</code> visits every folder and file inside, calling your function once for each.</p>
+    <pre class="tree" aria-label="Folder tree of archive">archive/
+├── 2025/
+│   ├── feb.txt
+│   └── jan.txt
+├── 2026/
+│   └── mar.txt
+└── readme.txt</pre>
+    <span class="file-tab">walk.go</span>
+    <pre class="code" data-src="walk.go"></pre>
+    <pre class="term" data-run="walk.go"></pre>
+    <ol class="readlist">
+      <li><span><code>func(path string, d fs.DirEntry, err error) error</code> (line 10)<br>For each entry you get its path, a <code>DirEntry</code> (name, folder or not), and an error if that entry couldn't be read. Return <code>nil</code> to keep walking.</span></li>
+      <li><span>The order<br>The folder itself first, then its contents in <b>lexical</b> (dictionary) order, going all the way into each folder before moving on. That's why <code>feb.txt</code> comes before <code>jan.txt</code>, and <code>readme.txt</code> comes last.</span></li>
+      <li><span><code>WalkDir</code> or <code>Walk</code>?<br>The older <code>filepath.Walk</code> does the same job but looks up extra details for every file. <code>WalkDir</code> (Go 1.16) is faster; prefer it.</span></li>
+    </ol>
+    <p class="caption">Making folders, and listing just one:</p>
+    <span class="file-tab">dirs.go</span>
+    <pre class="code" data-src="dirs.go"></pre>
+    <pre class="term" data-run="dirs.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.MkdirAll</code> (line 11)<br>Makes <code>out</code>, <code>out/2026</code> and <code>out/2026/nov</code> as needed, and returns <code>nil</code> even when they exist already. <code>0o755</code>: everyone may look inside, only the owner may change things.</span></li>
+      <li><span><code>Mkdir: mkdir out: file exists</code> (line 14)<br>Plain <code>os.Mkdir</code> makes one folder, and complains if it's already there.</span></li>
+      <li><span><code>os.ReadDir</code> (line 17)<br>One folder's entries, sorted by name, without going inside sub-folders.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-twalk-m" id="ex-twalk"></div>
+  <script type="application/json" id="ex-twalk-m">{"program": "trace_walk.go", "columns": ["name", "depth", "folder?"], "given": [0], "prompt": "Walk <code>archive</code> again. Each visit prints the entry's name, how deep it is (the number of <code>/</code> in its path), and whether it's a folder. The names are filled in, in the order they're visited.", "explain": "<code>archive</code> has no slash in its path: depth <samp>0</samp>, a folder. <code>archive/2025</code> has one: depth <samp>1</samp>. Its files <code>archive/2025/feb.txt</code> and <code>jan.txt</code> have two. Then <code>2026</code> (1) and <code>mar.txt</code> (2), and last <code>readme.txt</code>, a file at depth <samp>1</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 39: temporary files">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Need scratch space that nobody else will trip over? Ask the system for a fresh <b>temporary</b> folder or file, with a random name.</p>
+    <span class="file-tab">temp.go</span>
+    <pre class="code" data-src="temp.go"></pre>
+    <pre class="term" data-run="temp.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.MkdirTemp("", "depot-*")</code> (line 11)<br><code>""</code> means "the system's temporary folder" (<code>/tmp</code> on Linux). The <code>*</code> in the pattern is replaced by random digits, so two programs never get the same folder.</span></li>
+      <li><span><code>defer os.RemoveAll(dir)</code> (line 16)<br>Temporary doesn't mean automatic: delete what you made. <code>RemoveAll</code> deletes a folder and everything inside it.</span></li>
+      <li><span>Why print <code>true</code> instead of the name?<br>Because the name really is different every run. This program prints only what stays the same, so its output can be checked.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 40: command-line arguments">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">Words typed after the program's name reach it as <b>command-line arguments</b>, in the slice <code>os.Args</code>.</p>
+    <span class="file-tab">args.go</span>
+    <pre class="code" data-src="args.go"></pre>
+    <pre class="term" data-run="args.go"></pre>
+    <ol class="readlist">
+      <li><span><code>how many: 4</code><br>Three words were typed, but <code>os.Args[0]</code> is always the program itself.</span></li>
+      <li><span><code>program: args</code> (line 11)<br><code>go run args.go</code> builds a program called <code>args</code> in a temporary folder, then runs it. Its full path changes every time, so only its base name is printed.</span></li>
+      <li><span><code>"--fragile"</code>, <code>"12"</code><br>Every argument is a string, even <code>12</code>. Turning it into a number is your job (<code>strconv.Atoi</code>, chapter 7), and so is working out which words are options. The <code>flag</code> package does that for you.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 41: the flag package">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">The package <code>flag</code> reads options like <code>-n 3</code> or <code>-loud</code>. You declare each flag with its name, default and help text, then call <code>flag.Parse()</code>.</p>
+    <span class="file-tab">stampflags/main.go</span>
+    <pre class="code" data-src="flags_tour.go"></pre>
+    <pre class="term" data-run="flags_tour.go"></pre>
+    <p class="os-note howrun"><b>How this run was really made:</b> one shell session inside <code>~/go-ch21/stampflags</code>, the folder the prompt shows (it starts with <code>cd stampflags</code>); nothing else was added.</p>
+    <ol class="readlist">
+      <li><span><code>n := flag.Int("n", 1, "stamps per label")</code> (line 10)<br>Returns a <b>pointer</b> to an int (chapter 13). After <code>flag.Parse()</code> fills it in, read the value with <code>*n</code>.</span></li>
+      <li><span><code>labels=["box7"]</code><br>Whatever is left after the flags is in <code>flag.Args()</code>.</span></li>
+      <li><span><code>-loud</code> on its own<br>A bool flag needs no value: being there means <code>true</code>.</span></li>
+      <li><span><code>./stampflags -h</code><br>A free help page, built from your names, defaults and help texts. It goes to standard error. (The program was built first with <code>go build</code>, so the help says <code>./stampflags</code>, not a long temporary path.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 42: the flag.Parse machine" data-machine="m-flags">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">Feed the <code>flag.Parse</code> machine a command line for <code>./stampflags</code>. Each input is a real run of the program.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-flags">{"label": "flag.Parse()", "program": "flag_ok.go", "examples": [
+      {"in": "-n 3 -color red box7", "out": "n=3 color=red loud=false labels=[\"box7\"]", "outKind": "parsed", "program": "flag_ok.go", "note": "Two flags with values, then one label left over in <code>flag.Args()</code>."},
+      {"in": "(nothing)", "out": "n=1 color=black loud=false labels=[]", "outKind": "defaults", "program": "flag_default.go", "note": "No flags: every value is its default, and there are no labels."},
+      {"in": "-n=2 -color=blue box1", "out": "n=2 color=blue loud=false labels=[\"box1\"]", "outKind": "parsed", "program": "flag_eq.go", "note": "<code>-n=2</code> means the same as <code>-n 2</code>. Two dashes, <code>--n=2</code>, work too."},
+      {"in": "box7 -n 3", "out": "n=1 color=black loud=false labels=[\"box7\" \"-n\" \"3\"]", "outKind": "surprise!", "program": "flag_order.go", "note": "Flags must come <b>first</b>. Parsing stops at the first word that isn't a flag, so <code>-n 3</code> became two more labels and <code>n</code> stayed 1."},
+      {"in": "-colour red", "error": "flag provided but not defined: -colour", "program": "flag_bad.go", "note": "A misspelled flag. The program prints this and the help, then exits with code 2 before your code runs."},
+      {"in": "-n many", "error": "invalid value \"many\" for flag -n: parse error", "program": "flag_val.go", "note": "<code>-n</code> is an int flag, and <code>many</code> isn't a number. Also exit code 2."}]}</script>
+    <p class="os-note howrun"><b>How this run was really made:</b> each input is a separate real run inside <code>~/go-ch21/stampflags</code>: <code>cd stampflags &amp;&amp; go build</code>, then <code>cd stampflags &amp;&amp; ./stampflags</code> with that command line. Nothing else was added.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-forder-m" id="ex-forder"></div>
+  <script type="application/json" id="ex-forder-m">{"q": "Scoot runs <code>./stampflags box9 -loud</code>. What does <code>loud</code> end up as, and why?", "options": [
+    {"t": "<code>false</code>: parsing stops at <code>box9</code>", "correct": true, "why": "Right: <code>-loud</code> is just another label. The <code>flag</code> package stops at the first argument that isn't a flag. Everything after it, dashes or not, lands in <code>flag.Args()</code>: <code>[\"box9\" \"-loud\"]</code>."},
+    {"t": "<code>true</code>: flags may go anywhere on the line", "why": "Some other tools allow that, but Go's <code>flag</code> package doesn't. The machine's <code>box7 -n 3</code> input shows it."},
+    {"t": "The program stops with <code>flag provided but not defined</code>", "why": "<code>-loud</code> is defined. It's simply never looked at as a flag, because parsing already stopped."},
+    {"t": "It doesn't compile: flags must come first", "why": "Command lines aren't checked by the Compiler: this all happens when the program runs."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pflags-m" id="ex-pflags"></div>
+  <script type="application/json" id="ex-pflags-m">{"program": "parsons_flags.go", "seed": 3, "pin": [1, 2, 3, 4, 5, 6, 7, 8, 14], "prompt": "This program was run as <code>go run . -word honk van1 van2</code>, inside its own folder <code>~/go-ch21/parsons_flags</code> (nothing else was added). Put the lines of <code>main</code> in order so it prints the goal output.", "explain": "Declare the flag, then <code>flag.Parse()</code>, and only then use the results: <code>flag.Args()</code> is empty and <code>*word</code> is still <code>\"beep\"</code> until <code>Parse</code> has run. Then loop over the leftover words."}</script>
+
+  <section class="panel clean" aria-label="Panel 43: environment variables">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption"><b>Environment variables</b> are name=value settings that every program inherits from the terminal that started it, like <code>HOME</code> or <code>PATH</code>. You've already used two: <code>GOWORK</code> and <code>GOTOOLCHAIN</code>.</p>
+    <span class="file-tab">env.go</span>
+    <pre class="code" data-src="env.go"></pre>
+    <pre class="term" data-run="env.go"></pre>
+    <pre class="term" data-run="env_set.go"></pre>
+    <ol class="readlist">
+      <li><span><code>os.Getenv("DEPOT_CITY")</code> (line 9)<br>The value, or <code>""</code> if it isn't set. The first run had no <code>DEPOT_CITY</code>, so line 16's default kicked in: <samp>working in Porto</samp>.</span></li>
+      <li><span><code>DEPOT_CITY=Lisbon go run env.go</code><br>Writing <code>NAME=value</code> before a command sets it for that one command (macOS and Linux shells; on Windows PowerShell, use <code>$env:DEPOT_CITY="Lisbon"</code> first).</span></li>
+      <li><span><code>os.LookupEnv</code> (line 12)<br>Also tells you whether the variable exists at all: <code>set=false</code>. <code>Getenv</code> can't tell "not set" from "set to nothing".</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-penv-m" id="ex-penv"></div>
+  <script type="application/json" id="ex-penv-m">{"program": "env_empty.go", "prompt": "This time the program is run as <code>DEPOT_SHIFT= go run env.go</code>: <code>DEPOT_SHIFT</code> is set, but to nothing, and <code>DEPOT_CITY</code> isn't set at all. What are the three lines?", "hint": "<code>LookupEnv</code>'s second result answers \"does it exist?\", not \"is it empty?\".", "explain": "<samp>DEPOT_CITY=\"\"</samp>, because it isn't set. <samp>DEPOT_SHIFT=\"\" set=true</samp>: it exists, holding the empty string. Only <code>LookupEnv</code> can see that difference. The city falls back to <samp>working in Porto</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 44: exit codes">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">Every program ends with an <b>exit code</b>, a number for whoever started it: 0 means success, anything else means a problem. <code>os.Exit(3)</code> ends the program at once with code 3. The shell keeps the last code in <code>$?</code>.</p>
+    <span class="file-tab">exit_code.go</span>
+    <pre class="code" data-src="exit_code.go"></pre>
+    <pre class="term" data-run="exit_codes.go"></pre>
+    <ol class="readlist">
+      <li><span><code>exit status 3</code>, then <code>echo $?</code> says <code>1</code><br>Under <code>go run</code>, two programs are involved. Yours exits with 3, and <code>go run</code> reports that as <samp>exit status 3</samp>, then exits with <b>its own</b> code, 1.</span></li>
+      <li><span><code>./exit_code</code>, then <code>echo $?</code> says <code>3</code><br>Run the built program directly and the shell sees your code, 3, with no extra line. Scripts and other tools check this number.</span></li>
+      <li><span><code>flat tyre!</code><br>Error messages go to standard error with <code>fmt.Fprintln(os.Stderr, …)</code>, so they don't mix with real output.</span></li>
+    </ol>
+    <p class="os-note">This terminal is one real shell session: <code>$?</code> carries over from the line before, as it does when you type the commands yourself.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 45: os.Exit skips deferred calls">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <svg class="sfx tr" data-sfx="SLAM!" data-seed="45"></svg>
+    <p class="caption"><code>os.Exit</code> doesn't return from anything. It stops the program on the spot, so the sticky notes on the door (chapter 14's deferred calls) are never read.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">exit_defer.go</span><pre class="code" data-src="exit_defer.go"></pre><pre class="term wrap" data-run="exit_defer.go" data-exit></pre></div>
+      <div><span class="file-tab">run_pattern.go</span><pre class="code" data-src="run_pattern.go"></pre><pre class="term wrap" data-run="run_pattern.go" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>exit_defer.go</code>: no <code>cleanup</code> line<br>Line 9's deferred <code>Println</code> was waiting for <code>main</code> to return. <code>os.Exit(1)</code> on line 11 never lets it. A deferred <code>Flush</code> or <code>Close</code> would be skipped just the same.</span></li>
+      <li><span><code>run_pattern.go</code>: the <code>run</code> pattern<br>Put the work in <code>func run() error</code>. Its deferred calls run when it <b>returns</b>, and only then does <code>main</code> print the error and call <code>os.Exit(1)</code>, with nothing left waiting.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>os.Exit slams the door: nobody reads the sticky notes.</b> Call it in one place only, at the bottom of <code>main</code>. (<code>log.Fatal</code> calls <code>os.Exit(1)</code> too, so it skips deferred calls in the same way.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sexit-m" id="ex-sexit"></div>
+  <script type="application/json" id="ex-sexit-m">{"program": "spot_exit.go", "bug": 15, "prompt": "The late report should say <samp>report: 3 parcels late</samp>, with exit code 2. Instead nothing at all appears; only <code>go run</code>'s <samp>exit status 2</samp>. Click the guilty line.", "explain": "Line 15's <code>os.Exit(2)</code> ends the program on the spot, so the deferred <code>w.Flush()</code> from line 11 never runs, and the report dies in the bucket. Fix: flush before exiting (<code>w.Flush(); os.Exit(2)</code>), or move the work into a <code>run() error</code> function as in panel 45."}</script>
+
+  <section class="panel clean" aria-label="Panel 46: baking files into the program">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption">A program that reads <code>banner.txt</code> breaks if you copy it to another computer without that file. The <code>//go:embed</code> line packs files <b>into</b> the program when it's built.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">embed_banner.go</span><pre class="code" data-src="embed_banner.go"></pre><pre class="term wrap" data-run="embed_banner.go"></pre></div>
+      <div><span class="file-tab">embed_fs.go</span><pre class="code" data-src="embed_fs.go"></pre><pre class="term wrap" data-run="embed_fs.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>//go:embed banner.txt</code><br>A <b>directive</b>: a comment the go command reads. No space after <code>//</code>, and it must sit just above a package-level variable (only blank lines and <code>//</code> comments may come between). The file's contents become that variable's value.</span></li>
+      <li><span><code>import _ "embed"</code><br>For a <code>string</code> or <code>[]byte</code> variable you must still import <code>embed</code>; the underscore says "for its effect only".</span></li>
+      <li><span><code>embed.FS</code> with <code>letters/*.txt</code><br>A whole read-only folder inside the program. Its paths always use <code>/</code>, on every system, so here plain <code>+</code> is right and <code>filepath.Join</code> would be wrong on Windows.</span></li>
+    </ol>
+    <p class="caption">A pattern that matches nothing is caught when the program is built:</p>
+    <span class="file-tab">embed_missing.go</span>
+    <pre class="code" data-src="embed_missing.go"></pre>
+    <pre class="term wrap" data-run="embed_missing.go" data-exit></pre>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Line 8, column 12: <code>welcome.txt</code> doesn't exist next to this file, so there's nothing to bake in, and the go command stops the build. There's no <code>#</code> header and no Compiler this time: the go command checks embed patterns before anything is compiled. Embedded files must sit in the package's folder or below it.</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot points at the error.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fembed-m" id="ex-fembed"></div>
+  <script type="application/json" id="ex-fembed-m">{"program": "fill_embed.go", "prompt": "Bake <code>banner.txt</code> into the program. Line 4: the import this needs. Line 9: the directive.", "blanks": [{"line": 4, "text": "_ \"embed\""}, {"line": 9, "text": "//go:embed"}], "explain": "<code>_ \"embed\"</code> imports the package for its effect, and <code>//go:embed banner.txt</code> (no space after <code>//</code>) fills <code>banner</code> when the program is built. The banner has 2 lines: <samp>2 lines; first: *** NORTH DEPOT ***</samp>."}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 47: boss level">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="47"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Buckets, paths, flags and exits, all mixed up. For every program ask: is every bucket flushed? Are paths joined, not glued? And does anything slam the door before the sticky notes are read?</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.go", "prompt": "Boss 1. <code>size</code> asks the operating system how many bytes <code>manifest.txt</code> holds right now. What are the two lines?", "hint": "Before line 29, where are the two crate lines: in the file, or in the bucket? Each line is 14 characters plus a newline.", "explain": "Before <code>Flush</code>, both lines are still in the 4096-byte bucket, so the file on disk is empty: <samp>before Flush: 0</samp>. <code>Flush</code> pours 15 + 15 bytes into the file: <samp>after Flush: 30</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["words", "total"], "given": [], "prompt": "Boss 2. <code>strings.Fields</code> splits a line into words wherever there are spaces. Each lap prints the number of words in the line and the running total. The lines of <code>parcels.txt</code> are: <code>Ana, 12 Harbour Road</code>, <code>Bo, 3 Mill Lane</code>, an empty line, and <code>Cy, 77 Orchard Way</code>. Fill in every row.", "explain": "Each address line has four words (<code>Ana,</code> <code>12</code> <code>Harbour</code> <code>Road</code>), so the total climbs <samp>4</samp>, <samp>8</samp>. The empty line is still a lap, with no words: <samp>0 8</samp>. Then <samp>4 12</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 10, "prompt": "Boss 3. The file <code>archive/2026/mar.txt</code> exists, but the program prints <samp>cannot read the report: open archive2026/mar.txt: no such file or directory</samp>. Click the guilty line.", "explain": "Line 10 glues the path with <code>+</code> and forgets the slash between <code>archive</code> and the year. The error message even shows the glued path: <code>archive2026/mar.txt</code>. Fix: <code>path := filepath.Join(\"archive\", year, \"mar.txt\")</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 9, "pin": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 21], "prompt": "Boss 4. Write one line to <code>route.txt</code> through a bucket, then read the file back. Put the moving lines in order so the file really holds the line when it's read.", "explain": "Create the file, put the bucket over it (<code>w := bufio.NewWriter(f)</code>), write, and <b>flush</b>, all before <code>os.ReadFile</code>. With the read before the <code>Flush</code>, the file would still be empty and the last line would print only <samp>route.txt: </samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. The program was run as <code>go run boss_fill.go -stops 4 fragile</code>. Line 9: declare an int flag. Line 11: read the command line.", "blanks": [{"line": 9, "text": "flag.Int"}, {"line": 11, "text": "flag.Parse()"}], "explain": "<code>flag.Int(\"stops\", 1, …)</code> declares the flag and returns a pointer. <code>flag.Parse()</code> fills it from the command line: <code>-stops 4</code>. <code>-van</code> wasn't given, so it keeps its default: <samp>van V1 makes 4 stops</samp>. The leftover word goes to <code>flag.Args()</code>: <samp>extra words: [fragile]</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Run with <code>go run boss_err.go</code>. Watch the deferred call and the exit.", "expect": "error", "answer": "exit status 4", "ask": "One line goes to standard output; then two lines go to standard error. Type the <b>last</b> line on standard error.", "hint": "Who prints the very last line when a program run by <code>go run</code> exits with a code that isn't 0? And does <samp>saving the delivery list</samp> ever appear?", "explain": "<samp>loading van 4</samp> on standard output, then <samp>van 4 is full</samp> on standard error, then <code>os.Exit(4)</code> stops everything: the deferred <samp>saving the delivery list</samp> never runs, and neither does <samp>driving</samp>. <code>go run</code> adds the last line, <samp>exit status 4</samp>, and exits with code 1 itself."}</script>
+
+  <section class="panel pop" aria-label="Panel 48: what you learned">
+    <span class="panel-no" aria-hidden="true">48</span>
+    <p class="caption">What you learned in Chapter 21</p>
+    <ul class="recap">
+      <li><b>A PRINTING NEVER CHANGES; A BREAKING CHANGE GETS A NEW SHELF</b>Versions are <code>vMAJOR.MINOR.PATCH</code>. <code>go get path@version</code> borrows one; go.mod records it (<code>// indirect</code> = needed by something you borrow), go.sum holds its fingerprints. <code>go list -m all</code>, <code>-versions</code> and <code>go mod why</code> answer questions; <code>retract</code> warns people off a bad printing. Version 2 and later live at a new path: <code>example.com/stamps/v2</code>.</li>
+      <li><b>INTERNAL IS THE STAFF ROOM</b>A package under <code>internal/</code> can be imported only from inside the folder that holds it. Name packages for what they provide (<code>route</code>, not <code>util</code>); don't stutter. <code>init</code> runs before <code>main</code>, invisibly: prefer plain functions. Doc comments start with the name.</li>
+      <li><b>YOUR COPY, YOUR DESK</b><code>replace</code> (in go.mod), <code>go work</code> (in go.work) and <code>go mod vendor</code> change where code comes from. <code>go install path@version</code> installs a program. The <code>go</code> line is a minimum, and <code>GOTOOLCHAIN</code> decides whether Go may fetch a newer release.</li>
+      <li><b>A BUCKET DOESN'T EMPTY ITSELF. FLUSH IT.</b>Files are taps (<code>os.Open</code>) and drains (<code>os.Create</code>, <code>os.OpenFile</code>). <code>bufio.Scanner</code> reads line by line (check <code>sc.Err()</code>). A <code>bufio.Writer</code> loses whatever is still in it when the program ends. Close every file, and don't pile up <code>defer</code>s in a loop.</li>
+      <li><b>JOIN PATHS, DON'T GLUE THEM</b><code>filepath.Join</code>, <code>WalkDir</code>, <code>MkdirAll</code>, <code>MkdirTemp</code>. <code>os.Args</code> holds the command line; <code>flag</code> parses it (flags first!). <code>os.Getenv</code> and <code>os.LookupEnv</code> read the environment. <code>//go:embed</code> bakes files into the program.</li>
+      <li><b>OS.EXIT SLAMS THE DOOR</b>Exit code 0 means success. <code>os.Exit</code> skips every deferred call, so call it once, at the bottom of <code>main</code>, after a <code>run() error</code> function has returned.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Every shelf labelled, every staff room locked, every bucket emptied. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 49: next time, customs and clocks">
+    <span class="panel-no" aria-hidden="true">49</span>
+    <p class="caption soft">Coming up in Chapter 22: Customs and Clocks</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><rect x="40" y="12" width="140" height="108" rx="8" fill="#FFFFFF" stroke="#111" stroke-width="5"/><path d="M58 36 H112 M58 58 H150 M58 80 H136 M58 102 H120" stroke="#111" stroke-width="4" stroke-linecap="round"/><circle cx="156" cy="34" r="14" fill="#FFE1E1" stroke="#111" stroke-width="4"/><text x="156" y="40" font-family="Bangers, sans-serif" font-size="16" fill="#111" text-anchor="middle">OK</text></svg>
+          <p><b>JSON</b>: a customs form for your structs. Each field gets a translation tag, and the lowercase pockets are never declared. The customs desk turns structs into text and back.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 130" aria-hidden="true"><circle cx="110" cy="66" r="54" fill="#FFF6CC" stroke="#111" stroke-width="5"/><path d="M110 66 V30 M110 66 L136 80" stroke="#111" stroke-width="6" stroke-linecap="round"/><circle cx="110" cy="66" r="6" fill="#111"/><g stroke="#111" stroke-width="4" stroke-linecap="round"><path d="M110 16 v8 M110 108 v8 M60 66 h8 M152 66 h8"/></g></svg>
+          <p><b>Time</b>: durations that print as <code>1m30s</code>, and Go's famous "magic photo" date, <code>2006-01-02 15:04:05</code>, that every time format is written with. Plus random numbers that repeat when you ask them to.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Today, shelves and pipes. Next time: filling in forms for parcels going abroad, and reading the clock.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser pictures: a customs form with an OK stamp; and a clock face.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch20.html">← Ch 20 · Cutters and Gumballs</a><a class="next" href="ch22.html">Ch 22 · Customs and Clocks →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how Go picks versions, what the proxy really is, and what bufio and os.Exit do</summary>
+    <div class="page-body">
+      <h3>Minimal version selection</h3>
+      <p>A <code>require</code> line means "at least this version". When several modules require different versions of the same module, Go doesn't pick the newest one in existence: it picks the <b>highest version that anyone in the build asked for</b>, and nothing newer. This rule is called <b>minimal version selection</b> (MVS). Its big advantage is that a build is the same tomorrow as today: a new printing on the shelf changes nothing until someone runs <code>go get</code> and writes the new version into a go.mod. That's why a new printing reaches your build only when someone runs <code>go get</code> (with a version or <code>@latest</code>) and writes it into go.mod: <code>@latest</code> is something you ask for, not something that happens.</p>
+      <h3>Graph pruning and // indirect</h3>
+      <p>Since Go 1.17 (with a <code>go 1.17</code> or later line), the main module's go.mod lists <b>every</b> module that provides a package your build uses, including ones you only reach through other modules; those carry <code>// indirect</code>. With that full list in hand, the go command doesn't need to read the go.mod file of every module in the whole graph, which keeps builds fast. It's also why panel 5 shows <code>ink</code> in Scoot's go.mod even though no depot file imports it.</p>
+      <h3>The proxy protocol</h3>
+      <p>A module proxy answers a handful of plain requests: <code>&lt;module&gt;/@v/list</code> (the versions), <code>&lt;module&gt;/@v/&lt;version&gt;.info</code> (its time), <code>.mod</code> (its go.mod) and <code>.zip</code> (its files). Anything that answers those, even a folder read through a <code>file://</code> address, is a proxy. This chapter's library is exactly that: a folder built from the module sources, with <code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code> and a module cache inside the chapter folder. By default <code>GOPROXY</code> is <code>https://proxy.golang.org,direct</code>: ask the public proxy, and if it doesn't have a module, fetch it straight from its repository.</p>
+      <h3>go.sum and the checksum database</h3>
+      <p>The <code>h1:</code> hash is a SHA-256 over the names and contents of every file in the module (or of its go.mod alone, for the <code>/go.mod</code> line). The first time anyone in the world downloads a version, the public <b>checksum database</b> (<code>sum.golang.org</code>) records its hash, and every later download is checked against it, so even the proxy can't quietly change a printing. This chapter turned that check off (<code>GOSUMDB=off</code>) because its modules are private and offline; go.sum still checked every build. For private company modules, people set <code>GOPRIVATE</code> instead, which skips the proxy and the database for matching paths.</p>
+      <h3>The module cache is read-only</h3>
+      <p>Downloaded modules live in <code>$GOPATH/pkg/mod</code> (by default <code>go/pkg/mod</code> in your home folder), one folder per version, such as <code>example.com/stamps@v1.1.0</code>. Go marks those files read-only so nobody edits a printing by accident; to change borrowed code, use a local copy with <code>replace</code> or <code>go work</code>, as in part 4. <code>go clean -modcache</code> empties the cache.</p>
+      <h3>How a bufio.Writer decides when to write</h3>
+      <p>A <code>bufio.Writer</code> is a byte slice (4096 bytes by default) plus a count. <code>Write</code> copies into the slice while there's room. When a write doesn't fit, it tops up the slice, writes the whole slice to the Writer underneath, and starts again; a write bigger than the whole buffer, arriving at an empty buffer, goes straight through. Panel 32's stepper follows exactly those rules, which is why a full bucket poured <code>parcel 1⏎parcel·</code> with half a word at the end. <code>Flush</code> writes whatever is left. If any underlying write fails, the Writer remembers the error and every later call returns it, so checking <code>Flush</code>'s error is enough to catch a failure anywhere.</p>
+      <h3>bufio.Scanner's limits</h3>
+      <p>A <code>Scanner</code> splits its input into <b>tokens</b>, lines by default. <code>sc.Split(bufio.ScanWords)</code> gives words instead, and <code>bufio.ScanRunes</code> one character at a time. A single token may be at most 64 KB by default; a longer line stops the loop and <code>sc.Err()</code> returns <code>bufio.ErrTooLong</code> ("token too long"). <code>sc.Buffer(make([]byte, 1024*1024), 1024*1024)</code> raises the limit. That's one more reason to always check <code>sc.Err()</code>.</p>
+      <h3>Files are numbers to the operating system</h3>
+      <p>When you open a file, the operating system hands back a small number, a <b>file descriptor</b>; <code>*os.File</code> wraps it. 0, 1 and 2 are standard input, output and error. Each process may hold only so many at once (often 1024 by default on Linux, shown by <code>ulimit -n</code>), which is why panel 35's leak matters. Go also attaches a cleanup to each <code>*os.File</code> that closes it eventually if it becomes garbage, but "eventually" may be far too late; close files yourself.</p>
+      <h3>os.Exit versus returning from main</h3>
+      <p>Returning from <code>main</code> ends the program with code 0 after <code>main</code>'s deferred calls have run. <code>os.Exit(n)</code> asks the operating system to end the process immediately: no deferred calls, in any function, and buffered writers are not flushed. A panic that nobody recovers ends with code 2. Codes above 125 have special meanings to shells, so programs normally use small numbers; the <code>flag</code> package uses 2 for "bad command line", which is a common convention.</p>
+      <h3>How //go:embed works</h3>
+      <p>While building, the go command reads the directive, finds the matching files (relative to the source file's folder, never outside the module, and skipping names starting with <code>.</code> or <code>_</code> unless you write <code>all:</code> in front of the pattern), and stores their contents in the program file itself. An <code>embed.FS</code> implements <code>fs.FS</code>, so <code>fs.WalkDir</code>, <code>fs.ReadFile</code> and web servers can read from it like a folder.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where modules, files and flags show up</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Real module paths are repository addresses.</b> <code>github.com/scoot/stamps</code> tells the go command where to clone from when the proxy doesn't have it. Version tags (<code>v1.2.1</code>) are ordinary git tags.</li>
+        <li><b>Big projects use internal heavily.</b> Go's own standard library keeps much of its machinery under <code>internal/</code> directories, and many command-line programs put everything except <code>main</code> under <code>internal/</code>, promising nothing to outsiders.</li>
+        <li><b>The common project layout</b> is small: <code>go.mod</code> and <code>main.go</code> at the top for a single program; <code>cmd/&lt;name&gt;/main.go</code> for several programs in one module; packages in folders named for what they do. The go.dev page "Organizing a Go module" shows the patterns.</li>
+        <li><b>Major versions in the wild.</b> Well-known modules on <code>/v2</code> and beyond include <code>github.com/go-chi/chi/v5</code> and <code>github.com/redis/go-redis/v9</code>: the suffix is in every import.</li>
+        <li><b>Tools with go install.</b> Developers install helpers such as <code>golang.org/x/tools/cmd/stringer@latest</code> or <code>honnef.co/go/tools/cmd/staticcheck@latest</code> (chapter 27). Since Go 1.24, a project can instead record them with <code>go get -tool</code> and run them with <code>go tool</code>.</li>
+        <li><b>Line filters.</b> Many small Unix-style tools are a Scanner over <code>os.Stdin</code>, a change per line, and a <code>bufio.Writer</code> over <code>os.Stdout</code> with <code>defer w.Flush()</code>.</li>
+        <li><b>Configuration.</b> Servers often read settings from flags with environment-variable fallbacks (<code>PORT</code>, <code>DATABASE_URL</code>), so the same program runs on a laptop and in the cloud. The run-function pattern from panel 45 is how most real <code>main</code>s look.</li>
+        <li><b>Single-file deployment.</b> Web servers use <code>//go:embed</code> to bake their HTML, CSS and templates into one program file that can be copied anywhere.</li>
+        <li><b>Subcommands</b> like <code>go build</code> or <code>git commit</code> are made with <code>flag.NewFlagSet</code>, one set of flags per subcommand; larger tools use third-party packages such as cobra.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>// indirect</code> lines are optional."</b> They're real requirements. Only the comment is a comment.</li>
+        <li><b>"<code>go get</code> installs programs."</b> Since Go 1.18 it only edits go.mod. Programs are installed with <code>go install path@version</code>.</li>
+        <li><b>"Go always uses the newest version of a dependency."</b> It uses the highest version that some go.mod asks for, never a newer one by surprise.</li>
+        <li><b>"I can fix a release by uploading it again."</b> A printing never changes. Publish a new patch version and <code>retract</code> the bad one.</li>
+        <li><b>"v2 is just a new tag."</b> It's a new tag <em>and</em> a new module path ending in <code>/v2</code>. Without the path change, Go rejects the tag (or treats old modules as <code>+incompatible</code>).</li>
+        <li><b>"internal is a keyword."</b> It's only a folder name the go command checks. Capitalised names inside an internal package are still exported to the packages allowed in.</li>
+        <li><b>"A util package keeps things tidy."</b> It becomes a junk drawer that everything imports. Name packages for what they provide.</li>
+        <li><b>"Committing a replace to a local folder is fine."</b> It breaks everyone else's build, and replace lines are ignored when someone borrows your module anyway.</li>
+        <li><b>"The bufio.Writer flushes when the program ends."</b> Nothing flushes it but you (panels 31 and 32).</li>
+        <li><b>"<code>defer f.Close()</code> in a loop closes each file at the end of the lap."</b> Deferred calls wait for the function to return.</li>
+        <li><b>"<code>"dir" + "/" + name</code> is good enough."</b> It breaks on Windows and when parts already have slashes. Use <code>filepath.Join</code>; use <code>path.Join</code> (forward slashes always) only for URLs and <code>embed.FS</code> paths.</li>
+        <li><b>"Flags can go anywhere."</b> Go's <code>flag</code> stops at the first non-flag argument.</li>
+        <li><b>"<code>os.Exit</code> runs my deferred cleanup."</b> It runs nothing. Neither does <code>log.Fatal</code>.</li>
+        <li><b>"<code>go run</code>'s exit code is my program's exit code."</b> It prints <code>exit status N</code> and exits with 1 itself; build the program to pass the code through.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Borrow a real module</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app) and check <code>go version</code>. Everything here works on Go 1.22 or later; <code>go get -tool</code> needs 1.24.</li>
+        <li><code>mkdir depot</code>, <code>cd depot</code>, <code>go mod init example/depot</code>.</li>
+        <li>Borrow a real, tiny module the Go team keeps for practice: <code>go get rsc.io/quote@v1.5.2</code>. Watch the <samp>go: downloading</samp> lines (you'll need the internet). Then <code>cat go.mod</code> (Windows PowerShell: <code>type go.mod</code>).</li>
+        <li>Write a <code>main.go</code> that prints <code>quote.Go()</code>, run <code>go mod tidy</code> and <code>cat go.mod</code> again: watch <code>// indirect</code> move.</li>
+        <li><code>go list -m all</code>, <code>go list -m -versions rsc.io/quote</code>, and <code>go mod why -m golang.org/x/text</code>.</li>
+        <li>Try <code>go get rsc.io/quote/v3@v3.1.0</code> and use both <code>quote</code> and <code>quote/v3</code> in one program, with a nickname for one of them.</li>
+      </ol>
+      <h3>2. Make a staff room and a workspace</h3>
+      <ol>
+        <li>Make <code>internal/route/route.go</code> with an exported function, and call it from <code>main.go</code>: it works.</li>
+        <li>Make a second module next door (<code>../other</code>), try to import your <code>example/depot/internal/route</code> from it through a <code>go work init ./depot ./other</code> workspace, and read the <samp>use of internal package … not allowed</samp> error.</li>
+        <li>Run <code>go doc ./internal/route</code> to see your doc comments.</li>
+      </ol>
+      <h3>3. Plumbing</h3>
+      <ol>
+        <li>Type in <code>no_flush.go</code>, see nothing, then add <code>defer w.Flush()</code> after line 10.</li>
+        <li>Write a line filter: a Scanner over <code>os.Stdin</code> that prints each line in capitals. Try <code>go run . &lt; parcels.txt</code> (on Windows PowerShell: <code>Get-Content parcels.txt | go run .</code>).</li>
+        <li>Build <code>stampflags</code> with <code>go build</code> and run <code>./stampflags -h</code> (Windows: <code>.\stampflags.exe -h</code>).</li>
+        <li>Check exit codes after running the built <code>exit_code</code> program: <code>echo $?</code> on macOS and Linux, <code>echo $LASTEXITCODE</code> in PowerShell, <code>echo %ERRORLEVEL%</code> in the old Command Prompt.</li>
+        <li>Set an environment variable for one command: <code>DEPOT_CITY=Lisbon go run env.go</code> on macOS and Linux. In PowerShell: <code>$env:DEPOT_CITY="Lisbon"; go run env.go</code>.</li>
+      </ol>
+      <ul>
+        <li><b>Windows:</b> paths use <code>\</code>, so <code>filepath.Join</code> prints <code>archive\2026\mar.txt</code>. There is no <code>/proc/self/fd</code>, so the leak programs from panel 35 print a count of 0; the leak itself is real on every system. Programs built with <code>go build</code> end in <code>.exe</code>.</li>
+        <li><b>macOS:</b> also no <code>/proc</code>; <code>lsof -p &lt;pid&gt;</code> lists a running program's open files. Temporary folders live under a long path in <code>/var/folders</code>, which is why <code>temp.go</code> prints only what stays the same.</li>
+        <li><b>Linux:</b> everything here runs as shown. <code>ulimit -n</code> shows your open-file limit.</li>
+        <li><b>Toolchains:</b> your default is probably <code>GOTOOLCHAIN=auto</code>. Check with <code>go env GOTOOLCHAIN</code>. Set <code>go env -w GOTOOLCHAIN=local</code> to forbid automatic downloads, and <code>go env -u GOTOOLCHAIN</code> to go back.</li>
+      </ul>
+      <p class="os-note">This page shows Go 1.27.3. Go 1.24.7 gave the same results for every program, except for the lines that print go.mod or go.work themselves (the comparison runs used a module file lowered to <code>go 1.24</code>), the open-file counts in panel 35 (7 instead of 9 at the start: the older runtime keeps fewer files open), and the toolchain demo, which Go 1.24.7 refused in the same way, naming itself: <samp>running go 1.24.7</samp>. (Its go.mod asks for more than either version, so it was not lowered.)</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>module</dt><dd>A collection of packages with one go.mod, released together under one module path and version.</dd>
+        <dt>module path</dt><dd>The module's name, from go.mod's <code>module</code> line; usually where its code lives, like <code>github.com/scoot/stamps</code>.</dd>
+        <dt>semantic versioning</dt><dd><code>vMAJOR.MINOR.PATCH</code>: breaking changes, additions, fixes. <code>v0</code> promises nothing; a <code>-beta.1</code> suffix marks a pre-release.</dd>
+        <dt>dependency</dt><dd>A module your module borrows. A dependency of a dependency is marked <code>// indirect</code> in go.mod.</dd>
+        <dt><code>go get path@version</code></dt><dd>Adds or changes a requirement in go.mod. <code>@latest</code> means the newest version that isn't retracted.</dd>
+        <dt>go.sum</dt><dd>Checksums (fingerprints) of every module version the build uses, so a changed download is caught.</dd>
+        <dt>module proxy</dt><dd>A server (or folder) that hands out module versions; the default is proxy.golang.org.</dd>
+        <dt>module cache</dt><dd>The read-only folder where downloaded modules are kept, normally <code>go/pkg/mod</code>.</dd>
+        <dt>directive</dt><dd>A keyword line in go.mod (<code>module</code>, <code>go</code>, <code>require</code>, <code>replace</code>…), or a <code>//go:</code> comment that tools read.</dd>
+        <dt>retract</dt><dd>An author's go.mod directive saying "don't use this version of mine".</dd>
+        <dt>major version suffix</dt><dd>The <code>/v2</code>, <code>/v3</code>… at the end of the module path for versions 2 and later.</dd>
+        <dt>import compatibility rule</dt><dd>Code with the same import path must stay compatible with old callers.</dd>
+        <dt>internal package</dt><dd>A package under a folder named <code>internal</code>; only code in the folder that holds it may import it.</dd>
+        <dt>stutter</dt><dd>Repeating the package name in an exported name, like <code>stamps.StampsStamp</code>.</dd>
+        <dt><code>init</code></dt><dd>A function Go runs automatically before <code>main</code>, after package-level variables are set.</dd>
+        <dt>doc comment</dt><dd>A comment directly before <code>package</code> or an exported name; shown by <code>go doc</code> and pkg.go.dev.</dd>
+        <dt><code>replace</code></dt><dd>A go.mod directive that uses a different copy of a module, such as a local folder.</dd>
+        <dt>workspace, go.work</dt><dd>A file listing several local modules to build together, without editing their go.mod files.</dd>
+        <dt>vendoring</dt><dd>Copying the packages a build needs into a <code>vendor/</code> folder in the project.</dd>
+        <dt><code>go install path@version</code></dt><dd>Downloads, builds and installs a program into <code>GOBIN</code>.</dd>
+        <dt>toolchain, GOTOOLCHAIN</dt><dd>A Go release (compiler and go command); the setting that says whether Go may download a newer one.</dd>
+        <dt>buffer, <code>bufio.Writer</code></dt><dd>A bucket that collects small writes and passes them on in big pieces; emptied by <code>Flush</code>.</dd>
+        <dt><code>Flush</code></dt><dd>Writes everything still in the buffer to the Writer underneath.</dd>
+        <dt><code>bufio.Scanner</code></dt><dd>Reads a Reader one line (or word) at a time: <code>Scan</code>, <code>Text</code>, <code>Err</code>.</dd>
+        <dt>file descriptor</dt><dd>The small number the operating system uses for an open file; there's a limit per program.</dd>
+        <dt>flags (open)</dt><dd><code>os.O_APPEND</code>, <code>os.O_CREATE</code>, <code>os.O_WRONLY</code>, <code>os.O_TRUNC</code>…: how <code>os.OpenFile</code> opens a file.</dd>
+        <dt>permissions</dt><dd>Who may read, write or run a file, like <code>0o644</code>.</dd>
+        <dt>path, absolute, relative</dt><dd>Where a file lives; from the top of the disk, or from the current folder.</dd>
+        <dt><code>filepath.Join</code></dt><dd>Joins path parts with the system's separator and cleans the result.</dd>
+        <dt><code>filepath.WalkDir</code></dt><dd>Visits every folder and file under a folder, in lexical order.</dd>
+        <dt>temporary file or folder</dt><dd>One made with a random name in the system's temp folder by <code>os.CreateTemp</code> or <code>os.MkdirTemp</code>.</dd>
+        <dt>command-line arguments, <code>os.Args</code></dt><dd>The words typed after a program's name; <code>os.Args[0]</code> is the program.</dd>
+        <dt>flag (command line)</dt><dd>An option like <code>-n 3</code> or <code>-loud</code>, read by the <code>flag</code> package.</dd>
+        <dt>environment variable</dt><dd>A name=value setting a program inherits; read with <code>os.Getenv</code> or <code>os.LookupEnv</code>.</dd>
+        <dt>exit code</dt><dd>The number a program ends with: 0 for success. <code>$?</code> in a shell shows the last one.</dd>
+        <dt><code>os.Exit</code></dt><dd>Ends the program at once with a code, skipping every deferred call.</dd>
+        <dt><code>//go:embed</code></dt><dd>A directive that bakes files into the program as a string, <code>[]byte</code> or <code>embed.FS</code>.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/doc/modules/managing-dependencies">Managing dependencies</a>, <a href="https://go.dev/doc/modules/gomod-ref">the go.mod file reference</a> and the full <a href="https://go.dev/ref/mod">Go Modules Reference</a> (minimal version selection, the proxy protocol, retract, vendoring).</li>
+        <li><a href="https://go.dev/blog/v2-go-modules">Go blog: Go Modules: v2 and Beyond</a>, and <a href="https://go.dev/doc/modules/release-workflow">Module release and versioning workflow</a>.</li>
+        <li><a href="https://go.dev/doc/modules/layout">Organizing a Go module</a> (layouts, <code>cmd/</code>, <code>internal/</code>) and <a href="https://go.dev/blog/package-names">Go blog: Package names</a>.</li>
+        <li><a href="https://go.dev/doc/tutorial/workspaces">Tutorial: Getting started with multi-module workspaces</a> and <a href="https://go.dev/doc/toolchain">Go Toolchains</a> (GOTOOLCHAIN and the toolchain line).</li>
+        <li><a href="https://go.dev/doc/comment">Go Doc Comments</a>, including <code>Deprecated:</code> paragraphs.</li>
+        <li>Package docs: <a href="https://pkg.go.dev/os">os</a>, <a href="https://pkg.go.dev/bufio">bufio</a>, <a href="https://pkg.go.dev/path/filepath">path/filepath</a>, <a href="https://pkg.go.dev/flag">flag</a> and <a href="https://pkg.go.dev/embed">embed</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/reading-files">Go by Example: Reading Files</a>, <a href="https://gobyexample.com/writing-files">Writing Files</a>, <a href="https://gobyexample.com/line-filters">Line Filters</a>, <a href="https://gobyexample.com/file-paths">File Paths</a>, <a href="https://gobyexample.com/directories">Directories</a>, <a href="https://gobyexample.com/temporary-files-and-directories">Temporary Files</a>, <a href="https://gobyexample.com/embed-directive">Embed Directive</a>, <a href="https://gobyexample.com/command-line-flags">Command-Line Flags</a>, <a href="https://gobyexample.com/environment-variables">Environment Variables</a> and <a href="https://gobyexample.com/exit">Exit</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #3 misusing init functions, #13 creating utility packages, #35 using defer inside a loop, and #79 not closing transient resources.</li>
+        <li><a href="https://roadmap.sh/golang">roadmap.sh: Go</a>, for the module and tooling commands as a checklist.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch21</code>. Single-file programs run as <code>go run name.go</code> in a folder whose go.mod says <code>go 1.27</code>, so their compile errors carry <code># command-line-arguments</code> (this book's convention since chapter 1); the module examples run in their own folders (<code>depot</code>, <code>depot2</code>, <code>branch_v1</code> and so on) with <code>go run .</code>, so their errors name the module instead. Terminals with several commands are real shell sessions or real command sequences, run exactly as shown.</p>
+  <p>The module library is real too, and offline. The modules <code>example.com/stamps</code> (v1.0.0, v1.1.0, v1.2.0, v1.2.1), <code>example.com/stamps/v2</code> (v2.0.0), <code>example.com/ink</code> and <code>example.com/stampcli</code> were written for this chapter (their sources are in <code>library/</code>) and served by a folder proxy built from them, with <code>GOPROXY=file:///home/you/go-ch21/.proxy</code>, <code>GOSUMDB=off</code> and a module cache inside the chapter folder. Those settings, and the steps that reset each demo folder to its starting state (and make sure the cache is filled, so download lines appear only where a fresh cache is the point, in panel 5), run hidden at the start of each session; every command you see is the command that ran. Because the proxy is a folder, the wrong-shelf error in panel 12 names a file path where proxy.golang.org would answer with its own wording. Go 1.28 has not been released, which is why panel 26's automatic download fails.</p>
+  <p>Files programs write (<code>notes.txt</code>, <code>log.txt</code>, <code>visits.log</code>, <code>manifest.txt</code>, <code>route.txt</code>, the <code>out</code> folder) are recreated on every run; <code>parcels.txt</code>, <code>banner.txt</code>, <code>archive/</code> and <code>letters/</code> ship with the programs. The environment variable <code>DEPOT_CITY</code> or <code>DEPOT_SHIFT</code> is set only where the shown command sets it. Panel 35 counts open files through Linux's <code>/proc/self/fd</code>. 63 programs were captured, all deterministic, plus 11 source files recorded for display (the library modules and helper packages).</p>
+  <p>Every program was also run with Go 1.24.7, with each module's go.mod lowered to <code>go 1.24</code> for that run only (except where it asked for more than Go 1.27.3: the <code>future</code> module keeps <code>go 1.28</code>). 57 gave identical results. The six listed differences: <code>get_tidy</code> and <code>replace</code> differ only where they print go.mod (its go line says <code>go 1.24</code>), <code>work</code> only where it prints go.work and go.mod, <code>toolchain</code> only in the version its refusal names (<samp>running go 1.24.7</samp>), and <code>leak_loop</code> and <code>leak_fixed</code> because Go 1.24's runtime keeps two fewer files open (7 instead of 9 on the first lap; the growth is the same).</p>
+  <p>The map, the walker, the bucket and the two machines are teaching models; each checks itself against those runs and shows a badge. The bucket works out every pour from bufio.Writer's own rule (fill, pour the full bucket, keep the rest) and the 16-byte size in the code, then checks that what reached its screen equals the real program's output byte for byte, including the half word <code>parce</code>.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go Modules Reference and go.mod file reference; go.dev's "Managing dependencies", "Module release and versioning workflow", "Organizing a Go module", "Go Toolchains", "Go Doc Comments" and the workspaces tutorial; the Go blog's "Go Modules: v2 and Beyond" (Jean Barkhuysen and Tyler Bui-Palsulich, 2019) and "Package names" (Sameer Ajmani, 2015); the <code>os</code>, <code>bufio</code>, <code>io</code>, <code>path/filepath</code>, <code>flag</code> and <code>embed</code> package documentation and the output of <code>go help</code> on Go 1.27.3; Go by Example (Reading Files, Writing Files, Line Filters, File Paths, Directories, Temporary Files and Directories, Embed Directive, Command-Line Flags, Environment Variables, Exit); 100 Go Mistakes, #3, #13, #35 and #79; roadmap.sh's Go roadmap; and, as summarised in this book's research map, The Go Programming Language chapter 10 and section 7.4, Learning Go 2nd edition chapters 10, 11 and 13, and Gophercises' file-renaming exercise.</p>
+  <p>Scoot, the Compiler, the Professor, the Plumber and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

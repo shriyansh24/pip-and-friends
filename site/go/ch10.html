@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en" data-book="go">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two Windows, One Shelf</title>
+<meta name="description" content="Chapter 10 of the Go book of Pip &amp; Friends, a comic course: two slices sharing one backing array, when append reuses the shelf and when it builds a new one (the aliasing surprise), copy and its zero-length trap, independent copies with slices.Clone, the full slice expression, slices of slices, deleting and inserting, and the slices package (Sort, Contains, Index, Reverse, Max, Equal) with sort.Strings and preallocation.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/go-ch10.css">
+<script defer src="../data/go-ch10.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/go-ch10.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>Go book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch9.html">&larr; Ch 9</a><span aria-current="page">Ch 10 of 28</span><a href="ch11.html">Ch 11 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 10</p>
+    <h1 id="cover-h">TWO WINDOWS, ONE SHELF</h1>
+    <svg class="char lg" data-char="courier" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+    <p class="sr-only">Picture: Scoot, the bike courier in a red cap and green jacket, shrugs in surprise.</p>
+    <p class="caption blurb">Chapter 9 gave you windows onto a shelf. Here's the twist: <b>two windows can look at the same shelf</b>. Change a box through one and the other sees it. This chapter shows when slices share and when they don't, the famous <code>append</code> surprise, how to make a true copy, shelves of shelves, how to take a box out of the middle, and Go's ready-made <code>slices</code> toolbox for sorting and searching. About 100 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Two windows, one shelf: slices that share</a></li>
+      <li><a href="#part-2">Same shelf or new shelf? append decides</a></li>
+      <li><a href="#part-3">A true copy: copy and slices.Clone</a></li>
+      <li><a href="#part-4">Shelves of shelves: slices of slices</a></li>
+      <li><a href="#part-5">Taking a box out: deleting and inserting</a></li>
+      <li><a href="#part-6">The slices toolbox: sort, search, compare</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · TWO WINDOWS, ONE SHELF<small>Slices that share a backing array</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Scoot crosses off a stop and the route changes">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Scoot's route has five stops. Today's run covers three of them.</p>
+    <div class="scene">
+      <svg class="char" data-char="courier" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Scoot says: </span>I sliced today's three stops out of my route with <code>route[1:4]</code>, like chapter 9 taught me. Then I marked the first one <b>done</b> on today's list.</p>
+        <p class="bubble"><span class="sr-only">Scoot says: </span>And now my <em>whole route</em> says <b>done</b> as well. I never touched <code>route</code>! What happened?</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Scoot shrugs, worried, holding a letter.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: two windows look at one shelf">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Remember the picture: a slice is a <b>window</b> onto a shelf (a backing array). Slicing makes a <b>new window</b>, but not a new shelf. So now there are two windows looking at the same boxes.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 300" role="img" aria-label="Picture: one shelf of five boxes A to E behind a cream wall. A wide window labelled route shows all five boxes. A smaller dashed window labelled today shows boxes B, C and D. A paintbrush reaches through the today window and paints box B. Badge 1 marks the route window, badge 2 the today window, badge 3 the shared box B, badge 4 the single shelf.">
+      <rect x="20" y="214" width="640" height="16" rx="3" fill="#C8955E" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3" fill="#F2C9A0">
+        <rect x="60" y="140" width="90" height="72" rx="6"/><rect x="180" y="140" width="90" height="72" rx="6" fill="#FFF6CC"/><rect x="300" y="140" width="90" height="72" rx="6"/><rect x="420" y="140" width="90" height="72" rx="6"/><rect x="540" y="140" width="90" height="72" rx="6"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="32" fill="#111" text-anchor="middle">
+        <text x="105" y="188">A</text><text x="225" y="188">B</text><text x="345" y="188">C</text><text x="465" y="188">D</text><text x="585" y="188">E</text>
+      </g>
+      <path d="M210 160 l30 26 M236 158 l-22 30" stroke="#111" stroke-width="3"/>
+      <rect x="42" y="118" width="606" height="108" rx="10" fill="none" stroke="#111" stroke-width="7"/>
+      <rect x="166" y="104" width="358" height="134" rx="10" fill="none" stroke="#111" stroke-width="5" stroke-dasharray="14 8"/>
+      <rect x="42" y="64" width="150" height="38" rx="8" fill="#FFD60A" stroke="#111" stroke-width="3"/>
+      <text x="117" y="91" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111">route</text>
+      <rect x="374" y="56" width="150" height="38" rx="8" fill="#BDE3FF" stroke="#111" stroke-width="3" stroke-dasharray="8 5"/>
+      <text x="449" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111">today</text>
+      <path d="M266 30 L234 132" stroke="#111" stroke-width="7" stroke-linecap="round"/>
+      <path d="M226 120 l-6 26 l22 -14 z" fill="#E8483A" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="22" cy="100" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="22" y="108" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">1</text>
+      <circle cx="550" cy="74" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="550" y="82" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">2</text>
+      <circle cx="300" cy="40" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="300" y="48" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">3</text>
+      <circle cx="40" cy="262" r="17" fill="#FFD60A" stroke="#111" stroke-width="3"/><text x="40" y="270" text-anchor="middle" font-family="Bangers, sans-serif" font-size="22" fill="#111">4</text>
+      <path d="M50 248 l14 -14" stroke="#111" stroke-width="3"/>
+    </svg></div>
+    <ol class="legend">
+      <li><span>1</span><span>The window <code>route</code>: all five boxes.</span></li>
+      <li><span>2</span><span>The window <code>today := route[1:4]</code>: boxes B, C and D of the <b>same</b> shelf.</span></li>
+      <li><span>3</span><span>Paint box B through <code>today</code>, and <code>route</code> sees the new paint, because it's the same box.</span></li>
+      <li><span>4</span><span>One shelf. Slicing never builds a second one.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>a new window is not a new shelf.</b> Two slices on one shelf are called <b>aliases</b>: two names for the same boxes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: the program that surprised Scoot">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Here's Scoot's program. Read the two lines of output side by side.</p>
+    <span class="file-tab">share.go</span>
+    <pre class="code" data-src="share.go"></pre>
+    <pre class="term wrap" data-run="share.go"></pre>
+    <ol class="readlist">
+      <li><span><code>today := route[1:4]</code> (line 7)<br>A new window from box 1 up to, but not including, box 4. Nothing is copied.</span></li>
+      <li><span><code>today[0] = "done"</code> (line 9)<br>Inside <code>today</code>, box 0 is shelf spot 1, the B. Line 9 paints that box.</span></li>
+      <li><span><code>[A done C D E] [done C D]</code><br>Both windows show <samp>done</samp>, because both look at shelf spot 1.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean shelfbox" aria-label="Panel 4: step through two windows on one shelf" data-shelves="sv-share">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Step through it. Each window is a bar over the boxes it shows; its dashed tail runs on to the end of its capacity. Every printed line is checked against the real run.</p>
+    <div class="sh-split"><ol class="tr-code sh-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="shelf-svg" role="img" aria-label="The shelves and windows for the current step; the narration and the text version below describe them."></svg></div>
+    <ul class="sh-key" aria-label="Key to the picture">
+      <li><i class="bar"></i> a window (a slice): the boxes it shows</li>
+      <li><i></i> a box some window shows</li>
+      <li><i class="after"></i> a box no window shows</li>
+      <li><i class="hot"></i> thick, marked "new": just changed</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Shelves and windows</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="sv-share">{"program": "share.go", "steps": [
+      {"at": 6, "shelves": {"S1": ["A", "B", "C", "D", "E"]}, "windows": [{"n": "route", "shelf": "S1", "start": 0, "len": 5}], "note": "A slice literal builds a shelf of five boxes and one window, <code>route</code>, onto all of it."},
+      {"at": 7, "shelves": {"S1": ["A", "B", "C", "D", "E"]}, "windows": [{"n": "route", "shelf": "S1", "start": 0, "len": 5}, {"n": "today", "shelf": "S1", "start": 1, "len": 3}], "note": "<code>route[1:4]</code> makes a second window, <code>today</code>, on the <b>same shelf</b>: spots 1, 2 and 3. Its capacity runs to the end of the shelf: 4."},
+      {"at": 8, "shelves": {"S1": ["A", "B", "C", "D", "E"]}, "windows": [{"n": "route", "shelf": "S1", "start": 0, "len": 5}, {"n": "today", "shelf": "S1", "start": 1, "len": 3}], "print": "{route} {today}", "note": "Printed: each window shows its own boxes."},
+      {"at": 9, "shelves": {"S1": ["A", "done", "C", "D", "E"]}, "windows": [{"n": "route", "shelf": "S1", "start": 0, "len": 5}, {"n": "today", "shelf": "S1", "start": 1, "len": 3}], "hot": {"S1": [1]}, "note": "<code>today[0]</code> is shelf spot 1. The paint goes onto the shelf, and both bars sit over that box."},
+      {"at": 10, "shelves": {"S1": ["A", "done", "C", "D", "E"]}, "windows": [{"n": "route", "shelf": "S1", "start": 0, "len": 5}, {"n": "today", "shelf": "S1", "start": 1, "len": 3}], "print": "{route} {today}", "note": "Both windows show <samp>done</samp>. Nothing magic: one box, seen twice."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-share-m" id="ex-share"></div>
+  <script type="application/json" id="ex-share-m">{"program": "predict_share.go", "prompt": "One shelf, two windows, two paint jobs. What are the two lines?", "hint": "Draw the shelf 1 2 3 4 5. <code>mid</code> is spots 1 and 2. <code>mid[1]</code> is spot 2.", "explain": "<code>mid[1] = 30</code> paints shelf spot 2 (the 3), and <code>week[1] = 20</code> paints spot 1 (the 2). Both windows see both changes: <samp>[1 20 30 4 5]</samp> and <samp>[20 30]</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 5: assigning a slice shares, assigning an array copies">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Slicing isn't the only way to get a second window. Plain <code>t := s</code> does it too. Compare with an array:</p>
+    <span class="file-tab">assign_share.go</span>
+    <pre class="code" data-src="assign_share.go"></pre>
+    <pre class="term wrap" data-run="assign_share.go"></pre>
+    <ol class="readlist">
+      <li><span><code>t := s</code> (line 7)<br>Copies the <b>window</b>, not the shelf. <code>t[0] = 99</code> paints a box that <code>s</code> shows too: <samp>[99 2 3] [99 2 3]</samp>.</span></li>
+      <li><span><code>brr := arr</code> (line 12)<br>An array is the egg carton itself (chapter 6), so assignment copies every egg. <code>arr</code> keeps its 1: <samp>[1 2 3] [99 2 3]</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 6: what t := s really copies">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">Chapter 9 said a slice variable holds a small <b>ticket</b>: where the window starts on the shelf, <code>len</code> and <code>cap</code>. <code>t := s</code> photocopies the ticket. Both tickets point at the same shelf.</p>
+    <svg class="pic-mid" viewBox="0 0 440 330" role="img" aria-label="Picture: two tickets at the top. Ticket s reads: start, shelf spot 0; len 3; cap 3. Ticket t is a photocopy with the same three entries, stamped COPY. An arrow from each ticket points down to the same shelf, which holds 99, 2 and 3.">
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <rect x="8" y="10" width="200" height="118" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+        <text x="22" y="44" font-size="26">s</text>
+        <text x="52" y="44" font-size="19">start→spot 0</text>
+        <text x="52" y="76" font-size="19">len 3</text><text x="52" y="106" font-size="19">cap 3</text>
+        <rect x="232" y="10" width="200" height="118" rx="10" fill="#FFFFFF" stroke="#111" stroke-width="4" stroke-dasharray="10 6"/>
+        <text x="246" y="44" font-size="26">t</text>
+        <text x="276" y="44" font-size="19">start→spot 0</text>
+        <text x="276" y="76" font-size="19">len 3</text><text x="276" y="106" font-size="19">cap 3</text>
+      </g>
+      <g transform="rotate(-10 380 96)"><rect x="338" y="80" width="84" height="32" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="3"/><text x="380" y="104" text-anchor="middle" font-family="Bangers, sans-serif" font-size="24" fill="#111" letter-spacing="2">COPY</text></g>
+      <path d="M108 132 C 108 180, 180 190, 200 214" fill="none" stroke="#111" stroke-width="4"/><path d="M188 206 l14 10 l2 -17" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M332 132 C 332 180, 260 190, 240 214" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="10 6"/><path d="M252 206 l-14 10 l-2 -17" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+      <g stroke="#111" stroke-width="3" fill="#FFFFFF"><rect x="112" y="222" width="68" height="60" rx="6" fill="#FFF6CC"/><rect x="186" y="222" width="68" height="60" rx="6"/><rect x="260" y="222" width="68" height="60" rx="6"/></g>
+      <rect x="102" y="284" width="236" height="14" rx="3" fill="#C8955E" stroke="#111" stroke-width="3.5"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="28" fill="#111" text-anchor="middle"><text x="146" y="263">99</text><text x="220" y="263">2</text><text x="294" y="263">3</text></g>
+      <text x="220" y="324" text-anchor="middle" font-family="Bangers, sans-serif" font-size="24" fill="#111" letter-spacing="1">ONE SHELF</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Same with arrays? No: an array has no ticket, the eggs <em>are</em> the variable. That's why <code>brr := arr</code> copied them all.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-assign-m" id="ex-assign"></div>
+  <script type="application/json" id="ex-assign-m">{"q": "<code>a</code> is <code>[]int{1, 2, 3}</code>. After <code>b := a</code> and then <code>b[2] = 0</code>, what does <code>a</code> hold?", "options": [
+    {"t": "<code>[1 2 0]</code>", "correct": true, "why": "Yes. <code>b := a</code> copied the ticket, so <code>b</code> and <code>a</code> are windows on one shelf. Painting box 2 through <code>b</code> paints it for <code>a</code> too."},
+    {"t": "<code>[1 2 3]</code>", "why": "That's what an <em>array</em> would do. A slice assignment shares the shelf."},
+    {"t": "It doesn't compile", "why": "It compiles fine: assigning one slice to another is ordinary Go."},
+    {"t": "<code>[0 2 3]</code>", "why": "Index 2 is the <em>third</em> box, not the first."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 7: a function gets a copy of the ticket">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Chapter 7 said a function works on <b>copies</b> of its inputs. For a slice, the copy is the ticket. The shelf is shared.</p>
+    <span class="file-tab">func_share.go</span>
+    <pre class="code" data-src="func_share.go"></pre>
+    <pre class="term wrap" data-run="func_share.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>stamp</code> got its own ticket, <code>parcels</code>, pointing at <code>bag</code>'s shelf. Writing <code>parcels[0]</code> stamps the real parcel. Handy: a function can fix up a slice's boxes without returning anything.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 8: append inside a function is lost unless you return it">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">But a function that <b>appends</b> is different. The longer window lands in its own copy of the ticket.</p>
+    <div class="pair">
+      <div><span class="file-tab">func_append.go</span><pre class="code" data-src="func_append.go"></pre><pre class="term wrap" data-run="func_append.go"></pre></div>
+      <div><span class="file-tab">func_return.go</span><pre class="code" data-src="func_return.go"></pre><pre class="term wrap" data-run="func_return.go"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>In <code>func_append.go</code>, line 6 files the wider window in <code>parcels</code>, a ticket that vanishes when the function ends. <code>bag</code>'s own ticket still says length 2. No error, just a lost lamp.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Scoot says: </span>In <code>func_return.go</code>: <b>return</b> the slice and catch it, <code>bag = addLamp(bag)</code>. Exactly the habit <code>append</code> itself taught you.</p></div>
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="pointL"></svg>
+    </div>
+    <p class="sr-only">Pictures: the sneak critter, who stands for quiet logic bugs, beside func_append.go; Scoot pointing at func_return.go.</p>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · SAME SHELF OR NEW SHELF?<small>append decides, and you can't see it decide</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 9: append's fork in the road">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft">Chapter 9: when the shelf is full, <code>append</code> builds a new, longer one. When there's room, it doesn't. So <code>b := append(a, 4)</code> comes in two flavours.</p>
+    <div class="duo">
+      <div class="duo-card">
+        <h3>ROOM LEFT<small>len(a) &lt; cap(a)</small></h3>
+        <svg class="char card-pic" data-char="signpost" data-yes="room" data-no="full"></svg><p>The 4 goes in the next spare box of <b>the same shelf</b>. <code>b</code> is a wider window onto <code>a</code>'s shelf. They <b>share</b>.</p>
+      </div>
+      <div class="duo-card dashed">
+        <h3>SHELF FULL<small>len(a) == cap(a)</small></h3>
+        <svg class="char wide card-pic" data-char="crate" data-items="0,0,0,4"></svg><p>Go builds a <b>new shelf</b>, copies <code>a</code>'s boxes across, adds the 4. <code>b</code> looks at the new shelf. They <b>don't share</b>.</p>
+      </div>
+    </div>
+    <p class="sr-only">Pictures: the signpost creature with arms reading room and full; the crate creature, a fresh row of boxes holding 0, 0, 0 and 4.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Same line of code, two different results. Which one you get depends on <code>cap</code>, not on anything you can see in the line.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: both flavours side by side">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The same three lines, run on a slice with room (<code>append_room.go</code>) and a full one (<code>append_full.go</code>). Then paint <code>b[0]</code> and look at <code>a</code>.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">append_room.go</span><pre class="code" data-src="append_room.go"></pre><pre class="term wrap" data-run="append_room.go"></pre></div>
+      <div><span class="file-tab">append_full.go</span><pre class="code" data-src="append_full.go"></pre><pre class="term wrap" data-run="append_full.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>append_room.go</code>: <samp>3 10 4 10</samp><br><code>a</code> had room for 10. <code>b</code> is on the same shelf (cap 10 too), so painting <code>b[0]</code> changed <code>a</code>: <samp>[7 0 0]</samp>.</span></li>
+      <li><span><code>append_full.go</code>: <samp>3 3 4 6</samp><br><code>a</code> was full. <code>b</code> got a new shelf with room for 6 on this run, so <code>a</code> kept its zeros.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 11: the aliasing surprise">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tr" data-sfx="WHAT?!" data-seed="11"></svg>
+    <p class="caption">The most famous slice surprise in Go. Two appends to the same <code>a</code>. Read the output slowly.</p>
+    <span class="file-tab">alias.go</span>
+    <pre class="code" data-src="alias.go"></pre>
+    <pre class="term wrap" data-run="alias.go"></pre>
+    <ol class="readlist">
+      <li><span><code>[0 0 0]</code> and <code>3 10</code><br><code>a</code> shows three zeros on a shelf with room for 10. Neither <code>append</code> changed <code>a</code>'s own ticket.</span></li>
+      <li><span><code>[0 0 0 5]</code> for <code>c</code><br>As expected.</span></li>
+      <li><span><code>[0 0 0 5]</code> for <code>b</code>?!<br>Line 7 put a 4 there. Where did it go? Both appends wrote into <b>the same spare box</b>, spot 3 of <code>a</code>'s shelf. Line 8's 5 painted over line 7's 4.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>No error, no warning. Just a <code>b</code> that changed when you appended to <code>a</code>. Step through it below with the memory view.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 12: the aliasing surprise in memory" data-mem="mem-alias" id="mem-alias-box">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">A new picture: the memory view. On <code>main</code>'s plate (STACK): the tickets, each with its len, cap and a pointer (ptr) saying which shelf the window starts on. In the HEAP part of the picture: that shelf, number <b>#1</b>. Dashed boxes are room no window shows yet.</p>
+    <ul class="mem-legend" aria-label="How to read the diagram">
+      <li><span class="sw" aria-hidden="true"></span> a plate: <code>main</code>'s variables</li>
+      <li><span class="sw ptr" aria-hidden="true"></span> where a ticket points: shelf #1 and an arrow</li>
+      <li><span class="sw dash" aria-hidden="true"></span> spare room inside cap</li>
+    </ul>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Diagram of the tickets and the shelf. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-alias">{"program": "alias.go", "steps": [
+      {"line": 6, "note": "<code>main</code> starts: an empty plate.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 7, "note": "<code>make([]int, 3, 10)</code>: a shelf with room for 10 ints, and a ticket <code>a</code> showing the first 3 (all 0). The other 7 boxes are spare room.", "output": [], "frames": [{"name": "main", "slots": [{"n": "a", "type": "[]int", "ptr": "H1", "len": 3, "cap": 10}]}], "heap": {"H1": {"cells": ["0", "0", "0"], "cap": 10, "label": "shelf of 10 ints"}}, "changed": ["a", "H1"]},
+      {"line": 8, "note": "<code>append(a, 4)</code>: there's room, so the 4 goes into spot 3 of <b>the same shelf</b>. The new ticket <code>b</code> says len 4 and points at shelf #1. <code>a</code>'s ticket still says len 3.", "output": [], "frames": [{"name": "main", "slots": [{"n": "a", "type": "[]int", "ptr": "H1", "len": 3, "cap": 10}, {"n": "b", "type": "[]int", "ptr": "H1", "len": 4, "cap": 10}]}], "heap": {"H1": {"cells": ["0", "0", "0", "4"], "cap": 10, "label": "shelf of 10 ints"}}, "changed": ["b", "H1"]},
+      {"line": 9, "note": "<code>append(a, 5)</code> starts from <code>a</code>, whose length is still 3. So the next spare box is spot 3 <b>again</b>. The 5 overwrites the 4. Ticket <code>c</code> also points at shelf #1, length 4.", "output": [], "frames": [{"name": "main", "slots": [{"n": "a", "type": "[]int", "ptr": "H1", "len": 3, "cap": 10}, {"n": "b", "type": "[]int", "ptr": "H1", "len": 4, "cap": 10}, {"n": "c", "type": "[]int", "ptr": "H1", "len": 4, "cap": 10}]}], "heap": {"H1": {"cells": ["0", "0", "0", "5"], "cap": 10, "label": "shelf of 10 ints"}}, "changed": ["c", "H1"]},
+      {"line": null, "note": "Three tickets, one shelf. <code>b</code> and <code>c</code> both show spots 0 to 3, so both print <samp>[0 0 0 5]</samp>.", "output": ["[0 0 0] [0 0 0 5] [0 0 0 5] 3 10"], "frames": [{"name": "main", "slots": [{"n": "a", "type": "[]int", "ptr": "H1", "len": 3, "cap": 10}, {"n": "b", "type": "[]int", "ptr": "H1", "len": 4, "cap": 10}, {"n": "c", "type": "[]int", "ptr": "H1", "len": 4, "cap": 10}]}], "heap": {"H1": {"cells": ["0", "0", "0", "5"], "cap": 10, "label": "shelf of 10 ints"}}}
+    ]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-alias-m" id="ex-alias"></div>
+  <script type="application/json" id="ex-alias-m">{"program": "predict_alias.go", "prompt": "Same trap, with words. What's the one line on the screen?", "hint": "<code>base</code> has length 1 and room for 5. Where does each <code>append</code> write?", "explain": "Both appends start from <code>base</code> (length 1, room for 5), so both write into spot 1 of the same shelf. <samp>right</samp> overwrites <samp>left</samp>, and <code>x</code> and <code>y</code> both show spots 0 and 1: <samp>[go right] [go right]</samp>."}</script>
+
+  <section class="panel clean shelfbox" aria-label="Panel 13: append past the end builds a second shelf" data-shelves="sv-realloc">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Now the other flavour: <code>s</code> is full, so <code>append</code> moves house. Watch a second shelf appear.</p>
+    <div class="sh-split"><ol class="tr-code sh-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="shelf-svg" role="img" aria-label="The shelves and windows for the current step; the narration and the text version below describe them."></svg></div>
+    <ul class="sh-key" aria-label="Key to the picture">
+      <li><i class="bar"></i> a window (a slice)</li>
+      <li><i></i> a box some window shows</li>
+      <li><i class="after"></i> a box no window shows</li>
+      <li><i class="hot"></i> thick, marked "new": just changed</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Shelves and windows</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="sv-realloc">{"program": "realloc.go", "steps": [
+      {"at": 6, "shelves": {"S1": ["1", "2", "3"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 3}], "note": "A literal of three: a shelf of exactly 3 boxes. <code>s</code> is <b>full</b>: len 3, cap 3."},
+      {"at": 7, "shelves": {"S1": ["1", "2", "3"], "S2": ["1", "2", "3", "4", "0", "0"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 3}, {"n": "t", "shelf": "S2", "start": 0, "len": 4}], "hot": {"S2": [3]}, "note": "No room for a fourth box, so <code>append</code> builds <b>shelf #2</b> (room for 6 on this run), copies 1, 2, 3 across and adds the 4. <code>t</code> looks at shelf #2; <code>s</code> still looks at shelf #1."},
+      {"at": 8, "shelves": {"S1": ["1", "2", "3"], "S2": ["100", "2", "3", "4", "0", "0"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 3}, {"n": "t", "shelf": "S2", "start": 0, "len": 4}], "hot": {"S2": [0]}, "note": "<code>t[0] = 100</code> paints shelf #2. No bar of <code>s</code> sits over that box."},
+      {"at": 9, "shelves": {"S1": ["1", "2", "3"], "S2": ["100", "2", "3", "4", "0", "0"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 3}, {"n": "t", "shelf": "S2", "start": 0, "len": 4}], "print": "{s} {len:s} {cap:s}", "note": "<code>s</code> is untouched: <samp>[1 2 3] 3 3</samp>."},
+      {"at": 10, "shelves": {"S1": ["1", "2", "3"], "S2": ["100", "2", "3", "4", "0", "0"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 3}, {"n": "t", "shelf": "S2", "start": 0, "len": 4}], "print": "{t} {len:t} {cap:t}", "note": "<code>t</code> has its own shelf: <samp>[100 2 3 4] 4 6</samp>. Two separate lists now."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tracesh-m" id="ex-tracesh"></div>
+  <script type="application/json" id="ex-tracesh-m">{"program": "trace_share.go", "columns": ["len(b)", "cap(b)", "a[0]", "b[0]"], "given": [0], "prompt": "Draw the shelves on paper as you go. <code>a</code> starts with length 2 and room for 4. Fill in each printed row. (On this run, when a shelf of 4 filled up, Go built one of 8.)", "explain": "Row 1: <code>b</code> was appended with room to spare, so it shares <code>a</code>'s shelf (cap 4); both start with 0. Row 2: <code>b[0] = 5</code> paints the shared box, so <code>a[0]</code> is 5 too. Row 3: appending two more needs 5 boxes, more than 4, so <code>b</code> moves to a new shelf of 8. Now <code>b[0] = 9</code> paints only the new shelf, and <code>a[0]</code> stays 5."}</script>
+
+  <div data-ex="choice" data-model="ex-shares-m" id="ex-shares"></div>
+  <script type="application/json" id="ex-shares-m">{"q": "You see <code>b := append(a, x)</code> in someone's code. Does <code>b</code> share <code>a</code>'s shelf?", "options": [
+    {"t": "It depends on <code>a</code>'s spare capacity", "correct": true, "why": "Yes. With room left, <code>b</code> shares <code>a</code>'s shelf; when full, it gets a new one. You can't tell from the line, so the safe habit is <code>a = append(a, x)</code>, or a true copy when you need two separate lists (part 3)."},
+    {"t": "Always: <code>append</code> never builds a shelf", "why": "Panel 13 showed a second shelf appearing when <code>s</code> was full."},
+    {"t": "Never: <code>append</code> always copies", "why": "Panel 11 showed <code>b</code> and <code>c</code> sharing <code>a</code>'s shelf."},
+    {"t": "Only when <code>x</code> is the zero value", "why": "The value being added doesn't matter. Only the room on the shelf does."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 14: the full slice expression puts a cap on cap">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">A preview of a power tool. A slice expression may have a <b>third</b> number: <code>s[low:high:max]</code>. The third number says where the window's capacity <b>stops</b>, so <code>append</code> can't reach past it.</p>
+    <div class="slicer" role="img" aria-label="The expression a[0:3:3]: low 0, high 3, max 3. Capacity is max minus low, 3.">
+      <span>a[</span><span class="num">0<small>low</small></span><span>:</span><span class="num">3<small>high</small></span><span>:</span><span class="num hi">3<small>max · cap stops</small></span><span>]</span>
+    </div>
+    <ol class="readlist">
+      <li><span>Length = high − low, as in chapter 9. Capacity = max − low.</span></li>
+      <li><span>Leave out low and it means 0: <code>a[:3:3]</code>. High and max must both be written.</span></li>
+      <li><span>A window whose cap equals its len is full, so the next <code>append</code> <b>must</b> build a new shelf. No sharing.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean shelfbox" aria-label="Panel 15: the surprise, defused with a full slice expression" data-shelves="sv-full">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Panel 11 again, with <code>a[:3:3]</code> instead of <code>a</code>. Watch the thick bar at the end of a dashed tail: that's where the capacity stops.</p>
+    <div class="sh-split"><ol class="tr-code sh-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="shelf-svg" role="img" aria-label="The shelves and windows for the current step; the narration and the text version below describe them."></svg></div>
+    <ul class="sh-key" aria-label="Key to the picture">
+      <li><i class="bar"></i> a window (a slice)</li>
+      <li><i></i> a box some window shows</li>
+      <li><i class="after"></i> a box no window shows</li>
+      <li><i class="hot"></i> thick, marked "new": just changed</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Shelves and windows</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="sv-full">{"program": "fullslice.go", "steps": [
+      {"at": 6, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}], "note": "As in panel 11: room for 10, showing 3."},
+      {"at": 7, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}, {"n": "a[:3:3]", "shelf": "S1", "start": 0, "len": 3, "cap": 3}], "print": "{len:a[:3:3]} {cap:a[:3:3]}", "note": "<code>a[:3:3]</code> is a window on the same shelf, but its capacity stops at spot 3: len 3, cap 3. It looks <b>full</b>."},
+      {"at": 8, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"], "S2": ["0", "0", "0", "4", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}, {"n": "b", "shelf": "S2", "start": 0, "len": 4}], "hot": {"S2": [3]}, "note": "Appending to a full window: <code>append</code> builds shelf #2 for <code>b</code>. <code>a</code>'s spare boxes stay untouched."},
+      {"at": 9, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"], "S2": ["0", "0", "0", "4", "0", "0"], "S3": ["0", "0", "0", "5", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}, {"n": "b", "shelf": "S2", "start": 0, "len": 4}, {"n": "c", "shelf": "S3", "start": 0, "len": 4}], "hot": {"S3": [3]}, "note": "And again for <code>c</code>: shelf #3. Nobody overwrites anybody."},
+      {"at": 10, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"], "S2": ["0", "0", "0", "4", "0", "0"], "S3": ["0", "0", "0", "5", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}, {"n": "b", "shelf": "S2", "start": 0, "len": 4}, {"n": "c", "shelf": "S3", "start": 0, "len": 4}], "print": "{a} {b} {c}", "note": "<samp>[0 0 0] [0 0 0 4] [0 0 0 5]</samp>: the answer everyone expected in panel 11."},
+      {"at": 11, "shelves": {"S1": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"], "S2": ["0", "0", "0", "4", "0", "0"], "S3": ["0", "0", "0", "5", "0", "0"]}, "windows": [{"n": "a", "shelf": "S1", "start": 0, "len": 3}, {"n": "b", "shelf": "S2", "start": 0, "len": 4}, {"n": "c", "shelf": "S3", "start": 0, "len": 4}], "print": "{cap:a} {cap:b} {cap:c}", "note": "Three shelves: room for 10, 6 and 6 on this run."}]}</script>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · A TRUE COPY<small>copy, and slices.Clone</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 16: copy is a photocopier that fills only the boxes you have">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">Sharing is great until you want two separate lists. Then you need a second shelf and the boxes copied onto it. The built-in <code>copy(dst, src)</code> copies boxes from <code>src</code> (source) into <code>dst</code> (destination).</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 680 240" role="img" aria-label="Picture: a source shelf src with three boxes 1, 2, 3 on top. Below, a destination shelf dst with only two boxes. Arrows copy 1 and 2 down into dst. The 3 has no box to land in and is crossed out. A tag reads: copy returns 2, how many boxes it copied.">
+      <text x="20" y="40" font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111">src</text>
+      <g stroke="#111" stroke-width="3" fill="#FFFFFF"><rect x="100" y="14" width="70" height="56" rx="6"/><rect x="186" y="14" width="70" height="56" rx="6"/><rect x="272" y="14" width="70" height="56" rx="6"/></g>
+      <rect x="90" y="72" width="264" height="12" rx="3" fill="#C8955E" stroke="#111" stroke-width="3"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="28" fill="#111" text-anchor="middle"><text x="135" y="52">1</text><text x="221" y="52">2</text><text x="307" y="52">3</text></g>
+      <text x="20" y="190" font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111">dst</text>
+      <g stroke="#111" stroke-width="3" fill="#FFF6CC"><rect x="100" y="160" width="70" height="56" rx="6"/><rect x="186" y="160" width="70" height="56" rx="6"/></g>
+      <rect x="90" y="218" width="178" height="12" rx="3" fill="#C8955E" stroke="#111" stroke-width="3"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="28" fill="#111" text-anchor="middle"><text x="135" y="198">1</text><text x="221" y="198">2</text></g>
+      <g stroke="#111" stroke-width="4" fill="none" stroke-linejoin="round"><path d="M135 92 V150"/><path d="M125 140 l10 12 l10 -12"/><path d="M221 92 V150"/><path d="M211 140 l10 12 l10 -12"/><path d="M307 92 V140" stroke-dasharray="7 6"/></g>
+      <path d="M290 150 l34 30 M324 150 l-34 30" stroke="#111" stroke-width="5"/>
+      <text x="340" y="176" font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111">no box here: not copied</text>
+      <rect x="404" y="40" width="262" height="80" rx="10" fill="#FFD60A" stroke="#111" stroke-width="3.5"/>
+      <text x="535" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="19" fill="#111">n := copy(dst, src)</text>
+      <text x="535" y="104" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111">n is 2: boxes copied</text>
+    </svg></div>
+    <ol class="readlist">
+      <li><span>Destination first, source second. Think <code>dst = src</code>: the arrow points left, like an assignment.</span></li>
+      <li><span><code>copy</code> never grows <code>dst</code>. It copies as many boxes as <b>both</b> windows show: the smaller of the two lengths.</span></li>
+      <li><span>It gives back that number, so you can check how many boxes were copied.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: copy into a shelf of the right size">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The recipe for a true copy: build a destination as long as the source, then <code>copy</code>.</p>
+    <span class="file-tab">copy_basic.go</span>
+    <pre class="code" data-src="copy_basic.go"></pre>
+    <pre class="term wrap" data-run="copy_basic.go"></pre>
+    <ol class="readlist">
+      <li><span><code>make([]int, 3)</code> (line 7)<br>A new shelf showing three zeros. <b>Length</b> 3, so there are three boxes to fill.</span></li>
+      <li><span><code>n := copy(dst, src)</code> (line 8)<br>Three boxes copied; <code>n</code> is 3.</span></li>
+      <li><span><code>[1 2 3] [99 2 3]</code><br>Painting <code>dst[0]</code> left <code>src</code> alone. Two shelves, two lists.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 18: the copy machine" data-machine="m-copy">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">Feed the <code>copy</code> machine. Here <code>src</code> is always <code>[]int{1, 2, 3}</code>; only the length of <code>dst</code> changes. What comes out is the count.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-copy">{"label": "copy", "program": "copy_machine.go", "examples": [
+      {"in": "dst len 0", "out": "0", "expectLine": "dst len 0: 0 []", "outKind": "int", "note": "A destination with no boxes: nothing can land. Count 0, and <code>dst</code> is still <samp>[]</samp>. This is the trap in panel 19."},
+      {"in": "dst len 2", "out": "2", "expectLine": "dst len 2: 2 [1 2]", "outKind": "int", "note": "Room for two: 1 and 2 are copied, the 3 is left behind. <code>dst</code> is <samp>[1 2]</samp>."},
+      {"in": "dst len 3", "out": "3", "expectLine": "dst len 3: 3 [1 2 3]", "outKind": "int", "note": "Same length as the source: a complete copy, <samp>[1 2 3]</samp>."},
+      {"in": "dst len 5", "out": "3", "expectLine": "dst len 5: 3 [1 2 3 0 0]", "outKind": "int", "note": "The source has only 3 boxes, so 3 are copied. The last two boxes of <code>dst</code> keep their zeros: <samp>[1 2 3 0 0]</samp>."},
+      {"in": "copy(nums, words)", "error": "have different element types int and string", "program": "copy_types.go", "note": "A <code>[]int</code> and a <code>[]string</code>: an int box can't hold a string, so the Compiler refuses. Program <code>copy_types.go</code>, line 8: <samp>invalid copy: arguments nums (variable of type []int) and words (variable of type []string) have different element types int and string</samp>."}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 19: copying into an empty destination copies nothing">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="NOTHING?" data-seed="19"></svg>
+    <p class="caption">The classic <code>copy</code> trap. No error, and no copy either.</p>
+    <span class="file-tab">copy_trap.go</span>
+    <pre class="code" data-src="copy_trap.go"></pre>
+    <pre class="term wrap" data-run="copy_trap.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>var dst []int</code> is a nil slice: length 0. <code>copy</code> doesn't grow anything, so 0 boxes are copied. The <samp>0</samp> at the start of the line is <code>copy</code> telling you so.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Scoot says: </span>Fix: <code>dst := make([]int, len(src))</code>. The destination needs <b>length</b>, not just capacity: <code>make([]int, 0, 3)</code> copies nothing too.</p></div>
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+    <p class="sr-only">Pictures: the sneak critter beside the program; Scoot pointing at the fix.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-copyn-m" id="ex-copyn"></div>
+  <script type="application/json" id="ex-copyn-m">{"program": "trace_copy.go", "columns": ["size", "copied"], "given": [0], "prompt": "The source always has 3 boxes; the destination grows from 0 to 4 boxes. Fill in what <code>copy</code> returns each lap.", "explain": "<code>copy</code> copies the smaller of the two lengths. While the destination is smaller (0, 1, 2), it's the destination's size. From 3 on, the source runs out: 3, and still 3."}</script>
+
+  <div data-ex="fill" data-model="ex-fillcopy-m" id="ex-fillcopy"></div>
+  <script type="application/json" id="ex-fillcopy-m">{"program": "fill_copy.go", "prompt": "Make <code>backup</code> a true copy of <code>prices</code>, so zeroing <code>prices[0]</code> leaves the backup alone.", "blanks": [{"line": 7, "text": "len(prices)", "accept": ["3"]}, {"line": 8, "text": "copy"}], "explain": "The destination needs as many boxes as the source: <code>make([]int, len(prices))</code>. Then <code>copy(backup, prices)</code>, destination first. The backup keeps <samp>[5 8 13]</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 20: three ways to make an independent copy">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Three spellings of "give me my own shelf", all common in real Go code.</p>
+    <span class="file-tab">clone_ways.go</span>
+    <pre class="code" data-src="clone_ways.go"></pre>
+    <pre class="term wrap" data-run="clone_ways.go"></pre>
+    <ol class="readlist">
+      <li><span><code>make</code> + <code>copy</code> (lines 11 and 12)<br>The recipe from panel 17.</span></li>
+      <li><span><code>append([]int(nil), orig...)</code> (line 14)<br>Append every box of <code>orig</code> to a nil slice, which has no shelf, so <code>append</code> must build a new one. The <code>...</code> after a slice means "pass its boxes one by one", as if you had typed <code>1, 2, 3</code>.</span></li>
+      <li><span><code>slices.Clone(orig)</code> (line 16)<br>From the standard <code>slices</code> package (imported on line 5). It says what it means: clone. Use this one.</span></li>
+      <li><span><code>[1 2 3] [1 2 3] [1 2 3]</code><br>Painting <code>orig[0]</code> on line 18 changed none of the copies.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-indep-m" id="ex-indep"></div>
+  <script type="application/json" id="ex-indep-m">{"q": "<code>a</code> is a <code>[]int</code> with three numbers. Which line makes <code>b</code> an <b>independent</b> copy, so changing <code>b</code> never changes <code>a</code>?", "options": [
+    {"t": "<code>b := slices.Clone(a)</code>", "correct": true, "why": "Yes: a new shelf with the same boxes copied onto it."},
+    {"t": "<code>b := a</code>", "why": "Copies the ticket only. Same shelf (panel 5)."},
+    {"t": "<code>b := a[:]</code>", "why": "A new window onto the same shelf. Slicing never copies (panel 2)."},
+    {"t": "<code>var b []int</code> then <code>copy(b, a)</code>", "why": "<code>b</code> has length 0, so <code>copy</code> copies nothing and <code>b</code> stays empty (panel 19)."}]}</script>
+
+  <div data-ex="spot" data-model="ex-spotcopy-m" id="ex-spotcopy"></div>
+  <script type="application/json" id="ex-spotcopy-m">{"program": "spot_copy.go", "bug": 7, "prompt": "Scoot saves the scores before zeroing the first one. The saved copy comes out empty. Click the line to fix.", "explain": "Line 7 makes <code>saved</code> with <b>length 0</b> (room for 3, but no boxes yet). <code>copy</code> on line 8 copies as many boxes as <code>saved</code> shows: none. Fix line 7: <code>make([]int, len(scores))</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzcopy-m" id="ex-pzcopy"></div>
+  <script type="application/json" id="ex-pzcopy-m">{"program": "parsons_copy.go", "seed": 5, "pin": [1, 3], "prompt": "Put the lines in order: make a list of jobs, save a true copy, then change the first job on the original only.", "explain": "The destination must exist (with length 3) before <code>copy</code> fills it, and the change to <code>todo[0]</code> must come <em>after</em> the copy, or the copy would include it."}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: shares or doesn't, the cheat sheet">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Detective's cheat sheet. For each line: does the new slice share the old one's shelf?</p>
+    <ol class="checklist">
+      <li><span><b><code>t := s[1:3]</code></b> · <b>shares</b>. Slicing makes a window, never a shelf.</span></li>
+      <li><span><b><code>t := s</code></b> · <b>shares</b>. Only the ticket is copied.</span></li>
+      <li><span><b><code>f(s)</code></b> · <b>shares</b>. The function gets a copy of the ticket.</span></li>
+      <li><span><b><code>t := append(s, x)</code> with room</b> · <b>shares</b>. The surprise of panel 11.</span></li>
+      <li><span><b><code>t := append(s, x)</code> when full</b> · <b>separate</b>. A new, longer shelf.</span></li>
+      <li><span><b><code>append(s[:n:n], x)</code></b> · <b>separate</b>. The window is full by design.</span></li>
+      <li><span><b><code>copy</code> into <code>make([]T, len(s))</code>, or <code>slices.Clone(s)</code></b> · <b>separate</b>. A true copy.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Catchphrase: <b>want your own list? Clone it.</b> Sharing is fast and often exactly right; just never share by accident.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · SHELVES OF SHELVES<small>Slices of slices: grids and tables</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 22: a bookcase is a slice of shelves">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">A box can hold anything, even another slice. A slice whose boxes are slices is a <b>slice of slices</b>, written <code>[][]string</code>. Picture a bookcase: the outer slice holds the shelves, each shelf holds the books.</p>
+    <svg class="pic-mid" viewBox="0 0 460 300" role="img" aria-label="Picture: a bookcase with three shelves labelled row 0, row 1 and row 2. Row 0 holds X, O, X; row 1 holds a dot, X and a dot; row 2 holds O, a dot and O. A pointer labels board[1][2]: row 1, then box 2.">
+      <rect x="70" y="16" width="300" height="270" rx="10" fill="#E9C99A" stroke="#111" stroke-width="5"/>
+      <g fill="#C8955E" stroke="#111" stroke-width="3"><rect x="82" y="96" width="276" height="10" rx="2"/><rect x="82" y="182" width="276" height="10" rx="2"/><rect x="82" y="268" width="276" height="10" rx="2"/></g>
+      <g stroke="#111" stroke-width="3" fill="#FFFFFF">
+        <rect x="100" y="34" width="70" height="60" rx="6"/><rect x="185" y="34" width="70" height="60" rx="6"/><rect x="270" y="34" width="70" height="60" rx="6"/>
+        <rect x="100" y="120" width="70" height="60" rx="6"/><rect x="185" y="120" width="70" height="60" rx="6"/><rect x="270" y="120" width="70" height="60" rx="6" fill="#FFF6CC" stroke-width="5"/>
+        <rect x="100" y="206" width="70" height="60" rx="6"/><rect x="185" y="206" width="70" height="60" rx="6"/><rect x="270" y="206" width="70" height="60" rx="6"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="30" fill="#111" text-anchor="middle">
+        <text x="135" y="75">X</text><text x="220" y="75">O</text><text x="305" y="75">X</text>
+        <text x="135" y="161">.</text><text x="220" y="161">X</text><text x="305" y="161">.</text>
+        <text x="135" y="247">O</text><text x="220" y="247">.</text><text x="305" y="247">O</text>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="end"><text x="62" y="70">row 0</text><text x="62" y="156">row 1</text><text x="62" y="242">row 2</text></g>
+      <path d="M440 120 C 420 120, 380 130, 346 146" fill="none" stroke="#111" stroke-width="3.5"/><path d="M358 136 l-14 10 l16 4" fill="none" stroke="#111" stroke-width="3.5" stroke-linejoin="round"/>
+      <text x="452" y="108" text-anchor="end" font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111">[1][2]</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Two indexes, read in order: <code>board[1][2]</code> means "shelf 1, then box 2 on that shelf".</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: a noughts-and-crosses board">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">A game board as a <code>[][]string</code>. One literal per row, inside one big literal.</p>
+    <span class="file-tab">grid.go</span>
+    <pre class="code" data-src="grid.go"></pre>
+    <pre class="term wrap" data-run="grid.go"></pre>
+    <ol class="readlist">
+      <li><span><code>[][]string{ {...}, {...}, {...} }</code> (lines 6 to 10)<br>Inside the outer braces, each row is written as just <code>{"X", "O", "X"}</code>: Go already knows every box is a <code>[]string</code>. The comma after the last row is required when the closing brace is on its own line.</span></li>
+      <li><span><code>board[1][2] = "O"</code> (line 11)<br>Row 1, box 2: the middle row's last dot becomes O.</span></li>
+      <li><span><code>for _, row := range board</code> (line 12)<br>Each lap hands you one whole row, a <code>[]string</code>.</span></li>
+      <li><span><code>3 3 O</code> (line 15)<br><code>len(board)</code> counts rows; <code>len(board[0])</code> counts the boxes in row 0.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 24: building a grid row by row" data-tracer="tr-grid" id="tr-grid-box">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">What's really in the outer slice? Step through it. The outer shelf (a <code>[][]string</code>) holds one slice per box; each row is a separate shelf of strings (a <code>[]string</code>) that its box points at.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-grid-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-grid">{ "program": "grid_build.go", "steps": [
+      {"line": 6, "note": "The run starts in <code>main</code>.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 7, "note": "<code>make([][]string, 2)</code>: an outer shelf with two boxes. Each box holds a <code>[]string</code>, and the zero value of a slice is <code>nil</code>: no row yet.", "output": [], "frames": [{"name": "main", "vars": [{"n": "rows", "ref": "O"}]}], "objects": {"O": {"kind": "slice", "label": "outer", "items": [{"val": "nil"}, {"val": "nil"}]}}, "changed": ["rows"]},
+      {"line": 8, "note": "<code>rows[0]</code> gets a row of its own: a shelf holding X and O.", "output": [], "frames": [{"name": "main", "vars": [{"n": "rows", "ref": "O"}]}], "objects": {"O": {"kind": "slice", "label": "outer", "items": [{"ref": "R0"}, {"val": "nil"}]}, "R0": {"kind": "slice", "label": "row 0", "items": [{"val": "\"X\""}, {"val": "\"O\""}]}}},
+      {"line": 9, "note": "<code>rows[1]</code> gets a row of one box. Rows don't have to be the same length.", "output": [], "frames": [{"name": "main", "vars": [{"n": "rows", "ref": "O"}]}], "objects": {"O": {"kind": "slice", "label": "outer", "items": [{"ref": "R0"}, {"ref": "R1"}]}, "R0": {"kind": "slice", "label": "row 0", "items": [{"val": "\"X\""}, {"val": "\"O\""}]}, "R1": {"kind": "slice", "label": "row 1", "items": [{"val": "\"O\""}]}}},
+      {"line": 10, "note": "Row 1 is full, so <code>append</code> builds a new, longer shelf for it, and the outer box now points there. The old one-box shelf is faded: nothing points at it any more.", "output": [], "frames": [{"name": "main", "vars": [{"n": "rows", "ref": "O"}]}], "objects": {"O": {"kind": "slice", "label": "outer", "items": [{"ref": "R0"}, {"ref": "R2"}]}, "R0": {"kind": "slice", "label": "row 0", "items": [{"val": "\"X\""}, {"val": "\"O\""}]}, "R1": {"kind": "slice", "label": "row 1", "items": [{"val": "\"O\""}]}, "R2": {"kind": "slice", "label": "new row 1", "items": [{"val": "\"O\""}, {"val": "\"X\""}]}}},
+      {"line": null, "note": "<code>Println</code> prints a slice of slices as brackets inside brackets.", "output": ["[[X O] [O X]] 2"], "frames": [{"name": "main", "vars": [{"n": "rows", "ref": "O"}]}], "objects": {"O": {"kind": "slice", "label": "outer", "items": [{"ref": "R0"}, {"ref": "R2"}]}, "R0": {"kind": "slice", "label": "row 0", "items": [{"val": "\"X\""}, {"val": "\"O\""}]}, "R2": {"kind": "slice", "label": "new row 1", "items": [{"val": "\"O\""}, {"val": "\"X\""}]}}}
+    ] }</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: rows of different lengths, made in a loop">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">When the size is decided while running, build the grid in two steps: <code>make</code> the outer slice, then <code>make</code> each row inside a loop.</p>
+    <span class="file-tab">jagged.go</span>
+    <pre class="code" data-src="jagged.go"></pre>
+    <pre class="term wrap" data-run="jagged.go"></pre>
+    <ol class="readlist">
+      <li><span><code>make([][]int, 4)</code> (line 6)<br>Four row boxes, each <code>nil</code> for now.</span></li>
+      <li><span><code>tri[i] = make([]int, i+1)</code> (line 8)<br>Row 0 gets 1 box, row 1 gets 2, and so on: a triangle. A grid whose rows have different lengths is called <b>jagged</b>.</span></li>
+      <li><span><code>tri[i][j] = j + 1</code> (line 10)<br>The inner loop fills the row it just made.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 26: forgetting to make the rows">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="NO ROW!" data-seed="26"></svg>
+    <p class="caption">Mistake: making the outer slice and jumping straight to <code>grid[0][0]</code>.</p>
+    <span class="file-tab">grid_nil.go</span>
+    <pre class="code" data-src="grid_nil.go"></pre>
+    <pre class="term wrap" data-run="grid_nil.go" data-exit></pre>
+    <ol class="readlist">
+      <li><span><code>[[] [] []] 3</code><br>Three rows, each a nil slice, printed as <samp>[]</samp>.</span></li>
+      <li><span><code>index out of range [0] with length 0</code><br>Row 0 has length 0, so it has no box 0. The <b>outer</b> index was fine; the <b>inner</b> one fell off.</span></li>
+      <li><span><code>grid_nil.go:8</code><br>Line 8. Fix: give each row boxes first, as in panel 25, or <code>append</code> to the row.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="tumble"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>A bookcase with no shelves in it yet. <code>make([][]int, 3)</code> builds the case, not the shelves.</p></div>
+    </div>
+    <p class="sr-only">Picture: the tumble critter falls off the end of an empty row.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-grid-m" id="ex-grid"></div>
+  <script type="application/json" id="ex-grid-m">{"program": "predict_grid.go", "prompt": "Two rows of seats, and one more seat added to row A. What are the two lines?", "hint": "<code>seats[0]</code> is row A. After the append, how many seats does it have, and what's at index 2?", "explain": "There are still 2 rows, and row B has 3 seats: <samp>2 3</samp>. Row A grew to <code>A1 A2 A3</code>, so <code>seats[0][2]</code> is <samp>A3</samp>, and <code>seats[1][0]</code> is <samp>B1</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzgrid-m" id="ex-pzgrid"></div>
+  <script type="application/json" id="ex-pzgrid-m">{"program": "parsons_grid.go", "seed": 11, "pin": [1, 3], "prompt": "Put the lines in order to build a 3-by-3 times table and print it. Count the tabs: they show how deep each line sits.", "explain": "Make the outer slice first. The outer loop gives each row its boxes, and only then can the inner loop fill them. The print comes once, after both loops close."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · TAKING A BOX OUT<small>Deleting and inserting</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 27: deleting means sliding the later boxes left">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Go has no "delete" on a slice built into the language. You take box 2 out by sliding every later box one place to the left, then making the window one box narrower. One line does both:</p>
+    <div class="slicer" role="img" aria-label="s equals append of s up to 2, then s from 3 on, spread out.">
+      <span>s = append(</span><span class="num">s[:2]<small>keep: boxes 0, 1</small></span><span>,</span><span class="num hi">s[3:]...<small>slide in: box 3 on</small></span><span>)</span>
+    </div>
+    <ol class="readlist">
+      <li><span><code>s[:2]</code> is the part before the box to remove. Its capacity reaches the end of the shelf, so there's room.</span></li>
+      <li><span><code>s[3:]...</code> is everything after it, passed box by box (the <code>...</code> from panel 20).</span></li>
+      <li><span>Because there's room, <code>append</code> writes those boxes onto <b>the same shelf</b>, straight over box 2.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean shelfbox" aria-label="Panel 28: step through a delete" data-shelves="sv-delete">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Step through it, and keep an eye on the last box of the shelf.</p>
+    <div class="sh-split"><ol class="tr-code sh-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="stage"><svg class="shelf-svg" role="img" aria-label="The shelves and windows for the current step; the narration and the text version below describe them."></svg></div>
+    <ul class="sh-key" aria-label="Key to the picture">
+      <li><i class="bar"></i> a window (a slice)</li>
+      <li><i></i> a box some window shows</li>
+      <li><i class="after"></i> a box no window shows</li>
+      <li><i class="hot"></i> thick, marked "new": just changed</li>
+    </ul>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Shelves and windows</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="sv-delete">{"program": "delete.go", "steps": [
+      {"at": 6, "shelves": {"S1": ["a", "b", "c", "d", "e"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 5}], "note": "Five letters on a shelf of five."},
+      {"at": 7, "shelves": {"S1": ["a", "b", "c", "d", "e"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 5}], "print": "{s} {len:s} {cap:s}", "note": "Printed: length 5, capacity 5."},
+      {"at": 8, "shelves": {"S1": ["a", "b", "c", "d", "e"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 5}, {"n": "s[:2]", "shelf": "S1", "start": 0, "len": 2}, {"n": "s[3:]", "shelf": "S1", "start": 3, "len": 2}], "note": "Line 8, part one: Go works out the two pieces. <code>s[:2]</code> shows a and b with room to the end of the shelf; <code>s[3:]</code> shows d and e."},
+      {"at": 8, "shelves": {"S1": ["a", "b", "d", "e", "e"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 4}], "hot": {"S1": [2, 3]}, "note": "Part two: <code>append</code> writes d and e into spots 2 and 3, over c. The result, a window of length 4, goes back into <code>s</code>. Spot 4 still holds an old <samp>e</samp>, now behind the wall."},
+      {"at": 9, "shelves": {"S1": ["a", "b", "d", "e", "e"]}, "windows": [{"n": "s", "shelf": "S1", "start": 0, "len": 4}], "print": "{s} {len:s} {cap:s}", "note": "<samp>[a b d e] 4 5</samp>: c is gone, and the capacity is still 5 because it's the same shelf."}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 29: deleting changes the original too">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">So what if you keep the original under its own name?</p>
+    <span class="file-tab">delete_alias.go</span>
+    <pre class="code" data-src="delete_alias.go"></pre>
+    <pre class="term wrap" data-run="delete_alias.go"></pre>
+    <div class="scene">
+      <svg class="char" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>orig</code> is now <samp>[a b d e e]</samp>: two e's and no c! Same shelf, so the slide happened under <code>orig</code>'s window too. Deleting this way <b>wrecks the original</b>. If you still need it, clone first.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak critter tiptoes past.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: slices.Delete and slices.Insert">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">The <code>slices</code> package has named versions. <code>%q</code>, from chapter 4, puts quotes round each string, so an empty one shows as <code>""</code>.</p>
+    <div class="pair stack">
+      <div><span class="file-tab">delete_pkg.go</span><pre class="code" data-src="delete_pkg.go"></pre><pre class="term wrap" data-run="delete_pkg.go"></pre></div>
+      <div><span class="file-tab">insert_pkg.go</span><pre class="code" data-src="insert_pkg.go"></pre><pre class="term wrap" data-run="insert_pkg.go"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><code>slices.Delete(orig, 2, 3)</code><br>Removes boxes from 2 up to, but not including, 3 (low in, high out again). It works on the same shelf, like panel 28, and hands back the narrower window.</span></li>
+      <li><span><code>["a" "b" "d" "e" ""]</code><br>One difference from panel 29: the box left behind the wall is wiped to the zero value, <code>""</code>, instead of keeping a stale <samp>e</samp>. Go has done this since version 1.22.</span></li>
+      <li><span><code>slices.Insert(stops, 1, "bakery")</code><br>Slides boxes right to make a gap at index 1, and puts the new value in. Like <code>append</code>, it may build a new shelf, so catch the result.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-del-m" id="ex-del"></div>
+  <script type="application/json" id="ex-del-m">{"program": "predict_delete.go", "prompt": "Remove one box from a queue of four. What's printed?", "hint": "<code>q[:1]</code> keeps index 0. <code>q[2:]</code> is everything from index 2. Which box is skipped?", "explain": "Index 1, the 20, is skipped: <code>q[:1]</code> is <samp>[10]</samp>, and <code>q[2:]...</code> slides 30 and 40 in after it. <samp>[10 30 40] 3</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-spotdel-m" id="ex-spotdel"></div>
+  <script type="application/json" id="ex-spotdel-m">{"program": "spot_delete.go", "bug": 10, "prompt": "Scoot wants to remove Bo and print three names. Instead there are four, and the last one is empty. No error. Click the guilty line.", "explain": "Line 10 throws away the result. <code>slices.Delete</code> slid Cy and Di left on the shared shelf and wiped the last box, but <code>names</code>' own ticket still says length 4. Fix: <code>names = slices.Delete(names, 1, 2)</code>. (Unlike a dropped <code>append</code> result, the Compiler lets this through. <code>go vet</code> catches it: see the notebook's Common wrong ideas page.)"}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · THE SLICES TOOLBOX<small>Sort, search and compare with the slices package</small></h2>
+
+  <section class="panel clean" aria-label="Panel 31: the slices toolbox">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The standard library's <code>slices</code> package, imported with <code>"slices"</code>, has ready-made tools for everyday jobs. One per line:</p>
+    <span class="file-tab">toolbox.go</span>
+    <pre class="code" data-src="toolbox.go"></pre>
+    <pre class="term wrap" data-run="toolbox.go"></pre>
+    <ol class="readlist">
+      <li><span><code>slices.Contains(nums, 19)</code> (line 10)<br>Is 19 in there? A <code>bool</code>: <samp>true</samp>.</span></li>
+      <li><span><code>slices.Index(nums, 7)</code> (lines 11 and 12)<br>Where is the <b>first</b> 7? Index <samp>1</samp>. Not there at all? <samp>-1</samp>, a number that can never be a real index.</span></li>
+      <li><span><code>slices.Max</code> and <code>slices.Min</code> (line 13)<br>The biggest and smallest values: <samp>42 3</samp>.</span></li>
+      <li><span><code>slices.Sort(nums)</code> (line 14)<br>Sorts smallest first, <b>in place</b>: it rearranges the boxes on the shelf you hand it, and returns nothing.</span></li>
+      <li><span><code>slices.Reverse(nums)</code> (line 16)<br>Flips the order, also in place.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 32: the slices machines" data-machine="m-slices">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Feed the toolbox. Here <code>f</code> is <code>[]string{"pear", "fig", "apple"}</code>; <code>g</code> is a clone of it, so sorting <code>g</code> leaves <code>f</code> alone.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-slices">{"label": "slices", "program": "slices_machine.go", "examples": [
+      {"in": "Contains(f, \"fig\")", "out": "true", "expectLine": "Contains(f, \"fig\") = true", "outKind": "bool", "note": "Yes, fig is in the list."},
+      {"in": "Contains(f, \"kiwi\")", "out": "false", "expectLine": "Contains(f, \"kiwi\") = false", "outKind": "bool", "note": "No kiwi. The match must be exact."},
+      {"in": "Index(f, \"apple\")", "out": "2", "expectLine": "Index(f, \"apple\") = 2", "outKind": "int", "note": "apple is the third box: index 2."},
+      {"in": "Index(f, \"kiwi\")", "out": "-1", "expectLine": "Index(f, \"kiwi\") = -1", "outKind": "int", "note": "Not found: -1."},
+      {"in": "Max(f)", "out": "pear", "expectLine": "Max(f) = pear", "outKind": "string", "note": "For strings, \"biggest\" means last in alphabetical order: pear."},
+      {"in": "Sort(g)", "out": "[apple fig pear]", "expectLine": "after Sort(g): [apple fig pear]", "outKind": "[]string", "note": "Sorted in place. <code>Sort</code> itself hands back nothing; this is <code>g</code> printed afterwards."},
+      {"in": "Reverse(g)", "out": "[pear fig apple]", "expectLine": "after Reverse(g): [pear fig apple]", "outKind": "[]string", "note": "Flipped in place."},
+      {"in": "Max(none)", "error": "panic: slices.Max: empty list", "program": "max_empty.go", "note": "There's no biggest value in an empty slice, so <code>slices.Max</code> panics at run time. Program <code>max_empty.go</code>, with <code>var none []int</code>. Check <code>len</code> first."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-tools-m" id="ex-tools"></div>
+  <script type="application/json" id="ex-tools-m">{"program": "predict_tools.go", "prompt": "Sort, search, reverse. Type both lines.", "hint": "After sorting, where is the 30? After reversing, what's at index 0?", "explain": "Sorted: <samp>[10 20 30]</samp>, and 30 sits at index 2. Reversed: <samp>[30 20 10]</samp>, so <code>scores[0]</code> is 30, and there's no 15: <samp>30 false</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-rev-m" id="ex-rev"></div>
+  <script type="application/json" id="ex-rev-m">{"program": "predict_rev.go", "prompt": "Scoot wants the names backwards.", "expect": "error", "answer": "(no value) used as value", "ask": "Go refuses to build it. Type the end of the Compiler's message, after <code>slices.Reverse(names)</code>. (It starts with \"(no\"; panel 31 says why.)", "hint": "Is <code>Reverse</code> like <code>Sort</code>, or like <code>Clone</code>?", "explain": "Like <code>Sort</code>, <code>Reverse</code> works in place and returns nothing: <samp>slices.Reverse(names) (no value) used as value</samp>. Write <code>slices.Reverse(names)</code> alone, then print <code>names</code>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 33: Sort returns nothing">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Mistake: expecting <code>slices.Sort</code> to hand back a sorted slice.</p>
+    <span class="file-tab">sort_err.go</span>
+    <pre class="code" data-src="sort_err.go"></pre>
+    <pre class="term wrap" data-run="sort_err.go" data-exit></pre>
+    <div class="scene flip">
+      <div class="talk">
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Line 10, column 12. <code>slices.Sort(nums)</code> has <b>no value</b>: it sorts the boxes where they stand and returns nothing. So there's nothing to put in <code>sorted</code>.</p>
+        <p class="bubble right"><span class="sr-only">The Compiler says: </span>Fix: <code>slices.Sort(nums)</code> on a line of its own, then use <code>nums</code>. Need the unsorted one too? Clone it first.</p>
+      </div>
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="go build"></svg>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon red, keeps its gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: sorting strings, capitals first">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Older Go code sorts strings with the <code>sort</code> package. Both ways give the same order, and it isn't quite the dictionary's.</p>
+    <span class="file-tab">sort_strings.go</span>
+    <pre class="code" data-src="sort_strings.go"></pre>
+    <pre class="term wrap" data-run="sort_strings.go"></pre>
+    <ol class="readlist">
+      <li><span><code>sort.Strings(names)</code> (line 11)<br>The pre-<code>slices</code> way, still everywhere in real code. It sorts in place too.</span></li>
+      <li><span><code>[Cy Zed ada bo]</code><br>Capitals come <b>before</b> small letters. Chapter 5 showed that Go compares strings byte by byte, case and all. Every capital letter's code is smaller than every small letter's.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>For a list people will read, keep names in one style, or sort with your own rule (chapter 17 shows how).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-case-m" id="ex-case"></div>
+  <script type="application/json" id="ex-case-m">{"q": "After <code>slices.Sort(words)</code>, where <code>words</code> is <code>[]string{\"bee\", \"Ant\", \"cat\"}</code>, what is <code>words</code>?", "options": [
+    {"t": "<code>[Ant bee cat]</code>", "correct": true, "why": "Yes. The capital A has the smallest code, so <samp>Ant</samp> comes first; then b before c."},
+    {"t": "<code>[bee cat Ant]</code>", "why": "Capitals sort <em>before</em> small letters, not after."},
+    {"t": "<code>[bee Ant cat]</code>", "why": "That's the original order. <code>slices.Sort</code> rearranges the slice in place."},
+    {"t": "It doesn't compile without <code>words =</code>", "why": "<code>slices.Sort</code> returns nothing, so there's nothing to assign (panel 33)."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 35: slices.Equal compares box by box">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">Chapter 9 promised it: <code>slices.Equal(a, b)</code> is the ready-made version of the box-by-box loop you wrote, because <code>a == b</code> doesn't compile for slices.</p>
+    <ol class="readlist">
+      <li><span>Same length and the same value in every box, in the same order: <code>true</code>.</span></li>
+      <li><span>Same values in a different order: <code>false</code>. Order matters.</span></li>
+      <li><span>A nil slice and an empty one count as equal: both have no boxes.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Check those three rules yourself in the next exercise.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-equal-m" id="ex-equal"></div>
+  <script type="application/json" id="ex-equal-m">{"program": "predict_equal.go", "prompt": "Three comparisons. Type the three lines.", "hint": "Order matters. And what does a nil slice have in common with <code>[]string{}</code>?", "explain": "Same values, same order: <samp>true</samp>. Same values, different order: <samp>false</samp>. Nil and empty both have length 0: <samp>true</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: preallocate when you know the size">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">One last habit. When you know how many boxes are coming, give the shelf that much room up front, so <code>append</code> never has to move house.</p>
+    <span class="file-tab">prealloc.go</span>
+    <pre class="code" data-src="prealloc.go"></pre>
+    <pre class="term wrap" data-run="prealloc.go"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span><code>make([]int, 0, len(nums))</code> (line 7): length 0 because we'll append, capacity 5 because that's how many are coming. The cap stays 5 the whole way: one shelf, no moves. Chapter 28 measures what that saves.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillsl-m" id="ex-fillsl"></div>
+  <script type="application/json" id="ex-fillsl-m">{"program": "fill_slices.go", "prompt": "Add the post office only if it isn't on the list yet, then sort the stops.", "blanks": [{"line": 10, "text": "Contains"}, {"line": 13, "text": "Sort"}], "explain": "<code>!slices.Contains(stops, \"post office\")</code> is true when it's missing, so it gets appended. Then <code>slices.Sort(stops)</code> puts them in order, in place: <samp>bakery</samp> before <samp>bank</samp>, because at the third letter k comes before n."}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="courier" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Shared shelves, new shelves, copies and deletes. For every line, ask one question: <b>which shelf is this window on?</b> Draw it!</p></div>
+    </div>
+    <p class="sr-only">Picture: Scoot raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_func.go", "prompt": "Boss 1. A function paints a box, appends, and returns. Then <code>main</code> paints <code>b</code>. Type both lines.", "hint": "<code>a</code> is full (three boxes, cap 3). Which line inside <code>fix</code> still works on <code>a</code>'s shelf, and which one moves to a new shelf?", "explain": "<code>s[0] = 0</code> paints <code>a</code>'s shelf (shared ticket), so <code>a</code> becomes <samp>[0 2 3]</samp>. The <code>append</code> finds the shelf full and builds a new one, so the returned <code>b</code> is on its own shelf: <code>b[1] = 7</code> doesn't touch <code>a</code>. <samp>[0 2 3]</samp> and <samp>[0 7 3 9]</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_trace.go", "columns": ["i", "len(b)", "cap(b)", "a[0]"], "given": [0], "prompt": "Boss 2. <code>b</code> starts as a second ticket for <code>a</code>'s shelf (length 1, room for 3). Each lap appends to <code>b</code> and paints <code>b[0]</code>. Fill in each row. (On this run, a full shelf of 3 was replaced by one of 6.)", "explain": "Laps 1 and 2: there's room, so <code>b</code> stays on <code>a</code>'s shelf and painting <code>b[0]</code> paints <code>a[0]</code> too: 1, then 2. Lap 3: the shelf of 3 is full, so <code>b</code> moves to a new shelf of 6; from then on <code>b[0] = i</code> paints only the new shelf, and <code>a[0]</code> stays 2."}</script>
+
+  <div data-ex="spot" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_spot.go", "bug": 7, "prompt": "Boss 3. Scoot wants a list without Bob <em>and</em> the full list, unchanged. The full list comes out as <samp>[ann cat dan dan]</samp>. Click the guilty line.", "explain": "Line 7 deletes by sliding boxes on <code>all</code>'s own shelf (panel 29), so <code>all</code> is wrecked. Fix: work on a clone, for example <code>noBob := slices.Delete(slices.Clone(all), 1, 2)</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_parsons.go", "seed": 9, "pin": [1, 3], "prompt": "Boss 4. Keep only the even numbers, <b>reusing the same shelf</b> (no new one). Put the lines in order. Look at the goal output: what happened to <code>nums</code>?", "explain": "<code>kept := nums[:0]</code> is a window of length 0 onto <code>nums</code>' shelf, with room for all 6. Each <code>append</code> writes into that room, over the boxes already read. <code>kept</code> is <samp>[2 4 6]</samp>, and <code>nums</code> shows the overwritten front: <samp>[2 4 6 4 5 6]</samp>. A real trick in Go code: filtering with no new shelf, as long as you no longer need the original."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.go", "prompt": "Boss 5. <code>base</code> has length 2 and room for 10. Fill the slice expressions so <code>x</code> and <code>y</code> get separate shelves (no surprise). Each blank is the part after <code>base[</code>.", "blanks": [{"line": 7, "text": ":2:2", "accept": ["0:2:2"]}, {"line": 8, "text": ":2:2", "accept": ["0:2:2"]}], "explain": "<code>base[:2:2]</code> is a window of length 2 whose capacity also stops at 2: full. So each <code>append</code> must build its own shelf, and the 1 and the 2 never collide: <samp>[0 0 1] [0 0 2]</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_err.go", "prompt": "Boss 6. Two empty rows. One gets a word by <code>append</code>, the other by index. Line 8 prints. What happens on line 9?", "expect": "error", "answer": "index out of range [0] with length 0", "ask": "It panics. Type the reason after <code>runtime error:</code>. (Start with \"index\".)", "hint": "<code>append</code> works on a nil row. Does indexing?", "explain": "<code>append</code> builds row 0 a shelf, so line 8 prints <samp>[[hi] []]</samp>. Row 1 is still nil, length 0, so <code>rows[1][0]</code> panics: <samp>index out of range [0] with length 0</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 10</p>
+    <ul class="recap">
+      <li><b>A NEW WINDOW IS NOT A NEW SHELF</b>Slicing, <code>t := s</code> and passing <code>s</code> to a function all share the backing array. Paint through one, the other sees it.</li>
+      <li><b>APPEND WITH ROOM SHARES; APPEND WHEN FULL MOVES</b>You can't see which from the line. That's the <code>[0 0 0 5] [0 0 0 5]</code> surprise. A full slice expression <code>s[:n:n]</code> forces a move.</li>
+      <li><b>COPY FILLS ONLY THE BOXES YOU HAVE</b><code>copy(dst, src)</code> copies the smaller length and returns the count. A zero-length <code>dst</code> gets nothing.</li>
+      <li><b>WANT YOUR OWN LIST? CLONE IT.</b><code>slices.Clone(s)</code>, or <code>make</code> + <code>copy</code>.</li>
+      <li><b>SHELVES OF SHELVES NEED THEIR SHELVES</b><code>[][]T</code>: <code>make</code> the outer slice, then give every row boxes before indexing it.</li>
+      <li><b>SORT AND REVERSE WORK IN PLACE</b>They return nothing. <code>Contains</code>, <code>Index</code>, <code>Max</code>, <code>Equal</code> answer questions; <code>Delete</code> and <code>Insert</code> hand back a slice to catch.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="courier" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Scoot says: </span>Two windows, one shelf, zero surprises from now on. Delivered!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, beads on a necklace">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 11: Beads on a Necklace</p>
+    <div class="teaser">
+      <div class="duo">
+        <div class="duo-card">
+          <svg class="mini teaser-pic" viewBox="0 0 220 128" aria-hidden="true"><path d="M10 40 C 60 100, 160 100, 210 40" fill="none" stroke="#111" stroke-width="3"/><g stroke="#111" stroke-width="3"><circle cx="38" cy="66" r="13" fill="#FFF6CC"/><circle cx="68" cy="80" r="13" fill="#BDE3FF"/><circle cx="96" cy="86" r="13" fill="#BDE3FF"/><circle cx="124" cy="86" r="13" fill="#FFF6CC"/><circle cx="152" cy="80" r="13" fill="#FFF6CC"/><circle cx="182" cy="66" r="13" fill="#FFF6CC"/></g><path d="M58 98 q24 14 48 0" fill="none" stroke="#111" stroke-width="3"/><text x="38" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">h</text><text x="82" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">é</text><text x="124" y="92" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">l</text><text x="152" y="86" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">l</text><text x="182" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">o</text></svg>
+          <p>A string is a necklace of beads, a read-only slice of <b>bytes</b>. Most letters are one bead; some, like é, take two or more.</p>
+        </div>
+        <div class="duo-card">
+          <svg class="char wide" data-char="train" data-text="héllo"></svg>
+          <p>So <code>len</code> of a word can surprise you, and <code>s[1]</code> might hand you half a letter. Plus the <code>strings</code> toolbox: Split, Join, Contains, Cut.</p>
+        </div>
+      </div>
+      <div class="scene">
+        <svg class="char sm" data-char="courier" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Scoot thinks: </span>Everything you know about windows and shelves works on text too, with one twist: some letters take up more than one box. Bring your shelf diagrams!</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Teaser picture: a necklace of beads spelling h é l l o, where é spans two beads; and the train creature, whose carriages hold the letters of héllo.</p>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch9.html">← Ch 9 · Windows on a Shelf</a><a class="next" href="ch11.html">Ch 11 · Beads on a Necklace →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: headers, growslice and memmove</summary>
+    <div class="page-body">
+      <div class="scene">
+        <svg class="char sm" data-char="professor"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Every surprise in this chapter falls out of one fact: a slice value is three words, and only those three words are ever copied.</p></div>
+      </div>
+      <h3>The header, again</h3>
+      <p>A slice value is a small struct the runtime source calls <code>slice</code>: a pointer to an element of a backing array, a length and a capacity (24 bytes on a 64-bit machine). Assignment, passing to a function, returning from one, storing in another slice or a struct: all of these copy those 24 bytes. None of them copy elements. The language specification puts it this way: a slice "is a descriptor for a contiguous segment of an underlying array", and it "shares storage with its array and with other slices of the same array".</p>
+      <h3>The append decision, exactly</h3>
+      <p>For <code>append(s, x...)</code> the spec says: if the capacity of <code>s</code> is not large enough to fit the additional values, append allocates a new, sufficiently large underlying array; otherwise, append re-uses the underlying array. In the runtime that's a single comparison, <code>len(s) + n &lt;= cap(s)</code>. When it fails, <code>runtime.growslice</code> picks a new capacity (roughly doubling small slices and growing big ones by smaller steps, rounded up to an allocator size class; the policy is in <code>runtime/slice.go</code> and has changed between releases), allocates, and copies the old elements across. That is why panel 10's <code>append_full.go</code> printed cap 6: the language promises "enough", and this runtime chose 6.</p>
+      <h3>copy is memmove</h3>
+      <p><code>copy(dst, src)</code> copies <code>min(len(dst), len(src))</code> elements and returns that count. Under the hood it's a block move (<code>memmove</code>), which is why it's fast and why it handles <b>overlap</b> correctly: <code>copy(s[1:], s)</code> shifts everything right by one without smearing the first element across the slice. The <code>append(s[:i], s[i+1:]...)</code> delete is the same kind of overlapping move, done by <code>append</code>. A special case worth knowing: <code>copy</code> also accepts a string as its source when the destination is a <code>[]byte</code> (chapter 11's notebook runs one).</p>
+      <h3>The full slice expression's rules</h3>
+      <p><code>a[low:high:max]</code> needs <code>0 &lt;= low &lt;= high &lt;= max &lt;= cap(a)</code>. The result has length <code>high - low</code> and capacity <code>max - low</code>. Only <code>low</code> may be left out. It works on arrays, pointers to arrays and slices, but not on strings (a string has no spare capacity to protect).</p>
+      <h3>Why slices.Delete zeroes the tail</h3>
+      <p>Since Go 1.22, <code>slices.Delete</code>, <code>DeleteFunc</code>, <code>Compact</code>, <code>CompactFunc</code> and <code>Replace</code> clear the elements between the new length and the old one. If those boxes held pointers (to big strings, structs or other slices), leaving stale copies behind the wall would keep that memory alive: the garbage collector can't know nobody will ever re-slice up to them. The hand-written <code>append(s[:i], s[i+1:]...)</code> doesn't clear anything, which is panel 28's leftover <samp>e</samp>.</p>
+      <h3>A slice of slices is not a 2D array</h3>
+      <p><code>[][]int</code> is an outer header pointing at an array of inner headers, each pointing at its own row array, possibly far apart in memory and of different lengths. A true fixed grid, <code>[3][3]int</code>, is one block of 9 ints. Effective Go's "Two-dimensional slices" section shows a third option: allocate one big <code>[]int</code> and slice the rows out of it, so all rows share one array.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: where sharing helps, and where it bites</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Sub-slices without copying.</b> Parsers and network code take windows like <code>buf[:n]</code> or <code>line[start:end]</code> all the time. Sharing makes them free, with no copying of megabytes.</li>
+        <li><b>Functions that fill a slice you pass in.</b> <code>io.Reader</code>'s <code>Read(p []byte)</code> (chapter 19) writes into <em>your</em> buffer through its copy of the header. That's panel 7's <code>stamp</code>, at industrial scale.</li>
+        <li><b>Returning a slice from a function.</b> The standard pattern is <code>s = f(s)</code>, exactly like <code>append</code>, for anything that might grow the slice.</li>
+        <li><b>Defensive copies.</b> A type that stores a slice someone handed it often clones it first (<code>slices.Clone</code>), so the caller can't change its contents later by accident. The same goes for returning internal slices.</li>
+        <li><b>Holding a big array alive.</b> A tiny window like <code>big[:2]</code> keeps the <em>whole</em> backing array in memory. When keeping a small piece of a big buffer for a long time, clone the piece (100 Go Mistakes, #26).</li>
+        <li><b>In-place filtering</b> with <code>kept := s[:0]</code> (Boss 4) is common in performance-sensitive code; <code>slices.DeleteFunc</code> does the same job with a function you supply (chapter 17).</li>
+        <li><b>Sorting.</b> <code>slices.Sort</code> for plain values; <code>sort.Strings</code>, <code>sort.Ints</code> and <code>sort.Slice</code> in older code; <code>slices.SortFunc</code> for "sort people by age" (chapter 17). <code>slices.BinarySearch</code> finds a value quickly in an already-sorted slice.</li>
+        <li><b>Grids.</b> Game boards, spreadsheets, images and matrices are usually <code>[][]T</code>, built with the two-step <code>make</code> from panel 25.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>t := s</code> makes a copy of the list."</b> It copies the ticket. Use <code>slices.Clone(s)</code> for a copy.</li>
+        <li><b>"<code>s[1:3]</code> is a new, separate slice."</b> It's a new window on the same shelf. Changes show through.</li>
+        <li><b>"<code>append</code> always returns a fresh slice."</b> Only when the shelf is full. With room, the result shares, which is panel 11's surprise.</li>
+        <li><b>"<code>append(a, x)</code> can't change anything <code>a</code> can see."</b> True for <code>a</code>'s own boxes; but it can overwrite a spare box another slice (like <code>b</code>) is already showing.</li>
+        <li><b>"<code>copy</code> grows the destination."</b> Never. It fills at most <code>len(dst)</code> boxes and returns how many.</li>
+        <li><b>"<code>make([]T, 0, n)</code> is a fine destination for <code>copy</code>."</b> Length 0: nothing is copied. Use <code>make([]T, len(src))</code>.</li>
+        <li><b>"A function can't change my slice."</b> It can change the <em>boxes</em> (shared shelf). It can't change your <em>length</em>, unless you catch a returned slice.</li>
+        <li><b>"Deleting with <code>append(s[:i], s[i+1:]...)</code> leaves the original alone."</b> It slides boxes on the shared shelf; the original is changed.</li>
+        <li><b>"<code>sorted := slices.Sort(s)</code>."</b> <code>Sort</code> works in place and returns nothing: a compile error.</li>
+        <li><b>"Sorting strings is alphabetical."</b> It's by character code: capitals before small letters.</li>
+        <li><b>"<code>make([][]int, 3)</code> makes a 3-by-something grid."</b> It makes 3 nil rows. Each row needs its own <code>make</code> or <code>append</code>.</li>
+        <li><b>"<code>slices.Max</code> of an empty slice is 0."</b> It panics: <samp>slices.Max: empty list</samp>.</li>
+        <li><b>"If I drop a <code>slices.Delete</code> result, something will warn me."</b> The Compiler won't: the spot-the-bug program after panel 30 builds and runs. Go's checker <code>go vet</code> (chapter 2's Specs) does warn. Here it is on the same program, saved as <code>vet_delete.go</code>:</li>
+      </ul>
+      <span class="file-tab">vet_delete.go</span>
+      <pre class="code" data-src="vet_delete.go"></pre>
+      <pre class="term wrap" data-run="vet_delete.go" data-exit></pre>
+      <p>Line 10, column 2: the call whose result nobody catches. Run <code>go vet</code> before you trust a program that compiles.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Go 1.27.3 and Go 1.24.7</summary>
+    <div class="page-body">
+      <p>Every program in this chapter was also run with Go 1.24.7, using a module file that says <code>go 1.24</code>. Go 1.24.7 accepted every program (none was refused for its version) and gave the same results, compile errors included, apart from the six runs below. Every output you saw in the comic was the same under both versions, including every capacity. In four of the six (<code>grid_nil.go</code>, <code>boss_err.go</code>, <code>max_empty.go</code> and the lab's <code>lab_maxcap.go</code>) only the <code>+0x…</code> code positions in the panic report, and the path to Go's own source files, differ. Those are details of the compiled program, not of the language. The fifth is a real wording change in a Compiler message:</p>
+      <div class="pair">
+        <div><p class="vs-label">GO 1.27.3 (THIS BOOK)</p><pre class="term wrap" data-run="copy_types.go" data-exit></pre></div>
+        <div><p class="vs-label">GO 1.24.7</p><pre class="term wrap" data-run="copy_types.go" data-alt data-exit></pre></div>
+      </div>
+      <p>Same line, same column, same meaning; the newer Go starts the message with <samp>invalid copy:</samp> instead of <samp>invalid argument: arguments to copy</samp>. If your Go is older or newer, expect small changes like this in message wording, and read for the parts that matter: the file, the line, and the types it names.</p>
+      <p>The sixth is <code>go vet</code> on <code>vet_delete.go</code> (in "Common wrong ideas"). Both versions give the same warning, but Go 1.24.7 adds two header lines, writes the path as <code>./vet_delete.go</code> and points at column 15 (the call's opening bracket) instead of column 2:</p>
+      <div class="pair">
+        <div><p class="vs-label">GO 1.27.3 (THIS BOOK)</p><pre class="term wrap" data-run="vet_delete.go" data-exit></pre></div>
+        <div><p class="vs-label">GO 1.24.7</p><pre class="term wrap" data-run="vet_delete.go" data-alt data-exit></pre></div>
+      </div>
+      <p>The <code>slices</code> package arrived in Go 1.21 (its release notes: "The new slices package provides many common operations on slices"), and <code>slices.Delete</code> has wiped the leftover boxes since Go 1.22 (its release notes: functions that shrink a slice "now zero the elements between the new length and the old length"). Both versions captured here are newer than that, so both print the <code>""</code> in panel 30; neither run shows the older behaviour.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Make a project</h3>
+      <ol>
+        <li>Open a terminal (Windows: Terminal or PowerShell; macOS: Terminal; Linux: your terminal app).</li>
+        <li><code>mkdir shelves</code>, then <code>cd shelves</code>.</li>
+        <li><code>go mod init example/shelves</code>. It creates a <code>go.mod</code> file and says so.</li>
+        <li>Create <code>main.go</code> and type in <code>alias.go</code> from panel 11.</li>
+        <li><code>go run .</code> should print <samp>[0 0 0] [0 0 0 5] [0 0 0 5] 3 10</samp>.</li>
+      </ol>
+      <p class="os-note">Running with <code>go run .</code> inside a module, expect compile errors to be headed by your module's name instead of this book's <code># command-line-arguments</code>, and panics to show your own folder in the file path. (The steps on this page that don't name one of the chapter's programs are for your own machine; they weren't captured here.)</p>
+      <h3>2. Play with it</h3>
+      <ol>
+        <li>Change <code>make([]int, 3, 10)</code> to <code>make([]int, 3)</code>. Now <code>a</code> is full: predict the line, then run it.</li>
+        <li>Put it back, and change both appends to use <code>a[:3:3]</code>. Compare with panel 15.</li>
+        <li>Add <code>b[0] = 1</code> after line 8 and print <code>a</code> again. Which slices see the 1?</li>
+        <li>Replace <code>b := append(a, 4)</code> with <code>b := append(slices.Clone(a), 4)</code> (add <code>"slices"</code> to the imports). What changes?</li>
+        <li>Print <code>&amp;a[0]</code> and <code>&amp;b[0]</code> with <code>fmt.Println</code>: two slices on one shelf show the same address. (Addresses are chapter 13's topic, and the numbers differ on every machine.)</li>
+      </ol>
+      <h3>3. Break it on purpose</h3>
+      <ol>
+        <li>Write <code>sorted := slices.Sort(a)</code>. Meet <samp>(no value) used as value</samp>.</li>
+        <li>Make <code>words := []string{"x"}</code> and write <code>copy(a, words)</code>. Meet <samp>have different element types int and string</samp>.</li>
+        <li>Make <code>grid := make([][]int, 2)</code> and write <code>grid[1][0] = 5</code>. It compiles, then panics with <samp>index out of range [0] with length 0</samp>.</li>
+        <li>Write <code>fmt.Println(slices.Max([]int{}))</code>. Meet <samp>panic: slices.Max: empty list</samp>.</li>
+        <li>Write <code>a[1:2:20]</code>. It compiles; at run time it panics because max is past the capacity. This chapter's <code>lab_maxcap.go</code> does exactly that:</li>
+      </ol>
+      <span class="file-tab">lab_maxcap.go</span>
+      <pre class="code" data-src="lab_maxcap.go"></pre>
+      <pre class="term wrap" data-run="lab_maxcap.go" data-exit></pre>
+      <p><samp>[::20]</samp> is the max you asked for; <samp>with capacity 10</samp> is what the shelf really has.</p>
+      <h3>4. Watch it in the debugger (optional)</h3>
+      <p>With Delve installed (chapter 8), run <code>dlv debug</code>, then <code>break main.go:9</code>, <code>continue</code>, and <code>print a</code>, <code>print b</code>, <code>print c</code>. Each shows its <code>len</code> and <code>cap</code>; <code>print &amp;b[0]</code> and <code>print &amp;c[0]</code> show the same address. (Delve's exact wording can vary between versions; this lab step isn't a captured run.)</p>
+      <ul>
+        <li><b>Windows:</b> everything above works the same in PowerShell. Go installs from the .msi on go.dev/dl; open a new terminal afterwards so <code>go</code> is on your PATH.</li>
+        <li><b>macOS:</b> use the .pkg installer from go.dev/dl, or Homebrew (<code>brew install go</code>). <code>go version</code> checks which version you have.</li>
+        <li><b>Linux:</b> unpack the tarball from go.dev/dl into <code>/usr/local</code> and add <code>/usr/local/go/bin</code> to your PATH. Distribution packages are often several versions behind; this chapter needs Go 1.21 or later for the <code>slices</code> package.</li>
+        <li><b>No install?</b> Every program here runs in the Go Playground (go.dev/play).</li>
+      </ul>
+      <p class="os-note">Message wording can shift slightly between Go versions; this page shows Go 1.27.3.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>backing array</dt><dd>The array (the shelf) a slice looks onto. Several slices can share one.</dd>
+        <dt>alias</dt><dd>A second name for the same thing. Two slices on one shelf are aliases for the boxes they both show.</dd>
+        <dt>aliasing bug</dt><dd>A bug where changing one slice unexpectedly changes another, because they share a shelf.</dd>
+        <dt>slice header</dt><dd>The three-part value in a slice variable: pointer, length, capacity (chapter 9's ticket). It's what gets copied.</dd>
+        <dt>reallocation</dt><dd>What <code>append</code> does when the shelf is full: build a bigger one and copy the boxes across.</dd>
+        <dt><code>copy(dst, src)</code></dt><dd>Built-in that copies <code>min(len(dst), len(src))</code> elements from <code>src</code> into <code>dst</code> and returns that count.</dd>
+        <dt>destination, source</dt><dd>Where a copy goes (<code>dst</code>) and where it comes from (<code>src</code>).</dd>
+        <dt>independent copy, clone</dt><dd>A slice with its own backing array holding the same values; changes to one never show in the other.</dd>
+        <dt><code>slices.Clone</code></dt><dd>Returns an independent copy of a slice.</dd>
+        <dt><code>...</code> (spread)</dt><dd>After a slice in a call, <code>s...</code> passes its elements one by one, as in <code>append(a, b...)</code>.</dd>
+        <dt>full slice expression</dt><dd><code>s[low:high:max]</code>: a slice whose capacity stops at <code>max</code>.</dd>
+        <dt>slice of slices</dt><dd>A slice whose elements are slices, like <code>[][]string</code>: a grid or table.</dd>
+        <dt>jagged</dt><dd>A slice of slices whose rows have different lengths.</dd>
+        <dt>in place</dt><dd>Changing the elements where they already are, instead of building a new slice. <code>slices.Sort</code> and <code>slices.Reverse</code> work in place.</dd>
+        <dt><code>slices</code> package</dt><dd>Standard-library package (Go 1.21+) with Sort, Contains, Index, Reverse, Max, Min, Equal, Clone, Delete, Insert and more.</dd>
+        <dt><code>sort.Strings</code></dt><dd>Older standard-library function that sorts a <code>[]string</code> in place.</dd>
+        <dt>preallocate</dt><dd>Give a slice its final capacity up front, <code>make([]T, 0, n)</code>, so <code>append</code> never moves it.</dd>
+        <dt>memmove</dt><dd>A fast block copy of memory that handles overlapping source and destination; what <code>copy</code> uses.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official Go documentation</h3>
+      <ul>
+        <li><a href="https://go.dev/ref/spec#Appending_and_copying_slices">The Go specification: appending and copying slices</a>, and <a href="https://go.dev/ref/spec#Slice_expressions">slice expressions</a> (including full slice expressions).</li>
+        <li><a href="https://go.dev/blog/slices-intro">The Go Blog: Go Slices: usage and internals</a>, with pictures of headers sharing an array.</li>
+        <li><a href="https://go.dev/blog/slices">The Go Blog: Arrays, slices (and strings): The mechanics of 'append'</a>, which builds <code>append</code> by hand.</li>
+        <li><a href="https://pkg.go.dev/slices">Package slices</a>: every function, with examples you can run.</li>
+        <li><a href="https://go.dev/doc/effective_go#two_dimensional_slices">Effective Go: Two-dimensional slices</a>.</li>
+        <li><a href="https://go.dev/tour/moretypes/14">A Tour of Go: Slices of slices</a>.</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://gobyexample.com/slices">Go by Example: Slices</a> (<code>copy</code>, slices of slices, <code>slices.Equal</code>) and <a href="https://gobyexample.com/sorting">Sorting</a>.</li>
+        <li><a href="https://100go.co/">100 Go Mistakes</a> (free summaries): #24 (not making slice copies correctly), #25 (unexpected side effects using append) and #26 (slices and memory leaks).</li>
+        <li><a href="https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/revisiting-arrays-and-slices-with-generics">Learn Go with Tests: Revisiting arrays and slices with generics</a>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Go 1.27.3 (linux/amd64, <code>GOTOOLCHAIN=local</code>) on 2026-11-08, in <code>/home/you/go-ch10</code>, which has a <code>go.mod</code> saying <code>go 1.27</code>. Each file runs as <code>go run name.go</code>, which is why compile errors carry the header <code># command-line-arguments</code> (this book's convention since chapter 1). Panic reports show the real file path and code offset of that run. Every program was also run with Go 1.24.7, building against a module file that says <code>go 1.24</code>: Go 1.24.7 accepted all 52 programs (none was refused for its version) and gave the same results, compile errors included, apart from six runs (<code>boss_err.go</code>, <code>grid_nil.go</code>, <code>max_empty.go</code> and <code>lab_maxcap.go</code> only in panic code offsets and Go source paths; <code>copy_types.go</code> in the Compiler's wording; <code>vet_delete.go</code> in <code>go vet</code>'s headers, path and column; the last two are shown in the notebook's version notes). 52 programs were captured, all deterministic. Each run started in a fresh process namespace with address randomisation off, so code offsets repeat between captures; on your machine they may differ.</p>
+  <p>The four shelf steppers (a chapter extension, <code>assets/ext/go-ch10.js</code>), the stack-and-heap view of the aliasing surprise, the grid tracer and the two machines are teaching models; each checks itself against those runs and shows a badge. The shelf stepper builds every printed line from its own picture (boxes, windows, len and cap) and compares it with the real output. Where a shelf grew, its new capacity is the one the run printed; the boxes past a window's length are drawn with the values really there (zeros from <code>make</code> and from growing, and leftovers after a delete). The memory view draws the shelf in its HEAP area, apart from the tickets on the plate; whether Go puts a particular shelf on the heap or the stack is the compiler's decision and changes nothing you can see here.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the Go specification (slice types, slice expressions including full slice expressions, appending and copying slices, composite literals); The Go Blog, "Go Slices: usage and internals" and "Arrays, slices (and strings): The mechanics of 'append'"; the <code>slices</code> package documentation on pkg.go.dev (signatures; Delete zeroing the tail; Max panicking on an empty slice); the Go 1.22 release notes (slices functions that shrink now clear the tail); Effective Go, "Two-dimensional slices"; Go by Example, "Slices" (topic order: make, append, copy, slicing, slices.Equal, 2D) and "Sorting"; A Tour of Go, "Slices of slices"; 100 Go Mistakes, #24 to #26 (free summaries); Learn Go with Tests, "Revisiting arrays and slices with generics"; The Go Programming Language, section 4.2, and Learning Go, 2nd edition, chapter 3 (as summarised in this book's research map).</p>
+  <p>Scoot, the Compiler, the Professor and the creatures are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
