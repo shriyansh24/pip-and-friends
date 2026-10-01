@@ -1,0 +1,39 @@
+# Fix bundle: python/ch17.html
+
+9 review findings, 4 INTEGRATION_TODO lines, 0 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[high] [content] panel notebook: Under the hood / How sorting with a key works** (content-py-16-18): The page says the two-pass sort and the tuple-key sort give the same result, but the captured run shows two different lists.
+   - evidence: Page: "Line 4 and line 5 agree: one tuple sticker (age, name) does the same job as two stable passes." nb_two_pass.py line 2 sorts by name with reverse=True, so the captured stdout line 4 is [('Di', 7), ('Bo', 7), ('Cy', 9), ('Ann', 9)] while line 5 is [('Bo', 7), ('Di', 7), ('Ann', 9), ('Cy', 9)] (data/py-ch17.json, nb_two_pass.py).
+   - fix: Remove reverse=True from line 2 of /home/you/python-ch17/nb_two_pass.py and recapture (both lines then print [('Bo', 7), ('Di', 7), ('Ann', 9), ('Cy', 9)]). Or keep the program and change line 5's key to (k[1], <name descending>) and reword the sentence.
+2. **[medium] [content] panel 11, 18, 30 @1280 and 390** (content-py-16-18): The captions and Professor bubbles say "Left:" and "Right:", but the two programs sit in .ch17-duo, which is one column at every width, so they are really top and bottom.
+   - evidence: Panel 11 caption: "Left: Chapter 4's if/elif ladder. Right: a cabinet of machines"; Panel 18 Professor: "Left: in <lambda> ... Right: in share"; Panel 30 Professor: "Left: with_bonus builds a new list ... Right: .sort() also changes the list". assets/ext/py-ch17.css:56 `.ch17-duo { display: grid; grid-template-columns: minmax(0, 1fr); ... }` (no wider breakpoint).
+   - fix: Name the files instead of the sides ("calc_ifs.py ... calc_table.py", "lambda_crash.py ... def_crash.py", "pure_vs_not.py ... sort_none.py"), or say "First/Second".
+3. **[medium] [visual] panel 17 (lambda_return.py SyntaxError) @390** (visual-py-16-20): The caret row under `return` is blank on phones: the carets sit off the right edge of the terminal, while bullet 2 says '^^^^^^ under return'. Same pattern as ch16 P12.
+   - evidence: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-028-p17.png (source line cut at `key=lambda n: re`, caret line empty).
+   - fix: Shorten lambda_return.py's line (e.g. `print(sorted(ns, key=lambda n: return n))`) so it fits 38 columns and recapture. Why: a caret the text points at must be visible without a hidden swipe.
+4. **[medium] [visual] panel 24 (operator itemgetter/attrgetter table) @390** (visual-py-16-20): The three-column table's first column is `nowrap`, so on phones the third column is entirely off screen and the second is squeezed to one token per line (`lambda` / `p:` / `p[1]`).
+   - evidence: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-041-p24.png (div.ch17-tablewrap scrollWidth 383 vs 316, no scroll hint). py-ch17.css `.ch17-table td:first-child { white-space: nowrap; }`.
+   - fix: `.ch17-table td:first-child { white-space: nowrap }` → at ≤640px stack each row (`display:block` on table/tr/td, hide thead, label cells with `data-label` + `td::before { content: attr(data-label) }`). Why: comparison tables must read without a sideways swipe.
+5. **[medium] [visual] panel 5, 9 and 27 (picture rows with → arrows) @390** (visual-py-16-20): When a `.ch17-row` or the snowball strip wraps on phones, its '→' arrows are left at the end of a line pointing right, while the next picture sits below. In P27 every snowball has a right-pointing arrow beside it and the next ball under it.
+   - evidence: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-009-p5.png (arrow alone to the right of Pip), /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-015-p9.png, /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-046-p27.png. py-ch17.css `.ch17-row { flex-wrap: wrap }`, `.snow { flex-wrap: wrap }`; arrows are plain `<span class="ch17-arrow">→</span>` / `<span class="to">→</span>`.
+   - fix: At ≤640px give the row `flex-direction: column` and rotate the arrow: `.ch17-row, .snow { flex-direction: column } .ch17-arrow, .snow .to { transform: rotate(90deg) }`. Why: an arrow must point at the thing that comes next.
+6. **[low] [visual] panel 14 (lambda anatomy, WITH DEF card) @390** (visual-py-16-20): The card heading's one-line `def last_letter(w): return w[-1]` wraps on phones so `return w[-1]` lands flush left on its own line, which reads as a two-line function with a missing indent.
+   - evidence: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-py-16-20/a17/w390-024-p14.png. ch17.html line 311 `<h3>WITH DEF<small>def last_letter(w): return w[-1]</small></h3>`.
+   - fix: Wrap the code in `<code style="white-space:nowrap">` inside the `<small>`, or show it as two real lines in a `<pre class="code">`. Why: code must never look like different code when it wraps.
+7. **[low] [content] panel 17** (content-py-16-18): The Proofreader says a lambda has "no =", but the next exercise (e8, line 4) uses a lambda with a default, b=10. A beginner may read the two as contradicting each other.
+   - evidence: Panel 17: "No return, no =, no if: blocks, no loops." e8m hint: "Line 4: a lambda can have a default, just like a def." pred_lambda.py line 4 `(lambda a, b=10: a * b)(3)`.
+   - fix: "No return, no assignments like x = 1 in the body, no if: blocks, no loops."
+8. **[low] [content] panel 24** (content-py-16-18): The bubble puts both building and running the itemgetter on line 7, but the call is on line 8.
+   - evidence: Page: "Line 7 shows it's a real machine: itemgetter(1) builds one, and get_age((\"Rex\", 7)) runs it." getters.py line 7 `get_age = itemgetter(1)`, line 8 `print(get_age(("Rex", 7)))`.
+   - fix: "Lines 7 and 8 show it's a real machine: ..."
+9. **[low] [visual] panel 32 (sealed crate), 41 and 43 (tip jars) @both** (visual-py-16-20): Small labels inside chapter pictures fall under 12px: the sealed crate's slot numbers 0/1/2 are 9.6px (P32, drawn `.char sm`), the jar tag 'jar=[]' is 10.7px and the coin numbers 11.5px (P41, P43).
+   - evidence: Audit SVG text sizes at 1280 and 390: p32 9.6px, p33 10.9px, p41 10.7/11.5px, p43 11.5px. ch17.html line 612 `class="char sm" data-char="sealed"`; py-ch17.js tipjar `txt(85, 91, lab, fit(lab, tw - 8, 14))` and coins `c.length > 2 ? 11 : 15` in a 130px `.char.jar`.
+   - fix: P32: `class="char sm"` → `class="char wide"`; `.char.jar { width: 130px }` → `width: 160px`. Why: labels that carry meaning stay ≥12px.
+
+## INTEGRATION_TODO lines naming this chapter
+- `parcel` (Result: ok/err) lives in rs-ch13.js. Python ch17 and ch21 define a different `parcel` in their extensions. If promoting, rename (e.g. `resultbox`) to avoid two meanings for one name.
+- `parcel` (Rust Result) promoted to comic-critters.js. Python ch17 and ch21 keep their own different `parcel` in their extensions, which override on their pages (rust ch13 and python ch17 re-checked). Remove the copies from rs-ch13.js and rs-ch21.js in the fix round. Consider renaming Python's to avoid one name with two meanings.
+- LINE-NUMBER DRIFT: several "Line N" references are off by one (py ch17, ch18). After the fixes, cross-check every "Line N" in prose against the program source with a script, in all books.
+- LEFT/RIGHT IN SINGLE-COLUMN LAYOUTS: pages say "Left:" / "Right:" where the two-up layout is a single column at every width (py ch17 .ch17-duo, rust ch26/27 .runs2). Script-grep "left"/"right" near two-up layouts in all books and refer to card headings instead. Better: add an engine two-up class that really goes side by side at ≥900px.

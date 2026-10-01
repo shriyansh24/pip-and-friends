@@ -1,0 +1,39 @@
+# Fix bundle: javascript/ch10.html
+
+7 review findings, 2 INTEGRATION_TODO lines, 6 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[medium] [visual] panel 14, 35 @1280 and 390** (visual-js-6-10): Code identifiers in the all-caps title font lose their real letters: the card headings read 'OBJECT.HASOWN(OBJ, "KEY")' and '"KEY" IN OBJ', and the picture headings 'DEEP: STRUCTUREDCLONE' and 'SHALLOW: { ...ADA }'. JavaScript is case-sensitive, and a beginner copying them would type the wrong name.
+   - evidence: ch10.html:344 `<h3>"key" in obj<small>…`, :348 `<h3>Object.hasOwn(obj, "key")<small>…`, both in Bangers (`.duo-card h3`). Panel 35 SVG `.t` text 'DEEP: structuredClone'. Contact sheets c10-390-02 and c10-390-06.
+   - fix: Wrap the code in `<code>` and add `.duo-card h3 code { font: 800 1.1rem var(--f-code); text-transform: none; letter-spacing: 0 }` (as the engine already does for `.recap b code`); in the SVG, set the identifier in a `.m` (mono) tspan (code must show its real case).
+2. **[medium] [content] panel 20** (content-js-10-12): The panel teaches 'read it like a detective: last line first', but in a Node report the last line is the version footer. Chapter 12 lists this exact advice as a common wrong idea.
+   - evidence: ch10 L499: "Read it like a detective: last line first." L508: "Last line first: TypeError: Cannot read properties of undefined (reading 'name')". The captured stderr of crash_read.js ends with "Node.js v26.13.0", and the TypeError line is the 5th of 10 lines. ch12 notebook, Common wrong ideas: "'The last line of the report is the important one.' In Node it's the version footer. The Name: message line is in the middle."
+   - fix: Change it to "Read it like a detective: the Name: message line first" (caption and list item). Use the same wording as ch12's recap, which says "Read it in order: the Name: message line, ...". The same phrase also appears in js ch5 L761, ch15 L100, ch22 L683 and ch23 L352/L752, so fix it across the book.
+3. **[medium] [visual] panel 3, 25, 39 @390** (visual-js-6-10): Single-width 440-unit drawings shrink their labels to 10.1–11.5px on phones: the copy-by-value / by-reference picture (p25, 10 labels) and the garbage-collector picture (p39, 13 labels: 'poster', '#P1', "'Hamlet'", 'no arrows in: unreachable, cleaned up later').
+   - evidence: audit.json 390 small: p3 11.5px ('always text', 'any kind at all'), p25 10.1–10.8px, p39 10.1–10.8px. Contact sheets c10-390-04 (p25) and c10-390-07 (p39).
+   - fix: Give p25 and p39 `.pic10.narrow` redraws (the class exists; p9 and p35 already use one), with labels ≥16 units (12px floor on phones).
+4. **[medium] [visual] panel 40 @390** (visual-js-6-10): The 'which copy?' table's code column breaks inside identifiers: 'Object .assig n({}, a)' and 'struct uredCl one(a)', because the phone rule sets `.cp10 tbody th { overflow-wrap: anywhere }` in a narrow first column.
+   - evidence: Crop: scratchpad/review-visual-js-6-10/a10/w390-065-p40.png. js-ch10.css phone block: `.cp10 tbody th { font-size: 0.8125rem; overflow-wrap: anywhere; }`.
+   - fix: Put a `<br>` between the three spellings in the cell, and `.cp10 tbody th { overflow-wrap: anywhere }` → `overflow-wrap: normal; white-space: nowrap` inside the existing `.cp10-wrap` scroller (break at the slashes, never inside `structuredClone`).
+5. **[low] [content] panel Boss 5 (ex-b5)** (content-js-10-12): The prompt says line 4 must rename the drawer 'whose label is stored in field', but the key also accepts twin.name and twin["name"], which ignore field. A reader who misses the sticky-note point still passes.
+   - evidence: ex-b5-m blanks[1]: {"line": 4, "text": "twin[field]", "accept": ["twin[field]", "twin.name", "twin[\"name\"]", "twin['name']"]}. Prompt: "line 4 must rename the drawer whose label is stored in field".
+   - fix: Accept only "twin[field]". The explain text already says why twin.field is wrong.
+6. **[low] [content] panel notebook: Go deeper** (content-js-10-12): The link labelled 'TypeError: can't access property' goes to an MDN page now titled 'TypeError: "x" is (not) "y"'.
+   - evidence: href=https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cant_access_property. The fetched page's h1 is 'TypeError: "x" is (not) "y"' (MDN index entry: Errors/Unexpected_type). The Safari wording quoted in the version notes ("undefined is not an object (evaluating 'obj.x')") is confirmed on that page.
+   - fix: Relabel the link to 'TypeError: "x" is (not) "y"' and point it at .../Errors/Unexpected_type.
+7. **[low] [content] panel notebook: Version notes; footer** (content-js-10-12): The page says the ten differing captures differ only in node:internal lines and the version line, but keys_null.js also differs in a built-in frame name.
+   - evidence: Primary (Node 26) keys_null.js stderr: "    at Object.keys (<anonymous>)". Alt (Node 22): "    at Function.keys (<anonymous>)". ch10 L1225: "Ten captures differ, only in Node's own trace lines (node:internal/… line numbers and function names) and in the version line at the end."
+   - fix: Add: "(and keys_null.js's built-in frame, which Node 26 calls Object.keys and Node 22 calls Function.keys)". Or say "only in Node's own and built-in trace lines".
+
+## INTEGRATION_TODO lines naming this chapter
+- ## From javascript ch10 (Drawers and Addresses)
+- Machine plates now fit long labels (engine). js-ch10 shortened its plates to `keys()`/`clone()` with captions saying so; the fix round can restore the full names and drop those captions.
+
+## Engine-refresh clean-ups for this chapter
+- | JavaScript | `js-ch1.css:130`, `js-ch2.css:38`, `js-ch4.css:36`, `js-ch5.css:29`, `js-ch6.css:26`, `js-ch7.css:57`, `js-ch8.css:97`, `js-ch9.css:104`, `js-ch10.css:44`, `js-ch11.css:43`, `js-ch12.css:56`, `js-ch13.css:62`, `js-ch14.css:70`, `js-ch16.css:60`, `js-ch17.css:64`, `js-ch18.css:43`, `js-ch19.css:81`, `js-ch20.css:67`, `js-ch24.css:56`, `js-ch25.css:80`, `js-ch26.css:42`, `js-ch27.css:49`, `js-ch29.css:95` |
+- **Tracer value-box and heap labels** now widen their box. Chapters that shortened labels to fit (js ch10 machine plates, captions) can restore the full text.
+- `cpp-ch1.css:30`, `cpp-ch4.css:18`, `cpp-ch6.css:18`, `go-ch1.css:31`, `go-ch2.css:28`, `go-ch3.css:19`, `go-ch6.css:19`, `go-ch7.css:11`, `go-ch8.css:11`, `go-ch9.css:11`, `go-ch10.css:11`, `go-ch11.css:11`, `js-ch1.css:18`, `js-ch2.css:18`, `js-ch4.css:19`, `js-ch5.css:18`, `js-ch6.css:16`, `js-ch7.css:27`, `js-ch8.css:28`, `js-ch9.css:25`, `js-ch10.css:29`, `js-ch11.css:28`, `js-ch12.css:28`, `js-ch13.css:30`, `js-ch15.css:34`, `js-ch18.css:28`
+- `cpp-ch4.css:26`, `cpp-ch5.css:30`, `cpp-ch6.css:29`, `cpp-ch7.css:19`, `cpp-ch8.css:7`, `cpp-ch9.css:19`, `cpp-ch10.css:19`, `cpp-ch11.css:19`, `cpp-ch12.css:19`, `cpp-ch13.css:23`, `cpp-ch14.css:18`, `cpp-ch15.css:22`, `cpp-ch16.css:19`, `cpp-ch17.css:22`, `cpp-ch18.css:20`, `cpp-ch19.css:18`, `cpp-ch20.css:21`, `cpp-ch21.css:18`, `cpp-ch22.css:18`, `cpp-ch23.css:21`, `cpp-ch24.css:18`, `cpp-ch25.css:21`, `cpp-ch26.css:18`, `cpp-ch27.css:22`, `cpp-ch28.css:17`, `cpp-ch29.css:22`, `js-ch1.css:127`, `js-ch2.css:35`, `js-ch4.css:33`, `js-ch5.css:26`, `js-ch6.css:26`, `js-ch7.css:57`, `js-ch8.css:97`, `js-ch9.css:104`, `js-ch10.css:44`, `js-ch11.css:43`, `js-ch12.css:56`, `js-ch13.css:62`, `js-ch14.css:70`, `js-ch15.css:41`, `js-ch16.css:60`, `js-ch17.css:64`, `js-ch18.css:43`, `js-ch19.css:81`, `js-ch20.css:67`, `js-ch21.css:112`, `js-ch24.css:56`, `js-ch25.css:80`, `js-ch26.css:42`, `js-ch27.css:49`, `js-ch28.css:44`, `js-ch29.css:95`
+- `js-ch10.css:58` `.cp10 tbody th`
+- `.duo-card .file-tab { justify-self: start }` copies (`cpp-ch1`, `cpp-ch2`, `go-ch4`, `js-ch10` to `js-ch15`): the engine already does it.

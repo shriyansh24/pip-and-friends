@@ -1,0 +1,46 @@
+# Fix bundle: go/ch26.html
+
+11 review findings, 1 INTEGRATION_TODO lines, 2 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[high] [content] panel 18** (content-go-25-27): go vet's bubble says go test runs the lostcancel check automatically. It doesn't: lostcancel is not in go test's default vet set.
+   - evidence: Page: "That's my lostcancel check. go test runs me too, automatically." Go 1.27.3 test.go defaultVetFlags has "// \"-lostcancel\"," commented out. Same scratch test as the ch25 finding: `ctx, _ := context.WithTimeout(...)` in a tested package. `go test` → PASS. `go vet .` → "the cancel function returned by context.WithTimeout should be called, not discarded, to avoid a context leak".
+   - fix: "That's my lostcancel check. go test doesn't run it for you, so run go vet ./... before you commit."
+2. **[medium] [visual] panel 14 @1280, 390** (visual-go-26-28): The cancellation stepper's ABORT stamp animates for 500ms from scale(0.4) with no opacity, on three links in the same step; it breaks the 300ms UI budget and the 'never from near-nothing' rule, and under reduced motion it is switched off instead of becoming the engine's 150ms fade.
+   - evidence: assets/ext/go-ch26.css:129-131 `.motion .rc-link.abort .w { animation: rcZap 0.5s ease-out; } @keyframes rcZap { from { transform: scale(0.4) rotate(-20deg); } ... }`. document.getAnimations() at step 12 of 17 (both widths): three rcZap animations, duration 500. Motion walk-through log motion/motion.log in the scratch folder.
+   - fix: `animation: rcZap 0.5s ease-out` from `scale(0.4) rotate(-20deg)` → `animation: rcZap var(--dur-ui) var(--ease-out) both` from `opacity: 0; transform: scale(0.9) rotate(-12deg)` (why: a state-change entrance on every Next press; ≤300ms, strong ease-out, start visible). Under `prefers-reduced-motion` use the engine's 150ms opacity fade instead of `animation: none`.
+3. **[medium] [visual] panel all terminals @390** (visual-go-26-28): Every Go chapter CSS (go-ch1 … go-ch28, plus js-ch15) carries an unscoped `.term { white-space: pre-wrap; overflow-wrap: anywhere; }`, which makes every terminal wrap without the engine's hanging indent and lets tokens break mid-word; it is not on the engine-refresh clean-up list, which only lists the `.term.wrap` copies.
+   - evidence: go-ch26.css:23, go-ch27.css:27, go-ch28.css:23 (grep finds the identical line in all 28 go-chN.css files). At 390, wrapped continuation lines start at column 0 (e.g. ch27 p16 `you@laptop:~/go-ch27$ go run` / `dock.go ship -to Porto -kg 3`, ch28 p6 `redcapgreenjacketsatchelofletters` / `!`), and ch27 p34 loses caret alignment (finding above). ch28 needed a counter-rule `.term.wide-term { white-space: pre; ... }` (go-ch28.css:138) to undo it.
+   - fix: `.term { white-space: pre-wrap; overflow-wrap: anywhere }` → delete in all go-chN.css; add `wrap` to the terminals that should wrap (`<pre class="term wrap" data-run=…>`), and drop `.term.wide-term` in go-ch28.css (why: one engine rule, hanging indent, carets kept aligned, file names never split). Add these 28 files to engine-refresh-chapter-todo.md §1.
+4. **[medium] [content] panel notebook: Lab, Experiments** (content-go-25-27): The lab experiment to see vet's lostcancel check doesn't work: `ctx, _ := context.WithTimeout(r.Context(), time.Second)` leaves ctx unused, so go vet stops at the type error and never reports lostcancel.
+   - evidence: Lab: "Run go vet on your diner. Then change a handler to ctx, _ := context.WithTimeout(r.Context(), time.Second) and run it again." Scratch module, Go 1.27.3, greet handler with that line added: `go vet .` → "vet: ./main.go:11:2: declared and not used: ctx" (exit 1), with no lostcancel report.
+   - fix: Use a line that also uses ctx, for example "ctx, _ := context.WithTimeout(r.Context(), time.Second); _ = ctx", or "…and pass ctx to something, such as fmt.Fprint(w, ctx.Err())".
+5. **[low] [visual] panel 14 @390** (visual-go-26-28): The stepper's code list is `white-space: pre` in a 14em-tall box, so on phones it scrolls both ways: about 7 lines show and long lines (`fmt.Println("scout: stopping:", ctx.Err())`) are cut at the right edge of the highlighted 'next' line.
+   - evidence: Shots motion/motion-w390-ch26-rc-step12.png / step13.png; go-ch26.css:104-105 `.rc-code { … overflow: auto; max-height: 17.5em }`, `.rc-code li { white-space: pre }`, phone `max-height: 14em`.
+   - fix: Call `L.hangLines(lis)` in mountChain (go-ch26.js:201) and drop `white-space: pre` under 640px, so lines wrap with a hanging indent and the box scrolls vertically only (why: two-axis scroll boxes inside a page scroll are hard to use on touch).
+6. **[low] [visual] panel 14 @1280, 390** (visual-go-26-28): A closed link's arrow is drawn at 55% opacity, which takes the ink arrow below the 7:1 text-pair rule (the 'Done closed' word beside it is full strength).
+   - evidence: go-ch26.css:127 `.rc-link.closed .arr { opacity: 0.55; }`; visible in motion/motion-w390-ch26-rc-step13.png.
+   - fix: `.rc-link.closed .arr { opacity: 0.55 }` → `.rc-link.closed .arr { opacity: 1 }` with a dashed/hollow arrow glyph (e.g. '⇣' or a dashed border) to show 'closed' by shape (why: state by shape and word, never by fading text).
+7. **[low] [content] panel 19 and 39 @390** (content-go-25-27): The prose says "The fix on the right", but the two programs are in a .pair grid (auto-fit, min 300px) that stacks into one column on phones, so the fix is below there.
+   - evidence: P19 caption: "The fix on the right takes a fresh ctx…". P39 Scoot: "The fix on the right, line 24, wraps r.Context()…". ext/go-ch26.css: ".pair { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)) }". Cross-cutting issue listed under 'LEFT/RIGHT IN SINGLE-COLUMN LAYOUTS' in INTEGRATION_TODO.
+   - fix: Refer to the card headings: "The fix, PASSED TO EACH CALL, takes…" and "The fix, WITHOUT ITS CANCEL, line 24, wraps…".
+8. **[low] [content] panel 6** (content-go-25-27): "each goroutine must listen and then stop itself, as line 13 does". Line 13 only prints. The goroutine stops itself with return on line 15.
+   - evidence: team.go: line 12 "case <-ctx.Done():", line 13 "fmt.Println(\"team: abort heard:\", ctx.Err())", line 15 "return".
+   - fix: "…as lines 12 to 15 do."
+9. **[low] [visual] panel cover, 2, 20 @390 (cover: both)** (visual-go-26-28): SVG labels drop under 12px: the cover walkie-talkie's 'HQ' screen label is 10.4px at both widths; in the panel 2 network drawing 'Background()' and 'ABORT' are 11.5px and in panel 20 the step digits '1', '2' are 10.5px at 390.
+   - evidence: a26/audit.json small-text list: main-after-p0-panel 'HQ' 10.4px (1280 and 390); p2 'Background()' 11.5, 'ABORT' 11.5; p20 '1', '2' 10.5 (390). Cause: `.picscroll` pins the 680-unit drawing at 560px (scale 0.82), so any font-size under 14.6 units falls below 12px; the radioset draws its label at 13 units (go-ch26.js:148) inside a ~62px character.
+   - fix: In the panel 2 and 20 SVGs raise text font-size to ≥15 units; on the cover draw the radio at `.char` default width or pass a shorter label at 16 units (why: 12px floor on phones).
+10. **[low] [book] panel recap (last item)** (book-go): The last recap item in ch26 and ch28 glues two catchphrases into one bold title with '·', which reads as one confusing slogan.
+   - evidence: ch26: 'HTTP.ERROR WRITES; RETURN LEAVES · FINISHED YOUR PLATE? GIVE IT BACK'; ch28: ':= MAKES A NEW BOX; = FILLS THE OLD ONE · GREEN, CHANGE, GREEN'. Every other Go recap item has one catchphrase.
+   - fix: Split each into two recap items (both chapters then have 6 or 7 items; drop or merge a weaker one to stay within 3-6).
+11. **[low] [visual] panel various @1280, 390** (visual-go-26-28): Several chapter cards and badges use raw radii and hard-coded colours instead of the design tokens: `.stamp` (6px), `.slip`/`.family`/`.sym`/`.rules` (10px), `.rc-node` (12px), `.logline li` (8px), `.pc-stage` (12px), `.pc-svg text { fill: #111 }`, `.prb-pane`/`.pr-card`/`.review-note` (12px), `.journey li` (10px), `.diploma` (14px).
+   - evidence: go-ch26.css:36, 41, 81, 91, 99, 110; go-ch27.css:47, 55, 64, 66; go-ch28.css:36, 41, 98, 107, 110, 117, 122. AUTHORING.md 'Design tokens (engine note, 2026-11-08)' asks chapter CSS to use them.
+   - fix: `border-radius: 6px` → `var(--radius-sm)`; `8px/10px` → `var(--radius-md)`; `12px/14px` → `var(--radius-lg)`; `box-shadow: 3px 3px 0 var(--ink)` → `var(--shadow-hard)`; `#111` → `var(--ink)` (why: one system; a later token change reaches every chapter).
+
+## INTEGRATION_TODO lines naming this chapter
+- ## From go ch26 (Walkie-Talkies and Waiters)
+
+## Engine-refresh clean-ups for this chapter
+- `go-ch26.js:229`
+- `go-ch1.css:99`, `go-ch2.css:41`, `go-ch3.css:58`, `go-ch4.css:194`, `go-ch5.css:90`, `go-ch6.css:58`, `go-ch7.css:32`, `go-ch8.css:34`, `go-ch9.css:33`, `go-ch10.css:33`, `go-ch11.css:32`, `go-ch12.css:29`, `go-ch13.css:29`, `go-ch14.css:28`, `go-ch15.css:28`, `go-ch16.css:29`, `go-ch17.css:23`, `go-ch18.css:28`, `go-ch19.css:24`, `go-ch20.css:28`, `go-ch21.css:25`, `go-ch22.css:24`, `go-ch23.css:29`, `go-ch24.css:23`, `go-ch25.css:23`, `go-ch26.css:23`, `go-ch27.css:27`, `go-ch28.css:23`, `js-ch15.css:96`

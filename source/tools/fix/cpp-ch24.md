@@ -1,0 +1,32 @@
+# Fix bundle: cpp/ch24.html
+
+5 review findings, 2 INTEGRATION_TODO lines, 5 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[high] [visual] panel 39 @1280** (visual-cpp-21-25): In the boss-level scene, Zap (the uniremote, a full-size svg.char) is pushed out past the panel's right edge. Only a glove shows at the border, and the page FAILS the checker.
+   - evidence: check_chapter.js: 'FAIL cpp/ch24.html @1280px - panel clip (content wider than its panel, with every <details> open): P39 +112px'; audit: svg.char beyond panel by 108px; crop /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-cpp-21-25/a24/w1280-067-p39.png (Zap missing; glove visible at the right edge). Markup ch24.html:986-988: two svg.char plus .talk inside one .scene, which is a 2-column grid (auto | minmax(0,1fr)).
+   - fix: Before: <div class="scene"><svg mechanic/><svg uniremote/><div class="talk">… → After: put both characters in one cell, <div class="cast2"><svg …/><svg …/></div>, with .cast2 { display:flex; gap:8px; align-items:end } in cpp-ch24.css, or give Zap his own .scene.flip (why: a .scene has exactly two columns, so a third child lands where the panel cannot hold it).
+2. **[medium] [content] panel 22** (content-cpp-22-24): The panel counts virtual functions inconsistently. The code comments say Virtual has one and MoreVirtual three, but Virtual has two (play and the virtual destructor). So the prose "Add two more virtual functions and it's still 16" is wrong: MoreVirtual adds one (stop).
+   - evidence: sizes.cpp: lines 9-13 `struct Virtual { // one virtual function ... virtual void play() const {} virtual ~Virtual() = default; };`, lines 15-20 `struct MoreVirtual { // three virtual functions ... play ... stop ... virtual ~MoreVirtual() = default; };`. Page (Wren): "Add one virtual function and it jumps to 16 ... Add two more virtual functions and it's still 16".
+   - fix: Count the destructor both times: change the comments to "two virtual functions (play and the destructor)" and "three virtual functions", and the prose to "Add one more virtual function (stop) and it's still 16". Or drop the virtual destructor from both structs and keep "one" and "three". Recapture cpp 24.
+3. **[low] [visual] panel 26 @1280 and 390** (visual-cpp-21-25): The lambda-parts list reuses the engine class name `.anatomy` for a different hand-rolled card row. The engine's `.anatomy { display:grid; gap:14px }` and its ligature rule now apply to it by accident.
+   - evidence: cpp-ch24.css:35-39 `.anatomy { display:flex … }`; comic.css:185 `.anatomy { display:grid; gap:14px }`; ch24.html:704 `<ul class="anatomy">`. Crop /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-cpp-21-25/m24b.png (p26 at 390: five cards, which read fine).
+   - fix: Before: `<ul class="anatomy">` / `.anatomy {…}` → After: `<ul class="lambda-parts">` and use `.duo-card`-style tokens (`--radius-md`, `--shadow-hard`) (why: the AUTHORING house rule on naming. One class name, one component).
+4. **[low] [content] panel Notebook: Lab 1** (content-cpp-22-24): The lab says [*this] doesn't work with -std=c++17, but [*this] is a C++17 feature (the page itself says so in panel 38). Only std::format (abstract.cpp) fails under C++17.
+   - evidence: Page lab: "everything except std::format and [*this] works with -std=c++17". Panel 38 (Zap): "[*this] (C++17) packs a photocopy". Scratch run with g++ 13.3 on copies of every /home/you/cpp-ch24 program that builds: the only -std=c++17 failure is abstract.cpp; `g++ -std=c++17 -fsyntax-only this_explicit.cpp` succeeds. All pass under -std=c++20.
+   - fix: "...and everything except std::format (panel 16) works with -std=c++17." Optionally add that this_capture.cpp's deprecation warning only appears from C++20.
+5. **[low] [content] panel ex-comp, ex-over** (content-cpp-22-24): In two choice exercises the correct option is much longer than every distractor, which gives the answer away (CHOICE LENGTH BIAS).
+   - evidence: ex-comp-m visible option lengths [162, 52, 62, 58] (2.6x); ex-over-m [136, 70, 67, 77] (1.8x).
+   - fix: ex-comp: shorten to "PdfExporter, CsvExporter and HtmlExporter derive from an Exporter interface, so a menu can call save() on any of them". ex-over: "It makes the Compiler check that this really overrides a base virtual function".
+
+## INTEGRATION_TODO lines naming this chapter
+- ## From cpp ch24 (Remotes and Packed Lunches)
+- CONTRADICTION: cpp ch24 captured stack-use-after-return reports WITHOUT ASAN_OPTIONS=detect_stack_use_after_return=1, but the cpp ch13 notebook says g++ 13 needs that option and that the case couldn't be captured. Check which is true here (it may depend on how the dangling address is used) and fix ch13's notebook, or both.
+
+## Engine-refresh clean-ups for this chapter
+- | C++ | `cpp-ch4.css:26`, `cpp-ch5.css:30`, `cpp-ch6.css:29`, `cpp-ch7.css:19`, `cpp-ch8.css:7`, `cpp-ch9.css:19`, `cpp-ch10.css:19`, `cpp-ch11.css:19`, `cpp-ch12.css:19`, `cpp-ch13.css:23`, `cpp-ch14.css:18`, `cpp-ch15.css:22`, `cpp-ch16.css:19`, `cpp-ch17.css:22`, `cpp-ch18.css:20`, `cpp-ch19.css:18`, `cpp-ch20.css:21`, `cpp-ch21.css:18`, `cpp-ch22.css:18`, `cpp-ch23.css:21`, `cpp-ch24.css:18`, `cpp-ch25.css:21`, `cpp-ch26.css:18`, `cpp-ch27.css:22`, `cpp-ch28.css:17`, `cpp-ch29.css:22` |
+- cpp/ch24.html: @1280: P39 +112px
+- `cpp-ch4.css:26`, `cpp-ch5.css:30`, `cpp-ch6.css:29`, `cpp-ch7.css:19`, `cpp-ch8.css:7`, `cpp-ch9.css:19`, `cpp-ch10.css:19`, `cpp-ch11.css:19`, `cpp-ch12.css:19`, `cpp-ch13.css:23`, `cpp-ch14.css:18`, `cpp-ch15.css:22`, `cpp-ch16.css:19`, `cpp-ch17.css:22`, `cpp-ch18.css:20`, `cpp-ch19.css:18`, `cpp-ch20.css:21`, `cpp-ch21.css:18`, `cpp-ch22.css:18`, `cpp-ch23.css:21`, `cpp-ch24.css:18`, `cpp-ch25.css:21`, `cpp-ch26.css:18`, `cpp-ch27.css:22`, `cpp-ch28.css:17`, `cpp-ch29.css:22`, `js-ch1.css:127`, `js-ch2.css:35`, `js-ch4.css:33`, `js-ch5.css:26`, `js-ch6.css:26`, `js-ch7.css:57`, `js-ch8.css:97`, `js-ch9.css:104`, `js-ch10.css:44`, `js-ch11.css:43`, `js-ch12.css:56`, `js-ch13.css:62`, `js-ch14.css:70`, `js-ch15.css:41`, `js-ch16.css:60`, `js-ch17.css:64`, `js-ch18.css:43`, `js-ch19.css:81`, `js-ch20.css:67`, `js-ch21.css:112`, `js-ch24.css:56`, `js-ch25.css:80`, `js-ch26.css:42`, `js-ch27.css:49`, `js-ch28.css:44`, `js-ch29.css:95`
+- `cpp-ch24.css:13` `.pair2 .term`
+- `cpp-ch24.css:29` `.vs td code, .vs th code`

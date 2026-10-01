@@ -1,0 +1,35 @@
+# Fix bundle: javascript/ch4.html
+
+8 review findings, 0 INTEGRATION_TODO lines, 3 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[medium] [content] panel 11** (content-js-4-6): Line-number drift: Kit says "Line 1 is the trap: square brackets with -1", but in at.js line 1 is `const word = "hello";`. The bracket read `word[-1]` is line 2. Every other panel in the chapter uses "Line N" for source lines.
+   - evidence: ch4.html:267 bubble: "Line 1 is the trap: square brackets with <code>-1</code> give <samp>undefined</samp>." data/js-ch4.json at.js: 1 `const word = "hello";` 2 `console.log(word[-1]);`. See INTEGRATION_TODO "From the review swarm", LINE-NUMBER DRIFT (that item lists only Python; this is a JS instance).
+   - fix: Change "Line 1 is the trap" to "Line 2 is the trap".
+2. **[medium] [visual] panel 17 @390** (visual-js-1-5): The template-literal stencil drawing shrinks to 330px on phones, so its labels render at 7.9-8.4px. These include the bead letters, `name = "Ada"` and '← the finished string', which carry the point of the panel.
+   - evidence: Measured at 390 (SVG text × CTM): 5 labels at 7.9-8.4px. 0 small labels at 1280. Crop: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-js-1-5/a4/w390-028-p17.png
+   - fix: Wrap it as the engine's wide-drawing pattern. Before → After (why): `<svg class="pic-wide" …>` → `<div class="picscroll"><svg class="fig pic-wide" …></svg></div>` (below 640px it keeps 560px, so labels stay at about 13px or more). Alternatively give it a narrow redraw as `.neck-pic.narrow` does.
+3. **[medium] [content] panel notebook: In real programs (Sorting names)** (content-js-4-6): Wrong cross-reference: the notebook says sorting lists is taught in Chapter 10. It's taught in Chapter 9, which covers sorting with a comparator and `localeCompare`; Chapter 10 is about objects and has no `.sort(`.
+   - evidence: ch4 notebook: "Sorting lists is Chapter 10." javascript/ch9.html blurb: "...sorting with a comparator, sort versus toSorted..." and contains `a.localeCompare(b)`. grep -c '.sort(' gives ch9: 3, ch10: 0. Plan: ch10 = "Drawers and Addresses" (objects).
+   - fix: Change "Sorting lists is Chapter 10." to "Sorting lists is Chapter 9."
+4. **[medium] [book] panel notebook: In real programs (line 1216)** (book-js): Says sorting lists is Chapter 10, but sorting is Chapter 9, Part 6, and Chapter 10 is objects.
+   - evidence: ch4 line 1216: 'Sorting lists is Chapter 10.' ch9 TOC: 'Sorting the carriages'; ch9 recap 'NUMBERS? BRING A COMPARATOR: Plain sort() orders text.'
+   - fix: Change 'Chapter 10' to 'Chapter 9'.
+5. **[low] [content] panel 24** (content-js-4-6): Sneak says `if` treats 0 as "no" and "every other number, even -1" as "yes". NaN and -0 are numbers that also count as "no", and chapter 5's list of eight includes both.
+   - evidence: ch4 P24 bubble: "`if` treats the number 0 as \"no\", and every other number, even -1, as \"yes\". Chapter 5 has the full list." ch5 P16 falsy list: 0, -0, NaN (all numbers).
+   - fix: Change it to: "`if` treats the number 0 as \"no\", and ordinary numbers like 1 or even -1 as \"yes\". Chapter 5 has the full list (with a couple of odd numbers on it)."
+6. **[low] [content] panel 49 (ex-b2, Boss 2 fill)** (content-js-4-6): The first blank accepts only `first[0]`, but `first.at(0)`, which the chapter teaches in panel 11, gives exactly the same output and is rejected.
+   - evidence: ex-b2-m blanks[0]: {"line": 3, "text": "first[0]"} with no accept list. P11 and the recap teach that `.at(0)` is the same as `s[0]`.
+   - fix: Add "accept": ["first.at(0)"] to the line-3 blank.
+7. **[low] [visual] panel 9, 22, 28 (bead benches) @1280 and 390** (visual-js-1-5): The bead bench's raised bead eases with `transition: transform 0.2s`, which uses the browser's default `ease` instead of the design tokens.
+   - evidence: assets/ext/js-ch4.css:55 `.bd-bead { … transition: transform 0.2s; }`. Computed: `transform 0.2s`. Crop: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-js-1-5/a4/w390-015-p9.png
+   - fix: Before → After (why): `transition: transform 0.2s` → `transition: transform var(--dur-ui) var(--ease-out)` (the built-in ease is too weak; the token curve answers the press at once, as the engine's controls do).
+8. **[low] [content] panel ch4 13 (ex-immut), ch4 46 (ex-1009), ch5 43 (ex-why)** (content-js-4-6): In three choice questions the correct option is far longer than every distractor, so it can be picked by length alone.
+   - evidence: Plain-text lengths, correct option first: ex-immut 61 vs 42/36/9; ex-1009 91 vs 40/33/18; ex-why 102 vs 44/37/20. See INTEGRATION_TODO "From the review swarm", CHOICE LENGTH BIAS (new JS evidence).
+   - fix: Shorten the correct options (e.g. ex-1009: "The first beads decide: \"1\" has a smaller code than \"9\""; ex-why: "=== never translates, so the answer is just what you see"; ex-immut: "Still \"hi\": the new \"HI\" was thrown away") and move the detail into their `why` text.
+
+## Engine-refresh clean-ups for this chapter
+- | JavaScript | `js-ch1.css:130`, `js-ch2.css:38`, `js-ch4.css:36`, `js-ch5.css:29`, `js-ch6.css:26`, `js-ch7.css:57`, `js-ch8.css:97`, `js-ch9.css:104`, `js-ch10.css:44`, `js-ch11.css:43`, `js-ch12.css:56`, `js-ch13.css:62`, `js-ch14.css:70`, `js-ch16.css:60`, `js-ch17.css:64`, `js-ch18.css:43`, `js-ch19.css:81`, `js-ch20.css:67`, `js-ch24.css:56`, `js-ch25.css:80`, `js-ch26.css:42`, `js-ch27.css:49`, `js-ch29.css:95` |
+- `cpp-ch1.css:30`, `cpp-ch4.css:18`, `cpp-ch6.css:18`, `go-ch1.css:31`, `go-ch2.css:28`, `go-ch3.css:19`, `go-ch6.css:19`, `go-ch7.css:11`, `go-ch8.css:11`, `go-ch9.css:11`, `go-ch10.css:11`, `go-ch11.css:11`, `js-ch1.css:18`, `js-ch2.css:18`, `js-ch4.css:19`, `js-ch5.css:18`, `js-ch6.css:16`, `js-ch7.css:27`, `js-ch8.css:28`, `js-ch9.css:25`, `js-ch10.css:29`, `js-ch11.css:28`, `js-ch12.css:28`, `js-ch13.css:30`, `js-ch15.css:34`, `js-ch18.css:28`
+- `cpp-ch4.css:26`, `cpp-ch5.css:30`, `cpp-ch6.css:29`, `cpp-ch7.css:19`, `cpp-ch8.css:7`, `cpp-ch9.css:19`, `cpp-ch10.css:19`, `cpp-ch11.css:19`, `cpp-ch12.css:19`, `cpp-ch13.css:23`, `cpp-ch14.css:18`, `cpp-ch15.css:22`, `cpp-ch16.css:19`, `cpp-ch17.css:22`, `cpp-ch18.css:20`, `cpp-ch19.css:18`, `cpp-ch20.css:21`, `cpp-ch21.css:18`, `cpp-ch22.css:18`, `cpp-ch23.css:21`, `cpp-ch24.css:18`, `cpp-ch25.css:21`, `cpp-ch26.css:18`, `cpp-ch27.css:22`, `cpp-ch28.css:17`, `cpp-ch29.css:22`, `js-ch1.css:127`, `js-ch2.css:35`, `js-ch4.css:33`, `js-ch5.css:26`, `js-ch6.css:26`, `js-ch7.css:57`, `js-ch8.css:97`, `js-ch9.css:104`, `js-ch10.css:44`, `js-ch11.css:43`, `js-ch12.css:56`, `js-ch13.css:62`, `js-ch14.css:70`, `js-ch15.css:41`, `js-ch16.css:60`, `js-ch17.css:64`, `js-ch18.css:43`, `js-ch19.css:81`, `js-ch20.css:67`, `js-ch21.css:112`, `js-ch24.css:56`, `js-ch25.css:80`, `js-ch26.css:42`, `js-ch27.css:49`, `js-ch28.css:44`, `js-ch29.css:95`

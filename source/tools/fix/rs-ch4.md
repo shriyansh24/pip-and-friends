@@ -1,0 +1,27 @@
+# Fix bundle: rust/ch4.html
+
+6 review findings, 1 INTEGRATION_TODO lines, 0 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[high] [visual] panel 7, 19 @1280 and 390** (visual-rs-1-5): Every checklist item is unreadable: the text is squeezed into a 40px column, one word (or part of a word) per line, with the number badge sitting on top of the first word (5 items).
+   - evidence: Measured in the browser at both widths: every `.checklist li > span` is 40px wide (li 716/314px wide), items 250-1323px tall. Cause: the chapter's old grid copy (`.checklist li { display: grid; grid-template-columns: 40px minmax(0,1fr) }`, assets/ext/rs-ch4.css:62-65) now meets the engine's absolutely placed `::before` badge, so the badge leaves the grid and the <span> drops into the 40px track. Crops: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/t4/m-*.png (390 contact sheets), /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/rs-ch4/rust_ch4-1280.png.
+   - fix: Delete the four `.checklist` rules at assets/ext/rs-ch4.css:62-65 so the engine's checklist applies. Before → After (why): `.checklist li { display: grid; grid-template-columns: 40px minmax(0,1fr) }` → (deleted; engine `display: block; padding-left: 62px`) (the engine badge is absolutely placed, so a grid track for it captures the text instead).
+2. **[medium] [visual] panel 4, 5, 11, 13, 14, 25, 31, 32, 33, 35 and every other code+terminal pair (21 tabs) @1280 and 390** (visual-rs-1-5): The file-name tab above each code box is cut in half: the code box is drawn over the bottom of the tab text ("returns.rs", "logic.rs", "grade_wrong.rs"...).
+   - evidence: 21 of ch4's file tabs sit inside `.pair > div`, which rs-ch4.css:51 makes a grid with `gap: 6px`; the engine tab has `margin-bottom: -14px` (comic.css:176), so the <pre> overlaps the tab by 8px and paints over it. Other chapters (tabs outside .pair) are fine. Crops: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/t4/m-02.png (P11 returns.rs, P13 blocks.rs, P14 unit_fn.rs), /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/t4/m-04.png (P25 asserts.rs, assert_fail.rs), /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/t4/m-06.png (P31 logic.rs, P33 grade.rs, P35 grade_wrong.rs).
+   - fix: Before → After (why): `.pair > div { display: grid; gap: 6px; }` → `.pair > div { display: grid; gap: 6px; } .pair > div > .file-tab + pre { margin-top: 0; } .pair > div > .file-tab { margin-bottom: -6px; }` or simply `.pair > div { display: block; }` (a grid gap plus the engine's negative tab margin makes the code box cover the tab; block flow keeps the engine's intended 14px tuck without overlap of text).
+3. **[low] [content] panel 12** (content-rs-4-6): The STATEMENTS card says a statement 'ends with ;' but one of its three examples, `fn greet() { … }`, has no semicolon.
+   - evidence: Card: "It does a job and produces no value. It ends with <code>;</code>." List: `let fee = 75;`, `println!("Hi");`, `fn greet() { … }`. The glossary says "Usually ends with ;".
+   - fix: Write "It usually ends with ;" (as the glossary does), or replace the fn example with another `let`.
+4. **[low] [content] panel 17** (content-rs-4-6): The machine note promises that Part 5 shows how to guard against silly input such as -2 days, but Part 5's guard clauses only handle 0 days and more than 30 days. Negative input is never guarded.
+   - evidence: m-fee note for -2: "Part 5 shows how to guard against silly input." early_return.rs guards `days == 0` (return 0) and `days > 30` (return 500); fee_for(-2) would still give -20.
+   - fix: Change to "Part 5 shows guard clauses, early exits for special cases like this", or make early_return.rs's first guard `days <= 0` (and recapture).
+5. **[low] [visual] panel 9, 22, 23, 24 @390** (visual-rs-1-5): Compile-error terminals hide labels and help lines past the right edge on phones (`help: the binding `secret` is avail…`, `help: a function with a similar nam…`).
+   - evidence: Plain `.term`. Crop: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-rs-1-5/t4/m-04.png (P22, P23, P24).
+   - fix: Use `class="term wrap"` on the error terminals.
+6. **[low] [content] panel notebook: Under the hood, 'A let is a statement'** (content-rs-4-6): The page misdescribes let_let.rs's warning. Its help removes only the brackets and keeps the inner `let`; it doesn't say that removing the `let` makes the brackets unnecessary.
+   - evidence: Page: "once you remove the <code>let</code> from inside, the brackets aren't needed either." Capture: "warning: unnecessary parentheses around assigned value … help: remove these parentheses … 2 + let x = let y = 6;".
+   - fix: "The warning is a separate, smaller point: the brackets themselves are unnecessary. Its suggested line still has the error, so fix the error first."
+
+## INTEGRATION_TODO lines naming this chapter
+- VERIFIED 11:45: readlist inline code no longer clips (rust ch29 P3/11/17/21/34 clear). Only rust ch29 P19 remains (142px): a chapter-level centred <p class="fill-code"> subject line; make it a <pre class="code"> in the fix round. Checker PASS on py ch26, rs ch4, go ch9 after the engine integration edits.

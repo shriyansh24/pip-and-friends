@@ -1,0 +1,49 @@
+# Fix bundle: go/ch11.html
+
+10 review findings, 5 INTEGRATION_TODO lines, 4 engine-refresh notes.
+Work through every item. For each, record FIXED / DOCUMENTED / DEFERRED / NOT-A-BUG (with evidence) in your report.
+
+## Review findings (most severe first)
+1. **[medium] [book] panel 1 and 4** (book-go): Chapter 11 says chapter 5 used len to measure a string, but no Go chapter before 6 uses len at all; the first len on a string is chapter 7's word counter.
+   - evidence: ch11 panel 1: 'Back in chapter 5, len told me how long a string is. "hello" has 5 letters'; panel 4: 'That's why chapter 5 never noticed.' grep -c 'len(' go/ch2-ch5.html = 0, and no /home/you/go-ch5/*.go uses len. First string len: /home/you/go-ch7/trace_scan.go:16 'letters += len(word)'.
+   - fix: Replace 'chapter 5' with 'chapter 7' in both places (or 'Back in chapter 7's word counter, len…').
+2. **[medium] [content] panel 1, 4** (content-go-10-12): Broken cross-reference: chapter 5 never uses len. len first appears on arrays in ch6 and on a string in a ch7 exercise.
+   - evidence: Panel 1: "Back in chapter 5, len told me how long a string is. \"hello\" has 5 letters, and len said 5." Panel 4: "That's why chapter 5 never noticed." Searching go/ch5.html finds no `len` at all. The first string len is ch7's trace_scan exercise (`len(word)`); ch6 uses len(eggs).
+   - fix: Change both mentions to "chapter 7" (or "earlier chapters").
+3. **[medium] [content] panel 24 / footer** (content-go-10-12): The footer describes the Go 1.24.7 result for string_int.go wrongly. The secondary run was refused at its first step (go run), not at the vet step. This is also new evidence that the TODO "From go ch11" recapture still fails.
+   - evidence: Footer: "the go vet step of string_int.go uses the chapter's own go.mod, which Go 1.24.7 refuses". data/go-ch11.json (captured 2026-11-08), string_int.go alt: one step only, `go run string_int.go`, stderr "go: go.mod requires go >= 1.27 (running go 1.24.7; GOTOOLCHAIN=local)". string_int.cmd has no "session": true, so the GOFLAGS=-modfile fix (for Go .cmd sessions) apparently doesn't reach it.
+   - fix: Engine: apply -modfile=.go124.mod to non-session Go .cmd steps too, then recapture go-ch11. Until then, change the footer to "string_int.go's two-step run is refused at its first step (go run) by Go 1.24.7, because of the chapter's go.mod".
+4. **[medium] [visual] panel 6 @1280 and 390** (visual-go-11-15): The necklace stepper's buttons move on every press: at 1280 the growing SCREEN sits above the controls, so Back/Next slide down 250px over the 13 steps; at 390 they jump by up to 51px between steps.
+   - evidence: step.js button tops at 1280: 6604, 6605, 6605, 6624, 6649 … 6854 (box 1419 → 1670px); at 390: 7638-7689. Emil/DESIGN_SYSTEM: controls must not move under the pointer. Cause: go-ch11.css `.necklace .nk-split { grid-template-columns: minmax(0,1fr) }` at every width, so code and screen stack and the screen grows each lap. (The engine-wide narration jump is already in visual-go-6-10.)
+   - fix: At ≥641px lay code and screen side by side (`.necklace .nk-split { grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) }`) and give `.necklace .screen pre` a `min-height` for the run's 15 lines (`calc(15 * 1.6em)`), or move `.nk-split` below the controls at every width, as the phone layout already does.
+5. **[low] [content] panel 31 (m-tools)** (content-go-10-12): The machine's input label shows single spaces, but the real program uses double spaces between the words, and the note is about the spacing.
+   - evidence: Label: Fields(" so much room "). tools_machine.go line 11: strings.Fields(" so  much  room "). Note: "Words, however many spaces sit between them."
+   - fix: Make the label the program's real string, with two spaces between words (and check that the engine doesn't collapse them).
+6. **[low] [content] panel 36** (content-go-10-12): The panel promises that the notebook says what to do about two different é's, but the notebook only repeats the problem and links a blog post.
+   - evidence: Panel 36: "The Professor's notebook says what to do about it." The notebook only has "Two strings that look the same are ==." Not if their bytes differ, plus a Go deeper link to go.dev/blog/normalization.
+   - fix: Add to Common wrong ideas or Under the hood: "Normalise both strings first (to NFC) with golang.org/x/text/unicode/norm, then compare."
+7. **[low] [content] panel 38 (ex-b4-m, Boss 4)** (content-go-10-12): The boss parsons depends on strings.ContainsRune, which the chapter never introduces (it's missing from panel 25's toolbox list).
+   - evidence: boss_parsons.go line 11: if strings.ContainsRune("aeioué", r) {. Panel 25 lists Contains, HasPrefix, HasSuffix, Index ... but not ContainsRune. It's mentioned only in this exercise's explanation.
+   - fix: Add ContainsRune to panel 25's SEARCH drawer with a short gloss, or explain it in the Boss 4 prompt.
+8. **[low] [visual] panel 6 @390 and 1280** (visual-go-11-15): The necklace's code list keeps `white-space: pre`, so line 12 (the line that runs each lap) is cut off at 'fmt.Println(i, strin' and its '◀ just ran' marker sits off screen on phones (52px over at 1280 too); the picture's 'byte' label is 9.2px and the byte indexes 11.4px at 390.
+   - evidence: Audit: `ol.tr-code.nk-code` scrollWidth 722 vs 312 at 390, 766 vs 714 at 1280; step.js: 'byte' 9.2px, indexes 11.4px at every step. Crop: /tmp/claude-0/-home-claude/7f030446-3270-51d4-abc1-d3638614f9af/scratchpad/review-visual-go-11-15/st-390-go_ch11_html-b0-s3.png.
+   - fix: Drop `.necklace .nk-code li { white-space: pre }` and call `L.hangLines(lis)` in go-ch11.js after filling the list (the engine's hanging indent); in draw() raise the 'byte' label from 17 to 22 units and the index numbers from 21 to 24.
+9. **[low] [content] panel notebook: In real programs** (content-go-10-12): The claim about chapter 7's input doesn't match chapter 7. It reads input with Scanln and bufio.Scanner, whose Text() has no line break; ch7 trims only for stray spaces.
+   - evidence: ch11 line 908: "strings.TrimSpace on everything a person types: chapter 7's keyboard input ends with a line break." ch7 panel text: "Trim it first: strconv.Atoi(strings.TrimSpace(scanner.Text()))" (the problem there is " 21"). ch7 never uses ReadString.
+   - fix: "...chapter 7's typed input can carry stray spaces (and input read with ReadString keeps its line break)."
+10. **[low] [visual] panel various @1280 and 390** (visual-go-11-15): Component consistency: the chapter CSS hand-rolls cards, badges and tables with raw values instead of the engine classes and tokens, and repeats the same helper blocks in all five files.
+   - evidence: Hand-rolled cards: `.toolbox` (box-shadow 5px 5px 0, radius 14px), `.beadrow > div`, `.quotes > div` (radius 12px), `.report .rr-wrap` (4px 4px 0, radius 6px); badges: `.stamp` (radius 6px), `.nk-tag`, `.rr-tag`, `.legend li > span:first-child`; tables: `.verbs`, `.fits`, `.std-table` (each re-declares border/padding/header instead of the engine Table styles); `.verbs` also has `border-radius: 10px` with `border-collapse: collapse`, so the radius never shows. Raw fills #F2C9A0, #FFE1E1, #C9F2D9 in go-ch11.css/go-ch14.js. Copied in all five files: `.pic-wide`, `.pair`, `.legend`, `.stamp`, `.verdict-row`, `.swipe-hint`/`.pic-scroll` (which duplicates the engine's `.picscroll`).
+   - fix: Use `.duo-card` for the cards, `.ex-kind`/`.parity`-style badge rules with `--radius-sm`/`--radius-pill`, `--shadow-hard`/`--shadow-hard-lg` and `--radius-md`/`--radius-lg` for the rest, and the engine `.picscroll` instead of the chapter `.pic-scroll`. Before → After (why): `box-shadow: 5px 5px 0 var(--ink)` → `var(--shadow-hard-lg)`; `border-radius: 12px` → `var(--radius-lg)` (one system, one set of numbers).
+
+## INTEGRATION_TODO lines naming this chapter
+- Candidate engine widget: go-ch9/ch10's shelf stepper. Strings (go ch11) and later slice chapters could reuse it; unify it with rs-ch9's slice window.
+- ## From go ch11 (Beads on a Necklace)
+- Go `.cmd` steps (e.g. `go vet`) on the secondary still used the chapter go.mod (go 1.27), so 1.24.7 refused them. capture.py now passes GOFLAGS=-modfile=.go124.mod to Go .cmd sessions that don't `cd` elsewhere. Verified on go-ch99 (vetdemo). Recapture go-ch11 (string_int) in the fix round.
+- ## From python ch21 / go ch11 (parsons)
+- GO .cmd (not session) on the secondary: go ch11 string_int.cmd is still refused ("go.mod requires go >= 1.27") after the 11-08 recapture. capture.py L372–376 sets GOFLAGS -modfile only on one path; check that non-session .cmd steps get `-modfile` or GOFLAGS. Audit all Go data files for "requires go >=" in alt runs.
+
+## Engine-refresh clean-ups for this chapter
+- `go-ch11.js:133`
+- `go-ch1.css:99`, `go-ch2.css:41`, `go-ch3.css:58`, `go-ch4.css:194`, `go-ch5.css:90`, `go-ch6.css:58`, `go-ch7.css:32`, `go-ch8.css:34`, `go-ch9.css:33`, `go-ch10.css:33`, `go-ch11.css:32`, `go-ch12.css:29`, `go-ch13.css:29`, `go-ch14.css:28`, `go-ch15.css:28`, `go-ch16.css:29`, `go-ch17.css:23`, `go-ch18.css:28`, `go-ch19.css:24`, `go-ch20.css:28`, `go-ch21.css:25`, `go-ch22.css:24`, `go-ch23.css:29`, `go-ch24.css:23`, `go-ch25.css:23`, `go-ch26.css:23`, `go-ch27.css:27`, `go-ch28.css:23`, `js-ch15.css:96`
+- `cpp-ch1.css:30`, `cpp-ch4.css:18`, `cpp-ch6.css:18`, `go-ch1.css:31`, `go-ch2.css:28`, `go-ch3.css:19`, `go-ch6.css:19`, `go-ch7.css:11`, `go-ch8.css:11`, `go-ch9.css:11`, `go-ch10.css:11`, `go-ch11.css:11`, `js-ch1.css:18`, `js-ch2.css:18`, `js-ch4.css:19`, `js-ch5.css:18`, `js-ch6.css:16`, `js-ch7.css:27`, `js-ch8.css:28`, `js-ch9.css:25`, `js-ch10.css:29`, `js-ch11.css:28`, `js-ch12.css:28`, `js-ch13.css:30`, `js-ch15.css:34`, `js-ch18.css:28`
+- `go-ch11.css:42` `.recipe li { white-space: pre; overflow-wrap: normal; tab-size: 2; font-size: 0.88rem; }`
