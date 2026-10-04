@@ -1,0 +1,1491 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch2",
+  "versionDifferences": [
+   "add_missing.cpp",
+   "boss_spot.cpp",
+   "brace.cpp",
+   "cascade.cpp",
+   "conv.cpp",
+   "conv_w.cpp",
+   "conv_werror.cpp",
+   "header.cpp",
+   "long_quote.cpp",
+   "nobrace.cpp",
+   "nostd.cpp",
+   "oldbook.cpp",
+   "pasted.cpp",
+   "semi.cpp",
+   "spot_semi.cpp",
+   "spot_std.cpp",
+   "unclosed.cpp",
+   "uninit.cpp",
+   "wrongfix.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): add_missing.cpp, boss_spot.cpp, brace.cpp, cascade.cpp, conv.cpp, conv_w.cpp, conv_werror.cpp, header.cpp, long_quote.cpp, nobrace.cpp, nostd.cpp, oldbook.cpp, pasted.cpp, semi.cpp, spot_semi.cpp, spot_std.cpp, unclosed.cpp, uninit.cpp, wrongfix.cpp."
+ },
+ "programs": {
+  "add_missing.cpp": {
+   "src": "#include <iostream>\n\nint add(int a, int b);\n\nint main() {\n    std::cout << add(2, 3) << '\\n';\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "/usr/bin/ld: add_missing.o: in function `main':\n/home/you/cpp-ch2/add_missing.cpp:6:(.text+0x13): undefined reference to `add(int, int)'\ncollect2: error: ld returned 1 exit status\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -c add_missing.cpp",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    },
+    {
+     "cmd": "g++ add_missing.o -o add_missing",
+     "out": "",
+     "err": "/usr/bin/ld: add_missing.o: in function `main':\n/home/you/cpp-ch2/add_missing.cpp:6:(.text+0x13): undefined reference to `add(int, int)'\ncollect2: error: ld returned 1 exit status\n",
+     "exit": 1,
+     "dir": "~/cpp-ch2"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "/usr/bin/ld: add_missing.o: in function `main':\n/home/you/cpp-ch2/add_missing.cpp:6:(.text+0x1a): undefined reference to `add(int, int)'\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -c add_missing.cpp",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     },
+     {
+      "cmd": "clang++ add_missing.o -o add_missing",
+      "out": "",
+      "err": "/usr/bin/ld: add_missing.o: in function `main':\n/home/you/cpp-ch2/add_missing.cpp:6:(.text+0x1a): undefined reference to `add(int, int)'\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+      "exit": 1,
+      "dir": "~/cpp-ch2"
+     }
+    ]
+   }
+  },
+  "belt.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Wren\" << \" fixed \" << 3 << \" engines\" << '\\n';\n    std::cout << \"Done!\" << std::endl;\n    return 0;\n}\n",
+   "stdout": "Wren fixed 3 engines\nDone!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g belt.cpp -o belt",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./belt",
+     "out": "Wren fixed 3 engines\nDone!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren fixed 3 engines\nDone!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g belt.cpp -o belt",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./belt",
+      "out": "Wren fixed 3 engines\nDone!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Fix the first error first.\\n\";\n    return 0;\n}\n",
+   "stdout": "Fix the first error first.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "Fix the first error first.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Fix the first error first.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "Fix the first error first.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <iostream>\nint main() {\n    std::cout << \"Step 1: read the first error\\n\";\n    std::cout << \"Step 2: go to its line\\n\";\n    std::cout << \"Step 3: fix it, then compile again\\n\";\n    return 0;\n}\n",
+   "stdout": "Step 1: read the first error\nStep 2: go to its line\nStep 3: fix it, then compile again\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "Step 1: read the first error\nStep 2: go to its line\nStep 3: fix it, then compile again\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Step 1: read the first error\nStep 2: go to its line\nStep 3: fix it, then compile again\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "Step 1: read the first error\nStep 2: go to its line\nStep 3: fix it, then compile again\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Wren's \" << \"garage\";   // no newline yet\n    std::cout << '\\n';\n    /* std::cout << \"closed\\n\"; */\n    std::cout << \"Open \\\"24/7\\\"\\n\";\n    std::cout << \"Tools:\" << ' ' << 5 << \"\\n\";\n    // std::cout << \"done\\n\";\n    return 0;\n}\n",
+   "stdout": "Wren's garage\nOpen \"24/7\"\nTools: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "Wren's garage\nOpen \"24/7\"\nTools: 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren's garage\nOpen \"24/7\"\nTools: 5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "Wren's garage\nOpen \"24/7\"\nTools: 5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Engine check:\\n\";\n    std::cout << \"Oil ok\\n\";\n}\n    std::cout << \"Tyres ok\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "boss_spot.cpp:7:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    7 |     std::cout << \"Tyres ok\\n\";\n      |          ^~~~\nIn file included from boss_spot.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nboss_spot.cpp:8:5: error: expected unqualified-id before ‘return’\n    8 |     return 0;\n      |     ^~~~~~\nboss_spot.cpp:9:1: error: expected declaration before ‘}’ token\n    9 | }\n      | ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "boss_spot.cpp:7:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    7 |     std::cout << \"Tyres ok\\n\";\n      |          ^~~~\nIn file included from boss_spot.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nboss_spot.cpp:8:5: error: expected unqualified-id before ‘return’\n    8 |     return 0;\n      |     ^~~~~~\nboss_spot.cpp:9:1: error: expected declaration before ‘}’ token\n    9 | }\n      | ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "boss_spot.cpp:7:10: error: no type named 'cout' in namespace 'std'\n    7 |     std::cout << \"Tyres ok\\n\";\n      |     ~~~~~^\nboss_spot.cpp:7:15: error: expected unqualified-id\n    7 |     std::cout << \"Tyres ok\\n\";\n      |               ^\nboss_spot.cpp:8:5: error: expected unqualified-id\n    8 |     return 0;\n      |     ^\nboss_spot.cpp:9:1: error: extraneous closing brace ('}')\n    9 | }\n      | ^\n4 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+      "out": "",
+      "err": "boss_spot.cpp:7:10: error: no type named 'cout' in namespace 'std'\n    7 |     std::cout << \"Tyres ok\\n\";\n      |     ~~~~~^\nboss_spot.cpp:7:15: error: expected unqualified-id\n    7 |     std::cout << \"Tyres ok\\n\";\n      |               ^\nboss_spot.cpp:8:5: error: expected unqualified-id\n    8 |     return 0;\n      |     ^\nboss_spot.cpp:9:1: error: extraneous closing brace ('}')\n    9 | }\n      | ^\n4 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_trace.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Mon\\tbrakes\\n\";\n    std::cout << \"Tue\\t\";\n    std::cout << \"tyres\\n\";\n    // std::cout << \"Wed\\tlights\\n\";\n    std::cout << \"Thu\\t\" << \"oil\" << '\\n';\n    return 0;\n}\n",
+   "stdout": "Mon\tbrakes\nTue\ttyres\nThu\toil\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "Mon\tbrakes\nTue\ttyres\nThu\toil\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Mon\tbrakes\nTue\ttyres\nThu\toil\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "Mon\tbrakes\nTue\ttyres\nThu\toil\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "brace.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Case open.\\n\";\n    return 0;\n",
+   "stdout": "",
+   "stderr": "brace.cpp: In function ‘int main()’:\nbrace.cpp:5:14: error: expected ‘}’ at end of input\n    5 |     return 0;\n      |              ^\nbrace.cpp:3:12: note: to match this ‘{’\n    3 | int main() {\n      |            ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g brace.cpp -o brace",
+     "out": "",
+     "err": "brace.cpp: In function ‘int main()’:\nbrace.cpp:5:14: error: expected ‘}’ at end of input\n    5 |     return 0;\n      |              ^\nbrace.cpp:3:12: note: to match this ‘{’\n    3 | int main() {\n      |            ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "brace.cpp:5:14: error: expected '}'\n    5 |     return 0;\n      |              ^\nbrace.cpp:3:12: note: to match this '{'\n    3 | int main() {\n      |            ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g brace.cpp -o brace",
+      "out": "",
+      "err": "brace.cpp:5:14: error: expected '}'\n    5 |     return 0;\n      |              ^\nbrace.cpp:3:12: note: to match this '{'\n    3 | int main() {\n      |            ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "cascade.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Missing quote\\n;\n    std::cout << \"Second line\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "cascade.cpp:4:18: warning: missing terminating \" character\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^\ncascade.cpp:4:18: error: missing terminating \" character\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^~~~~~~~~~~~~~~~~\ncascade.cpp: In function ‘int main()’:\ncascade.cpp:4:15: error: no match for ‘operator<<’ (operand types are ‘std::ostream’ {aka ‘std::basic_ostream<char>’} and ‘std::ostream’ {aka ‘std::basic_ostream<char>’})\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~~~~~ ^~\n      |          |\n      |          basic_ostream<[...]>\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~~~~~  \n      |          |\n      |          basic_ostream<[...]>\ncascade.cpp:4:15: note: candidate: ‘operator<<(int, int)’ (built-in)\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~~~~~  \ncascade.cpp:4:15: note:   no known conversion for argument 2 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘int’\nIn file included from /usr/include/c++/13/iostream:41,\n                 from cascade.cpp:1:\n/usr/include/c++/13/ostream:110:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ostream_type& (*)(__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:110:36: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)’ {aka ‘std::basic_ostream<char>& (*)(std::basic_ostream<char>&)’}\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:119:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ios_type& (*)(__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; __ios_type = std::basic_ios<char>]’\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:119:32: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)’ {aka ‘std::basic_ios<char>& (*)(std::basic_ios<char>&)’}\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:129:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:129:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::ios_base& (*)(std::ios_base&)’\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:168:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  168 |       operator<<(long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:168:23: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long int’\n  168 |       operator<<(long __n)\n      |                  ~~~~~^~~\n/usr/include/c++/13/ostream:172:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  172 |       operator<<(unsigned long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:172:32: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long unsigned int’\n  172 |       operator<<(unsigned long __n)\n      |                  ~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:176:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  176 |       operator<<(bool __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:176:23: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘bool’\n  176 |       operator<<(bool __n)\n      |                  ~~~~~^~~\nIn file included from /usr/include/c++/13/ostream:880:\n/usr/include/c++/13/bits/ostream.tcc:96:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]’\n   96 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:97:22: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘short int’\n   97 |     operator<<(short __n)\n      |                ~~~~~~^~~\n/usr/include/c++/13/ostream:183:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  183 |       operator<<(unsigned short __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:183:33: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘short unsigned int’\n  183 |       operator<<(unsigned short __n)\n      |                  ~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/bits/ostream.tcc:110:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]’\n  110 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:111:20: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘int’\n  111 |     operator<<(int __n)\n      |                ~~~~^~~\n/usr/include/c++/13/ostream:194:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  194 |       operator<<(unsigned int __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:194:31: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘unsigned int’\n  194 |       operator<<(unsigned int __n)\n      |                  ~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:203:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  203 |       operator<<(long long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:203:28: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long long int’\n  203 |       operator<<(long long __n)\n      |                  ~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:207:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  207 |       operator<<(unsigned long long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:207:37: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long long unsigned int’\n  207 |       operator<<(unsigned long long __n)\n      |                  ~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:222:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  222 |       operator<<(double __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:222:25: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘double’\n  222 |       operator<<(double __f)\n      |                  ~~~~~~~^~~\n/usr/include/c++/13/ostream:226:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  226 |       operator<<(float __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:226:24: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘float’\n  226 |       operator<<(float __f)\n      |                  ~~~~~~^~~\n/usr/include/c++/13/ostream:234:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  234 |       operator<<(long double __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:234:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long double’\n  234 |       operator<<(long double __f)\n      |                  ~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:241:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float16) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  241 |       operator<<(_Float16 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:241:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float16’\n  241 |       operator<<(_Float16 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:250:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float32) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  250 |       operator<<(_Float32 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:250:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float32’\n  250 |       operator<<(_Float32 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:259:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float64) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  259 |       operator<<(_Float64 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:259:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float64’\n  259 |       operator<<(_Float64 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:277:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__gnu_cxx::__bfloat16_t) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; __gnu_cxx::__bfloat16_t = __bf16]’\n  277 |       operator<<(__gnu_cxx::__bfloat16_t __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:277:42: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘__gnu_cxx::__bfloat16_t’ {aka ‘__bf16’}\n  277 |       operator<<(__gnu_cxx::__bfloat16_t __f)\n      |                  ~~~~~~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:292:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  292 |       operator<<(const void* __p)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:292:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘const void*’\n  292 |       operator<<(const void* __p)\n      |                  ~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:297:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]’\n  297 |       operator<<(nullptr_t)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:297:18: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::nullptr_t’\n  297 |       operator<<(nullptr_t)\n      |                  ^~~~~~~~~\n/usr/include/c++/13/ostream:304:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const volatile void*) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  304 |       operator<<(const volatile void* __p)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:304:39: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘const volatile void*’\n  304 |       operator<<(const volatile void* __p)\n      |                  ~~~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/bits/ostream.tcc:124:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; __streambuf_type = std::basic_streambuf<char>]’\n  124 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:125:34: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__streambuf_type*’ {aka ‘std::basic_streambuf<char>*’}\n  125 |     operator<<(__streambuf_type* __sbin)\n      |                ~~~~~~~~~~~~~~~~~~^~~~~~\nIn file included from /usr/include/c++/13/bits/basic_string.h:47,\n                 from /usr/include/c++/13/string:54,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44,\n                 from /usr/include/c++/13/ostream:40:\n/usr/include/c++/13/string_view:761:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, basic_string_view<_CharT, _Traits>)’\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^~~~~~~~\n/usr/include/c++/13/string_view:761:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   ‘std::basic_ostream<char>’ is not derived from ‘std::basic_string_view<_CharT, _Traits>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/bits/basic_string.h:4032:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:4032:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   ‘std::ostream’ {aka ‘std::basic_ostream<char>’} is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\nIn file included from /usr/include/c++/13/bits/memory_resource.h:38,\n                 from /usr/include/c++/13/string:58:\n/usr/include/c++/13/cstddef:124:5: note: candidate: ‘template<class _IntegerType> constexpr std::__byte_op_t<_IntegerType> std::operator<<(byte, _IntegerType)’\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^~~~~~~~\n/usr/include/c++/13/cstddef:124:5: note:   template argument deduction/substitution failed:\ncascade.cpp:4:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘std::byte’\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~^~~~\nIn file included from /usr/include/c++/13/bits/ios_base.h:46:\n/usr/include/c++/13/system_error:339:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const error_code&)’\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^~~~~~~~\n/usr/include/c++/13/system_error:339:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const std::error_code&’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:554:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _CharT)’\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:554:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   deduced conflicting types for parameter ‘_CharT’ (‘char’ and ‘std::basic_ostream<char>’)\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:564:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, char)’\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:564:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:570:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char)’\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:570:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:581:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, signed char)’\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:581:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘signed char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:586:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, unsigned char)’\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:586:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘unsigned char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:595:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, wchar_t)’ (deleted)\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:595:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘wchar_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:600:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char8_t)’ (deleted)\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:600:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char8_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:605:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char16_t)’ (deleted)\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:605:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char16_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:609:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char32_t)’ (deleted)\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:609:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char32_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:615:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char8_t)’ (deleted)\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:615:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:620:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char16_t)’ (deleted)\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:620:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:624:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char32_t)’ (deleted)\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:624:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:645:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const _CharT*)’\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:645:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘const _CharT*’ and ‘std::basic_ostream<char>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/bits/ostream.tcc:307:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const char*)’\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:307:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:662:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char*)’\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:662:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:675:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const signed char*)’\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:675:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const signed char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:680:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const unsigned char*)’\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:680:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const unsigned char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:689:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const wchar_t*)’ (deleted)\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:689:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const wchar_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:694:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*)’ (deleted)\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:694:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char8_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:699:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char16_t*)’ (deleted)\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:699:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char16_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:703:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char32_t*)’ (deleted)\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:703:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char32_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:709:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*)’ (deleted)\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:709:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:714:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*)’ (deleted)\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:714:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:718:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*)’ (deleted)\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:718:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:801:5: note: candidate: ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&)’\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:801:5: note:   template argument deduction/substitution failed:\n/usr/include/c++/13/ostream: In substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’:\ncascade.cpp:5:10:   required from here\n/usr/include/c++/13/ostream:801:5: error: template constraint failure for ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&&’\n/usr/include/c++/13/ostream:801:5: note: constraints not satisfied\n/usr/include/c++/13/ostream: In substitution of ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&& [with _Os = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’:\n/usr/include/c++/13/ostream:801:5:   required by substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’\ncascade.cpp:5:10:   required from here\n/usr/include/c++/13/ostream:768:13:   required for the satisfaction of ‘__derived_from_ios_base<_Os>’ [with _Os = std::basic_ostream<char, std::char_traits<char> >&]\n/usr/include/c++/13/ostream:768:39: note: the expression ‘is_class_v<_Tp> [with _Tp = std::basic_ostream<char, std::char_traits<char> >&]’ evaluated to ‘false’\n  768 |     concept __derived_from_ios_base = is_class_v<_Tp>\n      |                                       ^~~~~~~~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g cascade.cpp -o cascade",
+     "out": "",
+     "err": "cascade.cpp:4:18: warning: missing terminating \" character\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^\ncascade.cpp:4:18: error: missing terminating \" character\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^~~~~~~~~~~~~~~~~\ncascade.cpp: In function ‘int main()’:\ncascade.cpp:4:15: error: no match for ‘operator<<’ (operand types are ‘std::ostream’ {aka ‘std::basic_ostream<char>’} and ‘std::ostream’ {aka ‘std::basic_ostream<char>’})\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~~~~~ ^~\n      |          |\n      |          basic_ostream<[...]>\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~~~~~  \n      |          |\n      |          basic_ostream<[...]>\ncascade.cpp:4:15: note: candidate: ‘operator<<(int, int)’ (built-in)\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~~~~~  \ncascade.cpp:4:15: note:   no known conversion for argument 2 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘int’\nIn file included from /usr/include/c++/13/iostream:41,\n                 from cascade.cpp:1:\n/usr/include/c++/13/ostream:110:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ostream_type& (*)(__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:110:36: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)’ {aka ‘std::basic_ostream<char>& (*)(std::basic_ostream<char>&)’}\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:119:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ios_type& (*)(__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; __ios_type = std::basic_ios<char>]’\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:119:32: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)’ {aka ‘std::basic_ios<char>& (*)(std::basic_ios<char>&)’}\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:129:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:129:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::ios_base& (*)(std::ios_base&)’\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~\n/usr/include/c++/13/ostream:168:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  168 |       operator<<(long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:168:23: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long int’\n  168 |       operator<<(long __n)\n      |                  ~~~~~^~~\n/usr/include/c++/13/ostream:172:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  172 |       operator<<(unsigned long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:172:32: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long unsigned int’\n  172 |       operator<<(unsigned long __n)\n      |                  ~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:176:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  176 |       operator<<(bool __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:176:23: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘bool’\n  176 |       operator<<(bool __n)\n      |                  ~~~~~^~~\nIn file included from /usr/include/c++/13/ostream:880:\n/usr/include/c++/13/bits/ostream.tcc:96:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]’\n   96 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:97:22: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘short int’\n   97 |     operator<<(short __n)\n      |                ~~~~~~^~~\n/usr/include/c++/13/ostream:183:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  183 |       operator<<(unsigned short __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:183:33: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘short unsigned int’\n  183 |       operator<<(unsigned short __n)\n      |                  ~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/bits/ostream.tcc:110:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]’\n  110 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:111:20: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘int’\n  111 |     operator<<(int __n)\n      |                ~~~~^~~\n/usr/include/c++/13/ostream:194:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  194 |       operator<<(unsigned int __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:194:31: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘unsigned int’\n  194 |       operator<<(unsigned int __n)\n      |                  ~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:203:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  203 |       operator<<(long long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:203:28: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long long int’\n  203 |       operator<<(long long __n)\n      |                  ~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:207:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  207 |       operator<<(unsigned long long __n)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:207:37: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long long unsigned int’\n  207 |       operator<<(unsigned long long __n)\n      |                  ~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:222:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  222 |       operator<<(double __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:222:25: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘double’\n  222 |       operator<<(double __f)\n      |                  ~~~~~~~^~~\n/usr/include/c++/13/ostream:226:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  226 |       operator<<(float __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:226:24: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘float’\n  226 |       operator<<(float __f)\n      |                  ~~~~~~^~~\n/usr/include/c++/13/ostream:234:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  234 |       operator<<(long double __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:234:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘long double’\n  234 |       operator<<(long double __f)\n      |                  ~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:241:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float16) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  241 |       operator<<(_Float16 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:241:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float16’\n  241 |       operator<<(_Float16 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:250:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float32) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  250 |       operator<<(_Float32 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:250:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float32’\n  250 |       operator<<(_Float32 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:259:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(_Float64) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  259 |       operator<<(_Float64 __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:259:27: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘_Float64’\n  259 |       operator<<(_Float64 __f)\n      |                  ~~~~~~~~~^~~\n/usr/include/c++/13/ostream:277:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__gnu_cxx::__bfloat16_t) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; __gnu_cxx::__bfloat16_t = __bf16]’\n  277 |       operator<<(__gnu_cxx::__bfloat16_t __f)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:277:42: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘__gnu_cxx::__bfloat16_t’ {aka ‘__bf16’}\n  277 |       operator<<(__gnu_cxx::__bfloat16_t __f)\n      |                  ~~~~~~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:292:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  292 |       operator<<(const void* __p)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:292:30: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘const void*’\n  292 |       operator<<(const void* __p)\n      |                  ~~~~~~~~~~~~^~~\n/usr/include/c++/13/ostream:297:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]’\n  297 |       operator<<(nullptr_t)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:297:18: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::nullptr_t’\n  297 |       operator<<(nullptr_t)\n      |                  ^~~~~~~~~\n/usr/include/c++/13/ostream:304:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const volatile void*) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’\n  304 |       operator<<(const volatile void* __p)\n      |       ^~~~~~~~\n/usr/include/c++/13/ostream:304:39: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘const volatile void*’\n  304 |       operator<<(const volatile void* __p)\n      |                  ~~~~~~~~~~~~~~~~~~~~~^~~\n/usr/include/c++/13/bits/ostream.tcc:124:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; __streambuf_type = std::basic_streambuf<char>]’\n  124 |     basic_ostream<_CharT, _Traits>::\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:125:34: note:   no known conversion for argument 1 from ‘std::ostream’ {aka ‘std::basic_ostream<char>’} to ‘std::basic_ostream<char>::__streambuf_type*’ {aka ‘std::basic_streambuf<char>*’}\n  125 |     operator<<(__streambuf_type* __sbin)\n      |                ~~~~~~~~~~~~~~~~~~^~~~~~\nIn file included from /usr/include/c++/13/bits/basic_string.h:47,\n                 from /usr/include/c++/13/string:54,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44,\n                 from /usr/include/c++/13/ostream:40:\n/usr/include/c++/13/string_view:761:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, basic_string_view<_CharT, _Traits>)’\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^~~~~~~~\n/usr/include/c++/13/string_view:761:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   ‘std::basic_ostream<char>’ is not derived from ‘std::basic_string_view<_CharT, _Traits>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/bits/basic_string.h:4032:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:4032:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   ‘std::ostream’ {aka ‘std::basic_ostream<char>’} is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\nIn file included from /usr/include/c++/13/bits/memory_resource.h:38,\n                 from /usr/include/c++/13/string:58:\n/usr/include/c++/13/cstddef:124:5: note: candidate: ‘template<class _IntegerType> constexpr std::__byte_op_t<_IntegerType> std::operator<<(byte, _IntegerType)’\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^~~~~~~~\n/usr/include/c++/13/cstddef:124:5: note:   template argument deduction/substitution failed:\ncascade.cpp:4:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘std::byte’\n    4 |     std::cout << \"Missing quote\\n;\n      |     ~~~~~^~~~\nIn file included from /usr/include/c++/13/bits/ios_base.h:46:\n/usr/include/c++/13/system_error:339:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const error_code&)’\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^~~~~~~~\n/usr/include/c++/13/system_error:339:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const std::error_code&’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:554:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _CharT)’\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:554:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   deduced conflicting types for parameter ‘_CharT’ (‘char’ and ‘std::basic_ostream<char>’)\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:564:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, char)’\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:564:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:570:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char)’\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:570:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:581:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, signed char)’\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:581:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘signed char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:586:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, unsigned char)’\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:586:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘unsigned char’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:595:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, wchar_t)’ (deleted)\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:595:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘wchar_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:600:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char8_t)’ (deleted)\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:600:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char8_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:605:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char16_t)’ (deleted)\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:605:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char16_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:609:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char32_t)’ (deleted)\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:609:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘char32_t’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:615:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char8_t)’ (deleted)\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:615:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:620:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char16_t)’ (deleted)\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:620:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:624:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char32_t)’ (deleted)\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:624:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:645:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const _CharT*)’\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:645:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘const _CharT*’ and ‘std::basic_ostream<char>’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/bits/ostream.tcc:307:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const char*)’\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/ostream.tcc:307:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:662:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char*)’\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:662:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:675:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const signed char*)’\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:675:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const signed char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:680:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const unsigned char*)’\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:680:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const unsigned char*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:689:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const wchar_t*)’ (deleted)\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:689:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const wchar_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:694:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*)’ (deleted)\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:694:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char8_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:699:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char16_t*)’ (deleted)\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:699:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char16_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:703:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char32_t*)’ (deleted)\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:703:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   cannot convert ‘std::cout’ (type ‘std::ostream’ {aka ‘std::basic_ostream<char>’}) to type ‘const char32_t*’\n    5 |     std::cout << \"Second line\\n\";\n      |     ~~~~~^~~~\n/usr/include/c++/13/ostream:709:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*)’ (deleted)\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:709:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:714:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*)’ (deleted)\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:714:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:718:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*)’ (deleted)\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:718:5: note:   template argument deduction/substitution failed:\ncascade.cpp:5:10: note:   mismatched types ‘wchar_t’ and ‘char’\n    5 |     std::cout << \"Second line\\n\";\n      |          ^~~~\n/usr/include/c++/13/ostream:801:5: note: candidate: ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&)’\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^~~~~~~~\n/usr/include/c++/13/ostream:801:5: note:   template argument deduction/substitution failed:\n/usr/include/c++/13/ostream: In substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’:\ncascade.cpp:5:10:   required from here\n/usr/include/c++/13/ostream:801:5: error: template constraint failure for ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&&’\n/usr/include/c++/13/ostream:801:5: note: constraints not satisfied\n/usr/include/c++/13/ostream: In substitution of ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&& [with _Os = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’:\n/usr/include/c++/13/ostream:801:5:   required by substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = std::basic_ostream<char>]’\ncascade.cpp:5:10:   required from here\n/usr/include/c++/13/ostream:768:13:   required for the satisfaction of ‘__derived_from_ios_base<_Os>’ [with _Os = std::basic_ostream<char, std::char_traits<char> >&]\n/usr/include/c++/13/ostream:768:39: note: the expression ‘is_class_v<_Tp> [with _Tp = std::basic_ostream<char, std::char_traits<char> >&]’ evaluated to ‘false’\n  768 |     concept __derived_from_ios_base = is_class_v<_Tp>\n      |                                       ^~~~~~~~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "cascade.cpp:4:18: warning: missing terminating '\"' character [-Winvalid-pp-token]\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^\ncascade.cpp:4:18: error: expected expression\n1 warning and 1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g cascade.cpp -o cascade",
+      "out": "",
+      "err": "cascade.cpp:4:18: warning: missing terminating '\"' character [-Winvalid-pp-token]\n    4 |     std::cout << \"Missing quote\\n;\n      |                  ^\ncascade.cpp:4:18: error: expected expression\n1 warning and 1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "cascade_fixed.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Missing quote\\n\";\n    std::cout << \"Second line\\n\";\n    return 0;\n}\n",
+   "stdout": "Missing quote\nSecond line\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g cascade_fixed.cpp -o cascade_fixed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./cascade_fixed",
+     "out": "Missing quote\nSecond line\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Missing quote\nSecond line\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g cascade_fixed.cpp -o cascade_fixed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./cascade_fixed",
+      "out": "Missing quote\nSecond line\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "comments.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    // std::cout << \"A\\n\";\n    std::cout << \"B\\n\"; // std::cout << \"C\\n\";\n    /* std::cout << \"D\\n\";\n    std::cout << \"E\\n\"; */\n    std::cout << \"F // not a comment\\n\";\n    return 0;\n}\n",
+   "stdout": "B\nF // not a comment\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g comments.cpp -o comments",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./comments",
+     "out": "B\nF // not a comment\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "B\nF // not a comment\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g comments.cpp -o comments",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./comments",
+      "out": "B\nF // not a comment\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "conv.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int bolts = 3.7;\n    std::cout << bolts << '\\n';\n    return 0;\n}\n",
+   "stdout": "3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g conv.cpp -o conv",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./conv",
+     "out": "3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3\n",
+    "stderr": "conv.cpp:4:17: warning: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g conv.cpp -o conv",
+      "out": "",
+      "err": "conv.cpp:4:17: warning: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./conv",
+      "out": "3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "conv_w.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int bolts = 3.7;\n    std::cout << bolts << '\\n';\n    return 0;\n}\n",
+   "stdout": "3\n",
+   "stderr": "conv_w.cpp: In function ‘int main()’:\nconv_w.cpp:4:17: warning: conversion from ‘double’ to ‘int’ changes value from ‘3.7000000000000002e+0’ to ‘3’ [-Wfloat-conversion]\n    4 |     int bolts = 3.7;\n      |                 ^~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -Wconversion -g conv_w.cpp -o conv_w",
+     "out": "",
+     "err": "conv_w.cpp: In function ‘int main()’:\nconv_w.cpp:4:17: warning: conversion from ‘double’ to ‘int’ changes value from ‘3.7000000000000002e+0’ to ‘3’ [-Wfloat-conversion]\n    4 |     int bolts = 3.7;\n      |                 ^~~\n",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    },
+    {
+     "cmd": "./conv_w",
+     "out": "3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3\n",
+    "stderr": "conv_w.cpp:4:17: warning: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -Wconversion -g conv_w.cpp -o conv_w",
+      "out": "",
+      "err": "conv_w.cpp:4:17: warning: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 warning generated.\n",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     },
+     {
+      "cmd": "./conv_w",
+      "out": "3\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     }
+    ]
+   }
+  },
+  "conv_werror.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int bolts = 3.7;\n    std::cout << bolts << '\\n';\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "conv_werror.cpp: In function ‘int main()’:\nconv_werror.cpp:4:17: error: conversion from ‘double’ to ‘int’ changes value from ‘3.7000000000000002e+0’ to ‘3’ [-Werror=float-conversion]\n    4 |     int bolts = 3.7;\n      |                 ^~~\ncc1plus: all warnings being treated as errors\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -Wconversion -Werror -g conv_werror.cpp -o conv_werror",
+     "out": "",
+     "err": "conv_werror.cpp: In function ‘int main()’:\nconv_werror.cpp:4:17: error: conversion from ‘double’ to ‘int’ changes value from ‘3.7000000000000002e+0’ to ‘3’ [-Werror=float-conversion]\n    4 |     int bolts = 3.7;\n      |                 ^~~\ncc1plus: all warnings being treated as errors\n",
+     "exit": 1,
+     "dir": "~/cpp-ch2"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "conv_werror.cpp:4:17: error: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Werror,-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -Wconversion -Werror -g conv_werror.cpp -o conv_werror",
+      "out": "",
+      "err": "conv_werror.cpp:4:17: error: implicit conversion from 'double' to 'int' changes value from 3.7 to 3 [-Werror,-Wliteral-conversion]\n    4 |     int bolts = 3.7;\n      |         ~~~~~   ^~~\n1 error generated.\n",
+      "exit": 1,
+      "dir": "~/cpp-ch2"
+     }
+    ]
+   }
+  },
+  "endl.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Bolt\\n\";\n    std::cout << \"Nut\" << '\\n';\n    std::cout << \"Gear\" << std::endl;\n    return 0;\n}\n",
+   "stdout": "Bolt\nNut\nGear\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g endl.cpp -o endl",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./endl",
+     "out": "Bolt\nNut\nGear\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Bolt\nNut\nGear\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g endl.cpp -o endl",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./endl",
+      "out": "Bolt\nNut\nGear\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "escapes.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Say \\\"cheese\\\"\\n\";\n    std::cout << \"C:\\\\garage\\\\tools\\n\";\n    std::cout << \"Nuts:\\t12\\n\";\n    std::cout << 'A' << '\\n';\n    std::cout << \"Up\\nDown\\n\";\n    return 0;\n}\n",
+   "stdout": "Say \"cheese\"\nC:\\garage\\tools\nNuts:\t12\nA\nUp\nDown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g escapes.cpp -o escapes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./escapes",
+     "out": "Say \"cheese\"\nC:\\garage\\tools\nNuts:\t12\nA\nUp\nDown\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Say \"cheese\"\nC:\\garage\\tools\nNuts:\t12\nA\nUp\nDown\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g escapes.cpp -o escapes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./escapes",
+      "out": "Say \"cheese\"\nC:\\garage\\tools\nNuts:\t12\nA\nUp\nDown\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_hello.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Hi, Wren!\\n\";\n    return 0;\n}\n",
+   "stdout": "Hi, Wren!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_hello.cpp -o fill_hello",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_hello",
+     "out": "Hi, Wren!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Hi, Wren!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_hello.cpp -o fill_hello",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_hello",
+      "out": "Hi, Wren!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "header.cpp": {
+   "src": "#include <iostrem>\n\nint main() {\n    std::cout << \"Clues!\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "header.cpp:1:10: fatal error: iostrem: No such file or directory\n    1 | #include <iostrem>\n      |          ^~~~~~~~~\ncompilation terminated.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g header.cpp -o header",
+     "out": "",
+     "err": "header.cpp:1:10: fatal error: iostrem: No such file or directory\n    1 | #include <iostrem>\n      |          ^~~~~~~~~\ncompilation terminated.\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "header.cpp:1:10: fatal error: 'iostrem' file not found\n    1 | #include <iostrem>\n      |          ^~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g header.cpp -o header",
+      "out": "",
+      "err": "header.cpp:1:10: fatal error: 'iostrem' file not found\n    1 | #include <iostrem>\n      |          ^~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "hello.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, world!\\n\";\n    return 0;\n}\n",
+   "stdout": "Hello, world!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g hello.cpp -o hello",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./hello",
+     "out": "Hello, world!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Hello, world!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g hello.cpp -o hello",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./hello",
+      "out": "Hello, world!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lines.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Gloves on.\\n\";\n    std::cout << \"Goggles down.\\n\";\n    std::cout << \"Wrench ready!\\n\";\n    return 0;\n}\n",
+   "stdout": "Gloves on.\nGoggles down.\nWrench ready!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g lines.cpp -o lines",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lines",
+     "out": "Gloves on.\nGoggles down.\nWrench ready!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Gloves on.\nGoggles down.\nWrench ready!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g lines.cpp -o lines",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./lines",
+      "out": "Gloves on.\nGoggles down.\nWrench ready!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "long_quote.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << 'Hello!';\n    std::cout << '\\n';\n    return 0;\n}\n",
+   "stdout": "1819045665\n",
+   "stderr": "long_quote.cpp:4:18: warning: character constant too long for its type\n    4 |     std::cout << 'Hello!';\n      |                  ^~~~~~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g long_quote.cpp -o long_quote",
+     "out": "",
+     "err": "long_quote.cpp:4:18: warning: character constant too long for its type\n    4 |     std::cout << 'Hello!';\n      |                  ^~~~~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./long_quote",
+     "out": "1819045665\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1819045665\n",
+    "stderr": "long_quote.cpp:4:18: warning: multi-character character constant [-Wmultichar]\n    4 |     std::cout << 'Hello!';\n      |                  ^\nlong_quote.cpp:4:18: warning: character constant too long for its type\n2 warnings generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g long_quote.cpp -o long_quote",
+      "out": "",
+      "err": "long_quote.cpp:4:18: warning: multi-character character constant [-Wmultichar]\n    4 |     std::cout << 'Hello!';\n      |                  ^\nlong_quote.cpp:4:18: warning: character constant too long for its type\n2 warnings generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./long_quote",
+      "out": "1819045665\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "nobrace.cpp": {
+   "src": "#include <iostream>\n\nint main()\n    std::cout << \"One\\n\";\n    std::cout << \"Two\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "nobrace.cpp:4:5: error: expected initializer before ‘std’\n    4 |     std::cout << \"One\\n\";\n      |     ^~~\nnobrace.cpp:5:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    5 |     std::cout << \"Two\\n\";\n      |          ^~~~\nIn file included from nobrace.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nnobrace.cpp:6:5: error: expected unqualified-id before ‘return’\n    6 |     return 0;\n      |     ^~~~~~\nnobrace.cpp:7:1: error: expected declaration before ‘}’ token\n    7 | }\n      | ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g nobrace.cpp -o nobrace",
+     "out": "",
+     "err": "nobrace.cpp:4:5: error: expected initializer before ‘std’\n    4 |     std::cout << \"One\\n\";\n      |     ^~~\nnobrace.cpp:5:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    5 |     std::cout << \"Two\\n\";\n      |          ^~~~\nIn file included from nobrace.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nnobrace.cpp:6:5: error: expected unqualified-id before ‘return’\n    6 |     return 0;\n      |     ^~~~~~\nnobrace.cpp:7:1: error: expected declaration before ‘}’ token\n    7 | }\n      | ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "nobrace.cpp:4:5: error: expected function body after function declarator\n    4 |     std::cout << \"One\\n\";\n      |     ^\nnobrace.cpp:5:10: error: no type named 'cout' in namespace 'std'\n    5 |     std::cout << \"Two\\n\";\n      |     ~~~~~^\nnobrace.cpp:5:15: error: expected unqualified-id\n    5 |     std::cout << \"Two\\n\";\n      |               ^\nnobrace.cpp:6:5: error: expected unqualified-id\n    6 |     return 0;\n      |     ^\nnobrace.cpp:7:1: error: extraneous closing brace ('}')\n    7 | }\n      | ^\n5 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g nobrace.cpp -o nobrace",
+      "out": "",
+      "err": "nobrace.cpp:4:5: error: expected function body after function declarator\n    4 |     std::cout << \"One\\n\";\n      |     ^\nnobrace.cpp:5:10: error: no type named 'cout' in namespace 'std'\n    5 |     std::cout << \"Two\\n\";\n      |     ~~~~~^\nnobrace.cpp:5:15: error: expected unqualified-id\n    5 |     std::cout << \"Two\\n\";\n      |               ^\nnobrace.cpp:6:5: error: expected unqualified-id\n    6 |     return 0;\n      |     ^\nnobrace.cpp:7:1: error: extraneous closing brace ('}')\n    7 | }\n      | ^\n5 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "nonl.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Tick\";\n    std::cout << \"Tock\";\n    std::cout << \"Tick\\n\";\n    std::cout << \"Tock\\n\";\n    return 0;\n}\n",
+   "stdout": "TickTockTick\nTock\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g nonl.cpp -o nonl",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./nonl",
+     "out": "TickTockTick\nTock\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "TickTockTick\nTock\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g nonl.cpp -o nonl",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./nonl",
+      "out": "TickTockTick\nTock\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "noreturn.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"No return line here.\\n\";\n}\n",
+   "stdout": "No return line here.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g noreturn.cpp -o noreturn",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./noreturn",
+     "out": "No return line here.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "No return line here.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g noreturn.cpp -o noreturn",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./noreturn",
+      "out": "No return line here.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "nostd.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    cout << \"Who am I?\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "nostd.cpp: In function ‘int main()’:\nnostd.cpp:4:5: error: ‘cout’ was not declared in this scope; did you mean ‘std::cout’?\n    4 |     cout << \"Who am I?\\n\";\n      |     ^~~~\n      |     std::cout\nIn file included from nostd.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g nostd.cpp -o nostd",
+     "out": "",
+     "err": "nostd.cpp: In function ‘int main()’:\nnostd.cpp:4:5: error: ‘cout’ was not declared in this scope; did you mean ‘std::cout’?\n    4 |     cout << \"Who am I?\\n\";\n      |     ^~~~\n      |     std::cout\nIn file included from nostd.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "nostd.cpp:4:5: error: use of undeclared identifier 'cout'; did you mean 'std::cout'?\n    4 |     cout << \"Who am I?\\n\";\n      |     ^~~~\n      |     std::cout\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:63:18: note: 'std::cout' declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g nostd.cpp -o nostd",
+      "out": "",
+      "err": "nostd.cpp:4:5: error: use of undeclared identifier 'cout'; did you mean 'std::cout'?\n    4 |     cout << \"Who am I?\\n\";\n      |     ^~~~\n      |     std::cout\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:63:18: note: 'std::cout' declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "oldbook.cpp": {
+   "src": "#include <iostream.h>\n\nint main() {\n    std::cout << \"From an old book\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "oldbook.cpp:1:10: fatal error: iostream.h: No such file or directory\n    1 | #include <iostream.h>\n      |          ^~~~~~~~~~~~\ncompilation terminated.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g oldbook.cpp -o oldbook",
+     "out": "",
+     "err": "oldbook.cpp:1:10: fatal error: iostream.h: No such file or directory\n    1 | #include <iostream.h>\n      |          ^~~~~~~~~~~~\ncompilation terminated.\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "oldbook.cpp:1:10: fatal error: 'iostream.h' file not found\n    1 | #include <iostream.h>\n      |          ^~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g oldbook.cpp -o oldbook",
+      "out": "",
+      "err": "oldbook.cpp:1:10: fatal error: 'iostream.h' file not found\n    1 | #include <iostream.h>\n      |          ^~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "parsons_go.cpp": {
+   "src": "#include <iostream>\nint main() {\n    std::cout << \"Ready,\\n\";\n    std::cout << \"set,\\n\";\n    std::cout << \"go!\\n\";\n    return 0;\n}\n",
+   "stdout": "Ready,\nset,\ngo!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_go.cpp -o parsons_go",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_go",
+     "out": "Ready,\nset,\ngo!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ready,\nset,\ngo!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_go.cpp -o parsons_go",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_go",
+      "out": "Ready,\nset,\ngo!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "pasted.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, world!\\n\";\n    return 0;\n}\n",
+   "stdout": "44652\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "wc -l pasted.cpp",
+     "out": "6 pasted.cpp\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    },
+    {
+     "cmd": "g++ -std=c++23 -E pasted.cpp | wc -l",
+     "out": "44652\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "44150\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "wc -l pasted.cpp",
+      "out": "6 pasted.cpp\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     },
+     {
+      "cmd": "clang++ -std=c++23 -E pasted.cpp | wc -l",
+      "out": "44150\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     }
+    ]
+   }
+  },
+  "quote_fill.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Wren said \\\"Hi!\\\"\\n\";\n    return 0;\n}\n",
+   "stdout": "Wren said \"Hi!\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g quote_fill.cpp -o quote_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./quote_fill",
+     "out": "Wren said \"Hi!\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren said \"Hi!\"\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g quote_fill.cpp -o quote_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./quote_fill",
+      "out": "Wren said \"Hi!\"\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "rightfix.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"One\\n\";\n    std::cout << \"Two\\n\";\n    return 0;\n}\n",
+   "stdout": "One\nTwo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g rightfix.cpp -o rightfix",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./rightfix",
+     "out": "One\nTwo\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "One\nTwo\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g rightfix.cpp -o rightfix",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./rightfix",
+      "out": "One\nTwo\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "semi.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, detective!\\n\"\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "semi.cpp: In function ‘int main()’:\nsemi.cpp:4:39: error: expected ‘;’ before ‘return’\n    4 |     std::cout << \"Hello, detective!\\n\"\n      |                                       ^\n      |                                       ;\n    5 |     return 0;\n      |     ~~~~~~                             \n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g semi.cpp -o semi",
+     "out": "",
+     "err": "semi.cpp: In function ‘int main()’:\nsemi.cpp:4:39: error: expected ‘;’ before ‘return’\n    4 |     std::cout << \"Hello, detective!\\n\"\n      |                                       ^\n      |                                       ;\n    5 |     return 0;\n      |     ~~~~~~                             \n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "semi.cpp:4:39: error: expected ';' after expression\n    4 |     std::cout << \"Hello, detective!\\n\"\n      |                                       ^\n      |                                       ;\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g semi.cpp -o semi",
+      "out": "",
+      "err": "semi.cpp:4:39: error: expected ';' after expression\n    4 |     std::cout << \"Hello, detective!\\n\"\n      |                                       ^\n      |                                       ;\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_semi.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Wrench\\n\";\n    std::cout << \"Hammer\\n\"\n    std::cout << \"Pliers\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "spot_semi.cpp: In function ‘int main()’:\nspot_semi.cpp:5:28: error: expected ‘;’ before ‘std’\n    5 |     std::cout << \"Hammer\\n\"\n      |                            ^\n      |                            ;\n    6 |     std::cout << \"Pliers\\n\";\n      |     ~~~                     \n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_semi.cpp -o spot_semi",
+     "out": "",
+     "err": "spot_semi.cpp: In function ‘int main()’:\nspot_semi.cpp:5:28: error: expected ‘;’ before ‘std’\n    5 |     std::cout << \"Hammer\\n\"\n      |                            ^\n      |                            ;\n    6 |     std::cout << \"Pliers\\n\";\n      |     ~~~                     \n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "spot_semi.cpp:5:28: error: expected ';' after expression\n    5 |     std::cout << \"Hammer\\n\"\n      |                            ^\n      |                            ;\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_semi.cpp -o spot_semi",
+      "out": "",
+      "err": "spot_semi.cpp:5:28: error: expected ';' after expression\n    5 |     std::cout << \"Hammer\\n\"\n      |                            ^\n      |                            ;\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_std.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Gears\\n\";\n    cout << \"Springs\\n\";\n    std::cout << \"Levers\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "spot_std.cpp: In function ‘int main()’:\nspot_std.cpp:5:5: error: ‘cout’ was not declared in this scope; did you mean ‘std::cout’?\n    5 |     cout << \"Springs\\n\";\n      |     ^~~~\n      |     std::cout\nIn file included from spot_std.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_std.cpp -o spot_std",
+     "out": "",
+     "err": "spot_std.cpp: In function ‘int main()’:\nspot_std.cpp:5:5: error: ‘cout’ was not declared in this scope; did you mean ‘std::cout’?\n    5 |     cout << \"Springs\\n\";\n      |     ^~~~\n      |     std::cout\nIn file included from spot_std.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "spot_std.cpp:5:5: error: use of undeclared identifier 'cout'; did you mean 'std::cout'?\n    5 |     cout << \"Springs\\n\";\n      |     ^~~~\n      |     std::cout\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:63:18: note: 'std::cout' declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_std.cpp -o spot_std",
+      "out": "",
+      "err": "spot_std.cpp:5:5: error: use of undeclared identifier 'cout'; did you mean 'std::cout'?\n    5 |     cout << \"Springs\\n\";\n      |     ^~~~\n      |     std::cout\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:63:18: note: 'std::cout' declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "squashed.cpp": {
+   "src": "#include <iostream>\nint main(){std::cout<<\"Tight\";std::cout\n<<\n\" fit,\\n\";std::cout<<\"still fine.\\n\";return 0;}\n",
+   "stdout": "Tight fit,\nstill fine.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g squashed.cpp -o squashed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./squashed",
+     "out": "Tight fit,\nstill fine.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Tight fit,\nstill fine.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g squashed.cpp -o squashed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./squashed",
+      "out": "Tight fit,\nstill fine.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "tidy.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Squashed,\\n\";\n    std::cout << \"but it still works.\\n\";\n    return 0;\n}\n",
+   "stdout": "Squashed,\nbut it still works.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g tidy.cpp -o tidy",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./tidy",
+     "out": "Squashed,\nbut it still works.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Squashed,\nbut it still works.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g tidy.cpp -o tidy",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./tidy",
+      "out": "Squashed,\nbut it still works.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_tabs.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Part\\tQty\\tBin\\n\";\n    std::cout << \"bolt\\t12\\tA3\\n\";\n    std::cout << \"nut\\t40\\tB1\\n\";\n    std::cout << \"gear\\t3\\tC7\\n\";\n    return 0;\n}\n",
+   "stdout": "Part\tQty\tBin\nbolt\t12\tA3\nnut\t40\tB1\ngear\t3\tC7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_tabs.cpp -o trace_tabs",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_tabs",
+     "out": "Part\tQty\tBin\nbolt\t12\tA3\nnut\t40\tB1\ngear\t3\tC7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Part\tQty\tBin\nbolt\t12\tA3\nnut\t40\tB1\ngear\t3\tC7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_tabs.cpp -o trace_tabs",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_tabs",
+      "out": "Part\tQty\tBin\nbolt\t12\tA3\nnut\t40\tB1\ngear\t3\tC7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "unclosed.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    /* Wren's checklist\n    std::cout << \"Oil ok\\n\";\n    std::cout << \"Tyres ok\\n\";\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "unclosed.cpp:4:5: error: unterminated comment\n    4 |     /* Wren's checklist\n      |     ^\nunclosed.cpp: In function ‘int main()’:\nunclosed.cpp:3:13: error: expected ‘}’ at end of input\n    3 | int main() {\n      |            ~^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g unclosed.cpp -o unclosed",
+     "out": "",
+     "err": "unclosed.cpp:4:5: error: unterminated comment\n    4 |     /* Wren's checklist\n      |     ^\nunclosed.cpp: In function ‘int main()’:\nunclosed.cpp:3:13: error: expected ‘}’ at end of input\n    3 | int main() {\n      |            ~^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "unclosed.cpp:4:5: error: unterminated /* comment\n    4 |     /* Wren's checklist\n      |     ^\nunclosed.cpp:8:2: error: expected '}'\n    8 | }\n      |  ^\nunclosed.cpp:3:12: note: to match this '{'\n    3 | int main() {\n      |            ^\n2 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g unclosed.cpp -o unclosed",
+      "out": "",
+      "err": "unclosed.cpp:4:5: error: unterminated /* comment\n    4 |     /* Wren's checklist\n      |     ^\nunclosed.cpp:8:2: error: expected '}'\n    8 | }\n      |  ^\nunclosed.cpp:3:12: note: to match this '{'\n    3 | int main() {\n      |            ^\n2 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "uninit.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int x;\n    std::cout << x << '\\n';\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "uninit.cpp: In function ‘int main()’:\nuninit.cpp:5:23: warning: ‘x’ is used uninitialized [-Wuninitialized]\n    5 |     std::cout << x << '\\n';\n      |                       ^~~~\nuninit.cpp:4:9: note: ‘x’ was declared here\n    4 |     int x;\n      |         ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g uninit.cpp -o uninit",
+     "out": "",
+     "err": "uninit.cpp: In function ‘int main()’:\nuninit.cpp:5:23: warning: ‘x’ is used uninitialized [-Wuninitialized]\n    5 |     std::cout << x << '\\n';\n      |                       ^~~~\nuninit.cpp:4:9: note: ‘x’ was declared here\n    4 |     int x;\n      |         ^\n",
+     "exit": 0,
+     "dir": "~/cpp-ch2"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "uninit.cpp:5:18: warning: variable 'x' is uninitialized when used here [-Wuninitialized]\n    5 |     std::cout << x << '\\n';\n      |                  ^\nuninit.cpp:4:10: note: initialize the variable 'x' to silence this warning\n    4 |     int x;\n      |          ^\n      |           = 0\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g uninit.cpp -o uninit",
+      "out": "",
+      "err": "uninit.cpp:5:18: warning: variable 'x' is uninitialized when used here [-Wuninitialized]\n    5 |     std::cout << x << '\\n';\n      |                  ^\nuninit.cpp:4:10: note: initialize the variable 'x' to silence this warning\n    4 |     int x;\n      |          ^\n      |           = 0\n1 warning generated.\n",
+      "exit": 0,
+      "dir": "~/cpp-ch2"
+     }
+    ]
+   }
+  },
+  "workshop.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"Wren opens the garage.\\n\";\n    std::cout << \"She checks the engine.\\n\";\n    std::cout << \"Case closed!\\n\";\n    return 0;\n}\n",
+   "stdout": "Wren opens the garage.\nShe checks the engine.\nCase closed!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g workshop.cpp -o workshop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./workshop",
+     "out": "Wren opens the garage.\nShe checks the engine.\nCase closed!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren opens the garage.\nShe checks the engine.\nCase closed!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g workshop.cpp -o workshop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./workshop",
+      "out": "Wren opens the garage.\nShe checks the engine.\nCase closed!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "wrongfix.cpp": {
+   "src": "#include <iostream>\n\nint main()\n    std::cout << \"One\\n\";\n    std::cout << \"Two\\n\";\n    return 0;\n",
+   "stdout": "",
+   "stderr": "wrongfix.cpp:4:5: error: expected initializer before ‘std’\n    4 |     std::cout << \"One\\n\";\n      |     ^~~\nwrongfix.cpp:5:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    5 |     std::cout << \"Two\\n\";\n      |          ^~~~\nIn file included from wrongfix.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nwrongfix.cpp:6:5: error: expected unqualified-id before ‘return’\n    6 |     return 0;\n      |     ^~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g wrongfix.cpp -o wrongfix",
+     "out": "",
+     "err": "wrongfix.cpp:4:5: error: expected initializer before ‘std’\n    4 |     std::cout << \"One\\n\";\n      |     ^~~\nwrongfix.cpp:5:10: error: ‘cout’ in namespace ‘std’ does not name a type\n    5 |     std::cout << \"Two\\n\";\n      |          ^~~~\nIn file included from wrongfix.cpp:1:\n/usr/include/c++/13/iostream:63:18: note: ‘std::cout’ declared here\n   63 |   extern ostream cout;          ///< Linked to standard output\n      |                  ^~~~\nwrongfix.cpp:6:5: error: expected unqualified-id before ‘return’\n    6 |     return 0;\n      |     ^~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "wrongfix.cpp:4:5: error: expected function body after function declarator\n    4 |     std::cout << \"One\\n\";\n      |     ^\nwrongfix.cpp:5:10: error: no type named 'cout' in namespace 'std'\n    5 |     std::cout << \"Two\\n\";\n      |     ~~~~~^\nwrongfix.cpp:5:15: error: expected unqualified-id\n    5 |     std::cout << \"Two\\n\";\n      |               ^\nwrongfix.cpp:6:5: error: expected unqualified-id\n    6 |     return 0;\n      |     ^\n4 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g wrongfix.cpp -o wrongfix",
+      "out": "",
+      "err": "wrongfix.cpp:4:5: error: expected function body after function declarator\n    4 |     std::cout << \"One\\n\";\n      |     ^\nwrongfix.cpp:5:10: error: no type named 'cout' in namespace 'std'\n    5 |     std::cout << \"Two\\n\";\n      |     ~~~~~^\nwrongfix.cpp:5:15: error: expected unqualified-id\n    5 |     std::cout << \"Two\\n\";\n      |               ^\nwrongfix.cpp:6:5: error: expected unqualified-id\n    6 |     return 0;\n      |     ^\n4 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
