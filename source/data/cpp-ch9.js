@@ -1,0 +1,1924 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch9",
+  "versionDifferences": [
+   "contains17.cpp",
+   "designated17.cpp",
+   "designator_order.cpp",
+   "missing_semi.cpp",
+   "no_iomanip.cpp",
+   "print17.cpp",
+   "print_missing.cpp",
+   "split_wrong.cpp",
+   "spot_typo.cpp",
+   "ssize17.cpp",
+   "too_many_names.cpp",
+   "uninit.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): contains17.cpp, designated17.cpp, designator_order.cpp, missing_semi.cpp, no_iomanip.cpp, print17.cpp, print_missing.cpp, split_wrong.cpp, spot_typo.cpp, ssize17.cpp, too_many_names.cpp, uninit.cpp."
+ },
+ "programs": {
+  "binding_order.cpp": {
+   "src": "#include <iostream>\n\nstruct Size {\n    int width;\n    int height;\n};\n\nint main() {\n    Size door{90, 200};\n    auto [height, width] = door;\n    std::cout << \"height \" << height << \", width \" << width << '\\n';\n}\n",
+   "stdout": "height 90, width 200\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g binding_order.cpp -o binding_order",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./binding_order",
+     "out": "height 90, width 200\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "height 90, width 200\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g binding_order.cpp -o binding_order",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./binding_order",
+      "out": "height 90, width 200\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bindings.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Time {\n    int hours;\n    int minutes;\n    int seconds;\n};\n\nTime split_time(int total) {\n    return Time{total / 3600, total / 60 % 60, total % 60};\n}\n\nstruct Job {\n    std::string bike;\n    double price;\n};\n\nint main() {\n    auto [h, m, s] = split_time(3725);\n    std::cout << h << \"h \" << m << \"m \" << s << \"s\\n\";\n\n    std::vector<Job> jobs{{\"Racer\", 45.5}, {\"Trike\", 30.25}};\n    for (const auto& [bike, price] : jobs) {\n        std::cout << bike << \" costs $\" << price << '\\n';\n    }\n}\n",
+   "stdout": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bindings.cpp -o bindings",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bindings",
+     "out": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bindings.cpp -o bindings",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bindings",
+      "out": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bindings17.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Time {\n    int hours;\n    int minutes;\n    int seconds;\n};\n\nTime split_time(int total) {\n    return Time{total / 3600, total / 60 % 60, total % 60};\n}\n\nstruct Job {\n    std::string bike;\n    double price;\n};\n\nint main() {\n    auto [h, m, s] = split_time(3725);\n    std::cout << h << \"h \" << m << \"m \" << s << \"s\\n\";\n\n    std::vector<Job> jobs{{\"Racer\", 45.5}, {\"Trike\", 30.25}};\n    for (const auto& [bike, price] : jobs) {\n        std::cout << bike << \" costs $\" << price << '\\n';\n    }\n}\n",
+   "stdout": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -g bindings17.cpp -o bindings17",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bindings17",
+     "out": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -g bindings17.cpp -o bindings17",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bindings17",
+      "out": "1h 2m 5s\nRacer costs $45.5\nTrike costs $30.25\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Ticket {\n    std::string film = \"?\";\n    int row = 1;\n    int seat = 1;\n};\n\nint main() {\n    Ticket t{.film = \"Robots\", .seat = 12};\n    auto [film, row, seat] = t;\n    std::cout << film << \": row \" << row << \", seat \" << seat << '\\n';\n}\n",
+   "stdout": "Robots: row 1, seat 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "Robots: row 1, seat 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Robots: row 1, seat 12\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "Robots: row 1, seat 12\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <iostream>\n#include <vector>\nstruct Pt { int x; int y; };\nint main() {\n    std::vector<Pt> path{{0, 0}, {3, 4}};\n    path.push_back({6, 1});\n    for (const auto& [x, y] : path) {\n        std::cout << x + y << '\\n';\n    }\n}\n",
+   "stdout": "0\n7\n7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "0\n7\n7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0\n7\n7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "0\n7\n7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Card {\n    std::string name = \"?\";\n    int hp = 10;\n    int power = 1;\n};\n\nint main() {\n    Card a{.name = \"Gear\", .power = 3};\n    Card b = a;\n    b.hp = b.hp - a.power;\n    auto [n, hp, pw] = b;\n    std::cout << a.name << \" \" << a.hp << '\\n';\n    std::cout << n << \" \" << hp << \" \" << pw << '\\n';\n}\n",
+   "stdout": "Gear 10\nGear 7 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "Gear 10\nGear 7 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Gear 10\nGear 7 3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "Gear 10\nGear 7 3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Job {\n    std::string bike;\n    int price;\n};\n\nvoid apply_discount(Job j) {\n    j.price = j.price - 10;\n}\n\nint main() {\n    Job job{\"Racer\", 40};\n    apply_discount(job);\n    std::cout << job.bike << \" $\" << job.price << '\\n';\n}\n",
+   "stdout": "Racer $40\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "Racer $40\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer $40\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_spot",
+      "out": "Racer $40\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_trace.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Plant {\n    std::string name;\n    int height;\n};\n\nint main() {\n    std::vector<Plant> garden{{\"fern\", 10}, {\"cactus\", 4}, {\"bean\", 2}};\n    for (Plant& p : garden) {\n        p.height = p.height * 2;\n    }\n    int tallest = 0;\n    for (const auto& [name, height] : garden) {\n        if (height > tallest) tallest = height;\n        std::cout << name << \" \" << height << \" \" << tallest << '\\n';\n    }\n}\n",
+   "stdout": "fern 20 20\ncactus 8 20\nbean 4 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "fern 20 20\ncactus 8 20\nbean 4 20\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "fern 20 20\ncactus 8 20\nbean 4 20\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "fern 20 20\ncactus 8 20\nbean 4 20\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "clamp.cpp": {
+   "src": "#include <algorithm>\n#include <iostream>\n\nint main() {\n    std::cout << std::clamp(15, 0, 10) << '\\n';\n    std::cout << std::clamp(-3, 0, 10) << '\\n';\n    std::cout << std::clamp(7, 0, 10) << '\\n';\n}\n",
+   "stdout": "10\n0\n7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g clamp.cpp -o clamp",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./clamp",
+     "out": "10\n0\n7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "10\n0\n7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g clamp.cpp -o clamp",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./clamp",
+      "out": "10\n0\n7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "contains17.cpp": {
+   "src": "#include <iostream>\n#include <map>\n\nint main() {\n    std::map<int, int> drawers{{1, 40}, {2, 25}};\n    std::cout << std::boolalpha;\n    std::cout << drawers.contains(1) << '\\n';\n    std::cout << drawers.contains(7) << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "contains17.cpp: In function ‘int main()’:\ncontains17.cpp:7:26: error: ‘class std::map<int, int>’ has no member named ‘contains’\n    7 |     std::cout << drawers.contains(1) << '\\n';\n      |                          ^~~~~~~~\ncontains17.cpp:8:26: error: ‘class std::map<int, int>’ has no member named ‘contains’\n    8 |     std::cout << drawers.contains(7) << '\\n';\n      |                          ^~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -g contains17.cpp -o contains17",
+     "out": "",
+     "err": "contains17.cpp: In function ‘int main()’:\ncontains17.cpp:7:26: error: ‘class std::map<int, int>’ has no member named ‘contains’\n    7 |     std::cout << drawers.contains(1) << '\\n';\n      |                          ^~~~~~~~\ncontains17.cpp:8:26: error: ‘class std::map<int, int>’ has no member named ‘contains’\n    8 |     std::cout << drawers.contains(7) << '\\n';\n      |                          ^~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "contains17.cpp:7:26: error: no member named 'contains' in 'std::map<int, int>'\n    7 |     std::cout << drawers.contains(1) << '\\n';\n      |                  ~~~~~~~ ^\ncontains17.cpp:8:26: error: no member named 'contains' in 'std::map<int, int>'\n    8 |     std::cout << drawers.contains(7) << '\\n';\n      |                  ~~~~~~~ ^\n2 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -g contains17.cpp -o contains17",
+      "out": "",
+      "err": "contains17.cpp:7:26: error: no member named 'contains' in 'std::map<int, int>'\n    7 |     std::cout << drawers.contains(1) << '\\n';\n      |                  ~~~~~~~ ^\ncontains17.cpp:8:26: error: no member named 'contains' in 'std::map<int, int>'\n    8 |     std::cout << drawers.contains(7) << '\\n';\n      |                  ~~~~~~~ ^\n2 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "contains23.cpp": {
+   "src": "#include <iostream>\n#include <map>\n\nint main() {\n    std::map<int, int> drawers{{1, 40}, {2, 25}};\n    std::cout << std::boolalpha;\n    std::cout << drawers.contains(1) << '\\n';\n    std::cout << drawers.contains(7) << '\\n';\n}\n",
+   "stdout": "true\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g contains23.cpp -o contains23",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./contains23",
+     "out": "true\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "true\nfalse\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g contains23.cpp -o contains23",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./contains23",
+      "out": "true\nfalse\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "copy_form.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Job {\n    std::string bike;\n    double price;\n};\n\nint main() {\n    Job a{\"Racer\", 45.5};\n    Job b = a;\n    b.bike = \"Racer XL\";\n    b.price = 60;\n    std::cout << a.bike << \" $\" << a.price << '\\n';\n    std::cout << b.bike << \" $\" << b.price << '\\n';\n}\n",
+   "stdout": "Racer $45.5\nRacer XL $60\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g copy_form.cpp -o copy_form",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./copy_form",
+     "out": "Racer $45.5\nRacer XL $60\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer $45.5\nRacer XL $60\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g copy_form.cpp -o copy_form",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./copy_form",
+      "out": "Racer $45.5\nRacer XL $60\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "copy_quiz.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Score {\n    std::string player;\n    int points;\n};\n\nint main() {\n    Score mine{\"Ada\", 10};\n    Score yours = mine;\n    yours.points = yours.points + 5;\n    mine.player = \"Bo\";\n    std::cout << mine.player << \" \" << mine.points << '\\n';\n    std::cout << yours.player << \" \" << yours.points << '\\n';\n}\n",
+   "stdout": "Bo 10\nAda 15\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g copy_quiz.cpp -o copy_quiz",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./copy_quiz",
+     "out": "Bo 10\nAda 15\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Bo 10\nAda 15\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g copy_quiz.cpp -o copy_quiz",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./copy_quiz",
+      "out": "Bo 10\nAda 15\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "defaults.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Settings {\n    int volume = 5;\n    int brightness = 70;\n    std::string theme = \"light\";\n};\n\nvoid show(const Settings& s) {\n    std::cout << \"volume \" << s.volume << \", brightness \" << s.brightness\n              << \", theme \" << s.theme << '\\n';\n}\n\nint main() {\n    Settings a;\n    Settings b{8};\n    Settings c{8, 30, \"dark\"};\n    show(a);\n    show(b);\n    show(c);\n}\n",
+   "stdout": "volume 5, brightness 70, theme light\nvolume 8, brightness 70, theme light\nvolume 8, brightness 30, theme dark\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g defaults.cpp -o defaults",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./defaults",
+     "out": "volume 5, brightness 70, theme light\nvolume 8, brightness 70, theme light\nvolume 8, brightness 30, theme dark\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "volume 5, brightness 70, theme light\nvolume 8, brightness 70, theme light\nvolume 8, brightness 30, theme dark\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g defaults.cpp -o defaults",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./defaults",
+      "out": "volume 5, brightness 70, theme light\nvolume 8, brightness 70, theme light\nvolume 8, brightness 30, theme dark\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "defaults_quiz.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Pizza {\n    std::string topping = \"cheese\";\n    int slices = 8;\n    int size = 30;\n};\n\nint main() {\n    Pizza a;\n    Pizza b{\"mushroom\"};\n    Pizza c{\"olive\", 6};\n    std::cout << a.topping << \" \" << a.slices << '\\n';\n    std::cout << b.topping << \" \" << b.slices << '\\n';\n    std::cout << c.topping << \" \" << c.slices << \" \" << c.size << '\\n';\n}\n",
+   "stdout": "cheese 8\nmushroom 8\nolive 6 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g defaults_quiz.cpp -o defaults_quiz",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./defaults_quiz",
+     "out": "cheese 8\nmushroom 8\nolive 6 30\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "cheese 8\nmushroom 8\nolive 6 30\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g defaults_quiz.cpp -o defaults_quiz",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./defaults_quiz",
+      "out": "cheese 8\nmushroom 8\nolive 6 30\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "designated.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Settings {\n    int volume = 5;\n    int brightness = 70;\n    std::string theme = \"light\";\n};\n\nvoid show(const Settings& s) {\n    std::cout << \"volume \" << s.volume << \", brightness \" << s.brightness\n              << \", theme \" << s.theme << '\\n';\n}\n\nint main() {\n    Settings night{.brightness = 20, .theme = \"dark\"};\n    Settings loud{.volume = 10};\n    show(night);\n    show(loud);\n}\n",
+   "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g designated.cpp -o designated",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./designated",
+     "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g designated.cpp -o designated",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./designated",
+      "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "designated17.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Settings {\n    int volume = 5;\n    int brightness = 70;\n    std::string theme = \"light\";\n};\n\nvoid show(const Settings& s) {\n    std::cout << \"volume \" << s.volume << \", brightness \" << s.brightness\n              << \", theme \" << s.theme << '\\n';\n}\n\nint main() {\n    Settings night{.brightness = 20, .theme = \"dark\"};\n    Settings loud{.volume = 10};\n    show(night);\n    show(loud);\n}\n",
+   "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+   "stderr": "designated17.cpp: In function ‘int main()’:\ndesignated17.cpp:16:20: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                    ^\ndesignated17.cpp:16:38: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                                      ^\ndesignated17.cpp:17:19: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   17 |     Settings loud{.volume = 10};\n      |                   ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -Wpedantic -g designated17.cpp -o designated17",
+     "out": "",
+     "err": "designated17.cpp: In function ‘int main()’:\ndesignated17.cpp:16:20: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                    ^\ndesignated17.cpp:16:38: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                                      ^\ndesignated17.cpp:17:19: warning: C++ designated initializers only available with ‘-std=c++20’ or ‘-std=gnu++20’ [-Wc++20-extensions]\n   17 |     Settings loud{.volume = 10};\n      |                   ^\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./designated17",
+     "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+    "stderr": "designated17.cpp:16:20: warning: designated initializers are a C++20 extension [-Wc++20-designator]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                    ^\ndesignated17.cpp:17:19: warning: designated initializers are a C++20 extension [-Wc++20-designator]\n   17 |     Settings loud{.volume = 10};\n      |                   ^\n2 warnings generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -Wpedantic -g designated17.cpp -o designated17",
+      "out": "",
+      "err": "designated17.cpp:16:20: warning: designated initializers are a C++20 extension [-Wc++20-designator]\n   16 |     Settings night{.brightness = 20, .theme = \"dark\"};\n      |                    ^\ndesignated17.cpp:17:19: warning: designated initializers are a C++20 extension [-Wc++20-designator]\n   17 |     Settings loud{.volume = 10};\n      |                   ^\n2 warnings generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./designated17",
+      "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "designated17_plain.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Settings {\n    int volume = 5;\n    int brightness = 70;\n    std::string theme = \"light\";\n};\n\nvoid show(const Settings& s) {\n    std::cout << \"volume \" << s.volume << \", brightness \" << s.brightness\n              << \", theme \" << s.theme << '\\n';\n}\n\nint main() {\n    Settings night{.brightness = 20, .theme = \"dark\"};\n    Settings loud{.volume = 10};\n    show(night);\n    show(loud);\n}\n",
+   "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -g designated17_plain.cpp -o designated17_plain",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./designated17_plain",
+     "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -g designated17_plain.cpp -o designated17_plain",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./designated17_plain",
+      "out": "volume 5, brightness 20, theme dark\nvolume 10, brightness 70, theme light\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "designated_fill.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Order {\n    std::string drink = \"tea\";\n    int sugars = 0;\n    std::string size = \"small\";\n};\n\nint main() {\n    Order mine{.drink = \"cocoa\", .size = \"large\"};\n    std::cout << mine.drink << \", \" << mine.sugars << \" sugars, \" << mine.size << '\\n';\n}\n",
+   "stdout": "cocoa, 0 sugars, large\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g designated_fill.cpp -o designated_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./designated_fill",
+     "out": "cocoa, 0 sugars, large\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "cocoa, 0 sugars, large\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g designated_fill.cpp -o designated_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./designated_fill",
+      "out": "cocoa, 0 sugars, large\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "designator_order.cpp": {
+   "src": "#include <iostream>\n\nstruct Pt {\n    int x = 0;\n    int y = 0;\n};\n\nint main() {\n    Pt p{.y = 2, .x = 1};\n    std::cout << p.x << \", \" << p.y << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "designator_order.cpp: In function ‘int main()’:\ndesignator_order.cpp:9:24: error: designator order for field ‘Pt::x’ does not match declaration order in ‘Pt’\n    9 |     Pt p{.y = 2, .x = 1};\n      |                        ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g designator_order.cpp -o designator_order",
+     "out": "",
+     "err": "designator_order.cpp: In function ‘int main()’:\ndesignator_order.cpp:9:24: error: designator order for field ‘Pt::x’ does not match declaration order in ‘Pt’\n    9 |     Pt p{.y = 2, .x = 1};\n      |                        ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1, 2\n",
+    "stderr": "designator_order.cpp:9:23: warning: ISO C++ requires field designators to be specified in declaration order; field 'y' will be initialized after field 'x' [-Wreorder-init-list]\n    9 |     Pt p{.y = 2, .x = 1};\n      |                  ~~~~~^\ndesignator_order.cpp:9:15: note: previous initialization for field 'y' is here\n    9 |     Pt p{.y = 2, .x = 1};\n      |               ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g designator_order.cpp -o designator_order",
+      "out": "",
+      "err": "designator_order.cpp:9:23: warning: ISO C++ requires field designators to be specified in declaration order; field 'y' will be initialized after field 'x' [-Wreorder-init-list]\n    9 |     Pt p{.y = 2, .x = 1};\n      |                  ~~~~~^\ndesignator_order.cpp:9:15: note: previous initialization for field 'y' is here\n    9 |     Pt p{.y = 2, .x = 1};\n      |               ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./designator_order",
+      "out": "1, 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "docs_fill.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <string>\n\nint main() {\n    std::string tool = \"spanner\";\n    std::string part = tool.substr(1, 4);\n    std::map<int, int> bins{{3, 12}};\n    bool has_three = bins.contains(3);\n    std::cout << std::boolalpha << part << ' ' << has_three << '\\n';\n}\n",
+   "stdout": "pann true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g docs_fill.cpp -o docs_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./docs_fill",
+     "out": "pann true\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "pann true\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g docs_fill.cpp -o docs_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./docs_fill",
+      "out": "pann true\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "first_struct.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Job {\n    std::string bike;\n    int wheels;\n    double price;\n};\n\nint main() {\n    Job a{\"Racer\", 2, 45.5};\n    Job b{\"Trike\", 3, 30.25};\n\n    std::cout << a.bike << \": \" << a.wheels << \" wheels, $\" << a.price << '\\n';\n    std::cout << b.bike << \": \" << b.wheels << \" wheels, $\" << b.price << '\\n';\n\n    b.price = 32.75;\n    std::cout << b.bike << \" now costs $\" << b.price << '\\n';\n}\n",
+   "stdout": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\nTrike now costs $32.75\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g first_struct.cpp -o first_struct",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./first_struct",
+     "out": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\nTrike now costs $32.75\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\nTrike now costs $32.75\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g first_struct.cpp -o first_struct",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./first_struct",
+      "out": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\nTrike now costs $32.75\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "loose_vars.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string bike1 = \"Racer\";\n    int wheels1 = 2;\n    double price1 = 45.5;\n\n    std::string bike2 = \"Trike\";\n    int wheels2 = 3;\n    double price2 = 30.25;\n\n    std::cout << bike1 << \": \" << wheels1 << \" wheels, $\" << price1 << '\\n';\n    std::cout << bike2 << \": \" << wheels2 << \" wheels, $\" << price2 << '\\n';\n}\n",
+   "stdout": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g loose_vars.cpp -o loose_vars",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./loose_vars",
+     "out": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g loose_vars.cpp -o loose_vars",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./loose_vars",
+      "out": "Racer: 2 wheels, $45.5\nTrike: 3 wheels, $30.25\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "make_bill.cpp": {
+   "src": "#include <iostream>\n\nstruct Bill {\n    int subtotal;\n    int tip;\n    int total;\n};\n\nBill make_bill(int subtotal) {\n    int tip = subtotal / 10;\n    return Bill{subtotal, tip, subtotal + tip};\n}\n\nint main() {\n    Bill b = make_bill(80);\n    std::cout << \"Subtotal $\" << b.subtotal << '\\n';\n    std::cout << \"Tip $\" << b.tip << '\\n';\n    std::cout << \"Total $\" << b.total << '\\n';\n}\n",
+   "stdout": "Subtotal $80\nTip $8\nTotal $88\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g make_bill.cpp -o make_bill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./make_bill",
+     "out": "Subtotal $80\nTip $8\nTotal $88\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Subtotal $80\nTip $8\nTotal $88\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g make_bill.cpp -o make_bill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./make_bill",
+      "out": "Subtotal $80\nTip $8\nTotal $88\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "missing_semi.cpp": {
+   "src": "#include <iostream>\n\nstruct Point {\n    int x;\n    int y;\n}\n\nint main() {\n    Point p{3, 4};\n    std::cout << p.x << \", \" << p.y << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "missing_semi.cpp:6:2: error: expected ‘;’ after struct definition\n    6 | }\n      |  ^\n      |  ;\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g missing_semi.cpp -o missing_semi",
+     "out": "",
+     "err": "missing_semi.cpp:6:2: error: expected ‘;’ after struct definition\n    6 | }\n      |  ^\n      |  ;\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "missing_semi.cpp:6:2: error: expected ';' after struct\n    6 | }\n      |  ^\n      |  ;\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g missing_semi.cpp -o missing_semi",
+      "out": "",
+      "err": "missing_semi.cpp:6:2: error: expected ';' after struct\n    6 | }\n      |  ^\n      |  ;\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "no_iomanip.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "no_iomanip.cpp: In function ‘int main()’:\nno_iomanip.cpp:4:30: error: ‘setw’ is not a member of ‘std’\n    4 |     std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n      |                              ^~~~\nno_iomanip.cpp:2:1: note: ‘std::setw’ is defined in header ‘<iomanip>’; did you forget to ‘#include <iomanip>’?\n    1 | #include <iostream>\n  +++ |+#include <iomanip>\n    2 | \n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g no_iomanip.cpp -o no_iomanip",
+     "out": "",
+     "err": "no_iomanip.cpp: In function ‘int main()’:\nno_iomanip.cpp:4:30: error: ‘setw’ is not a member of ‘std’\n    4 |     std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n      |                              ^~~~\nno_iomanip.cpp:2:1: note: ‘std::setw’ is defined in header ‘<iomanip>’; did you forget to ‘#include <iomanip>’?\n    1 | #include <iostream>\n  +++ |+#include <iomanip>\n    2 | \n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "no_iomanip.cpp:4:30: error: no member named 'setw' in namespace 'std'\n    4 |     std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n      |                         ~~~~~^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g no_iomanip.cpp -o no_iomanip",
+      "out": "",
+      "err": "no_iomanip.cpp:4:30: error: no member named 'setw' in namespace 'std'\n    4 |     std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n      |                         ~~~~~^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "pair_preview.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nint main() {\n    std::pair<std::string, int> best{\"Ada\", 36};\n    std::cout << best.first << \" scored \" << best.second << '\\n';\n\n    best.second = best.second + 4;\n    auto [name, score] = best;\n    std::cout << name << \" now has \" << score << '\\n';\n}\n",
+   "stdout": "Ada scored 36\nAda now has 40\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g pair_preview.cpp -o pair_preview",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./pair_preview",
+     "out": "Ada scored 36\nAda now has 40\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada scored 36\nAda now has 40\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g pair_preview.cpp -o pair_preview",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./pair_preview",
+      "out": "Ada scored 36\nAda now has 40\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_bind.cpp": {
+   "src": "#include <iostream>\nstruct Rect { int w; int h; };\nRect square(int side) {\n    return Rect{side, side};\n}\nint main() {\n    auto [w, h] = square(4);\n    std::cout << \"Area: \" << w * h << '\\n';\n}\n",
+   "stdout": "Area: 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_bind.cpp -o parsons_bind",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_bind",
+     "out": "Area: 16\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Area: 16\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_bind.cpp -o parsons_bind",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_bind",
+      "out": "Area: 16\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "pass_struct.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Job {\n    std::string bike;\n    double price = 0;\n};\n\nvoid print_job(const Job& j) {\n    std::cout << j.bike << \": $\" << j.price << '\\n';\n}\n\nvoid add_tip(Job& j, double tip) {\n    j.price = j.price + tip;\n}\n\nint main() {\n    Job job{\"Racer\", 45.5};\n    print_job(job);\n    add_tip(job, 4.5);\n    print_job(job);\n}\n",
+   "stdout": "Racer: $45.5\nRacer: $50\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g pass_struct.cpp -o pass_struct",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./pass_struct",
+     "out": "Racer: $45.5\nRacer: $50\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer: $45.5\nRacer: $50\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g pass_struct.cpp -o pass_struct",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./pass_struct",
+      "out": "Racer: $45.5\nRacer: $50\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "print17.cpp": {
+   "src": "#include <print>\n\nint main() {\n    std::print(\"Hello, {}!\\n\", \"Wren\");\n}\n",
+   "stdout": "",
+   "stderr": "print17.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -g print17.cpp -o print17",
+     "out": "",
+     "err": "print17.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "print17.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -g print17.cpp -o print17",
+      "out": "",
+      "err": "print17.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "print_missing.cpp": {
+   "src": "#include <print>\n\nint main() {\n    std::print(\"Hello, {}!\\n\", \"Wren\");\n}\n",
+   "stdout": "",
+   "stderr": "print_missing.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g print_missing.cpp -o print_missing",
+     "out": "",
+     "err": "print_missing.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "print_missing.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g print_missing.cpp -o print_missing",
+      "out": "",
+      "err": "print_missing.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "return_fill.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nstruct MinMax {\n    int lo;\n    int hi;\n};\n\nMinMax min_max(const std::vector<int>& v) {\n    MinMax r{v[0], v[0]};\n    for (int x : v) {\n        if (x < r.lo) r.lo = x;\n        if (x > r.hi) r.hi = x;\n    }\n    return r;\n}\n\nint main() {\n    std::vector<int> temps{14, 9, 21, 17, 11};\n    MinMax m = min_max(temps);\n    std::cout << \"Coldest \" << m.lo << \", warmest \" << m.hi << '\\n';\n}\n",
+   "stdout": "Coldest 9, warmest 21\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g return_fill.cpp -o return_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./return_fill",
+     "out": "Coldest 9, warmest 21\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Coldest 9, warmest 21\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g return_fill.cpp -o return_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./return_fill",
+      "out": "Coldest 9, warmest 21\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "size_type.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> scores;\n    std::cout << \"size: \" << scores.size() << '\\n';\n    std::cout << \"size() - 1: \" << scores.size() - 1 << '\\n';\n    std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n}\n",
+   "stdout": "size: 0\nsize() - 1: 18446744073709551615\nssize() - 1: -1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g size_type.cpp -o size_type",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./size_type",
+     "out": "size: 0\nsize() - 1: 18446744073709551615\nssize() - 1: -1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "size: 0\nsize() - 1: 18446744073709551615\nssize() - 1: -1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g size_type.cpp -o size_type",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./size_type",
+      "out": "size: 0\nsize() - 1: 18446744073709551615\nssize() - 1: -1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "split_time.cpp": {
+   "src": "#include <iostream>\n\nstruct Time {\n    int hours;\n    int minutes;\n    int seconds;\n};\n\nTime split_time(int total) {\n    return Time{total / 3600, total / 60 % 60, total % 60};\n}\n\nvoid show(int total) {\n    Time t = split_time(total);\n    std::cout << \"split_time(\" << total << \") gives \"\n              << t.hours << \"h \" << t.minutes << \"m \" << t.seconds << \"s\\n\";\n}\n\nint main() {\n    show(3725);\n    show(59);\n    show(600);\n    show(86399);\n    show(0);\n}\n",
+   "stdout": "split_time(3725) gives 1h 2m 5s\nsplit_time(59) gives 0h 0m 59s\nsplit_time(600) gives 0h 10m 0s\nsplit_time(86399) gives 23h 59m 59s\nsplit_time(0) gives 0h 0m 0s\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g split_time.cpp -o split_time",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./split_time",
+     "out": "split_time(3725) gives 1h 2m 5s\nsplit_time(59) gives 0h 0m 59s\nsplit_time(600) gives 0h 10m 0s\nsplit_time(86399) gives 23h 59m 59s\nsplit_time(0) gives 0h 0m 0s\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "split_time(3725) gives 1h 2m 5s\nsplit_time(59) gives 0h 0m 59s\nsplit_time(600) gives 0h 10m 0s\nsplit_time(86399) gives 23h 59m 59s\nsplit_time(0) gives 0h 0m 0s\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g split_time.cpp -o split_time",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./split_time",
+      "out": "split_time(3725) gives 1h 2m 5s\nsplit_time(59) gives 0h 0m 59s\nsplit_time(600) gives 0h 10m 0s\nsplit_time(86399) gives 23h 59m 59s\nsplit_time(0) gives 0h 0m 0s\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "split_wrong.cpp": {
+   "src": "#include <iostream>\n\nstruct Time {\n    int hours;\n    int minutes;\n    int seconds;\n};\n\nTime split_time(int total) {\n    return Time{total / 3600, total / 60 % 60, total % 60};\n}\n\nint main() {\n    int t = split_time(90);\n    std::cout << t << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "split_wrong.cpp: In function ‘int main()’:\nsplit_wrong.cpp:14:23: error: cannot convert ‘Time’ to ‘int’ in initialization\n   14 |     int t = split_time(90);\n      |             ~~~~~~~~~~^~~~\n      |                       |\n      |                       Time\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g split_wrong.cpp -o split_wrong",
+     "out": "",
+     "err": "split_wrong.cpp: In function ‘int main()’:\nsplit_wrong.cpp:14:23: error: cannot convert ‘Time’ to ‘int’ in initialization\n   14 |     int t = split_time(90);\n      |             ~~~~~~~~~~^~~~\n      |                       |\n      |                       Time\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "split_wrong.cpp:14:9: error: no viable conversion from 'Time' to 'int'\n   14 |     int t = split_time(90);\n      |         ^   ~~~~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g split_wrong.cpp -o split_wrong",
+      "out": "",
+      "err": "split_wrong.cpp:14:9: error: no viable conversion from 'Time' to 'int'\n   14 |     int t = split_time(90);\n      |         ^   ~~~~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_copy_loop.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Job {\n    std::string bike;\n    int price;\n};\n\nint main() {\n    std::vector<Job> jobs{{\"Racer\", 40}, {\"Trike\", 25}};\n    for (Job j : jobs) {\n        j.price = j.price + 5;\n    }\n    for (const Job& j : jobs) {\n        std::cout << j.bike << \" $\" << j.price << '\\n';\n    }\n}\n",
+   "stdout": "Racer $40\nTrike $25\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_copy_loop.cpp -o spot_copy_loop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_copy_loop",
+     "out": "Racer $40\nTrike $25\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer $40\nTrike $25\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_copy_loop.cpp -o spot_copy_loop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_copy_loop",
+      "out": "Racer $40\nTrike $25\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_size.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nint main() {\n    std::vector<std::string> queue;\n    int behind = 0;\n    std::cout << \"People waiting: \" << queue.size() << '\\n';\n    if (queue.size() - 1 > 0) {\n        behind = 1;\n    }\n    std::cout << \"Anyone behind the first? \" << behind << '\\n';\n}\n",
+   "stdout": "People waiting: 0\nAnyone behind the first? 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_size.cpp -o spot_size",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_size",
+     "out": "People waiting: 0\nAnyone behind the first? 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "People waiting: 0\nAnyone behind the first? 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_size.cpp -o spot_size",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_size",
+      "out": "People waiting: 0\nAnyone behind the first? 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_typo.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Pet {\n    std::string name;\n    int legs;\n};\n\nint main() {\n    Pet p{\"Rex\", 4};\n    std::cout << p.name << \" has \" << p.leg << \" legs\\n\";\n}\n",
+   "stdout": "",
+   "stderr": "spot_typo.cpp: In function ‘int main()’:\nspot_typo.cpp:11:41: error: ‘struct Pet’ has no member named ‘leg’; did you mean ‘legs’?\n   11 |     std::cout << p.name << \" has \" << p.leg << \" legs\\n\";\n      |                                         ^~~\n      |                                         legs\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_typo.cpp -o spot_typo",
+     "out": "",
+     "err": "spot_typo.cpp: In function ‘int main()’:\nspot_typo.cpp:11:41: error: ‘struct Pet’ has no member named ‘leg’; did you mean ‘legs’?\n   11 |     std::cout << p.name << \" has \" << p.leg << \" legs\\n\";\n      |                                         ^~~\n      |                                         legs\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "spot_typo.cpp:11:41: error: no member named 'leg' in 'Pet'; did you mean 'legs'?\n   11 |     std::cout << p.name << \" has \" << p.leg << \" legs\\n\";\n      |                                         ^~~\n      |                                         legs\nspot_typo.cpp:6:9: note: 'legs' declared here\n    6 |     int legs;\n      |         ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_typo.cpp -o spot_typo",
+      "out": "",
+      "err": "spot_typo.cpp:11:41: error: no member named 'leg' in 'Pet'; did you mean 'legs'?\n   11 |     std::cout << p.name << \" has \" << p.leg << \" legs\\n\";\n      |                                         ^~~\n      |                                         legs\nspot_typo.cpp:6:9: note: 'legs' declared here\n    6 |     int legs;\n      |         ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "ssize17.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> scores;\n    std::cout << \"size: \" << scores.size() << '\\n';\n    std::cout << \"size() - 1: \" << scores.size() - 1 << '\\n';\n    std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "ssize17.cpp: In function ‘int main()’:\nssize17.cpp:8:42: error: ‘ssize’ is not a member of ‘std’; did you mean ‘size’?\n    8 |     std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n      |                                          ^~~~~\n      |                                          size\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++17 -Wall -Wextra -g ssize17.cpp -o ssize17",
+     "out": "",
+     "err": "ssize17.cpp: In function ‘int main()’:\nssize17.cpp:8:42: error: ‘ssize’ is not a member of ‘std’; did you mean ‘size’?\n    8 |     std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n      |                                          ^~~~~\n      |                                          size\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "ssize17.cpp:8:42: error: no member named 'ssize' in namespace 'std'; did you mean 'size'?\n    8 |     std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n      |                                     ~~~~~^~~~~\n      |                                          size\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/range_access.h:264:5: note: 'size' declared here\n  264 |     size(const _Container& __cont) noexcept(noexcept(__cont.size()))\n      |     ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++17 -Wall -Wextra -g ssize17.cpp -o ssize17",
+      "out": "",
+      "err": "ssize17.cpp:8:42: error: no member named 'ssize' in namespace 'std'; did you mean 'size'?\n    8 |     std::cout << \"ssize() - 1: \" << std::ssize(scores) - 1 << '\\n';\n      |                                     ~~~~~^~~~~\n      |                                          size\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/range_access.h:264:5: note: 'size' declared here\n  264 |     size(const _Container& __cont) noexcept(noexcept(__cont.size()))\n      |     ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "std_default.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"__cplusplus is \" << __cplusplus << '\\n';\n}\n",
+   "stdout": "__cplusplus is 201703\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ std_default.cpp -o std_default",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./std_default",
+     "out": "__cplusplus is 201703\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "__cplusplus is 201703\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ std_default.cpp -o std_default",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./std_default",
+      "out": "__cplusplus is 201703\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "struct_predict.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Robot {\n    std::string name;\n    int battery;\n};\n\nint main() {\n    Robot r{\"Bolt\", 80};\n    r.battery = r.battery - 30;\n    r.name = r.name + \"-2\";\n    std::cout << r.name << \" has \" << r.battery << \"%\\n\";\n}\n",
+   "stdout": "Bolt-2 has 50%\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g struct_predict.cpp -o struct_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./struct_predict",
+     "out": "Bolt-2 has 50%\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Bolt-2 has 50%\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g struct_predict.cpp -o struct_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./struct_predict",
+      "out": "Bolt-2 has 50%\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "substr.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string word = \"wrench\";\n    std::cout << word.substr(2) << '\\n';\n    std::cout << word.substr(2, 3) << '\\n';\n    std::cout << word.substr(0, 2) << '\\n';\n    std::cout << word.substr(1, 99) << '\\n';\n}\n",
+   "stdout": "ench\nenc\nwr\nrench\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g substr.cpp -o substr",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./substr",
+     "out": "ench\nenc\nwr\nrench\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "ench\nenc\nwr\nrench\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g substr.cpp -o substr",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./substr",
+      "out": "ench\nenc\nwr\nrench\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "substr_quiz.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string name = \"Professor\";\n    std::cout << name.substr(3) << '\\n';\n    std::cout << name.substr(0, 3) << '\\n';\n    std::cout << name.substr(3, 2) << '\\n';\n}\n",
+   "stdout": "fessor\nPro\nfe\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g substr_quiz.cpp -o substr_quiz",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./substr_quiz",
+     "out": "fessor\nPro\nfe\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "fessor\nPro\nfe\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g substr_quiz.cpp -o substr_quiz",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./substr_quiz",
+      "out": "fessor\nPro\nfe\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "substr_throw.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string word = \"wrench\";\n    std::cout << word.substr(10) << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::substr: __pos (which is 10) > this->size() (which is 6)\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g substr_throw.cpp -o substr_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./substr_throw",
+     "out": "",
+     "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::substr: __pos (which is 10) > this->size() (which is 6)\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::substr: __pos (which is 10) > this->size() (which is 6)\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g substr_throw.cpp -o substr_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./substr_throw",
+      "out": "",
+      "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::substr: __pos (which is 10) > this->size() (which is 6)\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "too_many_names.cpp": {
+   "src": "#include <iostream>\n\nstruct Pt {\n    int x;\n    int y;\n};\n\nint main() {\n    Pt p{3, 4};\n    auto [a, b, c] = p;\n    std::cout << a + b + c << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "too_many_names.cpp: In function ‘int main()’:\ntoo_many_names.cpp:10:10: error: 3 names provided for structured binding\n   10 |     auto [a, b, c] = p;\n      |          ^~~~~~~~~\ntoo_many_names.cpp:10:10: note: while ‘Pt’ decomposes into 2 elements\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g too_many_names.cpp -o too_many_names",
+     "out": "",
+     "err": "too_many_names.cpp: In function ‘int main()’:\ntoo_many_names.cpp:10:10: error: 3 names provided for structured binding\n   10 |     auto [a, b, c] = p;\n      |          ^~~~~~~~~\ntoo_many_names.cpp:10:10: note: while ‘Pt’ decomposes into 2 elements\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "too_many_names.cpp:10:10: error: type 'Pt' decomposes into 2 elements, but 3 names were provided\n   10 |     auto [a, b, c] = p;\n      |          ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g too_many_names.cpp -o too_many_names",
+      "out": "",
+      "err": "too_many_names.cpp:10:10: error: type 'Pt' decomposes into 2 elements, but 3 names were provided\n   10 |     auto [a, b, c] = p;\n      |          ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "trace_jobs.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Job {\n    std::string bike;\n    int price;\n};\n\nint main() {\n    std::vector<Job> jobs{{\"Racer\", 40}, {\"Trike\", 25}, {\"Tandem\", 70}, {\"BMX\", 15}};\n    int total = 0;\n    for (const Job& j : jobs) {\n        total = total + j.price;\n        std::cout << j.bike << \" \" << j.price << \" \" << total << '\\n';\n    }\n}\n",
+   "stdout": "Racer 40 40\nTrike 25 65\nTandem 70 135\nBMX 15 150\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_jobs.cpp -o trace_jobs",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_jobs",
+     "out": "Racer 40 40\nTrike 25 65\nTandem 70 135\nBMX 15 150\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer 40 40\nTrike 25 65\nTandem 70 135\nBMX 15 150\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_jobs.cpp -o trace_jobs",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_jobs",
+      "out": "Racer 40 40\nTrike 25 65\nTandem 70 135\nBMX 15 150\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "uninit.cpp": {
+   "src": "#include <iostream>\n\nstruct Pet {\n    int legs;\n    int age;\n};\n\nint main() {\n    Pet p;\n    std::cout << p.legs << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "uninit.cpp: In function ‘int main()’:\nuninit.cpp:10:28: warning: ‘p.Pet::legs’ is used uninitialized [-Wuninitialized]\n   10 |     std::cout << p.legs << '\\n';\n      |                            ^~~~\nuninit.cpp:9:9: note: ‘p’ declared here\n    9 |     Pet p;\n      |         ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g uninit.cpp -o uninit",
+     "out": "",
+     "err": "uninit.cpp: In function ‘int main()’:\nuninit.cpp:10:28: warning: ‘p.Pet::legs’ is used uninitialized [-Wuninitialized]\n   10 |     std::cout << p.legs << '\\n';\n      |                            ^~~~\nuninit.cpp:9:9: note: ‘p’ declared here\n    9 |     Pet p;\n      |         ^\n",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g uninit.cpp -o uninit",
+      "out": "",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "uninit_clang.cpp": {
+   "src": "#include <iostream>\n\nstruct Pet {\n    int legs;\n    int age;\n};\n\nint main() {\n    Pet p;\n    std::cout << p.legs << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "clang++ -std=c++23 -Wall -Wextra -g uninit_clang.cpp -o uninit_clang",
+     "out": "",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "vec_trace.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Pet {\n    std::string name;\n    int age;\n};\n\nint main() {\n    std::vector<Pet> pets{{\"Rex\", 3}};\n    pets.push_back({\"Tom\", 5});\n    pets[0].age = 4;\n    for (const Pet& p : pets) {\n        std::cout << p.name << \" is \" << p.age << '\\n';\n    }\n}\n",
+   "stdout": "Rex is 4\nTom is 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g vec_trace.cpp -o vec_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./vec_trace",
+     "out": "Rex is 4\nTom is 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Rex is 4\nTom is 5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g vec_trace.cpp -o vec_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./vec_trace",
+      "out": "Rex is 4\nTom is 5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "vector_jobs.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Job {\n    std::string bike;\n    double price = 0;\n};\n\nint main() {\n    std::vector<Job> jobs{{\"Racer\", 45.5}, {\"Trike\", 30.25}};\n    jobs.push_back({\"Tandem\", 80});\n\n    double total = 0;\n    for (const Job& j : jobs) {\n        std::cout << j.bike << \" $\" << j.price << '\\n';\n        total = total + j.price;\n    }\n    std::cout << jobs.size() << \" jobs, total $\" << total << '\\n';\n    std::cout << \"Second bike: \" << jobs[1].bike << '\\n';\n}\n",
+   "stdout": "Racer $45.5\nTrike $30.25\nTandem $80\n3 jobs, total $155.75\nSecond bike: Trike\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g vector_jobs.cpp -o vector_jobs",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./vector_jobs",
+     "out": "Racer $45.5\nTrike $30.25\nTandem $80\n3 jobs, total $155.75\nSecond bike: Trike\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Racer $45.5\nTrike $30.25\nTandem $80\n3 jobs, total $155.75\nSecond bike: Trike\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g vector_jobs.cpp -o vector_jobs",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./vector_jobs",
+      "out": "Racer $45.5\nTrike $30.25\nTandem $80\n3 jobs, total $155.75\nSecond bike: Trike\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "with_iomanip.cpp": {
+   "src": "#include <iomanip>\n#include <iostream>\n\nint main() {\n    std::cout << '[' << std::setw(6) << 42 << ']' << '\\n';\n}\n",
+   "stdout": "[    42]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g with_iomanip.cpp -o with_iomanip",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./with_iomanip",
+     "out": "[    42]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[    42]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g with_iomanip.cpp -o with_iomanip",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./with_iomanip",
+      "out": "[    42]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
