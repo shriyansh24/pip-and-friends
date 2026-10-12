@@ -1,0 +1,2169 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch18",
+  "versionDifferences": [
+   "fewargs.cpp",
+   "fmt_vector.cpp",
+   "gauges.cpp",
+   "mix_tsan.cpp",
+   "overrun_assert.cpp",
+   "print_sidebar.cpp",
+   "quiet_mirrors.cpp",
+   "shadow.cpp",
+   "shadow_mirrors.cpp",
+   "shadow_werror.cpp",
+   "spot_format.cpp",
+   "spot_u8.cpp",
+   "sv_quiet.cpp",
+   "u8_cout.cpp",
+   "vla.cpp",
+   "vla_pedantic.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): fewargs.cpp, fmt_vector.cpp, gauges.cpp, mix_tsan.cpp, overrun_assert.cpp, print_sidebar.cpp, quiet_mirrors.cpp, shadow.cpp, shadow_mirrors.cpp, shadow_werror.cpp, spot_format.cpp, spot_u8.cpp, sv_quiet.cpp, u8_cout.cpp, vla.cpp, vla_pedantic.cpp."
+ },
+ "programs": {
+  "almost.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int psi = 30;\n    if (psi<31) {\n        std::cout << \"low\\n\";\n    }\n}\n",
+   "stdout": "    if (psi < 31) {\n",
+   "stderr": "almost.cpp:5:12: error: code should be clang-formatted [-Wclang-format-violations]\n    if (psi<31) {\n           ^\nalmost.cpp:5:13: error: code should be clang-formatted [-Wclang-format-violations]\n    if (psi<31) {\n            ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd wash",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../almost.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    },
+    {
+     "cmd": "clang-format --dry-run --Werror almost.cpp",
+     "out": "",
+     "err": "almost.cpp:5:12: error: code should be clang-formatted [-Wclang-format-violations]\n    if (psi<31) {\n           ^\nalmost.cpp:5:13: error: code should be clang-formatted [-Wclang-format-violations]\n    if (psi<31) {\n            ^\n",
+     "exit": 1,
+     "dir": "~/cpp-ch18/wash"
+    },
+    {
+     "cmd": "clang-format -i almost.cpp",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    },
+    {
+     "cmd": "clang-format --dry-run --Werror almost.cpp",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    },
+    {
+     "cmd": "sed -n 5p almost.cpp",
+     "out": "    if (psi < 31) {\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    }
+   ]
+  },
+  "boss_fill.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::string word = \"née\";\n    for (char c : word) {\n        std::cout << std::format(\"{:02x} \", static_cast<unsigned char>(c));\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "6e c3 a9 65 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "6e c3 a9 65 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "6e c3 a9 65 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "6e c3 a9 65 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <charconv>\n#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view list = \"30 32 31\";\n    int total = 0;\n    while (!list.empty()) {\n        int value = 0;\n        auto [next, err] = std::from_chars(list.data(), list.data() + list.size(), value);\n        total += value;\n        list.remove_prefix(next - list.data());\n        if (!list.empty()) {\n            list.remove_prefix(1);\n        }\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "total: 93\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "total: 93\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "total: 93\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "total: 93\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view line = \"tyre:32.456\";\n    std::size_t colon = line.find(':');\n    std::string_view name = line.substr(0, colon);\n    std::string_view rest = line.substr(colon + 1);\n    std::cout << std::format(\"{:>6}|{}\\n\", name, rest.size());\n    std::cout << std::format(\"{:_<8}|{:.1f}\\n\", name, 32.456);\n}\n",
+   "stdout": "  tyre|6\ntyre____|32.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "  tyre|6\ntyre____|32.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  tyre|6\ntyre____|32.5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "  tyre|6\ntyre____|32.5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nint main() {\n    std::string note = \"check the brake fluid\";\n    std::string_view first = std::string_view{note}.substr(0, 5);\n    note += \" and the coolant level, then the tyres\";\n    std::cout << first << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffe970 sp 0x7fffffffe118\nREAD of size 5 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555f08c in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555c77b in main /home/you/cpp-ch18/boss_spot.cpp:9\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\n0x503000000040 is located 0 bytes inside of 22-byte region [0x503000000040,0x503000000056)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x5555555600da in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555f560 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555f560 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555f560 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555e792 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555ff8c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:342\n    #7 0x55555555fa00 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_append(char const*, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:424\n    #8 0x55555555f692 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::append(char const*) /usr/include/c++/13/bits/basic_string.h:1474\n    #9 0x55555555ef2e in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::operator+=(char const*) /usr/include/c++/13/bits/basic_string.h:1377\n    #10 0x55555555c713 in main /home/you/cpp-ch18/boss_spot.cpp:8\n    #11 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #12 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #13 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555ea4e in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555dc8e in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555dc8e in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555dc8e in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555d920 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555d287 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555cd37 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:649\n    #8 0x55555555c608 in main /home/you/cpp-ch18/boss_spot.cpp:6\n    #9 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #10 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #11 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fa fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffe970 sp 0x7fffffffe118\nREAD of size 5 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555f08c in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555c77b in main /home/you/cpp-ch18/boss_spot.cpp:9\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\n0x503000000040 is located 0 bytes inside of 22-byte region [0x503000000040,0x503000000056)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x5555555600da in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555f560 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555f560 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555f560 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555e792 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555ff8c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:342\n    #7 0x55555555fa00 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_append(char const*, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:424\n    #8 0x55555555f692 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::append(char const*) /usr/include/c++/13/bits/basic_string.h:1474\n    #9 0x55555555ef2e in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::operator+=(char const*) /usr/include/c++/13/bits/basic_string.h:1377\n    #10 0x55555555c713 in main /home/you/cpp-ch18/boss_spot.cpp:8\n    #11 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #12 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #13 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555ea4e in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555dc8e in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555dc8e in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555dc8e in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555d920 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555d287 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555cd37 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:649\n    #8 0x55555555c608 in main /home/you/cpp-ch18/boss_spot.cpp:6\n    #9 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #10 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #11 0x55555555c464 in _start (/home/you/cpp-ch18/boss_spot+0x8464) (BuildId: 070a46215e3e68d58df47c0f4cd1d3978b350448)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fa fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "boss_trace.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    for (int n = 7; n <= 70; n *= 3) {\n        std::cout << std::format(\"{} {:x} {:b}\\n\", n, n, n);\n    }\n}\n",
+   "stdout": "7 7 111\n21 15 10101\n63 3f 111111\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "7 7 111\n21 15 10101\n63 3f 111111\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "7 7 111\n21 15 10101\n63 3f 111111\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "7 7 111\n21 15 10101\n63 3f 111111\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bytes.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::string word = \"café\";\n    std::cout << word << \" has size \" << word.size() << '\\n';\n    for (char c : word) {\n        unsigned char byte = static_cast<unsigned char>(c);\n        std::cout << std::format(\"{:02x} \", byte);\n    }\n    std::cout << '\\n';\n    for (char c : word) {\n        std::cout << static_cast<int>(c) << ' ';\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "café has size 5\n63 61 66 c3 a9 \n99 97 102 -61 -87 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bytes.cpp -o bytes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bytes",
+     "out": "café has size 5\n63 61 66 c3 a9 \n99 97 102 -61 -87 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "café has size 5\n63 61 66 c3 a9 \n99 97 102 -61 -87 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bytes.cpp -o bytes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bytes",
+      "out": "café has size 5\n63 61 66 c3 a9 \n99 97 102 -61 -87 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bytes_trace.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::string tag = \"né!\";\n    for (std::size_t i = 0; i < tag.size(); ++i) {\n        unsigned char byte = static_cast<unsigned char>(tag[i]);\n        bool starts = (byte & 0xC0) != 0x80;\n        std::cout << std::format(\"{} {:02x} {}\\n\", i, byte, starts ? \"start\" : \"more\");\n    }\n}\n",
+   "stdout": "0 6e start\n1 c3 start\n2 a9 more\n3 21 start\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bytes_trace.cpp -o bytes_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bytes_trace",
+     "out": "0 6e start\n1 c3 start\n2 a9 more\n3 21 start\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0 6e start\n1 c3 start\n2 a9 more\n3 21 start\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bytes_trace.cpp -o bytes_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bytes_trace",
+      "out": "0 6e start\n1 c3 start\n2 a9 more\n3 21 start\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "checklist.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total;\n    total = 0;\n    for (std::size_t i = 0; i < psi.size(); ++i) {\n        total += psi[i];\n    }\n    double average = total / 4;\n    std::cout << \"average: \" << average << '\\n';\n}\n",
+   "stdout": "/home/you/cpp-ch18/tidy/checklist.cpp:6:9: warning: variable 'total' is not initialized [cppcoreguidelines-init-variables]\n    6 |     int total;\n      |         ^    \n      |               = 0\n/home/you/cpp-ch18/tidy/checklist.cpp:8:5: warning: use range-based for loop instead [modernize-loop-convert]\n    8 |     for (std::size_t i = 0; i < psi.size(); ++i) {\n      |     ^   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |         (int i : psi)\n    9 |         total += psi[i];\n      |                  ~~~~~~\n      |                  i\n/home/you/cpp-ch18/tidy/checklist.cpp:11:22: warning: result of integer division used in a floating point context; possible loss of precision [bugprone-integer-division]\n   11 |     double average = total / 4;\n      |                      ^\n",
+   "stderr": "14787 warnings generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../checklist.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet checklist.cpp -- -std=c++23",
+     "out": "/home/you/cpp-ch18/tidy/checklist.cpp:6:9: warning: variable 'total' is not initialized [cppcoreguidelines-init-variables]\n    6 |     int total;\n      |         ^    \n      |               = 0\n/home/you/cpp-ch18/tidy/checklist.cpp:8:5: warning: use range-based for loop instead [modernize-loop-convert]\n    8 |     for (std::size_t i = 0; i < psi.size(); ++i) {\n      |     ^   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |         (int i : psi)\n    9 |         total += psi[i];\n      |                  ~~~~~~\n      |                  i\n/home/you/cpp-ch18/tidy/checklist.cpp:11:22: warning: result of integer division used in a floating point context; possible loss of precision [bugprone-integer-division]\n   11 |     double average = total / 4;\n      |                      ^\n",
+     "err": "14787 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "tidy/.clang-tidy": {
+   "src": "Checks: >\n  -*,\n  bugprone-*,\n  cppcoreguidelines-init-variables,\n  modernize-use-nullptr,\n  modernize-loop-convert\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "clang_san.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"never built\\n\";\n}\n",
+   "stdout": "",
+   "stderr": "/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan_static-x86_64.a: No such file or directory\n/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan-x86_64.a: No such file or directory\n/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan_cxx-x86_64.a: No such file or directory\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "clang++ -std=c++23 -g -fsanitize=address,undefined clang_san.cpp -o clang_san",
+     "out": "",
+     "err": "/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan_static-x86_64.a: No such file or directory\n/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan-x86_64.a: No such file or directory\n/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan_cxx-x86_64.a: No such file or directory\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+     "exit": 1
+    }
+   ]
+  },
+  "fewargs.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    std::cout << std::format(\"{} and {}\\n\", 1);\n}\n",
+   "stdout": "",
+   "stderr": "In file included from fewargs.cpp:1:\n/usr/include/c++/13/format: In function ‘int main()’:\nfewargs.cpp:5:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, int>(\"{} and {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, int>::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3592:28:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_pc.std::basic_format_parse_context<char>::next_arg_id()’\n/usr/include/c++/13/format:232:56: error: call to non-‘constexpr’ function ‘void std::__format::__invalid_arg_id_in_format_string()’\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n/usr/include/c++/13/format:182:3: note: ‘void std::__format::__invalid_arg_id_in_format_string()’ declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fewargs.cpp -o fewargs",
+     "out": "",
+     "err": "In file included from fewargs.cpp:1:\n/usr/include/c++/13/format: In function ‘int main()’:\nfewargs.cpp:5:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, int>(\"{} and {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, int>::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3592:28:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_pc.std::basic_format_parse_context<char>::next_arg_id()’\n/usr/include/c++/13/format:232:56: error: call to non-‘constexpr’ function ‘void std::__format::__invalid_arg_id_in_format_string()’\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n/usr/include/c++/13/format:182:3: note: ‘void std::__format::__invalid_arg_id_in_format_string()’ declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "fewargs.cpp:5:30: error: call to consteval function 'std::basic_format_string<char, int>::basic_format_string<char[11]>' is not a constant expression\n    5 |     std::cout << std::format(\"{} and {}\\n\", 1);\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:232:6: note: non-constexpr function '__invalid_arg_id_in_format_string' cannot be used in a constant expression\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3592:11: note: in call to 'this->_M_pc.next_arg_id()'\n 3592 |           __id = _M_pc.next_arg_id();\n      |                  ^~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3559:7: note: in call to 'this->_M_on_replacement_field()'\n 3559 |                     _M_on_replacement_field();\n      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3751:2: note: in call to '__scanner._M_scan()'\n 3751 |         __scanner._M_scan();\n      |         ^~~~~~~~~~~~~~~~~~~\nfewargs.cpp:5:30: note: in call to 'basic_format_string<char[11]>(\"{} and {}\\n\")'\n    5 |     std::cout << std::format(\"{} and {}\\n\", 1);\n      |                              ^~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:182:3: note: declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fewargs.cpp -o fewargs",
+      "out": "",
+      "err": "fewargs.cpp:5:30: error: call to consteval function 'std::basic_format_string<char, int>::basic_format_string<char[11]>' is not a constant expression\n    5 |     std::cout << std::format(\"{} and {}\\n\", 1);\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:232:6: note: non-constexpr function '__invalid_arg_id_in_format_string' cannot be used in a constant expression\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3592:11: note: in call to 'this->_M_pc.next_arg_id()'\n 3592 |           __id = _M_pc.next_arg_id();\n      |                  ^~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3559:7: note: in call to 'this->_M_on_replacement_field()'\n 3559 |                     _M_on_replacement_field();\n      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3751:2: note: in call to '__scanner._M_scan()'\n 3751 |         __scanner._M_scan();\n      |         ^~~~~~~~~~~~~~~~~~~\nfewargs.cpp:5:30: note: in call to 'basic_format_string<char[11]>(\"{} and {}\\n\")'\n    5 |     std::cout << std::format(\"{} and {}\\n\", 1);\n      |                              ^~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:182:3: note: declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "fill_format.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    std::cout << std::format(\"[{:>8.2f}]\\n\", 12.999);\n    std::cout << std::format(\"[{:<6}]\\n\", \"nut\");\n    std::cout << std::format(\"[{:#x}]\\n\", 48879);\n}\n",
+   "stdout": "[   13.00]\n[nut   ]\n[0xbeef]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_format.cpp -o fill_format",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_format",
+     "out": "[   13.00]\n[nut   ]\n[0xbeef]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[   13.00]\n[nut   ]\n[0xbeef]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_format.cpp -o fill_format",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_format",
+      "out": "[   13.00]\n[nut   ]\n[0xbeef]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fixed_average.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\ndouble average(const std::vector<int>& psi) {\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    return static_cast<double>(total) / static_cast<double>(psi.size());\n}\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    std::cout << \"average: \" << average(psi) << '\\n';\n}\n",
+   "stdout": "average: 31.25\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -Wpedantic -Wshadow -Wconversion -Werror fixed_average.cpp -o fixed_average",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fixed_average",
+     "out": "average: 31.25\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "average: 31.25\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -Wpedantic -Wshadow -Wconversion -Werror fixed_average.cpp -o fixed_average",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fixed_average",
+      "out": "average: 31.25\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fmt_loop.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31};\n    std::string text = \"[\";\n    for (std::size_t i = 0; i < psi.size(); ++i) {\n        if (i > 0) {\n            text += \", \";\n        }\n        text += std::format(\"{}\", psi[i]);\n    }\n    text += \"]\";\n    std::cout << std::format(\"pressures: {}\\n\", text);\n}\n",
+   "stdout": "pressures: [30, 32, 31]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fmt_loop.cpp -o fmt_loop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fmt_loop",
+     "out": "pressures: [30, 32, 31]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "pressures: [30, 32, 31]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fmt_loop.cpp -o fmt_loop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fmt_loop",
+      "out": "pressures: [30, 32, 31]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fmt_vector.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31};\n    std::cout << std::format(\"pressures: {}\\n\", psi);\n}\n",
+   "stdout": "",
+   "stderr": "In file included from fmt_vector.cpp:1:\n/usr/include/c++/13/format: In instantiation of ‘class std::__format::_Checking_scanner<char, std::vector<int, std::allocator<int> > >’:\n/usr/include/c++/13/format:3750:4:   required from ‘consteval std::basic_format_string<_CharT, _Args>::basic_format_string(const _Tp&) [with _Tp = char [15]; _CharT = char; _Args = {std::vector<int, std::allocator<int> >&}]’\nfmt_vector.cpp:7:29:   required from here\n/usr/include/c++/13/format:3672:10: error: static assertion failed: std::formatter must be specialized for each type being formatted\n 3672 |         (is_default_constructible_v<formatter<_Args, _CharT>> && ...),\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/format:3672:10: note: ‘std::is_default_constructible_v<std::formatter<std::vector<int>, char> >’ evaluates to false\n/usr/include/c++/13/format: In instantiation of ‘constexpr void std::__format::_Checking_scanner<_CharT, _Args>::_M_parse_format_spec(std::size_t) [with _Tp = std::vector<int>; _OtherArgs = {}; _CharT = char; _Args = {std::vector<int, std::allocator<int> >}; std::size_t = long unsigned int]’:\n/usr/include/c++/13/format:3689:33:   required from here\nfmt_vector.cpp:7:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, std::vector<int, std::allocator<int> >&>(\"pressures: {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, std::vector<int, std::allocator<int> > >::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3611:15:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_format_arg(__id)’\n/usr/include/c++/13/format:3702:38: error: use of deleted function ‘std::formatter<_Tp, _CharT>::formatter() [with _Tp = std::vector<int>; _CharT = char]’\n 3702 |               formatter<_Tp, _CharT> __f;\n      |                                      ^~~\n/usr/include/c++/13/format:142:7: note: declared here\n  142 |       formatter() = delete; // No std::formatter specialization for this type.\n      |       ^~~~~~~~~\n/usr/include/c++/13/format:3703:42: error: ‘struct std::formatter<std::vector<int>, char>’ has no member named ‘parse’\n 3703 |               this->_M_pc.advance_to(__f.parse(this->_M_pc));\n      |                                      ~~~~^~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fmt_vector.cpp -o fmt_vector",
+     "out": "",
+     "err": "In file included from fmt_vector.cpp:1:\n/usr/include/c++/13/format: In instantiation of ‘class std::__format::_Checking_scanner<char, std::vector<int, std::allocator<int> > >’:\n/usr/include/c++/13/format:3750:4:   required from ‘consteval std::basic_format_string<_CharT, _Args>::basic_format_string(const _Tp&) [with _Tp = char [15]; _CharT = char; _Args = {std::vector<int, std::allocator<int> >&}]’\nfmt_vector.cpp:7:29:   required from here\n/usr/include/c++/13/format:3672:10: error: static assertion failed: std::formatter must be specialized for each type being formatted\n 3672 |         (is_default_constructible_v<formatter<_Args, _CharT>> && ...),\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/format:3672:10: note: ‘std::is_default_constructible_v<std::formatter<std::vector<int>, char> >’ evaluates to false\n/usr/include/c++/13/format: In instantiation of ‘constexpr void std::__format::_Checking_scanner<_CharT, _Args>::_M_parse_format_spec(std::size_t) [with _Tp = std::vector<int>; _OtherArgs = {}; _CharT = char; _Args = {std::vector<int, std::allocator<int> >}; std::size_t = long unsigned int]’:\n/usr/include/c++/13/format:3689:33:   required from here\nfmt_vector.cpp:7:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, std::vector<int, std::allocator<int> >&>(\"pressures: {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, std::vector<int, std::allocator<int> > >::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3611:15:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_format_arg(__id)’\n/usr/include/c++/13/format:3702:38: error: use of deleted function ‘std::formatter<_Tp, _CharT>::formatter() [with _Tp = std::vector<int>; _CharT = char]’\n 3702 |               formatter<_Tp, _CharT> __f;\n      |                                      ^~~\n/usr/include/c++/13/format:142:7: note: declared here\n  142 |       formatter() = delete; // No std::formatter specialization for this type.\n      |       ^~~~~~~~~\n/usr/include/c++/13/format:3703:42: error: ‘struct std::formatter<std::vector<int>, char>’ has no member named ‘parse’\n 3703 |               this->_M_pc.advance_to(__f.parse(this->_M_pc));\n      |                                      ~~~~^~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "In file included from fmt_vector.cpp:1:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3672:3: error: static assertion failed due to requirement 'is_default_constructible_v<std::formatter<std::vector<int, std::allocator<int>>, char>>': std::formatter must be specialized for each type being formatted\n 3672 |         (is_default_constructible_v<formatter<_Args, _CharT>> && ...),\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3750:4: note: in instantiation of template class 'std::__format::_Checking_scanner<char, std::vector<int>>' requested here\n 3750 |           __scanner(_M_str);\n      |           ^\nfmt_vector.cpp:7:30: note: in instantiation of function template specialization 'std::basic_format_string<char, std::vector<int> &>::basic_format_string<char[15]>' requested here\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                              ^\nfmt_vector.cpp:7:30: error: call to consteval function 'std::basic_format_string<char, std::vector<int> &>::basic_format_string<char[15]>' is not a constant expression\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                              ^\nIn file included from fmt_vector.cpp:1:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3355:31: error: no matching constructor for initialization of 'basic_format_arg<basic_format_context<_Sink_iter<char>, char>>'\n 3355 |           basic_format_arg<_Context> __arg(__v);\n      |                                      ^     ~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3366:12: note: in instantiation of function template specialization 'std::__format::_Arg_store<std::basic_format_context<std::__format::_Sink_iter<char>, char>, std::basic_format_arg<std::basic_format_context<std::__format::_Sink_iter<char>, char>>::handle>::_S_make_elt<std::vector<int>>' requested here\n 3366 |         : _M_args{_S_make_elt(__a)...}\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3416:14: note: in instantiation of function template specialization 'std::__format::_Arg_store<std::basic_format_context<std::__format::_Sink_iter<char>, char>, std::basic_format_arg<std::basic_format_context<std::__format::_Sink_iter<char>, char>>::handle>::_Arg_store<std::vector<int>>' requested here\n 3416 |       return _Store(__fmt_args...);\n      |              ^\nfmt_vector.cpp:7:23: note: in instantiation of function template specialization 'std::format<std::vector<int> &>' requested here\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2853:11: note: candidate constructor (the implicit copy constructor) not viable: no known conversion from 'std::vector<int>' to 'const basic_format_arg<basic_format_context<_Sink_iter<char>, char>>' for 1st argument\n 2853 |     class basic_format_arg\n      |           ^~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2853:11: note: candidate constructor (the implicit move constructor) not viable: no known conversion from 'std::vector<int>' to 'basic_format_arg<basic_format_context<_Sink_iter<char>, char>>' for 1st argument\n 2853 |     class basic_format_arg\n      |           ^~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3102:2: note: candidate template ignored: constraints not satisfied [with _Tp = std::vector<int>]\n 3102 |         basic_format_arg(_Tp& __v) noexcept\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3100:11: note: because '__format::__formattable_with<std::vector<int>, std::basic_format_context<std::__format::_Sink_iter<char>, char> >' evaluated to false\n 3100 |         requires __format::__formattable_with<_Tp, _Context>\n      |                  ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2294:9: note: because 'std::formatter<std::vector<int>>' does not satisfy 'semiregular'\n 2294 |       = semiregular<_Formatter>\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:272:27: note: because 'std::formatter<std::vector<int>>' does not satisfy 'copyable'\n  272 |     concept semiregular = copyable<_Tp> && default_initializable<_Tp>;\n      |                           ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:267:24: note: because 'std::formatter<std::vector<int>>' does not satisfy 'copy_constructible'\n  267 |     concept copyable = copy_constructible<_Tp> && movable<_Tp>\n      |                        ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:172:9: note: because 'std::formatter<std::vector<int>>' does not satisfy 'move_constructible'\n  172 |       = move_constructible<_Tp>\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:167:7: note: because 'constructible_from<std::formatter<std::vector<int> >, std::formatter<std::vector<int> > >' evaluated to false\n  167 |     = constructible_from<_Tp, _Tp> && convertible_to<_Tp, _Tp>;\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:153:30: note: because 'is_constructible_v<std::formatter<std::vector<int> >, std::formatter<std::vector<int> > >' evaluated to false\n  153 |       = destructible<_Tp> && is_constructible_v<_Tp, _Args...>;\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2910:7: note: candidate constructor not viable: requires 0 arguments, but 1 was provided\n 2910 |       basic_format_arg() noexcept : _M_type(__format::_Arg_none) { }\n      |       ^\n3 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fmt_vector.cpp -o fmt_vector",
+      "out": "",
+      "err": "In file included from fmt_vector.cpp:1:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3672:3: error: static assertion failed due to requirement 'is_default_constructible_v<std::formatter<std::vector<int, std::allocator<int>>, char>>': std::formatter must be specialized for each type being formatted\n 3672 |         (is_default_constructible_v<formatter<_Args, _CharT>> && ...),\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3750:4: note: in instantiation of template class 'std::__format::_Checking_scanner<char, std::vector<int>>' requested here\n 3750 |           __scanner(_M_str);\n      |           ^\nfmt_vector.cpp:7:30: note: in instantiation of function template specialization 'std::basic_format_string<char, std::vector<int> &>::basic_format_string<char[15]>' requested here\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                              ^\nfmt_vector.cpp:7:30: error: call to consteval function 'std::basic_format_string<char, std::vector<int> &>::basic_format_string<char[15]>' is not a constant expression\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                              ^\nIn file included from fmt_vector.cpp:1:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3355:31: error: no matching constructor for initialization of 'basic_format_arg<basic_format_context<_Sink_iter<char>, char>>'\n 3355 |           basic_format_arg<_Context> __arg(__v);\n      |                                      ^     ~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3366:12: note: in instantiation of function template specialization 'std::__format::_Arg_store<std::basic_format_context<std::__format::_Sink_iter<char>, char>, std::basic_format_arg<std::basic_format_context<std::__format::_Sink_iter<char>, char>>::handle>::_S_make_elt<std::vector<int>>' requested here\n 3366 |         : _M_args{_S_make_elt(__a)...}\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3416:14: note: in instantiation of function template specialization 'std::__format::_Arg_store<std::basic_format_context<std::__format::_Sink_iter<char>, char>, std::basic_format_arg<std::basic_format_context<std::__format::_Sink_iter<char>, char>>::handle>::_Arg_store<std::vector<int>>' requested here\n 3416 |       return _Store(__fmt_args...);\n      |              ^\nfmt_vector.cpp:7:23: note: in instantiation of function template specialization 'std::format<std::vector<int> &>' requested here\n    7 |     std::cout << std::format(\"pressures: {}\\n\", psi);\n      |                       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2853:11: note: candidate constructor (the implicit copy constructor) not viable: no known conversion from 'std::vector<int>' to 'const basic_format_arg<basic_format_context<_Sink_iter<char>, char>>' for 1st argument\n 2853 |     class basic_format_arg\n      |           ^~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2853:11: note: candidate constructor (the implicit move constructor) not viable: no known conversion from 'std::vector<int>' to 'basic_format_arg<basic_format_context<_Sink_iter<char>, char>>' for 1st argument\n 2853 |     class basic_format_arg\n      |           ^~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3102:2: note: candidate template ignored: constraints not satisfied [with _Tp = std::vector<int>]\n 3102 |         basic_format_arg(_Tp& __v) noexcept\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3100:11: note: because '__format::__formattable_with<std::vector<int>, std::basic_format_context<std::__format::_Sink_iter<char>, char> >' evaluated to false\n 3100 |         requires __format::__formattable_with<_Tp, _Context>\n      |                  ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2294:9: note: because 'std::formatter<std::vector<int>>' does not satisfy 'semiregular'\n 2294 |       = semiregular<_Formatter>\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:272:27: note: because 'std::formatter<std::vector<int>>' does not satisfy 'copyable'\n  272 |     concept semiregular = copyable<_Tp> && default_initializable<_Tp>;\n      |                           ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:267:24: note: because 'std::formatter<std::vector<int>>' does not satisfy 'copy_constructible'\n  267 |     concept copyable = copy_constructible<_Tp> && movable<_Tp>\n      |                        ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:172:9: note: because 'std::formatter<std::vector<int>>' does not satisfy 'move_constructible'\n  172 |       = move_constructible<_Tp>\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:167:7: note: because 'constructible_from<std::formatter<std::vector<int> >, std::formatter<std::vector<int> > >' evaluated to false\n  167 |     = constructible_from<_Tp, _Tp> && convertible_to<_Tp, _Tp>;\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/concepts:153:30: note: because 'is_constructible_v<std::formatter<std::vector<int> >, std::formatter<std::vector<int> > >' evaluated to false\n  153 |       = destructible<_Tp> && is_constructible_v<_Tp, _Args...>;\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:2910:7: note: candidate constructor not viable: requires 0 arguments, but 1 was provided\n 2910 |       basic_format_arg() noexcept : _M_type(__format::_Arg_none) { }\n      |       ^\n3 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "format_bad.cpp": {
+   "src": "#include <format>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::string name = \"Wren\";\n    std::string spec = \"{:d}\";\n    std::cout << std::vformat(spec, std::make_format_args(name)) << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "terminate called after throwing an instance of 'std::format_error'\n  what():  format error: failed to parse format-spec\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g format_bad.cpp -o format_bad",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./format_bad",
+     "out": "",
+     "err": "terminate called after throwing an instance of 'std::format_error'\n  what():  format error: failed to parse format-spec\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "terminate called after throwing an instance of 'std::format_error'\n  what():  format error: failed to parse format-spec\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g format_bad.cpp -o format_bad",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./format_bad",
+      "out": "",
+      "err": "terminate called after throwing an instance of 'std::format_error'\n  what():  format error: failed to parse format-spec\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "format_machine.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    double pi = 3.14159;\n    int part = 255;\n    std::cout << std::format(\"{{:>8.2f}} 3.14159 -> [{:>8.2f}]\\n\", pi);\n    std::cout << std::format(\"{{:<8}} \\\"bolt\\\" -> [{:<8}]\\n\", \"bolt\");\n    std::cout << std::format(\"{{:^8}} \\\"bolt\\\" -> [{:^8}]\\n\", \"bolt\");\n    std::cout << std::format(\"{{:*^9}} \\\"nut\\\" -> [{:*^9}]\\n\", \"nut\");\n    std::cout << std::format(\"{{:08.3f}} 3.14159 -> [{:08.3f}]\\n\", pi);\n    std::cout << std::format(\"{{:x}} 255 -> [{:x}]\\n\", part);\n    std::cout << std::format(\"{{:#x}} 255 -> [{:#x}]\\n\", part);\n    std::cout << std::format(\"{{:b}} 5 -> [{:b}]\\n\", 5);\n    std::cout << std::format(\"{{:+}} 7 -> [{:+}]\\n\", 7);\n    std::cout << std::format(\"{{:.1e}} 299792.458 -> [{:.1e}]\\n\", 299792.458);\n}\n",
+   "stdout": "{:>8.2f} 3.14159 -> [    3.14]\n{:<8} \"bolt\" -> [bolt    ]\n{:^8} \"bolt\" -> [  bolt  ]\n{:*^9} \"nut\" -> [***nut***]\n{:08.3f} 3.14159 -> [0003.142]\n{:x} 255 -> [ff]\n{:#x} 255 -> [0xff]\n{:b} 5 -> [101]\n{:+} 7 -> [+7]\n{:.1e} 299792.458 -> [3.0e+05]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g format_machine.cpp -o format_machine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./format_machine",
+     "out": "{:>8.2f} 3.14159 -> [    3.14]\n{:<8} \"bolt\" -> [bolt    ]\n{:^8} \"bolt\" -> [  bolt  ]\n{:*^9} \"nut\" -> [***nut***]\n{:08.3f} 3.14159 -> [0003.142]\n{:x} 255 -> [ff]\n{:#x} 255 -> [0xff]\n{:b} 5 -> [101]\n{:+} 7 -> [+7]\n{:.1e} 299792.458 -> [3.0e+05]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "{:>8.2f} 3.14159 -> [    3.14]\n{:<8} \"bolt\" -> [bolt    ]\n{:^8} \"bolt\" -> [  bolt  ]\n{:*^9} \"nut\" -> [***nut***]\n{:08.3f} 3.14159 -> [0003.142]\n{:x} 255 -> [ff]\n{:#x} 255 -> [0xff]\n{:b} 5 -> [101]\n{:+} 7 -> [+7]\n{:.1e} 299792.458 -> [3.0e+05]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g format_machine.cpp -o format_machine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./format_machine",
+      "out": "{:>8.2f} 3.14159 -> [    3.14]\n{:<8} \"bolt\" -> [bolt    ]\n{:^8} \"bolt\" -> [  bolt  ]\n{:*^9} \"nut\" -> [***nut***]\n{:08.3f} 3.14159 -> [0003.142]\n{:x} 255 -> [ff]\n{:#x} 255 -> [0xff]\n{:b} 5 -> [101]\n{:+} 7 -> [+7]\n{:.1e} 299792.458 -> [3.0e+05]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "gauges.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int* gauges = new int[3]{30, 32, 31};\n    int total = 0;\n    for (int i = 0; i <= 3; ++i) {\n        total += gauges[i];\n    }\n    std::cout << \"gauges read\\n\";\n    delete[] gauges;\n    int* spare = new int[4];\n    spare[0] = total;\n}\n",
+   "stdout": "gauges read\n",
+   "stderr": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091E7: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10919E: main (gauges.cpp:4)\n==1== \n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10922B: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g gauges.cpp -o gauges",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "valgrind --leak-check=full ./gauges",
+     "out": "gauges read\n",
+     "err": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091E7: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10919E: main (gauges.cpp:4)\n==1== \n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10922B: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n",
+     "exit": 0,
+     "merged": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091E7: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10919E: main (gauges.cpp:4)\n==1== \ngauges read\n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x10922B: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gauges read\n",
+    "stderr": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091B1: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x109178: main (gauges.cpp:4)\n==1== \n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x1091FF: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g gauges.cpp -o gauges",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "valgrind --leak-check=full ./gauges",
+      "out": "gauges read\n",
+      "err": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091B1: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x109178: main (gauges.cpp:4)\n==1== \n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x1091FF: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n",
+      "exit": 0,
+      "merged": "==1== Memcheck, a memory error detector\n==1== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.\n==1== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==1== Command: ./gauges\n==1== \n==1== Invalid read of size 4\n==1==    at 0x1091B1: main (gauges.cpp:7)\n==1==  Address 0x4e2708c is 0 bytes after a block of size 12 alloc'd\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x109178: main (gauges.cpp:4)\n==1== \ngauges read\n==1== \n==1== HEAP SUMMARY:\n==1==     in use at exit: 16 bytes in 1 blocks\n==1==   total heap usage: 4 allocs, 3 frees, 77,852 bytes allocated\n==1== \n==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==1==    at 0x48485C3: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==1==    by 0x1091FF: main (gauges.cpp:11)\n==1== \n==1== LEAK SUMMARY:\n==1==    definitely lost: 16 bytes in 1 blocks\n==1==    indirectly lost: 0 bytes in 0 blocks\n==1==      possibly lost: 0 bytes in 0 blocks\n==1==    still reachable: 0 bytes in 0 blocks\n==1==         suppressed: 0 bytes in 0 blocks\n==1== \n==1== For lists of detected and suppressed errors, rerun with: -s\n==1== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)\n"
+     }
+    ]
+   }
+  },
+  "lane_clean.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "total: 125\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer lane_clean.cpp -o lane_clean",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lane_clean",
+     "out": "total: 125\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "lane_tidy.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "14784 warnings generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../lane_tidy.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet lane_tidy.cpp -- -std=c++23",
+     "out": "",
+     "err": "14784 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "letters.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nint count_letters(std::string_view text) {\n    int count = 0;\n    for (char c : text) {\n        unsigned char byte = static_cast<unsigned char>(c);\n        if ((byte & 0xC0) != 0x80) {\n            ++count;\n        }\n    }\n    return count;\n}\n\nint main() {\n    for (std::string_view word : {\"bolt\", \"café\", \"€5\", \"🔧\"}) {\n        std::cout << word << \": \" << word.size() << \" bytes, \"\n                  << count_letters(word) << \" code points\\n\";\n    }\n}\n",
+   "stdout": "bolt: 4 bytes, 4 code points\ncafé: 5 bytes, 4 code points\n€5: 4 bytes, 2 code points\n🔧: 4 bytes, 1 code points\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g letters.cpp -o letters",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./letters",
+     "out": "bolt: 4 bytes, 4 code points\ncafé: 5 bytes, 4 code points\n€5: 4 bytes, 2 code points\n🔧: 4 bytes, 1 code points\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "bolt: 4 bytes, 4 code points\ncafé: 5 bytes, 4 code points\n€5: 4 bytes, 2 code points\n🔧: 4 bytes, 1 code points\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g letters.cpp -o letters",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./letters",
+      "out": "bolt: 4 bytes, 4 code points\ncafé: 5 bytes, 4 code points\n€5: 4 bytes, 2 code points\n🔧: 4 bytes, 1 code points\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "messy.cpp": {
+   "src": "#include <iostream>\n#include <vector>\nint main(){\nstd::vector<int> psi{30,32,31,32};\n  for(int p:psi){ if(p<31){std::cout<<\"low: \"<<p<<'\\n';}\n      else {std::cout << \"ok: \" << p << '\\n';} }\n    return 0;}\n",
+   "stdout": "#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    for (int p : psi) {\n        if (p < 31) {\n            std::cout << \"low: \" << p << '\\n';\n        } else {\n            std::cout << \"ok: \" << p << '\\n';\n        }\n    }\n    return 0;\n}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd wash",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../messy.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    },
+    {
+     "cmd": "clang-format messy.cpp",
+     "out": "#include <iostream>\n#include <vector>\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    for (int p : psi) {\n        if (p < 31) {\n            std::cout << \"low: \" << p << '\\n';\n        } else {\n            std::cout << \"ok: \" << p << '\\n';\n        }\n    }\n    return 0;\n}\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/wash"
+    }
+   ]
+  },
+  "wash/.clang-format": {
+   "src": "BasedOnStyle: LLVM\nIndentWidth: 4\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "mix_tsan.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"never built\\n\";\n}\n",
+   "stdout": "",
+   "stderr": "cc1plus: error: ‘-fsanitize=thread’ is incompatible with ‘-fsanitize=address’\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -g -fsanitize=address,thread mix_tsan.cpp -o mix_tsan",
+     "out": "",
+     "err": "cc1plus: error: ‘-fsanitize=thread’ is incompatible with ‘-fsanitize=address’\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "clang++: error: invalid argument '-fsanitize=address' not allowed with '-fsanitize=thread'\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -g -fsanitize=address,thread mix_tsan.cpp -o mix_tsan",
+      "out": "",
+      "err": "clang++: error: invalid argument '-fsanitize=address' not allowed with '-fsanitize=thread'\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "moved.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n#include <vector>\n\nint main() {\n    std::vector<std::string> done;\n    std::string job = \"replace the brake pads\";\n    done.push_back(std::move(job));\n    std::cout << \"finished: \" << done[0] << '\\n';\n    std::cout << \"next up: \" << job << '\\n';\n}\n",
+   "stdout": "finished: replace the brake pads\nnext up: \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g moved.cpp -o moved",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./moved",
+     "out": "finished: replace the brake pads\nnext up: \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "finished: replace the brake pads\nnext up: \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g moved.cpp -o moved",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./moved",
+      "out": "finished: replace the brake pads\nnext up: \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "moved_tidy.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n#include <vector>\n\nint main() {\n    std::vector<std::string> done;\n    std::string job = \"replace the brake pads\";\n    done.push_back(std::move(job));\n    std::cout << \"finished: \" << done[0] << '\\n';\n    std::cout << \"next up: \" << job << '\\n';\n}\n",
+   "stdout": "/home/you/cpp-ch18/tidy/moved_tidy.cpp:11:33: warning: 'job' used after it was moved [bugprone-use-after-move]\n   11 |     std::cout << \"next up: \" << job << '\\n';\n      |                                 ^\n/home/you/cpp-ch18/tidy/moved_tidy.cpp:9:10: note: move occurred here\n    9 |     done.push_back(std::move(job));\n      |          ^\n",
+   "stderr": "14845 warnings generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../moved_tidy.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet moved_tidy.cpp -- -std=c++23",
+     "out": "/home/you/cpp-ch18/tidy/moved_tidy.cpp:11:33: warning: 'job' used after it was moved [bugprone-use-after-move]\n   11 |     std::cout << \"next up: \" << job << '\\n';\n      |                                 ^\n/home/you/cpp-ch18/tidy/moved_tidy.cpp:9:10: note: move occurred here\n    9 |     done.push_back(std::move(job));\n      |          ^\n",
+     "err": "14845 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "nullp.cpp": {
+   "src": "#include <cstddef>\n#include <iostream>\n\nint main() {\n    int* spare = NULL;\n    if (spare == 0) {\n        std::cout << \"no spare wheel yet\\n\";\n    }\n}\n",
+   "stdout": "    int* spare = nullptr;\n    if (spare == nullptr) {\n",
+   "stderr": "13591 warnings generated.\n13591 warnings generated.\nclang-tidy applied 2 of 2 suggested fixes.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../nullp.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet nullp.cpp -- -std=c++23",
+     "out": "/home/you/cpp-ch18/tidy/nullp.cpp:5:18: warning: use nullptr [modernize-use-nullptr]\n    5 |     int* spare = NULL;\n      |                  ^~~~\n      |                  nullptr\n/home/you/cpp-ch18/tidy/nullp.cpp:6:18: warning: use nullptr [modernize-use-nullptr]\n    6 |     if (spare == 0) {\n      |                  ^\n      |                  nullptr\n",
+     "err": "13591 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet --fix nullp.cpp -- -std=c++23",
+     "out": "/home/you/cpp-ch18/tidy/nullp.cpp:5:18: warning: use nullptr [modernize-use-nullptr]\n    5 |     int* spare = NULL;\n      |                  ^~~~\n      |                  nullptr\n/home/you/cpp-ch18/tidy/nullp.cpp:5:18: note: FIX-IT applied suggested code changes\n/home/you/cpp-ch18/tidy/nullp.cpp:6:18: warning: use nullptr [modernize-use-nullptr]\n    6 |     if (spare == 0) {\n      |                  ^\n      |                  nullptr\n/home/you/cpp-ch18/tidy/nullp.cpp:6:18: note: FIX-IT applied suggested code changes\n",
+     "err": "13591 warnings generated.\nclang-tidy applied 2 of 2 suggested fixes.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "sed -n 5,6p nullp.cpp",
+     "out": "    int* spare = nullptr;\n    if (spare == nullptr) {\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "odometer.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int miles = 2'147'483'000;\n    for (int day = 1; day <= 3; ++day) {\n        miles += 400;\n        std::cout << \"day \" << day << \": \" << miles << \" miles\\n\";\n    }\n}\n",
+   "stdout": "",
+   "stderr": "odometer.cpp:6:15: runtime error: signed integer overflow: 2147483400 + 400 cannot be represented in type 'int'\n    #0 0x5555555562ae in main /home/you/cpp-ch18/odometer.cpp:6\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x5555555561a4 in _start (/home/you/cpp-ch18/odometer+0x21a4) (BuildId: 6d0bd1df4f240d97953290545bab65c0661aef92)\n\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer odometer.cpp -o odometer",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./odometer",
+     "out": "",
+     "err": "odometer.cpp:6:15: runtime error: signed integer overflow: 2147483400 + 400 cannot be represented in type 'int'\n    #0 0x5555555562ae in main /home/you/cpp-ch18/odometer.cpp:6\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x5555555561a4 in _start (/home/you/cpp-ch18/odometer+0x21a4) (BuildId: 6d0bd1df4f240d97953290545bab65c0661aef92)\n\n",
+     "exit": 1
+    }
+   ]
+  },
+  "overrun.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (std::size_t i = 0; i <= psi.size(); ++i) {\n        total += psi[i];\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -g overrun.cpp -o overrun",
+     "out": "",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -g overrun.cpp -o overrun",
+      "out": "",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "overrun_assert.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (std::size_t i = 0; i <= psi.size(); ++i) {\n        total += psi[i];\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "/usr/include/c++/13/bits/stl_vector.h:1128: constexpr std::vector<_Tp, _Alloc>::reference std::vector<_Tp, _Alloc>::operator[](size_type) [with _Tp = int; _Alloc = std::allocator<int>; reference = int&; size_type = long unsigned int]: Assertion '__n < this->size()' failed.\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS overrun_assert.cpp -o overrun_assert",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./overrun_assert",
+     "out": "",
+     "err": "/usr/include/c++/13/bits/stl_vector.h:1128: constexpr std::vector<_Tp, _Alloc>::reference std::vector<_Tp, _Alloc>::operator[](size_type) [with _Tp = int; _Alloc = std::allocator<int>; reference = int&; size_type = long unsigned int]: Assertion '__n < this->size()' failed.\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:1128: reference std::vector<int>::operator[](size_type) [_Tp = int, _Alloc = std::allocator<int>]: Assertion '__n < this->size()' failed.\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS overrun_assert.cpp -o overrun_assert",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./overrun_assert",
+      "out": "",
+      "err": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:1128: reference std::vector<int>::operator[](size_type) [_Tp = int, _Alloc = std::allocator<int>]: Assertion '__n < this->size()' failed.\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "overrun_san.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (std::size_t i = 0; i <= psi.size(); ++i) {\n        total += psi[i];\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x502000000020 at pc 0x55555555a78f bp 0x7fffffffeab0 sp 0x7fffffffeaa0\nREAD of size 4 at 0x502000000020 thread T0\n    #0 0x55555555a78e in main /home/you/cpp-ch18/overrun_san.cpp:8\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x55555555a424 in _start (/home/you/cpp-ch18/overrun_san+0x6424) (BuildId: f3e26c762c46743b90593808f23b5374af1f4d8a)\n\n0x502000000020 is located 0 bytes after 16-byte region [0x502000000010,0x502000000020)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555c1a2 in std::__new_allocator<int>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555beaa in std::allocator<int>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555beaa in std::allocator_traits<std::allocator<int> >::allocate(std::allocator<int>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555beaa in std::_Vector_base<int, std::allocator<int> >::_M_allocate(unsigned long) /usr/include/c++/13/bits/stl_vector.h:381\n    #5 0x55555555b425 in void std::vector<int, std::allocator<int> >::_M_range_initialize<int const*>(int const*, int const*, std::forward_iterator_tag) /usr/include/c++/13/bits/stl_vector.h:1692\n    #6 0x55555555ac31 in std::vector<int, std::allocator<int> >::vector(std::initializer_list<int>, std::allocator<int> const&) /usr/include/c++/13/bits/stl_vector.h:682\n    #7 0x55555555a6da in main /home/you/cpp-ch18/overrun_san.cpp:5\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x55555555a424 in _start (/home/you/cpp-ch18/overrun_san+0x6424) (BuildId: f3e26c762c46743b90593808f23b5374af1f4d8a)\n\nSUMMARY: AddressSanitizer: heap-buffer-overflow /home/you/cpp-ch18/overrun_san.cpp:8 in main\nShadow bytes around the buggy address:\n  0x501ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x502000000000: fa fa 00 00[fa]fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer overrun_san.cpp -o overrun_san",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./overrun_san",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x502000000020 at pc 0x55555555a78f bp 0x7fffffffeab0 sp 0x7fffffffeaa0\nREAD of size 4 at 0x502000000020 thread T0\n    #0 0x55555555a78e in main /home/you/cpp-ch18/overrun_san.cpp:8\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x55555555a424 in _start (/home/you/cpp-ch18/overrun_san+0x6424) (BuildId: f3e26c762c46743b90593808f23b5374af1f4d8a)\n\n0x502000000020 is located 0 bytes after 16-byte region [0x502000000010,0x502000000020)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555c1a2 in std::__new_allocator<int>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555beaa in std::allocator<int>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555beaa in std::allocator_traits<std::allocator<int> >::allocate(std::allocator<int>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555beaa in std::_Vector_base<int, std::allocator<int> >::_M_allocate(unsigned long) /usr/include/c++/13/bits/stl_vector.h:381\n    #5 0x55555555b425 in void std::vector<int, std::allocator<int> >::_M_range_initialize<int const*>(int const*, int const*, std::forward_iterator_tag) /usr/include/c++/13/bits/stl_vector.h:1692\n    #6 0x55555555ac31 in std::vector<int, std::allocator<int> >::vector(std::initializer_list<int>, std::allocator<int> const&) /usr/include/c++/13/bits/stl_vector.h:682\n    #7 0x55555555a6da in main /home/you/cpp-ch18/overrun_san.cpp:5\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x55555555a424 in _start (/home/you/cpp-ch18/overrun_san+0x6424) (BuildId: f3e26c762c46743b90593808f23b5374af1f4d8a)\n\nSUMMARY: AddressSanitizer: heap-buffer-overflow /home/you/cpp-ch18/overrun_san.cpp:8 in main\nShadow bytes around the buggy address:\n  0x501ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x502000000000: fa fa 00 00[fa]fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "overrun_tidy.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    int total = 0;\n    for (std::size_t i = 0; i <= psi.size(); ++i) {\n        total += psi[i];\n    }\n    std::cout << \"total: \" << total << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "14784 warnings generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../overrun_tidy.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet overrun_tidy.cpp -- -std=c++23",
+     "out": "",
+     "err": "14784 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "parse.cpp": {
+   "src": "#include <charconv>\n#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view text = \"12,7,3\";\n    const char* pos = text.data();\n    const char* end = text.data() + text.size();\n    int sum = 0;\n    while (pos < end) {\n        int value = 0;\n        auto [next, err] = std::from_chars(pos, end, value);\n        if (err != std::errc{}) {\n            std::cout << \"not a number\\n\";\n            return 1;\n        }\n        sum += value;\n        pos = next + 1;\n    }\n    std::cout << \"sum: \" << sum << '\\n';\n}\n",
+   "stdout": "sum: 22\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parse.cpp -o parse",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parse",
+     "out": "sum: 22\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "sum: 22\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parse.cpp -o parse",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parse",
+      "out": "sum: 22\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parse_machine.cpp": {
+   "src": "#include <charconv>\n#include <iostream>\n#include <string_view>\n#include <system_error>\n\nvoid parse(std::string_view text) {\n    int value = 0;\n    auto [ptr, err] = std::from_chars(text.data(), text.data() + text.size(), value);\n    std::cout << \"\\\"\" << text << \"\\\" -> \";\n    if (err == std::errc::invalid_argument) {\n        std::cout << \"invalid_argument\";\n    } else if (err == std::errc::result_out_of_range) {\n        std::cout << \"result_out_of_range\";\n    } else {\n        std::cout << value << \", rest \\\"\" << std::string_view(ptr, text.data() + text.size() - ptr) << \"\\\"\";\n    }\n    std::cout << '\\n';\n}\n\nint main() {\n    parse(\"42\");\n    parse(\"-7\");\n    parse(\"12abc\");\n    parse(\"abc\");\n    parse(\" 5\");\n    parse(\"+5\");\n    parse(\"99999999999\");\n}\n",
+   "stdout": "\"42\" -> 42, rest \"\"\n\"-7\" -> -7, rest \"\"\n\"12abc\" -> 12, rest \"abc\"\n\"abc\" -> invalid_argument\n\" 5\" -> invalid_argument\n\"+5\" -> invalid_argument\n\"99999999999\" -> result_out_of_range\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parse_machine.cpp -o parse_machine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parse_machine",
+     "out": "\"42\" -> 42, rest \"\"\n\"-7\" -> -7, rest \"\"\n\"12abc\" -> 12, rest \"abc\"\n\"abc\" -> invalid_argument\n\" 5\" -> invalid_argument\n\"+5\" -> invalid_argument\n\"99999999999\" -> result_out_of_range\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "\"42\" -> 42, rest \"\"\n\"-7\" -> -7, rest \"\"\n\"12abc\" -> 12, rest \"abc\"\n\"abc\" -> invalid_argument\n\" 5\" -> invalid_argument\n\"+5\" -> invalid_argument\n\"99999999999\" -> result_out_of_range\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parse_machine.cpp -o parse_machine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parse_machine",
+      "out": "\"42\" -> 42, rest \"\"\n\"-7\" -> -7, rest \"\"\n\"12abc\" -> 12, rest \"abc\"\n\"abc\" -> invalid_argument\n\" 5\" -> invalid_argument\n\"+5\" -> invalid_argument\n\"99999999999\" -> result_out_of_range\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_parse.cpp": {
+   "src": "#include <charconv>\n#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view text = \"250\";\n    int value = 0;\n    auto [ptr, err] = std::from_chars(text.data(), text.data() + text.size(), value);\n    if (err != std::errc{}) {\n        std::cout << \"not a number\\n\";\n        return 1;\n    }\n    std::cout << value * 2 << '\\n';\n}\n",
+   "stdout": "500\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_parse.cpp -o parsons_parse",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_parse",
+     "out": "500\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "500\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_parse.cpp -o parsons_parse",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_parse",
+      "out": "500\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_bytes.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string a = \"e\";\n    std::string b = \"é\";\n    std::string c = \"€\";\n    std::cout << a.size() << ' ' << b.size() << ' ' << c.size() << '\\n';\n    std::string word = \"naïve\";\n    std::cout << word.size() << '\\n';\n}\n",
+   "stdout": "1 2 3\n6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_bytes.cpp -o predict_bytes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_bytes",
+     "out": "1 2 3\n6\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 2 3\n6\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_bytes.cpp -o predict_bytes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_bytes",
+      "out": "1 2 3\n6\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_format.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    std::cout << std::format(\"[{:>5}]\\n\", 42);\n    std::cout << std::format(\"[{:<5}]\\n\", 42);\n    std::cout << std::format(\"[{:05}]\\n\", 42);\n    std::cout << std::format(\"[{:.2f}]\\n\", 2.0 / 3.0);\n    std::cout << std::format(\"[{:x}]\\n\", 26);\n    std::cout << std::format(\"[{:#^7}]\\n\", \"ok\");\n}\n",
+   "stdout": "[   42]\n[42   ]\n[00042]\n[0.67]\n[1a]\n[##ok###]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_format.cpp -o predict_format",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_format",
+     "out": "[   42]\n[42   ]\n[00042]\n[0.67]\n[1a]\n[##ok###]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[   42]\n[42   ]\n[00042]\n[0.67]\n[1a]\n[##ok###]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_format.cpp -o predict_format",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_format",
+      "out": "[   42]\n[42   ]\n[00042]\n[0.67]\n[1a]\n[##ok###]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_san.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string* tag = new std::string(\"front left\");\n    std::cout << *tag << '\\n';\n    delete tag;\n    std::cout << tag->size() << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000048 at pc 0x55555555ab8d bp 0x7fffffffeb00 sp 0x7fffffffeaf0\nREAD of size 8 at 0x503000000048 thread T0\n    #0 0x55555555ab8c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::size() const /usr/include/c++/13/bits/basic_string.h:1072\n    #1 0x55555555a7b4 in main /home/you/cpp-ch18/predict_san.cpp:8\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\n0x503000000048 is located 8 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555a6a4 in main /home/you/cpp-ch18/predict_san.cpp:7\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555a583 in main /home/you/cpp-ch18/predict_san.cpp:5\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\nSUMMARY: AddressSanitizer: heap-use-after-free /usr/include/c++/13/bits/basic_string.h:1072 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::size() const\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa fd[fd]fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer predict_san.cpp -o predict_san",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_san",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000048 at pc 0x55555555ab8d bp 0x7fffffffeb00 sp 0x7fffffffeaf0\nREAD of size 8 at 0x503000000048 thread T0\n    #0 0x55555555ab8c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::size() const /usr/include/c++/13/bits/basic_string.h:1072\n    #1 0x55555555a7b4 in main /home/you/cpp-ch18/predict_san.cpp:8\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\n0x503000000048 is located 8 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555a6a4 in main /home/you/cpp-ch18/predict_san.cpp:7\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555a583 in main /home/you/cpp-ch18/predict_san.cpp:5\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555a424 in _start (/home/you/cpp-ch18/predict_san+0x6424) (BuildId: e2108bf9abca4044ab2eb115f4b6ade0dd51bbba)\n\nSUMMARY: AddressSanitizer: heap-use-after-free /usr/include/c++/13/bits/basic_string.h:1072 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::size() const\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa fd[fd]fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "print_sidebar.cpp": {
+   "src": "#include <print>\n\nint main() {\n    std::println(\"{:<12}{:>8.2f}\", \"oil filter\", 12.999);\n    std::print(\"no newline unless you ask: {}\\n\", 42);\n}\n",
+   "stdout": "",
+   "stderr": "print_sidebar.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g print_sidebar.cpp -o print_sidebar",
+     "out": "",
+     "err": "print_sidebar.cpp:1:10: fatal error: print: No such file or directory\n    1 | #include <print>\n      |          ^~~~~~~\ncompilation terminated.\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "print_sidebar.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g print_sidebar.cpp -o print_sidebar",
+      "out": "",
+      "err": "print_sidebar.cpp:1:10: fatal error: 'print' file not found\n    1 | #include <print>\n      |          ^~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "quiet.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\ndouble average(const std::vector<int>& psi) {\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    return total / psi.size();\n}\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    std::cout << \"average: \" << average(psi) << '\\n';\n}\n",
+   "stdout": "average: 31\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g quiet.cpp -o quiet",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./quiet",
+     "out": "average: 31\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "average: 31\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g quiet.cpp -o quiet",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./quiet",
+      "out": "average: 31\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "quiet_mirrors.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\ndouble average(const std::vector<int>& psi) {\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    return total / psi.size();\n}\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    std::cout << \"average: \" << average(psi) << '\\n';\n}\n",
+   "stdout": "average: 31\n",
+   "stderr": "quiet_mirrors.cpp: In function ‘double average(const std::vector<int>&)’:\nquiet_mirrors.cpp:9:18: warning: conversion from ‘std::vector<int>::size_type’ {aka ‘long unsigned int’} to ‘double’ may change value [-Wconversion]\n    9 |     return total / psi.size();\n      |            ~~~~~~^~~~~~~~~~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -Wpedantic -Wshadow -Wconversion quiet_mirrors.cpp -o quiet_mirrors",
+     "out": "",
+     "err": "quiet_mirrors.cpp: In function ‘double average(const std::vector<int>&)’:\nquiet_mirrors.cpp:9:18: warning: conversion from ‘std::vector<int>::size_type’ {aka ‘long unsigned int’} to ‘double’ may change value [-Wconversion]\n    9 |     return total / psi.size();\n      |            ~~~~~~^~~~~~~~~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./quiet_mirrors",
+     "out": "average: 31\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "average: 31\n",
+    "stderr": "quiet_mirrors.cpp:9:12: warning: implicit conversion changes signedness: 'int' to 'size_type' (aka 'unsigned long') [-Wsign-conversion]\n    9 |     return total / psi.size();\n      |            ^~~~~ ~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -Wpedantic -Wshadow -Wconversion quiet_mirrors.cpp -o quiet_mirrors",
+      "out": "",
+      "err": "quiet_mirrors.cpp:9:12: warning: implicit conversion changes signedness: 'int' to 'size_type' (aka 'unsigned long') [-Wsign-conversion]\n    9 |     return total / psi.size();\n      |            ^~~~~ ~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./quiet_mirrors",
+      "out": "average: 31\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "receipt.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    std::cout << std::format(\"{:<14}{:>3}{:>9}\\n\", \"part\", \"qty\", \"price\");\n    std::cout << std::format(\"{:<14}{:>3}{:>9.2f}\\n\", \"spark plug\", 4, 3.5);\n    std::cout << std::format(\"{:<14}{:>3}{:>9.2f}\\n\", \"oil filter\", 1, 12.999);\n    std::cout << std::format(\"{:<14}{:>3}{:>9.2f}\\n\", \"wiper blade\", 2, 7.25);\n    std::cout << std::format(\"{:-^26}\\n\", \"\");\n    std::cout << std::format(\"{:<17}{:>9.2f}\\n\", \"total\", 4 * 3.5 + 12.999 + 2 * 7.25);\n}\n",
+   "stdout": "part          qty    price\nspark plug      4     3.50\noil filter      1    13.00\nwiper blade     2     7.25\n--------------------------\ntotal                41.50\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g receipt.cpp -o receipt",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./receipt",
+     "out": "part          qty    price\nspark plug      4     3.50\noil filter      1    13.00\nwiper blade     2     7.25\n--------------------------\ntotal                41.50\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "part          qty    price\nspark plug      4     3.50\noil filter      1    13.00\nwiper blade     2     7.25\n--------------------------\ntotal                41.50\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g receipt.cpp -o receipt",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./receipt",
+      "out": "part          qty    price\nspark plug      4     3.50\noil filter      1    13.00\nwiper blade     2     7.25\n--------------------------\ntotal                41.50\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "shadow.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 24, 31, 22};\n    int low = 0;\n    for (int p : psi) {\n        if (p < 25) {\n            int low = 0;\n            low += 1;\n            std::cout << \"tyre at \" << p << \" psi is low\\n\";\n        }\n    }\n    std::cout << \"low tyres: \" << low << '\\n';\n}\n",
+   "stdout": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g shadow.cpp -o shadow",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./shadow",
+     "out": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+    "stderr": "shadow.cpp:9:17: warning: variable 'low' set but not used [-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g shadow.cpp -o shadow",
+      "out": "",
+      "err": "shadow.cpp:9:17: warning: variable 'low' set but not used [-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./shadow",
+      "out": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "shadow_mirrors.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 24, 31, 22};\n    int low = 0;\n    for (int p : psi) {\n        if (p < 25) {\n            int low = 0;\n            low += 1;\n            std::cout << \"tyre at \" << p << \" psi is low\\n\";\n        }\n    }\n    std::cout << \"low tyres: \" << low << '\\n';\n}\n",
+   "stdout": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+   "stderr": "shadow_mirrors.cpp: In function ‘int main()’:\nshadow_mirrors.cpp:9:17: warning: declaration of ‘low’ shadows a previous local [-Wshadow]\n    9 |             int low = 0;\n      |                 ^~~\nshadow_mirrors.cpp:6:9: note: shadowed declaration is here\n    6 |     int low = 0;\n      |         ^~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -Wshadow shadow_mirrors.cpp -o shadow_mirrors",
+     "out": "",
+     "err": "shadow_mirrors.cpp: In function ‘int main()’:\nshadow_mirrors.cpp:9:17: warning: declaration of ‘low’ shadows a previous local [-Wshadow]\n    9 |             int low = 0;\n      |                 ^~~\nshadow_mirrors.cpp:6:9: note: shadowed declaration is here\n    6 |     int low = 0;\n      |         ^~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./shadow_mirrors",
+     "out": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+    "stderr": "shadow_mirrors.cpp:9:17: warning: declaration shadows a local variable [-Wshadow]\n    9 |             int low = 0;\n      |                 ^\nshadow_mirrors.cpp:6:9: note: previous declaration is here\n    6 |     int low = 0;\n      |         ^\nshadow_mirrors.cpp:9:17: warning: variable 'low' set but not used [-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n2 warnings generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -Wshadow shadow_mirrors.cpp -o shadow_mirrors",
+      "out": "",
+      "err": "shadow_mirrors.cpp:9:17: warning: declaration shadows a local variable [-Wshadow]\n    9 |             int low = 0;\n      |                 ^\nshadow_mirrors.cpp:6:9: note: previous declaration is here\n    6 |     int low = 0;\n      |         ^\nshadow_mirrors.cpp:9:17: warning: variable 'low' set but not used [-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n2 warnings generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./shadow_mirrors",
+      "out": "tyre at 24 psi is low\ntyre at 22 psi is low\nlow tyres: 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "shadow_werror.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> psi{30, 24, 31, 22};\n    int low = 0;\n    for (int p : psi) {\n        if (p < 25) {\n            int low = 0;\n            low += 1;\n            std::cout << \"tyre at \" << p << \" psi is low\\n\";\n        }\n    }\n    std::cout << \"low tyres: \" << low << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "shadow_werror.cpp: In function ‘int main()’:\nshadow_werror.cpp:9:17: error: declaration of ‘low’ shadows a previous local [-Werror=shadow]\n    9 |             int low = 0;\n      |                 ^~~\nshadow_werror.cpp:6:9: note: shadowed declaration is here\n    6 |     int low = 0;\n      |         ^~~\ncc1plus: all warnings being treated as errors\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -Wshadow -Werror shadow_werror.cpp -o shadow_werror",
+     "out": "",
+     "err": "shadow_werror.cpp: In function ‘int main()’:\nshadow_werror.cpp:9:17: error: declaration of ‘low’ shadows a previous local [-Werror=shadow]\n    9 |             int low = 0;\n      |                 ^~~\nshadow_werror.cpp:6:9: note: shadowed declaration is here\n    6 |     int low = 0;\n      |         ^~~\ncc1plus: all warnings being treated as errors\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "shadow_werror.cpp:9:17: error: declaration shadows a local variable [-Werror,-Wshadow]\n    9 |             int low = 0;\n      |                 ^\nshadow_werror.cpp:6:9: note: previous declaration is here\n    6 |     int low = 0;\n      |         ^\nshadow_werror.cpp:9:17: error: variable 'low' set but not used [-Werror,-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n2 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -Wshadow -Werror shadow_werror.cpp -o shadow_werror",
+      "out": "",
+      "err": "shadow_werror.cpp:9:17: error: declaration shadows a local variable [-Werror,-Wshadow]\n    9 |             int low = 0;\n      |                 ^\nshadow_werror.cpp:6:9: note: previous declaration is here\n    6 |     int low = 0;\n      |         ^\nshadow_werror.cpp:9:17: error: variable 'low' set but not used [-Werror,-Wunused-but-set-variable]\n    9 |             int low = 0;\n      |                 ^\n2 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_format.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    int front = 32;\n    int back = 30;\n    double average = 31.0;\n    std::cout << std::format(\"front: {} psi\\n\", front);\n    std::cout << std::format(\"{} psi front, {} psi back, average {}\\n\", front, average);\n    std::cout << std::format(\"back: {:>4} psi\\n\", back);\n    std::cout << std::format(\"average: {:.1f} psi\\n\", average);\n}\n",
+   "stdout": "",
+   "stderr": "In file included from spot_format.cpp:1:\n/usr/include/c++/13/format: In function ‘int main()’:\nspot_format.cpp:9:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, int&, double&>(\"{} psi front, {} psi back, average {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, int, double>::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3592:28:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_pc.std::basic_format_parse_context<char>::next_arg_id()’\n/usr/include/c++/13/format:232:56: error: call to non-‘constexpr’ function ‘void std::__format::__invalid_arg_id_in_format_string()’\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n/usr/include/c++/13/format:182:3: note: ‘void std::__format::__invalid_arg_id_in_format_string()’ declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_format.cpp -o spot_format",
+     "out": "",
+     "err": "In file included from spot_format.cpp:1:\n/usr/include/c++/13/format: In function ‘int main()’:\nspot_format.cpp:9:29:   in ‘constexpr’ expansion of ‘std::basic_format_string<char, int&, double&>(\"{} psi front, {} psi back, average {}\\012\")’\n/usr/include/c++/13/format:3751:19:   in ‘constexpr’ expansion of ‘__scanner.std::__format::_Checking_scanner<char, int, double>::<anonymous>.std::__format::_Scanner<char>::_M_scan()’\n/usr/include/c++/13/format:3559:30:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_on_replacement_field()’\n/usr/include/c++/13/format:3592:28:   in ‘constexpr’ expansion of ‘((std::__format::_Scanner<char>*)this)->std::__format::_Scanner<char>::_M_pc.std::basic_format_parse_context<char>::next_arg_id()’\n/usr/include/c++/13/format:232:56: error: call to non-‘constexpr’ function ‘void std::__format::__invalid_arg_id_in_format_string()’\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n/usr/include/c++/13/format:182:3: note: ‘void std::__format::__invalid_arg_id_in_format_string()’ declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "spot_format.cpp:9:30: error: call to consteval function 'std::basic_format_string<char, int &, double &>::basic_format_string<char[39]>' is not a constant expression\n    9 |     std::cout << std::format(\"{} psi front, {} psi back, average {}\\n\", front, average);\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:232:6: note: non-constexpr function '__invalid_arg_id_in_format_string' cannot be used in a constant expression\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3592:11: note: in call to 'this->_M_pc.next_arg_id()'\n 3592 |           __id = _M_pc.next_arg_id();\n      |                  ^~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3559:7: note: in call to 'this->_M_on_replacement_field()'\n 3559 |                     _M_on_replacement_field();\n      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3751:2: note: in call to '__scanner._M_scan()'\n 3751 |         __scanner._M_scan();\n      |         ^~~~~~~~~~~~~~~~~~~\nspot_format.cpp:9:30: note: in call to 'basic_format_string<char[39]>(\"{} psi front, {} psi back, average {}\\n\")'\n    9 |     std::cout << std::format(\"{} psi front, {} psi back, average {}\\n\", front, average);\n      |                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:182:3: note: declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_format.cpp -o spot_format",
+      "out": "",
+      "err": "spot_format.cpp:9:30: error: call to consteval function 'std::basic_format_string<char, int &, double &>::basic_format_string<char[39]>' is not a constant expression\n    9 |     std::cout << std::format(\"{} psi front, {} psi back, average {}\\n\", front, average);\n      |                              ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:232:6: note: non-constexpr function '__invalid_arg_id_in_format_string' cannot be used in a constant expression\n  232 |             __format::__invalid_arg_id_in_format_string();\n      |             ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3592:11: note: in call to 'this->_M_pc.next_arg_id()'\n 3592 |           __id = _M_pc.next_arg_id();\n      |                  ^~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3559:7: note: in call to 'this->_M_on_replacement_field()'\n 3559 |                     _M_on_replacement_field();\n      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:3751:2: note: in call to '__scanner._M_scan()'\n 3751 |         __scanner._M_scan();\n      |         ^~~~~~~~~~~~~~~~~~~\nspot_format.cpp:9:30: note: in call to 'basic_format_string<char[39]>(\"{} psi front, {} psi back, average {}\\n\")'\n    9 |     std::cout << std::format(\"{} psi front, {} psi back, average {}\\n\", front, average);\n      |                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/format:182:3: note: declared here\n  182 |   __invalid_arg_id_in_format_string()\n      |   ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_u8.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string part = \"brake pads\";\n    std::cout << \"part: \" << part << '\\n';\n    std::cout << \"price: 12.50 €\\n\";\n    std::cout << u8\"fitted: ✓\" << '\\n';\n    std::cout << \"next customer, please\\n\";\n}\n",
+   "stdout": "",
+   "stderr": "spot_u8.cpp: In function ‘int main()’:\nspot_u8.cpp:8:18: error: use of deleted function ‘std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*) [with _Traits = char_traits<char>]’\n    8 |     std::cout << u8\"fitted: ✓\" << '\\n';\n      |                  ^~~~~~~~~~~~~\nIn file included from /usr/include/c++/13/iostream:41,\n                 from spot_u8.cpp:1:\n/usr/include/c++/13/ostream:694:5: note: declared here\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_u8.cpp -o spot_u8",
+     "out": "",
+     "err": "spot_u8.cpp: In function ‘int main()’:\nspot_u8.cpp:8:18: error: use of deleted function ‘std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*) [with _Traits = char_traits<char>]’\n    8 |     std::cout << u8\"fitted: ✓\" << '\\n';\n      |                  ^~~~~~~~~~~~~\nIn file included from /usr/include/c++/13/iostream:41,\n                 from spot_u8.cpp:1:\n/usr/include/c++/13/ostream:694:5: note: declared here\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "spot_u8.cpp:8:15: error: overload resolution selected deleted operator '<<'\n    8 |     std::cout << u8\"fitted: ✓\" << '\\n';\n      |     ~~~~~~~~~ ^  ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:694:5: note: candidate function [with _Traits = std::char_traits<char>] has been explicitly deleted\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:176:7: note: candidate function\n  176 |       operator<<(bool __n)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:292:7: note: candidate function\n  292 |       operator<<(const void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:304:7: note: candidate function\n  304 |       operator<<(const volatile void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/system_error:339:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const error_code' for 2nd argument\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^                                                ~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:564:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char' for 2nd argument\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^                                                 ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:570:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char' for 2nd argument\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^                                               ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:581:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'signed char' for 2nd argument\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:586:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'unsigned char' for 2nd argument\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:595:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'wchar_t' for 2nd argument\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:600:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char8_t' for 2nd argument\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:605:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char16_t' for 2nd argument\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:609:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char32_t' for 2nd argument\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:662:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char *' for 2nd argument\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:675:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const signed char *' for 2nd argument\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:680:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const unsigned char *' for 2nd argument\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:689:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const wchar_t *' for 2nd argument\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:699:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char16_t *' for 2nd argument\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:703:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char32_t *' for 2nd argument\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/ostream.tcc:307:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char *' for 2nd argument\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^                                                 ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/cstddef:124:5: note: candidate function template not viable: no known conversion from 'ostream' (aka 'basic_ostream<char>') to 'byte' for 1st argument\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:554:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'const char8_t *')\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:645:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'char8_t')\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/string_view:761:5: note: candidate template ignored: could not match 'basic_string_view<_CharT, _Traits>' against 'const char8_t *'\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:4032:5: note: candidate template ignored: could not match 'const basic_string<_CharT, _Traits, _Alloc>' against 'const char8_t[12]'\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:615:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:620:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:624:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:709:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:714:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:718:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:801:5: note: candidate template ignored: substitution failure [with _Ostream = ostream &, _Tp = char8_t[12]]: constraints not satisfied for alias template '__rvalue_stream_insertion_t' [with _Os = std::basic_ostream<char> &, _Tp = char8_t[12]]\n  800 |     inline __rvalue_stream_insertion_t<_Ostream, _Tp>\n      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:110:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__ostream_type &(*)(__ostream_type &)' (aka 'basic_ostream<char, std::char_traits<char>> &(*)(basic_ostream<char, std::char_traits<char>> &)') for 1st argument\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:119:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__ios_type &(*)(__ios_type &)' (aka 'basic_ios<char, std::char_traits<char>> &(*)(basic_ios<char, std::char_traits<char>> &)') for 1st argument\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:129:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'ios_base &(*)(ios_base &)' for 1st argument\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:168:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long' for 1st argument\n  168 |       operator<<(long __n)\n      |       ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:172:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned long' for 1st argument\n  172 |       operator<<(unsigned long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:180:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'short' for 1st argument\n  180 |       operator<<(short __n);\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:183:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned short' for 1st argument\n  183 |       operator<<(unsigned short __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:191:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'int' for 1st argument\n  191 |       operator<<(int __n);\n      |       ^          ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:194:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned int' for 1st argument\n  194 |       operator<<(unsigned int __n)\n      |       ^          ~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:203:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long long' for 1st argument\n  203 |       operator<<(long long __n)\n      |       ^          ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:207:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned long long' for 1st argument\n  207 |       operator<<(unsigned long long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:222:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'double' for 1st argument\n  222 |       operator<<(double __f)\n      |       ^          ~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:226:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'float' for 1st argument\n  226 |       operator<<(float __f)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:234:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long double' for 1st argument\n  234 |       operator<<(long double __f)\n      |       ^          ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:297:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'nullptr_t' (aka 'std::nullptr_t') for 1st argument\n  297 |       operator<<(nullptr_t)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:330:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__streambuf_type *' (aka 'basic_streambuf<char, std::char_traits<char>> *') for 1st argument\n  330 |       operator<<(__streambuf_type* __sb);\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_u8.cpp -o spot_u8",
+      "out": "",
+      "err": "spot_u8.cpp:8:15: error: overload resolution selected deleted operator '<<'\n    8 |     std::cout << u8\"fitted: ✓\" << '\\n';\n      |     ~~~~~~~~~ ^  ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:694:5: note: candidate function [with _Traits = std::char_traits<char>] has been explicitly deleted\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:176:7: note: candidate function\n  176 |       operator<<(bool __n)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:292:7: note: candidate function\n  292 |       operator<<(const void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:304:7: note: candidate function\n  304 |       operator<<(const volatile void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/system_error:339:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const error_code' for 2nd argument\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^                                                ~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:564:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char' for 2nd argument\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^                                                 ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:570:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char' for 2nd argument\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^                                               ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:581:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'signed char' for 2nd argument\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:586:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'unsigned char' for 2nd argument\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:595:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'wchar_t' for 2nd argument\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:600:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char8_t' for 2nd argument\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:605:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char16_t' for 2nd argument\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:609:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'char32_t' for 2nd argument\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:662:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char *' for 2nd argument\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:675:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const signed char *' for 2nd argument\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:680:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const unsigned char *' for 2nd argument\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:689:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const wchar_t *' for 2nd argument\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:699:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char16_t *' for 2nd argument\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:703:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char32_t *' for 2nd argument\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/ostream.tcc:307:5: note: candidate function template not viable: no known conversion from 'const char8_t[12]' to 'const char *' for 2nd argument\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^                                                 ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/cstddef:124:5: note: candidate function template not viable: no known conversion from 'ostream' (aka 'basic_ostream<char>') to 'byte' for 1st argument\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:554:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'const char8_t *')\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:645:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'char8_t')\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/string_view:761:5: note: candidate template ignored: could not match 'basic_string_view<_CharT, _Traits>' against 'const char8_t *'\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:4032:5: note: candidate template ignored: could not match 'const basic_string<_CharT, _Traits, _Alloc>' against 'const char8_t[12]'\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:615:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:620:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:624:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:709:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:714:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:718:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:801:5: note: candidate template ignored: substitution failure [with _Ostream = ostream &, _Tp = char8_t[12]]: constraints not satisfied for alias template '__rvalue_stream_insertion_t' [with _Os = std::basic_ostream<char> &, _Tp = char8_t[12]]\n  800 |     inline __rvalue_stream_insertion_t<_Ostream, _Tp>\n      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:110:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__ostream_type &(*)(__ostream_type &)' (aka 'basic_ostream<char, std::char_traits<char>> &(*)(basic_ostream<char, std::char_traits<char>> &)') for 1st argument\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:119:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__ios_type &(*)(__ios_type &)' (aka 'basic_ios<char, std::char_traits<char>> &(*)(basic_ios<char, std::char_traits<char>> &)') for 1st argument\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:129:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'ios_base &(*)(ios_base &)' for 1st argument\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:168:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long' for 1st argument\n  168 |       operator<<(long __n)\n      |       ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:172:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned long' for 1st argument\n  172 |       operator<<(unsigned long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:180:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'short' for 1st argument\n  180 |       operator<<(short __n);\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:183:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned short' for 1st argument\n  183 |       operator<<(unsigned short __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:191:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'int' for 1st argument\n  191 |       operator<<(int __n);\n      |       ^          ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:194:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned int' for 1st argument\n  194 |       operator<<(unsigned int __n)\n      |       ^          ~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:203:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long long' for 1st argument\n  203 |       operator<<(long long __n)\n      |       ^          ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:207:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'unsigned long long' for 1st argument\n  207 |       operator<<(unsigned long long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:222:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'double' for 1st argument\n  222 |       operator<<(double __f)\n      |       ^          ~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:226:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'float' for 1st argument\n  226 |       operator<<(float __f)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:234:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'long double' for 1st argument\n  234 |       operator<<(long double __f)\n      |       ^          ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:297:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to 'nullptr_t' (aka 'std::nullptr_t') for 1st argument\n  297 |       operator<<(nullptr_t)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:330:7: note: candidate function not viable: no known conversion from 'const char8_t[12]' to '__streambuf_type *' (aka 'basic_streambuf<char, std::char_traits<char>> *') for 1st argument\n  330 |       operator<<(__streambuf_type* __sb);\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "sv_basics.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nvoid show(std::string_view part) {\n    std::cout << \"[\" << part << \"] \" << part.size() << \" chars\\n\";\n}\n\nint main() {\n    std::string order = \"brake pads, front left\";\n    show(order);\n    show(\"wiper blades\");\n    std::string_view view = order;\n    show(view.substr(0, 10));\n    view.remove_prefix(12);\n    show(view);\n    std::cout << \"order: \" << order << '\\n';\n}\n",
+   "stdout": "[brake pads, front left] 22 chars\n[wiper blades] 12 chars\n[brake pads] 10 chars\n[front left] 10 chars\norder: brake pads, front left\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sv_basics.cpp -o sv_basics",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_basics",
+     "out": "[brake pads, front left] 22 chars\n[wiper blades] 12 chars\n[brake pads] 10 chars\n[front left] 10 chars\norder: brake pads, front left\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[brake pads, front left] 22 chars\n[wiper blades] 12 chars\n[brake pads] 10 chars\n[front left] 10 chars\norder: brake pads, front left\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sv_basics.cpp -o sv_basics",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sv_basics",
+      "out": "[brake pads, front left] 22 chars\n[wiper blades] 12 chars\n[brake pads] 10 chars\n[front left] 10 chars\norder: brake pads, front left\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_kept.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nstd::string make_label() {\n    return \"spark plug, size 14, gap 0.8 mm\";\n}\n\nint main() {\n    std::string label = make_label();\n    std::string_view size = std::string_view{label}.substr(12, 7);\n    std::cout << label << '\\n';\n    std::cout << size << '\\n';\n}\n",
+   "stdout": "spark plug, size 14, gap 0.8 mm\nsize 14\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sv_kept.cpp -o sv_kept",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_kept",
+     "out": "spark plug, size 14, gap 0.8 mm\nsize 14\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "spark plug, size 14, gap 0.8 mm\nsize 14\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sv_kept.cpp -o sv_kept",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sv_kept",
+      "out": "spark plug, size 14, gap 0.8 mm\nsize 14\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_local.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nstd::string_view first_word(std::string_view line) {\n    std::string copy{line};\n    return std::string_view{copy}.substr(0, copy.find(' '));\n}\n\nint main() {\n    std::cout << first_word(\"alternator belt is squeaking\") << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffea00 sp 0x7fffffffe1a8\nREAD of size 10 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555d7ac in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555b926 in main /home/you/cpp-ch18/sv_local.cpp:11\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\n0x503000000040 is located 0 bytes inside of 29-byte region [0x503000000040,0x50300000005d)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555f1e4 in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555ec18 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555ec18 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555ec18 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555dbd0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555c6bd in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string() /usr/include/c++/13/bits/basic_string.h:804\n    #7 0x55555555b73d in first_word(std::basic_string_view<char, std::char_traits<char> >) /home/you/cpp-ch18/sv_local.cpp:8\n    #8 0x55555555b8ff in main /home/you/cpp-ch18/sv_local.cpp:11\n    #9 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #10 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #11 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555f268 in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555efe0 in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555efe0 in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555efe0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555eae6 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555e407 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555c86f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(char const*, unsigned long, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:627\n    #8 0x55555555cc73 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::__sv_wrapper, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:177\n    #9 0x55555555bf4d in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::basic_string_view<char, std::char_traits<char> >, void>(std::basic_string_view<char, std::char_traits<char> > const&, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:796\n    #10 0x55555555b658 in first_word(std::basic_string_view<char, std::char_traits<char> >) /home/you/cpp-ch18/sv_local.cpp:6\n    #11 0x55555555b8ff in main /home/you/cpp-ch18/sv_local.cpp:11\n    #12 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #13 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #14 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer sv_local.cpp -o sv_local",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_local",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffea00 sp 0x7fffffffe1a8\nREAD of size 10 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555d7ac in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555b926 in main /home/you/cpp-ch18/sv_local.cpp:11\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\n0x503000000040 is located 0 bytes inside of 29-byte region [0x503000000040,0x50300000005d)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555f1e4 in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555ec18 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555ec18 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555ec18 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555dbd0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555c6bd in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string() /usr/include/c++/13/bits/basic_string.h:804\n    #7 0x55555555b73d in first_word(std::basic_string_view<char, std::char_traits<char> >) /home/you/cpp-ch18/sv_local.cpp:8\n    #8 0x55555555b8ff in main /home/you/cpp-ch18/sv_local.cpp:11\n    #9 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #10 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #11 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555f268 in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555efe0 in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555efe0 in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555efe0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555eae6 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555e407 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555c86f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(char const*, unsigned long, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:627\n    #8 0x55555555cc73 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::__sv_wrapper, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:177\n    #9 0x55555555bf4d in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::basic_string_view<char, std::char_traits<char> >, void>(std::basic_string_view<char, std::char_traits<char> > const&, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:796\n    #10 0x55555555b658 in first_word(std::basic_string_view<char, std::char_traits<char> >) /home/you/cpp-ch18/sv_local.cpp:6\n    #11 0x55555555b8ff in main /home/you/cpp-ch18/sv_local.cpp:11\n    #12 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #13 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #14 0x55555555b484 in _start (/home/you/cpp-ch18/sv_local+0x7484) (BuildId: f68aa5513821c57d73cb199971032b7e887761fd)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "sv_predict.cpp": {
+   "src": "#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view part = \"spark plug\";\n    std::cout << part.substr(6) << '\\n';\n    std::cout << part.substr(0, 5) << '\\n';\n    part.remove_suffix(5);\n    std::cout << part << ' ' << part.size() << '\\n';\n    std::cout << part.find('a') << '\\n';\n}\n",
+   "stdout": "plug\nspark\nspark 5\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sv_predict.cpp -o sv_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_predict",
+     "out": "plug\nspark\nspark 5\n2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "plug\nspark\nspark 5\n2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sv_predict.cpp -o sv_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sv_predict",
+      "out": "plug\nspark\nspark 5\n2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_quiet.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nstd::string make_label() {\n    return \"spark plug, size 14, gap 0.8 mm\";\n}\n\nint main() {\n    std::string_view label = make_label();\n    std::cout << label << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "sv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -Wpedantic -g sv_quiet.cpp -o sv_quiet",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "clang++ -std=c++23 -Wall -Wextra -Wpedantic -g sv_quiet.cpp -o sv_quiet",
+     "out": "",
+     "err": "sv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\n",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "sv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\nsv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -Wpedantic -g sv_quiet.cpp -o sv_quiet",
+      "out": "",
+      "err": "sv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -Wpedantic -g sv_quiet.cpp -o sv_quiet",
+      "out": "",
+      "err": "sv_quiet.cpp:10:30: warning: object backing the pointer will be destroyed at the end of the full-expression [-Wdangling-gsl]\n   10 |     std::string_view label = make_label();\n      |                              ^~~~~~~~~~~~\n1 warning generated.\n",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_sizes.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nusing namespace std::literals;\n\nint main() {\n    auto a = \"oil\";\n    auto b = \"oil\"s;\n    auto c = \"oil\"sv;\n    std::cout << sizeof(a) << ' ' << sizeof(b) << ' ' << sizeof(c) << '\\n';\n    std::cout << b.size() << ' ' << c.size() << '\\n';\n    std::cout << (\"oil\"s + \" filter\") << '\\n';\n}\n",
+   "stdout": "8 32 16\n3 3\noil filter\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sv_sizes.cpp -o sv_sizes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_sizes",
+     "out": "8 32 16\n3 3\noil filter\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "8 32 16\n3 3\noil filter\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sv_sizes.cpp -o sv_sizes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sv_sizes",
+      "out": "8 32 16\n3 3\noil filter\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_split.cpp": {
+   "src": "#include <iostream>\n#include <string_view>\n\nint main() {\n    std::string_view list = \"oil,tyres,wipers\";\n    while (!list.empty()) {\n        std::size_t comma = list.find(',');\n        std::string_view item = list.substr(0, comma);\n        if (comma == std::string_view::npos) {\n            list.remove_prefix(list.size());\n        } else {\n            list.remove_prefix(comma + 1);\n        }\n        std::cout << item << ' ' << item.size() << ' ' << list.size() << '\\n';\n    }\n}\n",
+   "stdout": "oil 3 12\ntyres 5 6\nwipers 6 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sv_split.cpp -o sv_split",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_split",
+     "out": "oil 3 12\ntyres 5 6\nwipers 6 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "oil 3 12\ntyres 5 6\nwipers 6 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sv_split.cpp -o sv_split",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sv_split",
+      "out": "oil 3 12\ntyres 5 6\nwipers 6 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sv_temp.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <string_view>\n\nstd::string make_label() {\n    return \"spark plug, size 14, gap 0.8 mm\";\n}\n\nint main() {\n    std::string_view label = make_label();\n    std::cout << label << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffe9c0 sp 0x7fffffffe168\nREAD of size 31 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555b6d8 in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555a82a in main /home/you/cpp-ch18/sv_temp.cpp:11\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\n0x503000000040 is located 0 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555d110 in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555cb44 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555cb44 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555cb44 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555bafc in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555b1ab in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string() /usr/include/c++/13/bits/basic_string.h:804\n    #7 0x55555555a7b3 in main /home/you/cpp-ch18/sv_temp.cpp:10\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555d194 in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555cf0c in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555cf0c in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555cf0c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555ca12 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555c333 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555b361 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:649\n    #8 0x55555555a5de in make_label[abi:cxx11]() /home/you/cpp-ch18/sv_temp.cpp:6\n    #9 0x55555555a747 in main /home/you/cpp-ch18/sv_temp.cpp:10\n    #10 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #11 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #12 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer sv_temp.cpp -o sv_temp",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sv_temp",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000000040 at pc 0x7ffff787f05f bp 0x7fffffffe9c0 sp 0x7fffffffe168\nREAD of size 31 at 0x503000000040 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555555b6d8 in std::basic_ostream<char, std::char_traits<char> >& std::operator<< <char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, std::basic_string_view<char, std::char_traits<char> >) /usr/include/c++/13/string_view:763\n    #3 0x55555555a82a in main /home/you/cpp-ch18/sv_temp.cpp:11\n    #4 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #5 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #6 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\n0x503000000040 is located 0 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nfreed by thread T0 here:\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555d110 in std::__new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172\n    #2 0x55555555cb44 in std::allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/13/bits/allocator.h:210\n    #3 0x55555555cb44 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517\n    #4 0x55555555cb44 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy(unsigned long) /usr/include/c++/13/bits/basic_string.h:289\n    #5 0x55555555bafc in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose() /usr/include/c++/13/bits/basic_string.h:283\n    #6 0x55555555b1ab in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string() /usr/include/c++/13/bits/basic_string.h:804\n    #7 0x55555555a7b3 in main /home/you/cpp-ch18/sv_temp.cpp:10\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555d194 in std::__new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x55555555cf0c in std::allocator<char>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x55555555cf0c in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x55555555cf0c in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_S_allocate(std::allocator<char>&, unsigned long) /usr/include/c++/13/bits/basic_string.h:126\n    #5 0x55555555ca12 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long) /usr/include/c++/13/bits/basic_string.tcc:159\n    #6 0x55555555c333 in void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char const*>(char const*, char const*, std::forward_iterator_tag) /usr/include/c++/13/bits/basic_string.tcc:229\n    #7 0x55555555b361 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&) /usr/include/c++/13/bits/basic_string.h:649\n    #8 0x55555555a5de in make_label[abi:cxx11]() /home/you/cpp-ch18/sv_temp.cpp:6\n    #9 0x55555555a747 in main /home/you/cpp-ch18/sv_temp.cpp:10\n    #10 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #11 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #12 0x55555555a464 in _start (/home/you/cpp-ch18/sv_temp+0x6464) (BuildId: 4d96bbd3b1f28c2bb7c7db77299c4940bacbaccf)\n\nSUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x502ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x502fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x503000000000: fa fa 00 00 00 fa fa fa[fd]fd fd fd fa fa fa fa\n  0x503000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x503000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "tidy_average.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\ndouble average(const std::vector<int>& psi) {\n    int total = 0;\n    for (int p : psi) {\n        total += p;\n    }\n    return total / psi.size();\n}\n\nint main() {\n    std::vector<int> psi{30, 32, 31, 32};\n    std::cout << \"average: \" << average(psi) << '\\n';\n}\n",
+   "stdout": "/home/you/cpp-ch18/tidy/tidy_average.cpp:9:12: warning: result of integer division used in a floating point context; possible loss of precision [bugprone-integer-division]\n    9 |     return total / psi.size();\n      |            ^\n/home/you/cpp-ch18/tidy/tidy_average.cpp:9:12: warning: narrowing conversion from 'size_type' (aka 'unsigned long') to 'double' [bugprone-narrowing-conversions]\n",
+   "stderr": "14786 warnings generated.\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "cd tidy",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18"
+    },
+    {
+     "cmd": "cp ../tidy_average.cpp .",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    },
+    {
+     "cmd": "clang-tidy --quiet tidy_average.cpp -- -std=c++23",
+     "out": "/home/you/cpp-ch18/tidy/tidy_average.cpp:9:12: warning: result of integer division used in a floating point context; possible loss of precision [bugprone-integer-division]\n    9 |     return total / psi.size();\n      |            ^\n/home/you/cpp-ch18/tidy/tidy_average.cpp:9:12: warning: narrowing conversion from 'size_type' (aka 'unsigned long') to 'double' [bugprone-narrowing-conversions]\n",
+     "err": "14786 warnings generated.\n",
+     "exit": 0,
+     "dir": "~/cpp-ch18/tidy"
+    }
+   ]
+  },
+  "tochars.cpp": {
+   "src": "#include <charconv>\n#include <iostream>\n#include <string_view>\n\nint main() {\n    char buffer[16];\n    auto [end, err] = std::to_chars(buffer, buffer + 16, 2026);\n    std::string_view text(buffer, end - buffer);\n    std::cout << text << \" is \" << text.size() << \" chars\\n\";\n    auto [end2, err2] = std::to_chars(buffer, buffer + 16, 255, 16);\n    std::cout << std::string_view(buffer, end2 - buffer) << '\\n';\n}\n",
+   "stdout": "2026 is 4 chars\nff\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g tochars.cpp -o tochars",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./tochars",
+     "out": "2026 is 4 chars\nff\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "2026 is 4 chars\nff\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g tochars.cpp -o tochars",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./tochars",
+      "out": "2026 is 4 chars\nff\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "u8_cout.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << u8\"café\" << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "u8_cout.cpp: In function ‘int main()’:\nu8_cout.cpp:4:18: error: use of deleted function ‘std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*) [with _Traits = char_traits<char>]’\n    4 |     std::cout << u8\"café\" << '\\n';\n      |                  ^~~~~~~~\nIn file included from /usr/include/c++/13/iostream:41,\n                 from u8_cout.cpp:1:\n/usr/include/c++/13/ostream:694:5: note: declared here\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g u8_cout.cpp -o u8_cout",
+     "out": "",
+     "err": "u8_cout.cpp: In function ‘int main()’:\nu8_cout.cpp:4:18: error: use of deleted function ‘std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*) [with _Traits = char_traits<char>]’\n    4 |     std::cout << u8\"café\" << '\\n';\n      |                  ^~~~~~~~\nIn file included from /usr/include/c++/13/iostream:41,\n                 from u8_cout.cpp:1:\n/usr/include/c++/13/ostream:694:5: note: declared here\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "u8_cout.cpp:4:15: error: overload resolution selected deleted operator '<<'\n    4 |     std::cout << u8\"café\" << '\\n';\n      |     ~~~~~~~~~ ^  ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:694:5: note: candidate function [with _Traits = std::char_traits<char>] has been explicitly deleted\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:176:7: note: candidate function\n  176 |       operator<<(bool __n)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:292:7: note: candidate function\n  292 |       operator<<(const void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:304:7: note: candidate function\n  304 |       operator<<(const volatile void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/system_error:339:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const error_code' for 2nd argument\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^                                                ~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:564:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char' for 2nd argument\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^                                                 ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:570:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char' for 2nd argument\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^                                               ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:581:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'signed char' for 2nd argument\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:586:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'unsigned char' for 2nd argument\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:595:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'wchar_t' for 2nd argument\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:600:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char8_t' for 2nd argument\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:605:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char16_t' for 2nd argument\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:609:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char32_t' for 2nd argument\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:662:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char *' for 2nd argument\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:675:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const signed char *' for 2nd argument\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:680:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const unsigned char *' for 2nd argument\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:689:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const wchar_t *' for 2nd argument\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:699:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char16_t *' for 2nd argument\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:703:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char32_t *' for 2nd argument\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/ostream.tcc:307:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char *' for 2nd argument\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^                                                 ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/cstddef:124:5: note: candidate function template not viable: no known conversion from 'ostream' (aka 'basic_ostream<char>') to 'byte' for 1st argument\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:554:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'const char8_t *')\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:645:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'char8_t')\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/string_view:761:5: note: candidate template ignored: could not match 'basic_string_view<_CharT, _Traits>' against 'const char8_t *'\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:4032:5: note: candidate template ignored: could not match 'const basic_string<_CharT, _Traits, _Alloc>' against 'const char8_t[6]'\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:615:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:620:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:624:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:709:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:714:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:718:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:801:5: note: candidate template ignored: substitution failure [with _Ostream = ostream &, _Tp = char8_t[6]]: constraints not satisfied for alias template '__rvalue_stream_insertion_t' [with _Os = std::basic_ostream<char> &, _Tp = char8_t[6]]\n  800 |     inline __rvalue_stream_insertion_t<_Ostream, _Tp>\n      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:110:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__ostream_type &(*)(__ostream_type &)' (aka 'basic_ostream<char, std::char_traits<char>> &(*)(basic_ostream<char, std::char_traits<char>> &)') for 1st argument\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:119:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__ios_type &(*)(__ios_type &)' (aka 'basic_ios<char, std::char_traits<char>> &(*)(basic_ios<char, std::char_traits<char>> &)') for 1st argument\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:129:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'ios_base &(*)(ios_base &)' for 1st argument\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:168:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long' for 1st argument\n  168 |       operator<<(long __n)\n      |       ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:172:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned long' for 1st argument\n  172 |       operator<<(unsigned long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:180:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'short' for 1st argument\n  180 |       operator<<(short __n);\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:183:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned short' for 1st argument\n  183 |       operator<<(unsigned short __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:191:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'int' for 1st argument\n  191 |       operator<<(int __n);\n      |       ^          ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:194:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned int' for 1st argument\n  194 |       operator<<(unsigned int __n)\n      |       ^          ~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:203:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long long' for 1st argument\n  203 |       operator<<(long long __n)\n      |       ^          ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:207:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned long long' for 1st argument\n  207 |       operator<<(unsigned long long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:222:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'double' for 1st argument\n  222 |       operator<<(double __f)\n      |       ^          ~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:226:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'float' for 1st argument\n  226 |       operator<<(float __f)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:234:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long double' for 1st argument\n  234 |       operator<<(long double __f)\n      |       ^          ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:297:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'nullptr_t' (aka 'std::nullptr_t') for 1st argument\n  297 |       operator<<(nullptr_t)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:330:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__streambuf_type *' (aka 'basic_streambuf<char, std::char_traits<char>> *') for 1st argument\n  330 |       operator<<(__streambuf_type* __sb);\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g u8_cout.cpp -o u8_cout",
+      "out": "",
+      "err": "u8_cout.cpp:4:15: error: overload resolution selected deleted operator '<<'\n    4 |     std::cout << u8\"café\" << '\\n';\n      |     ~~~~~~~~~ ^  ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:694:5: note: candidate function [with _Traits = std::char_traits<char>] has been explicitly deleted\n  694 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:176:7: note: candidate function\n  176 |       operator<<(bool __n)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:292:7: note: candidate function\n  292 |       operator<<(const void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:304:7: note: candidate function\n  304 |       operator<<(const volatile void* __p)\n      |       ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/system_error:339:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const error_code' for 2nd argument\n  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n      |     ^                                                ~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:564:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char' for 2nd argument\n  564 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n      |     ^                                                 ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:570:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char' for 2nd argument\n  570 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n      |     ^                                               ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:581:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'signed char' for 2nd argument\n  581 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:586:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'unsigned char' for 2nd argument\n  586 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n      |     ^                                               ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:595:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'wchar_t' for 2nd argument\n  595 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:600:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char8_t' for 2nd argument\n  600 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;\n      |     ^                                         ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:605:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char16_t' for 2nd argument\n  605 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:609:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'char32_t' for 2nd argument\n  609 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;\n      |     ^                                         ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:662:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char *' for 2nd argument\n  662 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:675:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const signed char *' for 2nd argument\n  675 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:680:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const unsigned char *' for 2nd argument\n  680 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n      |     ^                                               ~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:689:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const wchar_t *' for 2nd argument\n  689 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:699:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char16_t *' for 2nd argument\n  699 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:703:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char32_t *' for 2nd argument\n  703 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;\n      |     ^                                         ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/ostream.tcc:307:5: note: candidate function template not viable: no known conversion from 'const char8_t[6]' to 'const char *' for 2nd argument\n  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n      |     ^                                                 ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/cstddef:124:5: note: candidate function template not viable: no known conversion from 'ostream' (aka 'basic_ostream<char>') to 'byte' for 1st argument\n  124 |     operator<<(byte __b, _IntegerType __shift) noexcept\n      |     ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:554:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'const char8_t *')\n  554 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:645:5: note: candidate template ignored: deduced conflicting types for parameter '_CharT' ('char' vs. 'char8_t')\n  645 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/string_view:761:5: note: candidate template ignored: could not match 'basic_string_view<_CharT, _Traits>' against 'const char8_t *'\n  761 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:4032:5: note: candidate template ignored: could not match 'const basic_string<_CharT, _Traits, _Alloc>' against 'const char8_t[6]'\n 4032 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:615:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  615 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:620:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  620 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:624:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:709:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  709 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:714:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  714 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:718:5: note: candidate template ignored: could not match 'wchar_t' against 'char'\n  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:801:5: note: candidate template ignored: substitution failure [with _Ostream = ostream &, _Tp = char8_t[6]]: constraints not satisfied for alias template '__rvalue_stream_insertion_t' [with _Os = std::basic_ostream<char> &, _Tp = char8_t[6]]\n  800 |     inline __rvalue_stream_insertion_t<_Ostream, _Tp>\n      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  801 |     operator<<(_Ostream&& __os, const _Tp& __x)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:110:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__ostream_type &(*)(__ostream_type &)' (aka 'basic_ostream<char, std::char_traits<char>> &(*)(basic_ostream<char, std::char_traits<char>> &)') for 1st argument\n  110 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:119:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__ios_type &(*)(__ios_type &)' (aka 'basic_ios<char, std::char_traits<char>> &(*)(basic_ios<char, std::char_traits<char>> &)') for 1st argument\n  119 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:129:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'ios_base &(*)(ios_base &)' for 1st argument\n  129 |       operator<<(ios_base& (*__pf) (ios_base&))\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:168:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long' for 1st argument\n  168 |       operator<<(long __n)\n      |       ^          ~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:172:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned long' for 1st argument\n  172 |       operator<<(unsigned long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:180:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'short' for 1st argument\n  180 |       operator<<(short __n);\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:183:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned short' for 1st argument\n  183 |       operator<<(unsigned short __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:191:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'int' for 1st argument\n  191 |       operator<<(int __n);\n      |       ^          ~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:194:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned int' for 1st argument\n  194 |       operator<<(unsigned int __n)\n      |       ^          ~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:203:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long long' for 1st argument\n  203 |       operator<<(long long __n)\n      |       ^          ~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:207:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'unsigned long long' for 1st argument\n  207 |       operator<<(unsigned long long __n)\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:222:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'double' for 1st argument\n  222 |       operator<<(double __f)\n      |       ^          ~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:226:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'float' for 1st argument\n  226 |       operator<<(float __f)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:234:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'long double' for 1st argument\n  234 |       operator<<(long double __f)\n      |       ^          ~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:297:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to 'nullptr_t' (aka 'std::nullptr_t') for 1st argument\n  297 |       operator<<(nullptr_t)\n      |       ^          ~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:330:7: note: candidate function not viable: no known conversion from 'const char8_t[6]' to '__streambuf_type *' (aka 'basic_streambuf<char, std::char_traits<char>> *') for 1st argument\n  330 |       operator<<(__streambuf_type* __sb);\n      |       ^          ~~~~~~~~~~~~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "u8_ok.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::u8string word = u8\"café\";\n    std::cout << word.size() << '\\n';\n    std::string bytes(word.begin(), word.end());\n    std::cout << bytes << '\\n';\n}\n",
+   "stdout": "5\ncafé\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g u8_ok.cpp -o u8_ok",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./u8_ok",
+     "out": "5\ncafé\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "5\ncafé\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g u8_ok.cpp -o u8_ok",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./u8_ok",
+      "out": "5\ncafé\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "upper.cpp": {
+   "src": "#include <cctype>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::string word = \"café crème\";\n    for (char& c : word) {\n        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));\n    }\n    std::cout << word << '\\n';\n    int letters = 0;\n    for (char c : word) {\n        if (std::isalpha(static_cast<unsigned char>(c))) {\n            ++letters;\n        }\n    }\n    std::cout << \"isalpha said yes \" << letters << \" times\\n\";\n}\n",
+   "stdout": "CAFé CRèME\nisalpha said yes 7 times\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g upper.cpp -o upper",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./upper",
+     "out": "CAFé CRèME\nisalpha said yes 7 times\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "CAFé CRèME\nisalpha said yes 7 times\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g upper.cpp -o upper",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./upper",
+      "out": "CAFé CRèME\nisalpha said yes 7 times\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "vla.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int count = 4;\n    int psi[count];\n    for (int i = 0; i < count; ++i) {\n        psi[i] = 30 + i;\n    }\n    std::cout << \"last: \" << psi[count - 1] << '\\n';\n}\n",
+   "stdout": "last: 33\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g vla.cpp -o vla",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./vla",
+     "out": "last: 33\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "last: 33\n",
+    "stderr": "vla.cpp:5:13: warning: variable length arrays in C++ are a Clang extension [-Wvla-cxx-extension]\n    5 |     int psi[count];\n      |             ^~~~~\nvla.cpp:5:13: note: read of non-const variable 'count' is not allowed in a constant expression\nvla.cpp:4:9: note: declared here\n    4 |     int count = 4;\n      |         ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g vla.cpp -o vla",
+      "out": "",
+      "err": "vla.cpp:5:13: warning: variable length arrays in C++ are a Clang extension [-Wvla-cxx-extension]\n    5 |     int psi[count];\n      |             ^~~~~\nvla.cpp:5:13: note: read of non-const variable 'count' is not allowed in a constant expression\nvla.cpp:4:9: note: declared here\n    4 |     int count = 4;\n      |         ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./vla",
+      "out": "last: 33\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "vla_pedantic.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int count = 4;\n    int psi[count];\n    for (int i = 0; i < count; ++i) {\n        psi[i] = 30 + i;\n    }\n    std::cout << \"last: \" << psi[count - 1] << '\\n';\n}\n",
+   "stdout": "last: 33\n",
+   "stderr": "vla_pedantic.cpp: In function ‘int main()’:\nvla_pedantic.cpp:5:9: warning: ISO C++ forbids variable length array ‘psi’ [-Wvla]\n    5 |     int psi[count];\n      |         ^~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -Wpedantic vla_pedantic.cpp -o vla_pedantic",
+     "out": "",
+     "err": "vla_pedantic.cpp: In function ‘int main()’:\nvla_pedantic.cpp:5:9: warning: ISO C++ forbids variable length array ‘psi’ [-Wvla]\n    5 |     int psi[count];\n      |         ^~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./vla_pedantic",
+     "out": "last: 33\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "last: 33\n",
+    "stderr": "vla_pedantic.cpp:5:13: warning: variable length arrays in C++ are a Clang extension [-Wvla-cxx-extension]\n    5 |     int psi[count];\n      |             ^~~~~\nvla_pedantic.cpp:5:13: note: read of non-const variable 'count' is not allowed in a constant expression\nvla_pedantic.cpp:4:9: note: declared here\n    4 |     int count = 4;\n      |         ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -Wpedantic vla_pedantic.cpp -o vla_pedantic",
+      "out": "",
+      "err": "vla_pedantic.cpp:5:13: warning: variable length arrays in C++ are a Clang extension [-Wvla-cxx-extension]\n    5 |     int psi[count];\n      |             ^~~~~\nvla_pedantic.cpp:5:13: note: read of non-const variable 'count' is not allowed in a constant expression\nvla_pedantic.cpp:4:9: note: declared here\n    4 |     int count = 4;\n      |         ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./vla_pedantic",
+      "out": "last: 33\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

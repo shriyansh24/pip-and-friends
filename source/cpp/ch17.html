@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Head Chefs and Examiners</title>
+<meta name="description" content="Chapter 17 of the Pip &amp; Friends C++ book, a comic course: building with CMake (CMakeLists.txt, configure and build, out-of-source build folders, Make and Ninja, libraries and targets, rebuilding only what changed, Debug and Release, static and shared libraries, find_package and package managers) and testing with a unit-test framework (doctest, with Catch2 and GoogleTest side by side: TEST_CASE, CHECK and REQUIRE, approximate doubles, testing exceptions, subcases, CTest, red-green-refactor and regression suites).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch17.css">
+<script defer src="../data/cpp-ch17.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch17.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch16.html">&larr; Ch 16</a><span aria-current="page">Ch 17 of 29</span><a href="ch18.html">Ch 18 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 17 · INTERMEDIATE</p>
+    <h1 id="cover-h">HEAD CHEFS AND EXAMINERS</h1>
+    <div class="lineup" aria-hidden="true">
+      <figure><svg class="char" data-char="mechanic" data-mood="happy" data-arms="wave"></svg><figcaption><b>WREN</b>writes the menu</figcaption></figure>
+      <figure><svg class="char" data-char="planner" data-mood="happy"></svg><figcaption><b>CAM</b>CMake, the planner</figcaption></figure>
+      <figure><svg class="char" data-char="headchef" data-mood="focus" data-mouth="shout" data-arms="point"></svg><figcaption><b>HEAD CHEF</b>Make or Ninja</figcaption></figure>
+      <figure><svg class="char" data-char="examiner" data-mood="normal"></svg><figcaption><b>DOT</b>the examiner</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: four characters in a row. Wren the mechanic waves. Cam, a planner in a green waistcoat with a pencil behind the ear, holds a stack of cards. A head chef in a tall white hat with "make" on its band points and shouts. Dot, an examiner in a flat cap and round glasses, holds a clipboard with a checklist.</p>
+    <p class="caption blurb">Up to now you built programs by typing one long <code>g++</code> command, and you checked them with <code>assert</code>. That works for three files. Real projects have hundreds, plus libraries, plus settings for "fast" and "debuggable" builds, plus tests that must run after every change. Today you hire a kitchen crew: <b>CMake</b> plans the build, a <b>head chef</b> (Make or Ninja) shouts the orders to the Compiler and the Linker, and <b>Dot the examiner</b> runs every test and tells you exactly which one failed and by how much. About 130 minutes, with 27 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The kitchen crew: your first CMake project</a></li>
+      <li><a href="#part-2">A library and an app: targets</a></li>
+      <li><a href="#part-3">Only what changed: rebuilds and stale programs</a></li>
+      <li><a href="#part-4">When the kitchen complains: errors, build types, libraries, groceries</a></li>
+      <li><a href="#part-5">The examiner: a unit-test framework</a></li>
+      <li><a href="#part-6">The whole kitchen under test: CTest, red-green-refactor, good tests</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE KITCHEN CREW<small>Why build systems exist, a three-line <code>CMakeLists.txt</code>, configure, build and run</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: the command that keeps growing">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Remember Chapter 10's diner? Every new file made the build command longer. Now picture the garage's real project: forty files, a library shared by three programs, warnings switched on, two build modes, and tests. Wren tries to type it all.</p>
+    <div class="scene">
+      <svg class="char" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>g++ -std=c++23 -Wall -Wextra -g main.cpp kitchen.cpp rail.cpp bill.cpp ...</code> Did I list every file? Did I forget the warnings this time? Which files changed since last time, so I only recompile those? And my friend on Windows doesn't even <b>have</b> <code>g++</code>. A command I retype from memory is a recipe I keep losing.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Cam says: </span>Hi, I'm <b>Cam</b>, the planner. That's <b>CMake</b> to the rest of the world. Don't write commands. Write me a <b>menu</b>: which programs and libraries you want, made from which files, with which settings. I'll plan everything else, on any computer.</p></div>
+      <svg class="char" data-char="planner" data-mood="happy" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren shrugs, worried, beside a very long command. Cam the planner points cheerfully, holding recipe cards.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 2: the kitchen order system">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Big idea: a <b>build system</b> is a kitchen. You never shout at the cooks yourself. Follow the order along the arrows.</p>
+    <svg class="pic-wide kitchen-wide" viewBox="0 0 660 320" role="img" aria-label="A kitchen order flow. One: a menu card labelled CMakeLists.txt, written by you. An arrow labelled configure leads to two: a stack of recipe cards reading Makefile or build.ninja, written by CMake. An arrow labelled build leads to three: a chef's hat labelled make, the head chef who reads the cards and calls the orders. Arrows lead from the head chef to the two cooks: the Compiler g++, turning .cpp files into .o files, and the Linker ld, joining .o files into the program. Below, a delivery van labelled package manager brings groceries: other people's libraries.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="6" y="40" width="120" height="140" rx="8" fill="#FFF6CC"/>
+        <rect x="204" y="48" width="110" height="132" rx="8" fill="#FFFFFF"/><rect x="196" y="40" width="110" height="132" rx="8" fill="#FFFFFF"/>
+        <path d="M378 112 Q362 84 380 68 Q386 44 410 48 Q434 44 440 68 Q458 84 442 112 Z" fill="#FFFFFF"/>
+        <rect x="376" y="104" width="68" height="22" rx="4" fill="#FFFFFF"/>
+        <rect x="494" y="30" width="156" height="74" rx="10" fill="#DDE8FF"/>
+        <rect x="494" y="122" width="156" height="74" rx="10" fill="#C9F2D9"/>
+        <path d="M132 110 H184 M312 104 H360 M452 98 L488 72 M452 120 L488 152" fill="none"/>
+        <path d="M176 101 l10 9 l-10 9 M350 95 l10 9 l-10 9 M476 70 l13 1 l-6 12 M476 145 l13 8 l-12 6" fill="none"/>
+        <rect x="190" y="250" width="150" height="50" rx="8" fill="#FFE1E1"/><path d="M340 264 h40 l20 18 v18 h-60 z" fill="#FFE1E1"/>
+        <circle cx="226" cy="304" r="10" fill="#2B2B2B"/><circle cx="370" cy="304" r="10" fill="#2B2B2B"/>
+      </g>
+      <path d="M22 84 H110 M22 108 H100 M22 132 H106 M22 156 H92" fill="none" stroke="#111" stroke-width="3"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" font-size="14" text-anchor="middle">
+        <text x="66" y="64">CMakeLists.txt</text>
+        <text x="251" y="88">Makefile</text><text x="251" y="112">or</text><text x="251" y="136">build.ninja</text>
+        <text x="410" y="120">make</text>
+        <text x="572" y="60">g++</text><text x="572" y="152">ld</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111" font-size="15" text-anchor="middle">
+        <text x="66" y="204">1 · YOU write</text><text x="66" y="222">the menu</text>
+        <text x="255" y="204">2 · CMAKE writes</text><text x="255" y="222">the recipe cards</text>
+        <text x="410" y="150">3 · HEAD CHEF</text><text x="410" y="168">calls orders</text>
+        <text x="572" y="84">Compiler: .cpp → .o</text><text x="572" y="176">Linker: .o → program</text>
+        <text x="265" y="281">package manager</text>
+        <text x="158" y="96" font-size="13">configure</text>
+        <text x="336" y="90" font-size="13">build</text>
+        <text x="420" y="270" text-anchor="start">4 · GROCERIES:</text><text x="420" y="288" text-anchor="start">other people's libraries</text>
+      </g>
+    </svg>
+    <svg class="pic-mid kitchen-tall" viewBox="0 0 340 640" role="img" aria-label="The same kitchen flow, top to bottom. You write the menu, CMakeLists.txt. Configure: CMake writes the recipe cards, a Makefile or build.ninja. Build: the head chef, make, calls the orders to two cooks, the Compiler g++ (.cpp to .o) and the Linker ld (.o to program). At the bottom, the package manager's van brings other people's libraries.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="20" y="10" width="130" height="116" rx="8" fill="#FFF6CC"/>
+        <rect x="28" y="182" width="122" height="104" rx="8" fill="#FFFFFF"/><rect x="20" y="174" width="122" height="104" rx="8" fill="#FFFFFF"/>
+        <path d="M54 400 Q38 372 56 356 Q62 332 86 336 Q110 332 116 356 Q134 372 118 400 Z" fill="#FFFFFF"/>
+        <rect x="52" y="392" width="68" height="24" rx="4" fill="#FFFFFF"/>
+        <rect x="8" y="468" width="156" height="66" rx="10" fill="#DDE8FF"/><rect x="176" y="468" width="156" height="66" rx="10" fill="#C9F2D9"/>
+        <path d="M85 130 V166 M85 292 V328 M70 420 V460 M100 420 L244 460" fill="none"/>
+        <path d="M76 158 l9 10 l9 -10 M76 320 l9 10 l9 -10 M61 452 l9 10 l9 -10 M232 452 l13 9 l-15 3" fill="none"/>
+        <rect x="70" y="566" width="140" height="46" rx="8" fill="#FFE1E1"/><path d="M210 578 h36 l18 16 v18 h-54 z" fill="#FFE1E1"/>
+        <circle cx="102" cy="616" r="9" fill="#2B2B2B"/><circle cx="238" cy="616" r="9" fill="#2B2B2B"/>
+      </g>
+      <path d="M34 58 H134 M34 80 H124 M34 102 H130" fill="none" stroke="#111" stroke-width="3"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" font-size="16" text-anchor="middle">
+        <text x="85" y="38" font-size="14">CMakeLists.txt</text>
+        <text x="81" y="210">Makefile</text><text x="81" y="232">or</text><text x="81" y="254">build.ninja</text>
+        <text x="86" y="410">make</text>
+        <text x="86" y="494">g++</text><text x="254" y="494">ld</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111" font-size="17">
+        <text x="166" y="60">1 · YOU write</text><text x="166" y="82">the menu</text>
+        <text x="166" y="222">2 · CMAKE writes</text><text x="166" y="244">the recipe cards</text>
+        <text x="150" y="376">3 · HEAD CHEF</text><text x="150" y="398">calls the orders</text>
+        <text x="100" y="153">configure</text><text x="100" y="315">build</text>
+        <text x="86" y="522" text-anchor="middle" font-size="15">.cpp → .o</text><text x="254" y="522" text-anchor="middle" font-size="15">.o → program</text>
+        <text x="140" y="595" text-anchor="middle" font-size="15">package manager</text>
+        <text x="170" y="558" text-anchor="middle" font-size="15">4 · groceries: other people's libraries</text>
+      </g>
+    </svg>
+    <ol class="checklist">
+      <li><span><b>You</b> write <code>CMakeLists.txt</code>: <em>what</em> to make (a program called <code>hello</code> from <code>main.cpp</code>), never <em>how</em>.</span></li>
+      <li><span><b>Configure:</b> CMake reads your menu, looks around the computer (which compiler? which version?) and writes <b>recipe cards</b> for one particular kitchen: a <code>Makefile</code> for Make, a <code>build.ninja</code> for Ninja, or a Visual Studio project on Windows. Programs that write these cards are called <b>generators</b>.</span></li>
+      <li><span><b>Build:</b> the <b>head chef</b>, a <b>build tool</b> (Make or Ninja), reads the cards and calls out each order: compile this file, link those. It remembers what it cooked, so next time it only re-cooks what changed.</span></li>
+      <li><span><b>The cooks</b> are old friends: the Compiler (<code>g++</code>) and the Linker (<code>ld</code>) from Chapters 1 and 10. They do exactly the work you used to ask for by hand.</span></li>
+      <li><span><b>Groceries</b> (other people's libraries) arrive by <b>package manager</b>, such as vcpkg or Conan. Part 4 peeks inside the van.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a three-line CMakeLists.txt">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Wren's first menu. The project folder <code>~/cpp-ch17/hello</code> holds two files: the program, and a text file that must be called exactly <code>CMakeLists.txt</code> (capital C, capital M, capital L).</p>
+    <div class="side">
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="hello.cpp"></pre></div>
+      <div><span class="file-tab">CMakeLists.txt</span><pre class="code" data-src="hello/CMakeLists.txt"></pre></div>
+    </div>
+    <div class="cards4">
+      <div class="card4"><p class="where">LINE 1 · WHICH CMAKE</p><code class="big">cmake_minimum_required(VERSION 3.28)</code><p>"This menu needs CMake 3.28 or newer." It also switches on that version's behaviour. Always the first line.</p></div>
+      <div class="card4"><p class="where">LINE 2 · NAME THE PROJECT</p><code class="big">project(hello LANGUAGES CXX)</code><p>The project's name, and the languages it uses. <code>CXX</code> is CMake's word for C++ (C is <code>C</code>). This is where CMake goes looking for a compiler.</p></div>
+      <div class="card4 dashed"><p class="where">LINE 3 · ONE DISH</p><code class="big">add_executable(hello main.cpp)</code><p>"Make a program called <code>hello</code> from <code>main.cpp</code>." More files? List them all: <code>add_executable(hello main.cpp menu.cpp)</code>. Headers needn't be listed.</p></div>
+      <div class="card4 dashed"><p class="where">THE GRAMMAR</p><code class="big">command(argument argument ...)</code><p>Every line is a command with arguments in brackets, separated by spaces, not commas. Command names don't care about capitals; file names do.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="planner" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cam says: </span>Notice what's <b>not</b> there: no <code>g++</code>, no <code>-o</code>, no flags. The menu says what you want, and I work out how to make it on whatever computer I find. That's why the same <code>CMakeLists.txt</code> builds on Linux, macOS and Windows.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-lines-m" id="ex-lines"></div>
+  <script type="application/json" id="ex-lines-m">{"q": "Wren's diner has two source files, <code>main.cpp</code> and <code>kitchen.cpp</code>, and one header, <code>kitchen.h</code>. Which line makes a program called <code>diner</code> from them?", "options": [
+    {"t": "<code>add_executable(diner main.cpp kitchen.cpp)</code>", "correct": true, "why": "Right. The target's name comes first, then every source file that must be compiled into it. Headers are pasted in by <code>#include</code>, so they don't need listing (although listing them is harmless, and some IDEs like it)."},
+    {"t": "<code>add_executable(main.cpp, kitchen.cpp -o diner)</code>", "why": "That's <code>g++</code> thinking. In CMake the name comes first, arguments are separated by spaces (a comma would become part of a file name), and there is no <code>-o</code>."},
+    {"t": "<code>project(diner main.cpp kitchen.cpp)</code>", "why": "<code>project</code> names the whole project and its languages. It doesn't make any program; only <code>add_executable</code> (and Part 2's <code>add_library</code>) create things to build."},
+    {"t": "<code>add_executable(diner main.cpp kitchen.cpp kitchen.h)</code>, because without the header the build fails", "why": "Listing the header is allowed, but the build doesn't need it: the Compiler finds <code>kitchen.h</code> through the <code>#include</code> line, exactly as in Chapter 10."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: configure, build, run">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Three commands, always the same three. Type them inside the project folder. (The part after <code>|</code> on the first line is only for this page; see the note below.)</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/hello</span>
+    <pre class="term wrap" data-run="hello.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the folder was prepared by copying the chapter's <code>hello.cpp</code> in as <code>main.cpp</code>; the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints. Each command ran in <code>~/cpp-ch17/hello</code>, exactly as typed here.</p>
+    <ol class="readlist" aria-label="Reading the three steps">
+      <li><span><b><code>cmake -S . -B build</code> is configure.</b> <code>-S .</code> means "the <b>s</b>ource (the menu) is here", <code>-B build</code> means "put the <b>b</b>uild in a folder called <code>build</code>" (made for you if it's missing).</span></li>
+      <li><span><b>Lines 1 to 6 are CMake looking around:</b> it found a C++ compiler, GNU (that's g++) version 13.3.0, at <code>/usr/bin/c++</code>, and checked what it can do. That happens only on the first configure; the answers are remembered.</span></li>
+      <li><span><b>"Configuring done", "Generating done":</b> it read your menu, then wrote the recipe cards. The last line says where: <code>/home/you/cpp-ch17/hello/build</code>.</span></li>
+      <li><span><b><code>cmake --build build</code> is build.</b> CMake hands the cards in <code>build</code> to the head chef, who calls two orders: compile <code>main.cpp</code> into an object file (<code>main.cpp.o</code>), then link the program. The percentages are progress through all the orders.</span></li>
+      <li><span><b><code>./build/hello</code> runs it.</b> The program lives in the build folder, not next to your source.</span></li>
+    </ol>
+    <p class="caption soft"><b>About the <code>| sed ...</code> part.</b> CMake prints how long configuring took, for example <samp>(0.2s)</samp>, and that number changes on every run. Every terminal in this book comes from a real run, and the page must match it exactly, so here <code>sed</code> swaps the seconds for <samp>(…)</samp> in plain sight. On your computer just type <code>cmake -S . -B build</code>. From now on we write CMake's progress notes into a file instead, <code>cmake -S . -B build &gt; configure.log</code>, so only <b>problems</b> reach the screen (error messages are a separate stream and still appear).</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 5: configure once, build often">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">Two different jobs, two different crew members. Keep them apart in your head.</p>
+    <div class="duo">
+      <div class="duo-card"><h3>CONFIGURE · CAM<small>cmake -S . -B build</small></h3><p>Reads <code>CMakeLists.txt</code>, finds the compiler, writes the recipe cards into <code>build</code>. Compiles <b>nothing</b>. Run it once for a new build folder, or when you want different settings (Part 4's build types).</p></div>
+      <div class="duo-card"><h3>BUILD · THE HEAD CHEF<small>cmake --build build</small></h3><p>Follows the cards: compiles what changed and links. Run it after <b>every</b> edit. If you edited <code>CMakeLists.txt</code> itself, it notices and asks Cam to re-plan first, by itself.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="headchef" data-label="make" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The head chef says: </span>I'm the head chef. Today I'm <b>Make</b>, the classic one on Linux and macOS. I don't read menus, I read Cam's cards, and I shout orders. "Compile <code>main.cpp</code>! Link <code>hello</code>! Order up!" <b>Plan once, cook often.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cfgbuild-m" id="ex-cfgbuild"></div>
+  <script type="application/json" id="ex-cfgbuild-m">{"q": "Wren's <code>hello</code> project is already configured. She changes the message in <code>main.cpp</code>. What's the least she must type before <code>./build/hello</code> shows the new message?", "options": [
+    {"t": "<code>cmake --build build</code>", "correct": true, "why": "Right. The recipe cards are still valid: the menu didn't change. The head chef sees that <code>main.cpp</code> is newer than its object file, recompiles it and relinks."},
+    {"t": "<code>cmake -S . -B build</code>", "why": "Configuring only rewrites the recipe cards. It compiles nothing, so the old program stays in <code>build</code>."},
+    {"t": "Nothing: <code>./build/hello</code> rebuilds itself when the source is newer", "why": "A program never looks at its source code. Part 3 shows this trap on a real run: the old message comes out."},
+    {"t": "Delete the <code>build</code> folder, then configure and build again", "why": "That works, but it's the slow way: everything is recompiled from scratch. Keep it for when a build folder is truly confused."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 6: inside the build folder">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">What did Cam actually write? A second copy of the project, in <code>~/cpp-ch17/cards</code>, so we can peek. One shell, five commands: configure, look, count, build, look again.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/cards</span>
+    <pre class="term" data-run="cards.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>cards.cpp</code> was copied in as <code>main.cpp</code>; the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints; and straight after it, a hidden <code>cmake --build build --target clean</code> deleted the program left over from the previous capture. That clean is why the first <code>ls build</code> shows no <code>hello</code> yet.</p>
+    <ol class="readlist" aria-label="Reading the build folder">
+      <li><span><b><code>CMakeCache.txt</code></b>: everything Cam found out and every setting you chose, remembered for next time (Part 4 reads it).</span></li>
+      <li><span><b><code>Makefile</code></b>: the recipe card for Make. You wrote 3 lines; CMake wrote <b>181</b>, and the <code>CMakeFiles</code> folder holds more. Never edit them: the next configure overwrites them.</span></li>
+      <li><span><b>After the build</b>, one new name: <code>hello</code>, the program. The object files are tucked away inside <code>CMakeFiles</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Everything generated lands in <code>build</code>, and my source folder stays clean. That's called an <b>out-of-source build</b>. If the build ever gets in a muddle, I delete the whole <code>build</code> folder and configure again: nothing of mine is in there. And I can keep <b>several</b> build folders side by side, each with different settings.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 7: a second head chef called Ninja">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <svg class="sfx tr" data-sfx="FAST!" data-seed="7"></svg>
+    <p class="caption">Kitchens can hire a different head chef. <code>-G Ninja</code> asks Cam to write cards for <b>Ninja</b>, a build tool made for speed. Same menu, same three commands; the build is run twice in a row on purpose.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/ninja</span>
+    <pre class="term" data-run="ninja.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>ninja.cpp</code> was copied in as <code>main.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Ninja says: </span>I'm <b>Ninja</b>. I count orders instead of percentages: <samp>[1/2]</samp>, <samp>[2/2]</samp>. I say very little. Asked again when nothing changed: <samp>ninja: no work to do.</samp> I start fast and I keep every cook busy at once.</p></div>
+      <svg class="char sm" data-char="headchef" data-label="ninja" data-mood="focus" data-arms="point"></svg>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th></th><th>Make</th><th>Ninja</th></tr></thead>
+      <tbody>
+        <tr><td>Chosen with</td><td>nothing (the default on Linux and macOS)</td><td><code>-G Ninja</code> when configuring a new build folder</td></tr>
+        <tr><td>Recipe card</td><td><code>build/Makefile</code></td><td><code>build/build.ninja</code></td></tr>
+        <tr><td>Progress</td><td><samp>[ 50%] Building CXX object ...</samp></td><td><samp>[1/2] Building CXX object ...</samp></td></tr>
+        <tr><td>Nothing to do</td><td><samp>[100%] Built target hello</samp></td><td><samp>ninja: no work to do.</samp></td></tr>
+        <tr><td>Cooks at once</td><td>one, unless you ask (<code>-j 8</code>)</td><td>several: a little more than the computer has cores (<code>ninja --help</code> prints the number)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="caption soft">On Windows, CMake's default generator is the newest Visual Studio it finds, and the cards become a Visual Studio solution. Your <code>CMakeLists.txt</code> doesn't change at all. One build folder belongs to one generator: to switch, use a new folder.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-gen-m" id="ex-gen"></div>
+  <script type="application/json" id="ex-gen-m">{"q": "What changes when you configure a new build folder with <code>-G Ninja</code> instead of the default?", "options": [
+    {"t": "Which build files CMake writes, and so which head chef runs them", "correct": true, "why": "Right. A generator decides the kind of build files (a <code>build.ninja</code> instead of a <code>Makefile</code>). The same compiler compiles the same files into the same program: panel 7's run prints exactly what panel 4's did."},
+    {"t": "Ninja replaces g++, so a different compiler builds the program", "why": "Ninja is a head chef, not a cook. It calls the very same compiler; it just organises the orders differently."},
+    {"t": "You must rewrite <code>CMakeLists.txt</code> in Ninja's own language", "why": "Never. You write the menu once in CMake's language; generating the Ninja file is Cam's job."},
+    {"t": "Nothing at all: <code>-G</code> only changes the colours of the output", "why": "It changes the files in <code>build</code>, and the build tool that reads them. Compare <samp>[ 50%]</samp> with <samp>[1/2]</samp>."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · A LIBRARY AND AN APP<small>Targets, <code>add_library</code>, <code>target_link_libraries</code>, and settings that belong to a target</small></h2>
+
+  <section class="panel clean" aria-label="Panel 8: the kitchen library">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">A real project: Wren's kitchen code. A header with promises (Chapter 10), a source file that keeps them, and a <code>main</code> that uses them. <code>bill_cents</code> adds up a bill (soup 400 cents, pie 300), <code>price_tag</code> turns cents into <samp>$11.00</samp> with <code>std::format</code>, and <code>Rail</code> is the ticket rail where orders wait, first come, first served (a small class, Chapter 12; it throws when empty, Chapter 15).</p>
+    <div class="side">
+      <div><span class="file-tab">kitchen.h</span><pre class="code" data-src="kitchen/kitchen.h"></pre><span class="file-tab">main.cpp</span><pre class="code" data-src="kitchen_app.cpp"></pre></div>
+      <div><span class="file-tab">kitchen.cpp</span><pre class="code" data-src="kitchen/kitchen.cpp"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The kitchen code is useful to more than one program: the till, the screen in the kitchen, and (soon) the tests. So I don't want it glued into one program. I want it packed as a <b>library</b>: compiled once, then linked into whoever needs it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: targets in CMakeLists.txt">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">The menu for a library plus an app. CMake calls each thing it can build a <b>target</b>: here, the library <code>kitchen</code> and the program <code>app</code>. Every <code>target_...</code> command adds something to one target.</p>
+    <span class="file-tab">CMakeLists.txt</span>
+    <pre class="code" data-src="kitchen/CMakeLists.txt"></pre>
+    <div class="cards4">
+      <div class="card4"><p class="where">LINE 4 · A LIBRARY TARGET</p><code class="big">add_library(kitchen kitchen.cpp)</code><p>Compile <code>kitchen.cpp</code> and pack the result as a library called <code>kitchen</code> (on Linux, the file <code>libkitchen.a</code>). A library has no <code>main</code>; it's a box of ready-cooked parts.</p></div>
+      <div class="card4"><p class="where">LINE 5 · WHICH C++</p><code class="big">target_compile_features(kitchen PUBLIC cxx_std_23)</code><p>"<code>kitchen</code> needs C++23." <code>PUBLIC</code> means: and so does anyone who uses it. CMake picks the right flag for each compiler.</p></div>
+      <div class="card4 dashed"><p class="where">LINES 6, 10 · EXTRA FLAGS</p><code class="big">target_compile_options(app PRIVATE -Wall -Wextra)</code><p>Flags for this target only. <code>PRIVATE</code>: just for compiling this target, not passed on to users.</p></div>
+      <div class="card4 dashed"><p class="where">LINE 9 · CONNECT THEM</p><code class="big">target_link_libraries(app PRIVATE kitchen)</code><p>"<code>app</code> uses <code>kitchen</code>": link the library into the program, <b>and</b> hand over kitchen's <code>PUBLIC</code> settings, such as C++23.</p></div>
+    </div>
+    <p class="caption soft"><b>PUBLIC or PRIVATE?</b> Think of a dish's label. <code>PRIVATE</code> is a note for the cook ("I used a sharp knife"): it matters while cooking this target only. <code>PUBLIC</code> is a note for everyone who eats it ("contains nuts"): it travels to every target that links this one. A third word, <code>INTERFACE</code>, is "only for the eaters", which Part 6 uses.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: building the library and the app">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Configure (quietly, into <code>configure.log</code>), build, run.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/kitchen</span>
+    <pre class="term" data-run="kitchen_app.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>kitchen_app.cpp</code> was copied in as <code>main.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints. Each command ran in <code>~/cpp-ch17/kitchen</code>.</p>
+    <ol class="readlist" aria-label="Reading the build">
+      <li><span><b>Configure printed nothing:</b> no problems. Its notes are in <code>configure.log</code> if you want them.</span></li>
+      <li><span><b>The library first:</b> compile <code>kitchen.cpp</code>, then <samp>Linking CXX static library libkitchen.a</samp>. Despite the word "linking", this step only packs object files into one archive.</span></li>
+      <li><span><b>Then the app:</b> compile <code>main.cpp</code> and link it <em>with</em> <code>libkitchen.a</code>. CMake knew the order because line 9 says <code>app</code> needs <code>kitchen</code>.</span></li>
+      <li><span><b>The run:</b> <samp>Table 4 owes $11.00</samp> (2 soups and a pie), the rail serves <samp>soup</samp> first, and one ticket is still waiting.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillcm-m" id="ex-fillcm"></div>
+  <script type="application/json" id="ex-fillcm-m">{"program": "fill_cmake.cpp", "prompt": "Write the menu from memory. Same files as panel 8: <code>kitchen.cpp</code> becomes a library called <code>kitchen</code>, <code>main.cpp</code> becomes a program called <code>app</code>, and the program uses the library. Fill the three blanks. (The run below builds with exactly this file; the build output went to <code>build.log</code>.)", "blanks": [{"line": 4, "text": "add_library"}, {"line": 8, "text": "target_link_libraries"}, {"line": 8, "text": "kitchen", "nth": 1}], "explain": "<code>add_library</code> makes the library target from <code>kitchen.cpp</code>. <code>target_link_libraries(app PRIVATE kitchen)</code> connects them: the program is linked with <code>libkitchen.a</code> and inherits the library's <code>PUBLIC</code> C++23 requirement. Without line 8 the build fails at the very last step; panel 16 shows how. (How the run was really made: this menu was copied in as <code>CMakeLists.txt</code> of <code>~/cpp-ch17/fillcm</code>, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 11: the head chef's actual orders">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">What does the head chef really shout? <code>--verbose</code> prints every command in full. We use Ninja, with <code>-j 1</code> (one cook at a time) so the orders come in the same order on every run. Lines are long: they wrap.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/kitchen</span>
+    <pre class="term wrap small" data-run="verbose.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>verbose.cpp</code> was copied in as <code>main.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <ol class="readlist" aria-label="Reading the orders">
+      <li><span><b>[1/4]</b> is a plain <code>g++</code> command (<code>/usr/bin/c++</code> is g++ here) with <code>-c</code>: "compile only", as in Chapter 10. The <code>-std=gnu++23</code> came from <code>cxx_std_23</code>, and <code>-Wall -Wextra</code> from line 6. <code>-MD -MT ... -MF ...</code> asks g++ to write down which headers the file included, so the chef knows what to watch.</span></li>
+      <li><span><b>[2/4]</b> packs the object file into <code>libkitchen.a</code> with <code>ar</code>, the archive tool.</span></li>
+      <li><span><b>[3/4]</b> compiles <code>main.cpp</code>, also with <code>-std=gnu++23</code>, although <code>app</code> never asked for it: it was inherited through <code>PUBLIC</code>.</span></li>
+      <li><span><b>[4/4]</b> links the program: <code>main.cpp.o</code> plus <code>libkitchen.a</code>, out comes <code>app</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="planner" data-mood="surprised" data-mouth="o"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cam says: </span>Spot what's missing: no <code>-g</code> and no <code>-O2</code>. When you don't choose a <b>build type</b>, I add neither debug information nor optimisation. Part 4 fixes that. And <code>gnu++23</code> rather than <code>c++23</code> means "C++23 plus GNU's extras"; <code>set(CMAKE_CXX_EXTENSIONS OFF)</code> gives you plain <code>-std=c++23</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-public-m" id="ex-public"></div>
+  <script type="application/json" id="ex-public-m">{"q": "In panel 11, <code>main.cpp</code> was compiled with <code>-std=gnu++23</code>, yet no line of the menu sets a standard for <code>app</code>. Why?", "options": [
+    {"t": "kitchen's <code>cxx_std_23</code> is <code>PUBLIC</code>, so it travels to <code>app</code>, which links it", "correct": true, "why": "Right. <code>PUBLIC</code> requirements flow along <code>target_link_libraries</code>. That's the point: the kitchen header might use C++23 features, so whoever includes it must compile as C++23 too."},
+    {"t": "g++ 13 compiles as C++23 whenever nobody asks for a particular standard", "why": "g++ 13's default is <code>gnu++17</code>. Panel 17 shows a real build where nothing asked for C++23, and <code>std::format</code> wasn't found."},
+    {"t": "<code>target_compile_options(app PRIVATE -Wall -Wextra)</code> also switches on C++23 for <code>app</code>", "why": "Those two flags only turn on warnings. They don't choose a language standard."},
+    {"t": "<code>project(kitchen LANGUAGES CXX)</code> always means the newest C++ standard", "why": "<code>CXX</code> just says the project uses C++. Which version is chosen by <code>cxx_std_...</code> or by <code>CMAKE_CXX_STANDARD</code>."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · ONLY WHAT CHANGED<small>How the head chef decides what to re-cook, and the stale program trap</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 12: the head chef checks the clock">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Every file on a disk has a <b>timestamp</b>: when it was last changed. The head chef compares each dish with its ingredients.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 250" role="img" aria-label="Dependency picture. kitchen.h feeds both kitchen.cpp.o and main.cpp.o; kitchen.cpp feeds kitchen.cpp.o; main.cpp feeds main.cpp.o. kitchen.cpp.o feeds libkitchen.a. libkitchen.a and main.cpp.o feed app. A clock beside the head chef's rule: if any ingredient is newer than the dish, cook it again, then everything downstream.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="14" y="20" width="140" height="44" rx="8" fill="#FFF6CC"/><rect x="14" y="102" width="140" height="44" rx="8" fill="#FFF6CC"/><rect x="14" y="184" width="140" height="44" rx="8" fill="#FFF6CC"/>
+        <rect x="236" y="60" width="160" height="44" rx="8" fill="#DDE8FF"/><rect x="236" y="160" width="160" height="44" rx="8" fill="#DDE8FF"/>
+        <rect x="466" y="60" width="160" height="44" rx="8" fill="#DDE8FF"/><rect x="466" y="160" width="160" height="44" rx="8" fill="#C9F2D9"/>
+      </g>
+      <g stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round">
+        <path d="M156 42 L232 76 M156 124 L232 88 M156 124 L232 172 M156 206 L232 186 M398 82 H462 M398 182 H462 M546 106 V156"/>
+        <path d="M222 70 l10 6 l-10 5 M222 82 l10 6 l-11 3 M222 166 l10 6 l-11 4 M222 182 l10 4 l-10 6 M452 76 l10 6 l-10 6 M452 176 l10 6 l-10 6 M540 146 l6 10 l6 -10"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" font-size="15" text-anchor="middle">
+        <text x="84" y="47">kitchen.cpp</text><text x="84" y="129">kitchen.h</text><text x="84" y="211">main.cpp</text>
+        <text x="316" y="87">kitchen.cpp.o</text><text x="316" y="187">main.cpp.o</text>
+        <text x="546" y="87">libkitchen.a</text><text x="546" y="187">app</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" fill="#111" font-size="15">
+        <text x="236" y="236">compiled</text><text x="466" y="236">packed / linked</text><text x="14" y="16">ingredients you edit</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="headchef" data-label="make" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The head chef says: </span>My one rule: <b>if any ingredient is newer than the dish, cook the dish again</b>, and then everything that uses that dish. Edit <code>main.cpp</code>? Only its own path: <code>main.cpp.o</code>, then <code>app</code>. Edit <code>kitchen.h</code>? Both source files include it, so both get recompiled. In a project of a thousand files, that rule turns an hour into seconds.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 13: the head chef as a machine" data-machine="m-rebuild">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Feed the head chef a change and see what gets cooked again. Each result is a real session in <code>~/cpp-ch17/kitchen</code>: configure, a full build, then the change, then <code>cmake --build build</code> once more. <code>touch</code> is a shell command that updates a file's timestamp without changing its text: exactly what saving it in an editor does to the clock.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <p class="howmade"><b>How these runs were really made:</b> before each session, that session's program file (<code>rb_none.cpp</code>, <code>rb_main.cpp</code>, ...) was copied in as <code>main.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, so every session started from an empty cache.</p>
+    <script type="application/json" id="m-rebuild">{"label": "cmake --build build", "program": "rb_none.cpp", "examples": [
+      {"in": "nothing changed", "out": "[100%] Built target app", "outKind": "nothing cooked again", "program": "rb_none.cpp", "note": "The second build prints only <samp>[ 50%] Built target kitchen</samp> and <samp>[100%] Built target app</samp>: every dish is newer than its ingredients, so no compiling and no linking."},
+      {"in": "touch main.cpp", "out": "main.cpp recompiled, app relinked", "expectLine": "[ 75%] Building CXX object CMakeFiles/app.dir/main.cpp.o", "outKind": "the library is left alone", "program": "rb_main.cpp", "note": "Real lines: <samp>[ 50%] Built target kitchen</samp> (nothing to do there), then <samp>[ 75%] Building CXX object CMakeFiles/app.dir/main.cpp.o</samp> and <samp>[100%] Linking CXX executable app</samp>."},
+      {"in": "touch kitchen.cpp", "out": "kitchen.cpp recompiled, library repacked, app relinked", "expectLine": "[ 50%] Linking CXX static library libkitchen.a", "outKind": "main.cpp is not recompiled", "program": "rb_impl.cpp", "note": "<samp>Building CXX object CMakeFiles/kitchen.dir/kitchen.cpp.o</samp>, <samp>Linking CXX static library libkitchen.a</samp>, then <samp>Linking CXX executable app</samp>, because the app contains the library. <code>main.cpp</code> doesn't use <code>kitchen.cpp</code>'s text, so it isn't recompiled."},
+      {"in": "touch kitchen.h", "out": "both .cpp files recompiled, everything relinked", "expectLine": "[ 75%] Building CXX object CMakeFiles/app.dir/main.cpp.o", "outKind": "a header touches everyone who includes it", "program": "rb_header.cpp", "note": "Both <code>kitchen.cpp</code> and <code>main.cpp</code> say <code>#include \"kitchen.h\"</code>, so both object files are older than one of their ingredients. The whole build runs again. That's why big projects keep headers small and stable."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cmakeedit-m" id="ex-cmakeedit"></div>
+  <script type="application/json" id="ex-cmakeedit-m">{"q": "Wren adds <code>-Wshadow</code> to line 10 of <code>CMakeLists.txt</code>. What happens when she types <code>cmake --build build</code>?", "options": [
+    {"t": "The build sees the newer menu, re-plans by itself, then recompiles <code>app</code>", "correct": true, "why": "Right. The generated build files remember which <code>CMakeLists.txt</code> they came from. If it changed, the build re-runs the configure step by itself (the <samp>-- Configuring done</samp> lines), then rebuilds <code>app</code>'s <code>main.cpp.o</code>, whose compile command changed; <code>kitchen</code> is left alone. The notebook page \"Under the hood\" shows this very edit on a real run."},
+    {"t": "Nothing changes until she runs <code>cmake -S . -B build</code> again by hand", "why": "Re-running configure by hand is harmless, but it isn't needed: the build checks the menu's timestamp too."},
+    {"t": "It fails: an edited <code>CMakeLists.txt</code> needs a fresh build folder", "why": "Only switching generators (Make to Ninja) needs a new folder. Ordinary menu edits are picked up in place."},
+    {"t": "Only <code>main.cpp</code> is recompiled, and it still gets the old flags", "why": "The flags are part of the order. A changed compile command counts as a change, so the object is rebuilt with the new flags."}]}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 14: the stale program">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="OLD SOUP!" data-seed="14"></svg>
+    <p class="caption">The most common build mistake of all, on a real run. Wren builds, runs, changes the soup (with <code>sed</code>, a command that edits text, so the edit shows in the transcript; normally you'd use your editor), and runs again.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/stale</span>
+    <pre class="term" data-run="stale.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> <code>stale.cpp</code> was copied in as <code>main.cpp</code> (so every capture starts with tomato), and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>I changed it to pumpkin, and it still said <samp>tomato</samp>! Of course: <code>./build/stale</code> is the dish cooked <b>before</b> my edit. Nobody told the head chef. One <code>cmake --build build</code> later: <samp>pumpkin</samp>. <b>Edit, build, run. Every time.</b></p></div>
+    </div>
+    <p class="caption soft">IDEs (Visual Studio, CLion, VS Code with the CMake extension) usually build before they run, which hides this trap until the day you run a program from the terminal. When a fix "didn't work", the first question is always: did I rebuild?</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-stale-m" id="ex-stale"></div>
+  <script type="application/json" id="ex-stale-m">{"program": "stale_quiz.cpp", "prompt": "Another project, <code>~/cpp-ch17/stalequiz</code>, whose program is called <code>pies</code>. Wren configures, runs <code>cmake --build build</code>, then types <code>sed -i 's/apple/cherry/' main.cpp</code>, and then <code>./build/pies</code>. Here is <code>main.cpp</code> as it was <b>before</b> the edit. What does <code>./build/pies</code> print?", "hint": "Which version of the source was the program cooked from?", "explain": "The program was built before the edit, so it still holds the apple pie. The source file now says cherry, but nothing has recompiled it. A build would print <samp>Pie of the day: cherry</samp>. (How the run was really made: <code>stale_quiz.cpp</code> was copied in as <code>main.cpp</code> first, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · WHEN THE KITCHEN COMPLAINS<small>Three classic mistakes, a map of every road, Debug and Release, static and shared, and the grocery van</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 15: a typo in a file name">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="WHAT FILE?" data-seed="15"></svg>
+    <p class="caption">Mistake one. Fingers slip: line 4 asks for <code>kitchne.cpp</code>. The folder <code>~/cpp-ch17/typo</code> holds the same <code>kitchen.cpp</code>, <code>kitchen.h</code> and <code>main.cpp</code> as before.</p>
+    <span class="file-tab">CMakeLists.txt</span>
+    <pre class="code" data-src="typo.cpp"></pre>
+    <pre class="term wrap" data-run="typo.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the menu above (<code>typo.cpp</code> in the chapter folder) was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="planner" data-mood="worried" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cam says: </span>I stopped while <b>planning</b>, before any cook was called. Your menu promised a dish from a file I can't find. I can't write a card for an ingredient that doesn't exist, so I wrote no cards at all.</p></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the CMake error like a detective">
+      <li><span><b>Who's talking:</b> <samp>CMake Error</samp>. Not g++, not the Linker: it's the configure step, so the problem is in the menu.</span></li>
+      <li><span><b>Where:</b> <samp>at CMakeLists.txt:4 (add_library)</samp>: the file, the line number, and the command on that line.</span></li>
+      <li><span><b>What:</b> <samp>Cannot find source file:</samp> followed by the exact name it looked for, <samp>kitchne.cpp</samp>. Compare it letter by letter with <code>ls</code>.</span></li>
+      <li><span><b>The second error is an echo of the first:</b> with the file gone, the library has <samp>No SOURCES</samp> at all. Fix the first error, and the second disappears. (The same rule as for compiler errors: <b>read the first one first.</b>)</span></li>
+      <li><span><b>Exit code 1</b>, and <samp>Build files cannot be regenerated</samp>: don't try to build until configure succeeds.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-typofix-m" id="ex-typofix"></div>
+  <script type="application/json" id="ex-typofix-m">{"q": "Panel 15's configure failed. What's the right fix?", "options": [
+    {"t": "Fix line 4 to say <code>kitchen.cpp</code>, then configure again", "correct": true, "why": "Right. The menu named a file that doesn't exist. Fix the menu, re-run <code>cmake -S . -B build</code>, and the second error vanishes with the first."},
+    {"t": "Run <code>cmake --build build</code>: maybe the build will find the file", "why": "Configure didn't finish, so there are no usable recipe cards. The head chef has nothing correct to follow."},
+    {"t": "Rename <code>kitchen.cpp</code> to <code>kitchne.cpp</code>, so the menu is right", "why": "It would work, but now the typo lives in your file names forever. Fix the menu."},
+    {"t": "Add <code>kitchen.h</code> to line 4: the library has <samp>No SOURCES</samp>", "why": "That second message is only a consequence of the missing file. A header isn't the missing source."}]}</script>
+
+  <div data-ex="predict" data-model="ex-nolink-m" id="ex-nolink"></div>
+  <script type="application/json" id="ex-nolink-m">{"program": "nolink.cpp", "expect": "error", "answer": "undefined reference", "ask": "Which two words, from Chapter 10, does the error say? (just the two words)", "prompt": "Mistake two. This menu is shown below. Configure succeeds; then Wren runs <code>cmake --build build</code>. The library compiles and packs fine. Which step fails, and what does the error say?", "hint": "Who knows that <code>app</code> needs the kitchen? Nobody told the head chef. Which crew member notices a missing cook?", "explain": "There's no <code>target_link_libraries(app PRIVATE kitchen)</code>, so <code>app</code> is linked from <code>main.cpp.o</code> alone. Every call into the kitchen is promised by the header but cooked nowhere in the link: <samp>undefined reference to `bill_cents(int, int)'</samp>, the Linker's complaint from Chapter 10. Panel 16 reads it. (How the run was really made: this menu was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 16: the library was never linked">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <svg class="sfx tr" data-sfx="NO COOK!" data-seed="16"></svg>
+    <p class="caption">The run behind that exercise. Read it from the top: the head chef is happy at first, then the Linker isn't.</p>
+    <pre class="term wrap small" data-run="nolink.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the menu (<code>nolink.cpp</code>) was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints. Each command ran in <code>~/cpp-ch17/nolink</code>.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="worried"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>Same complaint as in Chapter 10, louder. <code>main</code> orders <code>Rail::add</code>, <code>bill_cents</code>, <code>price_tag</code>... and the only tray I was handed is <code>main.cpp.o</code>. The kitchen was cooked (<samp>Built target kitchen</samp>), but nobody told me to bring it to this table.</p></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the link error">
+      <li><span><b><samp>[ 50%] Built target kitchen</samp></b>: the library is fine. The trouble starts at <samp>Linking CXX executable app</samp>.</span></li>
+      <li><span><b><samp>/usr/bin/ld: ... undefined reference to</samp></b>: the Linker. Long names such as <samp>std::__cxx11::basic_string&lt;char, ...&gt;</samp> are just <code>std::string</code> written out in full.</span></li>
+      <li><span><b>The <samp>gmake[2]: *** ... Error 1</samp> lines</b> are Make reporting that an order failed, layer by layer (<code>gmake</code> is GNU Make). They never contain the real news; that's always above them.</span></li>
+      <li><span><b>The fix is one line:</b> <code>target_link_libraries(app PRIVATE kitchen)</code>. In CMake, "<code>app</code> uses <code>kitchen</code>" must always be said out loud.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-late-m" id="ex-late"></div>
+  <script type="application/json" id="ex-late-m">{"program": "latestd.cpp", "bug": 8, "prompt": "Mistake three, the sneaky one. This menu asks for C++23 with a variable instead of <code>target_compile_features</code>. Configure succeeds, yet the build fails inside <code>kitchen.cpp</code>, which uses <code>std::format</code> (C++20 and later). Click the line that's wrong.", "explain": "<code>CMAKE_CXX_STANDARD</code> is read at the moment a target is <b>created</b>: <code>add_library</code> and <code>add_executable</code> copy its value into the new target. Line 8 sets it after both targets exist, so neither of them gets it, and g++ 13 compiles with its default, <code>gnu++17</code>, which has no <code>std::format</code>. Move line 8 up, right after <code>project()</code>. Panel 17 shows the run and the fix."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 17: the standard set too late">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="TOO LATE!" data-seed="17"></svg>
+    <p class="caption"><b>Standard set last</b> is the run of that menu. <b>Standard set first</b> is the fix: the same line moved up (and a second line that says "C++23 is a must, not a wish").</p>
+    <div class="side">
+      <div><p class="who">STANDARD SET LAST</p><pre class="term" data-run="latestd.cpp" data-exit></pre></div>
+      <div><p class="who">STANDARD SET FIRST</p><span class="file-tab">CMakeLists.txt</span><pre class="code" data-src="goodstd.cpp"></pre><pre class="term" data-run="goodstd.cpp" data-exit></pre></div>
+    </div>
+    <p class="howmade"><b>How this run was really made:</b> each menu (<code>latestd.cpp</code>, <code>goodstd.cpp</code>) was copied in as <code>CMakeLists.txt</code> of its own folder, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 10 of <code>kitchen.cpp</code>: <samp>'format' is not a member of 'std'</samp>. I was told to compile C++17, and C++17 has no <code>std::format</code>. Nothing in the order said otherwise. Look at what you <b>asked</b> for, not what you <b>meant</b>.</p></div>
+    </div>
+    <p class="caption soft">Two ways to ask for a standard, both fine. <b>Per target:</b> <code>target_compile_features(kitchen PUBLIC cxx_std_23)</code> (Part 2), which travels to users of the library. <b>For the whole project:</b> <code>set(CMAKE_CXX_STANDARD 23)</code> plus <code>set(CMAKE_CXX_STANDARD_REQUIRED ON)</code>, <b>above</b> every <code>add_library</code> and <code>add_executable</code>. CMake's own tutorial says the same: put those lines before <code>add_executable</code>. Without <code>REQUIRED ON</code>, a compiler too old for C++23 would quietly get an older standard.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 18: the map of every road" data-map="map-build">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">The whole trip as a map: write, configure, build, run. Four real sessions walk four roads. Pick a road and step along it.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapb-t mapb-d"><title id="mapb-t">Map: from CMakeLists.txt to a running program</title><desc id="mapb-d">From the menu, configure leads either to a CMake error (a misspelled file) or on to the build. The build leads either to a link error (the library was not linked) or on to the run. A side road leaves the build: the source is edited but not rebuilt, and the old program runs.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-build">{"seed": 17, "size": [690, 560], "start": [[160, 14], [160, 64]],
+      "states": [
+        {"id": "W", "x": 20, "y": 70, "w": 280, "h": 66, "label": "CMakeLists.txt", "sub": "the menu"},
+        {"id": "C", "x": 20, "y": 200, "w": 280, "h": 66, "label": "configure", "sub": "`cmake -S . -B build`"},
+        {"id": "B", "x": 20, "y": 330, "w": 280, "h": 66, "label": "build", "sub": "`cmake --build build`"},
+        {"id": "R", "x": 20, "y": 460, "w": 280, "h": 66, "label": "run", "sub": "`./build/app`", "kind": "end"},
+        {"id": "E1", "x": 400, "y": 200, "w": 270, "h": 66, "label": "CMake Error", "sub": "cannot find source", "kind": "error"},
+        {"id": "E2", "x": 400, "y": 330, "w": 270, "h": 66, "label": "link error", "sub": "undefined reference", "kind": "error"},
+        {"id": "S", "x": 400, "y": 460, "w": 270, "h": 66, "label": "old program", "sub": "edited, not rebuilt"}],
+      "transitions": [
+        {"id": "t1", "from": "W", "to": "C", "pts": [[160, 140], [160, 194]], "label": "plan", "lx": 146, "ly": 172, "anchor": "end"},
+        {"id": "t2", "from": "C", "to": "B", "pts": [[160, 270], [160, 324]], "label": "cook", "lx": 146, "ly": 302, "anchor": "end"},
+        {"id": "t3", "from": "B", "to": "R", "pts": [[160, 400], [160, 454]], "label": "serve", "lx": 146, "ly": 432, "anchor": "end"},
+        {"id": "t4", "from": "C", "to": "E1", "pts": [[302, 233], [394, 233]], "label": "typo", "lx": 348, "ly": 222, "anchor": "middle", "bug": true},
+        {"id": "t5", "from": "B", "to": "E2", "pts": [[302, 352], [394, 352]], "label": "no link", "lx": 348, "ly": 341, "anchor": "middle", "bug": true},
+        {"id": "t6", "from": "B", "to": "S", "pts": [[302, 384], [350, 384], [350, 493], [394, 493]], "label": ["edit, then run", "without building"], "lx": 362, "ly": 420, "anchor": "start", "bug": true}],
+      "paths": [
+        {"id": "ok", "label": "all good", "program": "kitchen_app.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["W"], "output": [], "mood": "focus", "note": "Panel 9's menu: a library, an app, and the line that links them."},
+          {"on": ["C"], "via": ["t1"], "output": [], "note": "<code>cmake -S . -B build &gt; configure.log</code>. CMake finds every file the menu names and writes the recipe cards. Nothing on the screen: no problems."},
+          {"on": ["B"], "via": ["t2"], "output": [], "note": "<code>cmake --build build</code>: compile <code>kitchen.cpp</code>, pack <code>libkitchen.a</code>, compile <code>main.cpp</code>, link <code>app</code> with the library (the build's own progress lines aren't part of the program's screen)."},
+          {"on": ["R"], "via": ["t3"], "output": ["Table 4 owes $11.00", "Next up: soup", "Still waiting: 1"], "mood": "happy", "note": "<code>./build/app</code> runs the freshly cooked program. Order up!"}]},
+        {"id": "typo", "label": "typo in a file name", "bug": true, "program": "typo.cpp", "expect": {"exit": 1, "stderrContains": "Cannot find source file:"}, "steps": [
+          {"on": ["W"], "output": [], "mood": "focus", "note": "Line 4 says <code>kitchne.cpp</code>."},
+          {"on": ["E1"], "via": ["t1", "t4"], "output": [], "error": "CMake Error at CMakeLists.txt:4 (add_library):\n  Cannot find source file:\n\n    kitchne.cpp", "note": "Configure stops: no such file. No cards are written, exit code 1, and the cooks are never called. Panel 15."}]},
+        {"id": "nolink", "label": "library not linked", "bug": true, "program": "nolink.cpp", "expect": {"exit": 2, "stderrContains": "undefined reference to `bill_cents(int, int)'"}, "steps": [
+          {"on": ["W"], "output": [], "mood": "focus", "note": "The menu makes both targets but never says that <code>app</code> uses <code>kitchen</code>."},
+          {"on": ["C"], "via": ["t1"], "output": [], "note": "Configure is happy: every file exists, and a program without libraries is perfectly allowed."},
+          {"on": ["E2"], "via": ["t2", "t5"], "output": [], "error": "/usr/bin/ld: main.cpp:(.text+0xef): undefined reference to `bill_cents(int, int)'\ncollect2: error: ld returned 1 exit status", "note": "The library compiles, then linking <code>app</code> fails: its calls into the kitchen have no definition in the link. Make passes the failure up as exit code 2. Panel 16."}]},
+        {"id": "stale", "label": "edited, not rebuilt", "bug": true, "program": "stale_quiz.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["W"], "output": [], "mood": "focus", "note": "The pie project from the exercise after panel 14."},
+          {"on": ["C"], "via": ["t1"], "output": [], "note": "Configure."},
+          {"on": ["B"], "via": ["t2"], "output": [], "note": "Build: the program says apple."},
+          {"on": ["S"], "via": ["t6"], "output": ["Pie of the day: apple", "Slices left: 6"], "mood": "worried", "note": "<code>sed</code> changes apple to cherry in <code>main.cpp</code>, then <code>./build/pies</code> runs <b>without</b> a build in between. The old dish comes out: apple. The source and the program disagree, and only a build makes them agree again."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: Debug and Release">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">A <b>build type</b> picks a set of compiler flags. You choose it when configuring a build folder, with <code>-DCMAKE_BUILD_TYPE=...</code> (<code>-D</code> sets a setting in the cache). Two folders, one source: this program has an <code>assert</code> (Chapter 11) on line 5, and line 16 feeds it a negative number of soups.</p>
+    <span class="file-tab">main.cpp</span>
+    <pre class="code" data-src="modes_debug.cpp"></pre>
+    <span class="parity" data-same-src="modes_debug.cpp,modes_release.cpp,modes_flags.cpp"></span>
+    <div class="pair2">
+      <div><p class="who">DEBUG</p><pre class="term wrap" data-run="modes_debug.cpp" data-exit></pre></div>
+      <div><p class="who">RELEASE</p><pre class="term wrap" data-run="modes_release.cpp" data-exit></pre></div>
+    </div>
+    <p class="caption soft"><b>Where did the Debug run's first two lines go?</b> Lines 13 and 15 print before line 16 fails, yet the DEBUG terminal shows only the assertion. Here the output went into a pipe, so <code>std::cout</code> was still holding those lines in its buffer when the assert called <code>abort()</code>, and <code>abort</code> throws the buffer away. In a terminal, <code>std::cout</code> sends each line as it ends, so you'd see <samp>Debug build: asserts are on duty</samp> and the 1100-cents line first.</p>
+    <p class="howmade"><b>How this run was really made:</b> <code>main.cpp</code> was copied in from <code>modes_debug.cpp</code> (or <code>modes_release.cpp</code>, the same text), and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints. The Debug program was started as <code>sh -c './build-debug/modes; exit $?'</code>: a small shell runs it and passes on its exit code unchanged, so that <code>abort()</code> really ends it with exit 134 and the shell's <samp>Aborted</samp> line, as in your terminal.</p>
+    <p class="caption soft">Which flags does each build type mean? They're stored in the cache, so <code>grep</code> can show them:</p>
+    <pre class="term wrap" data-run="modes_flags.cpp"></pre>
+    <p class="howmade"><b>How this run was really made:</b> the same copy of <code>main.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><b>Debug</b> is <code>-g</code>: debug information for gdb, no optimisation, and asserts on duty: the bad bill stops with exit 134. <b>Release</b> is <code>-O3 -DNDEBUG</code>: fast, and <code>NDEBUG</code> switches every <code>assert</code> off, so the nonsense <samp>-1200 cents</samp> sails through. <b>Asserts guard your development, not your customers.</b> Real input still needs real checks (Chapter 15).</p></div>
+    </div>
+    <div class="vswrap"><table class="vs flags ref-table">
+      <thead><tr><th>Build type</th><th>Flags (g++)</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td><code>Debug</code></td><td><code>-g</code></td><td>writing code, stepping in gdb, sanitizers (Chapter 18)</td></tr>
+        <tr><td><code>Release</code></td><td><code>-O3 -DNDEBUG</code></td><td>the version you ship or time</td></tr>
+        <tr><td><code>RelWithDebInfo</code></td><td><code>-O2 -g -DNDEBUG</code></td><td>fast, but still debuggable</td></tr>
+        <tr><td><code>MinSizeRel</code></td><td><code>-Os -DNDEBUG</code></td><td>smallest program</td></tr>
+        <tr><td>(none)</td><td>nothing at all</td><td>CMake's default with Make and Ninja: neither debuggable nor fast. Always choose.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-release-m" id="ex-release"></div>
+  <script type="application/json" id="ex-release-m">{"q": "A program passes all its <code>assert</code> checks in Wren's Debug build. She ships the Release build. A customer types a negative quantity. What happens at the <code>assert(soups &gt;= 0 ...)</code> line?", "options": [
+    {"t": "Nothing: Release defines <code>NDEBUG</code>, so the assert isn't compiled at all", "correct": true, "why": "Right, as panel 19's Release run shows: <samp>-3 soups, 0 pies: -1200 cents</samp>. Asserts catch <b>your</b> mistakes while developing. Checking what a user typed must be done with ordinary code that stays in every build: an <code>if</code>, a <code>throw</code>, a message."},
+    {"t": "The program stops with <samp>Assertion failed</samp>, exactly as in Debug", "why": "Only in builds without <code>NDEBUG</code>. Every standard build type except Debug adds <code>-DNDEBUG</code>."},
+    {"t": "The compiler refuses to build Release while an assert could fail", "why": "Compilers can't know what users will type. The assert simply disappears in Release."},
+    {"t": "An exception is thrown instead, which the caller can catch", "why": "<code>assert</code> never throws. In Debug it aborts the program; in Release it does nothing at all."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 20: static and shared libraries">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">One word turns the kitchen into a different kind of library: <code>add_library(kitchen SHARED kitchen.cpp)</code>. Watch the build line, the folder, a run, and then what happens when the library file goes missing.</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/shared</span>
+    <pre class="term wrap" data-run="shared.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the menu (<code>shared.cpp</code>) was copied in as <code>CMakeLists.txt</code>; the library moved away by the previous capture's last steps was moved back to <code>build/libkitchen.so</code>; and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <div class="duo">
+      <div class="duo-card"><h3>STATIC · .a<small>add_library(kitchen kitchen.cpp)</small></h3><p>The default (unless a project sets <code>BUILD_SHARED_LIBS</code>). A packed box of object files. At link time the parts the program uses are <b>copied into</b> the program. The program stands alone; <code>libkitchen.a</code> isn't needed to run it. Change the library, and every program must be relinked.</p></div>
+      <div class="duo-card"><h3>SHARED · .so<small>add_library(kitchen SHARED kitchen.cpp)</small></h3><p>A separate file (<code>.so</code> on Linux, <code>.dylib</code> on macOS, <code>.dll</code> on Windows), <b>loaded when the program starts</b>. Many programs can share one copy, and it can be updated without relinking them. But it must be findable at run time, or the program can't even start.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="surprised"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>That last error isn't from me, and it isn't from your program: <samp>error while loading shared libraries</samp> comes from the <b>loader</b>, the part of the system that starts programs. Your <code>main</code> never ran. Exit code 127 is the loader giving up before <code>main</code>. CMake wrote the build folder's path into <code>app</code> so it finds the library there; move the library, and the search fails.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-static-m" id="ex-static"></div>
+  <script type="application/json" id="ex-static-m">{"q": "Wren will email one small program to a friend who has never heard of her kitchen library. Which kind of library should the program be linked with, so it simply runs?", "options": [
+    {"t": "A static library (<code>.a</code>): the program carries the parts it uses", "correct": true, "why": "Right. With a static library the program carries the parts it uses. With a shared one, the friend would also need <code>libkitchen.so</code> in a place the loader searches, or they'd see panel 20's <samp>cannot open shared object file</samp>."},
+    {"t": "A shared library (<code>.so</code>): shared means it's included for everyone", "why": "\"Shared\" means one separate file that many programs share at run time. It must be sent along and found by the loader."},
+    {"t": "It makes no difference at all once the program is built", "why": "Panel 20 shows the difference on a real run: same program, library file moved, and it can't start."},
+    {"t": "Neither: libraries can't be used by programs on other computers", "why": "Both kinds can; a shared one just has to travel with the program (or be installed there)."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: groceries from somebody else">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Sooner or later you want someone else's library: a JSON reader, a maths library, <code>fmt</code> for formatting, a test framework. CMake's command for "use a library that's installed on this computer" is <code>find_package</code>. Here Wren asks for <code>fmt</code>, which isn't installed on this machine.</p>
+    <span class="file-tab">CMakeLists.txt</span>
+    <pre class="code" data-src="pkg.cpp"></pre>
+    <pre class="term wrap" data-run="pkg.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the menu (<code>pkg.cpp</code>) was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>.</p>
+    <ol class="readlist" aria-label="Reading the find_package error">
+      <li><span><b>Where:</b> line 4, <samp>(find_package)</samp>.</span></li>
+      <li><span><b>What CMake looked for:</b> a small file a package installs to describe itself, <samp>fmtConfig.cmake</samp> or <samp>fmt-config.cmake</samp>. None was found in the usual places.</span></li>
+      <li><span><b>What it suggests:</b> tell it where the package is (<code>CMAKE_PREFIX_PATH</code> or <code>fmt_DIR</code>), or install it. <code>REQUIRED</code> makes the missing package an error that stops configure right here, at line 4.</span></li>
+      <li><span><b>When it works,</b> the package gives you a target with a double-colon name, <code>fmt::fmt</code>, and line 7 links it exactly like your own library.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="planner" data-mood="normal" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cam says: </span>I plan with what's in the pantry; I don't go shopping. Shopping is the <b>package manager's</b> job: the grocery van. <b>vcpkg</b> (from Microsoft) and <b>Conan</b> download a library, build it for your compiler, and tell me where they put it. Your system's installer (<code>apt</code>, Homebrew) is another kind of van. This machine has no network, so the van stays in the garage today; the notebook's lab shows the commands.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pkg-m" id="ex-pkg"></div>
+  <script type="application/json" id="ex-pkg-m">{"q": "Which job belongs to a package manager such as vcpkg or Conan, rather than to CMake?", "options": [
+    {"t": "Downloading <code>fmt</code>, building it, and telling <code>find_package</code> where it is", "correct": true, "why": "Right: the grocery van. CMake only finds packages that are already there (panel 21's error shows it searching and giving up). The package manager fetches them, builds them, and points CMake at them."},
+    {"t": "Deciding the order in which <code>kitchen.cpp</code> and <code>main.cpp</code> are compiled", "why": "That's the head chef (Make or Ninja), following CMake's cards."},
+    {"t": "Writing the <code>Makefile</code> from the menu in <code>CMakeLists.txt</code>", "why": "That's CMake's configure step, the generator."},
+    {"t": "Turning <code>main.cpp</code> into <code>main.cpp.o</code> by compiling it", "why": "That's the Compiler, a cook."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE EXAMINER<small>Why a framework beats bare asserts, <code>TEST_CASE</code>, <code>CHECK</code> and <code>REQUIRE</code>, doubles, exceptions and subcases</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 22: asserts stop at the first problem">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Back to Chapter 11's safety net. Someone typed the pie price as 200 instead of 300. Four asserts guard <code>bill_cents</code>.</p>
+    <div class="side">
+      <pre class="code" data-src="asserts.cpp"></pre>
+      <pre class="term wrap" data-run="asserts.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The smoke alarm went off, good. But look at what I <b>don't</b> learn: what the bill actually came to (200? 0? a million?), and whether line 12 would fail too, because the program died on line 11. And every one of these vanishes in a Release build. One alarm, then darkness.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: a homemade examiner, walked line by line" data-walk="walk-home">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">So Wren writes her own little examiner: a <code>check</code> function that compares and reports, and never stops the program. Walk through it with her.</p>
+    <div class="walk full">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">homemade.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-home">{"program": "homemade.cpp", "steps": [
+      {"line": 17, "output": [], "mood": "focus", "arms": "point", "note": "The program starts in <code>main</code>. Line 17 is next: check an empty table."},
+      {"line": 18, "output": ["PASS empty table"], "mood": "happy", "note": "<code>bill_cents(0, 0)</code> is 0, as expected, so <code>check</code> printed <samp>PASS empty table</samp> (line 10)."},
+      {"line": 19, "output": ["PASS empty table", "PASS one soup"], "mood": "happy", "note": "One soup: 400 cents. Another pass."},
+      {"line": 9, "output": ["PASS empty table", "PASS one soup"], "mood": "focus", "arms": "point", "note": "Line 19 calls <code>check(\"one pie\", 200, 300)</code>: <code>bill_cents(0, 1)</code> was worked out first and came back as 200. Inside <code>check</code>, line 9 compares <code>got</code> (200) with <code>expected</code> (300)."},
+      {"line": 12, "output": ["PASS empty table", "PASS one soup"], "mood": "worried", "note": "They differ, so the <code>else</code> branch runs..."},
+      {"line": 20, "output": ["PASS empty table", "PASS one soup", "FAIL one pie: expected 300, got 200"], "mood": "surprised", "mouth": "o", "note": "...and prints <b>both</b> numbers. Then <code>check</code> returns, and the program carries on to line 20. No abort."},
+      {"line": null, "output": ["PASS empty table", "PASS one soup", "FAIL one pie: expected 300, got 200", "FAIL two soups, one pie: expected 1100, got 1000"], "mood": "happy", "arms": "cheer", "note": "The fourth check fails too, also by 100. Two failures that both point at pies, each saying by how much. Far better than one silent abort, but Wren had to build all of it herself."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-table-m" id="ex-table"></div>
+  <script type="application/json" id="ex-table-m">{"program": "trace_table.cpp", "columns": ["soups", "pies", "expected", "got", "verdict"], "given": [0, 1, 2], "prompt": "A <b>table-driven</b> test: each row of the table is one case, and one loop checks them all. Here <code>bill_cents</code> is correct (pies cost 300). Fill in what the program prints for each case: the value it <code>got</code>, and <code>PASS</code> or <code>FAIL</code>.", "explain": "The first four rows pass. The last row fails, but look closely: 3 soups and 2 pies really cost 3 × 400 + 2 × 300 = 1800. The function is right and the <b>test</b> is wrong: someone typed 1600. A failing test means \"the code and the test disagree\". Before you change the code, check the expectation."}</script>
+
+  <section class="panel pop" data-play aria-label="Panel 24: meet Dot the examiner">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">A <b>unit-test framework</b> is that homemade examiner, finished and polished: it finds your tests, runs every one, keeps going after a failure, prints the values, counts the results, and returns an exit code that scripts can check. Ours is <b>doctest</b>, a whole framework in one header file (<code>doctest.h</code>), version 2.4.12. The same buggy pie price:</p>
+    <div class="side">
+      <pre class="code" data-src="first_tests.cpp"></pre>
+      <pre class="term wrap" data-run="first_tests.cpp" data-exit></pre>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Dot says: </span>I'm <b>Dot</b>, your examiner. Each <code>TEST_CASE</code> is one manoeuvre on my driving test. I run them all, and my report says exactly which one failed, on which line, and <b>by how much</b>: <samp>values: CHECK( 200 == 300 )</samp>. You asked for 300; you got 200.</p></div>
+      <svg class="char" data-char="examiner" data-mood="focus" data-verdict="fail" data-arms="down"></svg>
+    </div>
+    <p class="sr-only">Picture: Dot the examiner, in a flat cap and round glasses, holds up a clipboard with a big cross on it.</p>
+    <ol class="readlist" aria-label="Reading the test report like a detective">
+      <li><span><b>The build command</b> gained <code>-I/home/you/vendor</code>: "also look for headers in this folder", which is where <code>doctest.h</code> lives on this machine.</span></li>
+      <li><span><b>Line 1 of the program</b>, <code>#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN</code>, asks doctest to write <code>main</code> for us. There is no <code>main</code> in the file: doctest's <code>main</code> finds every <code>TEST_CASE</code> and runs it.</span></li>
+      <li><span><b>Start at the bottom:</b> <samp>test cases: 2 | 1 passed | 1 failed</samp>, <samp>assertions: 4 | 2 passed | 2 failed</samp>, <samp>Status: FAILURE!</samp>, and exit code 1, so a script knows too.</span></li>
+      <li><span><b>Then the block for the failed test case:</b> it starts on line 12, <samp>soups and pies add up</samp>. Inside, each failed check: its line, the expression as you wrote it, then <samp>values:</samp> with both sides worked out.</span></li>
+      <li><span><b>Passing checks print nothing.</b> The first test case passed silently. No news is good news.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 25: the examiner's vocabulary in three frameworks">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">Three popular frameworks, one set of ideas. We run doctest; <b>Catch2</b> looks almost the same (doctest was modelled on it), and <b>GoogleTest</b> uses different words for the same things. Learn the ideas, and any of them reads easily.</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>Idea</th><th>doctest (this page)</th><th>Catch2 v3</th><th>GoogleTest</th></tr></thead>
+      <tbody>
+        <tr><td>one test, with a name</td><td><code>TEST_CASE("name") { }</code></td><td><code>TEST_CASE("name") { }</code></td><td><code>TEST(Suite, Name) { }</code></td></tr>
+        <tr><td>check, and carry on</td><td><code>CHECK(a == b)</code></td><td><code>CHECK(a == b)</code></td><td><code>EXPECT_EQ(a, b)</code></td></tr>
+        <tr><td>check, or stop this test</td><td><code>REQUIRE(a == b)</code></td><td><code>REQUIRE(a == b)</code></td><td><code>ASSERT_EQ(a, b)</code></td></tr>
+        <tr><td>doubles, nearly equal</td><td><code>CHECK(x == doctest::Approx(0.3))</code></td><td><code>REQUIRE_THAT(x, WithinRel(0.3))</code></td><td><code>EXPECT_DOUBLE_EQ(x, 0.3)</code></td></tr>
+        <tr><td>must throw this kind</td><td><code>CHECK_THROWS_AS(f(), T)</code></td><td><code>REQUIRE_THROWS_AS(f(), T)</code></td><td><code>EXPECT_THROW(f(), T)</code></td></tr>
+        <tr><td>shared setup</td><td><code>SUBCASE("...")</code></td><td><code>SECTION("...")</code></td><td>a fixture class with <code>TEST_F</code></td></tr>
+        <tr><td>header to include</td><td><code>"doctest.h"</code></td><td><code>&lt;catch2/catch_test_macros.hpp&gt;</code></td><td><code>&lt;gtest/gtest.h&gt;</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="examiner" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Dot says: </span>Why a framework instead of asserts? I keep going after a failure, I show the values, I count, I can run just the tests you name, and my checks don't vanish in Release builds. And everyone on your team already knows how to read my report.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 26: the examiner as a machine" data-machine="m-exam">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Feed Dot one check and read her verdict. Every verdict is a line from a real test run on this page (the note names the program).</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-exam">{"label": "CHECK / REQUIRE", "program": "first_tests.cpp", "examples": [
+      {"in": "CHECK(bill_cents(1, 0) == 400)", "out": "passes quietly (counted in the totals)", "expectLine": "[doctest] assertions: 4 | 2 passed | 2 failed |", "outKind": "no line of its own", "program": "first_tests.cpp", "note": "A passing check prints nothing. You only see it in the count: 2 of the 4 assertions in <code>first_tests.cpp</code> passed."},
+      {"in": "CHECK(bill_cents(0, 1) == 300)", "out": "values: CHECK( 200 == 300 )", "expectLine": "  values: CHECK( 200 == 300 )", "outKind": "ERROR, and the test carries on", "program": "first_tests.cpp", "note": "The left side was worked out (200) and shown beside the expected value. <code>first_tests.cpp</code>, panel 24."},
+      {"in": "REQUIRE(rail.size() == 2)", "out": "values: REQUIRE( 1 == 2 )", "expectLine": "  values: REQUIRE( 1 == 2 )", "outKind": "FATAL ERROR: the test case stops", "program": "require.cpp", "note": "A failed <code>REQUIRE</code> ends its test case on the spot. <code>require.cpp</code>, panel 27."},
+      {"in": "CHECK(rail.at(1) == \"pie\")", "out": "THREW exception: \"vector::_M_range_check: ...\"", "expectLine": "check_only.cpp:14: ERROR: CHECK( rail.at(1) == \"pie\" ) THREW exception: \"vector::_M_range_check: __n (which is 1) >= this->size() (which is 1)\"", "outKind": "an unexpected exception is a failure too", "program": "check_only.cpp", "note": "The rail had only one order, so <code>.at(1)</code> threw <code>std::out_of_range</code>. Dot caught it, reported it with its <code>what()</code> text, and carried on. <code>check_only.cpp</code>, panel 27."},
+      {"in": "CHECK(scale(0.1, 1, 3) == 0.3)", "out": "values: CHECK( 0.3 == 0.3 )", "expectLine": "  values: CHECK( 0.3 == 0.3 )", "outKind": "fails, though both sides print as 0.3", "program": "doubles.cpp", "note": "The famous double trap. <code>doubles.cpp</code>, panel 28."},
+      {"in": "CHECK(price_tag(1250) == \"$12.50\")  // returns \"\"", "out": "values: CHECK(  == $12.50 )", "expectLine": "  values: CHECK(  == $12.50 )", "outKind": "an empty string shows as nothing", "program": "rgr_1_red.cpp", "note": "doctest prints strings without quotes, so the empty string is just a gap before <code>==</code>. <code>rgr_1_red.cpp</code>, panel 33."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: CHECK carries on, REQUIRE stops">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Two programs that differ in one word, on line 12. <code>load_rail()</code> has a bug: it returns only one order. Lines 13 and 14 then read orders 0 and 1 with <code>.at()</code>.</p>
+    <span class="file-tab">check_only.cpp (require.cpp says REQUIRE on line 12)</span>
+    <pre class="code" data-src="check_only.cpp"></pre>
+    <div class="pair2">
+      <div><p class="who">LINE 12 USES CHECK</p><pre class="term wrap" data-run="check_only.cpp" data-exit></pre></div>
+      <div><p class="who">LINE 12 USES REQUIRE</p><pre class="term wrap" data-run="require.cpp" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="examiner" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Dot says: </span>With <code>CHECK</code>, I note the failure and carry on, so line 14 still ran and blew up on a rail that was never long enough. One mistake, two failures. With <code>REQUIRE</code>, I stop this test case the moment its <b>precondition</b> fails: one clear failure, nothing after it. Use <code>REQUIRE</code> when the rest of the test makes no sense without it (a size before indexing, a pointer before using it), and <code>CHECK</code> for everything else, so one run shows you every problem.</p></div>
+    </div>
+    <p class="caption soft">This is also why line 14 uses <code>.at(1)</code>, not <code>[1]</code>: <code>[1]</code> on a one-element vector is undefined behaviour, and a test must never do that. <code>.at</code> throws, and Dot reports the throw. GoogleTest's version of this advice: <code>EXPECT_</code> by default, <code>ASSERT_</code> when carrying on makes no sense.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-first-m" id="ex-first"></div>
+  <script type="application/json" id="ex-first-m">{"q": "Which checks does Dot report as failures when this file runs? (<code>bill_cents</code> is correct here; <code>price_tag</code> forgets the cents.)", "program": "which_first.cpp", "options": [
+    {"t": "The <code>REQUIRE</code> on <code>bill_cents(2, 0)</code>, and the check on <code>price_tag(750)</code>", "correct": true, "why": "Right. <code>bill_cents(1, 1)</code> is 400 + 300 = 700: pass. <code>bill_cents(2, 0)</code> is 800, not 900, and it's a <code>REQUIRE</code>, so the test case <b>bills</b> stops there: the <code>bill_cents(0, 3)</code> check never runs. The next test case still runs: <code>price_tag(700)</code> passes and <code>price_tag(750)</code> fails (<samp>values: CHECK( $7 == $7.50 )</samp>)."},
+    {"t": "Only the <code>REQUIRE</code> on <code>bill_cents(2, 0)</code>: a failed <code>REQUIRE</code> stops every test", "why": "A <code>REQUIRE</code> stops only its own test case. Dot moves on to the next one."},
+    {"t": "The <code>REQUIRE</code> on <code>bill_cents(2, 0)</code>, the check on <code>bill_cents(0, 3)</code>, and the check on <code>price_tag(750)</code>", "why": "The <code>bill_cents(0, 3)</code> check never runs: the <code>REQUIRE</code> before it ended that test case. (It would have passed anyway: 3 pies are 900.)"},
+    {"t": "The checks on <code>bill_cents(1, 1)</code> and <code>price_tag(750)</code>, and the <code>REQUIRE</code>", "why": "<code>bill_cents(1, 1)</code> is fine: one soup and one pie are 400 + 300 = 700."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 28: 0.3 is not 0.3">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <svg class="sfx tr" data-sfx="HUH?!" data-seed="28"></svg>
+    <p class="caption">A recipe scaler: a tenth of a gram for one person, tripled for three. The first test compares exactly; the second compares <b>approximately</b>.</p>
+    <div class="side">
+      <pre class="code" data-src="doubles.cpp"></pre>
+      <pre class="term wrap" data-run="doubles.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="jelly" data-label="0.3?"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The jelly says: </span>Remember me from Chapter 3? I'm a <code>double</code>, and I wobble a tiny bit. 0.1 can't be stored exactly in binary, so 0.1 × 3 comes out as 0.30000000000000004. Dot prints only a few digits, so both sides <em>look</em> like 0.3, but <code>==</code> compares every last bit.</p></div>
+    </div>
+    <p class="caption soft"><b>The rule:</b> never compare computed doubles with <code>==</code> in a test. Use <code>doctest::Approx(0.3)</code>, which allows a tiny relative difference (you can tighten or loosen it with <code>.epsilon(...)</code>). Catch2 has matchers such as <code>WithinRel</code>; GoogleTest has <code>EXPECT_DOUBLE_EQ</code> and <code>EXPECT_NEAR</code>. Money is a different story: keep it in whole cents, in an <code>int</code>, as <code>bill_cents</code> does, and exact comparison is exactly right.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotd-m" id="ex-spotd"></div>
+  <script type="application/json" id="ex-spotd-m">{"program": "spot_double.cpp", "bug": 11, "prompt": "A ten percent tip. Two of the three checks pass. Click the check that's written wrongly (the function itself is fine).", "explain": "Line 11 compares a computed double exactly: 1.1 × 1.1 is 1.2100000000000002, and the report even shows <samp>CHECK( 1.21 == 1.21 )</samp>. Write <code>CHECK(with_tip(1.1) == doctest::Approx(1.21));</code>, as line 9 does. Line 10 happens to pass because 0.0 × 1.1 is exactly 0.0, but <code>Approx</code> would be the safer habit there too."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: testing that something throws">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Some behaviour <em>is</em> an alarm (Chapter 15). Serving from an empty rail must throw <code>std::out_of_range</code>, and a test should prove it does. Edge cases like "empty" are where bugs hide.</p>
+    <div class="side">
+      <pre class="code" data-src="throws.cpp"></pre>
+      <pre class="term wrap" data-run="throws.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the exception checks">
+      <li><span><b>Line 24</b>, <code>CHECK_THROWS_AS(serve(rail), std::out_of_range)</code>: passes only if the call throws, and the exception is that kind (or a kind built from it). No throw, or a different kind, is a failure.</span></li>
+      <li><span><b>Line 25</b>, <code>CHECK_THROWS_WITH(serve(rail), "the rail is empty")</code>: checks the message, its <code>what()</code> text.</span></li>
+      <li><span><b>All four assertions pass</b>, so the report is short: only the totals. Two test cases, one for the normal path and one for the edge.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillthrow-m" id="ex-fillthrow"></div>
+  <script type="application/json" id="ex-fillthrow-m">{"program": "fill_throws.cpp", "prompt": "Write the second test case of panel 29 from memory. Line 24 must pass only if <code>serve</code> throws the standard \"bad position\" exception; line 25 must check its message.", "blanks": [{"line": 24, "text": "CHECK_THROWS_AS"}, {"line": 24, "text": "std::out_of_range"}, {"line": 25, "text": "CHECK_THROWS_WITH"}], "explain": "<code>CHECK_THROWS_AS(expression, type)</code> names the kind of exception; <code>CHECK_THROWS_WITH(expression, text)</code> compares its <code>what()</code>. Catch2 spells the first <code>REQUIRE_THROWS_AS</code> or <code>CHECK_THROWS_AS</code> too; GoogleTest calls it <code>EXPECT_THROW(serve(rail), std::out_of_range)</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 30: subcases start from the top">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">Several tests often need the same setup: "a rail with two orders". Copying the setup into each test case works, but doctest has a neater trick: <code>SUBCASE</code> (Catch2 calls it <code>SECTION</code>). This program prints a line at each stage, and runs with <code>--quiet</code> so doctest's own report stays silent and only our lines appear.</p>
+    <span class="file-tab">subcases.cpp</span>
+    <pre class="code" data-src="subcases.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="examiner" data-mood="normal" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Dot says: </span>Here's my secret: I run the test case <b>once for every subcase</b>, from the top each time, and on each run I enter exactly one subcase and skip the others. So every subcase gets a <b>fresh</b> rail. Predict my lines before you peek.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-sub-m" id="ex-sub"></div>
+  <script type="application/json" id="ex-sub-m">{"program": "subcases.cpp", "columns": ["stage", "size"], "given": [0], "prompt": "The real run printed six lines, one per row. The stage names are given. Fill in the rail's size on each line.", "explain": "Run 1: setup (2), the first subcase serves one order (1), the shared ending sees 1. Run 2 starts from the top with a <b>fresh</b> rail of 2, skips the first subcase, adds tea in the second (3), and the ending sees 3. The serve in run 1 did not leak into run 2. That's what makes subcases safe: each starts from the same known setup."}</script>
+
+  <div data-ex="parsons" data-model="ex-pz-m" id="ex-pz"></div>
+  <script type="application/json" id="ex-pz-m">{"program": "parsons_rail.cpp", "pin": [1, 2, 3, 4, 6, 7, 14], "prompt": "Build a test case whose checks all pass: add soup, check the size, add pie, check again, serve the oldest order, and check who's next. Put the movable lines in order so the run below is all green.", "explain": "Each check describes the state right after the line before it: one order after the soup, two after the pie, and after erasing the first (oldest) order, <code>pie</code> is at the front. A test reads like a story of the object's behaviour, step by step."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · THE WHOLE KITCHEN UNDER TEST<small>Folder layout, CTest, red-green-refactor, regression suites, running one test, and what makes a good test</small></h2>
+
+  <section class="panel clean" aria-label="Panel 31: a project with tests">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Now the crew works together. A tidy project keeps library code, the app and the tests in separate folders, and brings doctest along in a <code>third_party</code> folder (copying a library into your project like this is called <b>vendoring</b>).</p>
+    <pre class="tree-box" aria-label="Folder tree of the tested project">tested/
+├── CMakeLists.txt
+├── src/
+│   ├── kitchen.h
+│   └── kitchen.cpp        <span class="note">the library</span>
+├── app/
+│   └── main.cpp           <span class="note">the program people use</span>
+├── tests/
+│   ├── test_bill.cpp      <span class="note">one test program per topic</span>
+│   └── test_rail.cpp
+└── third_party/
+    └── doctest/doctest.h  <span class="note">the framework, vendored</span></pre>
+    <span class="file-tab">CMakeLists.txt</span>
+    <pre class="code" data-src="tested/CMakeLists.txt"></pre>
+    <ol class="readlist" aria-label="Reading the new lines">
+      <li><span><b>Line 5,</b> <code>target_include_directories(kitchen PUBLIC src)</code>: "headers for <code>kitchen</code> live in <code>src</code>", and <code>PUBLIC</code> passes that on, so the app and the tests can just write <code>#include "kitchen.h"</code>.</span></li>
+      <li><span><b>Lines 11 and 12</b> wrap doctest as a target of its own. An <code>INTERFACE</code> library compiles nothing; it only carries settings for whoever links it (here: where <code>doctest/doctest.h</code> is).</span></li>
+      <li><span><b>Line 14,</b> <code>enable_testing()</code>, switches on CTest, CMake's test runner.</span></li>
+      <li><span><b>Lines 16 to 18:</b> a test program is an ordinary executable, linked with the code it tests and with the framework. <code>add_test(NAME bill_tests COMMAND bill_tests)</code> then registers it with CTest: "to run the test called <code>bill_tests</code>, run the program <code>bill_tests</code>". Same again for the rail.</span></li>
+    </ol>
+    <div class="side">
+      <div><span class="file-tab">tests/test_bill.cpp</span><pre class="code" data-src="tested/tests/test_bill.cpp"></pre></div>
+      <div><span class="file-tab">tests/test_rail.cpp</span><pre class="code" data-src="tested/tests/test_rail.cpp"></pre></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: CTest runs every test program">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Configure, build (four targets now), then <code>ctest</code>. <code>--test-dir build</code> tells it which build folder to look in. The last command adds <code>-R rail</code>. (The <code>| sed ...</code> again only hides timings, which change every run.)</p>
+    <span class="file-tab">a terminal in ~/cpp-ch17/tested</span>
+    <pre class="term wrap" data-run="ctest_pass.cpp"></pre>
+    <p class="howmade"><b>How this run was really made:</b> the library source (<code>ctest_pass.cpp</code>) was copied in as <code>src/kitchen.cpp</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <ol class="readlist" aria-label="Reading the ctest output">
+      <li><span><b>CTest runs each registered test program</b> and judges it by its <b>exit code</b>: 0 means passed, anything else failed. That's why doctest's exit code matters.</span></li>
+      <li><span><b><samp>1/2 Test #1: bill_tests ...... Passed</samp></b>: one line per test program, with its time (blanked out here).</span></li>
+      <li><span><b><samp>100% tests passed, 0 tests failed out of 2</samp></b>: the verdict for the whole project.</span></li>
+      <li><span><b><code>-R rail</code></b> runs only tests whose <em>name</em> matches the pattern <code>rail</code> (<code>R</code> for regular expression). Test #2 ran; #1 was left out.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="examiner" data-mood="happy" data-verdict="pass" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Dot says: </span>I examine inside each test program; CTest is the head examiner who sends every candidate in and collects the results. Here CTest sees two candidates. If we registered each <code>TEST_CASE</code> separately it would see five: Catch2 and GoogleTest come with CMake helpers for exactly that, <code>catch_discover_tests</code> and <code>gtest_discover_tests</code> (doctest has <code>doctest_discover_tests</code> too).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ctestr-m" id="ex-ctestr"></div>
+  <script type="application/json" id="ex-ctestr-m">{"q": "In panel 31's project, Wren types <code>ctest --test-dir build -R bill</code>. What runs?", "options": [
+    {"t": "Only the <code>bill_tests</code> program, with all of its test cases", "correct": true, "why": "Right. <code>-R</code> filters CTest's tests by name, and CTest's tests are the programs registered with <code>add_test</code>. Inside that program, doctest runs every test case it holds."},
+    {"t": "Only the doctest test cases whose names contain \"bill\"", "why": "CTest doesn't know about test cases inside a program (unless they were registered one by one with a discovery helper). To filter test cases, pass doctest's own option to the program, as panel 35 does."},
+    {"t": "Both test programs, because both of them call <code>bill_cents</code>", "why": "The filter looks at test names only, not at what the code calls."},
+    {"t": "Nothing yet: <code>-R</code> means \"rebuild\", so it builds first", "why": "CTest never builds. If you forgot to rebuild, it happily tests the old programs: Part 3's trap again."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: red, green, refactor">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">A rhythm many programmers work in: write a failing test <b>first</b> (red), write the simplest code that passes it (green), then tidy up while the tests stay green (refactor). Wren needs <code>price_tag</code>: 1250 cents must show as <samp>$12.50</samp>. Four real runs, one per step.</p>
+    <div class="rgr">
+      <div class="rgr-card red"><p class="where">1 · RED</p><p>The test first. The function only <code>return "";</code> so it compiles (g++ even warns that <code>cents</code> is unused). The test fails: good, it can fail.</p></div>
+      <div class="rgr-card green"><p class="where">2 · GREEN</p><p>Simplest code: dollars, a dot, then <code>cents % 100</code> with <code>std::to_string</code>. Passes.</p></div>
+      <div class="rgr-card red"><p class="where">3 · RED AGAIN</p><p>New edge cases: 1205 and 1200 cents. <samp>$12.5</samp> and <samp>$12.0</samp>: the cents lose their leading zero.</p></div>
+      <div class="rgr-card green"><p class="where">4 · GREEN, REFACTORED</p><p><code>std::format("${}.{:02}", ...)</code> pads to two digits. All three checks pass.</p></div>
+    </div>
+    <div class="side">
+      <div><p class="who">1 · RED</p><pre class="term wrap small" data-run="rgr_1_red.cpp" data-exit></pre></div>
+      <div><p class="who">2 · GREEN</p><span class="file-tab">rgr_2_green.cpp</span><pre class="code" data-src="rgr_2_green.cpp"></pre><pre class="term wrap small" data-run="rgr_2_green.cpp" data-exit></pre></div>
+      <div><p class="who">3 · RED AGAIN</p><pre class="term wrap small" data-run="rgr_3_red.cpp" data-exit></pre></div>
+      <div><p class="who">4 · GREEN</p><span class="file-tab">rgr_4_green.cpp</span><pre class="code" data-src="rgr_4_green.cpp"></pre><pre class="term wrap small" data-run="rgr_4_green.cpp" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Why watch it fail first? A test that has never failed might not be testing anything (a typo can make a check always true). Red proves the examiner is awake. And step 3 is the real lesson: green with one example isn't done. <b>Test the edges</b>: zero, one, empty, the biggest, the one with a leading zero. (clang++ words step 1's warning a little differently; the notebook shows it.)</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 34: a regression caught">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="CAUGHT!" data-seed="34"></svg>
+    <p class="caption">Months later, someone "tidies up" <code>kitchen.cpp</code> with named prices, and slips. A copy of the project, <code>~/cpp-ch17/tested2</code>, has that version of <code>src/kitchen.cpp</code>; the tests are unchanged. Spot the slip before you read the run.</p>
+    <span class="file-tab">src/kitchen.cpp (the tidy-up)</span>
+    <pre class="code" data-src="ctest_fail.cpp"></pre>
+    <pre class="term wrap small" data-run="ctest_fail.cpp"></pre>
+    <p class="howmade"><b>How this run was really made:</b> the tidy-up (<code>ctest_fail.cpp</code>) was copied in as <code>src/kitchen.cpp</code> of <code>~/cpp-ch17/tested2</code>, and the configure really ran as <code>cmake --fresh ...</code>, which empties the cache first, so it prints what a first configure in a new folder prints.</p>
+    <ol class="readlist" aria-label="Reading the failing ctest run">
+      <li><span><b><samp>***Failed</samp></b> next to <samp>bill_tests</samp>, and <samp>The following tests FAILED: 1 - bill_tests</samp>. CTest only knows <em>that</em> the program failed (its exit code wasn't 0).</span></li>
+      <li><span><b>To see why,</b> CTest's own hint: re-run with <code>--output-on-failure</code>, which prints the failing program's report. <code>-R bill</code> keeps it to that one.</span></li>
+      <li><span><b>Dot's report</b> pins it down: <samp>CHECK( 400 == 300 )</samp> for one pie. <code>PIE</code> is defined on line 6 and never used: line 9 multiplies <em>everything</em> by <code>SOUP</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="examiner" data-mood="stern" data-verdict="fail" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Dot says: </span>Something that used to work and stopped working is a <b>regression</b>. The tests written months ago caught it within seconds, before any customer was overcharged. That's a <b>regression suite</b>: keep every test, add one for every bug you fix, and run them all after every change.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: running only some test cases">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">CTest picks test <em>programs</em>. To pick test <em>cases</em> inside one program, pass options to the program itself (each program here gets them from the command line). Three test cases: one bill, two rail.</p>
+    <div class="side">
+      <pre class="code" data-src="filter.cpp"></pre>
+      <pre class="term wrap" data-run="filter.cpp" data-exit></pre>
+      <pre class="term wrap" data-run="filter_count.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the filters">
+      <li><span><b><code>--test-case=rail*</code></b> runs test cases whose names match; <code>*</code> means "any characters". Two ran, <samp>1 skipped</samp>. Name your test cases with a topic first (<code>"rail: ..."</code>), and filtering becomes easy.</span></li>
+      <li><span><b><code>--count</code></b> only counts the matches, here for <code>*empty*</code>: two names contain "empty".</span></li>
+      <li><span>Catch2 takes the test name (or a <code>[tag]</code>) as a plain argument; GoogleTest uses <code>--gtest_filter=Suite.*</code>. In IDEs, each test usually gets a green "run" arrow of its own.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: what makes a good test">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">Dot's checklist for tests that help instead of hurt.</p>
+    <ol class="checklist">
+      <li><span><b>Test behaviour, not insides.</b> Check what the rail <em>does</em> (<code>next()</code> gives the oldest order, <code>waiting()</code> counts), not how it stores tickets. If a test reaches into <code>tickets_</code>, swapping the vector for another container breaks the test even though nothing a user sees has changed.</span></li>
+      <li><span><b>Never compare computed doubles with <code>==</code>.</b> Approximately (panel 28), or count in whole units (cents).</span></li>
+      <li><span><b>Don't depend on an order nobody promised.</b> An <code>std::unordered_map</code> or <code>unordered_set</code> (Chapter 14) visits its items in an unspecified order, and that order differs between standard libraries: libstdc++ (g++ on Linux), libc++ (Apple's clang) and Microsoft's. A test that expects <samp>pie, soup, tea</samp> from one may pass here and fail on a teammate's Mac. Sort first, or compare as sets.</span></li>
+      <li><span><b>One idea per test case, with a name that says it.</b> <code>"an empty rail refuses to serve"</code> tells you what broke before you read a single line.</span></li>
+      <li><span><b><code>REQUIRE</code> for preconditions, <code>CHECK</code> for the rest</b> (panel 27).</span></li>
+      <li><span><b>Edges first:</b> empty, one, many, zero, negative, biggest, a leading zero (panel 33).</span></li>
+      <li><span><b>Fast and independent.</b> Each test sets up what it needs and doesn't care which test ran before it, so they can run in any order, or alone.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"q": "A teammate's test fills an <code>std::unordered_set&lt;std::string&gt;</code> with <code>\"soup\"</code>, <code>\"pie\"</code> and <code>\"tea\"</code>, loops over it into a vector, and checks the vector equals <code>{\"tea\", \"pie\", \"soup\"}</code>. It passes on her Linux laptop. What's wrong?", "options": [
+    {"t": "Nobody promised that order; another library may visit the items differently", "correct": true, "why": "Right. The visiting order of an unordered set is unspecified, and another standard library (or version) may give another order, so the test can fail there. The test depends on an accident of one implementation. Sort the vector before comparing, or compare against another <code>unordered_set</code>, or use <code>std::set</code> if order matters."},
+    {"t": "Nothing: if it passes on her laptop, it's correct everywhere", "why": "It passes <em>here</em>. Tests should check promises the code makes, and nobody promised this order."},
+    {"t": "An <code>unordered_set</code> can't hold <code>std::string</code> values", "why": "They can. The problem is only the order of a loop over it."},
+    {"t": "It should use <code>REQUIRE</code> instead of <code>CHECK</code> for the comparison", "why": "Changing the assertion doesn't fix a test that expects an order nobody promised."}]}</script>
+
+  <div data-ex="choice" data-model="ex-impl-m" id="ex-impl"></div>
+  <script type="application/json" id="ex-impl-m">{"q": "Which test checks <b>behaviour</b> rather than implementation details?", "options": [
+    {"t": "Add soup and pie; check <code>next()</code> gives them in order, then <code>waiting()</code> is 0", "correct": true, "why": "Right: it only uses what <code>Rail</code> promises to its users. You could rewrite <code>Rail</code> with a different container tomorrow, and this test would still be right."},
+    {"t": "Make <code>tickets_</code> public, add an order, and check <code>tickets_.capacity() &gt;= 1</code>", "why": "Capacity is a detail of how a vector grows, and making the member public breaks the class's protection just for a test."},
+    {"t": "Check that <code>Rail::next</code> calls <code>erase</code> on the vector exactly once", "why": "How <code>next</code> does its job is its own business. A faster version without <code>erase</code> would fail this test while being correct."},
+    {"t": "Check that <code>sizeof(Rail)</code> is exactly 24 bytes", "why": "That's a fact about one compiler's layout of a vector, not about what a rail does. It differs between platforms."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Everything at once, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The whole crew, mixed. For every build ask: who's talking, Cam (configure), the head chef, the Compiler or the Linker? Was the build re-run? For every test ask: which check, which value, and does the run carry on?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_rebuild.cpp", "prompt": "Boss 1. A Ninja project in <code>~/cpp-ch17/bossrb</code> with this <code>main.cpp</code>, program name <code>tables</code>. In one shell, Wren types: configure, <code>cmake --build build &gt; build.log</code>, <code>./build/tables</code>, <code>sed -i 's/3/5/' main.cpp</code>, <code>./build/tables</code>, <code>cmake --build build &gt; build.log</code>, <code>./build/tables</code>. The build output goes into <code>build.log</code>. What do the three runs print, in order?", "hint": "Which runs happen after a build that saw the edit?", "explain": "Run 1: built from the original, 3. Run 2: the source says 5 now, but the program wasn't rebuilt, so still 3. Run 3: the build noticed the newer <code>main.cpp</code>, recompiled and relinked: 5. (How the run was really made: <code>boss_rebuild.cpp</code> was copied in as <code>main.cpp</code> first, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 7, "prompt": "Boss 2. Configure fails with <samp>CMake Error at CMakeLists.txt:7</samp>. Every file exists and every name is spelled correctly. Click the line that's in the wrong place.", "explain": "<code>target_link_libraries(app ...)</code> adds something to the target <code>app</code>, but on line 7 there is no <code>app</code> yet: <code>add_executable</code> creates it on line 8. CMake says <samp>Cannot specify link libraries for target \"app\" which is not built by this project.</samp> Create a target first, then use <code>target_...</code> commands on it: swap lines 7 and 8. (How the run was really made: this menu was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_ctest.cpp", "prompt": "Boss 3. Make <code>ctest</code> run the rail tests. Switch CTest on, and register the test program with it.", "blanks": [{"line": 11, "text": "enable_testing"}, {"line": 14, "text": "add_test"}, {"line": 14, "text": "COMMAND"}], "explain": "<code>enable_testing()</code> switches CTest on for the project (put it before the <code>add_test</code> lines). <code>add_test(NAME rail_tests COMMAND rail_tests)</code> registers a test called <code>rail_tests</code> whose command is the program of the same name; CMake turns the target name into the program's real path. Forget either, and nothing is registered for <code>ctest</code> to run. (How the run was really made: this menu was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>.)"}</script>
+
+  <div data-ex="choice" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"q": "Boss 4. Match the message to the crew member. Which pairing is right?", "options": [
+    {"t": "<samp>Cannot find source file:</samp> CMake · <samp>undefined reference</samp> the Linker · <samp>values:</samp> the test framework", "correct": true, "why": "Right. Configure errors start with <samp>CMake Error at CMakeLists.txt:N</samp>. Link errors come from <samp>/usr/bin/ld</samp>. Test failures are not build errors at all: the program built and ran, and its examiner reported a wrong value."},
+    {"t": "<samp>Cannot find source file:</samp> the Compiler · <samp>undefined reference</samp> CMake · <samp>values:</samp> the Linker", "why": "The Compiler never runs if configure fails; CMake doesn't link; and the Linker never evaluates checks."},
+    {"t": "All three come from Make: it's the head chef, and it runs every step", "why": "Make (the head chef) only reports that an order failed (<samp>gmake: *** ... Error</samp>). The real news always comes from whoever did the work."},
+    {"t": "<samp>Cannot find source file:</samp> the loader · <samp>undefined reference</samp> the Compiler · <samp>values:</samp> CTest", "why": "The loader speaks only when a program starts (panel 20). The Compiler says <samp>not declared</samp>, not <samp>undefined reference</samp>. CTest only says <samp>Passed</samp> or <samp>Failed</samp>; the values come from doctest inside the program."}]}</script>
+
+  <div data-ex="choice" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"q": "Boss 5. Wren fixes the pie price bug of panel 34. What should she do <b>first</b>, to make sure it never comes back?", "options": [
+    {"t": "See a test fail on the bug, fix the code, and keep that test for good", "correct": true, "why": "Right: here <samp>CHECK( 400 == 300 )</samp> already fails because of the bug. Fix the code until it passes, and the test stays in the suite: red, green, and the test stays as a guard. That's how a regression suite grows: every bug fixed leaves a test behind. If no test had caught it, she'd write one first and watch it fail."},
+    {"t": "Fix the code, then delete <code>bill_tests</code> so that <code>ctest</code> shows 100%", "why": "That hides the examiner instead of passing the exam. The next slip would go straight to customers."},
+    {"t": "Change the test to expect 400 for a pie, so that it passes again", "why": "That makes the test agree with the bug. Panel 31's tests describe what the kitchen must do: pies cost 300."},
+    {"t": "Ship the Release build, where she thinks the checks are switched off", "why": "doctest's checks don't depend on <code>NDEBUG</code> (only <code>assert</code> does), and switching off checks never fixes a bug anyway."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 17</p>
+    <ul class="recap">
+      <li><b>WRITE THE MENU, NOT THE COMMANDS</b><code>CMakeLists.txt</code> says what to build: <code>cmake_minimum_required</code>, <code>project</code>, <code>add_executable</code> / <code>add_library</code>, and <code>target_...</code> commands. CMake writes the build files for Make, Ninja or Visual Studio.</li>
+      <li><b>PLAN ONCE, COOK OFTEN</b>Configure with <code>cmake -S . -B build</code> (once per build folder, plus <code>-DCMAKE_BUILD_TYPE=Debug</code> or <code>Release</code>), then <code>cmake --build build</code> after every edit. Everything generated stays in <code>build</code>.</li>
+      <li><b>EDIT, BUILD, RUN. EVERY TIME.</b>The head chef rebuilds only what's older than its ingredients, but only when asked. A program you didn't rebuild is the old dish.</li>
+      <li><b>SAY "USES" OUT LOUD</b><code>target_link_libraries(app PRIVATE kitchen)</code>, or the Linker finds <samp>undefined reference</samp>. Create targets before you configure them, and set <code>CMAKE_CXX_STANDARD</code> before any target exists.</li>
+      <li><b>THE EXAMINER KEEPS GOING</b>A test framework runs every <code>TEST_CASE</code>, shows <samp>values:</samp>, counts, and sets the exit code. <code>CHECK</code> carries on, <code>REQUIRE</code> stops the test case; <code>Approx</code> for doubles; <code>CHECK_THROWS_AS</code> for alarms; <code>ctest</code> runs every test program.</li>
+      <li><b>RED, GREEN, KEEP IT</b>Watch a test fail before you make it pass, test the edges, test behaviour (never an order nobody promised), and keep every test: that's your regression suite.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>No more retyping long commands, no more wondering whether a change broke something. The planner plans, the head chef cooks only what changed, and the examiner checks everything, every time. That's how real C++ projects are run, from a three-file tool to a game engine.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, Inspectors and Magnifiers">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 18: Inspectors and Magnifiers</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: a car on an inspection ramp, with a big magnifying glass held over a page of text beside it.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M20 150 H230 L210 130 H40 Z" fill="#DDE8FF"/>
+          <path d="M50 120 Q60 92 96 90 H150 Q176 92 192 120 Z" fill="#FF5A4E"/>
+          <circle cx="80" cy="124" r="13" fill="#2B2B2B"/><circle cx="168" cy="124" r="13" fill="#2B2B2B"/>
+          <rect x="270" y="30" width="120" height="150" rx="6" fill="#FFFFFF"/>
+          <circle cx="360" cy="90" r="46" fill="#FFF6CC" fill-opacity="0.6"/><path d="M394 124 L440 172" stroke-width="10"/>
+        </g>
+        <path d="M286 60 H372 M286 82 H360 M286 104 H376 M286 126 H352 M286 148 H368" fill="none" stroke="#111" stroke-width="3"/>
+        <text x="125" y="176" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="20" letter-spacing="2" fill="#111">INSPECTION</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Tests check what I thought of. Next time we bring in inspectors for what I didn't: a stricter warnings policy, clang-format to tidy the code, clang-tidy's checklist, and the sanitizer matrix: which goggles to wear together and which alone, all switched on from the command line. Then a magnifying glass for text: <code>std::string_view</code> (and how it can point at a page that's gone), format specs like <code>{:&gt;8.2f}</code>, and why <code>"é"</code> is two bytes long.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch16.html">← Ch 16 · The Flat-Pack Finale</a><a class="next" href="ch18.html">Ch 18 · Inspectors and Magnifiers →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: the cache, the generators, how a build knows what changed, and how test frameworks find tests</summary>
+    <div class="page-body">
+      <h3>Configure is really three steps</h3>
+      <p>CMake's configure step (1) <b>detects</b> the toolchain: it compiles tiny test programs to learn the compiler's name, version and abilities, which is what the <samp>Detecting CXX compiler ABI info</samp> lines are; (2) <b>runs</b> your <code>CMakeLists.txt</code> like a script, top to bottom, building an in-memory model of targets and their properties (<samp>Configuring done</samp>); (3) <b>generates</b> the build files from that model (<samp>Generating done</samp>). Panel 15's typo is found in step 2 ("no such file") and reported again in step 3 ("no sources"), which is why it appears twice.</p>
+      <h3>The cache</h3>
+      <p><code>build/CMakeCache.txt</code> is a plain text file of <code>NAME:TYPE=value</code> lines. Everything you pass with <code>-D</code> lands there and is remembered, so later configures of the same folder don't need the option again. Panel 19's <code>grep</code> read its build-type flag entries (four flag strings, each with an <code>-ADVANCED</code> bookkeeping line). To change a setting, configure again with a new <code>-D</code>, or use the interactive editors <code>ccmake</code> (terminal) and <code>cmake-gui</code>. To forget everything, delete the build folder, or use <code>cmake --fresh</code> (CMake 3.24 and later), which throws away the cache but keeps the folder.</p>
+      <h3>Targets and properties</h3>
+      <p>Modern CMake is all about targets. Each target has properties: its sources, include directories, compile features, compile options, linked libraries. The <code>target_...</code> commands set them, each with a <b>scope</b>: <code>PRIVATE</code> (for building this target), <code>INTERFACE</code> (for those who link it) or <code>PUBLIC</code> (both). <code>target_link_libraries</code> follows the <code>INTERFACE</code> and <code>PUBLIC</code> parts transitively: if <code>app</code> links <code>kitchen</code> and <code>kitchen</code> publicly links <code>fmt::fmt</code>, <code>app</code> gets fmt's include path too. Variables like <code>CMAKE_CXX_STANDARD</code> are only <em>defaults</em> copied into a property (<code>CXX_STANDARD</code>) at the moment each target is created: hence panel 17.</p>
+      <h3>How the head chef knows what changed</h3>
+      <p>Make compares file timestamps: a rule runs when any of its inputs is newer than its output. CMake's rules list each object file's inputs, including every header it included, which g++ records during compilation (the <code>-MD -MF ....d</code> flags in panel 11 write "dependency files"). Ninja does the same and also keeps a log of the exact command used for each output (<code>build/.ninja_log</code>), so a changed flag triggers a rebuild even when no file changed. Both run commands in parallel when allowed: <code>cmake --build build -j 8</code>, or <code>--parallel</code>. Ninja's default is a little more than the number of CPU cores; <code>ninja --help</code> prints it for your machine.</p>
+      <p>An edited menu counts as a change too. The exercise after panel 13, for real: a copy of the kitchen project in <code>~/cpp-ch17/cmakeedit</code>, built once, then <code>sed</code> adds <code>-Wshadow</code> to line 10 of <code>CMakeLists.txt</code>, and the build runs again with no configure typed in between. The first three lines of its output are CMake re-planning by itself; then only <code>app</code>'s <code>main.cpp.o</code> is recompiled, because only <code>app</code>'s flags changed. (The <code>| sed</code> on the last command again only blanks the timings.)</p>
+      <pre class="term wrap" data-run="cmakeedit.cpp"></pre>
+      <p class="howmade"><b>How this run was really made:</b> the menu (<code>cmakeedit.cpp</code>, panel 9's menu letter for letter) was copied in as <code>CMakeLists.txt</code>, and the configure really ran as <code>cmake --fresh ...</code>, so every capture starts from an empty cache.</p>
+      <h3>-std=gnu++23 and CMAKE_CXX_EXTENSIONS</h3>
+      <p>For g++ and clang++, CMake turns <code>cxx_std_23</code> into <code>-std=gnu++23</code>, because the property <code>CXX_EXTENSIONS</code> defaults to <code>ON</code>. GNU extensions are mostly harmless additions, but code that leans on them won't compile with Microsoft's compiler. <code>set(CMAKE_CXX_EXTENSIONS OFF)</code> before your targets gives <code>-std=c++23</code>, which is what this book's single-file programs use.</p>
+      <h3>How a shared library is found</h3>
+      <p>On Linux, the loader (<code>ld.so</code>) searches the program's built-in run path (RPATH or RUNPATH), then <code>LD_LIBRARY_PATH</code>, then the system folders listed in <code>/etc/ld.so.cache</code>. CMake writes the absolute path of the build folder into programs it builds, which is why panel 20's <code>app</code> ran from the build folder and failed once the <code>.so</code> moved. When you <em>install</em> a project (<code>cmake --install build</code>), CMake rewrites that path. macOS uses <code>@rpath</code>, and Windows looks for <code>.dll</code> files next to the <code>.exe</code> and on <code>PATH</code>.</p>
+      <h3>How a test framework finds your tests</h3>
+      <p><code>TEST_CASE("...")</code> is a macro. It expands into a function with a made-up unique name (that's why g++ messages inside tests mention names like <code>DOCTEST_ANON_FUNC_20</code>) plus a global object whose constructor registers that function in a list, before <code>main</code> starts. The <code>main</code> that <code>DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN</code> provides walks the list, applies filters, runs each function and catches every exception, and returns 0 only if nothing failed. <code>CHECK(a == b)</code> uses operator tricks to capture <code>a</code> and <code>b</code> separately, which is how it can print <samp>values: CHECK( 200 == 300 )</samp>. Catch2 and GoogleTest work the same way.</p>
+      <h3>Exit codes all the way up</h3>
+      <p>doctest returns 1 when anything failed; CTest treats any non-zero exit code (or a crash) as a failed test, and itself exits with 8 when tests failed. Continuous-integration services (GitHub Actions, GitLab CI) mark a whole run red when a command exits non-zero. In panels 32 and 34 the <code>| sed</code> pipe hides CTest's exit code, because a shell pipeline reports the exit code of its <em>last</em> command (sed). Scripts that pipe test output use <code>set -o pipefail</code> to keep the failure.</p>
+      <h3>Two compilers, one warning</h3>
+      <p>Single-file programs on this page were also built with clang++ 18. The only difference anywhere was the wording of panel 33's unused-parameter warning:</p>
+      <pre class="term wrap small" data-run="rgr_1_red.cpp" data-alt data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>CMake is the common language.</b> Most open-source C++ projects ship a <code>CMakeLists.txt</code>, and CLion, Visual Studio, VS Code (CMake Tools extension) and Qt Creator open such a folder directly. Other build systems exist (Meson, Bazel, Bazel's cousins Buck2 and Pants, Visual Studio's own MSBuild projects, plain Makefiles), but knowing CMake lets you build almost anything you download.</li>
+        <li><b>Presets.</b> Instead of remembering <code>-G Ninja -DCMAKE_BUILD_TYPE=Debug ...</code>, teams commit a <code>CMakePresets.json</code> and run <code>cmake --preset debug</code>, then <code>cmake --build --preset debug</code> and <code>ctest --preset debug</code>.</li>
+        <li><b>Multi-config generators.</b> Visual Studio and Xcode (and "Ninja Multi-Config") hold Debug and Release in one build folder. There you choose at build time: <code>cmake --build build --config Release</code>, and <code>ctest -C Release</code>. <code>CMAKE_BUILD_TYPE</code> is ignored by them.</li>
+        <li><b>Getting dependencies.</b> <code>find_package</code> for things installed on the system or by a package manager. vcpkg in "manifest mode" reads a <code>vcpkg.json</code> listing your libraries and is plugged in with <code>-DCMAKE_TOOLCHAIN_FILE=.../vcpkg/scripts/buildsystems/vcpkg.cmake</code>. Conan reads a <code>conanfile.txt</code> or <code>conanfile.py</code> and generates files that <code>find_package</code> can use. CMake's own <code>FetchContent</code> module downloads a library's source at configure time and builds it as part of your project, which is how many projects pull in GoogleTest or Catch2.</li>
+        <li><b>Tests on every push.</b> Continuous integration runs configure, build and <code>ctest --output-on-failure</code> on every change, often on Linux, macOS and Windows at once, with several compilers. That's where "passes on my laptop" tests (panel 36's unordered order) get found out.</li>
+        <li><b>Test frameworks in the wild.</b> GoogleTest is used by Chromium, LLVM and many companies; it pairs with GoogleMock for fake objects. Catch2 is popular in open source and on Exercism's C++ track, whose every exercise comes with Catch2 tests. doctest is chosen where compile speed matters, since its header is light and tests can even sit beside the code.</li>
+        <li><b>Coverage.</b> Building with <code>--coverage</code> (g++) and running the tests produces data that tools such as gcov, lcov and gcovr turn into a report of which lines the tests ever ran (Chapter 11's coverage idea).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"CMake compiles my code."</b> It plans. The build tool runs the compiler (panel 2).</li>
+        <li><b>"I must run <code>cmake -S . -B build</code> before every build."</b> Once per build folder. <code>cmake --build</code> re-plans by itself when the menu changes (the exercise after panel 13).</li>
+        <li><b>"<code>cmake --build</code> recompiles everything."</b> Only what's older than its inputs (panel 13).</li>
+        <li><b>"If I saved the file, the program has my change."</b> Not until you build (panel 14).</li>
+        <li><b>"Building in the source folder is fine."</b> It works, but mixes hundreds of generated files with yours. Use a separate build folder (panel 6); many projects refuse in-source builds outright.</li>
+        <li><b>"<code>set(CMAKE_CXX_STANDARD 23)</code> works wherever I put it."</b> Only for targets created after it (panel 17).</li>
+        <li><b>"Without a build type, CMake builds in Debug."</b> With Make and Ninja you get no flags at all: no <code>-g</code>, no <code>-O</code> (panel 11).</li>
+        <li><b>"Release is just faster."</b> It also defines <code>NDEBUG</code>, so asserts disappear (panel 19).</li>
+        <li><b>"A shared library is part of the program."</b> It's a separate file that must be found every time the program starts (panel 20).</li>
+        <li><b>"<code>find_package</code> downloads the library."</b> It only looks on this computer (panel 21).</li>
+        <li><b>"A passing test proves the code is right."</b> It proves the code agrees with that test, for those inputs. Tests can be wrong (the trace exercise after panel 23) or missing edges (panel 33).</li>
+        <li><b>"<code>REQUIRE</code> is stricter, so it's always better."</b> It stops the test case and hides later failures. Use it for preconditions (panel 27).</li>
+        <li><b>"Two doubles that print the same are equal."</b> Printing rounds (panel 28).</li>
+        <li><b>"Tests run in Release lose their checks, like asserts."</b> Framework checks don't depend on <code>NDEBUG</code>; running tests in Release is common and useful.</li>
+        <li><b>"<code>ctest</code> rebuilds the tests."</b> It only runs what's there; build first.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Install CMake (and Ninja, if you like)</h3>
+      <ul>
+        <li><b>Linux:</b> <code>sudo apt install cmake ninja-build g++</code> (Debian, Ubuntu) or <code>sudo dnf install cmake ninja-build gcc-c++</code> (Fedora). This page used CMake 3.28.3, Ninja 1.11.1 and GNU Make 4.3. Check yours with <code>cmake --version</code>. If your distribution's CMake is older than 3.28, change line 1 of each menu to your version (3.20 or later is fine for everything here), or install a newer one with <code>pip install cmake</code> or from cmake.org.</li>
+        <li><b>macOS:</b> <code>xcode-select --install</code> for the compiler (Apple clang), then <code>brew install cmake ninja</code> with Homebrew, or the CMake app from cmake.org (its menu offers to install the command-line tools).</li>
+        <li><b>Windows:</b> Visual Studio Community with the "Desktop development with C++" workload includes CMake and Ninja; use the "Developer PowerShell for VS". There, <code>cmake -S . -B build</code> generates a Visual Studio solution, and you build with <code>cmake --build build --config Debug</code>; the program lands in <code>build\Debug\hello.exe</code>. MSYS2 users can <code>pacman -S mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja</code> and follow the Linux steps.</li>
+      </ul>
+      <h3>2. Your first project</h3>
+      <p>Make a folder <code>hello</code> with panel 3's two files. Then:</p>
+      <pre class="tree-box">cmake -S . -B build
+cmake --build build
+./build/hello</pre>
+      <p>With Windows and Visual Studio, the last command is <code>.\build\Debug\hello.exe</code>. Try <code>cmake -S . -B build-ninja -G Ninja</code> next to it, and <code>cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release</code> (single-config generators only). Open the folder in VS Code with the CMake Tools extension, or in CLion: both run these same steps when you press Build.</p>
+      <h3>3. Get a test framework</h3>
+      <ul>
+        <li><b>doctest:</b> download the single file <code>doctest.h</code> from the doctest GitHub releases (this page used 2.4.12) into <code>third_party/doctest/</code>, as panel 31 does. Nothing to build.</li>
+        <li><b>Catch2 v3:</b> <code>sudo apt install catch2</code>, <code>brew install catch2</code> or <code>vcpkg install catch2</code>, then <code>find_package(Catch2 3 REQUIRED)</code> and <code>target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)</code>. Its <code>include(Catch)</code> + <code>catch_discover_tests(tests)</code> registers each test case with CTest.</li>
+        <li><b>GoogleTest:</b> <code>find_package(GTest REQUIRED)</code> and <code>target_link_libraries(tests PRIVATE GTest::gtest_main)</code>, then <code>include(GoogleTest)</code> + <code>gtest_discover_tests(tests)</code>. Or fetch it with <code>FetchContent</code>, as GoogleTest's own quickstart shows.</li>
+      </ul>
+      <h3>4. The grocery van, for real</h3>
+      <p>With vcpkg: clone it (<code>git clone https://github.com/microsoft/vcpkg</code>), run its bootstrap script, put <code>{"dependencies": ["fmt"]}</code> in a <code>vcpkg.json</code> next to your <code>CMakeLists.txt</code>, and configure with <code>-DCMAKE_TOOLCHAIN_FILE=&lt;vcpkg&gt;/scripts/buildsystems/vcpkg.cmake</code>. Panel 21's menu then finds <code>fmt</code>. With Conan 2: <code>pip install conan</code>, write a <code>conanfile.txt</code> with <code>[requires] fmt/11.0.2</code> (or whichever version is current) and <code>[generators] CMakeDeps CMakeToolchain</code>, run <code>conan install . --build=missing</code>, and configure with the toolchain file it prints.</p>
+      <h3>5. Try these on purpose</h3>
+      <ol>
+        <li>In the kitchen project, run <code>cmake --build build --verbose</code> with Make, and compare its output with Ninja's in panel 11.</li>
+        <li>Add <code>-DCMAKE_BUILD_TYPE=Debug</code> to the kitchen's configure, build with <code>--verbose</code>, and find <code>-g</code>.</li>
+        <li>Delete line 9 of the kitchen menu, build, and read the Linker (panel 16 shows what we got).</li>
+        <li>In <code>first_tests.cpp</code>, change line 14's <code>CHECK</code> to <code>REQUIRE</code>. Which failure disappears from the report, and why?</li>
+        <li>Run any doctest program with <code>--success</code> to see the passing checks too, or <code>--list-test-cases</code> to list the names.</li>
+        <li>Write the regression test for a bug of your own: break <code>price_tag</code> for 0 cents, see it red, fix it, see it green.</li>
+      </ol>
+      <h3>6. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) has a "CMake" mode for multi-file projects, and lists doctest, Catch2 and GoogleTest among its libraries, so the single-file test programs on this page run there as they are.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>build system</dt><dd>Tools that turn a project's source into programs and libraries, knowing which commands to run, in which order, and what to rebuild after a change.</dd>
+        <dt>CMake</dt><dd>A build-system <em>generator</em>: reads <code>CMakeLists.txt</code> and writes build files for a build tool.</dd>
+        <dt>CMakeLists.txt</dt><dd>The file (exactly this name) in which a project describes its targets and settings for CMake.</dd>
+        <dt>configure</dt><dd>CMake's planning step, <code>cmake -S source -B build</code>: detect the compiler, run the menu, write the build files.</dd>
+        <dt>build (step)</dt><dd><code>cmake --build build</code>: run the build tool, which compiles and links what's out of date.</dd>
+        <dt>generator</dt><dd>The part of CMake that writes one kind of build file: Unix Makefiles, Ninja, Visual Studio, Xcode. Chosen with <code>-G</code>.</dd>
+        <dt>build tool (Make, Ninja)</dt><dd>The program that reads build files and runs the compile and link commands: the head chef.</dd>
+        <dt>build folder, out-of-source build</dt><dd>A separate folder (here <code>build</code>) for everything generated, so the source folder stays clean.</dd>
+        <dt>CMakeCache.txt</dt><dd>The file in a build folder that remembers what CMake detected and the settings you chose.</dd>
+        <dt>target</dt><dd>Something CMake can build: a program (<code>add_executable</code>) or a library (<code>add_library</code>), with its own properties.</dd>
+        <dt>PRIVATE / PUBLIC / INTERFACE</dt><dd>Who a target setting applies to: only this target / this target and its users / only its users.</dd>
+        <dt>build type</dt><dd>A named set of flags for single-config generators: Debug, Release, RelWithDebInfo, MinSizeRel, chosen with <code>-DCMAKE_BUILD_TYPE</code>.</dd>
+        <dt>NDEBUG</dt><dd>A macro that switches <code>assert</code> off; Release-style build types define it.</dd>
+        <dt>static library (.a, .lib)</dt><dd>An archive of object files whose needed parts are copied into each program at link time.</dd>
+        <dt>shared library (.so, .dylib, .dll)</dt><dd>A separate file loaded when the program starts, which many programs can share.</dd>
+        <dt>loader</dt><dd>The part of the operating system that starts a program and finds its shared libraries.</dd>
+        <dt>find_package</dt><dd>The CMake command that finds an installed library and gives you its targets, such as <code>fmt::fmt</code>.</dd>
+        <dt>package manager (vcpkg, Conan)</dt><dd>A tool that downloads and builds other people's libraries and tells CMake where they are.</dd>
+        <dt>vendoring</dt><dd>Copying a third-party library's files into your own project (like <code>third_party/doctest</code>).</dd>
+        <dt>timestamp</dt><dd>The time a file was last changed; build tools compare them to decide what to rebuild.</dd>
+        <dt>unit test</dt><dd>A small automatic check of one piece of code (a function, a class) against expected behaviour.</dd>
+        <dt>test framework</dt><dd>A library that finds, runs and reports tests: doctest, Catch2, GoogleTest.</dd>
+        <dt>test case</dt><dd>One named test, <code>TEST_CASE("...")</code>, holding one or more checks.</dd>
+        <dt>assertion (in a framework)</dt><dd>One check inside a test case, such as <code>CHECK(a == b)</code>.</dd>
+        <dt>CHECK / REQUIRE</dt><dd>A check that records a failure and carries on / one that also ends the test case. GoogleTest: <code>EXPECT_</code> / <code>ASSERT_</code>.</dd>
+        <dt>Approx</dt><dd>doctest's "nearly equal" for doubles, allowing a tiny relative difference.</dd>
+        <dt>SUBCASE / SECTION / fixture</dt><dd>Ways to share setup between tests; each subcase re-runs the test case from the top.</dd>
+        <dt>CTest</dt><dd>CMake's test runner: <code>enable_testing()</code>, <code>add_test(...)</code>, then <code>ctest</code>. It judges each test by its exit code.</dd>
+        <dt>table-driven test</dt><dd>A test that loops over a table of inputs and expected outputs.</dd>
+        <dt>edge case</dt><dd>An input at the boundary of what's allowed: empty, zero, one, the biggest, a leading zero.</dd>
+        <dt>red-green-refactor</dt><dd>Write a failing test, make it pass simply, then tidy the code while the tests stay green.</dd>
+        <dt>regression, regression suite</dt><dd>Something that used to work and broke / the growing set of tests run after every change to catch that.</dd>
+        <dt>implementation detail</dt><dd>How code does its job inside, as opposed to the behaviour it promises; good tests check behaviour.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://cmake.org/cmake/help/latest/guide/tutorial/index.html">The CMake Tutorial</a>, and the reference pages for <a href="https://cmake.org/cmake/help/latest/command/add_library.html">add_library</a>, <a href="https://cmake.org/cmake/help/latest/command/target_link_libraries.html">target_link_libraries</a>, <a href="https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html">CMAKE_BUILD_TYPE</a>, <a href="https://cmake.org/cmake/help/latest/command/find_package.html">find_package</a> and <a href="https://cmake.org/cmake/help/latest/manual/ctest.1.html">ctest</a></li>
+        <li><a href="https://ninja-build.org/manual.html">The Ninja manual</a></li>
+        <li><a href="https://github.com/doctest/doctest/blob/master/doc/markdown/readme.md">doctest documentation</a> (assertions, subcases, command-line options)</li>
+        <li><a href="https://github.com/catchorg/Catch2/blob/devel/docs/assertions.md">Catch2: assertion macros</a> and <a href="https://google.github.io/googletest/primer.html">the GoogleTest Primer</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/vcpkg/">Microsoft Learn: vcpkg</a> and <a href="https://docs.conan.io/2/">the Conan 2 documentation</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://cliutils.gitlab.io/modern-cmake/">An Introduction to Modern CMake</a> (Henry Schreiner and contributors): short chapters on targets, testing and packages.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, whose diagnostics chapter covers assertions and testing with clear pictures.</li>
+        <li><a href="https://exercism.org/tracks/cpp">Exercism's C++ track</a>: every exercise is a small CMake project with Catch2 tests to turn green.</li>
+        <li><a href="https://roadmap.sh/cpp">roadmap.sh/cpp</a>: where build systems, package managers and test frameworks sit in the bigger map.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch17</code>. Single-file programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, as each terminal shows) and each was also built and run with clang++ 18.1 for comparison; outputs and exit codes matched, and the one difference (the wording of a warning) is shown in the notebook. CMake projects were configured with CMake 3.28.3 and built with GNU Make 4.3 or Ninja 1.11.1, using CMake's default C++ compiler, <code>/usr/bin/c++</code>, which is g++ 13.3 on this machine. The test framework is doctest 2.4.12, a single header vendored into the projects (<code>third_party/doctest/doctest.h</code>) and, for single-file programs, kept in <code>/home/you/vendor</code>. Programs ran inside a fresh process namespace with address randomisation off; terminals with several commands in one shell say so. Before each project's first command, the chapter's file was copied into place and the configure used <code>cmake --fresh</code>, so every capture started from an empty cache; panel 6's session also cleaned away the previous capture's program, panel 20's moved the library back into place, and the program that aborts was started through a small <code>sh</code>, as in every C++ chapter, so the shell's <samp>Aborted</samp> line is real. Each of these steps is named in a "How this run was really made" note under its terminal. Timings that change from run to run were blanked with the <code>sed</code> commands you see on the page; nothing else was edited. g++ prints curly quotes in this UTF-8 terminal. The map, the walk-through and the machines are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): the CMake Tutorial (which also advises setting <code>CMAKE_CXX_STANDARD</code> above <code>add_executable</code>) and the CMake reference for <code>CMAKE_BUILD_TYPE</code> (empty by default for Makefile and Ninja generators), the Ninja manual, the doctest documentation, Catch2's assertion-macro documentation (REQUIRE aborts the test case, CHECK continues), the GoogleTest Primer (ASSERT_ fatal, EXPECT_ non-fatal), An Introduction to Modern CMake, roadmap.sh/cpp, Exercism's C++ track (CMake plus Catch2 per exercise), learncpp.com's testing lessons (9.1, 9.2) and its appendices on compiler setup, Stanford CS106L's lecture on building C++ projects (as listed on its schedule), the C++ research map for this course (module rows I1 and I2), and the CMake, Make, Ninja, ld, g++ and doctest messages themselves, recorded above.</p>
+  <p>Wren, Cam the planner, the head chef, Dot the examiner, the Compiler and the Linker are original characters drawn in code. CMake, Ninja, doctest, Catch2, GoogleTest, vcpkg and Conan are named only as the real tools they are. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

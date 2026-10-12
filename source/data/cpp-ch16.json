@@ -1,0 +1,1761 @@
+{
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch16",
+  "versionDifferences": [
+   "backwards.cpp",
+   "order_error.cpp",
+   "real_seed.cpp",
+   "stub_link.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): backwards.cpp, order_error.cpp, real_seed.cpp, stub_link.cpp."
+ },
+ "programs": {
+  "backwards.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 gen{42};\n    std::uniform_int_distribution<int> die{6, 1};\n    std::cout << die(gen) << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "/usr/include/c++/13/bits/uniform_int_dist.h:108: std::uniform_int_distribution<_IntType>::param_type::param_type(_IntType, _IntType) [with _IntType = int]: Assertion '_M_a <= _M_b' failed.\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS backwards.cpp -o backwards",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./backwards",
+     "out": "",
+     "err": "/usr/include/c++/13/bits/uniform_int_dist.h:108: std::uniform_int_distribution<_IntType>::param_type::param_type(_IntType, _IntType) [with _IntType = int]: Assertion '_M_a <= _M_b' failed.\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/uniform_int_dist.h:108: std::uniform_int_distribution<>::param_type::param_type(_IntType, _IntType) [_IntType = int]: Assertion '_M_a <= _M_b' failed.\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS backwards.cpp -o backwards",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./backwards",
+      "out": "",
+      "err": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/uniform_int_dist.h:108: std::uniform_int_distribution<>::param_type::param_type(_IntType, _IntType) [_IntType = int]: Assertion '_M_a <= _M_b' failed.\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "badseed.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "",
+   "stderr": "bust: the seed must be a whole number, not 'abc'\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g badseed.cpp -o badseed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./badseed abc",
+     "out": "",
+     "err": "bust: the seed must be a whole number, not 'abc'\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "bust: the seed must be a whole number, not 'abc'\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g badseed.cpp -o badseed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./badseed abc",
+      "out": "",
+      "err": "bust: the seed must be a whole number, not 'abc'\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "bigseed.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "",
+   "stderr": "bust: the seed must be a whole number, not '99999999999'\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bigseed.cpp -o bigseed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bigseed 99999999999",
+     "out": "",
+     "err": "bust: the seed must be a whole number, not '99999999999'\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "bust: the seed must be a whole number, not '99999999999'\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bigseed.cpp -o bigseed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bigseed 99999999999",
+      "out": "",
+      "err": "bust: the seed must be a whole number, not '99999999999'\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <random>\n\nint main() {\n    std::mt19937 gen{16};\n    std::uniform_int_distribution<int> coin{0, 1};\n    std::map<int, int> counts;\n    for (int i = 0; i < 100; ++i) {\n        ++counts[coin(gen)];\n    }\n    for (const auto& [side, times] : counts) {\n        std::cout << (side == 0 ? \"heads\" : \"tails\") << \": \" << times << '\\n';\n    }\n}\n",
+   "stdout": "heads: 55\ntails: 45\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "heads: 55\ntails: 45\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "heads: 55\ntails: 45\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "heads: 55\ntails: 45\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> rolls{3, 4, 5, 6};\n    int turn = 0;\n    for (int face : rolls) {\n        turn += face;\n        std::cout << \"rolled \" << face << \", total \" << turn << '\\n';\n        if (turn >= 10) {\n            break;\n        }\n    }\n    std::cout << \"bank \" << turn << '\\n';\n}\n",
+   "stdout": "rolled 3, total 3\nrolled 4, total 7\nrolled 5, total 12\nbank 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "rolled 3, total 3\nrolled 4, total 7\nrolled 5, total 12\nbank 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "rolled 3, total 3\nrolled 4, total 7\nrolled 5, total 12\nbank 12\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "rolled 3, total 3\nrolled 4, total 7\nrolled 5, total 12\nbank 12\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 a{5};\n    a();\n    std::mt19937 b = a;\n    std::mt19937 c{5};\n    std::cout << (a() == b() ? \"same\" : \"different\") << '\\n';\n    std::cout << (a() == c() ? \"same\" : \"different\") << '\\n';\n    c();\n    std::cout << (b() == c() ? \"same\" : \"different\") << '\\n';\n}\n",
+   "stdout": "same\ndifferent\nsame\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "same\ndifferent\nsame\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "same\ndifferent\nsame\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "same\ndifferent\nsame\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Player {\n    std::string name;\n    int score{0};\n};\n\nvoid bank(Player p, int points) {\n    p.score += points;\n    std::cout << p.name << \" banks \" << points << '\\n';\n}\n\nint main() {\n    Player ada{\"Ada\"};\n    bank(ada, 10);\n    bank(ada, 12);\n    std::cout << ada.name << \" has \" << ada.score << '\\n';\n}\n",
+   "stdout": "Ada banks 10\nAda banks 12\nAda has 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "Ada banks 10\nAda banks 12\nAda has 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada banks 10\nAda banks 12\nAda has 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_spot",
+      "out": "Ada banks 10\nAda banks 12\nAda has 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_trace.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nconst int target = 20;\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nint main() {\n    std::vector<int> rolls{5, 3, 4, 2, 1, 6, 6};\n    int score = 0;\n    int turn = 0;\n    for (int face : rolls) {\n        turn = (face == 1) ? 0 : turn + face;\n        bool again = face != 1 && robot_rolls_again(turn, score);\n        if (!again) {\n            score += turn;\n            turn = 0;\n        }\n        std::cout << face << ' ' << turn << ' ' << score << '\\n';\n    }\n}\n",
+   "stdout": "5 5 0\n3 8 0\n4 0 12\n2 2 12\n1 0 12\n6 6 12\n6 0 24\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "5 5 0\n3 8 0\n4 0 12\n2 2 12\n1 0 12\n6 6 12\n6 0 24\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "5 5 0\n3 8 0\n4 0 12\n2 2 12\n1 0 12\n6 6 12\n6 0 24\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "5 5 0\n3 8 0\n4 0 12\n2 2 12\n1 0 12\n6 6 12\n6 0 24\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bust.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bust.cpp -o bust",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bust 105",
+     "out": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bust.cpp -o bust",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bust 105",
+      "out": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "Ada\nr\nbank\nb\nr\nb\n",
+   "screen": "BUST! First to 20 wins. Your name? Ada\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank? r\n  rolled 4, turn total 10\n  (r)oll or (b)ank? bank\n  Please type r or b.\n  (r)oll or (b)ank? b\n  Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank? r\n  rolled 4, turn total 10\n  (r)oll or (b)ank? b\n  Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n"
+  },
+  "bust_safe.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS bust_safe.cpp -o bust_safe",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bust_safe 105",
+     "out": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   rolled 4, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "stdin": "Ada\nr\nbank\nb\nr\nb\n",
+   "screen": "BUST! First to 20 wins. Your name? Ada\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 2, turn total 2\n  rolled 3, turn total 5\n  rolled 6, turn total 11\n  Bolt banks 11\nAda's turn (0 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank? r\n  rolled 4, turn total 10\n  (r)oll or (b)ank? bank\n  Please type r or b.\n  (r)oll or (b)ank? b\n  Ada banks 10\nBolt's turn (11 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (10 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank? r\n  rolled 4, turn total 10\n  (r)oll or (b)ank? b\n  Ada banks 10\nAda wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n"
+  },
+  "by_ref.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint roll(std::mt19937& gen) {\n    std::uniform_int_distribution<int> die{1, 6};\n    return die(gen);\n}\n\nint main() {\n    std::mt19937 gen{42};\n    std::cout << roll(gen) << '\\n';\n    std::cout << roll(gen) << '\\n';\n    std::cout << roll(gen) << '\\n';\n    std::cout << \"one engine: \" << sizeof(gen) << \" bytes\\n\";\n}\n",
+   "stdout": "3\n5\n6\none engine: 5000 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g by_ref.cpp -o by_ref",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./by_ref",
+     "out": "3\n5\n6\none engine: 5000 bytes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3\n5\n6\none engine: 5000 bytes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g by_ref.cpp -o by_ref",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./by_ref",
+      "out": "3\n5\n6\none engine: 5000 bytes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "by_value.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint roll(std::mt19937 gen) {\n    std::uniform_int_distribution<int> die{1, 6};\n    return die(gen);\n}\n\nint main() {\n    std::mt19937 gen{42};\n    std::cout << roll(gen) << '\\n';\n    std::cout << roll(gen) << '\\n';\n    std::cout << roll(gen) << '\\n';\n}\n",
+   "stdout": "3\n3\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g by_value.cpp -o by_value",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./by_value",
+     "out": "3\n3\n3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3\n3\n3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g by_value.cpp -o by_value",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./by_value",
+      "out": "3\n3\n3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "decomposed.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nint turn_score(const std::vector<int>& rolls) {\n    int total = 0;\n    for (int roll : rolls) {\n        if (roll == 1) {\n            return 0;\n        }\n        total += roll;\n    }\n    return total;\n}\n\nvoid report(const std::string& name, int score) {\n    std::cout << name << \" scored \" << score << '\\n';\n}\n\nint main() {\n    int ada = turn_score({4, 6, 3, 5, 2});\n    int bo = turn_score({2, 5, 6, 1, 4});\n    report(\"Ada\", ada);\n    report(\"Bo\", bo);\n    std::cout << (ada > bo ? \"Ada wins\\n\" : \"Bo wins\\n\");\n}\n",
+   "stdout": "Ada scored 20\nBo scored 0\nAda wins\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g decomposed.cpp -o decomposed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./decomposed",
+     "out": "Ada scored 20\nBo scored 0\nAda wins\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada scored 20\nBo scored 0\nAda wins\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g decomposed.cpp -o decomposed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./decomposed",
+      "out": "Ada scored 20\nBo scored 0\nAda wins\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "dice.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 gen{42};\n    std::uniform_int_distribution<int> die{1, 6};\n    for (int i = 0; i < 10; ++i) {\n        std::cout << die(gen) << ' ';\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "3 5 6 2 5 5 4 4 1 3 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g dice.cpp -o dice",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./dice",
+     "out": "3 5 6 2 5 5 4 4 1 3 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3 5 6 2 5 5 4 4 1 3 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g dice.cpp -o dice",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./dice",
+      "out": "3 5 6 2 5 5 4 4 1 3 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "die_test.cpp": {
+   "src": "#include <cassert>\n#include <iostream>\n#include <map>\n#include <random>\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nint main() {\n    Die die{16};\n    for (int i = 0; i < 6000; ++i) {\n        int face = die.roll();\n        assert(face >= 1 && face <= 6);\n    }\n    assert(die.counts().size() == 6);\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << face << \": \" << times << '\\n';\n    }\n    std::cout << \"die tests passed\\n\";\n}\n",
+   "stdout": "1: 1012\n2: 992\n3: 1032\n4: 1003\n5: 980\n6: 981\ndie tests passed\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g die_test.cpp -o die_test",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./die_test",
+     "out": "1: 1012\n2: 992\n3: 1032\n4: 1003\n5: 980\n6: 981\ndie tests passed\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1: 1012\n2: 992\n3: 1032\n4: 1003\n5: 980\n6: 981\ndie tests passed\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g die_test.cpp -o die_test",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./die_test",
+      "out": "1: 1012\n2: 992\n3: 1032\n4: 1003\n5: 980\n6: 981\ndie tests passed\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_dice.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint roll(std::mt19937& gen, int sides) {\n    std::uniform_int_distribution<int> die{1, sides};\n    return die(gen);\n}\n\nint main() {\n    std::mt19937 gen{42};\n    std::cout << roll(gen, 6) << ' ' << roll(gen, 6) << ' ' << roll(gen, 20) << '\\n';\n}\n",
+   "stdout": "3 5 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_dice.cpp -o fill_dice",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_dice",
+     "out": "3 5 20\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3 5 20\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_dice.cpp -o fill_dice",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_dice",
+      "out": "3 5 20\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_loop.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nint main() {\n    std::vector<std::string> players{\"Ada\", \"Bolt\", \"Cy\"};\n    std::size_t who = 0;\n    for (int turn = 1; turn <= 5; ++turn) {\n        std::cout << turn << \": \" << players[who] << '\\n';\n        who = (who + 1) % players.size();\n    }\n}\n",
+   "stdout": "1: Ada\n2: Bolt\n3: Cy\n4: Ada\n5: Bolt\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_loop.cpp -o fill_loop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_loop",
+     "out": "1: Ada\n2: Bolt\n3: Cy\n4: Ada\n5: Bolt\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1: Ada\n2: Bolt\n3: Cy\n4: Ada\n5: Bolt\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_loop.cpp -o fill_loop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_loop",
+      "out": "1: Ada\n2: Bolt\n3: Cy\n4: Ada\n5: Bolt\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_stubs.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Player {\n    std::string name;\n    int score{0};\n};\n\nint total(const std::vector<int>& rolls) {\n    int sum = 0;\n    for (int r : rolls) {\n        sum += r;\n    }\n    return sum;\n}\n\nbool has_won(const Player& p) {\n    return p.score >= 20;\n}\n\nvoid bank(Player& p, int points) {\n    p.score += points;\n}\n\nint main() {\n    Player ada{\"Ada\"};\n    bank(ada, total({6, 5, 4}));\n    bank(ada, total({3, 2}));\n    std::cout << ada.name << ' ' << ada.score << ' ' << has_won(ada) << '\\n';\n}\n",
+   "stdout": "Ada 20 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_stubs.cpp -o fill_stubs",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_stubs",
+     "out": "Ada 20 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada 20 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_stubs.cpp -o fill_stubs",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_stubs",
+      "out": "Ada 20 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "first_engine.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 gen{42};\n    std::cout << gen() << '\\n';\n    std::cout << gen() << '\\n';\n    std::cout << gen() << '\\n';\n}\n",
+   "stdout": "1608637542\n3421126067\n4083286876\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g first_engine.cpp -o first_engine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./first_engine",
+     "out": "1608637542\n3421126067\n4083286876\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1608637542\n3421126067\n4083286876\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g first_engine.cpp -o first_engine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./first_engine",
+      "out": "1608637542\n3421126067\n4083286876\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "giant_main.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> ada_rolls{4, 6, 3, 5, 2};\n    std::vector<int> bo_rolls{2, 5, 6, 1, 4};\n\n    int ada_total = 0;\n    for (int roll : ada_rolls) {\n        if (roll == 1) {\n            ada_total = 0;\n            break;\n        }\n        ada_total += roll;\n    }\n\n    int bo_total = 0;\n    for (int roll : bo_rolls) {\n        if (roll == 1) {\n            ada_total = 0;\n            break;\n        }\n        bo_total += roll;\n    }\n\n    std::cout << \"Ada scored \" << ada_total << '\\n';\n    std::cout << \"Bo scored \" << bo_total << '\\n';\n    if (ada_total > bo_total) {\n        std::cout << \"Ada wins\\n\";\n    } else {\n        std::cout << \"Bo wins\\n\";\n    }\n}\n",
+   "stdout": "Ada scored 0\nBo scored 13\nBo wins\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g giant_main.cpp -o giant_main",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./giant_main",
+     "out": "Ada scored 0\nBo scored 13\nBo wins\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada scored 0\nBo scored 13\nBo wins\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g giant_main.cpp -o giant_main",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./giant_main",
+      "out": "Ada scored 0\nBo scored 13\nBo wins\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lab_copy.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g lab_copy.cpp -o lab_copy",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "printf 'Ada\\n' | ./lab_copy 105 | head -n 8",
+     "out": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g lab_copy.cpp -o lab_copy",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "printf 'Ada\\n' | ./lab_copy 105 | head -n 8",
+      "out": "BUST! First to 20 wins. Your name? Ada's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nAda's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\nBolt's turn (0 banked)\n  rolled 1: BUST! The turn is lost.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "logic_tests.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nconst int target = 20;\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nvoid check(const std::string& name, bool ok) {\n    std::cout << (ok ? \"PASS \" : \"FAIL \") << name << '\\n';\n}\n\nint main() {\n    check(\"a 1 wipes the turn\", add_roll(9, 1) == 0);\n    check(\"a 6 adds six\", add_roll(9, 6) == 15);\n    check(\"robot rolls on 4\", robot_rolls_again(4, 0));\n    check(\"robot banks at 10\", !robot_rolls_again(10, 0));\n    check(\"robot banks to win\", !robot_rolls_again(5, 15));\n}\n",
+   "stdout": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nPASS robot banks at 10\nPASS robot banks to win\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g logic_tests.cpp -o logic_tests",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./logic_tests",
+     "out": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nPASS robot banks at 10\nPASS robot banks to win\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nPASS robot banks at 10\nPASS robot banks to win\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g logic_tests.cpp -o logic_tests",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./logic_tests",
+      "out": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nPASS robot banks at 10\nPASS robot banks to win\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "machine_roll.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint roll(std::mt19937& gen) {\n    std::uniform_int_distribution<int> die{1, 6};\n    return die(gen);\n}\n\nint main() {\n    std::mt19937 a{42};\n    std::cout << \"seed 42, roll 1: \" << roll(a) << '\\n';\n    std::cout << \"seed 42, roll 2: \" << roll(a) << '\\n';\n    std::mt19937 b{7};\n    std::cout << \"seed 7, roll 1: \" << roll(b) << '\\n';\n    std::mt19937 c{2026};\n    std::cout << \"seed 2026, roll 1: \" << roll(c) << '\\n';\n}\n",
+   "stdout": "seed 42, roll 1: 3\nseed 42, roll 2: 5\nseed 7, roll 1: 1\nseed 2026, roll 1: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g machine_roll.cpp -o machine_roll",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./machine_roll",
+     "out": "seed 42, roll 1: 3\nseed 42, roll 2: 5\nseed 7, roll 1: 1\nseed 2026, roll 1: 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "seed 42, roll 1: 3\nseed 42, roll 2: 5\nseed 7, roll 1: 1\nseed 2026, roll 1: 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g machine_roll.cpp -o machine_roll",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./machine_roll",
+      "out": "seed 42, roll 1: 3\nseed 42, roll 2: 5\nseed 7, roll 1: 1\nseed 2026, roll 1: 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "order_error.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int points = play_turn();\n    std::cout << \"banked \" << points << '\\n';\n}\n\nint play_turn() {\n    return 10;\n}\n",
+   "stdout": "",
+   "stderr": "order_error.cpp: In function ‘int main()’:\norder_error.cpp:4:18: error: ‘play_turn’ was not declared in this scope\n    4 |     int points = play_turn();\n      |                  ^~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g order_error.cpp -o order_error",
+     "out": "",
+     "err": "order_error.cpp: In function ‘int main()’:\norder_error.cpp:4:18: error: ‘play_turn’ was not declared in this scope\n    4 |     int points = play_turn();\n      |                  ^~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "order_error.cpp:4:18: error: use of undeclared identifier 'play_turn'\n    4 |     int points = play_turn();\n      |                  ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g order_error.cpp -o order_error",
+      "out": "",
+      "err": "order_error.cpp:4:18: error: use of undeclared identifier 'play_turn'\n    4 |     int points = play_turn();\n      |                  ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "parsons_loop.cpp": {
+   "src": "#include <iostream>\n\nvoid set_up() { std::cout << \"seat 2 players\\n\"; }\nbool game_over(int turn) { return turn > 3; }\nvoid take_turn(int turn) { std::cout << \"turn \" << turn << '\\n'; }\nvoid announce_winner() { std::cout << \"announce the winner\\n\"; }\nvoid save_scores() { std::cout << \"save the scores\\n\"; }\n\nint main() {\n    set_up();\n    for (int turn = 1; !game_over(turn); ++turn) {\n        take_turn(turn);\n    }\n    announce_winner();\n    save_scores();\n}\n",
+   "stdout": "seat 2 players\nturn 1\nturn 2\nturn 3\nannounce the winner\nsave the scores\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_loop.cpp -o parsons_loop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_loop",
+     "out": "seat 2 players\nturn 1\nturn 2\nturn 3\nannounce the winner\nsave the scores\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "seat 2 players\nturn 1\nturn 2\nturn 3\nannounce the winner\nsave the scores\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_loop.cpp -o parsons_loop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_loop",
+      "out": "seat 2 players\nturn 1\nturn 2\nturn 3\nannounce the winner\nsave the scores\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_test.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nvoid check(const std::string& name, bool ok) {\n    std::cout << (ok ? \"PASS \" : \"FAIL \") << name << '\\n';\n}\n\nint main() {\n    int turn = add_roll(0, 4);\n    check(\"first roll counts\", turn == 4);\n    turn = add_roll(turn, 5);\n    check(\"rolls add up\", turn == 9);\n    turn = add_roll(turn, 1);\n    check(\"a 1 wipes the turn\", turn == 0);\n}\n",
+   "stdout": "PASS first roll counts\nPASS rolls add up\nPASS a 1 wipes the turn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_test.cpp -o parsons_test",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_test",
+     "out": "PASS first roll counts\nPASS rolls add up\nPASS a 1 wipes the turn\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "PASS first roll counts\nPASS rolls add up\nPASS a 1 wipes the turn\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_test.cpp -o parsons_test",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_test",
+      "out": "PASS first roll counts\nPASS rolls add up\nPASS a 1 wipes the turn\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_robot.cpp": {
+   "src": "#include <iostream>\n\nconst int target = 20;\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nint main() {\n    std::cout << std::boolalpha;\n    std::cout << robot_rolls_again(4, 0) << '\\n';\n    std::cout << robot_rolls_again(12, 0) << '\\n';\n    std::cout << robot_rolls_again(6, 15) << '\\n';\n    std::cout << robot_rolls_again(9, 10) << '\\n';\n}\n",
+   "stdout": "true\nfalse\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_robot.cpp -o predict_robot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_robot",
+     "out": "true\nfalse\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "true\nfalse\nfalse\ntrue\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_robot.cpp -o predict_robot",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_robot",
+      "out": "true\nfalse\nfalse\ntrue\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_seeds.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 a{42};\n    std::mt19937 b{42};\n    std::mt19937 c{43};\n    std::cout << (a() == b() ? \"same\" : \"different\") << '\\n';\n    std::cout << (a() == c() ? \"same\" : \"different\") << '\\n';\n    std::cout << (b() == a() ? \"same\" : \"different\") << '\\n';\n}\n",
+   "stdout": "same\ndifferent\ndifferent\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_seeds.cpp -o predict_seeds",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_seeds",
+     "out": "same\ndifferent\ndifferent\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "same\ndifferent\ndifferent\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_seeds.cpp -o predict_seeds",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_seeds",
+      "out": "same\ndifferent\ndifferent\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_tests.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nbool has_won(int score) {\n    return score > 20;\n}\n\nvoid check(const std::string& name, bool ok) {\n    std::cout << (ok ? \"PASS \" : \"FAIL \") << name << '\\n';\n}\n\nint main() {\n    check(\"0 has not won\", !has_won(0));\n    check(\"25 has won\", has_won(25));\n    check(\"20 has won\", has_won(20));\n    check(\"19 has not won\", !has_won(19));\n}\n",
+   "stdout": "PASS 0 has not won\nPASS 25 has won\nFAIL 20 has won\nPASS 19 has not won\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_tests.cpp -o predict_tests",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_tests",
+     "out": "PASS 0 has not won\nPASS 25 has won\nFAIL 20 has won\nPASS 19 has not won\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "PASS 0 has not won\nPASS 25 has won\nFAIL 20 has won\nPASS 19 has not won\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_tests.cpp -o predict_tests",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_tests",
+      "out": "PASS 0 has not won\nPASS 25 has won\nFAIL 20 has won\nPASS 19 has not won\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "rand_dice.cpp": {
+   "src": "#include <cstdlib>\n#include <iostream>\n\nint main() {\n    std::srand(42);\n    for (int i = 0; i < 10; ++i) {\n        std::cout << std::rand() % 6 + 1 << ' ';\n    }\n    std::cout << '\\n';\n    std::cout << \"RAND_MAX here: \" << RAND_MAX << '\\n';\n}\n",
+   "stdout": "1 1 6 4 5 5 2 1 6 6 \nRAND_MAX here: 2147483647\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g rand_dice.cpp -o rand_dice",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./rand_dice",
+     "out": "1 1 6 4 5 5 2 1 6 6 \nRAND_MAX here: 2147483647\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 1 6 4 5 5 2 1 6 6 \nRAND_MAX here: 2147483647\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g rand_dice.cpp -o rand_dice",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./rand_dice",
+      "out": "1 1 6 4 5 5 2 1 6 6 \nRAND_MAX here: 2147483647\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "real_seed.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::random_device device;\n    unsigned seed = device();\n    std::mt19937 gen{seed};\n    std::uniform_int_distribution<int> die{1, 6};\n    std::cout << \"seed \" << seed << \":\";\n    for (int i = 0; i < 5; ++i) {\n        std::cout << ' ' << die(gen);\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "seed 273510800: 2 1 5 2 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g real_seed.cpp -o real_seed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./real_seed",
+     "out": "seed 273510800: 2 1 5 2 6\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "nondeterministic": true,
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "seed 3584783284: 6 2 1 1 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g real_seed.cpp -o real_seed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./real_seed",
+      "out": "seed 3584783284: 6 2 1 1 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_bank.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc < 3) {\n        std::cerr << \"usage: ./road SEED START\\n\";\n        return 1;\n    }\n    Die die{static_cast<unsigned>(std::stoi(argv[1]))};\n    Player ada{\"Ada\", false, std::stoi(argv[2])};\n    std::cout << ada.name << \"'s turn (\" << ada.score << \" banked)\\n\";\n    ada.score += play_turn(ada, die);\n    if (ada.score >= target) {\n        std::cout << ada.name << \" wins with \" << ada.score << \"!\\n\";\n    } else {\n        std::cout << \"Next: Bolt's turn\\n\";\n    }\n}\n",
+   "stdout": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   rolled 6, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nNext: Bolt's turn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_bank.cpp -o road_bank",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_bank 14 0",
+     "out": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   rolled 6, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nNext: Bolt's turn\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   rolled 6, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nNext: Bolt's turn\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_bank.cpp -o road_bank",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_bank 14 0",
+      "out": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   rolled 6, turn total 10\n  (r)oll or (b)ank?   Ada banks 10\nNext: Bolt's turn\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "r\nb\n",
+   "screen": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank? r\n  rolled 6, turn total 10\n  (r)oll or (b)ank? b\n  Ada banks 10\nNext: Bolt's turn\n"
+  },
+  "road_bust.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc < 3) {\n        std::cerr << \"usage: ./road SEED START\\n\";\n        return 1;\n    }\n    Die die{static_cast<unsigned>(std::stoi(argv[1]))};\n    Player ada{\"Ada\", false, std::stoi(argv[2])};\n    std::cout << ada.name << \"'s turn (\" << ada.score << \" banked)\\n\";\n    ada.score += play_turn(ada, die);\n    if (ada.score >= target) {\n        std::cout << ada.name << \" wins with \" << ada.score << \"!\\n\";\n    } else {\n        std::cout << \"Next: Bolt's turn\\n\";\n    }\n}\n",
+   "stdout": "Ada's turn (0 banked)\n  rolled 3, turn total 3\n  (r)oll or (b)ank?   rolled 2, turn total 5\n  (r)oll or (b)ank?   rolled 1: BUST! The turn is lost.\nNext: Bolt's turn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_bust.cpp -o road_bust",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_bust 2 0",
+     "out": "Ada's turn (0 banked)\n  rolled 3, turn total 3\n  (r)oll or (b)ank?   rolled 2, turn total 5\n  (r)oll or (b)ank?   rolled 1: BUST! The turn is lost.\nNext: Bolt's turn\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada's turn (0 banked)\n  rolled 3, turn total 3\n  (r)oll or (b)ank?   rolled 2, turn total 5\n  (r)oll or (b)ank?   rolled 1: BUST! The turn is lost.\nNext: Bolt's turn\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_bust.cpp -o road_bust",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_bust 2 0",
+      "out": "Ada's turn (0 banked)\n  rolled 3, turn total 3\n  (r)oll or (b)ank?   rolled 2, turn total 5\n  (r)oll or (b)ank?   rolled 1: BUST! The turn is lost.\nNext: Bolt's turn\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "r\nr\n",
+   "screen": "Ada's turn (0 banked)\n  rolled 3, turn total 3\n  (r)oll or (b)ank? r\n  rolled 2, turn total 5\n  (r)oll or (b)ank? r\n  rolled 1: BUST! The turn is lost.\nNext: Bolt's turn\n"
+  },
+  "road_typo.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc < 3) {\n        std::cerr << \"usage: ./road SEED START\\n\";\n        return 1;\n    }\n    Die die{static_cast<unsigned>(std::stoi(argv[1]))};\n    Player ada{\"Ada\", false, std::stoi(argv[2])};\n    std::cout << ada.name << \"'s turn (\" << ada.score << \" banked)\\n\";\n    ada.score += play_turn(ada, die);\n    if (ada.score >= target) {\n        std::cout << ada.name << \" wins with \" << ada.score << \"!\\n\";\n    } else {\n        std::cout << \"Next: Bolt's turn\\n\";\n    }\n}\n",
+   "stdout": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 4\nNext: Bolt's turn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_typo.cpp -o road_typo",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_typo 14 0",
+     "out": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 4\nNext: Bolt's turn\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 4\nNext: Bolt's turn\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_typo.cpp -o road_typo",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_typo 14 0",
+      "out": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank?   Please type r or b.\n  (r)oll or (b)ank?   Ada banks 4\nNext: Bolt's turn\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "x\nb\n",
+   "screen": "Ada's turn (0 banked)\n  rolled 4, turn total 4\n  (r)oll or (b)ank? x\n  Please type r or b.\n  (r)oll or (b)ank? b\n  Ada banks 4\nNext: Bolt's turn\n"
+  },
+  "road_win.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc < 3) {\n        std::cerr << \"usage: ./road SEED START\\n\";\n        return 1;\n    }\n    Die die{static_cast<unsigned>(std::stoi(argv[1]))};\n    Player ada{\"Ada\", false, std::stoi(argv[2])};\n    std::cout << ada.name << \"'s turn (\" << ada.score << \" banked)\\n\";\n    ada.score += play_turn(ada, die);\n    if (ada.score >= target) {\n        std::cout << ada.name << \" wins with \" << ada.score << \"!\\n\";\n    } else {\n        std::cout << \"Next: Bolt's turn\\n\";\n    }\n}\n",
+   "stdout": "Ada's turn (15 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   Ada banks 6\nAda wins with 21!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_win.cpp -o road_win",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_win 59 15",
+     "out": "Ada's turn (15 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   Ada banks 6\nAda wins with 21!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada's turn (15 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   Ada banks 6\nAda wins with 21!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_win.cpp -o road_win",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_win 59 15",
+      "out": "Ada's turn (15 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank?   Ada banks 6\nAda wins with 21!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "b\n",
+   "screen": "Ada's turn (15 banked)\n  rolled 6, turn total 6\n  (r)oll or (b)ank? b\n  Ada banks 6\nAda wins with 21!\n"
+  },
+  "same_roll.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::uniform_int_distribution<int> die{1, 6};\n    for (int i = 0; i < 5; ++i) {\n        std::mt19937 gen{42};\n        std::cout << die(gen) << ' ';\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "3 3 3 3 3 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g same_roll.cpp -o same_roll",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./same_roll",
+     "out": "3 3 3 3 3 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3 3 3 3 3 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g same_roll.cpp -o same_roll",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./same_roll",
+      "out": "3 3 3 3 3 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "save_run.cpp": {
+   "src": "#include <exception>\n#include <fstream>\n#include <iostream>\n#include <map>\n#include <random>\n#include <string>\n#include <vector>\n\nconst int target = 20;\n\nstruct Player {\n    std::string name;\n    bool is_robot{false};\n    int score{0};\n};\n\nclass Die {\npublic:\n    explicit Die(unsigned seed) : engine_{seed} {}\n    int roll() {\n        int face = faces_(engine_);\n        ++counts_[face];\n        return face;\n    }\n    const std::map<int, int>& counts() const { return counts_; }\nprivate:\n    std::mt19937 engine_;\n    std::uniform_int_distribution<int> faces_{1, 6};\n    std::map<int, int> counts_;\n};\n\nunsigned read_seed(int argc, char* argv[]) {\n    if (argc < 2) {\n        return std::random_device{}();\n    }\n    return static_cast<unsigned>(std::stoi(argv[1]));\n}\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn < 10 && score + turn < target;\n}\n\nbool human_rolls_again() {\n    std::string word;\n    while (std::cout << \"  (r)oll or (b)ank? \" && std::cin >> word) {\n        if (word == \"r\" || word == \"b\") {\n            return word == \"r\";\n        }\n        std::cout << \"  Please type r or b.\\n\";\n    }\n    return false;\n}\n\nint play_turn(const Player& p, Die& die) {\n    int turn = 0;\n    while (true) {\n        int face = die.roll();\n        turn = add_roll(turn, face);\n        if (face == 1) {\n            std::cout << \"  rolled 1: BUST! The turn is lost.\\n\";\n            return 0;\n        }\n        std::cout << \"  rolled \" << face << \", turn total \" << turn << '\\n';\n        bool again = p.is_robot ? robot_rolls_again(turn, p.score)\n                                : human_rolls_again();\n        if (!again) {\n            std::cout << \"  \" << p.name << \" banks \" << turn << '\\n';\n            return turn;\n        }\n    }\n}\n\nvoid save_scores(const std::vector<Player>& players) {\n    std::ofstream out{\"last_game.txt\"};\n    for (const Player& p : players) {\n        out << p.name << ' ' << p.score << '\\n';\n    }\n}\n\nvoid print_report(const Die& die) {\n    std::cout << \"Dice report:\";\n    for (const auto& [face, times] : die.counts()) {\n        std::cout << ' ' << face << 'x' << times;\n    }\n    std::cout << '\\n';\n}\n\nint main(int argc, char* argv[]) {\n    unsigned seed = 0;\n    try {\n        seed = read_seed(argc, argv);\n    } catch (const std::exception&) {\n        std::cerr << \"bust: the seed must be a whole number, not '\"\n                  << argv[1] << \"'\\n\";\n        return 1;\n    }\n    Die die{seed};\n    std::string name;\n    std::cout << \"BUST! First to \" << target << \" wins. Your name? \";\n    std::getline(std::cin, name);\n    std::vector<Player> players{{name}, {\"Bolt\", true}};\n\n    std::size_t who = 0;\n    while (true) {\n        Player& p = players[who];\n        std::cout << p.name << \"'s turn (\" << p.score << \" banked)\\n\";\n        p.score += play_turn(p, die);\n        if (p.score >= target) {\n            break;\n        }\n        who = (who + 1) % players.size();\n    }\n    std::cout << players[who].name << \" wins with \" << players[who].score << \"!\\n\";\n    save_scores(players);\n    print_report(die);\n}\n",
+   "stdout": "Ada 20\nBolt 11\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bust.cpp -o bust",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch16"
+    },
+    {
+     "cmd": "printf 'Ada\\nr\\nb\\nr\\nb\\n' | ./bust 105 | tail -n 2",
+     "out": "Ada wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch16"
+    },
+    {
+     "cmd": "cat last_game.txt",
+     "out": "Ada 20\nBolt 11\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch16"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada 20\nBolt 11\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bust.cpp -o bust",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch16"
+     },
+     {
+      "cmd": "printf 'Ada\\nr\\nb\\nr\\nb\\n' | ./bust 105 | tail -n 2",
+      "out": "Ada wins with 20!\nDice report: 1x2 2x1 3x1 4x2 6x3\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch16"
+     },
+     {
+      "cmd": "cat last_game.txt",
+      "out": "Ada 20\nBolt 11\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch16"
+     }
+    ]
+   }
+  },
+  "skeleton.cpp": {
+   "src": "#include <iostream>\n\nvoid show_rules() {\n    std::cout << \"TODO: show the rules\\n\";\n}\n\nint play_game() {\n    std::cout << \"TODO: play the game\\n\";\n    return 0;\n}\n\nvoid save_scores(int winner) {\n    std::cout << \"TODO: save winner \" << winner << '\\n';\n}\n\nint main() {\n    show_rules();\n    int winner = play_game();\n    save_scores(winner);\n    std::cout << \"The skeleton runs!\\n\";\n}\n",
+   "stdout": "TODO: show the rules\nTODO: play the game\nTODO: save winner 0\nThe skeleton runs!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g skeleton.cpp -o skeleton",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./skeleton",
+     "out": "TODO: show the rules\nTODO: play the game\nTODO: save winner 0\nThe skeleton runs!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "TODO: show the rules\nTODO: play the game\nTODO: save winner 0\nThe skeleton runs!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g skeleton.cpp -o skeleton",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./skeleton",
+      "out": "TODO: show the rules\nTODO: play the game\nTODO: save winner 0\nThe skeleton runs!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_fn_engine.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint roll() {\n    std::mt19937 gen{14};\n    std::uniform_int_distribution<int> die{1, 6};\n    return die(gen);\n}\n\nint main() {\n    int total = 0;\n    for (int i = 0; i < 4; ++i) {\n        int r = roll();\n        total += r;\n        std::cout << r << ' ';\n    }\n    std::cout << \"total \" << total << '\\n';\n}\n",
+   "stdout": "4 4 4 4 total 16\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_fn_engine.cpp -o spot_fn_engine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_fn_engine",
+     "out": "4 4 4 4 total 16\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "4 4 4 4 total 16\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_fn_engine.cpp -o spot_fn_engine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_fn_engine",
+      "out": "4 4 4 4 total 16\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_next.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Player {\n    std::string name;\n    int score{0};\n};\n\nint main() {\n    std::vector<Player> players{{\"Ada\"}, {\"Bolt\"}};\n    std::size_t who = 0;\n    for (int turn = 1; turn <= 4; ++turn) {\n        players[who].score += 5;\n        std::cout << \"turn \" << turn << \": \" << players[who].name << '\\n';\n        who = who + 1;\n        if (who > players.size()) {\n            who = 0;\n        }\n    }\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x507000000100 at pc 0x555555560bb5 bp 0x7fffffffea30 sp 0x7fffffffea20\nREAD of size 4 at 0x507000000100 thread T0\n    #0 0x555555560bb4 in main /home/you/cpp-ch16/spot_next.cpp:14\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x555555560564 in _start (/home/you/cpp-ch16/spot_next+0xc564) (BuildId: 16fa5548ffe798edbb687f21f2771597526b59d7)\n\n0x507000000100 is located 32 bytes after 80-byte region [0x507000000090,0x5070000000e0)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x555555566048 in std::__new_allocator<Player>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x555555565314 in std::allocator<Player>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x555555565314 in std::allocator_traits<std::allocator<Player> >::allocate(std::allocator<Player>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x555555565314 in std::_Vector_base<Player, std::allocator<Player> >::_M_allocate(unsigned long) /usr/include/c++/13/bits/stl_vector.h:381\n    #5 0x555555563d84 in void std::vector<Player, std::allocator<Player> >::_M_range_initialize<Player const*>(Player const*, Player const*, std::forward_iterator_tag) /usr/include/c++/13/bits/stl_vector.h:1692\n    #6 0x5555555626dd in std::vector<Player, std::allocator<Player> >::vector(std::initializer_list<Player>, std::allocator<Player> const&) /usr/include/c++/13/bits/stl_vector.h:682\n    #7 0x555555560a1f in main /home/you/cpp-ch16/spot_next.cpp:11\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x555555560564 in _start (/home/you/cpp-ch16/spot_next+0xc564) (BuildId: 16fa5548ffe798edbb687f21f2771597526b59d7)\n\nSUMMARY: AddressSanitizer: heap-buffer-overflow /home/you/cpp-ch16/spot_next.cpp:14 in main\nShadow bytes around the buggy address:\n  0x506ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x506fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x506fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x507000000000: fa fa fa fa 00 00 00 00 00 00 00 00 04 fa fa fa\n  0x507000000080: fa fa 00 00 00 00 00 00 00 00 00 00 fa fa fa fa\n=>0x507000000100:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000380: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer spot_next.cpp -o spot_next",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_next",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x507000000100 at pc 0x555555560bb5 bp 0x7fffffffea30 sp 0x7fffffffea20\nREAD of size 4 at 0x507000000100 thread T0\n    #0 0x555555560bb4 in main /home/you/cpp-ch16/spot_next.cpp:14\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x555555560564 in _start (/home/you/cpp-ch16/spot_next+0xc564) (BuildId: 16fa5548ffe798edbb687f21f2771597526b59d7)\n\n0x507000000100 is located 32 bytes after 80-byte region [0x507000000090,0x5070000000e0)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x555555566048 in std::__new_allocator<Player>::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151\n    #2 0x555555565314 in std::allocator<Player>::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198\n    #3 0x555555565314 in std::allocator_traits<std::allocator<Player> >::allocate(std::allocator<Player>&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482\n    #4 0x555555565314 in std::_Vector_base<Player, std::allocator<Player> >::_M_allocate(unsigned long) /usr/include/c++/13/bits/stl_vector.h:381\n    #5 0x555555563d84 in void std::vector<Player, std::allocator<Player> >::_M_range_initialize<Player const*>(Player const*, Player const*, std::forward_iterator_tag) /usr/include/c++/13/bits/stl_vector.h:1692\n    #6 0x5555555626dd in std::vector<Player, std::allocator<Player> >::vector(std::initializer_list<Player>, std::allocator<Player> const&) /usr/include/c++/13/bits/stl_vector.h:682\n    #7 0x555555560a1f in main /home/you/cpp-ch16/spot_next.cpp:11\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x555555560564 in _start (/home/you/cpp-ch16/spot_next+0xc564) (BuildId: 16fa5548ffe798edbb687f21f2771597526b59d7)\n\nSUMMARY: AddressSanitizer: heap-buffer-overflow /home/you/cpp-ch16/spot_next.cpp:14 in main\nShadow bytes around the buggy address:\n  0x506ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x506fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x506fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x507000000000: fa fa fa fa 00 00 00 00 00 00 00 00 04 fa fa fa\n  0x507000000080: fa fa 00 00 00 00 00 00 00 00 00 00 fa fa fa fa\n=>0x507000000100:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x507000000380: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "stub_link.cpp": {
+   "src": "#include <iostream>\n\nvoid show_rules();\nint play_game();\n\nvoid show_rules() {\n    std::cout << \"Roll the die. A 1 loses the turn.\\n\";\n}\n\nint main() {\n    show_rules();\n    int winner = play_game();\n    std::cout << \"Winner: player \" << winner << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "/usr/bin/ld: stub_link.o: in function `main':\n/home/you/cpp-ch16/stub_link.cpp:12:(.text+0x36): undefined reference to `play_game()'\ncollect2: error: ld returned 1 exit status\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -c stub_link.cpp",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "g++ stub_link.o -o stub_link",
+     "out": "",
+     "err": "/usr/bin/ld: stub_link.o: in function `main':\n/home/you/cpp-ch16/stub_link.cpp:12:(.text+0x36): undefined reference to `play_game()'\ncollect2: error: ld returned 1 exit status\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "/usr/bin/ld: stub_link.o: in function `main':\n/home/you/cpp-ch16/stub_link.cpp:12:(.text+0x2e): undefined reference to `play_game()'\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -c stub_link.cpp",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "clang++ stub_link.o -o stub_link",
+      "out": "",
+      "err": "/usr/bin/ld: stub_link.o: in function `main':\n/home/you/cpp-ch16/stub_link.cpp:12:(.text+0x2e): undefined reference to `play_game()'\nclang++: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "tenk.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 gen;\n    gen.discard(9999);\n    std::cout << \"draw 10000: \" << gen() << '\\n';\n    std::cout << \"default seed: \" << std::mt19937::default_seed << '\\n';\n}\n",
+   "stdout": "draw 10000: 4123659995\ndefault seed: 5489\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g tenk.cpp -o tenk",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./tenk",
+     "out": "draw 10000: 4123659995\ndefault seed: 5489\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "draw 10000: 4123659995\ndefault seed: 5489\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g tenk.cpp -o tenk",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./tenk",
+      "out": "draw 10000: 4123659995\ndefault seed: 5489\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "tests_v1.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nconst int target = 20;\n\nint add_roll(int turn, int face) {\n    return face == 1 ? 0 : turn + face;\n}\n\nbool robot_rolls_again(int turn, int score) {\n    return turn <= 10 && score + turn < target;\n}\n\nvoid check(const std::string& name, bool ok) {\n    std::cout << (ok ? \"PASS \" : \"FAIL \") << name << '\\n';\n}\n\nint main() {\n    check(\"a 1 wipes the turn\", add_roll(9, 1) == 0);\n    check(\"a 6 adds six\", add_roll(9, 6) == 15);\n    check(\"robot rolls on 4\", robot_rolls_again(4, 0));\n    check(\"robot banks at 10\", !robot_rolls_again(10, 0));\n    check(\"robot banks to win\", !robot_rolls_again(5, 15));\n}\n",
+   "stdout": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nFAIL robot banks at 10\nPASS robot banks to win\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g tests_v1.cpp -o tests_v1",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./tests_v1",
+     "out": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nFAIL robot banks at 10\nPASS robot banks to win\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nFAIL robot banks at 10\nPASS robot banks to win\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g tests_v1.cpp -o tests_v1",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./tests_v1",
+      "out": "PASS a 1 wipes the turn\nPASS a 6 adds six\nPASS robot rolls on 4\nFAIL robot banks at 10\nPASS robot banks to win\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_rolls.cpp": {
+   "src": "#include <iostream>\n#include <random>\n\nint main() {\n    std::mt19937 gen{125};\n    std::uniform_int_distribution<int> die{1, 6};\n    int turn = 0;\n    for (int i = 0; i < 5; ++i) {\n        int r = die(gen);\n        turn = (r == 1) ? 0 : turn + r;\n        std::cout << r << ' ' << turn << '\\n';\n    }\n}\n",
+   "stdout": "4 4\n6 10\n1 0\n2 2\n4 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_rolls.cpp -o trace_rolls",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_rolls",
+     "out": "4 4\n6 10\n1 0\n2 2\n4 6\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "4 4\n6 10\n1 0\n2 2\n4 6\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_rolls.cpp -o trace_rolls",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_rolls",
+      "out": "4 4\n6 10\n1 0\n2 2\n4 6\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  }
+ }
+}
