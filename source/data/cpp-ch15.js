@@ -1,0 +1,2229 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch15",
+  "versionDifferences": [
+   "boss_spot.cpp",
+   "catch_value.cpp",
+   "spot_value.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_spot.cpp, catch_value.cpp, spot_value.cpp."
+ },
+ "programs": {
+  "ask_number.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nint main() {\n    int bolts{0};\n    while (true) {\n        std::cout << \"How many bolts (1-10)? \";\n        std::string text;\n        if (!std::getline(std::cin, text)) {\n            std::cout << \"\\nNo more input. Bye!\\n\";\n            return 1;\n        }\n        try {\n            bolts = std::stoi(text);\n        } catch (const std::invalid_argument&) {\n            std::cout << \"  '\" << text << \"' is not a number.\\n\";\n            continue;\n        } catch (const std::out_of_range&) {\n            std::cout << \"  '\" << text << \"' is far too big.\\n\";\n            continue;\n        }\n        if (bolts >= 1 && bolts <= 10) {\n            break;\n        }\n        std::cout << \"  \" << bolts << \" is not between 1 and 10.\\n\";\n    }\n    std::cout << \"Ordering \" << bolts << \" bolts.\\n\";\n}\n",
+   "stdout": "How many bolts (1-10)?   'twelve' is not a number.\nHow many bolts (1-10)?   '99999999999' is far too big.\nHow many bolts (1-10)?   42 is not between 1 and 10.\nHow many bolts (1-10)? Ordering 7 bolts.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g ask_number.cpp -o ask_number",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./ask_number",
+     "out": "How many bolts (1-10)?   'twelve' is not a number.\nHow many bolts (1-10)?   '99999999999' is far too big.\nHow many bolts (1-10)?   42 is not between 1 and 10.\nHow many bolts (1-10)? Ordering 7 bolts.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "How many bolts (1-10)?   'twelve' is not a number.\nHow many bolts (1-10)?   '99999999999' is far too big.\nHow many bolts (1-10)?   42 is not between 1 and 10.\nHow many bolts (1-10)? Ordering 7 bolts.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g ask_number.cpp -o ask_number",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./ask_number",
+      "out": "How many bolts (1-10)?   'twelve' is not a number.\nHow many bolts (1-10)?   '99999999999' is far too big.\nHow many bolts (1-10)?   42 is not between 1 and 10.\nHow many bolts (1-10)? Ordering 7 bolts.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "twelve\n99999999999\n42\n7\n",
+   "screen": "How many bolts (1-10)? twelve\n  'twelve' is not a number.\nHow many bolts (1-10)? 99999999999\n  '99999999999' is far too big.\nHow many bolts (1-10)? 42\n  42 is not between 1 and 10.\nHow many bolts (1-10)? 7\nOrdering 7 bolts.\n"
+  },
+  "boss_fill.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"poem.txt\"};\n    if (!file.is_open()) {\n        std::cerr << \"cannot open poem.txt\\n\";\n        return 1;\n    }\n    std::string line;\n    int longest{0};\n    while (std::getline(file, line)) {\n        std::istringstream in{line};\n        std::string word;\n        int words{0};\n        while (in >> word) {\n            ++words;\n        }\n        if (words > longest) {\n            longest = words;\n        }\n    }\n    std::cout << \"most words on one line: \" << longest << '\\n';\n}\n",
+   "stdout": "most words on one line: 6\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "most words on one line: 6\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "most words on one line: 6\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "most words on one line: 6\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"stock.txt\"};\n    if (!file) {\n        std::cerr << \"cannot open stock.txt\\n\";\n        return 1;\n    }\n    std::string name;\n    int count{0};\n    int low{0};\n    while (file >> name >> count) {\n        if (count < 4) {\n            ++low;\n        }\n    }\n    std::cout << low << \" parts are running low\\n\";\n}\n",
+   "stdout": "2 parts are running low\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "2 parts are running low\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "2 parts are running low\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "2 parts are running low\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nstruct Lamp {\n    std::string name;\n    explicit Lamp(std::string n) : name{n} { std::cout << name << \" on\\n\"; }\n    ~Lamp() { std::cout << name << \" off\\n\"; }\n};\n\nint parse(const std::string& text) {\n    Lamp p{\"P\"};\n    return std::stoi(text);\n}\n\nint main() {\n    Lamp a{\"A\"};\n    for (std::string text : {\"4\", \"x\"}) {\n        try {\n            Lamp b{\"B\"};\n            int n{parse(text)};\n            std::cout << \"got \" << n << '\\n';\n        } catch (const std::invalid_argument&) {\n            std::cout << \"bad \" << text << '\\n';\n        }\n    }\n}\n",
+   "stdout": "A on\nB on\nP on\nP off\ngot 4\nB off\nB on\nP on\nP off\nB off\nbad x\nA off\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "A on\nB on\nP on\nP off\ngot 4\nB off\nB on\nP on\nP off\nB off\nbad x\nA off\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "A on\nB on\nP on\nP off\ngot 4\nB off\nB on\nP on\nP off\nB off\nbad x\nA off\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "A on\nB on\nP on\nP off\ngot 4\nB off\nB on\nP on\nP off\nB off\nbad x\nA off\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nvoid order(const std::string& text) {\n    try {\n        int n{std::stoi(text)};\n        std::cout << \"ordering \" << n << '\\n';\n    } catch (const std::exception& e) {\n        std::cout << \"'\" << text << \"' is not a number\\n\";\n    } catch (const std::out_of_range& e) {\n        std::cout << \"'\" << text << \"' is far too big\\n\";\n    }\n}\n\nint main() {\n    order(\"6\");\n    order(\"abc\");\n    order(\"99999999999\");\n}\n",
+   "stdout": "ordering 6\n'abc' is not a number\n'99999999999' is not a number\n",
+   "stderr": "boss_spot.cpp: In function ‘void order(const std::string&)’:\nboss_spot.cpp:11:7: warning: exception of type ‘std::out_of_range’ will be caught by earlier handler [-Wexceptions]\n   11 |     } catch (const std::out_of_range& e) {\n      |       ^~~~~\nboss_spot.cpp:9:7: note: for type ‘std::exception’\n    9 |     } catch (const std::exception& e) {\n      |       ^~~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "boss_spot.cpp: In function ‘void order(const std::string&)’:\nboss_spot.cpp:11:7: warning: exception of type ‘std::out_of_range’ will be caught by earlier handler [-Wexceptions]\n   11 |     } catch (const std::out_of_range& e) {\n      |       ^~~~~\nboss_spot.cpp:9:7: note: for type ‘std::exception’\n    9 |     } catch (const std::exception& e) {\n      |       ^~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "ordering 6\n'abc' is not a number\n'99999999999' is not a number\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "ordering 6\n'abc' is not a number\n'99999999999' is not a number\n",
+    "stderr": "boss_spot.cpp:11:20: warning: exception of type 'const std::out_of_range &' will be caught by earlier handler [-Wexceptions]\n   11 |     } catch (const std::out_of_range& e) {\n      |                    ^\nboss_spot.cpp:9:20: note: for type 'const std::exception &'\n    9 |     } catch (const std::exception& e) {\n      |                    ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+      "out": "",
+      "err": "boss_spot.cpp:11:20: warning: exception of type 'const std::out_of_range &' will be caught by earlier handler [-Wexceptions]\n   11 |     } catch (const std::out_of_range& e) {\n      |                    ^\nboss_spot.cpp:9:20: note: for type 'const std::exception &'\n    9 |     } catch (const std::exception& e) {\n      |                    ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_spot",
+      "out": "ordering 6\n'abc' is not a number\n'99999999999' is not a number\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_trace.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <sstream>\n#include <stdexcept>\n#include <string>\n\nint main() {\n    std::ifstream file{\"orders_bad.csv\"};\n    std::string row;\n    int number{0};\n    int total{0};\n    while (std::getline(file, row)) {\n        ++number;\n        std::istringstream fields{row};\n        std::string name, qty;\n        std::getline(fields, name, ',');\n        std::getline(fields, qty, ',');\n        std::string result{\"ok\"};\n        try {\n            total += std::stoi(qty);\n        } catch (const std::invalid_argument&) {\n            result = \"skip\";\n        }\n        std::cout << number << ' ' << name << ' ' << result << ' ' << total << '\\n';\n    }\n}\n",
+   "stdout": "1 bolt ok 12\n2 nut ok 42\n3 washer skip 42\n4 spring ok 46\n5 gear ok 48\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "1 bolt ok 12\n2 nut ok 42\n3 washer skip 42\n4 spring ok 46\n5 gear ok 48\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 bolt ok 12\n2 nut ok 42\n3 washer skip 42\n4 spring ok 46\n5 gear ok 48\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "1 bolt ok 12\n2 nut ok 42\n3 washer skip 42\n4 spring ok 46\n5 gear ok 48\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "build_line.cpp": {
+   "src": "#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::string name{\"gear\"};\n    int qty{5};\n    int cents{40};\n    std::ostringstream line;\n    line << name << ',' << qty << ',' << cents;\n    std::string csv{line.str()};\n    std::cout << csv << \" (\" << csv.size() << \" characters)\\n\";\n}\n",
+   "stdout": "gear,5,40 (9 characters)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g build_line.cpp -o build_line",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./build_line",
+     "out": "gear,5,40 (9 characters)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gear,5,40 (9 characters)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g build_line.cpp -o build_line",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./build_line",
+      "out": "gear,5,40 (9 characters)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "build_report.cpp": {
+   "src": "#include <iostream>\n#include <sstream>\n#include <string>\n\nstd::string report(const std::string& part, int count) {\n    std::ostringstream out;\n    out << part << \": \" << count;\n    if (count < 5) {\n        out << \" (order more!)\";\n    }\n    return out.str();\n}\n\nint main() {\n    std::string a{report(\"bolt\", 12)};\n    std::string b{report(\"spring\", 4)};\n    std::cout << a << '\\n' << b << '\\n';\n    std::cout << \"the second line is \" << b.size() << \" characters long\\n\";\n}\n",
+   "stdout": "bolt: 12\nspring: 4 (order more!)\nthe second line is 23 characters long\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g build_report.cpp -o build_report",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./build_report",
+     "out": "bolt: 12\nspring: 4 (order more!)\nthe second line is 23 characters long\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "bolt: 12\nspring: 4 (order more!)\nthe second line is 23 characters long\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g build_report.cpp -o build_report",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./build_report",
+      "out": "bolt: 12\nspring: 4 (order more!)\nthe second line is 23 characters long\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "catch_ref.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid open_valve(int turns) {\n    if (turns > 3) {\n        throw std::out_of_range{\"a valve opens at most 3 turns\"};\n    }\n    std::cout << \"valve open \" << turns << \" turns\\n\";\n}\n\nint main() {\n    try {\n        open_valve(2);\n        open_valve(5);\n    } catch (const std::exception& e) {\n        std::cout << \"stopped: \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "valve open 2 turns\nstopped: a valve opens at most 3 turns\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g catch_ref.cpp -o catch_ref",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./catch_ref",
+     "out": "valve open 2 turns\nstopped: a valve opens at most 3 turns\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "valve open 2 turns\nstopped: a valve opens at most 3 turns\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g catch_ref.cpp -o catch_ref",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./catch_ref",
+      "out": "valve open 2 turns\nstopped: a valve opens at most 3 turns\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "catch_value.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid open_valve(int turns) {\n    if (turns > 3) {\n        throw std::out_of_range{\"a valve opens at most 3 turns\"};\n    }\n    std::cout << \"valve open \" << turns << \" turns\\n\";\n}\n\nint main() {\n    try {\n        open_valve(2);\n        open_valve(5);\n    } catch (std::exception e) {\n        std::cout << \"stopped: \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "valve open 2 turns\nstopped: std::exception\n",
+   "stderr": "catch_value.cpp: In function ‘int main()’:\ncatch_value.cpp:15:29: warning: catching polymorphic type ‘class std::exception’ by value [-Wcatch-value=]\n   15 |     } catch (std::exception e) {\n      |                             ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g catch_value.cpp -o catch_value",
+     "out": "",
+     "err": "catch_value.cpp: In function ‘int main()’:\ncatch_value.cpp:15:29: warning: catching polymorphic type ‘class std::exception’ by value [-Wcatch-value=]\n   15 |     } catch (std::exception e) {\n      |                             ^\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./catch_value",
+     "out": "valve open 2 turns\nstopped: std::exception\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "valve open 2 turns\nstopped: std::exception\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g catch_value.cpp -o catch_value",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./catch_value",
+      "out": "valve open 2 turns\nstopped: std::exception\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "cin_bug.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int n{0};\n    int tries{0};\n    std::cout << \"Pick a number: \";\n    while (!(std::cin >> n)) {\n        ++tries;\n        std::cout << \"\\n  try \" << tries << \": not a number. Again: \";\n        if (tries == 5) {\n            std::cout << \"\\n(giving up after 5 tries; without this, forever)\\n\";\n            return 1;\n        }\n    }\n    std::cout << \"You picked \" << n << '\\n';\n}\n",
+   "stdout": "Pick a number: \n  try 1: not a number. Again: \n  try 2: not a number. Again: \n  try 3: not a number. Again: \n  try 4: not a number. Again: \n  try 5: not a number. Again: \n(giving up after 5 tries; without this, forever)\n",
+   "stderr": "",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g cin_bug.cpp -o cin_bug",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./cin_bug",
+     "out": "Pick a number: \n  try 1: not a number. Again: \n  try 2: not a number. Again: \n  try 3: not a number. Again: \n  try 4: not a number. Again: \n  try 5: not a number. Again: \n(giving up after 5 tries; without this, forever)\n",
+     "err": "",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Pick a number: \n  try 1: not a number. Again: \n  try 2: not a number. Again: \n  try 3: not a number. Again: \n  try 4: not a number. Again: \n  try 5: not a number. Again: \n(giving up after 5 tries; without this, forever)\n",
+    "stderr": "",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g cin_bug.cpp -o cin_bug",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./cin_bug",
+      "out": "Pick a number: \n  try 1: not a number. Again: \n  try 2: not a number. Again: \n  try 3: not a number. Again: \n  try 4: not a number. Again: \n  try 5: not a number. Again: \n(giving up after 5 tries; without this, forever)\n",
+      "err": "",
+      "exit": 1
+     }
+    ]
+   },
+   "stdin": "abc\n7\n",
+   "screen": "Pick a number: abc\n\n  try 1: not a number. Again: \n  try 2: not a number. Again: \n  try 3: not a number. Again: \n  try 4: not a number. Again: \n  try 5: not a number. Again: \n(giving up after 5 tries; without this, forever)\n"
+  },
+  "cin_fixed.cpp": {
+   "src": "#include <iostream>\n#include <limits>\n\nint main() {\n    int n{0};\n    std::cout << \"Pick a number from 1 to 10: \";\n    while (true) {\n        if (std::cin >> n && n >= 1 && n <= 10) {\n            break;\n        }\n        if (std::cin.eof()) {\n            std::cout << \"\\nNo more input. Bye!\\n\";\n            return 1;\n        }\n        std::cin.clear();\n        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n        std::cout << \"1 to 10, please: \";\n    }\n    std::cout << \"You picked \" << n << '\\n';\n}\n",
+   "stdout": "Pick a number from 1 to 10: 1 to 10, please: 1 to 10, please: You picked 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g cin_fixed.cpp -o cin_fixed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./cin_fixed",
+     "out": "Pick a number from 1 to 10: 1 to 10, please: 1 to 10, please: You picked 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Pick a number from 1 to 10: 1 to 10, please: 1 to 10, please: You picked 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g cin_fixed.cpp -o cin_fixed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./cin_fixed",
+      "out": "Pick a number from 1 to 10: 1 to 10, please: 1 to 10, please: You picked 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "abc\n42\n7\n",
+   "screen": "Pick a number from 1 to 10: abc\n1 to 10, please: 42\n1 to 10, please: 7\nYou picked 7\n"
+  },
+  "csv_read.cpp": {
+   "src": "#include <format>\n#include <fstream>\n#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"orders.csv\"};\n    if (!file) {\n        std::cerr << \"cannot open orders.csv\\n\";\n        return 1;\n    }\n    std::string row;\n    int total{0};\n    while (std::getline(file, row)) {\n        std::istringstream fields{row};\n        std::string name, qty, cents;\n        std::getline(fields, name, ',');\n        std::getline(fields, qty, ',');\n        std::getline(fields, cents, ',');\n        int cost{std::stoi(qty) * std::stoi(cents)};\n        total += cost;\n        std::cout << std::format(\"{:<7} {:>3} x {:>3}c = {:>4}c\\n\", name, qty, cents, cost);\n    }\n    std::cout << std::format(\"total: {}.{:02}\\n\", total / 100, total % 100);\n}\n",
+   "stdout": "bolt     12 x  25c =  300c\nnut      30 x  10c =  300c\nwasher    7 x   5c =   35c\ntotal: 6.35\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g csv_read.cpp -o csv_read",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./csv_read",
+     "out": "bolt     12 x  25c =  300c\nnut      30 x  10c =  300c\nwasher    7 x   5c =   35c\ntotal: 6.35\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "bolt     12 x  25c =  300c\nnut      30 x  10c =  300c\nwasher    7 x   5c =   35c\ntotal: 6.35\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g csv_read.cpp -o csv_read",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./csv_read",
+      "out": "bolt     12 x  25c =  300c\nnut      30 x  10c =  300c\nwasher    7 x   5c =   35c\ntotal: 6.35\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "csv_robust.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <sstream>\n#include <stdexcept>\n#include <string>\n\nint cost_of(const std::string& row) {\n    std::istringstream fields{row};\n    std::string name, qty, cents;\n    std::getline(fields, name, ',');\n    std::getline(fields, qty, ',');\n    std::getline(fields, cents, ',');\n    return std::stoi(qty) * std::stoi(cents);\n}\n\nint main() {\n    std::ifstream file{\"orders_bad.csv\"};\n    if (!file) {\n        std::cerr << \"cannot open orders_bad.csv\\n\";\n        return 1;\n    }\n    std::string row;\n    int number{0};\n    int total{0};\n    while (std::getline(file, row)) {\n        ++number;\n        try {\n            int cost{cost_of(row)};\n            total += cost;\n            std::cout << \"line \" << number << \": \" << cost << \"c\\n\";\n        } catch (const std::invalid_argument&) {\n            std::cout << \"line \" << number << \": skipped, bad number in '\" << row << \"'\\n\";\n        }\n    }\n    std::cout << \"total: \" << total << \"c\\n\";\n}\n",
+   "stdout": "line 1: 300c\nline 2: 300c\nline 3: skipped, bad number in 'washer,x7,5'\nline 4: skipped, bad number in 'spring,4'\nline 5: 300c\ntotal: 900c\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g csv_robust.cpp -o csv_robust",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./csv_robust",
+     "out": "line 1: 300c\nline 2: 300c\nline 3: skipped, bad number in 'washer,x7,5'\nline 4: skipped, bad number in 'spring,4'\nline 5: 300c\ntotal: 900c\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "line 1: 300c\nline 2: 300c\nline 3: skipped, bad number in 'washer,x7,5'\nline 4: skipped, bad number in 'spring,4'\nline 5: 300c\ntotal: 900c\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g csv_robust.cpp -o csv_robust",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./csv_robust",
+      "out": "line 1: 300c\nline 2: 300c\nline 3: skipped, bad number in 'washer,x7,5'\nline 4: skipped, bad number in 'spring,4'\nline 5: 300c\ntotal: 900c\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "ctor_throw.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nclass Thermostat {\npublic:\n    explicit Thermostat(int target) : target_{target} {\n        if (target < 5 || target > 30) {\n            throw std::invalid_argument{\"target must be 5 to 30, not \" + std::to_string(target)};\n        }\n        std::cout << \"thermostat set to \" << target_ << '\\n';\n    }\n    ~Thermostat() { std::cout << \"thermostat at \" << target_ << \" switched off\\n\"; }\n\nprivate:\n    int target_;\n};\n\nint main() {\n    try {\n        Thermostat hall{21};\n        Thermostat oven{250};\n        std::cout << \"both thermostats ready\\n\";\n    } catch (const std::invalid_argument& e) {\n        std::cout << \"refused: \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "thermostat set to 21\nthermostat at 21 switched off\nrefused: target must be 5 to 30, not 250\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g ctor_throw.cpp -o ctor_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./ctor_throw",
+     "out": "thermostat set to 21\nthermostat at 21 switched off\nrefused: target must be 5 to 30, not 250\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "thermostat set to 21\nthermostat at 21 switched off\nrefused: target must be 5 to 30, not 250\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g ctor_throw.cpp -o ctor_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./ctor_throw",
+      "out": "thermostat set to 21\nthermostat at 21 switched off\nrefused: target must be 5 to 30, not 250\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "drawer_minus.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\n// Which drawer holds bolts of this size? -1 means \"none\".\nint find_drawer(const std::vector<int>& sizes, int wanted) {\n    for (int i = 0; i < static_cast<int>(sizes.size()); ++i) {\n        if (sizes[i] == wanted) {\n            return i;\n        }\n    }\n    return -1;\n}\n\nint main() {\n    std::vector<int> sizes{4, 6, 8};\n    int a{find_drawer(sizes, 6)};\n    std::cout << \"Size 6: drawer \" << a << '\\n';\n    int b{find_drawer(sizes, 9)};\n    std::cout << \"Size 9: drawer \" << b << '\\n';\n    std::cout << \"All found!\\n\";\n}\n",
+   "stdout": "Size 6: drawer 1\nSize 9: drawer -1\nAll found!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g drawer_minus.cpp -o drawer_minus",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./drawer_minus",
+     "out": "Size 6: drawer 1\nSize 9: drawer -1\nAll found!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Size 6: drawer 1\nSize 9: drawer -1\nAll found!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g drawer_minus.cpp -o drawer_minus",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./drawer_minus",
+      "out": "Size 6: drawer 1\nSize 9: drawer -1\nAll found!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "eof_bug.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"words.txt\"};\n    std::string word;\n    while (!file.eof()) {\n        file >> word;\n        std::cout << word << '\\n';\n    }\n}\n",
+   "stdout": "one\ntwo\ntwo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g eof_bug.cpp -o eof_bug",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./eof_bug",
+     "out": "one\ntwo\ntwo\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "one\ntwo\ntwo\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g eof_bug.cpp -o eof_bug",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./eof_bug",
+      "out": "one\ntwo\ntwo\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "eof_fixed.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"words.txt\"};\n    std::string word;\n    while (file >> word) {\n        std::cout << word << '\\n';\n    }\n}\n",
+   "stdout": "one\ntwo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g eof_fixed.cpp -o eof_fixed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./eof_fixed",
+     "out": "one\ntwo\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "one\ntwo\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g eof_fixed.cpp -o eof_fixed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./eof_fixed",
+      "out": "one\ntwo\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_count.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"notes.txt\"};\n    if (!file) {\n        std::cerr << \"cannot open notes.txt\\n\";\n        return 1;\n    }\n    std::string line;\n    int lines{0};\n    int words{0};\n    while (std::getline(file, line)) {\n        ++lines;\n        std::istringstream in{line};\n        std::string word;\n        while (in >> word) {\n            ++words;\n        }\n    }\n    std::cout << lines << \" lines, \" << words << \" words\\n\";\n}\n",
+   "stdout": "4 lines, 7 words\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_count.cpp -o fill_count",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_count",
+     "out": "4 lines, 7 words\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "4 lines, 7 words\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_count.cpp -o fill_count",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_count",
+      "out": "4 lines, 7 words\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_split.cpp": {
+   "src": "#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::string row{\"Wren,mechanic,7\"};\n    std::istringstream fields{row};\n    std::string name, job, years;\n    std::getline(fields, name, ',');\n    std::getline(fields, job, ',');\n    std::getline(fields, years, ',');\n    std::cout << name << \" | \" << job << \" | \" << std::stoi(years) + 1 << '\\n';\n}\n",
+   "stdout": "Wren | mechanic | 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_split.cpp -o fill_split",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_split",
+     "out": "Wren | mechanic | 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren | mechanic | 8\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_split.cpp -o fill_split",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_split",
+      "out": "Wren | mechanic | 8\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_throw.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nint fuel_left(int fuel, int used) {\n    if (used > fuel) {\n        throw std::runtime_error{\"not enough fuel\"};\n    }\n    return fuel - used;\n}\n\nint main() {\n    try {\n        std::cout << fuel_left(10, 4) << '\\n';\n        std::cout << fuel_left(10, 25) << '\\n';\n    } catch (const std::runtime_error& e) {\n        std::cout << \"stop: \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "6\nstop: not enough fuel\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_throw.cpp -o fill_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_throw",
+     "out": "6\nstop: not enough fuel\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "6\nstop: not enough fuel\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_throw.cpp -o fill_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_throw",
+      "out": "6\nstop: not enough fuel\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_validate.cpp": {
+   "src": "#include <iostream>\n#include <limits>\n\nint main() {\n    int floor{0};\n    std::cout << \"Which floor (0-9)? \";\n    while (!(std::cin >> floor) || floor < 0 || floor > 9) {\n        if (std::cin.eof()) {\n            return 1;\n        }\n        std::cin.clear();\n        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n        std::cout << \"0 to 9, please: \";\n    }\n    std::cout << \"Going to floor \" << floor << '\\n';\n}\n",
+   "stdout": "Which floor (0-9)? 0 to 9, please: 0 to 9, please: Going to floor 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_validate.cpp -o fill_validate",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_validate",
+     "out": "Which floor (0-9)? 0 to 9, please: 0 to 9, please: Going to floor 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Which floor (0-9)? 0 to 9, please: 0 to 9, please: Going to floor 4\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_validate.cpp -o fill_validate",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_validate",
+      "out": "Which floor (0-9)? 0 to 9, please: 0 to 9, please: Going to floor 4\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   },
+   "stdin": "top\n12\n4\n",
+   "screen": "Which floor (0-9)? top\n0 to 9, please: 12\n0 to 9, please: 4\nGoing to floor 4\n"
+  },
+  "first_throw.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n#include <vector>\n\nint find_drawer(const std::vector<int>& sizes, int wanted) {\n    for (int i = 0; i < static_cast<int>(sizes.size()); ++i) {\n        if (sizes[i] == wanted) {\n            return i;\n        }\n    }\n    throw std::runtime_error{\"no drawer holds size \" + std::to_string(wanted)};\n}\n\nint main() {\n    std::vector<int> sizes{4, 6, 8};\n    try {\n        int a{find_drawer(sizes, 6)};\n        std::cout << \"Size 6: drawer \" << a << '\\n';\n        int b{find_drawer(sizes, 9)};\n        std::cout << \"Size 9: drawer \" << b << '\\n';\n        std::cout << \"All found!\\n\";\n    } catch (const std::runtime_error& e) {\n        std::cout << \"Problem: \" << e.what() << '\\n';\n    }\n    std::cout << \"Back to work.\\n\";\n}\n",
+   "stdout": "Size 6: drawer 1\nProblem: no drawer holds size 9\nBack to work.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g first_throw.cpp -o first_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./first_throw",
+     "out": "Size 6: drawer 1\nProblem: no drawer holds size 9\nBack to work.\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Size 6: drawer 1\nProblem: no drawer holds size 9\nBack to work.\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g first_throw.cpp -o first_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./first_throw",
+      "out": "Size 6: drawer 1\nProblem: no drawer holds size 9\nBack to work.\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flow_caught.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid inspect(int heat) {\n    if (heat > 100) {\n        throw std::runtime_error{\"overheated\"};\n    }\n    std::cout << \"inspect: \" << heat << \" is safe\" << std::endl;\n}\n\nint main() {\n    try {\n        std::cout << \"try: starting\" << std::endl;\n        inspect(130);\n        std::cout << \"try: finished\" << std::endl;\n    } catch (const std::runtime_error& e) {\n        std::cout << \"catch: \" << e.what() << std::endl;\n    }\n    std::cout << \"after: carrying on\" << std::endl;\n}\n",
+   "stdout": "try: starting\ncatch: overheated\nafter: carrying on\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flow_caught.cpp -o flow_caught",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flow_caught",
+     "out": "try: starting\ncatch: overheated\nafter: carrying on\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "try: starting\ncatch: overheated\nafter: carrying on\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flow_caught.cpp -o flow_caught",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flow_caught",
+      "out": "try: starting\ncatch: overheated\nafter: carrying on\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flow_ok.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid inspect(int heat) {\n    if (heat > 100) {\n        throw std::runtime_error{\"overheated\"};\n    }\n    std::cout << \"inspect: \" << heat << \" is safe\" << std::endl;\n}\n\nint main() {\n    try {\n        std::cout << \"try: starting\" << std::endl;\n        inspect(70);\n        std::cout << \"try: finished\" << std::endl;\n    } catch (const std::runtime_error& e) {\n        std::cout << \"catch: \" << e.what() << std::endl;\n    }\n    std::cout << \"after: carrying on\" << std::endl;\n}\n",
+   "stdout": "try: starting\ninspect: 70 is safe\ntry: finished\nafter: carrying on\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flow_ok.cpp -o flow_ok",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flow_ok",
+     "out": "try: starting\ninspect: 70 is safe\ntry: finished\nafter: carrying on\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "try: starting\ninspect: 70 is safe\ntry: finished\nafter: carrying on\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flow_ok.cpp -o flow_ok",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flow_ok",
+      "out": "try: starting\ninspect: 70 is safe\ntry: finished\nafter: carrying on\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flow_uncaught.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid inspect(int heat) {\n    if (heat > 100) {\n        throw std::runtime_error{\"overheated\"};\n    }\n    std::cout << \"inspect: \" << heat << \" is safe\" << std::endl;\n}\n\nint main() {\n    try {\n        std::cout << \"try: starting\" << std::endl;\n        inspect(130);\n        std::cout << \"try: finished\" << std::endl;\n    } catch (const std::invalid_argument& e) {\n        std::cout << \"catch: \" << e.what() << std::endl;\n    }\n    std::cout << \"after: carrying on\" << std::endl;\n}\n",
+   "stdout": "try: starting\n",
+   "stderr": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flow_uncaught.cpp -o flow_uncaught",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flow_uncaught",
+     "out": "try: starting\n",
+     "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n",
+     "exit": 134,
+     "merged": "try: starting\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "try: starting\n",
+    "stderr": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flow_uncaught.cpp -o flow_uncaught",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flow_uncaught",
+      "out": "try: starting\n",
+      "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n",
+      "exit": 134,
+      "merged": "try: starting\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  overheated\nAborted\n"
+     }
+    ]
+   }
+  },
+  "missing_file.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"no_such_file.txt\"};\n    std::string line;\n    int count{0};\n    while (std::getline(file, line)) {\n        ++count;\n    }\n    std::cout << \"lines read: \" << count << '\\n';\n    std::cout << \"open=\" << file.is_open() << '\\n';\n}\n",
+   "stdout": "lines read: 0\nopen=0\n",
+   "stderr": "ls: cannot access 'no_such_file.txt': No such file or directory\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "ls no_such_file.txt",
+     "out": "",
+     "err": "ls: cannot access 'no_such_file.txt': No such file or directory\n",
+     "exit": 2,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g missing_file.cpp -o missing_file",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "./missing_file",
+     "out": "lines read: 0\nopen=0\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "lines read: 0\nopen=0\n",
+    "stderr": "ls: cannot access 'no_such_file.txt': No such file or directory\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "ls no_such_file.txt",
+      "out": "",
+      "err": "ls: cannot access 'no_such_file.txt': No such file or directory\n",
+      "exit": 2,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g missing_file.cpp -o missing_file",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "./missing_file",
+      "out": "lines read: 0\nopen=0\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     }
+    ]
+   }
+  },
+  "parts_total.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"parts.txt\"};\n    if (!file) {\n        std::cerr << \"cannot open parts.txt\\n\";\n        return 1;\n    }\n    std::string name;\n    int count{0};\n    int kinds{0};\n    int total{0};\n    while (file >> name >> count) {\n        std::cout << name << \": \" << count << '\\n';\n        ++kinds;\n        total += count;\n    }\n    std::cout << total << \" parts of \" << kinds << \" kinds\\n\";\n}\n",
+   "stdout": "bolt: 12\nnut: 30\nwasher: 7\nspring: 4\n53 parts of 4 kinds\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parts_total.cpp -o parts_total",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parts_total",
+     "out": "bolt: 12\nnut: 30\nwasher: 7\nspring: 4\n53 parts of 4 kinds\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "bolt: 12\nnut: 30\nwasher: 7\nspring: 4\n53 parts of 4 kinds\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parts_total.cpp -o parts_total",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parts_total",
+      "out": "bolt: 12\nnut: 30\nwasher: 7\nspring: 4\n53 parts of 4 kinds\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_catch.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid step(int n) {\n    if (n == 1) throw std::invalid_argument{\"bad\"};\n    if (n == 2) throw std::out_of_range{\"far\"};\n    if (n == 3) throw std::runtime_error{\"hot\"};\n}\n\nint main() {\n    for (int n = 1; n <= 3; ++n) {\n        try {\n            step(n);\n        } catch (const std::out_of_range& e) {\n            std::cout << \"A \" << e.what() << '\\n';\n        } catch (const std::logic_error& e) {\n            std::cout << \"B \" << e.what() << '\\n';\n        } catch (const std::exception& e) {\n            std::cout << \"C \" << e.what() << '\\n';\n        }\n    }\n}\n",
+   "stdout": "B bad\nA far\nC hot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_catch.cpp -o predict_catch",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_catch",
+     "out": "B bad\nA far\nC hot\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "B bad\nA far\nC hot\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_catch.cpp -o predict_catch",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_catch",
+      "out": "B bad\nA far\nC hot\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_eof.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"tools.txt\"};\n    std::string tool;\n    int count{0};\n    while (!file.eof()) {\n        file >> tool;\n        ++count;\n        std::cout << count << ' ' << tool << '\\n';\n    }\n}\n",
+   "stdout": "1 hammer\n2 saw\n3 file\n4 file\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_eof.cpp -o predict_eof",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_eof",
+     "out": "1 hammer\n2 saw\n3 file\n4 file\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 hammer\n2 saw\n3 file\n4 file\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_eof.cpp -o predict_eof",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_eof",
+      "out": "1 hammer\n2 saw\n3 file\n4 file\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_skip.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nvoid check(int pressure) {\n    std::cout << \"checking \" << pressure << '\\n';\n    if (pressure > 100) {\n        throw std::runtime_error{\"too high\"};\n    }\n    std::cout << pressure << \" is fine\\n\";\n}\n\nint main() {\n    try {\n        check(40);\n        check(120);\n        check(60);\n    } catch (const std::exception& e) {\n        std::cout << \"alarm: \" << e.what() << '\\n';\n    }\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "checking 40\n40 is fine\nchecking 120\nalarm: too high\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_skip.cpp -o predict_skip",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_skip",
+     "out": "checking 40\n40 is fine\nchecking 120\nalarm: too high\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "checking 40\n40 is fine\nchecking 120\nalarm: too high\ndone\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_skip.cpp -o predict_skip",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_skip",
+      "out": "checking 40\n40 is fine\nchecking 120\nalarm: too high\ndone\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_stoi.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nvoid order(const std::string& text) {\n    try {\n        int n{std::stoi(text)};\n        std::cout << \"order \" << n << '\\n';\n    } catch (const std::invalid_argument&) {\n        std::cout << \"not a number\\n\";\n    }\n}\n\nint main() {\n    order(\"15 bolts\");\n    order(\"bolts: 15\");\n    order(\"+8\");\n    order(\"2.5\");\n}\n",
+   "stdout": "order 15\nnot a number\norder 8\norder 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_stoi.cpp -o predict_stoi",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_stoi",
+     "out": "order 15\nnot a number\norder 8\norder 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "order 15\nnot a number\norder 8\norder 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_stoi.cpp -o predict_stoi",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_stoi",
+      "out": "order 15\nnot a number\norder 8\norder 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_uncaught.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::string part{\"bolt\"};\n    std::cout << \"part has \" << part.size() << \" letters\" << std::endl;\n    std::cout << \"letter 7 is \" << part.at(7) << std::endl;\n}\n",
+   "stdout": "part has 4 letters\n",
+   "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_uncaught.cpp -o predict_uncaught",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_uncaught",
+     "out": "part has 4 letters\n",
+     "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n",
+     "exit": 134,
+     "merged": "part has 4 letters\nterminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "part has 4 letters\n",
+    "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_uncaught.cpp -o predict_uncaught",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_uncaught",
+      "out": "part has 4 letters\n",
+      "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n",
+      "exit": 134,
+      "merged": "part has 4 letters\nterminate called after throwing an instance of 'std::out_of_range'\n  what():  basic_string::at: __n (which is 7) >= this->size() (which is 4)\nAborted\n"
+     }
+    ]
+   }
+  },
+  "pz_main.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nint main() {\n    try {\n        std::cout << \"starting the pump\\n\";\n        throw std::runtime_error{\"pump jammed\"};\n    } catch (const std::exception& e) {\n        std::cerr << \"error: \" << e.what() << '\\n';\n        return 1;\n    }\n}\n",
+   "stdout": "starting the pump\n",
+   "stderr": "error: pump jammed\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g pz_main.cpp -o pz_main",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./pz_main",
+     "out": "starting the pump\n",
+     "err": "error: pump jammed\n",
+     "exit": 1,
+     "merged": "starting the pump\nerror: pump jammed\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "starting the pump\n",
+    "stderr": "error: pump jammed\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g pz_main.cpp -o pz_main",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./pz_main",
+      "out": "starting the pump\n",
+      "err": "error: pump jammed\n",
+      "exit": 1,
+      "merged": "starting the pump\nerror: pump jammed\n"
+     }
+    ]
+   }
+  },
+  "read_lines.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"poem.txt\"};\n    if (!file.is_open()) {\n        std::cerr << \"cannot open poem.txt\\n\";\n        return 1;\n    }\n    std::string line;\n    int number{0};\n    while (std::getline(file, line)) {\n        ++number;\n        std::cout << number << \": \" << line << '\\n';\n    }\n    std::cout << \"(\" << number << \" lines)\\n\";\n}\n",
+   "stdout": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g read_lines.cpp -o read_lines",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./read_lines",
+     "out": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g read_lines.cpp -o read_lines",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./read_lines",
+      "out": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "safe_main.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <vector>\n\nint read_gauge(const std::vector<int>& gauges, int which) {\n    return gauges.at(which);\n}\n\nint main() {\n    try {\n        std::vector<int> gauges{70, 85, 90};\n        int a{read_gauge(gauges, 1)};\n        std::cout << \"gauge 1 reads \" << a << '\\n';\n        int b{read_gauge(gauges, 5)};\n        std::cout << \"gauge 5 reads \" << b << '\\n';\n    } catch (const std::exception& e) {\n        std::cerr << \"error: \" << e.what() << '\\n';\n        return 1;\n    }\n    return 0;\n}\n",
+   "stdout": "1\n",
+   "stderr": "error: vector::_M_range_check: __n (which is 5) >= this->size() (which is 3)\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g safe_main.cpp -o safe_main",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "./safe_main",
+     "out": "gauge 1 reads 85\n",
+     "err": "error: vector::_M_range_check: __n (which is 5) >= this->size() (which is 3)\n",
+     "exit": 1,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1\n",
+    "stderr": "error: vector::_M_range_check: __n (which is 5) >= this->size() (which is 3)\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g safe_main.cpp -o safe_main",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "./safe_main",
+      "out": "gauge 1 reads 85\n",
+      "err": "error: vector::_M_range_check: __n (which is 5) >= this->size() (which is 3)\n",
+      "exit": 1,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "echo $?",
+      "out": "1\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     }
+    ]
+   }
+  },
+  "split_line.cpp": {
+   "src": "#include <iostream>\n#include <sstream>\n#include <string>\n\nint main() {\n    std::string line{\"oil the  gears 3 times\"};\n    std::istringstream words{line};\n    std::string word;\n    int count{0};\n    while (words >> word) {\n        ++count;\n        std::cout << \"[\" << word << \"]\\n\";\n    }\n    std::cout << count << \" words\\n\";\n}\n",
+   "stdout": "[oil]\n[the]\n[gears]\n[3]\n[times]\n5 words\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g split_line.cpp -o split_line",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./split_line",
+     "out": "[oil]\n[the]\n[gears]\n[3]\n[times]\n5 words\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[oil]\n[the]\n[gears]\n[3]\n[times]\n5 words\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g split_line.cpp -o split_line",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./split_line",
+      "out": "[oil]\n[the]\n[gears]\n[3]\n[times]\n5 words\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_open.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"part.txt\"};\n    std::string name;\n    int count{0};\n    int total{0};\n    while (file >> name >> count) {\n        total += count;\n    }\n    std::cout << \"parts in stock: \" << total << '\\n';\n}\n",
+   "stdout": "parts in stock: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_open.cpp -o spot_open",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_open",
+     "out": "parts in stock: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "parts in stock: 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_open.cpp -o spot_open",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_open",
+      "out": "parts in stock: 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_value.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nint ladder_rung(int rung) {\n    if (rung < 1 || rung > 12) {\n        throw std::invalid_argument{\"no rung \" + std::to_string(rung)};\n    }\n    return rung * 30;\n}\n\nvoid climb(int rung) {\n    try {\n        int height{ladder_rung(rung)};\n        std::cout << \"rung \" << rung << \" is \" << height << \" cm up\\n\";\n    } catch (const std::exception e) {\n        std::cout << \"can't climb: \" << e.what() << '\\n';\n    }\n}\n\nint main() {\n    climb(4);\n    climb(20);\n}\n",
+   "stdout": "rung 4 is 120 cm up\ncan't climb: std::exception\n",
+   "stderr": "spot_value.cpp: In function ‘void climb(int)’:\nspot_value.cpp:16:35: warning: catching polymorphic type ‘const class std::exception’ by value [-Wcatch-value=]\n   16 |     } catch (const std::exception e) {\n      |                                   ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_value.cpp -o spot_value",
+     "out": "",
+     "err": "spot_value.cpp: In function ‘void climb(int)’:\nspot_value.cpp:16:35: warning: catching polymorphic type ‘const class std::exception’ by value [-Wcatch-value=]\n   16 |     } catch (const std::exception e) {\n      |                                   ^\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_value",
+     "out": "rung 4 is 120 cm up\ncan't climb: std::exception\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "rung 4 is 120 cm up\ncan't climb: std::exception\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_value.cpp -o spot_value",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_value",
+      "out": "rung 4 is 120 cm up\ncan't climb: std::exception\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "std_family.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n#include <vector>\n\nvoid show(int which) {\n    std::vector<int> v{1, 2, 3};\n    try {\n        if (which == 1) v.at(10) = 0;\n        if (which == 2) std::stoi(\"abc\");\n        if (which == 3) std::stoi(\"99999999999\");\n        if (which == 4) throw std::runtime_error{\"pump jammed\"};\n    } catch (const std::exception& e) {\n        std::cout << which << \". what(): \" << e.what() << '\\n';\n    }\n}\n\nint main() {\n    for (int which = 1; which <= 4; ++which) {\n        show(which);\n    }\n}\n",
+   "stdout": "1. what(): vector::_M_range_check: __n (which is 10) >= this->size() (which is 3)\n2. what(): stoi\n3. what(): stoi\n4. what(): pump jammed\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g std_family.cpp -o std_family",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./std_family",
+     "out": "1. what(): vector::_M_range_check: __n (which is 10) >= this->size() (which is 3)\n2. what(): stoi\n3. what(): stoi\n4. what(): pump jammed\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1. what(): vector::_M_range_check: __n (which is 10) >= this->size() (which is 3)\n2. what(): stoi\n3. what(): stoi\n4. what(): pump jammed\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g std_family.cpp -o std_family",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./std_family",
+      "out": "1. what(): vector::_M_range_check: __n (which is 10) >= this->size() (which is 3)\n2. what(): stoi\n3. what(): stoi\n4. what(): pump jammed\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "stoi_abc.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    int n{std::stoi(\"abc\")};\n    std::cout << n << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g stoi_abc.cpp -o stoi_abc",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./stoi_abc",
+     "out": "",
+     "err": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g stoi_abc.cpp -o stoi_abc",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./stoi_abc",
+      "out": "",
+      "err": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "stoi_big.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    int n{std::stoi(\"99999999999\")};\n    std::cout << n << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  stoi\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g stoi_big.cpp -o stoi_big",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./stoi_big",
+     "out": "",
+     "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  stoi\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  stoi\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g stoi_big.cpp -o stoi_big",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./stoi_big",
+      "out": "",
+      "err": "terminate called after throwing an instance of 'std::out_of_range'\n  what():  stoi\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "stoi_crash.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nint main() {\n    std::cout << \"How many bolts? \";\n    std::string text;\n    std::getline(std::cin, text);\n    int bolts{std::stoi(text)};\n    std::cout << \"Ordering \" << bolts << \" bolts\\n\";\n}\n",
+   "stdout": "How many bolts? ",
+   "stderr": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g stoi_crash.cpp -o stoi_crash",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./stoi_crash",
+     "out": "How many bolts? ",
+     "err": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+     "exit": 134,
+     "merged": "How many bolts? terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "How many bolts? ",
+    "stderr": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g stoi_crash.cpp -o stoi_crash",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./stoi_crash",
+      "out": "How many bolts? ",
+      "err": "terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n",
+      "exit": 134,
+      "merged": "How many bolts? terminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n"
+     }
+    ]
+   },
+   "stdin": "twelve\n",
+   "screen": "How many bolts? twelve\nterminate called after throwing an instance of 'std::invalid_argument'\n  what():  stoi\nAborted\n"
+  },
+  "stoi_machine.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nvoid show(const std::string& text) {\n    std::cout << \"std::stoi(\\\"\" << text << \"\\\") gives \" << std::stoi(text) << '\\n';\n}\n\nint main() {\n    show(\"42\");\n    show(\"-3\");\n    show(\"  7\");\n    show(\"12abc\");\n    show(\"3.9\");\n}\n",
+   "stdout": "std::stoi(\"42\") gives 42\nstd::stoi(\"-3\") gives -3\nstd::stoi(\"  7\") gives 7\nstd::stoi(\"12abc\") gives 12\nstd::stoi(\"3.9\") gives 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g stoi_machine.cpp -o stoi_machine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./stoi_machine",
+     "out": "std::stoi(\"42\") gives 42\nstd::stoi(\"-3\") gives -3\nstd::stoi(\"  7\") gives 7\nstd::stoi(\"12abc\") gives 12\nstd::stoi(\"3.9\") gives 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "std::stoi(\"42\") gives 42\nstd::stoi(\"-3\") gives -3\nstd::stoi(\"  7\") gives 7\nstd::stoi(\"12abc\") gives 12\nstd::stoi(\"3.9\") gives 3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g stoi_machine.cpp -o stoi_machine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./stoi_machine",
+      "out": "std::stoi(\"42\") gives 42\nstd::stoi(\"-3\") gives -3\nstd::stoi(\"  7\") gives 7\nstd::stoi(\"12abc\") gives 12\nstd::stoi(\"3.9\") gives 3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "throw_int.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    std::cout << \"throwing a plain number...\" << std::endl;\n    try {\n        throw 42;\n    } catch (const std::exception& e) {\n        std::cout << \"caught: \" << e.what() << std::endl;\n    }\n}\n",
+   "stdout": "throwing a plain number...\n",
+   "stderr": "terminate called after throwing an instance of 'int'\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g throw_int.cpp -o throw_int",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./throw_int",
+     "out": "throwing a plain number...\n",
+     "err": "terminate called after throwing an instance of 'int'\nAborted\n",
+     "exit": 134,
+     "merged": "throwing a plain number...\nterminate called after throwing an instance of 'int'\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "throwing a plain number...\n",
+    "stderr": "terminate called after throwing an instance of 'int'\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g throw_int.cpp -o throw_int",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./throw_int",
+      "out": "throwing a plain number...\n",
+      "err": "terminate called after throwing an instance of 'int'\nAborted\n",
+      "exit": 134,
+      "merged": "throwing a plain number...\nterminate called after throwing an instance of 'int'\nAborted\n"
+     }
+    ]
+   }
+  },
+  "trace_stock.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"stock.txt\"};\n    if (!file) {\n        std::cerr << \"cannot open stock.txt\\n\";\n        return 1;\n    }\n    std::string name;\n    int count{0};\n    int total{0};\n    while (file >> name >> count) {\n        total += count;\n        std::cout << name << ' ' << count << ' ' << total << '\\n';\n    }\n}\n",
+   "stdout": "gear 5 5\nbelt 2 7\nchain 9 16\nclamp 3 19\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_stock.cpp -o trace_stock",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_stock",
+     "out": "gear 5 5\nbelt 2 7\nchain 9 16\nclamp 3 19\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gear 5 5\nbelt 2 7\nchain 9 16\nclamp 3 19\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_stock.cpp -o trace_stock",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_stock",
+      "out": "gear 5 5\nbelt 2 7\nchain 9 16\nclamp 3 19\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_unwind.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nstruct Tag {\n    char id;\n    explicit Tag(char c) : id{c} { std::cout << \"make \" << id << '\\n'; }\n    ~Tag() { std::cout << \"drop \" << id << '\\n'; }\n};\n\nvoid inner() {\n    Tag c{'c'};\n    Tag d{'d'};\n    throw std::runtime_error{\"smoke\"};\n}\n\nvoid middle() {\n    Tag b{'b'};\n    try {\n        inner();\n    } catch (const std::exception&) {\n        std::cout << \"catch middle\\n\";\n    }\n    std::cout << \"after middle\\n\";\n}\n\nint main() {\n    Tag a{'a'};\n    middle();\n    std::cout << \"end main\\n\";\n}\n",
+   "stdout": "make a\nmake b\nmake c\nmake d\ndrop d\ndrop c\ncatch middle\nafter middle\ndrop b\nend main\ndrop a\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_unwind.cpp -o trace_unwind",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_unwind",
+     "out": "make a\nmake b\nmake c\nmake d\ndrop d\ndrop c\ncatch middle\nafter middle\ndrop b\nend main\ndrop a\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "make a\nmake b\nmake c\nmake d\ndrop d\ndrop c\ncatch middle\nafter middle\ndrop b\nend main\ndrop a\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_unwind.cpp -o trace_unwind",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_unwind",
+      "out": "make a\nmake b\nmake c\nmake d\ndrop d\ndrop c\ncatch middle\nafter middle\ndrop b\nend main\ndrop a\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "uncaught.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nstruct Floor {\n    ~Floor() { std::cout << \"  leave floor\" << std::endl; }\n};\n\nvoid boil() {\n    Floor f;\n    std::cout << \"heating up...\" << std::endl;\n    throw std::runtime_error{\"boom\"};\n}\n\nint main() {\n    boil();\n    std::cout << \"never printed\" << std::endl;\n}\n",
+   "stdout": "heating up...\n",
+   "stderr": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g uncaught.cpp -o uncaught",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./uncaught",
+     "out": "heating up...\n",
+     "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n",
+     "exit": 134,
+     "merged": "heating up...\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "heating up...\n",
+    "stderr": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g uncaught.cpp -o uncaught",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./uncaught",
+      "out": "heating up...\n",
+      "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n",
+      "exit": 134,
+      "merged": "heating up...\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  boom\nAborted\n"
+     }
+    ]
+   }
+  },
+  "unwind.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n\nstruct Floor {\n    std::string name;\n    explicit Floor(std::string n) : name{n} { std::cout << \"  enter \" << name << '\\n'; }\n    ~Floor() { std::cout << \"  leave \" << name << '\\n'; }\n};\n\nvoid top_floor() {\n    Floor f{\"floor 3\"};\n    throw std::runtime_error{\"smoke on floor 3\"};\n    std::cout << \"  (never printed)\\n\";\n}\n\nvoid middle_floor() {\n    Floor f{\"floor 2\"};\n    top_floor();\n    std::cout << \"  (never printed)\\n\";\n}\n\nvoid ground_floor() {\n    Floor f{\"floor 1\"};\n    middle_floor();\n}\n\nint main() {\n    try {\n        ground_floor();\n    } catch (const std::exception& e) {\n        std::cout << \"marshal: \" << e.what() << '\\n';\n    }\n    std::cout << \"everyone is outside\\n\";\n}\n",
+   "stdout": "  enter floor 1\n  enter floor 2\n  enter floor 3\n  leave floor 3\n  leave floor 2\n  leave floor 1\nmarshal: smoke on floor 3\neveryone is outside\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g unwind.cpp -o unwind",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./unwind",
+     "out": "  enter floor 1\n  enter floor 2\n  enter floor 3\n  leave floor 3\n  leave floor 2\n  leave floor 1\nmarshal: smoke on floor 3\neveryone is outside\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  enter floor 1\n  enter floor 2\n  enter floor 3\n  leave floor 3\n  leave floor 2\n  leave floor 1\nmarshal: smoke on floor 3\neveryone is outside\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g unwind.cpp -o unwind",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./unwind",
+      "out": "  enter floor 1\n  enter floor 2\n  enter floor 3\n  leave floor 3\n  leave floor 2\n  leave floor 1\nmarshal: smoke on floor 3\neveryone is outside\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "where.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::ifstream file{\"poem.txt\"};\n    if (!file.is_open()) {\n        std::cerr << \"cannot open poem.txt\\n\";\n        return 1;\n    }\n    std::string line;\n    int number{0};\n    while (std::getline(file, line)) {\n        ++number;\n        std::cout << number << \": \" << line << '\\n';\n    }\n    std::cout << \"(\" << number << \" lines)\\n\";\n}\n",
+   "stdout": "1\n",
+   "stderr": "cannot open poem.txt\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g where.cpp -o where",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "./where",
+     "out": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "cd ..",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "./cpp-ch15/where",
+     "out": "",
+     "err": "cannot open poem.txt\n",
+     "exit": 1,
+     "dir": "~"
+    },
+    {
+     "cmd": "echo $?",
+     "out": "1\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1\n",
+    "stderr": "cannot open poem.txt\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g where.cpp -o where",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "./where",
+      "out": "1: Oil the gears on Monday,\n2: tighten bolts on Tuesday,\n3: sweep the floor on Wednesday,\n4: and rest the whole of Thursday.\n(4 lines)\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "cd ..",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "./cpp-ch15/where",
+      "out": "",
+      "err": "cannot open poem.txt\n",
+      "exit": 1,
+      "dir": "~"
+     },
+     {
+      "cmd": "echo $?",
+      "out": "1\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~"
+     }
+    ]
+   }
+  },
+  "which_catch.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n#include <vector>\n\nvoid trouble(int kind) {\n    std::vector<int> v{1, 2, 3};\n    if (kind == 1) {\n        v.at(10) = 0;\n    } else if (kind == 2) {\n        std::stoi(\"abc\");\n    } else if (kind == 3) {\n        throw std::runtime_error{\"overheated\"};\n    }\n}\n\nvoid handle(int kind, const std::string& label) {\n    try {\n        trouble(kind);\n        std::cout << label << \" -> no handler runs\\n\";\n    } catch (const std::out_of_range& e) {\n        std::cout << label << \" -> out_of_range handler\\n\";\n    } catch (const std::invalid_argument& e) {\n        std::cout << label << \" -> invalid_argument handler\\n\";\n    } catch (const std::exception& e) {\n        std::cout << label << \" -> exception handler\\n\";\n    }\n}\n\nint main() {\n    handle(0, \"nothing thrown\");\n    handle(1, \"v.at(10)\");\n    handle(2, \"std::stoi(\\\"abc\\\")\");\n    handle(3, \"throw runtime_error\");\n}\n",
+   "stdout": "nothing thrown -> no handler runs\nv.at(10) -> out_of_range handler\nstd::stoi(\"abc\") -> invalid_argument handler\nthrow runtime_error -> exception handler\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g which_catch.cpp -o which_catch",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./which_catch",
+     "out": "nothing thrown -> no handler runs\nv.at(10) -> out_of_range handler\nstd::stoi(\"abc\") -> invalid_argument handler\nthrow runtime_error -> exception handler\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "nothing thrown -> no handler runs\nv.at(10) -> out_of_range handler\nstd::stoi(\"abc\") -> invalid_argument handler\nthrow runtime_error -> exception handler\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g which_catch.cpp -o which_catch",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./which_catch",
+      "out": "nothing thrown -> no handler runs\nv.at(10) -> out_of_range handler\nstd::stoi(\"abc\") -> invalid_argument handler\nthrow runtime_error -> exception handler\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "write_diary.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n\nint main() {\n    {\n        std::ofstream diary{\"diary.txt\"};\n        if (!diary) {\n            std::cerr << \"cannot write diary.txt\\n\";\n            return 1;\n        }\n        diary << \"08:00 opened the workshop\\n\";\n        diary << \"09:15 oiled the gears\\n\";\n        diary << \"11:30 swept the floor\\n\";\n        std::cout << \"wrote 3 lines\\n\";\n    }\n    std::cout << \"diary.txt is closed now\\n\";\n}\n",
+   "stdout": "08:00 opened the workshop\n09:15 oiled the gears\n11:30 swept the floor\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g write_diary.cpp -o write_diary",
+     "out": "",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "./write_diary",
+     "out": "wrote 3 lines\ndiary.txt is closed now\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    },
+    {
+     "cmd": "cat diary.txt",
+     "out": "08:00 opened the workshop\n09:15 oiled the gears\n11:30 swept the floor\n",
+     "err": "",
+     "exit": 0,
+     "dir": "~/cpp-ch15"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "08:00 opened the workshop\n09:15 oiled the gears\n11:30 swept the floor\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g write_diary.cpp -o write_diary",
+      "out": "",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "./write_diary",
+      "out": "wrote 3 lines\ndiary.txt is closed now\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     },
+     {
+      "cmd": "cat diary.txt",
+      "out": "08:00 opened the workshop\n09:15 oiled the gears\n11:30 swept the floor\n",
+      "err": "",
+      "exit": 0,
+      "dir": "~/cpp-ch15"
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
