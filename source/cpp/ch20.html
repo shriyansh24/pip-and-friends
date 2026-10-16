@@ -1,0 +1,1122 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gift Boxes, Clock Faces</title>
+<meta name="description" content="Chapter 20 of the Pip &amp; Friends C++ book, a comic course: std::optional as a gift box that may be empty, std::variant as a box with a dial, std::visit, std::monostate and std::any, enum class with an underlying type and enum-to-string conversion, then integers, bits and floating point in depth: fixed-width types, numeric_limits, unsigned wrap-around on a clock face, signed overflow seen by the sanitizer, signed and unsigned comparisons, std::cmp_less, bit masks and std::bitset, NaN, infinity and comparing doubles.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch20.css">
+<script defer src="../data/cpp-ch20.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch20.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch19.html">&larr; Ch 19</a><span aria-current="page">Ch 20 of 29</span><a href="ch21.html">Ch 21 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 20</p>
+    <h1 id="cover-h">GIFT BOXES, CLOCK FACES</h1>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="pic-mid" viewBox="0 0 280 210" role="img" aria-label="A wrapped gift box with its lid lifted, and next to it a round clock face numbered 0 at the top and 255 just to its left, with one hand pointing near the top.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <rect x="16" y="96" width="112" height="96" rx="6" fill="#FFD60A"/>
+          <path d="M72 96 V192" stroke-width="10"/><path d="M72 96 V192" stroke="#FF5A4E" stroke-width="5"/>
+          <path d="M8 62 L134 74 L130 98 L4 86 Z" fill="#FFD60A"/>
+          <path d="M60 70 q-28 -36 -6 -40 q14 0 12 34 M76 72 q20 -38 34 -28 q8 14 -30 30" fill="#FF5A4E"/>
+          <circle cx="206" cy="112" r="64" fill="#FFF6CC"/>
+          <path d="M206 52 V66 M206 158 V172 M146 112 H160 M252 112 H266" fill="none"/>
+          <path d="M206 112 L196 60" stroke-width="7"/><circle cx="206" cy="112" r="7" fill="#111"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">
+          <text x="210" y="40">0</text><text x="202" y="40" text-anchor="end">255</text>
+        </g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her: a gift box with its lid up, and a clock face counting from 0 to 255.</p>
+    <p class="caption blurb">Two kinds of box today. A <b>gift box</b> that might be empty, for answers that might not exist (<code>std::optional</code>). A box with a <b>dial</b> on the front, which tells you which one of several toys is inside (<code>std::variant</code>). Then we open the number drawers and look at what's really in them: exact-size integers, the <b>clock face</b> that unsigned numbers live on, the cliff that signed numbers fall off, switches you flip one bit at a time, and the wobbly jelly that is <code>double</code>. About 130 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Gift boxes: std::optional</a></li>
+      <li><a href="#part-2">Boxes with a dial: std::variant and std::visit</a></li>
+      <li><a href="#part-3">Named settings: enum class in depth</a></li>
+      <li><a href="#part-4">Clock faces and cliffs: integers in depth</a></li>
+      <li><a href="#part-5">Switchboards: bits and masks</a></li>
+      <li><a href="#part-6">Wobbly jelly: floating point</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · GIFT BOXES<small>Answers that might not exist: std::optional</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: a question with no answer">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Wren asks her toolbox a question: <i>which slot holds the saw?</i> Sometimes there's a good answer (slot 2). Sometimes there isn't one at all, because there is no saw.</p>
+    <div class="scene">
+      <svg class="char" data-char="mechanic" data-mood="focus" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>So far we've had three ways to say "no answer". Return a fake number like <b>-1</b> and hope the caller checks (Chapter 15 showed how that goes). Throw an alarm, which is loud and right for real <i>errors</i>. But "no saw today" isn't an error. It's just an ordinary <b>maybe</b>.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Gift box says: </span>That's me. I'm a gift box. Open me and there's either <b>one</b> thing inside, or <b>nothing</b>. And my label says so on the outside, so nobody forgets to look.</p></div>
+      <svg class="char" data-char="giftbox" data-state="some" data-label="int"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren shrugs. A cheerful gift box creature with a label reading int talks back.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: find_tool returns a maybe">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption"><code>std::optional&lt;int&gt;</code> (from <code>&lt;optional&gt;</code>) is a box that holds <b>an int, or nothing</b>. Line 9 returns a real slot number; line 12 returns <code>std::nullopt</code>, which means "empty box". In <code>main</code>, <code>if (a)</code> asks "is anything inside?", and <code>*a</code> takes the thing out.</p>
+    <span class="file-tab">find_tool.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="find_tool.cpp"></pre>
+      <pre class="term" data-run="find_tool.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read the return type on line 6 out loud: "<i>maybe</i> an int". Anyone calling <code>find_tool</code> can see, without reading the body, that the answer might be missing. Line 22 asks the same question in words: <code>b.has_value()</code>. <b>A maybe should look like a maybe.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: four ways to open the box">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Four ways to look inside. Solid cards are safe on an empty box. Dashed cards need something inside first.</p>
+    <div class="cards4">
+      <div class="card4"><p class="where">IS ANYTHING IN?</p><code class="big">box.has_value()</code><code class="big">if (box)</code><p>Both give <code>true</code> when there's a value. They mean exactly the same.</p></div>
+      <div class="card4"><p class="where">OR USE A SPARE</p><code class="big">box.value_or(0)</code><p>The value if there is one, otherwise the spare you hand it. Never fails.</p></div>
+      <div class="card4 dashed"><p class="where">CHECKED OPEN</p><code class="big">box.value()</code><p>The value, or, on an empty box, an alarm: <code>std::bad_optional_access</code> (panel 5).</p></div>
+      <div class="card4 dashed"><p class="where">JUST GRAB IT</p><code class="big">*box</code><p>The value, no checking. On an empty box this is <b>undefined behaviour</b> (panel 6). Only after a check.</p></div>
+    </div>
+    <p class="sr-only">Four cards. Solid border, safe on an empty box: has_value() or if (box) asks whether there is a value; value_or(0) gives the value or the spare. Dashed border, needs a value: value() throws bad_optional_access on an empty box; *box is undefined behaviour on an empty box.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="giftbox" data-state="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Gift box says: </span>To empty me: <code>box = std::nullopt;</code> or <code>box.reset();</code>. To fill me: just assign, <code>box = 42;</code>. A brand-new <code>std::optional&lt;int&gt; box;</code> starts <b>empty</b>, never with a random number in it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 4: one box, filled and emptied" data-tracer="tr-opt" id="tr-opt-box">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Watch one box through its life. The picture shows the name <code>box</code> with an arrow to the box itself, which carries its "has a value?" flag. (A real <code>std::optional</code> keeps the value and the flag side by side, right inside the variable.)</p>
+    <span class="file-tab">optional_tour.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-opt-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-opt">{"program": "optional_tour.cpp", "steps": [
+      {"line": 5, "note": "<code>main</code> starts.", "output": [], "frames": [{"name": "main", "vars": []}], "objects": {}},
+      {"line": 6, "note": "Line 5 makes <code>box</code>. No value was given, so it starts <b>empty</b>: the flag says false and there's nothing inside.", "output": [], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · empty", "pairs": [{"k": "has a value", "val": "false"}, {"k": "inside", "val": "(nothing)"}]}}, "changed": ["box"]},
+      {"line": 7, "note": "<code>has_value()</code> is <code>false</code>, and <code>std::cout</code> prints a <code>bool</code> as <samp>0</samp>.", "output": ["has_value: 0"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · empty", "pairs": [{"k": "has a value", "val": "false"}, {"k": "inside", "val": "(nothing)"}]}}},
+      {"line": 8, "note": "<code>value_or(0)</code>: nothing inside, so you get the spare, 0. The box itself is unchanged.", "output": ["has_value: 0", "value_or(0): 0"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · empty", "pairs": [{"k": "has a value", "val": "false"}, {"k": "inside", "val": "(nothing)"}]}}},
+      {"line": 9, "note": "Line 8 puts 42 in the box. Same box, now full: the flag flips to true.", "output": ["has_value: 0", "value_or(0): 0"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · full", "pairs": [{"k": "has a value", "val": "true"}, {"k": "inside", "val": "42"}]}}, "changed": ["box"]},
+      {"line": 10, "note": "Now <code>has_value()</code> is true: <samp>1</samp>.", "output": ["has_value: 0", "value_or(0): 0", "has_value: 1"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · full", "pairs": [{"k": "has a value", "val": "true"}, {"k": "inside", "val": "42"}]}}},
+      {"line": 11, "note": "<code>*box</code> grabs the value. Safe here, because we know the box is full.", "output": ["has_value: 0", "value_or(0): 0", "has_value: 1", "*box: 42"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · full", "pairs": [{"k": "has a value", "val": "true"}, {"k": "inside", "val": "42"}]}}},
+      {"line": 12, "note": "<code>value()</code> checks first, finds 42, and hands it over.", "output": ["has_value: 0", "value_or(0): 0", "has_value: 1", "*box: 42", "value(): 42"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · full", "pairs": [{"k": "has a value", "val": "true"}, {"k": "inside", "val": "42"}]}}},
+      {"line": 13, "note": "Line 12 assigns <code>std::nullopt</code>: the box is emptied. The 42 is gone.", "output": ["has_value: 0", "value_or(0): 0", "has_value: 1", "*box: 42", "value(): 42"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · empty", "pairs": [{"k": "has a value", "val": "false"}, {"k": "inside", "val": "(nothing)"}]}}, "changed": ["box"]},
+      {"line": null, "note": "Empty again, so <code>value_or(-1)</code> gives the spare, -1. One box, filled and emptied, and never a garbage value.", "output": ["has_value: 0", "value_or(0): 0", "has_value: 1", "*box: 42", "value(): 42", "after nullopt: -1"], "frames": [{"name": "main", "vars": [{"n": "box", "ref": "O1"}]}], "objects": {"O1": {"kind": "optional", "label": "std::optional<int> · empty", "pairs": [{"k": "has a value", "val": "false"}, {"k": "inside", "val": "(nothing)"}]}}}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-opt-m" id="ex-opt"></div>
+  <script type="application/json" id="ex-opt-m">{"program": "predict_optional.cpp", "prompt": "<code>nickname</code> may or may not know a nickname. Note line 9: <code>return {};</code> is another way to return an empty box. Predict all three lines.", "hint": "<code>value_or</code> gives the value if there is one, otherwise the spare. A <code>bool</code> prints as 0 or 1.", "explain": "Wren has a nickname, so the first box is full: <samp>Spanner</samp>. Ada doesn't, so <code>return {};</code> sends back an empty box and <code>value_or</code> hands over the spare, <samp>none</samp>. Line 16 fills <code>n</code> with <samp>Ace</samp>, so <code>has_value()</code> prints <samp>1</samp> and <code>*n</code> is safe."}</script>
+
+  <section class="panel pop" aria-label="Panel 5: opening an empty box with value()">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Now the mistakes, on purpose. First: <code>value()</code> on a box with nothing in it (line 7).</p>
+    <span class="file-tab">empty_value.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="empty_value.cpp"></pre>
+      <pre class="term wrap" data-run="empty_value.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>Last line first:</b> <samp>Aborted</samp> is the shell's word, and the exit code is 134. Same story as Chapter 15: an alarm nobody caught.</span></li>
+      <li><span><b>Which alarm?</b> <samp>std::bad_optional_access</samp>. That's the exception <code>value()</code> throws when the box is empty.</span></li>
+      <li><span><b>Its message:</b> <samp>what():  bad optional access</samp>. Short, but it says exactly what happened.</span></li>
+      <li><span><b>Line 8 never ran</b>, so there's no <samp>inside:</samp> line. <code>value()</code> refused to invent a number.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Because it's an ordinary exception, you could catch it with <code>catch (const std::bad_optional_access&amp; e)</code>. But usually it's simpler to <b>check first</b> (<code>if (box)</code>) or to give a spare (<code>value_or</code>).</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 6: grabbing from an empty box with star">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Second mistake: <code>*parcel</code> on an empty box. <code>*</code> doesn't check, so this is <b>undefined behaviour</b>: the rules of C++ say nothing about what happens. In this course we never show a plain run of undefined behaviour as if its output meant something. We tried the sanitizer from Chapter 11: it gave <b>no report</b> here (the run is under this panel's terminal), because the box's storage really exists; it just holds no value. So we use the other safety net from Chapter 11, the library's own checks: <code>-D_GLIBCXX_ASSERTIONS</code>.</p>
+    <span class="file-tab">deref_assert.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="deref_assert.cpp"></pre>
+      <pre class="term wrap small" data-run="deref_assert.cpp" data-exit></pre>
+    </div>
+    <details><summary>The sanitizer build of the same source, for the record</summary>
+      <p><code>deref_san.cpp</code> is a byte-for-byte copy of <code>deref_assert.cpp</code>, built with the sanitizer instead of the library checks. It ran to the end with no report. The number it printed is undefined behaviour and means nothing: that's exactly why the library checks are the right net for this mistake. <span class="parity" data-same-src="deref_assert.cpp,deref_san.cpp"></span></p>
+      <pre class="term wrap small" data-run="deref_san.cpp" data-exit></pre>
+    </details>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read from the end: <samp>Assertion 'this-&gt;_M_is_engaged()' failed</samp>. "Engaged" is the library's word for "has a value". Without that extra flag there is no check at all, and the program could print any number, or worse. <b><code>*box</code> is for after you've checked.</b> When you haven't, use <code>value()</code> or <code>value_or()</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-deref-m" id="ex-deref"></div>
+  <script type="application/json" id="ex-deref-m">{"program": "spot_deref.cpp", "bug": 15, "prompt": "<code>code</code> should hold two digits, and the program should print their sum. The second character, <code>'x'</code>, isn't a digit. Click the line that goes wrong when that happens.", "explain": "Line 15 grabs from <code>parse_digit(code[1])</code> with <code>*</code>, but <code>'x'</code> isn't a digit, so the box is empty. With the library checks on, the assertion stops the program (exit 134); without them it's undefined behaviour. Line 14 is fine: <code>value_or(0)</code> never fails. Fix line 15 the same way, or check with <code>if</code> first."}</script>
+
+  <section class="panel clean" aria-label="Panel 7: optional in a lookup">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Optional shines whenever a search might come up empty. Your turn to build one: a <code>find_user</code> that looks a name up in a <code>std::map</code> (Chapter 14's coat check) and returns the age, or nothing.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="giftbox" data-state="some" data-label="36"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Gift box says: </span>Tip: inside a function that returns <code>std::optional&lt;int&gt;</code>, a plain <code>return 36;</code> wraps the 36 in a box for you. To return an empty one, write <code>return std::nullopt;</code> (or <code>return {};</code>).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-find-m" id="ex-find"></div>
+  <script type="application/json" id="ex-find-m">{"program": "fill_find_user.cpp", "prompt": "Fill in the three blanks: the return type that means \"maybe an int\", the empty answer, and the safe way to print Ada's age with a spare of -1.", "blanks": [{"line": 6, "text": "std::optional<int>"}, {"line": 9, "text": "std::nullopt", "accept": ["{}"]}, {"line": 18, "text": "value_or"}], "explain": "The function returns <code>std::optional&lt;int&gt;</code>. When <code>find</code> lands on <code>end()</code>, there's no such user: <code>return std::nullopt;</code>. Otherwise <code>return it-&gt;second;</code> boxes the age. <code>ada.value_or(-1)</code> prints 36; <code>cy</code> is empty, so <code>!cy</code> is true and line 20 prints <samp>Cy: not found</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-optc-m" id="ex-optc"></div>
+  <script type="application/json" id="ex-optc-m">{"q": "A function looks for the first even number in a vector. Often there isn't one, and that's perfectly normal. What should it return?", "options": [
+    {"t": "<code>std::optional&lt;int&gt;</code>: the number, or nothing", "correct": true, "why": "Right: the even number, or <code>std::nullopt</code>. \"Not found\" is an ordinary outcome, and the return type says so. The caller can't forget, and there's no magic number."},
+    {"t": "<code>int</code>, returning -1 when there's none", "why": "-1 is an even number's neighbour, but other vectors could contain -2 or -1 as real values. A special value is a whisper the caller can ignore (Chapter 15)."},
+    {"t": "<code>int</code>, throwing an exception when there's none", "why": "Exceptions are for jobs that can't be done, not for ordinary answers. Finding nothing in a search is common, and throwing is slow and noisy for it."},
+    {"t": "<code>int</code>, returning 0 when there's none", "why": "0 is even! The caller couldn't tell \"found 0\" from \"found nothing\"."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · BOXES WITH A DIAL<small>One of several kinds: std::variant, std::get, std::visit</small></h2>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 8: a box with a dial">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">Sometimes the box is never empty, but you don't know <b>which kind</b> of thing is in it. A gauge might report a count of bolts, a weight, or a written note. Meet the dial box.</p>
+    <div class="duo duo2">
+      <figure>
+        <svg viewBox="0 0 300 220" class="pic" role="img" aria-label="A gift box with the lid off. Inside is either one thing or nothing. Its label reads optional of int.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round"><rect x="60" y="80" width="180" height="120" rx="8" fill="#FFD60A"/><path d="M50 52 L250 52 L246 78 L54 78 Z" fill="#FFD60A" transform="rotate(-8 150 64)"/><rect x="104" y="110" width="92" height="60" rx="6" fill="#FFFFFF" stroke-dasharray="8 6"/></g>
+          <text x="150" y="147" text-anchor="middle" class="c">42 or —</text>
+          <text x="150" y="28" text-anchor="middle" class="t">GIFT BOX</text>
+        </svg>
+        <figcaption><code>std::optional&lt;int&gt;</code><br>one int, or nothing</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 300 220" class="pic" role="img" aria-label="A closed box with a round dial on its front. The dial has three positions, 0 int, 1 double, 2 string, and its pointer is on 2.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round"><rect x="40" y="50" width="220" height="150" rx="10" fill="#DDE8FF"/><circle cx="150" cy="128" r="48" fill="#FFFFFF"/><path d="M150 128 L188 108" stroke-width="7" stroke-linecap="round"/><circle cx="150" cy="128" r="6" fill="#111"/></g>
+          <text x="96" y="100" text-anchor="middle" class="c">0</text><text x="150" y="98" text-anchor="middle" class="c">1</text><text x="206" y="100" text-anchor="middle" class="c">2</text>
+          <text x="150" y="28" text-anchor="middle" class="t">DIAL BOX</text>
+          <text x="150" y="192" text-anchor="middle" class="s">0 int · 1 double · 2 string</text>
+        </svg>
+        <figcaption><code>std::variant&lt;int, double, std::string&gt;</code><br>exactly one of three, and the dial says which</figcaption>
+      </figure>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A <code>std::variant</code> (from <code>&lt;variant&gt;</code>) lists the kinds it may hold, called its <b>alternatives</b>. At any moment it holds exactly one of them, and it always knows which: that's the dial, <code>index()</code>, counting from 0 in the order you listed them. <b>The dial never lies.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: turning the dial">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Assigning a value of another kind turns the dial. <code>std::get&lt;T&gt;</code> takes out the thing of kind <code>T</code>; <code>std::get&lt;2&gt;</code> takes it out by dial number; <code>std::holds_alternative&lt;T&gt;</code> asks "is the dial on <code>T</code>?".</p>
+    <span class="file-tab">variant_basics.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="variant_basics.cpp"></pre>
+      <pre class="term" data-run="variant_basics.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>Line 6</b> gives no value, so a new variant holds a default-made <b>first</b> alternative: an <code>int</code> 0, dial on 0.</span></li>
+      <li><span><b>Line 8</b> stores 2.5. The old int is gone; the dial moves to 1, <code>double</code>.</span></li>
+      <li><span><b>Line 10</b> stores a string. We wrote <code>std::string{"robot"}</code> on purpose, so there's no doubt which alternative is meant.</span></li>
+      <li><span><b>Lines 12 and 13</b>: the dial is on 2, so "holds a double?" is <samp>0</samp>, and <code>std::get&lt;2&gt;</code> gives the string.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-var-m" id="ex-var"></div>
+  <script type="application/json" id="ex-var-m">{"program": "predict_variant.cpp", "prompt": "This time the alternatives are <code>std::string</code>, <code>int</code>, <code>bool</code>, in that order. Predict every line, dial numbers included.", "hint": "The dial counts from 0 in the order the alternatives are listed. A new variant holds a default-made first alternative.", "explain": "A new variant holds an empty string, dial 0: <samp>0 []</samp>. <code>v = 7</code> moves the dial to 1 (<code>int</code>). <code>v = true</code> moves it to 2 (<code>bool</code>), so <code>holds_alternative&lt;int&gt;</code> is now 0. The string comes back on dial 0: <samp>0 done</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 10: asking for the wrong toy">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">What if you ask for an <code>int</code> while the dial is on the string? Line 8.</p>
+    <span class="file-tab">bad_get.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="bad_get.cpp"></pre>
+      <pre class="term wrap" data-run="bad_get.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="stern" data-arms="stop"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>Ember here, from Chapter 15. That's my kind of alarm: <samp>std::bad_variant_access</samp>, message <samp>std::get: wrong index for variant</samp>. <code>std::get</code> is <b>checked</b>: it never hands you a string pretending to be an int. Nobody caught it, so: <samp>Aborted</samp>, exit 134.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-throw-m" id="ex-throw"></div>
+  <script type="application/json" id="ex-throw-m">{"program": "predict_throw.cpp", "expect": "error", "answer": "bad_variant_access", "ask": "One of lines 8 and 9 throws an exception nobody catches. Type the name of the exception (without <code>std::</code>).", "hint": "Is the spare box full? Which alternative does <code>size</code> hold, and which one does line 9 ask for?", "explain": "Line 8 is fine: <code>spare</code> holds 3, so <code>value()</code> prints <samp>3</samp>. <code>size</code> holds an <code>int</code> (9), but line 9 asks for a <code>double</code>: <samp>std::bad_variant_access</samp>, and <samp>done</samp> never prints."}</script>
+
+  <section class="panel clean" aria-label="Panel 11: get_if, a careful peek">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">A gentler question: <code>std::get_if&lt;int&gt;(&amp;box)</code> gives you a <b>pointer</b> to the int if the dial is on int, or <code>nullptr</code> if it isn't. Note the <code>&amp;</code>: you hand it the variant's address. The <code>if</code> on line 6 both makes the pointer and tests it.</p>
+    <span class="file-tab">get_if.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="get_if.cpp"></pre>
+      <pre class="term" data-run="get_if.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="ghost" data-label="nullptr"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ghost says: </span>Remember me from Chapter 13? When the dial is on the wrong kind, <code>get_if</code> hands you <b>me</b>, <code>nullptr</code>: a pointer to nothing. A pointer to nothing counts as false in an <code>if</code>, so the program simply tries the next kind. No alarm needed.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 12: the dial-box question machine" data-machine="m-get">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">One box, <code>std::variant&lt;int, std::string&gt; box{std::string{"robot"}}</code>, and six questions you can ask it. Answers come from real runs of <code>get_machine.cpp</code>; the last chip is <code>bad_get.cpp</code>.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-get">{"label": "variant box", "program": "get_machine.cpp", "examples": [
+      {"in": "box.index()", "out": "1", "expectLine": "index() -> 1", "outKind": "dial number", "note": "The dial is on 1, because <code>std::string</code> is the second alternative listed (counting from 0)."},
+      {"in": "holds_alternative<int>", "out": "0 (false)", "expectLine": "holds_alternative<int> -> 0", "outKind": "bool", "note": "Asking never hurts: the answer is just <code>false</code>, printed as 0."},
+      {"in": "holds_alternative<std::string>", "out": "1 (true)", "expectLine": "holds_alternative<std::string> -> 1", "outKind": "bool", "note": "Yes, the dial is on the string."},
+      {"in": "get<std::string>", "out": "robot", "expectLine": "get<std::string> -> robot", "outKind": "std::string", "note": "Asking for the kind that's really inside: you get it."},
+      {"in": "get_if<int>", "out": "nullptr", "expectLine": "get_if<int> is nullptr -> 1", "outKind": "const int*", "note": "The careful peek for the wrong kind gives <code>nullptr</code> (the program prints whether it is: 1)."},
+      {"in": "get<int>", "error": "what():  std::get: wrong index for variant", "program": "bad_get.cpp", "note": "The checked grab for the wrong kind jams the machine: <code>std::bad_variant_access</code>."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 13: std::visit, one road per kind">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">Checking the dial with a chain of <code>if</code>s works, but it's easy to forget a kind. <code>std::visit</code> does the checking for you: you hand it one small function (a lambda, Chapter 14) for <b>each</b> kind, and it runs the one that matches the dial.</p>
+    <span class="file-tab">visit_all.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="visit_all.cpp"></pre>
+      <pre class="term" data-run="visit_all.cpp"></pre>
+    </div>
+    <ol class="checklist">
+      <li><b>Line 5 is a ready-made helper.</b> Copy it as it is. It bundles several lambdas into one object named <code>overloaded</code>. How it works uses template tricks beyond this book; for now, copy it as it is: a tool from Wren's toolbox.</li>
+      <li><b>Lines 10 to 14:</b> <code>std::visit(overloaded{ road for int, road for double, road for string }, r)</code>. Each lambda's parameter type says which kind it handles.</li>
+      <li><b>One road runs per call.</b> The dial picks it. 12 goes down the int road, 2.5 the double road, the string the string road.</li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 14: the map of std::visit" data-map="map-visit">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">The same dispatch as a map. Three nearly identical programs differ only in line 19: <code>visit_int.cpp</code> reports 12, <code>visit_double.cpp</code> reports 2.5, <code>visit_string.cpp</code> reports a note. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapv-t mapv-d"><title id="mapv-t">Map: std::visit picks one road per alternative</title><desc id="mapv-d">Main prints gauge says, then calls report, where std::visit looks at the variant's dial. Index 0 leads to the int road, index 1 to the double road, index 2 to the string road. Each road prints one line and returns to main, which prints done.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-visit">{"seed": 20, "size": [690, 560], "start": [[345, 8], [345, 46]],
+      "states": [
+        {"id": "M", "x": 205, "y": 52, "w": 280, "h": 66, "label": "main", "sub": "gauge says..."},
+        {"id": "V", "x": 205, "y": 172, "w": 280, "h": 66, "label": "std::visit", "sub": "read the dial"},
+        {"id": "I", "x": 14, "y": 318, "w": 200, "h": 66, "label": "int road", "sub": "[](int n)"},
+        {"id": "D", "x": 245, "y": 318, "w": 200, "h": 66, "label": "double road", "sub": "[](double d)"},
+        {"id": "S", "x": 476, "y": 318, "w": 200, "h": 66, "label": "string road", "sub": "[](const std::string&)"},
+        {"id": "E", "x": 205, "y": 470, "w": 280, "h": 66, "label": "back in main", "sub": "done", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "M", "to": "V", "pts": [[345, 122], [345, 166]], "label": "report(r)", "lx": 358, "ly": 150, "anchor": "start"},
+        {"id": "ti", "from": "V", "to": "I", "pts": [[260, 242], [114, 312]], "label": "dial 0", "lx": 160, "ly": 262, "anchor": "end"},
+        {"id": "td", "from": "V", "to": "D", "pts": [[345, 242], [345, 312]], "label": "dial 1", "lx": 358, "ly": 282, "anchor": "start"},
+        {"id": "ts", "from": "V", "to": "S", "pts": [[430, 242], [576, 312]], "label": "dial 2", "lx": 530, "ly": 262, "anchor": "start"},
+        {"id": "ri", "from": "I", "to": "E", "pts": [[114, 388], [114, 503], [199, 503]], "label": "", "lx": 0, "ly": 0, "anchor": "start"},
+        {"id": "rd", "from": "D", "to": "E", "pts": [[345, 388], [345, 464]], "label": "", "lx": 0, "ly": 0, "anchor": "start"},
+        {"id": "rs", "from": "S", "to": "E", "pts": [[576, 388], [576, 503], [491, 503]], "label": "", "lx": 0, "ly": 0, "anchor": "start"}],
+      "paths": [
+        {"id": "pi", "label": "report(12)", "program": "visit_int.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": ["gauge says..."], "mood": "focus", "note": "Line 18 prints. Line 19 calls <code>report(12)</code>: the 12 becomes a <code>Reading</code> with its dial on 0, <code>int</code>."},
+          {"on": ["V"], "via": ["t1"], "output": ["gauge says..."], "note": "Inside <code>report</code>, <code>std::visit</code> reads the dial: 0."},
+          {"on": ["I"], "via": ["ti"], "output": ["gauge says...", "count: 12 bolts"], "mood": "happy", "note": "Dial 0 means the int road: the lambda on line 11 runs with <code>n</code> = 12. The other two lambdas don't run at all."},
+          {"on": ["E"], "via": ["ri"], "output": ["gauge says...", "count: 12 bolts", "done"], "mood": "happy", "note": "<code>report</code> returns and line 20 prints <samp>done</samp>."}]},
+        {"id": "pd", "label": "report(2.5)", "program": "visit_double.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": ["gauge says..."], "mood": "focus", "note": "This time line 19 is <code>report(2.5)</code>: the dial is on 1, <code>double</code>."},
+          {"on": ["V"], "via": ["t1"], "output": ["gauge says..."], "note": "<code>std::visit</code> reads the dial: 1."},
+          {"on": ["D"], "via": ["td"], "output": ["gauge says...", "weight: 2.5 kg"], "mood": "happy", "note": "The double road, line 12, with <code>d</code> = 2.5."},
+          {"on": ["E"], "via": ["rd"], "output": ["gauge says...", "weight: 2.5 kg", "done"], "mood": "happy", "note": "Back in <code>main</code>: <samp>done</samp>."}]},
+        {"id": "ps", "label": "report(note)", "program": "visit_string.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": ["gauge says..."], "mood": "focus", "note": "Line 19 is <code>report(std::string{\"low oil\"})</code>: dial on 2."},
+          {"on": ["V"], "via": ["t1"], "output": ["gauge says..."], "note": "<code>std::visit</code> reads the dial: 2."},
+          {"on": ["S"], "via": ["ts"], "output": ["gauge says...", "note: low oil"], "mood": "happy", "note": "The string road, line 13. It takes the string by <code>const&amp;</code>, so nothing is copied."},
+          {"on": ["E"], "via": ["rs"], "output": ["gauge says...", "note: low oil", "done"], "mood": "happy", "note": "Same ending on every road: <samp>done</samp>."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-visit-m" id="ex-visit"></div>
+  <script type="application/json" id="ex-visit-m">{"program": "predict_visit.cpp", "prompt": "A log of four readings, each visited in turn. Every road prints a letter, the value and a space, all on one line. Predict the line (spaces matter: there's one after every item, the last one too).", "hint": "Which alternative does each item in <code>log</code> become? Is <code>3</code> an int or a double?", "explain": "7 is an <code>int</code>: <samp>I7</samp>. The string goes down the string road: <samp>S:hot</samp>. 0.5 is a <code>double</code>: <samp>D0.5</samp>. And <code>3</code>, written without a decimal point, is an <code>int</code>, not a double: <samp>I3</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-svisit-m" id="ex-svisit"></div>
+  <script type="application/json" id="ex-svisit-m">{"program": "spot_visit.cpp", "bug": 11, "prompt": "<code>report</code> should print every reading with its own label, but 2.5 comes out as a count of bolts. There's no error and no warning. Click the road that wrongly accepts the <code>double</code>.", "explain": "There is no double road! It still compiles, because a <code>double</code> can be converted to an <code>int</code>, so the int road on line 11 quietly accepts 2.5 as 2: <samp>count: 2 bolts</samp>. That's a real, silent bug. Give every alternative its own road (add <code>[](double d) { ... }</code>). Only a kind that can't convert to any road (like a missing string road) makes the compiler refuse; the notebook shows that long error."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: std::monostate, a dial position for nothing yet">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">A variant always holds something. If you want a position meaning "nothing yet", put <code>std::monostate</code> first: it's a type with exactly one, boring value. A new variant then starts on it.</p>
+    <span class="file-tab">monostate.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="monostate.cpp"></pre>
+      <pre class="term" data-run="monostate.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 11 is the road for "empty slot". Its parameter has no name, because there's nothing interesting to read from a monostate. Line 24 sends the dial back to 0. <b>A variant is never empty; give it an "empty" kind if you need one.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pvar-m" id="ex-pvar"></div>
+  <script type="application/json" id="ex-pvar-m">{"program": "parsons_variant.cpp", "seed": 20, "pin": [1, 2, 3], "prompt": "Put <code>main</code> back in order so it prints <samp>5</samp>, then <samp>gear</samp>, then <samp>1</samp>.", "explain": "Make the box with 5 (dial 0) and print it with <code>get&lt;int&gt;</code>. Then store a string, so the dial moves to 1. The <code>if</code> checks the dial before <code>get&lt;std::string&gt;</code>, and the last line prints the dial number, 1."}</script>
+
+  <section class="panel sketch" aria-label="Panel 16: which box for which job">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">Three boxes, plus one you'll meet rarely. Pick by asking what the caller needs to know.</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>Box</th><th>Holds</th><th>Use it for</th><th>Wrong kind or empty?</th></tr></thead>
+      <tbody>
+        <tr><td><code>std::optional&lt;T&gt;</code></td><td>one T, or nothing</td><td>a search, a lookup, a setting that may be missing</td><td><code>value()</code> throws <code>bad_optional_access</code>; <code>*</code> is UB</td></tr>
+        <tr><td><code>std::variant&lt;A, B, C&gt;</code></td><td>exactly one of A, B, C</td><td>a value that comes in a few known shapes</td><td><code>std::get</code> throws <code>bad_variant_access</code></td></tr>
+        <tr><td><code>std::any</code></td><td>one thing of <b>any</b> type</td><td>rare: plugin data, "attach anything" slots</td><td><code>std::any_cast</code> throws <code>bad_any_cast</code></td></tr>
+        <tr><td>an exception (Ch 15)</td><td>not a box: an alarm</td><td>a job that can't be done at all</td><td>it's the alarm itself</td></tr>
+      </tbody>
+    </table></div>
+    <span class="file-tab">any_demo.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="any_demo.cpp"></pre>
+      <pre class="term" data-run="any_demo.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>std::any</code> (from <code>&lt;any&gt;</code>) is a box with no list of kinds at all. That sounds handy, but the compiler can't help you: you must guess the type exactly when you take it out (line 11 guessed wrong). Prefer <code>std::variant</code> whenever you know the possible kinds.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tool-m" id="ex-tool"></div>
+  <script type="application/json" id="ex-tool-m">{"q": "A weather station sends readings. Each reading is either a temperature (a <code>double</code>) or an error code (an <code>int</code>), never both, never neither. Which type fits best?", "options": [
+    {"t": "<code>std::variant&lt;double, int&gt;</code>", "correct": true, "why": "Right. Exactly one of two known kinds, and the dial says which. <code>std::visit</code> can give each kind its own road."},
+    {"t": "<code>std::optional&lt;double&gt;</code>", "why": "That can say \"no temperature\", but it throws away the error code. Optional is one kind or nothing."},
+    {"t": "<code>std::any</code>", "why": "It could hold either, but nothing records which kinds are allowed; a typo in <code>any_cast</code> is only caught when the program runs."},
+    {"t": "A <code>double</code>, and throw an exception for error codes", "why": "A sensor reporting an error code is part of normal operation here, not a job that can't be done. And the code itself would be lost unless you build it into the exception."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · NAMED SETTINGS<small>enum class in depth: underlying types, names in and out, warnings that save you</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 17: a dial with names, not numbers">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption soft">Chapter 6 gave you <code>enum class</code>: a type whose values are a short list of names, like the settings on a workshop lamp. Two more tools today: choosing the <b>underlying type</b> (the kind of integer each name is stored as), and turning names into text and back.</p>
+    <svg class="pic-wide pic big-text" viewBox="0 0 660 200" role="img" aria-label="A lamp switch with three positions labelled off, dim and bright. Under each label is the number it is stored as, 0, 1 and 2, each in a one-byte box.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="30" y="50" width="600" height="70" rx="35" fill="#FFF6CC"/>
+        <circle cx="130" cy="85" r="24" fill="#FFFFFF"/><circle cx="330" cy="85" r="24" fill="#FFD60A"/><circle cx="530" cy="85" r="24" fill="#FFFFFF"/>
+        <rect x="95" y="140" width="70" height="50" rx="6" fill="#DDE8FF"/><rect x="295" y="140" width="70" height="50" rx="6" fill="#DDE8FF"/><rect x="495" y="140" width="70" height="50" rx="6" fill="#DDE8FF"/>
+      </g>
+      <text x="130" y="36" text-anchor="middle" class="c">off</text><text x="330" y="36" text-anchor="middle" class="c">dim</text><text x="530" y="36" text-anchor="middle" class="c">bright</text>
+      <text x="130" y="175" text-anchor="middle" class="c">0</text><text x="330" y="175" text-anchor="middle" class="c">1</text><text x="530" y="175" text-anchor="middle" class="c">2</text>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>enum class Light : std::uint8_t { off, dim, bright };</code> The part after the colon is the underlying type. Without it you get <code>int</code> (4 bytes here). With <code>std::uint8_t</code> each <code>Light</code> takes one byte, which matters when you store millions of them, or send them over a wire.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: names to text and back">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">C++ can't print an enum's name by itself, so you write the translation. <code>to_string</code> (lines 8 to 15) is a <code>switch</code> with a <code>case</code> for every name. The way back, <code>light_from</code> (lines 19 to 26), might fail ("purple" isn't a light), so it returns a gift box from Part 1.</p>
+    <span class="file-tab">enum_strings.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="enum_strings.cpp"></pre>
+      <pre class="term" data-run="enum_strings.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>Line 30:</b> an <code>enum class</code> never turns into a number by accident; <code>static_cast&lt;int&gt;</code> asks for it on purpose. <code>dim</code> is the second name, so it's 1.</span></li>
+      <li><span><b>Line 31:</b> one byte, thanks to <code>: std::uint8_t</code>. (We cast to <code>int</code> on line 30 for a reason you'll meet in Part 4: a <code>std::uint8_t</code> printed directly comes out as a character.)</span></li>
+      <li><span><b>Lines 17 to 26:</b> the way back loops over every light (the list on line 17) and compares names, reusing <code>to_string</code>, so the two directions can never disagree.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 19: the compiler counts your cases">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Someone adds a new setting and forgets the <code>switch</code>. Here <code>bright</code> has no <code>case</code>.</p>
+    <span class="file-tab">switch_warn.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="switch_warn.cpp"></pre>
+      <pre class="term wrap" data-run="switch_warn.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Here's the problem: <samp>enumeration value 'bright' not handled in switch</samp>. Here's where: line 7. And the flag in brackets, <samp>[-Wswitch]</samp>, says which warning it was (it comes with <code>-Wall</code>). It's only a warning, so the program still ran and printed <samp>?</samp>. Here's a fix: add the missing <code>case</code>.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>That's why <code>to_string</code> has <b>no <code>default:</code></b>. A <code>default</code> would quietly swallow every new name, and the Compiler could no longer count the cases for you. <b>Let the Compiler count your cases.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-enum-m" id="ex-enum"></div>
+  <script type="application/json" id="ex-enum-m">{"program": "fill_enum.cpp", "prompt": "Make each <code>Gear</code> take one byte, add the missing name in the <code>switch</code>, and print a gear's number.", "blanks": [{"line": 5, "text": "std::uint8_t", "accept": ["uint8_t", "unsigned char"]}, {"line": 9, "text": "Gear::low"}, {"line": 18, "text": "static_cast<int>"}], "explain": "<code>: std::uint8_t</code> chooses the underlying type. The <code>switch</code> needs <code>case Gear::low:</code> (the names are written with <code>Gear::</code> in front, because it's an <code>enum class</code>). <code>static_cast&lt;int&gt;(g)</code> turns the gear into its number on purpose: 2, then 3. Casting to <code>int</code> rather than to <code>std::uint8_t</code> matters: Part 4 shows why."}</script>
+
+  <div data-ex="trace" data-model="ex-tenum-m" id="ex-tenum"></div>
+  <script type="application/json" id="ex-tenum-m">{"program": "trace_enum.cpp", "columns": ["name", "value", "value / 10"], "given": [0], "prompt": "The names can have any values you like (line 5). Fill in each row the loop prints.", "explain": "Each name keeps the number written next to it: 10, 20, 40. <code>n / 10</code> is integer division, so 1, 2, 4. The loop visits the names in the order of the braces on line 17."}</script>
+
+  <section class="panel clean" aria-label="Panel 20: no accidental numbers">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">One rule worth seeing fail: an <code>enum class</code> won't silently become an <code>int</code>.</p>
+    <span class="file-tab">enum_int_bad.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="enum_int_bad.cpp"></pre>
+      <pre class="term wrap" data-run="enum_int_bad.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The little picture under the caret even labels the value: it's a <samp>Light</samp>, not an <code>int</code>. That's the "class" in <code>enum class</code>: the names stay in their own drawer. Write <code>static_cast&lt;int&gt;(Light::dim)</code> when you really want the number. (C++23 also has <code>std::to_underlying</code>, which gives the number in the underlying type.)</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · CLOCK FACES AND CLIFFS<small>Integers in depth: exact sizes, limits, wrapping, overflow and mixing signed with unsigned</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 21: bricks of different sizes">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Back to the brick, our <code>int</code> creature. Integers come in several sizes. The plain names (<code>short</code>, <code>int</code>, <code>long</code>) have sizes that differ from machine to machine. The names from <code>&lt;cstdint&gt;</code> say their size out loud: <code>std::int32_t</code> is exactly 32 bits on every machine that has it. A <b>bit</b> is one on/off switch; a <b>byte</b> is 8 bits.</p>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char" data-char="brick" data-label="int32_t"></svg>
+      <svg class="char" data-char="brick" data-label="uint8_t"></svg>
+    </div>
+    <p class="sr-only">Two brick creatures, one labelled int32_t and one labelled uint8_t.</p>
+    <span class="file-tab">sizes.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="sizes.cpp"></pre>
+      <pre class="term" data-run="sizes.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>These sizes are <b>on this machine</b> (64-bit Linux). On 64-bit Windows (not run for this book), <code>long</code> is 4 bytes, not 8. That's exactly why the fixed-width names exist: when the size matters (a file format, a network message, a pixel), say it. <code>std::size_t</code> is the type of sizes and counts, like <code>v.size()</code>; it's unsigned and as wide as the machine's addresses.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: how far each type goes">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption"><code>std::numeric_limits&lt;T&gt;</code> (from <code>&lt;limits&gt;</code>) knows each type's smallest and biggest value. Line 7 is a shortcut so we can write <code>numeric_limits</code> without <code>std::</code> in front.</p>
+    <span class="file-tab">limits.cpp</span>
+    <pre class="code" data-src="limits.cpp"></pre>
+    <pre class="term" data-run="limits.cpp"></pre>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>Unsigned</b> types (with a <code>u</code>) start at 0 and only go up: 8 bits give 0 to 255. <b>Signed</b> types spend half their range on negatives: −128 to 127.</span></li>
+      <li><span>The negative side is always one bigger: there's a −2147483648 but no +2147483648. Chapter 3's odometer showed what happens past the top; the clock face in panel 25 shows it properly.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 23: a uint8_t prints as a letter">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">A classic surprise. <code>level</code> holds the number 65. Watch line 7.</p>
+    <span class="file-tab">uint8_char.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="uint8_char.cpp"></pre>
+      <pre class="term" data-run="uint8_char.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>A</samp>! On this machine <code>std::uint8_t</code> is just another name for <code>unsigned char</code>, and <code>std::cout</code> prints any kind of <code>char</code> as a character. Code 65 is the letter A. Three cures: a <code>+</code> in front (line 8, which turns it into an <code>int</code>), <code>static_cast&lt;int&gt;</code> (line 9), or <code>std::format</code>, which prints it as a number (line 10).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-u8-m" id="ex-u8"></div>
+  <script type="application/json" id="ex-u8-m">{"program": "predict_uint8.cpp", "prompt": "Character code 48 is <code>'0'</code> and 57 is <code>'9'</code>. Predict all three lines.", "hint": "Line 7 prints two <code>std::uint8_t</code>s straight to <code>std::cout</code>. In lines 8 and 9, the arithmetic happens first. What type does <code>a + 1</code> have?", "explain": "Line 7 prints both as characters: <samp>09</samp>. In line 8, <code>a + 1</code> is computed as an <code>int</code> (small integer types are promoted to <code>int</code> before arithmetic, panel 29), so it prints the number <samp>49</samp>. Line 9: <code>+b - a</code> is 57 − 48, an <code>int</code>: <samp>9</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 24: unsigned numbers live on a clock face">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Big idea: an unsigned number lives on a <b>clock face</b>. Go past the top and you come round to 0 again; go below 0 and you come round to the top. This isn't a mistake in C++: it's the <b>rule</b> for unsigned types, so it's well defined. ("Modulo 2<sup>N</sup>" arithmetic, if you like the maths words.)</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A 12-hour clock does it every day: 3 hours after 11 o'clock is 2 o'clock, not 14. A <code>std::uint8_t</code> clock has 256 marks, 0 to 255. <b>Unsigned numbers go round the clock.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: the uint8_t clock face" data-clock="clock-u8">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Step through a real run. <code>hand</code> starts at 252 and goes up one tick at a time (line 9), then down three at a time (line 12). The hand points at the value on the newest screen line.</p>
+    <span class="file-tab">clock_u8.cpp</span>
+    <script type="application/json" id="clock-u8">{"program": "clock_u8.cpp", "steps": [
+      {"line": 6, "out": 0, "note": "<code>main</code> starts. No hand yet."},
+      {"line": 9, "out": 1, "note": "Line 6 sets <code>hand</code> to 252, near the top of the clock, and line 8 prints tick 0."},
+      {"line": 9, "out": 2, "note": "Line 9 adds 1: 253."},
+      {"line": 9, "out": 3, "note": "254."},
+      {"line": 9, "out": 4, "note": "255: the very top of a <code>std::uint8_t</code>. All eight bits are on."},
+      {"line": 9, "out": 5, "note": "<b>255 + 1 comes round to 0.</b> The hand passed the wrap point. No error, no warning: for unsigned types this is the rule."},
+      {"line": 9, "out": 6, "note": "1. Life goes on around the clock."},
+      {"line": 9, "out": 7, "note": "2."},
+      {"line": 12, "out": 8, "note": "3. Line 9 then makes it 4, and the first loop ends."},
+      {"line": 12, "out": 9, "note": "The second loop: line 12 subtracts 3. 4 − 3 = 1."},
+      {"line": 12, "out": 10, "note": "<b>1 − 3 goes backwards past 0</b> and comes round to 254 (1, 0, 255, 254)."},
+      {"line": null, "out": 11, "note": "254 − 3 = 251. The hand went round the top in both directions, and every value came from the real run."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: unsigned surprises">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">The same clock with 4294967296 marks: <code>unsigned int</code>. Line 4 stores −1, which lands just before 0 on the clock. Line 9 is the one that bites in real programs: a subtraction that "should" be negative.</p>
+    <span class="file-tab">wrap.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="wrap.cpp"></pre>
+      <pre class="term" data-run="wrap.cpp"></pre>
+    </div>
+    <p class="caption">With braces, the Compiler refuses to put −1 into an unsigned box at all. Another reason to like <code>{}</code>:</p>
+    <span class="file-tab">wrap_braces.cpp</span>
+    <pre class="code" data-src="wrap_braces.cpp"></pre>
+    <pre class="term wrap" data-run="wrap_braces.cpp" data-exit></pre>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 27: signed overflow falls off a cliff">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Signed numbers are different. They don't live on a clock. They live on a <b>number line with cliffs at both ends</b>. Going past the end of a signed type is <b>undefined behaviour</b>: the C++ rules say nothing about what happens next, and optimising compilers really do assume it never happens.</p>
+    <svg class="cliff pic big-text" viewBox="0 0 660 236" role="img" aria-label="A number line drawn as a flat clifftop running from minus 2147483648 on the left to 2147483647 on the right. At the right end the ground stops at a cliff edge. A brick creature labelled plus 1 tumbles over the edge into a fog marked undefined.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M10 92 H500 L512 232 H10 Z" fill="#F4F1EA"/>
+        <path d="M40 92 V78 M150 92 V78 M260 92 V78 M370 92 V78 M480 92 V78" fill="none"/>
+        <path d="M520 232 V190 q30 -22 60 -8 q30 -20 70 -4 V232 Z" fill="#DDE8FF" stroke-dasharray="8 6"/>
+        <rect x="540" y="96" width="44" height="34" rx="6" fill="#FF9F43" transform="rotate(28 562 113)"/>
+        <path d="M506 70 q30 -10 40 18" fill="none" stroke-dasharray="6 6"/>
+      </g>
+      <text x="40" y="62" text-anchor="middle" class="c">MIN</text><text x="480" y="62" text-anchor="middle" class="c">MAX</text>
+      <text x="260" y="62" text-anchor="middle" class="c">0</text>
+      <text x="562" y="119" text-anchor="middle" class="cs" transform="rotate(28 562 113)">+1</text>
+      <text x="580" y="222" text-anchor="middle" class="t">UNDEFINED</text>
+      <text x="255" y="160" text-anchor="middle" class="s">int: −2147483648 … 2147483647</text>
+      <text x="610" y="40" text-anchor="middle" class="t">CLIFF!</text>
+    </svg>
+    <p class="caption">So we never show a plain run. We show it the only way this course shows undefined behaviour: built with the sanitizer (Chapter 11), which stops the program at the first undefined step and says what happened.</p>
+    <span class="file-tab">overflow_san.cpp</span>
+    <pre class="code" data-src="overflow_san.cpp"></pre>
+    <pre class="term wrap small" data-run="overflow_san.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Caught on my night watch: <samp>overflow_san.cpp:7:11: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'</samp>. File, line, column, the exact sum, and the type. Line 8 never ran. <b>Signed numbers fall off the cliff.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-type-m" id="ex-type"></div>
+  <script type="application/json" id="ex-type-m">{"q": "You're storing one colour channel of a pixel: a whole number from 0 to 255, millions of them, and the file format says exactly one byte each. Which type?", "options": [
+    {"t": "<code>std::uint8_t</code>", "correct": true, "why": "Right: exactly 8 bits, 0 to 255, one byte. Remember to print it with <code>+</code>, a cast or <code>std::format</code>."},
+    {"t": "<code>int</code>", "why": "It can hold 0 to 255, but it takes 4 bytes here: four times the memory, and it doesn't match the one-byte file format."},
+    {"t": "<code>std::int8_t</code>", "why": "Signed: −128 to 127. 200 doesn't fit."},
+    {"t": "<code>double</code>", "why": "8 bytes, and it isn't even a whole number type. Fine for a temperature, wrong for a byte."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 28: minus one is not less than one">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Now mix the two worlds. Is −1 less than 1? Not if the 1 is unsigned.</p>
+    <span class="file-tab">sign_compare.cpp</span>
+    <pre class="code" data-src="sign_compare.cpp"></pre>
+    <pre class="term wrap" data-run="sign_compare.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the warning like a detective">
+      <li><span><b>The flag:</b> <samp>[-Wsign-compare]</samp>, one of the warnings <code>-Wall</code> turns on.</span></li>
+      <li><span><b>The message:</b> <samp>comparison of integer expressions of different signedness: 'int' and 'unsigned int'</samp>. One side signed, one side unsigned.</span></li>
+      <li><span><b>The caret</b> points at the <code>&lt;</code> on line 6, with both sides underlined.</span></li>
+      <li><span><b>The run:</b> <samp>0</samp>, meaning false! To compare them, C++ first converts the <code>int</code> to <code>unsigned int</code>, and −1 lands at the top of the clock: <samp>4294967295</samp> (line 7 shows it). 4294967295 &lt; 1 is false.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: comparing safely, and promotion">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">C++20 gave us comparisons that get the maths right whatever the signedness: <code>std::cmp_less</code>, <code>std::cmp_greater</code>, <code>std::cmp_equal</code> and friends, from <code>&lt;utility&gt;</code>. And <code>std::in_range&lt;T&gt;(x)</code> asks "does x fit in a T?".</p>
+    <span class="file-tab">cmp_less.cpp</span>
+    <pre class="code" data-src="cmp_less.cpp"></pre>
+    <pre class="term" data-run="cmp_less.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Lines 12 to 16 show <b>integer promotion</b>: before any arithmetic, small types like <code>std::uint8_t</code> and <code>short</code> are turned into <code>int</code>. So <code>a + b</code> is an <code>int</code> 300, not a wrapped 44. Line 15 proves the type with Chapter 19's <code>static_assert</code>: it compiled, so the type really is <code>int</code>. The wrap only happens when you store 300 back into a <code>std::uint8_t</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-mixed-m" id="ex-mixed"></div>
+  <script type="application/json" id="ex-mixed-m">{"program": "predict_mixed.cpp", "prompt": "<code>a</code> is −2 (signed), <code>b</code> is 3 (unsigned). This program converts on purpose, so it compiles without warnings. Predict every line (0 or 1 for the comparisons).", "hint": "Where does −2 land on the <code>unsigned int</code> clock? And what's 3 − 4 on that clock?", "explain": "−2 &lt; 5 compares two <code>int</code>s: <samp>1</samp>. Casting <code>b</code> to <code>int</code> makes −2 &lt; 3, true: <samp>1</samp>. Casting <code>a</code> to <code>unsigned int</code> makes it 4294967294, which is greater than 3: <samp>1</samp>. <code>std::cmp_greater(-2, 3u)</code> does the real maths: <samp>0</samp>. And <code>b - 4</code> is unsigned arithmetic: 3 − 4 wraps to <samp>4294967295</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-count-m" id="ex-count"></div>
+  <script type="application/json" id="ex-count-m">{"program": "countdown.cpp", "bug": 8, "prompt": "This loop should count down 2, 1, 0 and then stop by itself. Click the line with the bug.", "explain": "Line 8: <code>i</code> is a <code>std::size_t</code>, which is unsigned, so <code>i &gt;= 0</code> is <b>always</b> true. g++ says so: <samp>comparison of unsigned expression in '&gt;= 0' is always true [-Wtype-limits]</samp>. After 0, <code>--i</code> goes round the clock to 18446744073709551615 and the loop keeps going. We added a guard (lines 10 to 13) so the demo stops; a real loop that used <code>parts[i]</code> there would read far outside the vector. Panel 30 shows two fixes."}</script>
+
+  <section class="panel sketch" aria-label="Panel 30: counting down without falling round the clock">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">The countdown you just debugged, fixed two ways. Both print the parts back to front.</p>
+    <span class="file-tab">countdown_fixed.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="countdown_fixed.cpp"></pre>
+      <pre class="term" data-run="countdown_fixed.cpp"></pre>
+    </div>
+    <ol class="checklist">
+      <li><b>Line 7, "test, then step down":</b> <code>i-- &gt; 0</code> compares <i>first</i> and decrements <i>afterwards</i>, so the body sees 2, 1, 0, and the loop stops when the test finds 0. Nothing ever goes below 0 inside the body.</li>
+      <li><b>Line 11, signed sizes:</b> <code>std::ssize(parts)</code> (Chapter 8) gives the size as a <b>signed</b> number, so <code>i &gt;= 0</code> can really become false.</li>
+      <li><b>The habit:</b> keep counting and maths in signed types, and keep signed and unsigned apart. Use unsigned for sizes from the library, bit patterns and things that are meant to wrap.</li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · SWITCHBOARDS<small>Binary and hex literals, bitwise operators, masks, std::bitset and std::popcount</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 31: a number is a row of switches">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption soft">Inside the machine, a <code>std::uint8_t</code> is a row of 8 switches. Starting from <b>bit 0</b>, the last switch, each switch is worth double the one before it: 1, 2, 4, 8, 16, 32, 64, 128. Add up the switches that are on and you get the number.</p>
+    <div class="x20-stage static" role="img" aria-label="Eight switches in a row, from bit 7 on the left to bit 0 on the right, worth 128, 64, 32, 16, 8, 4, 2 and 1. Bit 2 and bit 0 are on; the rest are off. 4 plus 1 makes 5.">
+      <ol class="x20-bits" aria-hidden="true"><li class="x20-bit"><span class="x20-pos">bit 7</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">128</span></li><li class="x20-bit"><span class="x20-pos">bit 6</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">64</span></li><li class="x20-bit"><span class="x20-pos">bit 5</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">32</span></li><li class="x20-bit"><span class="x20-pos">bit 4</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">16</span></li><li class="x20-bit"><span class="x20-pos">bit 3</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">8</span></li><li class="x20-bit on"><span class="x20-pos">bit 2</span><span class="x20-val">1</span><span class="x20-word">ON</span><span class="x20-w">4</span></li><li class="x20-bit"><span class="x20-pos">bit 1</span><span class="x20-val">0</span><span class="x20-word">off</span><span class="x20-w">2</span></li><li class="x20-bit on"><span class="x20-pos">bit 0</span><span class="x20-val">1</span><span class="x20-word">ON</span><span class="x20-w">1</span></li></ol>
+      <p class="x20-cap"><b>00000101</b> = 4 + 1 = 5</p>
+    </div>
+    <span class="file-tab">literals.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="literals.cpp"></pre>
+      <pre class="term" data-run="literals.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>You can write numbers the way the machine sees them. <code>0b</code> starts a <b>binary</b> literal (only 0s and 1s); <code>0x</code> starts a <b>hexadecimal</b> one, base 16, where A to F mean 10 to 15 and each hex digit is exactly 4 switches. The <code>'</code> marks are <b>digit separators</b>: the compiler ignores them; they're there for your eyes. <code>std::format</code>'s <code>{:08b}</code> prints 8 binary digits, and <code>{:#x}</code> prints hex with <code>0x</code> in front.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: the bitwise operators">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Bitwise operators work on every switch at once, column by column. Read the run with the code: each line lines up its 8 bits under <code>a</code> and <code>b</code>.</p>
+    <span class="file-tab">bitops.cpp</span>
+    <pre class="code" data-src="bitops.cpp"></pre>
+    <pre class="term" data-run="bitops.cpp"></pre>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>Operator</th><th>Name</th><th>A column is 1 when…</th></tr></thead>
+      <tbody>
+        <tr><td><code>a &amp; b</code></td><td>AND</td><td>both are 1</td></tr>
+        <tr><td><code>a | b</code></td><td>OR</td><td>at least one is 1</td></tr>
+        <tr><td><code>a ^ b</code></td><td>XOR, "exclusive or"</td><td>exactly one is 1 (they differ)</td></tr>
+        <tr><td><code>~a</code></td><td>NOT</td><td>a's switch was 0 (every switch flips)</td></tr>
+        <tr><td><code>a &lt;&lt; n</code>, <code>a &gt;&gt; n</code></td><td>shift left, right</td><td>it was n places to the right (left); zeros slide in</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Watch the last line: <code>~a</code> on its own is <samp>-203</samp>! Promotion again: <code>a</code> became a 32-bit <code>int</code> first, so <code>~</code> flipped 32 switches, including the sign. That's why lines 13 and 14 cast back to <code>std::uint8_t</code>. Don't mix up <code>&amp;</code> and <code>&amp;&amp;</code>, or <code>|</code> and <code>||</code>: the doubled ones are Chapter 5's true/false logic.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 33: masks: set, clear, toggle, test">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">A <b>mask</b> is a number with just the switches you care about turned on. <code>1 &lt;&lt; 3</code> is a mask for bit 3 (<code>00001000</code>). Four moves cover almost everything you'll ever do with flags.</p>
+    <div class="cards4">
+      <div class="card4"><p class="where">SET (turn on)</p><code class="big">flags |= 1 &lt;&lt; n;</code><p>OR with the mask: bit n becomes 1, the others stay as they were.</p></div>
+      <div class="card4"><p class="where">CLEAR (turn off)</p><code class="big">flags &amp;= ~(1 &lt;&lt; n);</code><p>AND with the <b>flipped</b> mask: every bit is kept except bit n, which becomes 0.</p></div>
+      <div class="card4 dashed"><p class="where">TOGGLE (flip)</p><code class="big">flags ^= 1 &lt;&lt; n;</code><p>XOR with the mask: bit n flips; the others stay.</p></div>
+      <div class="card4 dashed"><p class="where">TEST (is it on?)</p><code class="big">(flags &amp; (1 &lt;&lt; n)) != 0</code><p>AND keeps only bit n; anything left over means it was on. Mind the brackets.</p></div>
+    </div>
+    <p class="sr-only">Four cards. Set: flags OR-equals 1 shifted left by n. Clear: flags AND-equals NOT of 1 shifted by n. Toggle: flags XOR-equals 1 shifted by n. Test: flags AND the mask, not equal to 0.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: the bit row" data-bits="bits-flags">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Flip the switches one line at a time. The row shows the 8 bits printed on the newest screen line; switches that the line changed have a dashed border and a star.</p>
+    <span class="file-tab">flags_steps.cpp</span>
+    <script type="application/json" id="bits-flags">{"program": "flags_steps.cpp", "steps": [
+      {"line": 6, "out": 0, "note": "<code>main</code> starts."},
+      {"line": 8, "out": 1, "note": "Line 6 makes <code>flags</code> with every switch off, and line 7 prints them."},
+      {"line": 10, "out": 2, "note": "Line 8: <b>set</b> bit 3 with <code>|= 1 &lt;&lt; 3</code>. Worth 8."},
+      {"line": 12, "out": 3, "note": "Line 10: set bit 0. Bit 3 is untouched: OR only ever turns switches on."},
+      {"line": 14, "out": 4, "note": "Line 12: <b>toggle</b> bit 6 with <code>^=</code>. It was off, so now it's on. 64 + 8 + 1 = 73."},
+      {"line": 16, "out": 5, "note": "Line 14: toggle bit 0 again. It was on, so now it's off. Toggling twice gets you back where you started."},
+      {"line": 18, "out": 6, "note": "Line 16: <b>clear</b> bit 3 with <code>&amp;= ~(1 &lt;&lt; 3)</code>. Only bit 6 is left."},
+      {"line": null, "out": 7, "test": 6, "note": "Line 18 <b>tests</b> bit 6: AND with its mask leaves 64, which isn't 0, so <code>on</code> is true. <code>std::format</code> prints a <code>bool</code> as <samp>true</samp>, not 1."}]}</script>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 35: the flag machine" data-machine="m-flags">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Every chip starts from the same flags, <code>00000101</code> (bits 2 and 0 on), and does one move. The results come from a real run of <code>flag_machine.cpp</code>.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-flags">{"label": "00000101", "program": "flag_machine.cpp", "examples": [
+      {"in": "set bit 1", "out": "00000111", "expectLine": "set bit 1 -> 00000111", "outKind": "bits", "note": "<code>start | (1 &lt;&lt; 1)</code>: bit 1 turns on. 5 becomes 7."},
+      {"in": "clear bit 0", "out": "00000100", "expectLine": "clear bit 0 -> 00000100", "outKind": "bits", "note": "<code>start &amp; ~(1 &lt;&lt; 0)</code>: everything kept except bit 0. 5 becomes 4."},
+      {"in": "toggle bit 2", "out": "00000001", "expectLine": "toggle bit 2 -> 00000001", "outKind": "bits", "note": "<code>start ^ (1 &lt;&lt; 2)</code>: bit 2 was on, so it flips off."},
+      {"in": "toggle bit 7", "out": "10000101", "expectLine": "toggle bit 7 -> 10000101", "outKind": "bits", "note": "Bit 7 was off, so it flips on: 128 + 5 = 133."},
+      {"in": "test bit 2", "out": "true", "expectLine": "test bit 2 -> true", "outKind": "bool", "note": "<code>(start &amp; (1 &lt;&lt; 2)) != 0</code>: bit 2 is on."},
+      {"in": "test bit 1", "out": "false", "expectLine": "test bit 1 -> false", "outKind": "bool", "note": "Bit 1 is off: the AND leaves 0."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-flags-m" id="ex-flags"></div>
+  <script type="application/json" id="ex-flags-m">{"program": "fill_flags.cpp", "prompt": "The lamp panel should print <samp>00000100</samp>, <samp>10000100</samp>, <samp>10000000</samp>. Fill in the operator on each line: set bit 2, flip bit 7, then clear bit 2.", "blanks": [{"line": 7, "text": "|=", "accept": ["^="]}, {"line": 9, "text": "^=", "accept": ["|="]}, {"line": 11, "text": "&= ~", "accept": ["&=~"]}], "explain": "<code>|=</code> sets bit 2. Bit 7 was off, so <code>^=</code> (toggle) turns it on. On these switches, which all start off, <code>^=</code> and <code>|=</code> give the same result on lines 7 and 9, so both are accepted there. Clearing needs AND with the flipped mask: <code>&amp;= ~(1 &lt;&lt; 2)</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: std::bitset and the bit tools">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">If you'd rather not juggle masks, <code>std::bitset&lt;8&gt;</code> (from <code>&lt;bitset&gt;</code>) is a row of 8 switches with names for every move: <code>set</code>, <code>reset</code>, <code>flip</code>, <code>test</code>, <code>count</code>. And <code>&lt;bit&gt;</code> (C++20) has tools for plain unsigned numbers, like <code>std::popcount</code>, which counts the switches that are on.</p>
+    <span class="file-tab">bitset_pop.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="bitset_pop.cpp"></pre>
+      <pre class="term" data-run="bitset_pop.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Careful with line 7: the string is written <b>bit 7 first</b>, the way we write numbers, so its last character is bit 0. That's why <code>test(1)</code> finds the 1 that's second from the right. After <code>set(0)</code> and <code>reset(7)</code> you get 00110011, which is 51. <code>std::has_single_bit</code> asks "is exactly one switch on?" (is it a power of 2?).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-shift-m" id="ex-shift"></div>
+  <script type="application/json" id="ex-shift-m">{"program": "trace_shift.cpp", "columns": ["i", "mask", "bit"], "given": [0], "prompt": "22 is <code>10110</code> in binary. For each <code>i</code>, write the mask <code>1u &lt;&lt; i</code> and whether bit <code>i</code> of 22 is on (1 or 0).", "explain": "Shifting 1 left by i doubles it i times: 1, 2, 4, 8, 16. <code>(value &gt;&gt; i) &amp; 1u</code> slides bit i into position 0 and keeps only it. Reading 10110 from the right: bit 0 is 0, bits 1 and 2 are 1, bit 3 is 0, bit 4 is 1."}</script>
+
+  <section class="panel sketch" aria-label="Panel 37: flags with names">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">Masks are much easier to read with names. Real programs keep permission flags, options and settings this way. Each name is one switch: <code>1 &lt;&lt; 0</code>, <code>1 &lt;&lt; 1</code>, <code>1 &lt;&lt; 2</code>.</p>
+    <span class="file-tab">perms.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="perms.cpp"></pre>
+      <pre class="term" data-run="perms.cpp"></pre>
+    </div>
+    <p class="caption">Lines 4 to 10 use a plain <code>enum</code> (no <code>class</code>) inside a <code>namespace</code>. A plain enum's names <b>do</b> turn into numbers by themselves, which is exactly what <code>perm::read | perm::write</code> needs; the namespace keeps the names tidy. Try the same with an <code>enum class</code>, and the Compiler stops you:</p>
+    <span class="file-tab">perms_class_bad.cpp</span>
+    <pre class="code" data-src="perms_class_bad.cpp"></pre>
+    <pre class="term wrap" data-run="perms_class_bad.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>no match for 'operator|' (operand types are 'Perm' and 'Perm')</samp>. Nobody has taught <code>|</code> how to combine two <code>Perm</code>s. Teaching an operator a new word is exactly what Chapter 21 is about. Until then, the namespace-and-plain-enum pattern works well.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pbits-m" id="ex-pbits"></div>
+  <script type="application/json" id="ex-pbits-m">{"program": "parsons_bits.cpp", "seed": 7, "pin": [1, 2], "prompt": "Put <code>main</code> in order so it prints <samp>a 0010</samp>, then <samp>b 1010</samp>, then <samp>c 1000</samp>.", "explain": "Start with all switches off. Set bit 1 (0010) and print <samp>a</samp>. Set bit 3 too (1010) and print <samp>b</samp>. Clear bit 1 (1000) and print <samp>c</samp>. Each print has to come right after the change it shows."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · WOBBLY JELLY<small>double in depth: rounding, comparing, infinity, NaN and std::midpoint</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 38: the jelly can't hold 0.1 exactly">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">The jelly creature is our <code>double</code>: wobbly, a little imprecise. A <code>double</code> stores numbers as binary fractions, in 64 switches (the <b>IEEE 754</b> standard). Halves, quarters and eighths fit exactly. A tenth doesn't: in binary, 0.1 goes on forever, like 1/3 = 0.3333… does in decimal. So the jelly stores the nearest number it can.</p>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char" data-char="jelly" data-label="0.1"></svg>
+      <svg class="char" data-char="jelly" data-label="0.2"></svg>
+    </div>
+    <p class="sr-only">Two jelly creatures, labelled 0.1 and 0.2.</p>
+    <span class="file-tab">float_sum.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="float_sum.cpp"></pre>
+      <pre class="term" data-run="float_sum.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>std::cout</code> rounds to 6 digits, so line 8 shows a tidy <samp>0.3</samp>. Ask for 17 digits (line 10) and the truth comes out: the sum is a hair above 0.3, and the literal <code>0.3</code> is a hair below. They're different numbers, so <code>==</code> says <samp>0</samp>. <b>Never ask jelly if it's exactly equal.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: comparing doubles with a tolerance">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Instead of "equal?", ask "<b>close enough?</b>". <code>nearly_equal</code> (lines 6 to 8) allows a difference of one part in a billion of the bigger number. <code>epsilon</code> is the gap between 1.0 and the next <code>double</code> above it: the jelly's finest wobble near 1.</p>
+    <span class="file-tab">nearly.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="nearly.cpp"></pre>
+      <pre class="term" data-run="nearly.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Ten tenths don't add up to exactly 1.0, because each step rounds a little. "Close enough" depends on the job: a billionth suits measurements like these; a game might use a thousandth. A tolerance that <b>scales</b> with the numbers (<code>rel * max(...)</code>) works for big and small values alike. And for money, use whole cents in an integer, not jelly.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-float-m" id="ex-float"></div>
+  <script type="application/json" id="ex-float-m">{"program": "predict_float.cpp", "prompt": "Some sums fit the jelly exactly, some don't. Predict all four lines (0 or 1 for the comparisons).", "hint": "Halves and quarters are exact binary fractions. A third isn't, but rounding sometimes lands right back on the exact answer. And line 8 mixes integer division with <code>double</code> division.", "explain": "0.1 + 0.2 isn't exactly 0.3: <samp>0</samp>. 0.5 and 0.25 are exact binary fractions, so their sum is exactly 0.75: <samp>1</samp>. 1.0/3.0 is rounded, but multiplying by 3 rounds back to exactly 1.0 here: <samp>1</samp>, a lucky landing you can't rely on in general. <code>7 / 2</code> is integer division, 3; <code>7 / 2.0</code> is 3.5."}</script>
+
+  <div data-ex="spot" data-model="ex-sfloat-m" id="ex-sfloat"></div>
+  <script type="application/json" id="ex-sfloat-m">{"program": "spot_float.cpp", "bug": 9, "prompt": "Ten scoops of 0.1 litres should fill a 1-litre tank exactly. Click the line with the bug.", "explain": "Line 9 compares a sum of ten 0.1s with <code>==</code>. Line 12 prints what the tank really holds: <samp>0.9999999999999999</samp>, not 1.0, so the program wrongly says the tank isn't full. Compare with a tolerance (<code>nearly_equal(tank, 1.0)</code>) or, better, count whole units in an <code>int</code> and divide only when printing."}</script>
+
+  <section class="panel pop" aria-label="Panel 40: infinity and not-a-number">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">Dividing an integer by zero is undefined behaviour (Chapter 3). Dividing a <code>double</code> by zero is not: IEEE 754 defines it. You get two special values: <b>infinity</b>, and <b>NaN</b>, "not a number".</p>
+    <span class="file-tab">nan_inf.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="nan_inf.cpp"></pre>
+      <pre class="term" data-run="nan_inf.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b><samp>inf</samp></b>: bigger than the largest ordinary <code>double</code> (line 13 checks that against <code>numeric_limits</code>).</span></li>
+      <li><span><b><samp>-nan</samp></b>, with a minus sign! A NaN still has a sign switch, and the x86 processor in this machine makes 0.0/0.0 with that switch on. <code>quiet_NaN()</code> on line 14 has it off: <samp>nan</samp>. Other machines may print these differently, so never rely on the text.</span></li>
+      <li><span><b>NaN isn't equal to anything, not even itself:</b> <code>odd == odd</code> is <samp>0</samp>. To ask whether something is NaN, use <code>std::isnan</code> from <code>&lt;cmath&gt;</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 41: halfway without falling off the cliff">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">One more cliff to avoid. The middle of 2,000,000,000 and 2,100,000,000 is easy to say, but <code>(low + high) / 2</code> adds first, and the sum doesn't fit in an <code>int</code>: signed overflow, undefined behaviour (Boss 2 shows the sanitizer catching it). <code>std::midpoint</code> from <code>&lt;numeric&gt;</code> (C++20) does it safely.</p>
+    <span class="file-tab">midpoint.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="midpoint.cpp"></pre>
+      <pre class="term" data-run="midpoint.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 8 is the old trick: subtract first, so nothing overflows. Lines 9 and 10 show a detail: when the exact middle isn't a whole number, <code>std::midpoint</code> rounds <b>towards its first argument</b>, so the order matters (2 one way, 3 the other).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-fchoice-m" id="ex-fchoice"></div>
+  <script type="application/json" id="ex-fchoice-m">{"q": "A program reads a sensor value <code>x</code> that might be NaN when the sensor is broken. Which test correctly detects a broken reading?", "options": [
+    {"t": "<code>std::isnan(x)</code>", "correct": true, "why": "Right. It's the only reliable way: NaN compares unequal to everything."},
+    {"t": "<code>x == std::numeric_limits&lt;double&gt;::quiet_NaN()</code>", "why": "NaN is never equal to anything, not even another NaN, so this is always false."},
+    {"t": "<code>x &gt; std::numeric_limits&lt;double&gt;::max()</code>", "why": "That catches infinity, not NaN. Every ordered comparison with NaN (&lt;, &gt;, &lt;=, &gt;=) is false."},
+    {"t": "<code>x == 0.0 / 0.0</code>", "why": "That NaN isn't equal to <code>x</code> either, even when <code>x</code> is NaN."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks that mix boxes, dials, clocks, switches and jelly</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 42: boss level">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <h3 class="boss-h">BOSS LEVEL</h3>
+    <div class="scene">
+      <svg class="char" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Six checks, each mixing ideas from more than one part. Take your time and read every line. <b>Measure twice, compile once.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="boss-predict-m" id="boss-predict"></div>
+  <script type="application/json" id="boss-predict-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. <code>level</code> takes a dial box and returns a gift box holding a <code>std::uint8_t</code>, or nothing. Predict all four lines. Watch for the <code>+</code> signs.", "hint": "<code>value_or</code> returns the box's own type, here <code>std::uint8_t</code>, even when the spare you give it is an <code>int</code>. What does <code>std::cout</code> do with a <code>std::uint8_t</code>?", "explain": "66 fits, so <code>level(66)</code> holds 66. With <code>+</code> in front it prints <samp>66</samp>. Without the <code>+</code>, <code>value_or</code> gives a <code>std::uint8_t</code>, which prints as a character: code 66 is <samp>B</samp>. 300 doesn't fit in 0 to 255, so the box is empty and the spare 7 is used: <samp>7</samp>. A string never holds an int: <samp>0</samp>."}</script>
+
+  <div data-ex="spot" data-model="boss-spot-m" id="boss-spot"></div>
+  <script type="application/json" id="boss-spot-m">{"program": "boss_spot.cpp", "bug": 4, "prompt": "Boss 2. <code>average</code> should work for any two <code>int</code>s. This build has the sanitizer on. Click the line with the bug.", "explain": "Line 4 adds before it halves. 2,000,000,000 + 2,000,000,000 doesn't fit in an <code>int</code>, which is signed overflow: undefined behaviour. This build has the sanitizer on, so it stops with <samp>runtime error: signed integer overflow</samp> at line 4, column 15, called from line 9. Use <code>std::midpoint(a, b)</code> or <code>a + (b - a) / 2</code>."}</script>
+
+  <div data-ex="fill" data-model="boss-fill-m" id="boss-fill"></div>
+  <script type="application/json" id="boss-fill-m">{"program": "boss_fill.cpp", "prompt": "Boss 3. A spreadsheet row whose cells are blank, a number, or text. Fill in the blanks so each cell prints its own line.", "blanks": [{"line": 8, "text": "std::monostate"}, {"line": 13, "text": "std::visit"}, {"line": 14, "text": "std::monostate"}], "explain": "<code>std::monostate</code> goes first in the list, so it's the \"blank\" position. <code>std::visit</code> runs the one road that matches each cell's dial. The blank cell's road takes a <code>std::monostate</code>: <samp>(blank)</samp>."}</script>
+
+  <div data-ex="parsons" data-model="boss-parsons-m" id="boss-parsons"></div>
+  <script type="application/json" id="boss-parsons-m">{"program": "boss_parsons.cpp", "seed": 3, "pin": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], "prompt": "Boss 4. The control panel starts with bit 7 on. Look up the pump's bit (a gift box), switch it on if it was found, then print the panel and how many switches are on. Expected: <samp>10001000</samp> then <samp>2</samp>.", "explain": "Ask for the bit first; it's a maybe, so check it with <code>if (b)</code> before using <code>*b</code>. Inside the <code>if</code>, OR the mask in: bit 3. Then print the 8 switches, and <code>std::popcount</code> counts the two that are on."}</script>
+
+  <div data-ex="trace" data-model="boss-trace-m" id="boss-trace"></div>
+  <script type="application/json" id="boss-trace-m">{"program": "boss_trace.cpp", "columns": ["step", "v", "wrapped?"], "given": [0], "prompt": "Boss 5. A <code>std::uint8_t</code> goes up 100 at a time on its 256-mark clock. Fill in <code>+v</code> and whether it just went round the top (<code>v &lt; 100</code>, printed 1 or 0).", "explain": "100, 200, then 300 doesn't fit: 300 − 256 = 44, and 44 &lt; 100 shows it wrapped. Then 144 and 244. (Inside <code>v += 100</code> the sum is an <code>int</code>; it wraps when it's stored back into the <code>std::uint8_t</code>.)"}</script>
+
+  <div data-ex="choice" data-model="boss-choice-m" id="boss-choice"></div>
+  <script type="application/json" id="boss-choice-m">{"q": "Boss 6. Which of these is <b>undefined behaviour</b>, rather than something with a defined (even if surprising) result?", "options": [
+    {"t": "Adding 1 to an <code>int</code> already at its maximum", "correct": true, "why": "Right: <code>std::numeric_limits&lt;int&gt;::max() + 1</code> is signed overflow. The rules give no result at all; only the sanitizer view is safe to look at (panel 27)."},
+    {"t": "Adding 1 to a <code>std::uint8_t</code> that holds 255", "why": "Defined: unsigned numbers go round the clock, so it's 0."},
+    {"t": "Calling <code>.value()</code> on an empty <code>std::optional</code>", "why": "Defined: it throws <code>std::bad_optional_access</code>. (It's <code>*</code> on an empty box that's undefined.)"},
+    {"t": "Dividing the <code>double</code> 1.0 by 0.0", "why": "Defined by IEEE 754: the result is infinity."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 43: what you learned">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">What you learned in Chapter 20</p>
+    <ul class="recap">
+      <li><b>A MAYBE SHOULD LOOK LIKE A MAYBE</b><code>std::optional&lt;T&gt;</code> holds a T or nothing (<code>std::nullopt</code>). Check with <code>if (box)</code> or <code>has_value()</code>; take out with <code>value_or(spare)</code>, <code>value()</code> (throws <code>bad_optional_access</code>), or <code>*box</code> only after a check (UB on empty).</li>
+      <li><b>THE DIAL NEVER LIES</b><code>std::variant&lt;A, B, C&gt;</code> holds exactly one alternative, and <code>index()</code> says which. <code>std::get</code> is checked (<code>bad_variant_access</code>), <code>std::get_if</code> gives <code>nullptr</code>, <code>std::visit</code> runs one road per kind. Give every kind its own road. <code>std::monostate</code> is the "nothing yet" kind.</li>
+      <li><b>LET THE COMPILER COUNT YOUR CASES</b>Choose an enum's underlying type with <code>: std::uint8_t</code>. Write <code>to_string</code> as a <code>switch</code> without <code>default</code>, so <code>-Wswitch</code> warns about a missing name, and the way back as a function returning <code>std::optional</code>.</li>
+      <li><b>UNSIGNED GOES ROUND THE CLOCK, SIGNED FALLS OFF THE CLIFF</b>Fixed-width types say their size; <code>numeric_limits</code> knows the ends. Unsigned wraps (well defined); signed overflow is undefined. A <code>std::uint8_t</code> prints as a character. Don't mix signed and unsigned: heed <code>-Wsign-compare</code>, use <code>std::cmp_less</code>, and count down with <code>i-- &gt; 0</code> or <code>std::ssize</code>.</li>
+      <li><b>SET WITH |, CLEAR WITH &amp; ~, FLIP WITH ^</b>Masks are <code>1 &lt;&lt; n</code>; test with <code>(flags &amp; mask) != 0</code>. Small types are promoted to <code>int</code> first, so cast results back. <code>std::bitset</code> names the moves; <code>std::popcount</code> counts the ones.</li>
+      <li><b>NEVER ASK JELLY IF IT'S EXACTLY EQUAL</b>Doubles round: compare with a tolerance. Floating-point division by zero gives <samp>inf</samp> or NaN, NaN equals nothing (use <code>std::isnan</code>), and <code>std::midpoint</code> finds the middle without overflowing.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>You can now say "maybe" and "one of these" in the type itself, and you know what your numbers really are, down to the last switch. That's working close to the machine, with the wrench held the right way round.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 44: next time, New Words, Spare Keys">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption soft">Coming up in Chapter 21: New Words, Spare Keys</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: a speech bubble containing a plus sign and the double arrow used for printing, next to a house key and its copy on a key ring.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M20 30 H220 Q236 30 236 46 V120 Q236 136 220 136 H90 L60 168 L64 136 H36 Q20 136 20 120 V46 Q20 30 36 30 Z" fill="#FFF6CC"/>
+          <circle cx="320" cy="70" r="26" fill="#FFD60A"/><circle cx="320" cy="70" r="9" fill="#FFFFFF"/>
+          <path d="M342 82 L420 124 M396 111 l-8 14 M410 119 l-8 14" fill="none" stroke-width="6"/>
+          <circle cx="300" cy="130" r="22" fill="#DDE8FF"/><circle cx="300" cy="130" r="8" fill="#FFFFFF"/>
+          <path d="M320 140 L392 176 M370 165 l-7 12" fill="none" stroke-width="6"/>
+          <circle cx="282" cy="98" r="16" fill="none" stroke-width="3"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="34" fill="#111" text-anchor="middle"><text x="84" y="98">+</text><text x="168" y="98">&lt;&lt;</text></g>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Remember the Compiler saying <samp>no match for 'operator|'</samp>? Next time we teach operators new words: <code>+</code>, <code>==</code> and <code>&lt;&lt;</code> for our own types, so <code>std::cout &lt;&lt; point</code> just works. Then the six special jobs every class has, including what happens when you copy a key: a spare key to the same house, or a whole second house?</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch19.html">← Ch 19 · Baked Before the Party</a><a class="next" href="ch21.html">Ch 21 · New Words, Spare Keys →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how the boxes are built, two's complement, and the 64 switches of a double</summary>
+    <div class="page-body">
+      <h3>Where an optional keeps its value</h3>
+      <p>A <code>std::optional&lt;T&gt;</code> is not a pointer and uses no heap memory. It holds room for one <code>T</code> plus a flag that says whether the room is in use, right inside the variable. An empty optional has no <code>T</code> in it at all: no constructor ran, and none will run until you assign. That's why <code>*box</code> on an empty box is undefined behaviour rather than "zero": there is memory there, but no object. The standard library is allowed to skip checks in <code>operator*</code>, and libstdc++ only checks it when built with <code>-D_GLIBCXX_ASSERTIONS</code> (panel 6). The sanitizers watch memory and arithmetic, not library promises, so they saw nothing (panel 6 has that sanitizer run).</p>
+      <p>The same program built by clang++ 18 (same library) trips the same assertion; the function names are just printed in clang's style:</p>
+      <pre class="term wrap small" data-run="deref_assert.cpp" data-alt data-exit></pre>
+      <h3>Where a variant keeps its alternatives</h3>
+      <p>A <code>std::variant</code> is a <b>tagged union</b>: one block of memory big enough for its largest alternative, plus the dial (the index). Assigning a different kind destroys the old object and builds the new one in the same place. <code>std::visit</code> uses the index to jump straight to the right road, usually through a small table the compiler builds, so it's about as fast as a <code>switch</code>. If building the new alternative throws an exception halfway, a variant can be left "valueless" (<code>valueless_by_exception()</code> is true, and <code>index()</code> returns <code>std::variant_npos</code>). It's rare, and the C++ Core Guidelines' advice (C.181: avoid "naked" unions) is exactly to use <code>std::variant</code> instead of hand-made unions.</p>
+      <h3>Why the visit with a missing string road fails so loudly</h3>
+      <p>The spot-the-bug after panel 14 had a missing <i>double</i> road, which compiled because a <code>double</code> converts to <code>int</code>. A missing <i>string</i> road can't convert to anything, so the Compiler refuses. The message is long because the failure is found deep inside the library's template code. Read it like a detective: search for the first <samp>error:</samp>, then look for your own file name in the <samp>required from</samp> lines.</p>
+      <details><summary>The full g++ message (50 lines)</summary><pre class="term wrap small" data-run="visit_nostring.cpp" data-exit></pre></details>
+      <h3>Two's complement</h3>
+      <p>Since C++20, signed integers must be stored in <b>two's complement</b>, which is what every common processor already did. In 8 bits, 0 to 127 look like ordinary binary; −1 is <code>11111111</code>, −2 is <code>11111110</code>, and −128 is <code>10000000</code>. That's why converting −1 to an unsigned type gives the all-ones pattern, the top of the clock (panel 28). Knowing the bit pattern does <b>not</b> make overflow defined: C++20 kept signed overflow undefined, so compilers may assume <code>x + 1 &gt; x</code> is always true for a signed <code>x</code> and optimise on that basis.</p>
+      <h3>Shifts</h3>
+      <p>Shifting by a negative amount, or by at least the width of the (promoted) type, is undefined: <code>1 &lt;&lt; 32</code> on a 32-bit <code>int</code> is not 0. Since C++20, shifting a signed number left is defined (it wraps like unsigned arithmetic), and shifting a negative number right copies the sign bit in. Use unsigned types for bit patterns anyway; it avoids every one of these questions.</p>
+      <h3>The 64 switches of a double</h3>
+      <p>An IEEE 754 double has 1 <b>sign</b> bit, 11 <b>exponent</b> bits and 52 <b>fraction</b> bits. The value is roughly 1.fraction × 2<sup>exponent</sup>, so it keeps about 15 to 17 significant decimal digits whatever the size of the number. <code>epsilon</code> is 2<sup>−52</sup>, the <samp>2.22045e-16</samp> printed in panel 39. The all-ones exponent is reserved for infinity (fraction zero) and NaN (fraction non-zero); the sign bit still exists for both, which is how <samp>-nan</samp> happens. Printing 17 significant digits (<code>{:.17g}</code>) is always enough to tell two different doubles apart.</p>
+      <h3>Compiler differences you can see</h3>
+      <p>clang++ 18 with the same flags gave <b>no warning</b> for the endless countdown (it has a similar warning, <code>-Wtautological-unsigned-zero-compare</code>, but <code>-Wall -Wextra</code> doesn't turn it on). The run itself is identical:</p>
+      <pre class="term" data-run="countdown.cpp" data-alt data-exit></pre>
+      <p>clang words the other messages differently. Its sign-compare warning and its narrowing error, which also suggests a fix-it:</p>
+      <pre class="term wrap small" data-run="sign_compare.cpp" data-alt data-exit></pre>
+      <pre class="term wrap small" data-run="wrap_braces.cpp" data-alt data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Lookups and parsing.</b> Functions that search, parse or read settings commonly return <code>std::optional</code>: "the value for this key, if there is one". C++23 added <code>and_then</code>, <code>transform</code> and <code>or_else</code> to chain such steps without nested <code>if</code>s.</li>
+        <li><b>Messages and events.</b> Programs that handle several kinds of message (a click, a key press, a network packet) often store them as a <code>std::variant</code> and handle them with <code>std::visit</code>. Adding a new kind then makes every <code>visit</code> without a matching road fail to compile, if no conversion sneaks in (the spot-the-bug after panel 14).</li>
+        <li><b>Errors as values.</b> C++23's <code>std::expected&lt;T, E&gt;</code> is like an optional that carries a reason when it's empty. It's available here with g++ only; Chapter 27 compares it with optional and exceptions.</li>
+        <li><b>File formats and networks.</b> Image, audio and network formats specify exact sizes, so the code uses <code>std::uint8_t</code>, <code>std::uint16_t</code>, <code>std::uint32_t</code>. Bytes in a file may also come in a different order (big-endian or little-endian); C++20's <code>std::endian</code> and C++23's <code>std::byteswap</code> help.</li>
+        <li><b>Flags everywhere.</b> File permissions on Linux (read, write, execute for owner, group and others) are 9 bits; the <code>0755</code> you may have seen is an octal number. Graphics APIs, game engines and operating systems pass options as OR-ed masks.</li>
+        <li><b>Hashing and checksums</b> deliberately use unsigned wrap-around and XOR, because both are well defined and fast.</li>
+        <li><b>Money</b> is stored in whole cents (or smaller units) as integers, or with decimal libraries, never in <code>double</code>. Scientific and graphics code uses <code>double</code> and <code>float</code> freely, with tolerances.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"An empty optional holds 0."</b> It holds nothing at all. <code>value_or(0)</code> gives 0; <code>*box</code> gives undefined behaviour.</li>
+        <li><b>"<code>*box</code> throws if the box is empty, like <code>value()</code>."</b> It doesn't check. Only <code>value()</code> throws.</li>
+        <li><b>"A variant can be empty."</b> It always holds one alternative; a new one holds a default-made first alternative. Use <code>std::monostate</code> for "nothing yet".</li>
+        <li><b>"If I forget a road in <code>std::visit</code>, the compiler always tells me."</b> Only if the value can't convert to another road (the spot-the-bug after panel 14).</li>
+        <li><b>"<code>std::any</code> is a better variant."</b> It's a box without a list of kinds; mistakes show up only when the program runs.</li>
+        <li><b>"<code>int</code> is always 4 bytes and <code>long</code> is always 8."</b> Only the minimums are guaranteed. <code>long</code> is 4 bytes on 64-bit Windows.</li>
+        <li><b>"<code>std::uint8_t</code> is a small number type, so it prints as a number."</b> It's <code>unsigned char</code> here, and prints as a character.</li>
+        <li><b>"Unsigned is safer for things that can't be negative."</b> One subtraction (<code>2u - 3u</code>) and you're at 4294967295. Prefer signed for counts and maths.</li>
+        <li><b>"Signed overflow just wraps, like unsigned."</b> It's undefined. It may seem to wrap in a quick test, and then behave differently with optimisation turned on.</li>
+        <li><b>"<code>-1 &lt; 1u</code> is obviously true."</b> It's false: −1 becomes 4294967295 first.</li>
+        <li><b>"<code>~a</code> on a <code>std::uint8_t</code> gives a <code>std::uint8_t</code>."</b> It gives an <code>int</code> (promotion), here −203.</li>
+        <li><b>"0.1 + 0.2 == 0.3 is a C++ bug."</b> It's how binary floating point works in every mainstream language.</li>
+        <li><b>"Comparing with <code>epsilon</code> fixes float comparisons."</b> <code>epsilon</code> is the gap near 1.0. For numbers like 1000000.0 the gaps are far bigger; scale the tolerance with the numbers.</li>
+        <li><b>"NaN == NaN is true."</b> NaN is unequal to everything, itself included.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build and run</h3>
+      <p>Make a folder <code>cpp-ch20</code>, save <code>visit_all.cpp</code>, then <code>g++ -std=c++23 -Wall -Wextra -g visit_all.cpp -o visit_all</code> and <code>./visit_all</code>. Everything in this chapter needs at least <code>-std=c++20</code> (<code>std::format</code>, <code>std::cmp_less</code>, <code>std::popcount</code>, <code>std::midpoint</code>, <code>std::ssize</code>).</p>
+      <ul>
+        <li><b>Linux:</b> <code>sudo apt install g++</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++</code> (Fedora). g++ 13 or newer has every header used here.</li>
+        <li><b>macOS:</b> <code>xcode-select --install</code> gives you Apple's <code>clang++</code> with libc++. Build with <code>clang++ -std=c++20 -Wall -Wextra visit_all.cpp -o visit_all</code>. libc++ was not run for this book: its exception messages (for example the <code>what()</code> of <code>bad_optional_access</code>) may be worded differently from this page's libstdc++ ones.</li>
+        <li><b>Windows:</b> with MSYS2's MinGW g++, the commands are the same, but run <code>sizes.cpp</code> and compare: <code>long</code> should be 4 bytes there (not run for this book). With Visual Studio's <code>cl</code>: <code>cl /std:c++20 /EHsc /W4 sizes.cpp</code>, then <code>sizes.exe</code>. MSVC was not run for this book; expect its own wording for the signed/unsigned warning at <code>/W4</code>.</li>
+      </ul>
+      <h3>2. The safety nets</h3>
+      <p>Build <code>deref_assert.cpp</code> twice: <code>g++ -std=c++23 -g deref_assert.cpp -o plain</code> and <code>g++ -std=c++23 -g -D_GLIBCXX_ASSERTIONS deref_assert.cpp -o checked</code>. Run <code>./checked</code> to see the assertion. (Don't trust whatever <code>./plain</code> prints: that's undefined behaviour.) Build <code>overflow_san.cpp</code> with <code>-fsanitize=address,undefined -fno-sanitize-recover=all</code> to get panel 27's report. MSVC has <code>/fsanitize=address</code>, but no undefined-behaviour sanitizer.</p>
+      <h3>3. Try these on purpose</h3>
+      <ol>
+        <li>In <code>enum_strings.cpp</code>, add <code>flicker</code> to <code>Light</code> and rebuild. Read the <code>-Wswitch</code> warning, then fix it. Does <code>light_from("flicker")</code> work without touching the loop? (Hint: <code>all_lights</code>.)</li>
+        <li>In <code>monostate.cpp</code>, take <code>std::monostate</code> out of the list (and its road). What does the new variant on line 18 hold now, and which road runs first?</li>
+        <li>Change <code>clock_u8.cpp</code> to use <code>std::int8_t</code> starting at 124, and build it with the sanitizer (<code>-fsanitize=address,undefined -fno-sanitize-recover=all</code>). Is there a report? (Hint: promotion. The sum is computed as an <code>int</code>, which doesn't overflow; storing it back into the <code>std::int8_t</code> wraps, and since C++20 that conversion is defined.) Our run is below the list.</li>
+        <li>In <code>nearly.cpp</code>, change the loop to add 0.1 a million times and compare with 100000.0 using a fixed tolerance of <code>1e-9</code> instead of a relative one.</li>
+        <li>Print <code>std::numeric_limits&lt;float&gt;::epsilon()</code> and the sum <code>0.1f + 0.2f</code> with <code>{:.9g}</code>. How many digits does a <code>float</code> keep?</li>
+        <li>Use <code>std::bitset&lt;32&gt;{static_cast&lt;unsigned int&gt;(-1)}</code> to see two's complement for yourself.</li>
+      </ol>
+      <details><summary>Our run of item 3 (<code>lab_int8_clock.cpp</code>)</summary><pre class="term wrap small" data-run="lab_int8_clock.cpp" data-exit></pre></details>
+      <h3>4. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) runs all of these. Pick "x86-64 gcc 13" and add <code>-std=c++23 -Wall -Wextra</code>; add <code>-fsanitize=undefined</code> to see panel 27's report. Switch to an MSVC compiler there to compare warnings (it compiles but can't run programs).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>std::optional&lt;T&gt;</dt><dd>A box that holds one T or nothing; from <code>&lt;optional&gt;</code>.</dd>
+        <dt>std::nullopt</dt><dd>The value that means "empty optional": <code>return std::nullopt;</code>, <code>box = std::nullopt;</code>.</dd>
+        <dt>has_value() / value() / value_or() / *</dt><dd>Is anything in? / take it out, throwing if empty / take it out or use a spare / take it out without checking.</dd>
+        <dt>std::bad_optional_access</dt><dd>The exception <code>value()</code> throws on an empty optional.</dd>
+        <dt>std::variant&lt;A, B, ...&gt;</dt><dd>A box holding exactly one of the listed types (its <b>alternatives</b>); from <code>&lt;variant&gt;</code>.</dd>
+        <dt>index()</dt><dd>Which alternative a variant holds right now, counting from 0: the dial.</dd>
+        <dt>std::get / std::get_if / std::holds_alternative</dt><dd>Take an alternative out (throws <code>std::bad_variant_access</code> if wrong) / get a pointer to it or <code>nullptr</code> / ask whether the dial is on it.</dd>
+        <dt>std::visit</dt><dd>Calls the function (road) that matches the variant's current alternative.</dd>
+        <dt>overloaded</dt><dd>A one-line helper (not part of the standard library) that bundles several lambdas into one visitor. How it works is beyond this book; copy it as it is.</dd>
+        <dt>std::monostate</dt><dd>A type with a single value, used as a variant's "nothing yet" alternative.</dd>
+        <dt>std::any</dt><dd>A box for one value of any type; take it out with <code>std::any_cast</code> (throws <code>std::bad_any_cast</code>).</dd>
+        <dt>undefined behaviour (UB)</dt><dd>Code the C++ rules give no meaning to; anything may happen, and it may differ between builds.</dd>
+        <dt>underlying type</dt><dd>The integer type an enum's values are stored as: <code>enum class Light : std::uint8_t</code>.</dd>
+        <dt>-Wswitch</dt><dd>The warning (in <code>-Wall</code>) for a <code>switch</code> over an enum that misses a name.</dd>
+        <dt>bit, byte</dt><dd>One on/off switch; a group of 8 bits.</dd>
+        <dt>fixed-width integer types</dt><dd><code>std::int8_t</code> to <code>std::int64_t</code> and <code>std::uint8_t</code> to <code>std::uint64_t</code>, from <code>&lt;cstdint&gt;</code>: exactly that many bits.</dd>
+        <dt>std::size_t</dt><dd>The unsigned type of sizes and counts, such as <code>v.size()</code>.</dd>
+        <dt>std::numeric_limits&lt;T&gt;</dt><dd>Facts about a number type: <code>min()</code>, <code>max()</code>, <code>lowest()</code>, <code>epsilon()</code>, <code>is_signed</code>...; from <code>&lt;limits&gt;</code>.</dd>
+        <dt>signed / unsigned</dt><dd>Can hold negatives / only zero and up.</dd>
+        <dt>wrap-around</dt><dd>Unsigned arithmetic going round the clock past the top or below 0; well defined.</dd>
+        <dt>overflow</dt><dd>A result too big (or small) for its type; for signed types it's undefined behaviour.</dd>
+        <dt>integer promotion</dt><dd>Small integer types (<code>char</code>, <code>short</code>, <code>std::uint8_t</code>...) are turned into <code>int</code> before arithmetic.</dd>
+        <dt>-Wsign-compare</dt><dd>The warning for comparing a signed and an unsigned value.</dd>
+        <dt>std::cmp_less, std::cmp_greater, std::in_range</dt><dd>C++20 comparisons that give the mathematically right answer for any mix of signed and unsigned; from <code>&lt;utility&gt;</code>.</dd>
+        <dt>binary / hexadecimal literal</dt><dd>A number written in base 2 (<code>0b101</code>) or base 16 (<code>0x1F</code>).</dd>
+        <dt>digit separator</dt><dd>The <code>'</code> in <code>1'000'000</code>; ignored by the compiler.</dd>
+        <dt>bitwise operators</dt><dd><code>&amp;</code> AND, <code>|</code> OR, <code>^</code> XOR, <code>~</code> NOT, <code>&lt;&lt;</code> and <code>&gt;&gt;</code> shifts, working on every bit.</dd>
+        <dt>mask</dt><dd>A number with only the bits you care about turned on, such as <code>1 &lt;&lt; 3</code>.</dd>
+        <dt>flag</dt><dd>One bit that records one yes/no setting.</dd>
+        <dt>std::bitset&lt;N&gt;</dt><dd>A row of N bits with named operations; from <code>&lt;bitset&gt;</code>.</dd>
+        <dt>std::popcount</dt><dd>Counts the 1 bits of an unsigned number; from <code>&lt;bit&gt;</code> (C++20).</dd>
+        <dt>IEEE 754</dt><dd>The standard for floating-point numbers that <code>double</code> follows on every common machine.</dd>
+        <dt>epsilon</dt><dd>The gap between 1.0 and the next larger <code>double</code>, about 2.2 × 10<sup>−16</sup>.</dd>
+        <dt>tolerance</dt><dd>How far apart two doubles may be and still count as equal.</dd>
+        <dt>inf / NaN</dt><dd>Infinity, and "not a number": special double values from dividing by zero and similar.</dd>
+        <dt>std::isnan</dt><dd>Asks whether a double is NaN; from <code>&lt;cmath&gt;</code>.</dd>
+        <dt>std::midpoint</dt><dd>The middle of two numbers, without overflow; from <code>&lt;numeric&gt;</code> (C++20).</dd>
+        <dt>two's complement</dt><dd>The way signed integers are stored: −1 is all ones. Required since C++20.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/utility/optional">cppreference: std::optional</a>, <a href="https://en.cppreference.com/w/cpp/utility/variant">std::variant</a>, <a href="https://en.cppreference.com/w/cpp/utility/variant/visit">std::visit</a> (its example shows the <code>overloaded</code> helper) and <a href="https://en.cppreference.com/w/cpp/utility/any">std::any</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/language/enum">cppreference: enumeration declarations</a> and <a href="https://en.cppreference.com/w/cpp/types/integer">fixed width integer types</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/types/numeric_limits">cppreference: std::numeric_limits</a>, <a href="https://en.cppreference.com/w/cpp/utility/intcmp">std::cmp_equal and friends</a>, <a href="https://en.cppreference.com/w/cpp/language/implicit_conversion">implicit conversions (promotion)</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/utility/bitset">cppreference: std::bitset</a>, <a href="https://en.cppreference.com/w/cpp/header/bit">the &lt;bit&gt; header</a> and <a href="https://en.cppreference.com/w/cpp/numeric/midpoint">std::midpoint</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: Enum.3 (prefer class enums), C.181 (avoid naked unions), ES.100 to ES.107 (don't mix signed and unsigned, use unsigned for bit manipulation, don't overflow, use <code>gsl::index</code>-style signed subscripts)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://learncpp.com/cpp-tutorial/unsigned-integers-and-why-to-avoid-them">learncpp.com 4.5: unsigned integers, and why to avoid them</a>, plus its lessons on fixed-width integers, bit manipulation (chapter O) and <code>std::optional</code>.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, with cheat-sheet diagrams of integer types and of optional and variant.</li>
+        <li><a href="https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/">Bruce Dawson: Comparing floating point numbers, 2012 edition</a>, the classic practical guide to tolerances.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to try every program here with many compilers, including MSVC.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch20</code> (64 programs; <code>lab_int8_clock.cpp</code> is the notebook lab's run). Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, as each terminal shows; <code>deref_assert.cpp</code> and <code>spot_deref.cpp</code> add <code>-D_GLIBCXX_ASSERTIONS</code>, and <code>overflow_san.cpp</code>, <code>boss_spot.cpp</code>, <code>deref_san.cpp</code> and <code>lab_int8_clock.cpp</code> are sanitizer builds) and each was also built and run with clang++ 18.1 for comparison, except the four sanitizer builds. All program outputs and exit codes were the same with both compilers; the 9 recorded differences were in compiler messages only (<code>countdown.cpp</code>, where clang gave no warning, and the wording of the messages for <code>deref_assert.cpp</code>, <code>enum_int_bad.cpp</code>, <code>perms_class_bad.cpp</code>, <code>sign_compare.cpp</code>, <code>spot_deref.cpp</code>, <code>switch_warn.cpp</code>, <code>visit_nostring.cpp</code> and <code>wrap_braces.cpp</code>), some shown in the notebook. clang's sanitizer runtime isn't installed on this machine, so sanitizer reports come from g++. Both compilers use libstdc++ 13, which is why the <code>what()</code> texts match. Sizes, limits and the <samp>-nan</samp> text are as printed on this machine (x86-64 Linux). Programs ran inside a fresh process namespace with address randomisation off; the sanitizer reports' addresses depend on that. g++ prints curly quotes in this UTF-8 terminal. The memory tracer, the map, the machines, the clock face and the bit row are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (4.5 on unsigned integers and why to avoid them, and its lessons on optional, fixed-width integers and bit manipulation), cppreference (std::optional, std::variant, std::visit, std::any, enumerations, fixed-width integers, numeric_limits, integer comparison functions, std::bitset, &lt;bit&gt;, std::midpoint), the C++ Core Guidelines (Enum.3, C.181, ES.100 to ES.107), hacking C++'s beginner's guide, Stroustrup's <i>A Tour of C++</i> (3rd ed.) table of contents for the place of optional and variant, Bruce Dawson's article on comparing floating-point numbers, the C++ research map for this course (module rows I7 and I8), and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, Ember the fire marshal, the Sanitizer, the gift box and the Compiler are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
