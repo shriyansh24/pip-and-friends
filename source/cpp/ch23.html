@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shared Custody, Old Mailboxes</title>
+<meta name="description" content="Chapter 23 of the Pip &amp; Friends C++ book, a comic course: ownership design with smart pointers (unique_ptr into and out of functions and in containers, shared_ptr and reference counts, make_shared, weak_ptr and lock(), cycles and leaks, how to pass smart pointers), then reading old code safely: C arrays and decay, pointer arithmetic, C strings, argc and argv, new[] and delete[], std::span and .data(), with every sanitizer report read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch23.css">
+<script defer src="../data/cpp-ch23.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch22.html">&larr; Ch 22</a><span aria-current="page">Ch 23 of 29</span><a href="ch24.html">Ch 24 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 23</p>
+    <h1 id="cover-h">SHARED CUSTODY, OLD MAILBOXES</h1>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="pic-mid" viewBox="0 0 260 210" role="img" aria-label="A small brown dog with a clipboard beside it: a sign-in sheet with three names ticked. Below, a row of five numbered mailboxes bolted to a brick wall.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <ellipse cx="62" cy="76" rx="44" ry="28" fill="#E8C49A"/>
+          <circle cx="104" cy="50" r="22" fill="#E8C49A"/>
+          <path d="M92 32 l-8 -16 l16 8 Z" fill="#B88A5C"/>
+          <path d="M30 100 v18 M50 102 v18 M76 102 v18 M94 100 v18" fill="none"/>
+          <path d="M20 66 q-14 -10 -10 -24" fill="none"/>
+          <rect x="150" y="12" width="96" height="106" rx="6" fill="#FFFFFF"/>
+          <rect x="178" y="4" width="40" height="16" rx="4" fill="#DDE8FF"/>
+          <path d="M162 46 l6 6 l10 -12 M162 72 l6 6 l10 -12 M162 98 l6 6 l10 -12" fill="none" stroke-width="3"/>
+          <rect x="14" y="140" width="232" height="62" fill="#F4F1EA"/>
+          <g fill="#DDE8FF"><rect x="24" y="150" width="38" height="42" rx="3"/><rect x="68" y="150" width="38" height="42" rx="3"/><rect x="112" y="150" width="38" height="42" rx="3"/><rect x="156" y="150" width="38" height="42" rx="3"/><rect x="200" y="150" width="38" height="42" rx="3"/></g>
+        </g>
+        <circle cx="110" cy="46" r="3.5" fill="#111"/>
+        <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="15" fill="#111"><text x="184" y="52">Mum</text><text x="184" y="78">Dad</text><text x="184" y="104">Gran</text></g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle"><text x="43" y="178">0</text><text x="87" y="178">1</text><text x="131" y="178">2</text><text x="175" y="178">3</text><text x="219" y="178">4</text></g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her: a dog with a sign-in sheet of three carers, and a row of five numbered mailboxes bolted to a wall.</p>
+    <p class="caption blurb">Chapter 13 gave every heap object <b>one</b> owner, and that's still the best answer most of the time. Today we design ownership on purpose: handing a <code>unique_ptr</code> into and out of functions and keeping cards in a vector; <b>shared custody</b> with <code>std::shared_ptr</code>, where a sign-in sheet counts the carers; the neighbour, <code>std::weak_ptr</code>, who checks the pet still lives here before visiting; and the leak you get when two pets sign each other's sheets. Then we walk down an old street: <b>C arrays</b>, rows of mailboxes bolted to a wall, plus pointer arithmetic, C strings, <code>argv</code>, <code>new[]</code> and <code>delete[]</code>, and <code>std::span</code>, the bridge back to modern code. About 130 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One card, handed on: unique_ptr in and out of functions</a></li>
+      <li><a href="#part-2">Shared custody: shared_ptr and the sign-in sheet</a></li>
+      <li><a href="#part-3">The neighbour who checks: weak_ptr and cycles</a></li>
+      <li><a href="#part-4">Old mailboxes: C arrays, decay and pointer arithmetic</a></li>
+      <li><a href="#part-5">Hidden zeros and the bridge: C strings, argv, std::span</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE CARD, HANDED ON<small><code>unique_ptr</code> into and out of functions, and cards in a vector</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: who is in charge of this?">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Back at the library. Mabel, the librarian from Chapter 13, has a question pinned above her desk: <b>"Who brings it back?"</b></p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-wide" viewBox="0 0 660 200" role="img" aria-label="Four ways to hold something, left to right. A borrower card with one name: unique_ptr, one owner. A sign-in sheet with three names: shared_ptr, many owners, the last one out returns it. A neighbour peeking through a window: weak_ptr, checks first, owns nothing. A sticky note with an address: a plain pointer or reference, just looks.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="14" y="30" width="140" height="92" rx="8" fill="#FFF6CC"/><path d="M30 60 H138 M30 84 H110" fill="none" stroke-width="3"/>
+        <rect x="180" y="20" width="140" height="112" rx="6" fill="#FFFFFF"/><rect x="226" y="12" width="48" height="16" rx="4" fill="#DDE8FF"/>
+        <path d="M194 52 l6 6 l10 -12 M194 78 l6 6 l10 -12 M194 104 l6 6 l10 -12" fill="none" stroke-width="3"/>
+        <rect x="346" y="26" width="140" height="100" rx="6" fill="#DDE8FF"/><path d="M416 26 V126 M346 76 H486" fill="none" stroke-width="3"/>
+        <circle cx="390" cy="104" r="16" fill="#E8C49A"/>
+        <path d="M512 30 H632 V108 L612 128 H512 Z" fill="#FFD60A"/><path d="M632 108 H612 V128" fill="#FFF6CC"/>
+      </g>
+      <circle cx="384" cy="102" r="3" fill="#111"/><circle cx="396" cy="102" r="3" fill="#111"/>
+      <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="16" fill="#111"><text x="30" y="52">Biscuit</text><text x="216" y="58">Mum</text><text x="216" y="84">Dad</text><text x="216" y="110">Gran</text><text x="526" y="72">12 Elm St</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="84" y="152">unique_ptr</text><text x="250" y="152">shared_ptr</text><text x="416" y="152">weak_ptr</text><text x="572" y="152">T* / T&amp;</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle"><text x="84" y="176">one owner</text><text x="250" y="176">last one out</text><text x="416" y="176">checks first</text><text x="572" y="176">just looks</text><text x="250" y="194">returns it</text><text x="416" y="194">owns nothing</text><text x="572" y="194">owns nothing</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Four ways to hold a thing, and only the first two are <b>owners</b>: someone whose job it is to bring it back. Every pointer in a program should make it obvious which kind it is. When nobody can tell who brings it back, it either never comes back (a leak) or comes back twice (a crash).</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>We start with the card you already know, <code>std::unique_ptr</code>, and ask the everyday question: how do I hand one to a function, or get one back? The <b>type of the parameter</b> is how a function tells you what it plans to do with your card.</p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: three ways to hand a pet to a function">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">One pet, three functions, three parameter types. The <code>Pet</code> prints <samp>[hello]</samp> when it's made and <samp>[goodbye]</samp> when it's destroyed (the same trick as Chapter 13's books), so the screen shows exactly when each pet goes home.</p>
+    <span class="file-tab">pass_three.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="pass_three.cpp"></pre>
+      <pre class="term" data-run="pass_three.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the three parameters">
+      <li><span><code>brush(Pet&amp; p)</code> (line 15) never sees a card at all. The caller writes <code>brush(*card)</code>: the star follows the card to the pet, and <code>p</code> becomes a nickname for it. <b>Just use it.</b></span></li>
+      <li><span><code>swap_in(std::unique_ptr&lt;Pet&gt;&amp; slot)</code> (line 18) gets a nickname for the caller's <b>card itself</b>, so it can put a different pet on it. Look at the screen: Mochi is made first, then the card lets go of Biscuit. <b>Reseat it.</b></span></li>
+      <li><span><code>adopt(std::unique_ptr&lt;Pet&gt; p)</code> (line 23) takes a card <b>by value</b>, so the caller must hand one over with <code>std::move</code>. When <code>adopt</code> ends, its <code>p</code> is destroyed and Mochi goes home, before main prints <samp>card is empty</samp>. <b>Take it for good.</b></span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: walk through the three calls" data-walk="walk-pass">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Walk Wren through <code>pass_three.cpp</code> one line at a time. Watch which line each <samp>[goodbye]</samp> comes from.</p>
+    <div class="walk full">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">pass_three.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-pass">{"program": "pass_three.cpp", "steps": [
+      {"line": 28, "output": [], "mood": "focus", "arms": "point", "note": "The program starts in <code>main</code>, line 27. Everything above only describes <code>Pet</code> and the three functions."},
+      {"line": 29, "output": ["  [hello Biscuit]"], "mood": "happy", "arms": "point", "note": "Line 28 makes Biscuit on the heap. Its constructor prints <samp>[hello Biscuit]</samp>, and <code>card</code> holds it: one book, one card."},
+      {"line": 15, "output": ["  [hello Biscuit]"], "mood": "normal", "arms": "point", "note": "Line 29 calls <code>brush(*card)</code>. <code>*card</code> is the pet itself, so <code>p</code> is a nickname for Biscuit. The card stays in <code>main</code>."},
+      {"line": 30, "output": ["  [hello Biscuit]", "brushing Biscuit"], "mood": "happy", "arms": "point", "note": "Line 15 prints and returns. Nothing was made, nothing was destroyed: brushing a pet is not owning it."},
+      {"line": 19, "output": ["  [hello Biscuit]", "brushing Biscuit"], "mood": "focus", "arms": "point", "note": "Line 30 calls <code>swap_in(card)</code>. No <code>std::move</code>: <code>slot</code> is a nickname for main's own card."},
+      {"line": 31, "output": ["  [hello Biscuit]", "brushing Biscuit", "  [hello Mochi]", "  [goodbye Biscuit]"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 19 makes Mochi first (<samp>[hello Mochi]</samp>), then gives the card the new pet. A card can only hold one pet, so it lets go of the old one: <samp>[goodbye Biscuit]</samp>. Back in main, <code>card</code> now holds Mochi."},
+      {"line": 32, "output": ["  [hello Biscuit]", "brushing Biscuit", "  [hello Mochi]", "  [goodbye Biscuit]", "brushing Mochi"], "mood": "normal", "arms": "point", "note": "Line 31 brushes whatever the card holds now: Mochi."},
+      {"line": 24, "output": ["  [hello Biscuit]", "brushing Biscuit", "  [hello Mochi]", "  [goodbye Biscuit]", "brushing Mochi"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 32: <code>adopt(std::move(card))</code> hands the card to <code>adopt</code>'s parameter <code>p</code>. From now on <code>p</code> owns Mochi and <code>card</code> is empty."},
+      {"line": 33, "output": ["  [hello Biscuit]", "brushing Biscuit", "  [hello Mochi]", "  [goodbye Biscuit]", "brushing Mochi", "adopted Mochi", "  [goodbye Mochi]"], "mood": "happy", "arms": "cheer", "note": "Line 24 prints. Then line 25's <code>}</code> ends <code>adopt</code>: <code>p</code> is destroyed and takes Mochi home, <b>inside</b> <code>adopt</code>."},
+      {"line": null, "output": ["  [hello Biscuit]", "brushing Biscuit", "  [hello Mochi]", "  [goodbye Biscuit]", "brushing Mochi", "adopted Mochi", "  [goodbye Mochi]", "card is empty"], "mood": "happy", "arms": "cheer", "note": "Line 33 checks the card: empty, as promised after a move. Two pets, two goodbyes, each exactly once, and the parameter types told you in advance where they would happen."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 4: what a parameter type promises">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">Read a function's parameter like a sign on its door. The C++ Core Guidelines give each one a rule number, so you'll see these in code reviews.</p>
+    <table class="ref-table">
+      <thead><tr><th>The function wants to...</th><th>Parameter</th><th>Caller writes</th></tr></thead>
+      <tbody>
+        <tr><td>use the pet, which is always there (F.7)</td><td><code>Pet&amp;</code> or <code>const Pet&amp;</code></td><td><code>brush(*card)</code></td></tr>
+        <tr><td>use the pet, if there is one</td><td><code>Pet*</code> or <code>const Pet*</code></td><td><code>peek(card.get())</code></td></tr>
+        <tr><td>put a different pet on your card (R.33)</td><td><code>std::unique_ptr&lt;Pet&gt;&amp;</code></td><td><code>swap_in(card)</code></td></tr>
+        <tr><td>take the pet for good (R.32, F.26)</td><td><code>std::unique_ptr&lt;Pet&gt;</code></td><td><code>adopt(std::move(card))</code></td></tr>
+        <tr><td>make a pet and hand it to you</td><td>returns <code>std::unique_ptr&lt;Pet&gt;</code></td><td><code>auto p{make_pet()};</code></td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Most functions are in the first row. A function that only brushes the pet shouldn't care whether the pet lives on a card, in a vector or on the stack, and a plain <code>Pet&amp;</code> accepts all three. And the one thing you never do: hand over ownership through a plain <code>Pet*</code> (rule I.11). A plain pointer can't say "this is yours now". <b>The parameter type is the promise.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pass-m" id="ex-pass"></div>
+  <script type="application/json" id="ex-pass-m">{"q": "You're writing <code>print_label(...)</code>. It reads a <code>Pet</code>'s name and prints it. The pet always exists, and the caller keeps it afterwards. Which parameter fits best?", "options": [
+    {"t": "<code>const Pet&amp;</code>", "correct": true, "why": "Right. It only reads, so <code>const</code>; the pet always exists, so a reference rather than a pointer; and it works however the caller owns the pet (card, vector or local). Callers with a card write <code>print_label(*card)</code>."},
+    {"t": "<code>std::unique_ptr&lt;Pet&gt;</code>", "why": "That takes the card for good: the caller would have to <code>std::move</code> it in, and the pet would go home at the end of <code>print_label</code>. The caller wanted to keep it."},
+    {"t": "<code>std::unique_ptr&lt;Pet&gt;&amp;</code>", "why": "That says \"I might put a different pet on your card\". A function that only prints shouldn't ask for that power, and it couldn't be called with a pet that isn't on a card."},
+    {"t": "<code>Pet</code> (by value)", "why": "That copies the whole pet just to read its name, and if <code>Pet</code> prints in its constructor and destructor you'd see a surprise extra goodbye."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 5: a vector of cards">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">A kennel holds many pets, so it's a <code>std::vector</code>. But each pet must stay at one address (other code may hold notes to it) and some pets arrive from elsewhere. So the vector holds <b>cards</b>: <code>std::vector&lt;std::unique_ptr&lt;Pet&gt;&gt;</code>. The vector owns the cards; each card owns one pet.</p>
+    <span class="file-tab">kennel.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="kennel.cpp"></pre>
+      <pre class="term" data-run="kennel.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading kennel.cpp">
+      <li><span><b>Line 17</b> puts a brand-new card straight in. <code>make_unique</code> gives back a temporary card, and a temporary can be moved without asking.</span></li>
+      <li><span><b>Line 19</b> moves a named card in. After it, <code>stray</code> is empty and the kennel owns Mochi.</span></li>
+      <li><span><b>Line 20</b> walks the kennel with <code>const auto&amp; p</code>: <code>p</code> is a nickname for each card in turn. No card is copied or moved.</span></li>
+      <li><span><b>Line 23</b> erases the first card. Erasing destroys it, and the card takes Biscuit home on the spot: <samp>[goodbye Biscuit]</samp> comes <b>before</b> <samp>pets left: 1</samp>. Mochi goes home when the vector itself is destroyed at main's <code>}</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>When the vector grows, it moves its <b>cards</b> to a bigger block. The pets never move, which is exactly why notes pointing at them stay valid. (A plain <code>std::vector&lt;Pet&gt;</code> moves the pets themselves when it grows.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-kennel-m" id="ex-kennel"></div>
+  <script type="application/json" id="ex-kennel-m">{"program": "predict_kennel.cpp", "prompt": "Three pets in a kennel of cards. Each pet prints <samp>bye NAME</samp> when it's destroyed. Predict the whole screen.", "hint": "<code>erase(kennel.begin() + 1)</code> destroys the card at index 1 right away. Line 20 moves the last card out to <code>kept</code>, so <code>pop_back</code> removes an <b>empty</b> card. At the end, local variables are destroyed in reverse order of creation: <code>kept</code> first, then the kennel.", "explain": "Bo is erased at once: <samp>bye Bo</samp>. Ash is now at index 0. Line 20 moves Cy's card into <code>kept</code>; <code>pop_back</code> then throws away an empty card, which says nothing. Size is 1 (only Ash). At main's <code>}</code>, <code>kept</code> was made last so it goes first: <samp>bye Cy</samp>, then the kennel and its card for Ash: <samp>bye Ash</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-kcopy-m" id="ex-kcopy"></div>
+  <script type="application/json" id="ex-kcopy-m">{"program": "kennel_copy.cpp", "bug": 11, "prompt": "This doesn't compile. The kennel holds cards for two names. Click the line g++ refuses.", "explain": "<code>for (auto pet : kennel)</code> makes <code>pet</code> a <b>copy</b> of each element, and a <code>unique_ptr</code> can't be copied: <samp>use of deleted function</samp> at line 11, column 21. Fix: <code>for (const auto&amp; pet : kennel)</code>, a nickname for each card. The next panel reads the message."}</script>
+
+  <section class="panel pop" aria-label="Panel 6: the loop that tried to photocopy every card">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="NO COPIES!" data-seed="6"></svg>
+    <p class="caption">The whole message from the exercise above. It looks frightening, and it says one short thing.</p>
+    <span class="file-tab">kennel_copy.cpp</span>
+    <pre class="code" data-src="kennel_copy.cpp"></pre>
+    <pre class="term wrap" data-run="kennel_copy.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>Where:</b> <code>kennel_copy.cpp:11:21</code>, and the caret sits under <code>kennel</code> in the loop header.</span></li>
+      <li><span><b>What:</b> <code>use of deleted function ... unique_ptr(const unique_ptr&amp;)</code>: the copy constructor, which Chapter 13 showed is deleted on purpose.</span></li>
+      <li><span><b>The long words:</b> <code>_Tp = std::__cxx11::basic_string&lt;char&gt;</code> is the library's real name for <code>std::string</code>. Skip it.</span></li>
+      <li><span><b>Why a copy?</b> <code>auto pet</code> on its own means "a new variable that is a copy of each element". Add <code>&amp;</code> and it means "a nickname for each element".</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 11: you asked for a <b>photocopy of every card</b>, and cards can't be photocopied. <b>Here's the problem, here's where, and here's a fix:</b> <code>for (const auto&amp; pet : kennel)</code>. Walking a container of anything big or uncopyable, the <code>&amp;</code> is almost always what you meant.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · SHARED CUSTODY<small><code>std::shared_ptr</code>, <code>make_shared</code>, <code>use_count</code>, and passing shared pets around</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 7: a dog with three carers">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Meet Biscuit. Biscuit lives with Mum, but Dad and Gran look after him too. Nobody is "the" owner. On Biscuit's kennel hangs a <b>sign-in sheet</b>: every carer writes their name when they start looking after him and crosses it out when they stop.</p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-mid pic-wide" viewBox="0 0 480 250" role="img" aria-label="Biscuit the dog in front of his kennel. A sign-in sheet hangs on the kennel: Mum, Dad, Gran, with Dad crossed out. A box at the bottom of the sheet says carers: 2. A note: when the count reaches 0, Biscuit goes home to the shelter.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M20 230 V120 L110 60 L200 120 V230 Z" fill="#FFF6CC"/>
+        <path d="M80 230 V170 Q110 140 140 170 V230" fill="#F4F1EA"/>
+        <ellipse cx="300" cy="190" rx="60" ry="34" fill="#E8C49A"/>
+        <circle cx="356" cy="150" r="28" fill="#E8C49A"/>
+        <path d="M344 126 l-10 -20 l20 10 Z" fill="#B88A5C"/>
+        <path d="M262 220 v22 M286 222 v20 M316 222 v20 M340 220 v22" fill="none"/>
+        <path d="M242 180 q-18 -14 -12 -32" fill="none"/>
+        <rect x="370" y="20" width="104" height="150" rx="6" fill="#FFFFFF"/>
+        <path d="M380 81 H446" fill="none" stroke-width="3"/>
+        <rect x="376" y="128" width="92" height="32" rx="4" fill="#DDE8FF" stroke-width="3"/>
+      </g>
+      <circle cx="364" cy="146" r="4" fill="#111"/><path d="M366 162 q8 6 14 0" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="17" fill="#111"><text x="384" y="52">Mum</text><text x="384" y="86">Dad</text><text x="384" y="118">Gran</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="422" y="150">carers: 2</text></g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="24" letter-spacing="2" fill="#111" text-anchor="middle"><text x="110" y="40">BISCUIT</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The rule on the sheet is simple. A new carer adds a name, a carer who stops crosses theirs out, and whoever crosses out the <b>last</b> name takes Biscuit back to the shelter. Nobody has to know who else is caring for him. They only look after their own line.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>That's <code>std::shared_ptr&lt;Pet&gt;</code>, also from <code>&lt;memory&gt;</code>. Copying one adds a name to the sheet. Destroying or resetting one crosses a name out. The number of names is the <b>reference count</b>, and <code>.use_count()</code> reads it. When it drops to zero, the last <code>shared_ptr</code> deletes the pet. <b>Last one out takes the pet home.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel and Wren on either side of Biscuit's kennel and sign-in sheet.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: three carers, one dog">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption"><code>std::make_shared&lt;Pet&gt;("Biscuit")</code> works like <code>make_unique</code>: it builds the pet on the heap and hands back the first <code>shared_ptr</code>. But this time copying is allowed, and every copy is another carer.</p>
+    <span class="file-tab">first_shared.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="first_shared.cpp"></pre>
+      <pre class="term" data-run="first_shared.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Count along: 1, then 2 when <code>dad</code> is made, then 3 with <code>gran</code>. At line 22's <code>}</code> both of them are destroyed and cross themselves out: back to 1. Then <code>mum.reset()</code> crosses out the last name, and Biscuit goes home <b>right there</b>, before <samp>end of main</samp>. It doesn't matter which carer leaves last. Notice that lines 19 and 21 ask different carers and get the same sheet.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 9: one dog on the heap, three cards on the stack" data-mem="mem-shared" id="mem-shared-box">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">The same program as a stack-and-heap picture. Every carer's ticket points at the <b>same</b> heap block. The block's label shows the sign-in sheet's count, which lives on the heap next to the pet, not inside any carer.</p>
+    <span class="file-tab">first_shared.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-shared">{"program": "first_shared.cpp", "steps": [
+      {"line": 15, "note": "<code>main</code> starts: one empty plate, nothing on the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 16, "note": "Line 15: <code>make_shared</code> builds Biscuit on the heap, in one block together with his sign-in sheet. <code>mum</code> is the first carer: count 1.", "output": ["  [hello Biscuit]"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 1"}}, "changed": ["mum", "H1"]},
+      {"line": 18, "note": "Line 16 reads the sheet: 1.", "output": ["  [hello Biscuit]", "carers: 1"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 1"}}},
+      {"line": 19, "note": "Line 18 <b>copies</b> <code>mum</code> into <code>dad</code>: the same ticket, and one more name on the sheet. No new pet: no <samp>[hello]</samp>.", "output": ["  [hello Biscuit]", "carers: 1"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "dad", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 2"}}, "changed": ["dad", "H1"]},
+      {"line": 20, "note": "Line 19 asks <code>mum</code>, and gets 2: there is only one sheet.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "dad", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 2"}}},
+      {"line": 21, "note": "Line 20 copies <code>dad</code> into <code>gran</code>: count 3. Copying any carer works the same.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "dad", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "gran", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 3"}}, "changed": ["gran", "H1"]},
+      {"line": 22, "note": "Line 21 asks <code>gran</code>: 3.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2", "carers: 3"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "dad", "type": "std::shared_ptr<Pet>", "ptr": "H1"}, {"n": "gran", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 3"}}},
+      {"line": 23, "note": "Line 22's <code>}</code> ends the inner block. <code>gran</code> and <code>dad</code> are destroyed, and each crosses out its name: 3, 2, 1. The count isn't zero, so Biscuit stays.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2", "carers: 3"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 1"}}, "changed": ["H1"]},
+      {"line": 24, "note": "Line 23 reads the sheet: 1.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2", "carers: 3", "carers: 1"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 1"}}},
+      {"line": 25, "note": "Line 24: <code>mum.reset()</code> crosses out the last name. Count 0, so <code>mum</code> deletes Biscuit (<samp>[goodbye Biscuit]</samp>) and becomes empty itself.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2", "carers: 3", "carers: 1", "  [goodbye Biscuit]"], "frames": [{"name": "main", "slots": [{"n": "mum", "type": "std::shared_ptr<Pet>", "val": "nullptr"}]}], "heap": {"H1": {"cells": [], "label": "Pet · count 0", "freed": true}}, "changed": ["mum", "H1"]},
+      {"line": null, "note": "Line 25 prints, and main's <code>}</code> clears the plate. <code>mum</code> is empty, so there's nothing left to do.", "output": ["  [hello Biscuit]", "carers: 1", "carers: 2", "carers: 3", "carers: 1", "  [goodbye Biscuit]", "end of main"], "frames": [], "heap": {"H1": {"cells": [], "label": "Pet · count 0", "freed": true}}}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-count-m" id="ex-count"></div>
+  <script type="application/json" id="ex-count-m">{"program": "predict_count.cpp", "prompt": "Count the names on the sheet after each line. <code>c</code> starts as an empty <code>shared_ptr</code>. Predict all three lines.", "hint": "An empty <code>shared_ptr</code> isn't on any sheet, so its <code>use_count()</code> is 0. Line 10 adds a name, line 11 crosses one out. A <b>move</b> (line 13) hands a name from <code>c</code> to <code>d</code> without changing the count.", "explain": "Line 9: <code>a</code> and <code>b</code> share the int: <samp>2</samp>; <code>c</code> is empty: <samp>0</samp>. Line 10 makes 3, line 11 makes it 2 again, and <code>b</code> is now empty: <samp>2 0</samp>. Line 13 <b>moves</b> c's place on the sheet to <code>d</code>: still 2, and <code>c</code> is empty. Copies add names, moves only pass the pen."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 10: the use_count machine" data-machine="m-count">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The sheet as a machine. Each chip is one thing done to a family of <code>shared_ptr</code>s in <code>count_machine.cpp</code>, run for real; out comes <code>a.use_count()</code> afterwards. Try them in order.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-count">{"label": "use_count()", "program": "count_machine.cpp", "examples": [
+      {"in": "make_shared", "out": "1", "expectLine": "after make_shared: 1", "outKind": "int", "note": "A brand-new pet with one carer, <code>a</code>."},
+      {"in": "copy: b{a}", "out": "2", "expectLine": "after a copy: 2", "outKind": "int", "note": "A copy writes a new name on the sheet."},
+      {"in": "move: c{std::move(b)}", "out": "2", "expectLine": "after a move: 2", "outKind": "int", "note": "A move passes b's place to <code>c</code>. Same number of carers; <code>b</code> is empty now."},
+      {"in": "weak_ptr w{a}", "out": "2", "expectLine": "after a weak_ptr: 2", "outKind": "int", "note": "A <code>weak_ptr</code> is a neighbour, not a carer: it doesn't sign. Part 3 is all about it."},
+      {"in": "c.reset()", "out": "1", "expectLine": "after a reset: 1", "outKind": "int", "note": "<code>reset()</code> crosses a name out. One carer left, so the pet stays."},
+      {"in": "an empty shared_ptr", "out": "0", "expectLine": "an empty shared_ptr: 0", "outKind": "int", "note": "A <code>shared_ptr</code> that holds nothing isn't on any sheet: 0. That's the only count you can fully trust (panel 14)."}]}</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pshared-m" id="ex-pshared"></div>
+  <script type="application/json" id="ex-pshared-m">{"program": "parsons_shared.cpp", "seed": 5, "pin": [1, 2, 4, 11], "prompt": "Put the lines of <code>main</code> in order so the program prints the goal output: one carer, then two, then the value and the count after <code>first</code> leaves.", "explain": "<code>first</code> must exist before anyone reads it or copies it. Reading <code>first.use_count()</code> before <code>second</code> exists gives 1; reading <code>second.use_count()</code> after the copy gives 2. Only after <code>first.reset()</code> does the last line see <samp>3 1</samp>: the int is still alive, because <code>second</code> is still on the sheet."}</script>
+
+  <section class="panel sketch" aria-label="Panel 11: where the sheet lives, and why make_shared">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">The sign-in sheet has to live somewhere every carer can reach, so it lives on the heap too, in a small record the library calls the <b>control block</b>. <code>make_shared</code> asks the heap for <b>one</b> block holding both the sheet and the pet. The older spelling, <code>std::shared_ptr&lt;Pet&gt;{new Pet{...}}</code>, makes the pet first and then a separate block for the sheet: two trips.</p>
+    <div class="pics">
+      <figure>
+        <svg viewBox="0 0 260 170" role="img" aria-label="make_shared: one heap block, split into two parts: the sheet (the counts) and the pet.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+            <rect x="20" y="40" width="220" height="80" rx="8" fill="#FFF6CC"/>
+            <path d="M100 40 V120" fill="none" stroke-dasharray="7 6"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="60" y="76">sheet</text><text x="60" y="98">counts</text><text x="170" y="86">Pet</text></g>
+          <text x="130" y="26" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="2" fill="#111">ONE BLOCK</text>
+          <text x="130" y="152" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">make_shared</text>
+        </svg>
+        <figcaption>One trip to the heap (R.22).</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 260 170" role="img" aria-label="shared_ptr from new: two separate heap blocks, the pet in one and the sheet in another, with an arrow from the sheet to the pet.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+            <rect x="14" y="44" width="96" height="72" rx="8" fill="#FFF6CC"/>
+            <rect x="150" y="44" width="96" height="72" rx="8" fill="#FFF6CC"/>
+            <path d="M112 80 H144" fill="none"/><path d="M134 72 L146 80 L134 88" fill="none"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="62" y="76">sheet</text><text x="62" y="98">counts</text><text x="198" y="86">Pet</text></g>
+          <text x="130" y="26" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="2" fill="#111">TWO BLOCKS</text>
+          <text x="130" y="152" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">shared_ptr{new Pet}</text>
+        </svg>
+        <figcaption>Two trips, and a raw <code>new</code> on show.</figcaption>
+      </figure>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>So <code>shared_ptr</code> costs more than a card: a copy is two pointers wide (one to the pet, one to the sheet), and every copy or goodbye updates the count in a way that's safe even if two threads do it at once, which takes a little extra work. On this machine the sheet is 16 bytes; Part 3's leak report will show you a pet and its sheet weighing in together. Say <code>make_shared</code>, the way you say <code>make_unique</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 12: don't share by default">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="HMM." data-seed="12"></svg>
+    <p class="caption">A trap that catches people who've just learned <code>shared_ptr</code>: using it <b>everywhere</b>, because then you never have to decide who owns what.</p>
+    <div class="duo">
+      <div class="duo-card dashed"><h3>SHARED BY HABIT<small>"everyone's a carer"</small></h3><p>Nobody can tell from the code when the pet goes home: it depends on who happens to let go last. Copies sneak in (each one a count update), and a carer that was meant to be temporary quietly keeps the pet alive for ever.</p></div>
+      <div class="duo-card"><h3>UNIQUE BY DEFAULT<small>"one owner, many lookers"</small></h3><p>One card, and functions borrow a <code>Pet&amp;</code>. You can read the lifetime off the code. If real sharing turns up later, a card converts: <code>std::shared_ptr&lt;Pet&gt; s{std::move(card)};</code>. It doesn't convert back.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A book that "belongs to everyone" in practice belongs to no one. Real shared custody does exist: a picture shown by three open windows at once, a cache that several parts of a game read, a message held by several queues. Then the sheet is the honest answer. Otherwise, one card (rule R.21: prefer <code>unique_ptr</code> unless you need to share).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-which-m" id="ex-which"></div>
+  <script type="application/json" id="ex-which-m">{"q": "Match each relationship to the right holder. (1) A <code>Game</code> owns its one <code>Level</code>. (2) Three open editor windows all show the same <code>Image</code>, and it should go away when the last window closes. (3) A <code>Button</code> needs to call back the <code>Window</code> that contains it, and the window owns the button. (4) <code>draw(...)</code> reads a <code>Sprite</code> for one frame.", "options": [
+    {"t": "(1) <code>unique_ptr&lt;Level&gt;</code> (2) <code>shared_ptr&lt;Image&gt;</code> (3) <code>Window*</code> or <code>weak_ptr&lt;Window&gt;</code> (4) <code>const Sprite&amp;</code>", "correct": true, "why": "Right. One owner gets a card. Real shared lifetime gets a sheet. A back-link to your own owner must not own (or it's a cycle, Part 3): a plain pointer if the window surely outlives the button, a <code>weak_ptr</code> if the window is itself shared and might go. A function that only reads gets a reference."},
+    {"t": "(1) <code>shared_ptr&lt;Level&gt;</code> (2) <code>shared_ptr&lt;Image&gt;</code> (3) <code>shared_ptr&lt;Window&gt;</code> (4) <code>shared_ptr&lt;Sprite&gt;</code>", "why": "Sharing by habit. (3) is worse than unclear: the window owns the button and the button owns the window, so neither ever goes home. That's Part 3's leak."},
+    {"t": "(1) <code>unique_ptr&lt;Level&gt;</code> (2) three separate <code>unique_ptr&lt;Image&gt;</code> (3) <code>Window*</code> (4) <code>const Sprite&amp;</code>", "why": "Three cards would mean three copies of the image, or three cards for one image, which deletes it three times. Shared lifetime needs a sheet."},
+    {"t": "(1) <code>Level*</code> from <code>new</code> (2) <code>Image*</code> (3) <code>Window*</code> (4) <code>Sprite</code> by value", "why": "Plain pointers can't own (Chapter 13): nobody would bring the level or image back. And (4) copies a whole sprite every frame."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 13: passing a shared pet to a function">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The parameter question again, for shared pets. Three functions, three signatures; each prints what it sees on the sheet.</p>
+    <span class="file-tab">pass_shared.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="pass_shared.cpp"></pre>
+      <pre class="term" data-run="pass_shared.cpp"></pre>
+    </div>
+    <table class="ref-table">
+      <thead><tr><th>Parameter</th><th>What it says</th><th>Use it when</th></tr></thead>
+      <tbody>
+        <tr><td><code>std::shared_ptr&lt;Pet&gt;</code></td><td>"I'm a new carer" (count 2 inside, line 11)</td><td>the function <b>keeps</b> a copy: stores it in a member or a list (R.34)</td></tr>
+        <tr><td><code>std::shared_ptr&lt;Pet&gt;&amp;</code></td><td>"I may put a different pet on your <code>shared_ptr</code>"</td><td>the function reseats it (R.35)</td></tr>
+        <tr><td><code>const std::shared_ptr&lt;Pet&gt;&amp;</code></td><td>"I might copy it, maybe" (count stays 1, line 15)</td><td>rarely; the Guidelines mark R.36 with "???"</td></tr>
+        <tr><td><code>const Pet&amp;</code> or <code>Pet&amp;</code></td><td>"I just use the pet" (no sheet at all, line 19)</td><td><b>almost always</b> (F.7)</td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A common habit is <code>const std::shared_ptr&lt;Pet&gt;&amp;</code> on every function "to avoid the count update". It works, but it chains the function to <code>shared_ptr</code>: you can't call it with a pet on a card, in a vector or on the stack. If the function only uses the pet, say so: <code>const Pet&amp;</code>, called with <code>*biscuit</code>. <b>Ask for the pet, not the paperwork.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fref-m" id="ex-fref"></div>
+  <script type="application/json" id="ex-fref-m">{"program": "fill_ref.cpp", "prompt": "<code>feed</code> changes the pet's meal count but has nothing to do with who cares for it. Give it the right parameter type, and call it with the pet itself. The count of carers must stay 1.", "blanks": [{"line": 11, "text": "Pet&", "accept": ["Pet &"]}, {"line": 18, "text": "*rex", "accept": ["* rex"]}, {"line": 19, "text": "*rex", "accept": ["* rex"]}], "explain": "<code>feed</code> changes the pet (<code>++p.meals</code>), so <code>Pet&amp;</code>, not <code>const Pet&amp;</code>. It doesn't keep the pet, so no <code>shared_ptr</code>. The caller follows its <code>shared_ptr</code> with <code>*rex</code> to hand over the pet itself. No copies of <code>rex</code> are made, so the sheet still says <samp>carers: 1</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 14: cautions about counts and aliases">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft"><code>use_count()</code> is wonderful for learning, as you've seen. In real programs, handle it with care.</p>
+    <ol class="checklist">
+      <li><b>Don't steer a program by the count.</b> "If the count is 1, I'm the only carer, so I can change it freely" is a trap: another thread can sign the sheet a moment after you read it. cppreference calls the value approximate in multithreaded programs; only 0 is exact. (There used to be a <code>unique()</code> for "count is 1". It was deprecated in C++17 and removed in C++20.)</li>
+      <li><b>A shared pet can still be changed by everyone.</b> Sharing the <i>ownership</i> doesn't make the pet read-only. Use <code>std::shared_ptr&lt;const Pet&gt;</code> when carers should only look.</li>
+      <li><b>Hold your own copy while you use it</b> (rule R.37). If you got a <code>Pet&amp;</code> out of a <code>shared_ptr</code> that someone else might reset, for example a global or a member, take a local copy first: <code>auto keep{global_pet};</code>. Your name on the sheet keeps the pet alive until you're done.</li>
+      <li><b><code>.get()</code> still exists</b>, and gives a plain pointer that doesn't sign the sheet. Never hand it to a second <code>shared_ptr</code>: that would start a second sheet for the same pet, and two sheets means two deletes.</li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE NEIGHBOUR WHO CHECKS<small>Cycles that never go home, <code>std::weak_ptr</code>, <code>lock()</code> and <code>expired()</code></small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 15: two pets who sign each other's sheets">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Biscuit gets a best friend, Mochi. To be sure they never lose each other, each pet signs the <b>other</b>'s sheet. Then the family goes home for the night.</p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-wide" viewBox="0 0 660 250" role="img" aria-label="Two dogs facing each other, Biscuit on the left and Mochi on the right, each with a sign-in sheet. Biscuit's sheet has the name a crossed out and Mochi still signed. Mochi's sheet has b crossed out and Biscuit still signed. Curved arrows go from each dog to the other's sheet, forming a loop. Both sheets say carers: 1.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <ellipse cx="150" cy="170" rx="56" ry="30" fill="#E8C49A"/><circle cx="200" cy="132" r="26" fill="#E8C49A"/>
+        <ellipse cx="510" cy="170" rx="56" ry="30" fill="#F4F1EA"/><circle cx="460" cy="132" r="26" fill="#F4F1EA"/>
+        <rect x="20" y="16" width="120" height="110" rx="6" fill="#FFFFFF"/><rect x="520" y="16" width="120" height="110" rx="6" fill="#FFFFFF"/>
+        <path d="M30 41 H114 M530 41 H614" fill="none" stroke-width="3"/>
+        <path d="M112 194 v18 M132 198 v18 M168 198 v18 M188 194 v18 M472 194 v18 M492 198 v18 M528 198 v18 M548 194 v18" fill="none"/>
+        <path d="M190 110 l-6 -16 l16 8 Z M470 110 l6 -16 l-16 8 Z" fill="#B88A5C"/>
+        <rect x="30" y="90" width="100" height="28" rx="4" fill="#DDE8FF" stroke-width="3"/><rect x="530" y="90" width="100" height="28" rx="4" fill="#DDE8FF" stroke-width="3"/>
+        <path d="M222 120 C 320 40, 420 30, 520 60" fill="none" stroke-dasharray="10 7"/><path d="M506 50 L522 60 L506 70" fill="none"/>
+        <path d="M438 120 C 340 200, 230 210, 140 104" fill="none" stroke-dasharray="10 7"/><path d="M134 120 L138 102 L152 112" fill="none"/>
+      </g>
+      <circle cx="208" cy="128" r="3.5" fill="#111"/><circle cx="452" cy="128" r="3.5" fill="#111"/>
+      <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="17" fill="#111"><text x="34" y="46">main's a</text><text x="34" y="76">Mochi</text><text x="534" y="46">main's b</text><text x="534" y="76">Biscuit</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle"><text x="80" y="109">carers: 1</text><text x="580" y="109">carers: 1</text></g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="2" fill="#111" text-anchor="middle"><text x="150" y="244">BISCUIT</text><text x="510" y="244">MOCHI</text><text x="330" y="140">A LOOP</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>The family crossed their names out, as they should. But Biscuit's sheet still has Mochi on it, and Mochi's still has Biscuit. Neither count reaches zero, so nobody takes either pet home. And nobody outside can reach them any more, so nobody ever will. Two pets, waiting in the dark, for ever.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 16: the loop, in memory" data-tracer="tr-cycle" id="tr-cycle-box">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The story as a program. Each <code>Pet</code> has a <code>buddy</code> member that is a <code>shared_ptr&lt;Pet&gt;</code>. Step through <code>cycle.cpp</code> and watch the label on each pet: it shows that pet's sheet. The last step is after main's <code>}</code>.</p>
+    <span class="file-tab">cycle.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-cycle-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-cycle">{"program": "cycle.cpp", "steps": [
+      {"line": 14, "output": [], "frames": [{"name": "main()", "vars": []}], "objects": {}, "note": "<code>main</code> starts. No pets yet."},
+      {"line": 15, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "PA"}]}], "objects": {"PA": {"kind": "object", "label": "Pet · sheet: 1", "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "val": "empty"}]}}, "changed": ["a"], "note": "Line 14 makes Biscuit. One carer: <code>a</code>."},
+      {"line": 16, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "PA"}, {"n": "b", "ref": "PB"}]}], "objects": {"PA": {"kind": "object", "label": "Pet · sheet: 1", "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "val": "empty"}]}, "PB": {"kind": "object", "label": "Pet · sheet: 1", "pairs": [{"k": "name", "val": "\"Mochi\""}, {"k": "buddy", "val": "empty"}]}}, "changed": ["b"], "note": "Line 15 makes Mochi. One carer: <code>b</code>."},
+      {"line": 17, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "PA"}, {"n": "b", "ref": "PB"}]}], "objects": {"PA": {"kind": "object", "label": "Pet · sheet: 1", "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "ref": "PB"}]}, "PB": {"kind": "object", "label": "Pet · sheet: 2", "pairs": [{"k": "name", "val": "\"Mochi\""}, {"k": "buddy", "val": "empty"}]}}, "changed": ["a"], "note": "Line 16: Biscuit's <code>buddy</code> becomes a copy of <code>b</code>. A copy signs the sheet, so <b>Mochi</b> now has 2 carers: <code>b</code> and Biscuit."},
+      {"line": 18, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "PA"}, {"n": "b", "ref": "PB"}]}], "objects": {"PA": {"kind": "object", "label": "Pet · sheet: 2", "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "ref": "PB"}]}, "PB": {"kind": "object", "label": "Pet · sheet: 2", "pairs": [{"k": "name", "val": "\"Mochi\""}, {"k": "buddy", "ref": "PA"}]}}, "changed": ["b"], "note": "Line 17 closes the loop: Mochi's <code>buddy</code> signs Biscuit's sheet. Both sheets say 2."},
+      {"line": 19, "output": ["a: 2, b: 2"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "PA"}, {"n": "b", "ref": "PB"}]}], "objects": {"PA": {"kind": "object", "label": "Pet · sheet: 2", "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "ref": "PB"}]}, "PB": {"kind": "object", "label": "Pet · sheet: 2", "pairs": [{"k": "name", "val": "\"Mochi\""}, {"k": "buddy", "ref": "PA"}]}}, "note": "Line 18 prints both counts: <samp>a: 2, b: 2</samp>."},
+      {"line": null, "output": ["a: 2, b: 2"], "frames": [], "objects": {"PA": {"kind": "object", "label": "LEAKED Pet · sheet: 1", "leaked": true, "pairs": [{"k": "name", "val": "\"Biscuit\""}, {"k": "buddy", "ref": "PB"}]}, "PB": {"kind": "object", "label": "LEAKED Pet · sheet: 1", "leaked": true, "pairs": [{"k": "name", "val": "\"Mochi\""}, {"k": "buddy", "ref": "PA"}]}}, "changed": ["PA", "PB"], "note": "Line 19's <code>}</code>: <code>b</code> and then <code>a</code> are destroyed, and each crosses out one name. Both sheets drop to <b>1</b>, not 0, because each pet is still signed by the other. No destructor runs: no <samp>goodbye</samp> is ever printed. The pets still point at each other, so they don't even look abandoned. That is exactly why they're never freed: <b>LEAKED</b>."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: LeakSanitizer finds the loop">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The program runs, prints, and ends with exit code 1. Built with the goggles on (Chapter 13), LeakSanitizer looks at what's still on loan when the program ends. The report is long because the library's names are long. Use the readlist below; the middle of each story is the library talking to itself.</p>
+    <pre class="term wrap tall" data-run="cycle.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the leak report like a detective">
+      <li><span><b>The accusation:</b> <code>ERROR: LeakSanitizer: detected memory leaks</code>. Not a crash: the program finished its work first (<samp>a: 2, b: 2</samp>).</span></li>
+      <li><span><b>Two stories:</b> two blocks of <code>64 byte(s)</code>. Each is one <code>make_shared</code> block: a <code>Pet</code> (a 32-byte <code>std::string</code> plus a 16-byte <code>shared_ptr</code>) and its 16-byte sheet, sitting together as panel 11 drew them.</span></li>
+      <li><span><b>"Indirect" for both:</b> a <b>direct</b> leak is a block nothing points at. Here each block is pointed at by the other leaked block, so LeakSanitizer files both as <b>indirect</b>: lost, but still pointing at each other. That's the signature of a loop.</span></li>
+      <li><span><b>Skip the library frames.</b> Frames <code>#0</code> to <code>#8</code> are <code>operator new</code> and the insides of <code>make_shared</code> (names like <code>_Sp_counted_ptr_inplace</code> are the sheet-plus-pet block). Frame <code>#9</code> is yours: <code>cycle.cpp:15</code> for Mochi and <code>cycle.cpp:14</code> for Biscuit.</span></li>
+      <li><span><b>The summary:</b> <code>128 byte(s) leaked in 2 allocation(s).</code> Exit code 1, so a test script notices.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>No undefined behaviour here, nothing crashed. A leak is "only" memory that never comes back, but in a program that builds friendships in a loop all day, it grows until the machine runs out. And here's a clue anyone can spot without me: the destructors print <samp>goodbye</samp>, and the screen shows none.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-leak-m" id="ex-leak"></div>
+  <script type="application/json" id="ex-leak-m">{"program": "predict_leak.cpp", "expect": "error", "answer": "64 byte(s) leaked in 2 allocation(s).", "ask": "Built with the goggles on, it prints <samp>2 2</samp> and then LeakSanitizer reports. Copy the end of its SUMMARY line in the same form as panel 17: <i>N byte(s) leaked in M allocation(s).</i>", "prompt": "Two nodes point at each other. A <code>Node</code> holds only a <code>shared_ptr</code> (16 bytes on this machine), and <code>make_shared</code> puts a 16-byte sheet next to it.", "hint": "How many <code>make_shared</code> blocks are left on loan when main ends? How big is one block: the node plus its sheet?", "explain": "Each block is 16 bytes of <code>Node</code> plus 16 bytes of sheet: 32. Both nodes are in the loop, so both leak: <samp>64 byte(s) leaked in 2 allocation(s).</samp> The report lists them as two indirect leaks of 32 bytes, born on lines 10 and 11."}</script>
+
+  <section class="panel sketch" aria-label="Panel 18: the neighbour who checks first">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">How do you remember a friend without signing their sheet? Ask the neighbour. The neighbour knows where Biscuit lives and can look over the fence, but <b>doesn't sign</b>. Before visiting, the neighbour checks: is Biscuit still here? If yes, they sign in <b>just for the visit</b>, so Biscuit can't be taken home halfway through. If no, they go home.</p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-mid pic-wide" viewBox="0 0 480 260" role="img" aria-label="A neighbour with a question mark looks over a fence at a kennel. Two outcomes below. Left: Biscuit is there, the neighbour signs in for the visit: lock() gives a shared_ptr. Right: the kennel is empty: lock() gives an empty shared_ptr, nobody home.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M106 120 V88 Q130 70 154 88 V120 Z" fill="#DDE8FF"/>
+        <path d="M10 120 H250 M30 120 V70 M70 120 V70 M110 120 V70 M150 120 V70 M190 120 V70 M230 120 V70 M10 90 H250" fill="none"/>
+        <circle cx="130" cy="48" r="24" fill="#DDE8FF"/>
+        <path d="M290 120 V70 L340 36 L390 70 V120 Z" fill="#FFF6CC"/>
+        <rect x="20" y="150" width="200" height="96" rx="10" fill="#C9F2D9"/>
+        <rect x="260" y="150" width="200" height="96" rx="10" fill="#FFFFFF" stroke-dasharray="10 7"/>
+      </g>
+      <circle cx="122" cy="44" r="3" fill="#111"/><circle cx="138" cy="44" r="3" fill="#111"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="30" fill="#111"><text x="166" y="40">?</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="120" y="182">lock() gives</text><text x="120" y="204">a shared_ptr</text><text x="360" y="182">lock() gives</text><text x="360" y="204">an empty one</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111" text-anchor="middle"><text x="120" y="232">home: visit!</text><text x="360" y="232">nobody home</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The neighbour is <code>std::weak_ptr&lt;Pet&gt;</code>. You make one from a <code>shared_ptr</code>, and it doesn't change the count. You can't follow it directly (there's no <code>-&gt;</code> on a <code>weak_ptr</code>). Instead you call <code>.lock()</code>, which hands you a real <code>shared_ptr</code> if the pet is still alive, or an empty one if it's gone. <code>.expired()</code> asks "gone yet?" without visiting. <b>Check before you visit.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: one weak link breaks the loop">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Panel 16's program with one word changed: <code>buddy</code> is now a <code>std::weak_ptr&lt;Pet&gt;</code> (line 8). Same goggles on. Lines 19 to 21 show the visiting pattern: lock, check, use, all in one <code>if</code>.</p>
+    <span class="file-tab">weak_fix.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="weak_fix.cpp"></pre>
+      <pre class="term wrap" data-run="weak_fix.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading weak_fix.cpp">
+      <li><span><b>Counts of 1:</b> the buddies don't sign, so each pet has only its <code>main</code> carer.</span></li>
+      <li><span><b>Line 19:</b> <code>if (auto friend_of_a = a-&gt;buddy.lock())</code> makes a temporary carer and tests it in one go. Inside the <code>{ }</code>, Mochi is guaranteed to stay alive. At the closing brace the temporary carer crosses itself out.</span></li>
+      <li><span><b>Both goodbyes, exit code 0,</b> and not a word from LeakSanitizer. <code>b</code> was made last, so it's destroyed first: Mochi's count hits 0, then Biscuit's.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 20: map of a neighbour's visit" data-map="map-lock">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">The neighbour's two possible evenings, as a map. <code>lock_alive.cpp</code> and <code>lock_gone.cpp</code> differ in one line: in the second, the owner calls <code>owner.reset()</code> before the neighbour checks. Pick a road; each is checked against its real run.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map: a neighbour's visit through a weak_ptr</title><desc id="mapl-d">The owner makes the pet and the neighbour's weak_ptr. Either the owner keeps the pet, or the owner calls reset and the pet goes home. Then the neighbour calls lock. If lock gives a shared_ptr, the neighbour visits; if it gives an empty one, nobody is home. Either way the program carries on to done.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-lock">{"seed": 23, "size": [690, 560], "start": [[170, 14], [170, 54]],
+      "states": [
+        {"id": "O", "x": 20, "y": 60, "w": 300, "h": 66, "label": "owner + neighbour", "sub": "weak_ptr neighbour{owner}"},
+        {"id": "R", "x": 400, "y": 60, "w": 270, "h": 66, "label": "`owner.reset()`", "sub": "goodbye Biscuit"},
+        {"id": "L", "x": 20, "y": 200, "w": 300, "h": 66, "label": "`neighbour.lock()`", "sub": "anyone home?"},
+        {"id": "V", "x": 20, "y": 340, "w": 300, "h": 66, "label": "visit", "sub": "got a shared_ptr: count 2"},
+        {"id": "N", "x": 400, "y": 340, "w": 270, "h": 66, "label": "nobody home", "sub": "got an empty shared_ptr"},
+        {"id": "D", "x": 20, "y": 470, "w": 300, "h": 66, "label": "done", "sub": "end of main", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "O", "to": "L", "pts": [[170, 130], [170, 194]], "label": "owner stays", "lx": 156, "ly": 166, "anchor": "end"},
+        {"id": "t2", "from": "O", "to": "R", "pts": [[322, 93], [394, 93]], "label": "drop", "lx": 358, "ly": 82, "anchor": "middle"},
+        {"id": "t3", "from": "R", "to": "L", "pts": [[535, 130], [535, 220], [326, 220]], "label": "then check", "lx": 548, "ly": 180, "anchor": "start"},
+        {"id": "t4", "from": "L", "to": "V", "pts": [[170, 270], [170, 334]], "label": "alive", "lx": 156, "ly": 306, "anchor": "end"},
+        {"id": "t5", "from": "L", "to": "N", "pts": [[326, 250], [600, 250], [600, 334]], "label": "expired", "lx": 612, "ly": 300, "anchor": "start"},
+        {"id": "t6", "from": "V", "to": "D", "pts": [[170, 410], [170, 464]], "label": "carry on", "lx": 156, "ly": 442, "anchor": "end"},
+        {"id": "t7", "from": "N", "to": "D", "pts": [[480, 410], [480, 503], [326, 503]], "label": "carry on", "lx": 494, "ly": 462, "anchor": "start"}],
+      "paths": [
+        {"id": "alive", "label": "owner stays", "program": "lock_alive.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["O"], "output": [], "mood": "focus", "note": "Lines 12 and 13: the owner's <code>shared_ptr</code> makes Biscuit (count 1), and the neighbour's <code>weak_ptr</code> notes where he lives. Still count 1: neighbours don't sign."},
+          {"on": ["L"], "via": ["t1"], "output": [], "note": "Line 14 is only a comment in this version: the owner stays. Line 15 calls <code>neighbour.lock()</code>."},
+          {"on": ["V"], "via": ["t4"], "output": ["visiting Biscuit, carers: 2"], "mood": "happy", "note": "Biscuit is alive, so <code>lock()</code> hands back a real <code>shared_ptr</code>, <code>p</code>, which signs in for the visit: count <b>2</b> while it lasts (line 16)."},
+          {"on": ["D"], "via": ["t6"], "output": ["visiting Biscuit, carers: 2", "done"], "note": "At the <code>if</code>'s closing brace, <code>p</code> crosses itself out: back to 1. Line 20 prints."},
+          {"on": ["D"], "output": ["visiting Biscuit, carers: 2", "done", "goodbye Biscuit"], "mood": "happy", "note": "Main's <code>}</code>: the owner is destroyed, the count reaches 0, and Biscuit goes home last thing. The neighbour never kept him alive."}]},
+        {"id": "gone", "label": "owner.reset() first", "program": "lock_gone.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["O"], "output": [], "mood": "focus", "note": "Lines 12 and 13, the same as the other road: count 1."},
+          {"on": ["R"], "via": ["t2"], "output": ["goodbye Biscuit"], "mood": "surprised", "note": "Line 14: <code>owner.reset()</code> crosses out the only name. Biscuit goes home <b>now</b>, even though the neighbour still remembers him. That's the difference from a carer."},
+          {"on": ["L"], "via": ["t3"], "output": ["goodbye Biscuit"], "note": "Line 15: the neighbour checks."},
+          {"on": ["N"], "via": ["t5"], "output": ["goodbye Biscuit", "nobody home"], "mood": "worried", "note": "The pet is gone, so <code>lock()</code> returns an <b>empty</b> <code>shared_ptr</code>, the <code>if</code> counts it as false, and the <code>else</code> runs (line 18). No crash, no guesswork: a <code>weak_ptr</code> <b>knows</b> when its pet is gone, which a plain pointer never does."},
+          {"on": ["D"], "via": ["t7"], "output": ["goodbye Biscuit", "nobody home", "done"], "mood": "happy", "note": "Line 20 prints. Nothing left to clean up at main's <code>}</code>."}]}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fweak-m" id="ex-fweak"></div>
+  <script type="application/json" id="ex-fweak-m">{"program": "fill_weak.cpp", "prompt": "Pepper and Clover are buddies. Make the <code>buddy</code> link one that doesn't sign the sheet, so both pets go home, then visit safely through it.", "blanks": [{"line": 8, "text": "std::weak_ptr<Pet>", "accept": ["weak_ptr<Pet>"]}, {"line": 17, "text": "lock()"}], "explain": "A <code>std::weak_ptr&lt;Pet&gt;</code> member remembers the buddy without owning it, so the loop is broken and both destructors run: <samp>goodbye Clover</samp> (made last, destroyed first), then <samp>goodbye Pepper</samp>. <code>b-&gt;buddy.lock()</code> turns the neighbour into a temporary carer for the visit, or into an empty <code>shared_ptr</code> if Pepper were already gone."}</script>
+
+  <div data-ex="trace" data-model="ex-tweak-m" id="ex-tweak"></div>
+  <script type="application/json" id="ex-tweak-m">{"program": "trace_weak.cpp", "columns": ["step", "use_count", "expired"], "given": [0], "prompt": "A neighbour <code>w</code> watches one int. <code>show</code> prints the step, <code>w.use_count()</code> (how many carers the int has right now) and <code>w.expired()</code> as <samp>true</samp> or <samp>false</samp>. Fill in each row.", "explain": "1: only <code>a</code> cares: 1. 2: <code>b</code> joins: 2. 3: <code>a</code> leaves: 1. 4: <code>w.lock()</code> makes <code>c</code>, a real carer: 2. 5: <code>b</code> leaves: 1. 6: <code>c</code>, the last carer, leaves: 0, and the int is destroyed, so <code>expired()</code> is finally <samp>true</samp>. A <code>weak_ptr</code> can read the count but never adds to it."}</script>
+
+  <div data-ex="spot" data-model="ex-tree-m" id="ex-tree"></div>
+  <script type="application/json" id="ex-tree-m">{"program": "spot_tree.cpp", "bug": 11, "prompt": "Built with the goggles on, this prints one line and then LeakSanitizer reports 152 bytes in 3 allocations. A parent owns her children; a child needs to know its parent. Click the line that makes the loop.", "explain": "The parent owning her kids through <code>shared_ptr</code> (line 16) is a fine design. The child pointing <b>back up</b> with a <code>shared_ptr</code> (line 11) signs the parent's sheet: a loop. All three blocks leak: the parent, the child, and the vector's own array of cards (16 bytes). Fix: <code>std::weak_ptr&lt;Parent&gt; parent;</code> and read it with <code>kid-&gt;parent.lock()</code>. Owning links point <b>down</b>; links back <b>up</b> only look."}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: designing who owns what">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Put Parts 1 to 3 together and you get a short recipe for designing ownership. Ask it for every pointer you write.</p>
+    <ol class="checklist">
+      <li><b>Can it just be a plain object or a vector member?</b> Then do that. No pointer at all.</li>
+      <li><b>Exactly one owner?</b> <code>std::unique_ptr</code>, made with <code>make_unique</code>. This is the usual answer when you need the heap.</li>
+      <li><b>Really several owners, and the last one out should clean up?</b> <code>std::shared_ptr</code>, made with <code>make_shared</code>.</li>
+      <li><b>A link back to your owner, a cache, or "remember it if it's still around"?</b> <code>std::weak_ptr</code> if the target is shared; a plain pointer or reference if the target surely outlives you.</li>
+      <li><b>A function that only uses the object?</b> <code>T&amp;</code> or <code>const T&amp;</code>, or <code>T*</code> if "none" is allowed.</li>
+      <li><b>Draw the owning arrows.</b> If they ever make a loop, one of them must become weak.</li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Owning arrows should form a <b>tree</b>: each thing has one way back to whoever's in charge of it. Looking arrows can go anywhere. <b>Own down, look up.</b></p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · OLD MAILBOXES<small>C arrays, decay, pointer arithmetic, and <code>new[]</code> with <code>delete[]</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 22: a row of mailboxes bolted to a wall">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Now a walk down an older street. Long before <code>std::vector</code>, C (the language C++ grew out of) had the <b>C array</b>: <code>int boxes[5];</code> is five <code>int</code> boxes side by side, numbered 0 to 4, like a row of mailboxes bolted to a wall. You'll meet them in old code, in C libraries, and in <code>main</code>'s own parameters.</p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-wide" viewBox="0 0 660 230" role="img" aria-label="A brick wall with five mailboxes bolted to it, numbered 0 to 4, holding 3, 9, 7, 1 and 4. The wall says int boxes[5], fixed size. Someone hands over a slip of paper reading: start at box 0. A thought bubble: but how many are there?">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="14" y="20" width="420" height="190" fill="#F4F1EA"/>
+        <path d="M14 70 H434 M14 160 H434" fill="none" stroke-width="2"/>
+        <g fill="#DDE8FF"><rect x="34" y="84" width="68" height="62" rx="4"/><rect x="114" y="84" width="68" height="62" rx="4"/><rect x="194" y="84" width="68" height="62" rx="4"/><rect x="274" y="84" width="68" height="62" rx="4"/><rect x="354" y="84" width="68" height="62" rx="4"/></g>
+        <g fill="#111"><circle cx="40" cy="90" r="3"/><circle cx="96" cy="90" r="3"/><circle cx="120" cy="90" r="3"/><circle cx="176" cy="90" r="3"/><circle cx="200" cy="90" r="3"/><circle cx="256" cy="90" r="3"/><circle cx="280" cy="90" r="3"/><circle cx="336" cy="90" r="3"/><circle cx="360" cy="90" r="3"/><circle cx="416" cy="90" r="3"/></g>
+        <path d="M470 120 H640 V170 L626 184 H470 Z" fill="#FFD60A"/>
+        <path d="M470 150 C 440 150, 110 150, 68 148" fill="none" stroke-dasharray="8 6" stroke-width="3"/>
+        <ellipse cx="560" cy="56" rx="88" ry="36" fill="#FFFFFF"/><circle cx="516" cy="104" r="7" fill="#FFFFFF"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111" text-anchor="middle"><text x="68" y="126">3</text><text x="148" y="126">9</text><text x="228" y="126">7</text><text x="308" y="126">1</text><text x="388" y="126">4</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="68" y="182">[0]</text><text x="148" y="182">[1]</text><text x="228" y="182">[2]</text><text x="308" y="182">[3]</text><text x="388" y="182">[4]</text><text x="224" y="52">int boxes[5]</text></g>
+      <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="16" fill="#111"><text x="482" y="146">start at</text><text x="482" y="168">box [0]</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle"><text x="560" y="52">...but how many</text><text x="560" y="72">are there?</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>A little history. C was designed in the early 1970s to be small and close to the machine. Its arrays are just memory: no size stored anywhere, no checks, and they can't be copied as a whole. C++ kept them so that it could use C code unchanged. Modern C++ wraps the same idea in safer types (<code>std::array</code>, <code>std::vector</code>, <code>std::span</code>), and this part shows you why.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: your first C array">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">A C array is written with the count in square brackets after the name. Its size is part of its type and fixed when you compile: <code>int[5]</code> is a different type from <code>int[6]</code>.</p>
+    <span class="file-tab">c_array.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="c_array.cpp"></pre>
+      <pre class="term" data-run="c_array.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading c_array.cpp">
+      <li><span><b>Lines 7 and 8:</b> <code>boxes[1]</code> and <code>boxes[2]</code> work just like a vector's square brackets, and are just as unchecked: <code>boxes[5]</code> would be one past the end, undefined behaviour.</span></li>
+      <li><span><b>Line 9:</b> <code>sizeof(boxes)</code> is the size of the whole row in bytes: 5 boxes of 4 bytes each, 20.</span></li>
+      <li><span><b>Line 10:</b> <code>std::size(boxes)</code>, from <code>&lt;iterator&gt;</code>, gives the count, 5. It works here because the compiler can still see the <code>[5]</code> in the type.</span></li>
+      <li><span><b>Line 11:</b> a range-for walks it, for the same reason.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 24: you can't copy a whole row of mailboxes">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <svg class="sfx tr" data-sfx="CLUNK!" data-seed="24"></svg>
+    <p class="caption">With a vector, <code>b = a;</code> copies everything. With C arrays:</p>
+    <span class="file-tab">array_assign.cpp</span>
+    <pre class="code" data-src="array_assign.cpp"></pre>
+    <pre class="term wrap" data-run="array_assign.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 7, column 7: <b>invalid array assignment</b>. The mailboxes are bolted to the wall; you can't lift the whole row and drop it somewhere else. You'd have to copy box by box with a loop or <code>std::copy</code>. Or use <code>std::array&lt;int, 3&gt;</code>, which copies with a plain <code>=</code> (rule SL.con.1: prefer <code>std::array</code> or <code>std::vector</code> to a C array).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: the array forgets its size on the way into a function">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Here is the big surprise of C arrays. Pass one to a function and what arrives is <b>not the row</b>: it's the address of box 0. The parameter <code>int a[]</code> looks like an array, but the compiler quietly reads it as <code>int* a</code>, a pointer. This is called <b>array-to-pointer decay</b>.</p>
+    <span class="file-tab">decay.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="decay.cpp"></pre>
+      <pre class="term wrap" data-run="decay.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the warning and the output">
+      <li><span><b>The warning's first line</b> already gives it away: <code>In function 'void count_boxes(int*)'</code>. You wrote <code>int a[]</code>; g++ lists it as <code>int*</code>.</span></li>
+      <li><span><b>The warning:</b> <code>'sizeof' on array function parameter 'a' will return size of 'int*' [-Wsizeof-array-argument]</code>, at line 5, with a <code>note</code> pointing back to where <code>a</code> was declared.</span></li>
+      <li><span><b>The proof:</b> <samp>20</samp> in main (the row), <samp>8</samp> inside (a pointer is 8 bytes on this machine, whatever it points at).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>That's the slip of paper in the picture: "start at box 0". It doesn't say how many boxes there are, so every C function that takes an array also needs the count, passed separately. Get the count wrong and you read someone else's mail. <b>An array passed is just a starting address.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sizeof-m" id="ex-sizeof"></div>
+  <script type="application/json" id="ex-sizeof-m">{"program": "spot_sizeof.cpp", "bug": 5, "prompt": "Five scores: 4, 8, 6, 2 and 10. Their average is 6, and the program prints 6. It's still wrong, and g++ even warns. Click the broken line.", "explain": "Inside <code>average</code>, <code>scores</code> has decayed to a <code>const int*</code>, so <code>sizeof(scores)</code> is 8 and <code>n</code> is 8 / 4 = 2. The function averages only <b>4 and 8</b>, which happens to be 6 too: a right answer by luck. Line 5's warning says so. Fix: pass the count, <code>average(const int scores[], int n)</code>, or better, take a <code>std::span&lt;const int&gt;</code> (Part 5)."}</script>
+
+  <section class="panel clean" aria-label="Panel 26: walking along the boxes with a pointer">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">If a pointer to box 0 is all you get, how do you reach box 2? <b>Pointer arithmetic</b>: <code>p + 2</code> is a pointer two <b>boxes</b> further along, not two bytes. The compiler multiplies by the size of an <code>int</code> for you.</p>
+    <span class="file-tab">ptr_math.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="ptr_math.cpp"></pre>
+      <pre class="term" data-run="ptr_math.cpp"></pre>
+    </div>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-wide" viewBox="0 0 660 190" role="img" aria-label="Five boxes holding 3, 9, 7, 1, 4 at indexes 0 to 4. Arrows from below: p points at box 0, p + 2 at box 2, last which is p + 4 at box 4. Above, a bracket from box 0 to box 4 labelled last minus p equals 4 boxes.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <g fill="#DDE8FF"><rect x="40" y="56" width="110" height="60" rx="4"/><rect x="160" y="56" width="110" height="60" rx="4"/><rect x="280" y="56" width="110" height="60" rx="4"/><rect x="400" y="56" width="110" height="60" rx="4"/><rect x="520" y="56" width="110" height="60" rx="4"/></g>
+        <path d="M95 160 V124 M335 160 V124 M575 160 V124" fill="none"/>
+        <path d="M85 134 L95 120 L105 134 M325 134 L335 120 L345 134 M565 134 L575 120 L585 134" fill="none"/>
+        <path d="M95 44 V30 H575 V44" fill="none" stroke-width="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111" text-anchor="middle"><text x="95" y="94">3</text><text x="215" y="94">9</text><text x="335" y="94">7</text><text x="455" y="94">1</text><text x="575" y="94">4</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="95" y="180">p</text><text x="335" y="180">p + 2</text><text x="575" y="180">last = p + 4</text><text x="335" y="22">last - p is 4 (boxes, not bytes)</text></g>
+    </svg></div>
+    <ol class="readlist" aria-label="Reading ptr_math.cpp">
+      <li><span><b>Line 6:</b> <code>int* p{boxes};</code> decays the array to the address of box 0.</span></li>
+      <li><span><b>Lines 8 and 9:</b> <code>*(p + 2)</code> and <code>p[2]</code> are <b>the same thing</b>. In fact <code>p[i]</code> is defined as <code>*(p + i)</code>, which is all array subscripting ever was.</span></li>
+      <li><span><b>Line 11:</b> subtracting two pointers into the same array gives the distance in boxes: 4.</span></li>
+      <li><span><b>Line 12:</b> <code>++p</code> moves the pointer one box along, so <code>*p</code> is now 9. This page never prints the raw addresses: they change from run to run, and only the distances matter.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tptr-m" id="ex-tptr"></div>
+  <script type="application/json" id="ex-tptr-m">{"program": "trace_ptr.cpp", "columns": ["offset", "*p", "total"], "given": [0], "prompt": "The classic C loop: a pointer starts at box 0 and steps along until it equals <code>end</code>, the address <b>one past</b> the last box. Each row prints <code>p - boxes</code> (how far along), the box's value, and the running total.", "explain": "The pointer visits offsets 0 to 4, reading 3, 9, 7, 1, 4 and adding up to 3, 12, 19, 20, 24. <code>end</code> is <code>boxes + 5</code>: you may <b>compute</b> and compare a one-past-the-end pointer (that's how the loop knows to stop), but never follow it with <code>*</code>. The standard library's <code>begin()</code> and <code>end()</code> work exactly this way."}</script>
+
+  <section class="panel sketch" aria-label="Panel 27: new and delete come in matching pairs">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Old code also builds rows of boxes on the heap by hand. Chapter 13 met <code>new</code> and <code>delete</code> for one object. For a row there's a second pair: <code>new int[n]</code> borrows <code>n</code> boxes (the size can be decided while running) and <code>delete[]</code> hands the whole row back. <b>The pairs must match</b> (rule ES.61).</p>
+    <table class="ref-table">
+      <thead><tr><th>Borrowed with</th><th>Return with</th><th>Modern replacement</th></tr></thead>
+      <tbody>
+        <tr><td><code>new int{42}</code></td><td><code>delete p;</code></td><td><code>std::make_unique&lt;int&gt;(42)</code></td></tr>
+        <tr><td><code>new int[n]</code></td><td><code>delete[] p;</code></td><td><code>std::vector&lt;int&gt;(n)</code>, or <code>std::make_unique&lt;int[]&gt;(n)</code></td></tr>
+        <tr><td><code>malloc(...)</code> (C)</td><td><code>free(p);</code></td><td>the same as above (rule R.10)</td></tr>
+      </tbody>
+    </table>
+    <span class="file-tab">new_delete_ok.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="new_delete_ok.cpp"></pre>
+      <pre class="term wrap" data-run="new_delete_ok.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Built with the goggles on: exit code 0, no complaints, because every <code>new</code> met its own kind of <code>delete</code>. Line 11 does the same job as lines 7 and 10 with nothing to remember. You're learning these pairs to <b>read</b> old code, not to write new code with them (rule R.11). Next: what happens when they don't match, or the row is too short.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 28: one letter too many">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <svg class="sfx tr" data-sfx="SPLAT!" data-seed="28"></svg>
+    <p class="caption">Four boxes borrowed, and a loop that posts five letters: <code>i &lt;= 4</code> should be <code>i &lt; 4</code>. Writing past the end is undefined behaviour, so this program is only ever run with the goggles on.</p>
+    <span class="file-tab">new_overflow.cpp</span>
+    <pre class="code" data-src="new_overflow.cpp"></pre>
+    <details><summary>The whole terminal: the build command and the complete report (with the shadow-byte map of memory)</summary><pre class="term wrap tall" data-run="new_overflow.cpp" data-exit></pre></details>
+    <ol class="readlist" aria-label="Reading the report like a detective">
+      <li><span><b>The accusation:</b> <code>ERROR: AddressSanitizer: heap-buffer-overflow</code>: a read or write past the end of a heap block.</span></li>
+      <li><span><b>The evidence:</b> <code>WRITE of size 4</code>: one <code>int</code> being written, the fifth letter.</span></li>
+      <li><span><b>The scene:</b> <code>#0 ... in main .../new_overflow.cpp:7</code>, the <code>boxes[i] = i * 10;</code> line.</span></li>
+      <li><span><b>The victim:</b> <code>located 0 bytes after 16-byte region</code>. 16 bytes is the four-box row, and the write landed immediately after it: box 4 of a row that ends at box 3.</span></li>
+      <li><span><b>Where the row came from:</b> <code>allocated by thread T0 here: ... operator new[] ... new_overflow.cpp:5</code>.</span></li>
+      <li><span><b>The proof it stopped in time:</b> line 9's <samp>30</samp> never printed. Exit code 1.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Without me, that fifth letter lands in whatever happens to live next door, and the program may carry on looking perfectly fine. A <code>std::vector</code> with <code>.at(i)</code> would have thrown a catchable exception instead, and a range-for can't run off the end at all.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 29: borrowed as a row, returned as one box">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="WRONG DESK!" data-seed="29"></svg>
+    <p class="caption">Borrowed with <code>new[]</code>, returned with plain <code>delete</code>. Even the compiler notices this one. Goggles on again:</p>
+    <span class="file-tab">mismatch.cpp</span>
+    <pre class="code" data-src="mismatch.cpp"></pre>
+    <pre class="term wrap tall" data-run="mismatch.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the warning and the report">
+      <li><span><b>First, g++ warns</b> while building: <code>called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]</code>, with a <code>note</code> pointing back to the <code>new []</code> on line 5. A warning, so it builds anyway.</span></li>
+      <li><span><b>Then the run:</b> <samp>4</samp> prints (line 6 is fine), and at line 7 AddressSanitizer stops it: <code>alloc-dealloc-mismatch (operator new [] vs operator delete)</code>. The name says it all: borrowed at the row desk, returned at the single-book desk.</span></li>
+      <li><span><b>The two scenes:</b> <code>mismatch.cpp:7</code> for the wrong <code>delete</code>, and under <code>allocated by thread T0 here:</code>, <code>mismatch.cpp:5</code> for the <code>new[]</code>.</span></li>
+      <li><span><b>The hint at the bottom</b> tells you how to switch this check off. Don't: fix the <code>delete</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-mouth="frown" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A row of books has to go back through the row desk, so the library can return every one. Hand it to the single-book desk and the rules say nothing about what happens next: undefined behaviour. <b>new with delete, new[] with delete[].</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-del-m" id="ex-del"></div>
+  <script type="application/json" id="ex-del-m">{"q": "Old code says <code>double* readings{new double[count]};</code>. You must give the memory back exactly once. Which is right?", "options": [
+    {"t": "<code>delete[] readings;</code>", "correct": true, "why": "Right: memory from <code>new[]</code> goes back through <code>delete[]</code>. (Better still, the next time you touch this code: <code>std::vector&lt;double&gt; readings(count);</code>, and nothing to give back by hand.)"},
+    {"t": "<code>delete readings;</code>", "why": "That's panel 29: <samp>alloc-dealloc-mismatch (operator new [] vs operator delete)</samp>. Undefined behaviour."},
+    {"t": "<code>for (int i{0}; i &lt; count; ++i) delete &amp;readings[i];</code>", "why": "Each element wasn't borrowed on its own, so deleting them one by one hands back things that were never lent. Undefined, and ASan reports a bad free."},
+    {"t": "Nothing: it goes back by itself at the end of the block", "why": "Only for owners with destructors, like <code>std::vector</code> or <code>std::unique_ptr&lt;double[]&gt;</code>. A raw pointer from <code>new[]</code> just leaks."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · HIDDEN ZEROS AND THE BRIDGE<small>C strings, the dangers in <code>&lt;cstring&gt;</code>, <code>argc</code> and <code>argv</code>, <code>std::span</code> and <code>.data()</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 30: a C string is letters plus a hidden zero">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">If an array passed to a function forgets its size, how does a C function know where some text ends? C's answer: put a special box at the end, holding the number <b>0</b> (written <code>'\0'</code>, the <b>null terminator</b>). A <b>C string</b> is a row of <code>char</code> boxes with that zero after the last letter. Every C function that reads text walks along until it meets the zero.</p>
+    <div class="picscroll" tabindex="0" role="group" aria-label="Picture; on small screens it scrolls sideways"><svg class="pic-wide" viewBox="0 0 660 170" role="img" aria-label="Five mailboxes holding W, r, e, n and a zero shown as backslash zero, at indexes 0 to 4. The last box is drawn with a dashed border and labelled: the hidden zero, end of text. Underneath: sizeof counts 5 boxes, strlen counts 4 letters.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <g fill="#FFF6CC"><rect x="40" y="30" width="100" height="66" rx="4"/><rect x="150" y="30" width="100" height="66" rx="4"/><rect x="260" y="30" width="100" height="66" rx="4"/><rect x="370" y="30" width="100" height="66" rx="4"/></g>
+        <rect x="480" y="30" width="100" height="66" rx="4" fill="#FFFFFF" stroke-dasharray="9 6"/>
+        <path d="M40 140 H580 M40 132 V148 M580 132 V148" fill="none" stroke-width="3"/>
+        <path d="M40 162 H470 M40 154 V170 M470 154 V170" fill="none" stroke-width="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="28" fill="#111" text-anchor="middle"><text x="90" y="74">W</text><text x="200" y="74">r</text><text x="310" y="74">e</text><text x="420" y="74">n</text><text x="530" y="74">\0</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle"><text x="90" y="118">[0]</text><text x="200" y="118">[1]</text><text x="310" y="118">[2]</text><text x="420" y="118">[3]</text><text x="530" y="118">[4]</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111"><text x="596" y="146">sizeof: 5</text><text x="486" y="168">strlen: 4</text><text x="590" y="58">hidden</text><text x="590" y="78">zero</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Every text in double quotes, like <code>"Wren"</code>, is secretly one of these, with the zero added for you. <code>std::string</code> keeps its length <b>and</b> keeps a zero after the letters, so it can hand old C functions what they expect (panel 35). <b>The zero is the end of the road.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: counting boxes versus counting letters">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption"><code>char name[]{"Wren"};</code> lets the compiler count the boxes for you. <code>std::strlen</code>, from <code>&lt;cstring&gt;</code>, walks the letters until it reaches the zero.</p>
+    <span class="file-tab">cstr.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="cstr.cpp"></pre>
+      <pre class="term" data-run="cstr.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>sizeof: 5</samp> counts boxes, zero included. <samp>strlen: 4</samp> counts letters. Line 10 prints box 4 as a number to prove the zero is really there. <code>std::cout &lt;&lt; name</code> uses the same rule: print letters until the zero.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-cstr-m" id="ex-cstr"></div>
+  <script type="application/json" id="ex-cstr-m">{"program": "predict_cstr.cpp", "prompt": "Ten boxes, four letters. Then line 8 writes a zero into box 2. Predict both lines.", "hint": "<code>sizeof</code> counts the boxes you asked for. <code>strlen</code> and <code>std::cout</code> stop at the <b>first</b> zero they meet. The unused boxes after the letters are filled with zeros too.", "explain": "<code>char word[10]</code> has 10 boxes whatever you put in them, so <samp>10</samp>; \"kiwi\" is 4 letters: <samp>10 4</samp>. After <code>word[2] = '\\0'</code> the first zero is in box 2, so printing stops after \"ki\" and <code>strlen</code> says 2: <samp>ki 2</samp>. The zero replaced the \"w\". The \"i\" in box 3 is still there; nothing reads past the first zero to find it."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 32: strcpy doesn't know how big the row is">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="OVERFLOW!" data-seed="32"></svg>
+    <p class="caption">The danger in <code>&lt;cstring&gt;</code>. <code>std::strcpy(to, from)</code> copies letters until it has copied the zero, and it has <b>no idea</b> how many boxes <code>to</code> has. Here: 7 letters plus a zero into a row of 4.</p>
+    <span class="file-tab">strcpy_overflow.cpp</span>
+    <pre class="code" data-src="strcpy_overflow.cpp"></pre>
+    <pre class="term wrap tall" data-run="strcpy_overflow.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the warning and the report">
+      <li><span><b>g++ saw it coming:</b> <code>writing 8 bytes into a region of size 4 overflows the destination [-Wstringop-overflow=]</code>. (It talks about <code>__builtin_memcpy</code> because it turned the <code>strcpy</code> of a known text into a plain copy of 8 bytes.)</span></li>
+      <li><span><b>The run:</b> <code>stack-buffer-overflow</code>, a <code>WRITE of size 8</code>, from <code>main</code> at <code>strcpy_overflow.cpp:7</code>.</span></li>
+      <li><span><b>The best line:</b> <code>[32, 36) 'tag' (line 6) &lt;== Memory access at offset 36 overflows this variable</code>. The 4-byte <code>tag</code>, and a write that ran past its end.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This exact mistake, text copied into a row that's too small, has caused real security holes for decades. <code>strcpy</code>, <code>strcat</code> and <code>sprintf</code> all trust you to have counted. <code>std::string name{"Biscuit"};</code> grows to fit and can't overflow. <b>Let the string count the boxes.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 33: what the shell hands to main">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Chapter 16's dice game used this second form of <code>main</code> once; here is how it works. Besides <code>int main()</code>, there is a form that receives the words typed after the program's name in the terminal, its <b>command-line arguments</b>: <code>int main(int argc, char* argv[])</code>. <code>argc</code> is the <b>count</b>; <code>argv</code> is a C array of C strings (the <b>values</b>). Look at the command in the terminal below.</p>
+    <span class="file-tab">args.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="args.cpp"></pre>
+      <pre class="term" data-run="args.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the arguments">
+      <li><span><b><code>argv[0]</code> is the program itself</b>, exactly as you typed it: <samp>./args</samp>. So <code>argc</code> is always at least 1, and three words typed after the name make <samp>argc = 4</samp>.</span></li>
+      <li><span><b>Every argument is text.</b> <samp>42</samp> arrives as the C string <code>"42"</code>. To use it as a number, convert it: <code>std::stoi(argv[2])</code> (Chapter 5).</span></li>
+      <li><span><b>The shell splits on spaces.</b> To pass two words as one argument, quote them: <code>./args "two words"</code>.</span></li>
+      <li><span><b>Count first.</b> <code>argv[argc]</code> is a null pointer, and anything past it is off the end. Always check <code>argc</code> before reading <code>argv[i]</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-args-m" id="ex-args"></div>
+  <script type="application/json" id="ex-args-m">{"program": "predict_args.cpp", "prompt": "It's run as <code>./predict_args 3 kiwi lime</code>. Predict the screen, spaces included (each word is followed by one space).", "hint": "Count <code>argv[0]</code> too. Which <code>argv</code> becomes <code>count</code>, and which word is repeated? Is <code>lime</code> ever used?", "explain": "<code>argv</code> is {\"./predict_args\", \"3\", \"kiwi\", \"lime\"}, so <code>argc</code> is 4 and the usage message is skipped. <code>std::stoi(argv[1])</code> turns \"3\" into 3, and <code>argv[2]</code> is printed three times with a space after each: <samp>kiwi kiwi kiwi </samp>. Then <samp>argc was 4</samp>. <code>lime</code> is counted but never printed."}</script>
+
+  <div data-ex="parsons" data-model="ex-pargs-m" id="ex-pargs"></div>
+  <script type="application/json" id="ex-pargs-m">{"program": "parsons_args.cpp", "seed": 4, "pin": [1, 2, 4, 10], "prompt": "Run as <code>./parsons_args 4 5 6</code>, it should add up its arguments. Put the body of <code>main</code> in order.", "explain": "The total starts at 0 before the loop. The loop starts at <code>i{1}</code>, skipping <code>argv[0]</code> (the program's name, which isn't a number), and converts each argument with <code>std::stoi</code>. The report comes after the loop: <code>argc - 1</code> is 3 numbers, total 15."}</script>
+
+  <section class="panel clean" aria-label="Panel 34: std::span, the bridge">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The fix for "the slip of paper doesn't say how many": tie the count to the address. <code>std::span&lt;const int&gt;</code> (C++20, header <code>&lt;span&gt;</code>) is exactly that: a pointer to the first box <b>and</b> the number of boxes, travelling together. It owns nothing; it's a view, like a reference to a row. And one function taking a span accepts a C array, a vector or a <code>std::array</code>.</p>
+    <span class="file-tab">span_bridge.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="span_bridge.cpp"></pre>
+      <pre class="term" data-run="span_bridge.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading span_bridge.cpp">
+      <li><span><b>Line 7:</b> <code>const int</code> inside the span means "look, don't touch", like <code>const int&amp;</code>.</span></li>
+      <li><span><b>Line 12:</b> <code>xs.size()</code> knows the count, even for the C array on line 19. No decay, no separate count to get wrong. A range-for works too (line 9).</span></li>
+      <li><span><b>Line 22:</b> <code>.first(2)</code> makes a smaller view of the first two boxes, without copying anything: (3 + 9) / 2 = 6.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This is rule I.13 in action: <b>don't pass an array as a single pointer</b>. A span is the slip of paper with the count written on it. Like any view, it must not outlive the row it looks at.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fspan-m" id="ex-fspan"></div>
+  <script type="application/json" id="ex-fspan-m">{"program": "fill_span.cpp", "prompt": "Make <code>largest</code> take a read-only view of any row of <code>int</code>s, so the same function works for the C array and the vector. Then call it with the C array.", "blanks": [{"line": 6, "text": "std::span<const int>", "accept": ["span<const int>", "std::span<const int, std::dynamic_extent>"]}, {"line": 19, "text": "temps"}], "explain": "<code>std::span&lt;const int&gt; xs</code> carries the address and the count together, so the C array <code>temps</code> passes straight in with its size intact, and so does the vector, both on line 19. With <code>const int*</code> instead, <code>largest</code> couldn't know where either row ends."}</script>
+
+  <section class="panel clean" aria-label="Panel 35: handing modern containers to old C functions">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">The bridge in the other direction. Many libraries you'll use are written in C (or in old C++) and want "a pointer and a count", or a C string. Modern containers can hand that over without copying: <code>v.data()</code> is the address of a vector's first element, and <code>s.c_str()</code> gives a <code>std::string</code>'s letters with the zero on the end.</p>
+    <span class="file-tab">c_api.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="c_api.cpp"></pre>
+      <pre class="term" data-run="c_api.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 20 passes <code>v.data()</code> <b>and</b> <code>v.size()</code>, because the C function can't ask. Line 23 is C's own printing function, <code>std::printf</code>, whose <code>%s</code> means "a C string goes here". These pointers are only views: the vector and the string still own the boxes, and the pointers go stale if the container grows or is destroyed. <b>Own in C++, lend to C.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: modernising old code">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">When you meet old code, here's what each old pattern becomes. Change one thing at a time, and run the tests (and the goggles) after each change.</p>
+    <table class="ref-table">
+      <thead><tr><th>You see</th><th>It means</th><th>Modern C++</th></tr></thead>
+      <tbody>
+        <tr><td><code>int a[5];</code></td><td>fixed-size row</td><td><code>std::array&lt;int, 5&gt;</code></td></tr>
+        <tr><td><code>int* p = new int[n];</code></td><td>row sized while running</td><td><code>std::vector&lt;int&gt;(n)</code></td></tr>
+        <tr><td><code>f(int* a, int n)</code></td><td>"here's a row and its length"</td><td><code>f(std::span&lt;int&gt; a)</code></td></tr>
+        <tr><td><code>char buf[64]; strcpy(buf, s);</code></td><td>text in a fixed row</td><td><code>std::string</code></td></tr>
+        <tr><td><code>const char* s</code> parameter</td><td>read some text</td><td><code>std::string_view</code></td></tr>
+        <tr><td><code>Pet* p = new Pet;</code> ... <code>delete p;</code></td><td>one owner</td><td><code>std::unique_ptr&lt;Pet&gt;</code></td></tr>
+        <tr><td><code>sizeof(a) / sizeof(a[0])</code></td><td>count the boxes</td><td><code>std::size(a)</code>, or <code>.size()</code></td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Notice <code>std::size(a)</code> in the last row: unlike the <code>sizeof</code> trick, it <b>refuses to compile</b> when <code>a</code> has decayed to a pointer, so panel 25's bug becomes a compile error instead of a wrong answer.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-modern-m" id="ex-modern"></div>
+  <script type="application/json" id="ex-modern-m">{"q": "Old code: <code>void print_all(const char* names[], int count)</code>, called as <code>print_all(names, 3)</code> with <code>const char* names[3]{\"Ash\", \"Bo\", \"Cy\"};</code>. You may change both the function and the caller. Which version is the modern one?", "options": [
+    {"t": "<code>void print_all(std::span&lt;const std::string&gt; names)</code>, called with a <code>std::vector&lt;std::string&gt;</code>", "correct": true, "why": "Right. With <code>std::vector&lt;std::string&gt; names{\"Ash\", \"Bo\", \"Cy\"};</code> and <code>print_all(names);</code>, the names are owned by a vector of <code>std::string</code>, and the function gets a read-only view that knows its own size. Nothing to count by hand, no hidden zeros, and it would also accept a <code>std::array</code>."},
+    {"t": "<code>void print_all(const char** names, int count)</code>, still called as <code>print_all(names, 3)</code>", "why": "That's the same function with the decay written out: still a bare pointer plus a separate count that can disagree with it."},
+    {"t": "<code>void print_all(const std::vector&lt;std::string&gt; names)</code>, called with that vector", "why": "Close, but it copies the whole vector on every call (a <code>const</code> copy is still a copy). <code>const std::vector&lt;std::string&gt;&amp;</code> would be fine; a <code>span</code> is more flexible still."},
+    {"t": "<code>void print_all(std::shared_ptr&lt;std::string[]&gt; names, int count)</code>, plus a count", "why": "A function that only prints doesn't need to share ownership (panel 13), and it still needs a separate count."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Cards, sheets, neighbours and old mailboxes, all mixed. For every pointer ask: does it own? How many names are on the sheet right now? Where does the row end, and who knows it?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. A neighbour, a carer in a block, a card that turns into a sheet, and a reassignment. Each pet prints <samp>bye NAME</samp> when it's destroyed. Predict the whole screen.", "hint": "Line 16 runs while <code>b</code> exists. Line 19 turns Uma's card into a <code>shared_ptr</code>: what happens to <code>u</code>? Line 21 makes <code>a</code> join Uma's sheet, which means leaving Ash's. Who else is on Ash's sheet at that moment?", "explain": "Inside the block, <code>a</code> and <code>b</code> care for Ash: <samp>2</samp>. Line 19 moves Uma's card into <code>s</code>; a moved-from card is empty: <samp>1 u empty</samp>. Line 21: <code>a</code> crosses itself off Ash's sheet, which is now empty, so <samp>bye Ash</samp> prints right there, and then <code>a</code> signs Uma's. The neighbour finds Ash gone: <samp>Ash gone</samp>. Uma has two carers: <samp>Uma 2</samp>. At the end both carers leave and Uma goes once: <samp>bye Uma</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 14, "prompt": "Boss 2. Built with the goggles on, it prints <samp>9</samp> and then AddressSanitizer stops it with <samp>alloc-dealloc-mismatch (operator new [] vs operator delete)</samp>. Nobody wrote <code>delete</code> anywhere. Click the line that causes it.", "explain": "<code>make_row</code> borrows with <code>new int[n]</code>, a row. Line 14 wraps it in <code>std::unique_ptr&lt;int&gt;</code>, a card for <b>one</b> <code>int</code>, whose destructor calls plain <code>delete</code>. The report's frames show it: <code>default_delete&lt;int&gt;</code>, then <code>~unique_ptr()</code>, then main at line 17 (the closing brace), and the row was born at line 6. Fix: <code>std::unique_ptr&lt;int[]&gt; row{make_row(4)};</code>, whose destructor calls <code>delete[]</code>, or have <code>make_row</code> return a <code>std::vector&lt;int&gt;</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.cpp", "seed": 9, "pin": [1, 2, 3, 5, 13], "prompt": "Boss 3. A neighbour visits while the string still lives at home, then checks again after it has moved out. Put the body of <code>main</code> in order.", "explain": "The <code>shared_ptr</code> must exist before a <code>weak_ptr</code> can be made from it. The visit (lock, check, use, brace) has to happen <b>before</b> <code>home.reset()</code>, or <code>lock()</code> would hand back an empty pointer and nothing would print. Only after the reset does <code>expired()</code> say <samp>moved out</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.cpp", "columns": ["offset", "c", "vowels"], "given": [0], "prompt": "Boss 4. A pointer walks the C string \"banjo\" until it meets the hidden zero, counting vowels. Each row prints how far along the pointer is, the letter there, and the vowel count so far.", "explain": "b (0 vowels), a (1), n (1), j (1), o (2). The loop condition <code>*p != '\\0'</code> stops at the hidden zero after the o, so there are exactly five rows and the zero is never printed. That's how every C function that reads text finds the end: <code>strlen</code> is this loop without the vowels."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.cpp", "prompt": "Boss 5. Give each function the parameter that says what it does: <code>inspect</code> only reads the robot, <code>upgrade</code> puts a new robot in the caller's bay, <code>retire</code> takes the robot for good. Then hand the bay to <code>retire</code>.", "blanks": [{"line": 11, "text": "const Robot&", "accept": ["const Robot &", "Robot const&"]}, {"line": 13, "text": "std::unique_ptr<Robot>&", "accept": ["std::unique_ptr<Robot> &"]}, {"line": 17, "text": "std::unique_ptr<Robot>"}, {"line": 23, "text": "std::move(bay)"}], "explain": "Read-only use: <code>const Robot&amp;</code> (called with <code>*bay</code>). Reseat the caller's card: <code>std::unique_ptr&lt;Robot&gt;&amp;</code>, and the old Bolt is scrapped as Bolt II arrives. Take for good: <code>std::unique_ptr&lt;Robot&gt;</code> by value, handed over with <code>std::move(bay)</code>; Bolt II is scrapped at the end of <code>retire</code>, before main reports <samp>bay is empty</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A photo editor. (1) A <code>Document</code> owns its <code>Layer</code>s, and each layer must stay at one address. (2) Several documents may use the same <code>Image</code>, which should be freed when no document uses it. (3) A thumbnail cache remembers images but must not keep them alive. (4) A C library function <code>blur(unsigned char* px, std::size_t n)</code> must work on pixels kept in a <code>std::vector&lt;unsigned char&gt; pixels</code>. Which design fits?", "options": [
+    {"t": "(1) <code>std::vector&lt;std::unique_ptr&lt;Layer&gt;&gt;</code> (2) <code>std::shared_ptr&lt;Image&gt;</code> (3) <code>std::weak_ptr&lt;Image&gt;</code> (4) <code>blur(pixels.data(), pixels.size())</code>", "correct": true, "why": "Right. Cards in a vector keep each layer at one address with one owner. Real shared lifetime gets a sheet. A cache that must not keep things alive is a neighbour, and checks with <code>lock()</code>. The C function gets the address and the count of the vector's own pixels: no copy, no raw <code>new</code>."},
+    {"t": "(1) <code>std::vector&lt;std::shared_ptr&lt;Layer&gt;&gt;</code> (2) <code>std::shared_ptr&lt;Image&gt;</code> (3) <code>std::shared_ptr&lt;Image&gt;</code> (4) <code>blur(pixels.data(), pixels.size())</code>", "why": "(1) shares by habit (one owner is enough), and (3) is the real bug: a cache holding <code>shared_ptr</code>s keeps every image alive for ever, so (2)'s \"freed when unused\" never happens."},
+    {"t": "(1) <code>std::vector&lt;Layer&gt;</code> (2) <code>std::shared_ptr&lt;Image&gt;</code> (3) <code>Image*</code> (4) <code>blur(&amp;pixels, pixels.size())</code>", "why": "A plain vector of layers moves them when it grows, breaking \"one address\". A plain <code>Image*</code> in the cache can't tell when the image is gone (it dangles). And <code>&amp;pixels</code> is the address of the vector object, not of its pixels: that's what <code>.data()</code> is for."},
+    {"t": "(1) <code>Layer* layers = new Layer[n]</code> (2) <code>Image*</code> with a manual count (3) <code>std::weak_ptr&lt;Image&gt;</code> (4) <code>blur(pixels.data(), sizeof(pixels))</code>", "why": "Hand-made rows and hand-made counts: everything this chapter's sanitizer reports were about. And <code>sizeof(pixels)</code> is the size of the vector object itself, not the number of pixels."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 23</p>
+    <ul class="recap">
+      <li><b>THE PARAMETER TYPE IS THE PROMISE</b><code>T&amp;</code> or <code>const T&amp;</code> to use (almost always), <code>unique_ptr&lt;T&gt;&amp;</code> to reseat, <code>unique_ptr&lt;T&gt;</code> by value with <code>std::move</code> to take for good. Containers of cards: <code>vector&lt;unique_ptr&lt;T&gt;&gt;</code>, walked with <code>const auto&amp;</code>.</li>
+      <li><b>LAST ONE OUT TAKES THE PET HOME</b><code>std::shared_ptr</code> (made with <code>make_shared</code>) shares ownership through a reference count. Copies sign the sheet, moves pass the pen, resets and destructors cross out, and the count reaching 0 deletes the object. It costs more than a card: use it only for real sharing.</li>
+      <li><b>ASK FOR THE PET, NOT THE PAPERWORK</b>Pass a shared object as <code>T&amp;</code> unless the function keeps a copy. <code>use_count()</code> is for learning, not for steering programs.</li>
+      <li><b>CHECK BEFORE YOU VISIT</b><code>std::weak_ptr</code> remembers without owning. <code>lock()</code> gives a temporary carer or an empty pointer; <code>expired()</code> asks "gone yet?". Owning loops never go home (<samp>detected memory leaks</samp>, two <samp>Indirect leak</samp> stories): <em>own down, look up</em>.</li>
+      <li><b>AN ARRAY PASSED IS JUST A STARTING ADDRESS</b>C arrays have a fixed size, can't be assigned (<samp>invalid array assignment</samp>) and decay to a pointer in a function (<samp>-Wsizeof-array-argument</samp>). <code>p + i</code> counts boxes; <code>p[i]</code> is <code>*(p + i)</code>. <code>new[]</code> goes with <code>delete[]</code> (<samp>alloc-dealloc-mismatch</samp>), and one box too many is <samp>heap-buffer-overflow</samp>.</li>
+      <li><b>THE ZERO IS THE END OF THE ROAD</b>C strings end at a hidden <code>'\0'</code>; <code>strcpy</code> can't count (<samp>stack-buffer-overflow</samp>). <code>argv[0]</code> is the program. <code>std::span</code> carries the count with the address; <code>.data()</code> and <code>.c_str()</code> lend modern containers to C. <em>Own in C++, lend to C.</em></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>One owner if you can, a sheet if you must, a neighbour for looking back, and a count that always travels with its row. With that, old code stops being scary: it's the same machine, with fewer labels on the boxes.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, Remotes and Packed Lunches">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 24: Remotes and Packed Lunches</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: a universal remote with one big play button, pointing at a TV, a radio and a lamp; next to it, a lunchbox with a sandwich inside and a note on the lid.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <rect x="24" y="30" width="70" height="140" rx="16" fill="#DDE8FF"/>
+          <circle cx="59" cy="80" r="20" fill="#FFD60A"/><path d="M53 70 L69 80 L53 90 Z" fill="#111"/>
+          <rect x="40" y="116" width="38" height="12" rx="4" fill="#FFFFFF"/><rect x="40" y="138" width="38" height="12" rx="4" fill="#FFFFFF"/>
+          <path d="M100 60 L142 40 M100 80 L142 90 M100 100 L142 140" fill="none" stroke-dasharray="6 6" stroke-width="3"/>
+          <rect x="146" y="20" width="84" height="40" rx="4" fill="#FFFFFF"/><rect x="146" y="72" width="84" height="38" rx="4" fill="#FFF6CC"/><rect x="146" y="122" width="84" height="38" rx="4" fill="#C9F2D9"/>
+          <rect x="270" y="80" width="170" height="90" rx="10" fill="#FFD60A"/>
+          <path d="M270 80 L300 50 H410 L440 80" fill="#FFF6CC"/>
+          <path d="M296 130 H414 L404 154 H306 Z" fill="#E8C49A"/>
+          <rect x="300" y="50" width="110" height="28" rx="3" fill="#FFFFFF" stroke-width="3"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle"><text x="188" y="47">TV</text><text x="188" y="98">radio</text><text x="188" y="148">lamp</text><text x="355" y="71">[=] [&amp;]</text></g>
+        <text x="355" y="120" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="26" letter-spacing="2" fill="#111">LUNCH</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>One remote, one <b>play</b> button, and each device decides what "play" means. Next time: <b>inheritance</b> and <b>virtual functions</b>, and why a vector of <code>std::unique_ptr&lt;Base&gt;</code> is how you keep a whole drawer of different gadgets. Then <b>lambdas</b> in depth: a packed lunch can hold a copy of the sandwich, or a note saying "it's in my fridge", which is useless once the fridge is gone.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch22.html">← Ch 22 · Key Cards, Moving Day</a><a class="next" href="ch24.html">Ch 24 · Remotes and Packed Lunches →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: control blocks, weak counts, array cookies and decay</summary>
+    <div class="page-body">
+      <h3>What is really on the sign-in sheet</h3>
+      <p>A <code>shared_ptr</code> holds two pointers: one to the object and one to its <b>control block</b>. The control block holds <b>two</b> counts: the <b>strong count</b> (how many <code>shared_ptr</code>s, what <code>use_count()</code> reports) and the <b>weak count</b> (roughly, how many <code>weak_ptr</code>s are watching). When the strong count reaches zero the object is destroyed. The control block itself stays until the weak count also reaches zero, because every neighbour still needs somewhere to read "gone". That is how <code>expired()</code> can answer safely after the pet has left.</p>
+      <h3>The <code>make_shared</code> trade-off</h3>
+      <p>Because <code>make_shared</code> puts the object and the control block in one allocation, the object's <b>memory</b> (not the object: its destructor has run) can only be handed back when the control block goes, which is when the last <code>weak_ptr</code> goes. For a huge object watched by long-lived <code>weak_ptr</code>s, the two-block form <code>std::shared_ptr&lt;T&gt;{new T{...}}</code> returns the big block earlier. That is the main reason not to use <code>make_shared</code>, and it's rare.</p>
+      <h3>Counting safely</h3>
+      <p>The counts are updated with <b>atomic</b> operations, so two threads may copy and destroy <code>shared_ptr</code>s to the same object at once without corrupting the count (Chapter 29 explains threads). That safety covers the counts only, not the object: two threads changing the pet itself still need a lock. Atomic updates are slower than plain ones, which is part of why a <code>shared_ptr</code> copy costs more than a <code>unique_ptr</code> move.</p>
+      <h3><code>lock()</code> can't be split</h3>
+      <p>"Check <code>expired()</code>, then make a <code>shared_ptr</code>" would have a gap between the two steps in which another thread could drop the last owner. <code>lock()</code> does both as one atomic step, which is why the comic always writes <code>if (auto p = w.lock())</code> and never "if not expired, then...".</p>
+      <h3>Two more tools you'll see in real code</h3>
+      <ul>
+        <li><b><code>std::enable_shared_from_this</code></b> lets an object that is already owned by a <code>shared_ptr</code> hand out another <code>shared_ptr</code> to itself (<code>shared_from_this()</code>) that signs the <b>same</b> sheet. Writing <code>std::shared_ptr&lt;T&gt;{this}</code> instead would start a second sheet: two deletes.</li>
+        <li><b>The aliasing constructor</b> makes a <code>shared_ptr</code> that points at a <b>member</b> of an object but signs the whole object's sheet, so the member can't outlive its owner.</li>
+      </ul>
+      <h3>How <code>delete[]</code> knows how many</h3>
+      <p><code>delete[] p</code> isn't told the count, yet it must run a destructor for every element. For element types with destructors, compilers commonly store the count in a few hidden bytes just before the row (the AddressSanitizer legend in panel 28's full report even has an entry for it: <samp>Array cookie</samp>). Plain <code>delete</code> knows nothing of those bytes, which is one reason a mismatch is undefined rather than merely wasteful.</p>
+      <h3>When an array does not decay</h3>
+      <p>Decay happens almost everywhere an array is used as a value, with a few exceptions: <code>sizeof(arr)</code> and <code>&amp;arr</code> see the whole array; a <b>reference</b> to an array keeps its size in the type (<code>void f(int (&amp;a)[5])</code>, which only accepts rows of exactly 5); and an array that is a <b>member</b> of a struct is copied when the struct is copied. <code>std::array</code> is that last trick, packaged.</p>
+      <h3>Two compilers, two wordings</h3>
+      <p>clang++ 18 says panel 24's error differently: <samp>array type 'int[3]' is not assignable</samp>.</p>
+      <pre class="term wrap" data-run="array_assign.cpp" data-alt data-exit></pre>
+      <p>For the exercise in Part 4, clang++ gives <b>two</b> warnings: the same <code>-Wsizeof-array-argument</code>, plus <code>-Wsizeof-pointer-div</code>, which spots the <code>sizeof(x) / sizeof(x[0])</code> pattern on a pointer. The program's output, <samp>average: 6</samp>, is the same.</p>
+      <pre class="term wrap" data-run="spot_sizeof.cpp" data-alt data-exit></pre>
+      <p>And its version of panel 6's loop error, which names the deleted constructor and then shows which <code>begin()</code> the loop used:</p>
+      <pre class="term wrap tall" data-run="kennel_copy.cpp" data-alt data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Trees.</b> Parsers, scene graphs and file-system models often store children as <code>std::vector&lt;std::unique_ptr&lt;Node&gt;&gt;</code>, with a plain <code>Node* parent</code> pointing back up. Deleting the root deletes the whole tree; the parent pointer never owns, so there's no loop.</li>
+        <li><b>Shared assets.</b> Games and editors share textures, fonts and sounds between many users with <code>shared_ptr</code>, and keep a cache of <code>weak_ptr</code>s so an asset nobody uses can be freed and reloaded later.</li>
+        <li><b>Observers and callbacks.</b> An event source that holds <code>weak_ptr</code>s to its listeners can skip listeners that have gone away, instead of calling into a destroyed object.</li>
+        <li><b>Asynchronous work.</b> A task scheduled to run later often captures a <code>shared_ptr</code> to the object it works on, so the object can't vanish before the task runs. Chapter 24 introduces lambdas and what their captures can hold.</li>
+        <li><b>C libraries everywhere.</b> Operating-system calls, compression, image and database libraries are often C. Real C++ code keeps the data in a <code>std::vector</code> or <code>std::string</code> and lends <code>.data()</code>, <code>.size()</code> and <code>.c_str()</code> at the boundary, and wraps C handles in <code>unique_ptr</code> with a custom deleter (Chapter 22).</li>
+        <li><b><code>main(argc, argv)</code></b> is how every command-line tool reads its options. Real tools hand <code>argv</code> to an argument-parsing library rather than walking it by hand.</li>
+        <li><b>Static analysis.</b> Tools such as clang-tidy flag C arrays, pointer arithmetic, raw <code>new</code>/<code>delete</code> and smart-pointer parameters that should be references, using the same Core Guidelines rule numbers as this chapter.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"shared_ptr is the safe one, so use it everywhere."</b> It's the costly one, and it hides who owns what. It also leaks in loops, which <code>unique_ptr</code> trees can't (panel 12, panel 17).</li>
+        <li><b>"A weak_ptr keeps the object alive a little."</b> Not at all. Only <code>lock()</code>'s temporary <code>shared_ptr</code> does, for as long as that variable lives (panel 20).</li>
+        <li><b>"Moving a shared_ptr changes the count."</b> A move passes the place on the sheet; only copies add names (panel 10).</li>
+        <li><b>"use_count() == 1 means nobody else can touch it."</b> Not in a program with threads, and not if a <code>weak_ptr</code> can <code>lock()</code> at any moment (panel 14).</li>
+        <li><b>"Smart pointers mean no leaks."</b> <code>shared_ptr</code> loops leak; LeakSanitizer finds them (panel 17).</li>
+        <li><b>"An array parameter is an array."</b> It's a pointer; <code>sizeof</code> says 8 (panel 25).</li>
+        <li><b>"<code>p + 1</code> is the next byte."</b> It's the next <b>element</b>. The compiler scales by the element's size (panel 26).</li>
+        <li><b>"<code>delete</code> and <code>delete[]</code> are interchangeable for ints."</b> The rules say undefined, ASan says <samp>alloc-dealloc-mismatch</samp>, and g++ warns (panel 29).</li>
+        <li><b>"<code>sizeof</code> of a C string is its length."</b> It counts boxes, including the zero and any unused boxes; <code>strlen</code> counts letters (panel 31).</li>
+        <li><b>"<code>argv[1]</code> is the first word, so <code>argc</code> is the number of words."</b> <code>argv[0]</code> is the program; <code>argc</code> counts it too (panel 33).</li>
+        <li><b>"A span owns its numbers."</b> It's a view: the row must outlive it (panel 34).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Reading old code safely: a checklist</summary>
+    <div class="page-body">
+      <p>Old C and C++ code isn't wrong because it's old. It's just written without the labels that modern types put on every box. When you read it, add the labels in your head:</p>
+      <ol>
+        <li><b>For every pointer, find the owner.</b> Who calls <code>delete</code> (or <code>free</code>)? Is it called on every path, including early returns and exceptions? If you can't tell, that's the first thing to fix.</li>
+        <li><b>For every array parameter, find the count.</b> Is there a separate length? A hidden zero? A comment promising a size? Check every caller agrees.</li>
+        <li><b>Check each <code>new[]</code> meets a <code>delete[]</code></b>, and each <code>malloc</code> a <code>free</code>.</li>
+        <li><b>Look hard at loops with <code>&lt;=</code></b> over arrays, and at <code>strcpy</code>, <code>strcat</code>, <code>sprintf</code> and <code>gets</code>.</li>
+        <li><b>Build with warnings on</b> (<code>-Wall -Wextra</code>) and <b>run the tests under the goggles</b> (<code>-fsanitize=address,undefined</code>) before changing anything, so you know what was already broken.</li>
+        <li><b>Modernise in small steps</b> (panel 36), re-running the tests after each one.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build and run</h3>
+      <p>Make a folder <code>cpp-ch23</code>, save <code>first_shared.cpp</code>, and build it as the terminals show: <code>g++ -std=c++23 -Wall -Wextra -g first_shared.cpp -o first_shared</code>, then <code>./first_shared</code>. On Windows with MSVC, open a "Developer PowerShell" and run <code>cl /std:c++latest /W4 /EHsc first_shared.cpp</code>, then <code>.\first_shared.exe</code>. <code>std::span</code> needs C++20 or later (<code>-std=c++20</code>, or <code>/std:c++20</code> in MSVC). On macOS, <code>clang++ -std=c++20 -Wall -Wextra -g</code> works the same way (Apple's compiler is installed with <code>xcode-select --install</code>).</p>
+      <h3>2. Command-line arguments</h3>
+      <p>Run <code>./args red 42 --loud</code>, then <code>./args "two words"</code> and <code>./args</code> with nothing. In Windows PowerShell: <code>.\args.exe red 42 --loud</code>. Note that <code>argv[0]</code> is whatever you typed, so on Windows it may be <code>.\args.exe</code> or a full path.</p>
+      <h3>3. The goggles for this chapter</h3>
+      <ul>
+        <li><b>Linux:</b> add <code>-fsanitize=address,undefined -fno-sanitize-recover=all</code>. LeakSanitizer is on by default and reports <code>cycle.cpp</code>'s loop; <code>alloc_dealloc_mismatch</code> is also on by default here.</li>
+        <li><b>macOS:</b> Apple clang supports <code>-fsanitize=address,undefined</code>, but its leak checking isn't on by default; <code>leaks --atExit -- ./cycle</code> reports the loop instead. Apple's ASan also turns off the new[]/delete mismatch check by default; try <code>ASAN_OPTIONS=alloc_dealloc_mismatch=1 ./mismatch</code>.</li>
+        <li><b>Windows (MSVC):</b> <code>cl /std:c++20 /EHsc /Zi /fsanitize=address new_overflow.cpp</code> catches the heap overflow and the stack overflow from <code>strcpy</code>. It has no LeakSanitizer; Visual Studio's memory tools find the loop.</li>
+      </ul>
+      <p>The macOS and Windows notes above were not run for this book; only the Linux runs are real captures.</p>
+      <h3>4. Try these on purpose</h3>
+      <ol>
+        <li>In <code>first_shared.cpp</code>, add <code>auto extra{mum};</code> just before <code>mum.reset();</code>. Where does <samp>[goodbye Biscuit]</samp> move to, and why?</li>
+        <li>In <code>cycle.cpp</code>, add <code>a-&gt;buddy.reset();</code> before the closing brace of <code>main</code>. Does the leak go away? (Breaking a loop by hand works, if you remember.)</li>
+        <li>In <code>cycle.cpp</code>, give <code>Pet</code> a second member, <code>std::weak_ptr&lt;Pet&gt; watcher;</code>, and change line 17 from <code>b-&gt;buddy = a;</code> to <code>b-&gt;watcher = a;</code>. Does the leak go away? Why is one weak link enough?</li>
+        <li>In <code>decay.cpp</code>, change the parameter to <code>int (&amp;a)[5]</code>. What does <code>sizeof(a)</code> print now? Try calling it with a 4-box array.</li>
+        <li>In <code>spot_sizeof.cpp</code>, replace the <code>sizeof</code> line with <code>int n = std::size(scores);</code> (and <code>#include &lt;iterator&gt;</code>). Read the error.</li>
+        <li>Rewrite <code>new_overflow.cpp</code> with <code>std::vector&lt;int&gt; boxes(4);</code> and <code>boxes.at(i)</code>. What happens at <code>i == 4</code> now?</li>
+      </ol>
+      <h3>5. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) builds and runs any example here, sanitizers included, and Python Tutor (pythontutor.com) draws pointers and arrays as boxes and arrows for small C++ programs.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>ownership</dt><dd>Being responsible for destroying an object and giving its memory back.</dd>
+        <dt>sink parameter</dt><dd>A parameter that takes ownership, such as <code>std::unique_ptr&lt;T&gt;</code> by value.</dd>
+        <dt>reseat</dt><dd>Make a pointer (or smart pointer) hold a different object; with a card, the old object is destroyed.</dd>
+        <dt>std::shared_ptr&lt;T&gt;</dt><dd>A smart pointer that shares ownership; the object is deleted when the last one lets go.</dd>
+        <dt>reference count / use_count()</dt><dd>The number of <code>shared_ptr</code>s sharing an object (the sign-in sheet).</dd>
+        <dt>std::make_shared&lt;T&gt;(...)</dt><dd>Builds a <code>T</code> and its control block in one heap block and returns the first <code>shared_ptr</code>.</dd>
+        <dt>control block</dt><dd>The heap record holding the strong and weak counts (and the deleter) for a shared object.</dd>
+        <dt>std::weak_ptr&lt;T&gt;</dt><dd>A non-owning link to a shared object that can tell whether it still exists.</dd>
+        <dt>lock()</dt><dd>Turns a <code>weak_ptr</code> into a <code>shared_ptr</code>: a real one if the object is alive, an empty one if not.</dd>
+        <dt>expired()</dt><dd>True when a <code>weak_ptr</code>'s object has been destroyed.</dd>
+        <dt>reference cycle</dt><dd>Owning pointers that form a loop, so no count reaches zero: a leak.</dd>
+        <dt>direct / indirect leak</dt><dd>LeakSanitizer's words: a direct leak is pointed at by nothing; an indirect one only by other leaked blocks.</dd>
+        <dt>C array</dt><dd>A fixed-size row of elements, <code>int a[5]</code>, inherited from C. Can't be assigned.</dd>
+        <dt>decay</dt><dd>An array turning into a pointer to its first element, for example when passed to a function.</dd>
+        <dt>pointer arithmetic</dt><dd><code>p + i</code>, <code>p - q</code>, <code>++p</code>: moving a pointer by whole elements within an array.</dd>
+        <dt>one past the end</dt><dd>The address just after an array's last element: fine to compute and compare, never to follow.</dd>
+        <dt>new[] / delete[]</dt><dd>The raw way to borrow and return a row of elements on the heap. Must be paired.</dd>
+        <dt>heap-buffer-overflow</dt><dd>ASan's name for reading or writing past the end of a heap block.</dd>
+        <dt>alloc-dealloc-mismatch</dt><dd>ASan's name for returning memory with the wrong kind of delete or free.</dd>
+        <dt>C string</dt><dd>A row of <code>char</code> ending with a zero, <code>'\0'</code>.</dd>
+        <dt>null terminator</dt><dd>The zero character that marks the end of a C string.</dd>
+        <dt>&lt;cstring&gt;</dt><dd>The header of C's string functions: <code>strlen</code>, <code>strcpy</code>, <code>strcmp</code> and friends.</dd>
+        <dt>stack-buffer-overflow</dt><dd>ASan's name for writing past the end of a local array.</dd>
+        <dt>argc / argv</dt><dd><code>main</code>'s argument count and array of argument strings; <code>argv[0]</code> is the program.</dd>
+        <dt>command-line argument</dt><dd>A word typed after the program's name in the terminal.</dd>
+        <dt>std::span&lt;T&gt;</dt><dd>A non-owning view of a row of elements: an address and a count together (C++20).</dd>
+        <dt>.data() / .c_str()</dt><dd>A container's address of its first element; a string's letters as a C string.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/memory/shared_ptr">cppreference: std::shared_ptr</a>, <a href="https://en.cppreference.com/w/cpp/memory/shared_ptr/make_shared">std::make_shared</a>, <a href="https://en.cppreference.com/w/cpp/memory/shared_ptr/use_count">use_count</a> and <a href="https://en.cppreference.com/w/cpp/memory/weak_ptr">std::weak_ptr</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/language/array">cppreference: arrays</a>, <a href="https://en.cppreference.com/w/cpp/container/span">std::span</a>, <a href="https://en.cppreference.com/w/cpp/string/byte/strlen">std::strlen</a> and <a href="https://en.cppreference.com/w/cpp/language/main_function">the main function</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: R.20 to R.24 and R.30 to R.37 (smart pointers), F.7, F.26, F.27, I.11 and I.13 (parameters), ES.61, R.10, R.11 and SL.con.1 (legacy memory and arrays)</li>
+        <li><a href="https://clang.llvm.org/docs/AddressSanitizer.html">Clang: AddressSanitizer</a> and <a href="https://clang.llvm.org/docs/LeakSanitizer.html">LeakSanitizer</a>; <a href="https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html">GCC manual: warning options</a> (<code>-Wsizeof-array-argument</code>, <code>-Wmismatched-new-delete</code>, <code>-Wstringop-overflow</code>)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/circular-dependency-issues-with-stdshared_ptr-and-stdweak_ptr/">learncpp.com 22.7: circular dependency issues with std::shared_ptr, and std::weak_ptr</a>, and the lessons before it on <code>shared_ptr</code>.</li>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/c-style-array-decay/">learncpp.com 17.8: C-style array decay</a>, followed by its lessons on pointer arithmetic and C strings.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, with short, visual pages on shared ownership and on C arrays.</li>
+        <li><a href="https://pythontutor.com/cpp.html">Python Tutor for C++</a>, to watch your own pointers and arrays as boxes and arrows.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch23</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page; sanitizer builds add <code>-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer</code>, shown in their terminals), and each ordinary program was also built and run with clang++ 18.1 for comparison. Outputs were identical; only compiler messages differ, for <code>array_assign.cpp</code>, <code>decay.cpp</code>, <code>kennel_copy.cpp</code> and <code>spot_sizeof.cpp</code> (three are shown in the notebook). Sanitizer builds ran with g++ only, with address randomisation off inside a fresh process namespace, which is why every report says <code>==2==</code> and shows the same addresses each time. Not shown in the commands: the capture sets <code>ASAN_OPTIONS=<wbr>detect_leaks=1:<wbr>color=never</code> and <code>UBSAN_OPTIONS=<wbr>print_stacktrace=1:<wbr>color=never</code> for every run. Neither changes these reports: leak checking is on by default here, colour is off anyway when output isn't a terminal, and no report in this chapter comes from UBSan. Programs with undefined behaviour (the heap overflow, the new[]/delete mismatch, the <code>strcpy</code> overflow) were never run without a sanitizer. Command-line programs ran with fixed arguments, shown in their prompts. Byte counts in the leak reports (64, 32, 16) are this toolchain's sizes, not guarantees of the language. Raw addresses are never used as answers. The walk-through, the stack-and-heap picture, the memory tracer, the machine and the map are teaching models; each checks itself against those runs and says so. The leaked pets in panel 16 still point at each other, so the tracer is told they are leaked: they are drawn faded and dashed, and labelled LEAKED as well.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com lessons 22.7 (shared_ptr cycles and weak_ptr) and 17.8 (array decay), cppreference (shared_ptr, use_count and its notes on multithreaded use, weak_ptr, arrays, span, strlen, main), the C++ Core Guidelines (rule titles checked in the June 2026 source: R.10, R.11, R.20 to R.24, R.30 to R.37, F.7, F.26, F.27, I.11, I.13, ES.61, SL.con.1), the Clang and GCC sanitizer and warning documentation, the C++ research map for this course (module rows I13 and I14), and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, the Compiler, Mabel the librarian, the Professor, the Sanitizer and Biscuit the dog are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

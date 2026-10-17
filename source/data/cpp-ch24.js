@@ -1,0 +1,2331 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch24",
+  "versionDifferences": [
+   "abstract_bad.cpp",
+   "final_bad.cpp",
+   "final_class_bad.cpp",
+   "func_ptr_bad.cpp",
+   "generic_bad.cpp",
+   "hidden_quiet.cpp",
+   "mutable_bad.cpp",
+   "not_captured.cpp",
+   "override_bad.cpp",
+   "predict_abstract.cpp",
+   "private_bad.cpp",
+   "protected_bad.cpp",
+   "this_capture.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): abstract_bad.cpp, final_bad.cpp, final_class_bad.cpp, func_ptr_bad.cpp, generic_bad.cpp, hidden_quiet.cpp, mutable_bad.cpp, not_captured.cpp, override_bad.cpp, predict_abstract.cpp, private_bad.cpp, protected_bad.cpp, this_capture.cpp."
+ },
+ "programs": {
+  "abstract.cpp": {
+   "src": "// abstract.cpp: a Shape with no area of its own, and two that have one.\n#include <format>\n#include <iostream>\n#include <memory>\n#include <string>\n#include <vector>\n\nclass Shape {\npublic:\n    virtual double area() const = 0;            // pure virtual: no body here\n    virtual std::string name() const = 0;\n    virtual ~Shape() = default;\n};\n\nclass Circle : public Shape {\npublic:\n    explicit Circle(double r) : r_{r} {}\n    double area() const override { return 3.14159 * r_ * r_; }\n    std::string name() const override { return \"circle\"; }\nprivate:\n    double r_;\n};\n\nclass Square : public Shape {\npublic:\n    explicit Square(double side) : side_{side} {}\n    double area() const override { return side_ * side_; }\n    std::string name() const override { return \"square\"; }\nprivate:\n    double side_;\n};\n\nint main() {\n    std::vector<std::unique_ptr<Shape>> shapes;\n    shapes.push_back(std::make_unique<Circle>(1.0));\n    shapes.push_back(std::make_unique<Square>(3.0));\n    shapes.push_back(std::make_unique<Circle>(2.0));\n    double total{0};\n    for (const auto& s : shapes) {\n        std::cout << std::format(\"{:<7} {:>6.2f}\\n\", s->name(), s->area());\n        total += s->area();\n    }\n    std::cout << std::format(\"total   {:>6.2f}\\n\", total);\n}\n",
+   "stdout": "circle    3.14\nsquare    9.00\ncircle   12.57\ntotal    24.71\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g abstract.cpp -o abstract",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./abstract",
+     "out": "circle    3.14\nsquare    9.00\ncircle   12.57\ntotal    24.71\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "circle    3.14\nsquare    9.00\ncircle   12.57\ntotal    24.71\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g abstract.cpp -o abstract",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./abstract",
+      "out": "circle    3.14\nsquare    9.00\ncircle   12.57\ntotal    24.71\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "abstract_bad.cpp": {
+   "src": "// abstract_bad.cpp: a class with a pure virtual function can't be built.\nstruct S {\n    virtual double area() const = 0;\n    virtual ~S() = default;\n};\n\nint main() {\n    S s;\n}\n",
+   "stdout": "",
+   "stderr": "abstract_bad.cpp: In function ‘int main()’:\nabstract_bad.cpp:8:7: error: cannot declare variable ‘s’ to be of abstract type ‘S’\n    8 |     S s;\n      |       ^\nabstract_bad.cpp:2:8: note:   because the following virtual functions are pure within ‘S’:\n    2 | struct S {\n      |        ^\nabstract_bad.cpp:3:20: note:     ‘virtual double S::area() const’\n    3 |     virtual double area() const = 0;\n      |                    ^~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g abstract_bad.cpp -o abstract_bad",
+     "out": "",
+     "err": "abstract_bad.cpp: In function ‘int main()’:\nabstract_bad.cpp:8:7: error: cannot declare variable ‘s’ to be of abstract type ‘S’\n    8 |     S s;\n      |       ^\nabstract_bad.cpp:2:8: note:   because the following virtual functions are pure within ‘S’:\n    2 | struct S {\n      |        ^\nabstract_bad.cpp:3:20: note:     ‘virtual double S::area() const’\n    3 |     virtual double area() const = 0;\n      |                    ^~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "abstract_bad.cpp:8:7: error: variable type 'S' is an abstract class\n    8 |     S s;\n      |       ^\nabstract_bad.cpp:3:20: note: unimplemented pure virtual method 'area' in 'S'\n    3 |     virtual double area() const = 0;\n      |                    ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g abstract_bad.cpp -o abstract_bad",
+      "out": "",
+      "err": "abstract_bad.cpp:8:7: error: variable type 'S' is an abstract class\n    8 |     S s;\n      |       ^\nabstract_bad.cpp:3:20: note: unimplemented pure virtual method 'area' in 'S'\n    3 |     virtual double area() const = 0;\n      |                    ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "// boss_fill.cpp: a Logger interface, one real logger, and a counting lambda.\n#include <iostream>\n#include <memory>\n#include <string>\n#include <utility>\n\nstruct Logger {\n    virtual void log(const std::string& msg) = 0;\n    virtual ~Logger() = default;\n};\n\nstruct ConsoleLogger : Logger {\n    void log(const std::string& msg) override { std::cout << \"[log] \" << msg << '\\n'; }\n};\n\nint main() {\n    std::unique_ptr<Logger> logger = std::make_unique<ConsoleLogger>();\n    auto report = [lg = std::move(logger), count = 0](const std::string& m) mutable {\n        ++count;\n        lg->log(std::to_string(count) + \": \" + m);\n    };\n    report(\"door opened\");\n    report(\"lights on\");\n    std::cout << \"logger is \" << (logger ? \"still here\" : \"inside the lambda\") << '\\n';\n}\n",
+   "stdout": "[log] 1: door opened\n[log] 2: lights on\nlogger is inside the lambda\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "[log] 1: door opened\n[log] 2: lights on\nlogger is inside the lambda\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[log] 1: door opened\n[log] 2: lights on\nlogger is inside the lambda\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "[log] 1: door opened\n[log] 2: lights on\nlogger is inside the lambda\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <algorithm>\n#include <iostream>\n#include <memory>\n#include <vector>\n\nstruct Shape {\n    virtual double area() const = 0;\n    virtual ~Shape() = default;\n};\nstruct Sq : Shape {\n    double s;\n    explicit Sq(double s_) : s{s_} {}\n    double area() const override { return s * s; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Shape>> shapes;\n    for (double s : {3.0, 1.0, 2.0}) shapes.push_back(std::make_unique<Sq>(s));\n    double limit = shapes[1]->area();\n    auto big = [limit](const std::unique_ptr<Shape>& p) { return p->area() > limit; };\n    auto n = std::count_if(shapes.begin(), shapes.end(), big);\n    std::cout << n << \" shapes bigger than \" << limit << '\\n';\n}\n",
+   "stdout": "2 shapes bigger than 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "2 shapes bigger than 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "2 shapes bigger than 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "2 shapes bigger than 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "// boss_predict.cpp: remotes, a shelf and a row of buttons.\n#include <functional>\n#include <iostream>\n#include <memory>\n#include <string>\n#include <vector>\n\nstruct Device {\n    virtual std::string play() const { return \"hum\"; }\n    virtual ~Device() = default;\n};\nstruct Tv : Device {\n    std::string play() const override { return \"film\"; }\n};\nstruct Radio : Device {};\n\nint main() {\n    std::vector<std::unique_ptr<Device>> shelf;\n    shelf.push_back(std::make_unique<Tv>());\n    shelf.push_back(std::make_unique<Radio>());\n    int presses{0};\n    std::vector<std::function<std::string()>> buttons;\n    for (const auto& d : shelf) {\n        Device* p = d.get();\n        buttons.push_back([p, &presses] { ++presses; return p->play(); });\n    }\n    std::string first_copy = buttons[0]();\n    Device sliced = *shelf[0];\n    std::cout << first_copy << ' ' << buttons[1]() << ' ' << sliced.play() << ' ' << presses << '\\n';\n}\n",
+   "stdout": "film hum hum 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "film hum hum 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "film hum hum 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "film hum hum 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "// boss_spot.cpp: a zoo where every animal should make its own noise.\n#include <iostream>\n#include <string>\n#include <utility>\n#include <vector>\n\nstruct Animal {\n    std::string name;\n    explicit Animal(std::string n) : name{std::move(n)} {}\n    virtual std::string noise() const { return \"...\"; }\n    virtual ~Animal() = default;\n};\nstruct Lion : Animal {\n    using Animal::Animal;\n    std::string noise() const override { return \"ROAR\"; }\n};\nstruct Owl : Animal {\n    using Animal::Animal;\n    std::string noise() const override { return \"hoo\"; }\n};\n\nint main() {\n    std::vector<Animal> zoo;\n    zoo.push_back(Lion{\"Leo\"});\n    zoo.push_back(Owl{\"Olive\"});\n    for (const auto& a : zoo) std::cout << a.name << \": \" << a.noise() << '\\n';\n}\n",
+   "stdout": "Leo: ...\nOlive: ...\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "Leo: ...\nOlive: ...\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Leo: ...\nOlive: ...\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_spot.cpp -o boss_spot",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_spot",
+      "out": "Leo: ...\nOlive: ...\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_trace.cpp": {
+   "src": "// boss_trace.cpp: counting gadgets that are alive in a box of remotes.\n#include <iostream>\n#include <memory>\n#include <vector>\n\nint alive{0};\n\nstruct Gadget {\n    Gadget() { ++alive; }\n    virtual ~Gadget() { --alive; }\n    virtual int power() const { return 1; }\n};\nstruct Drone : Gadget {\n    int power() const override { return 5; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Gadget>> box;\n    int total{0};\n    for (int round = 1; round <= 4; ++round) {\n        if (round % 2 == 1) box.push_back(std::make_unique<Drone>());\n        else box.push_back(std::make_unique<Gadget>());\n        if (round == 3) box.erase(box.begin());      // recycle the oldest\n        Gadget spare;\n        total += box.back()->power();\n        std::cout << round << ' ' << box.back()->power() << ' ' << total << ' ' << alive << '\\n';\n    }\n}\n",
+   "stdout": "1 5 5 2\n2 1 6 3\n3 5 11 3\n4 1 12 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "1 5 5 2\n2 1 6 3\n3 5 11 3\n4 1 12 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 5 5 2\n2 1 6 3\n3 5 11 3\n4 1 12 4\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "1 5 5 2\n2 1 6 3\n3 5 11 3\n4 1 12 4\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "composition.cpp": {
+   "src": "// composition.cpp: a Car HAS AN Engine; it isn't one.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Engine {\npublic:\n    void start() { running_ = true; std::cout << \"  engine: vroom\\n\"; }\n    bool running() const { return running_; }\nprivate:\n    bool running_{false};\n};\n\nclass Car {\npublic:\n    explicit Car(std::string name) : name_{std::move(name)} {}\n    void drive() {\n        std::cout << name_ << \" wants to drive\\n\";\n        if (!engine_.running()) engine_.start();   // the car uses its engine\n        std::cout << name_ << \" is moving\\n\";\n    }\nprivate:\n    std::string name_;\n    Engine engine_;          // a member, not a base class\n};\n\nint main() {\n    Car car{\"Wren's van\"};\n    car.drive();\n    car.drive();\n    // car.start();          // no: a Car isn't an Engine, so it has no start()\n}\n",
+   "stdout": "Wren's van wants to drive\n  engine: vroom\nWren's van is moving\nWren's van wants to drive\nWren's van is moving\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g composition.cpp -o composition",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./composition",
+     "out": "Wren's van wants to drive\n  engine: vroom\nWren's van is moving\nWren's van wants to drive\nWren's van is moving\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Wren's van wants to drive\n  engine: vroom\nWren's van is moving\nWren's van wants to drive\nWren's van is moving\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g composition.cpp -o composition",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./composition",
+      "out": "Wren's van wants to drive\n  engine: vroom\nWren's van is moving\nWren's van wants to drive\nWren's van is moving\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "ctor_order.cpp": {
+   "src": "// ctor_order.cpp: the base is built first and knocked down last.\n#include <iostream>\n\nstruct Device {\n    Device()  { std::cout << \"Device built\\n\"; }\n    ~Device() { std::cout << \"Device gone\\n\"; }\n};\n\nstruct Tv : Device {\n    Tv()  { std::cout << \"Tv built\\n\"; }\n    ~Tv() { std::cout << \"Tv gone\\n\"; }\n};\n\nint main() {\n    std::cout << \"start\\n\";\n    {\n        Tv tv;\n        std::cout << \"watching\\n\";\n    }\n    std::cout << \"end\\n\";\n}\n",
+   "stdout": "start\nDevice built\nTv built\nwatching\nTv gone\nDevice gone\nend\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g ctor_order.cpp -o ctor_order",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./ctor_order",
+     "out": "start\nDevice built\nTv built\nwatching\nTv gone\nDevice gone\nend\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "start\nDevice built\nTv built\nwatching\nTv gone\nDevice gone\nend\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g ctor_order.cpp -o ctor_order",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./ctor_order",
+      "out": "start\nDevice built\nTv built\nwatching\nTv gone\nDevice gone\nend\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "dangling_return.cpp": {
+   "src": "// dangling_return.cpp: returning a lambda that captured a local by reference.\n#include <functional>\n#include <iostream>\n\nstd::function<int()> make_counter() {\n    int count{0};\n    return [&count] { return ++count; };    // count dies when make_counter returns\n}\n\nint main() {\n    auto next = make_counter();\n    std::cout << \"calling next()...\" << std::endl;\n    int n = next();\n    std::cout << \"got \" << n << std::endl;\n}\n",
+   "stdout": "calling next()...\n",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-return on address 0x7ffff48000b0 at pc 0x5555555594a2 bp 0x7fffffffea60 sp 0x7fffffffea50\nREAD of size 4 at 0x7ffff48000b0 thread T0\n    #0 0x5555555594a1 in operator() /home/you/cpp-ch24/dangling_return.cpp:7\n    #1 0x55555555a6c7 in __invoke_impl<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555a385 in __invoke_r<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555a066 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555af23 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x555555559917 in main /home/you/cpp-ch24/dangling_return.cpp:13\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x555555559324 in _start (/home/you/cpp-ch24/dangling_return+0x5324) (BuildId: d59f06e497fe2c0efaace2beb770cd78766797f5)\n\nAddress 0x7ffff48000b0 is located in stack of thread T0 at offset 48 in frame\n    #0 0x555555559526 in make_counter() /home/you/cpp-ch24/dangling_return.cpp:5\n\n  This frame has 2 object(s):\n    [48, 52) 'count' (line 6) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-return /home/you/cpp-ch24/dangling_return.cpp:7 in operator()\nShadow bytes around the buggy address:\n  0x7ffff47ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800000: f1 f1 f1 f1 00 00 00 00 f3 f3 f3 f3 00 00 00 00\n=>0x7ffff4800080: f5 f5 f5 f5 f5 f5[f5]f5 f5 f5 f5 f5 00 00 00 00\n  0x7ffff4800100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer dangling_return.cpp -o dangling_return",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./dangling_return",
+     "out": "calling next()...\n",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-return on address 0x7ffff48000b0 at pc 0x5555555594a2 bp 0x7fffffffea60 sp 0x7fffffffea50\nREAD of size 4 at 0x7ffff48000b0 thread T0\n    #0 0x5555555594a1 in operator() /home/you/cpp-ch24/dangling_return.cpp:7\n    #1 0x55555555a6c7 in __invoke_impl<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555a385 in __invoke_r<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555a066 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555af23 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x555555559917 in main /home/you/cpp-ch24/dangling_return.cpp:13\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x555555559324 in _start (/home/you/cpp-ch24/dangling_return+0x5324) (BuildId: d59f06e497fe2c0efaace2beb770cd78766797f5)\n\nAddress 0x7ffff48000b0 is located in stack of thread T0 at offset 48 in frame\n    #0 0x555555559526 in make_counter() /home/you/cpp-ch24/dangling_return.cpp:5\n\n  This frame has 2 object(s):\n    [48, 52) 'count' (line 6) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-return /home/you/cpp-ch24/dangling_return.cpp:7 in operator()\nShadow bytes around the buggy address:\n  0x7ffff47ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800000: f1 f1 f1 f1 00 00 00 00 f3 f3 f3 f3 00 00 00 00\n=>0x7ffff4800080: f5 f5 f5 f5 f5 f5[f5]f5 f5 f5 f5 f5 00 00 00 00\n  0x7ffff4800100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1,
+     "merged": "calling next()...\n=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-return on address 0x7ffff48000b0 at pc 0x5555555594a2 bp 0x7fffffffea60 sp 0x7fffffffea50\nREAD of size 4 at 0x7ffff48000b0 thread T0\n    #0 0x5555555594a1 in operator() /home/you/cpp-ch24/dangling_return.cpp:7\n    #1 0x55555555a6c7 in __invoke_impl<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555a385 in __invoke_r<int, make_counter()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555a066 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555af23 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x555555559917 in main /home/you/cpp-ch24/dangling_return.cpp:13\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x555555559324 in _start (/home/you/cpp-ch24/dangling_return+0x5324) (BuildId: d59f06e497fe2c0efaace2beb770cd78766797f5)\n\nAddress 0x7ffff48000b0 is located in stack of thread T0 at offset 48 in frame\n    #0 0x555555559526 in make_counter() /home/you/cpp-ch24/dangling_return.cpp:5\n\n  This frame has 2 object(s):\n    [48, 52) 'count' (line 6) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-return /home/you/cpp-ch24/dangling_return.cpp:7 in operator()\nShadow bytes around the buggy address:\n  0x7ffff47ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff47fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800000: f1 f1 f1 f1 00 00 00 00 f3 f3 f3 f3 00 00 00 00\n=>0x7ffff4800080: f5 f5 f5 f5 f5 f5[f5]f5 f5 f5 f5 f5 00 00 00 00\n  0x7ffff4800100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4800300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n"
+    }
+   ]
+  },
+  "dangling_scope.cpp": {
+   "src": "// dangling_scope.cpp: a note pointing at a fridge that's gone.\n#include <functional>\n#include <iostream>\n\nint main() {\n    std::function<int()> lunch;\n    {\n        int sandwich{7};\n        lunch = [&sandwich] { return sandwich; };   // a note: \"it's in this fridge\"\n        std::cout << \"inside: \" << lunch() << std::endl;\n    }                                               // the fridge (sandwich) is gone\n    std::cout << \"outside: \" << lunch() << std::endl;\n}\n",
+   "stdout": "inside: 7\n",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7ffff4900030 at pc 0x55555555a4e2 bp 0x7fffffffea40 sp 0x7fffffffea30\nREAD of size 4 at 0x7ffff4900030 thread T0\n    #0 0x55555555a4e1 in operator() /home/you/cpp-ch24/dangling_scope.cpp:9\n    #1 0x55555555b8b3 in __invoke_impl<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555b571 in __invoke_r<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555b252 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555c295 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x55555555a9f4 in main /home/you/cpp-ch24/dangling_scope.cpp:12\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x55555555a364 in _start (/home/you/cpp-ch24/dangling_scope+0x6364) (BuildId: d74b0219624e61afd597ee3f65ef7c52c8a1cee1)\n\nAddress 0x7ffff4900030 is located in stack of thread T0 at offset 48 in frame\n    #0 0x55555555a4f5 in main /home/you/cpp-ch24/dangling_scope.cpp:5\n\n  This frame has 3 object(s):\n    [48, 52) 'sandwich' (line 8) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\n    [96, 128) 'lunch' (line 6)\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-scope /home/you/cpp-ch24/dangling_scope.cpp:9 in operator()\nShadow bytes around the buggy address:\n  0x7ffff48ffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x7ffff4900000: f1 f1 f1 f1 f1 f1[f8]f2 f8 f2 f2 f2 00 00 00 00\n  0x7ffff4900080: f3 f3 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer dangling_scope.cpp -o dangling_scope",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./dangling_scope",
+     "out": "inside: 7\n",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7ffff4900030 at pc 0x55555555a4e2 bp 0x7fffffffea40 sp 0x7fffffffea30\nREAD of size 4 at 0x7ffff4900030 thread T0\n    #0 0x55555555a4e1 in operator() /home/you/cpp-ch24/dangling_scope.cpp:9\n    #1 0x55555555b8b3 in __invoke_impl<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555b571 in __invoke_r<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555b252 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555c295 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x55555555a9f4 in main /home/you/cpp-ch24/dangling_scope.cpp:12\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x55555555a364 in _start (/home/you/cpp-ch24/dangling_scope+0x6364) (BuildId: d74b0219624e61afd597ee3f65ef7c52c8a1cee1)\n\nAddress 0x7ffff4900030 is located in stack of thread T0 at offset 48 in frame\n    #0 0x55555555a4f5 in main /home/you/cpp-ch24/dangling_scope.cpp:5\n\n  This frame has 3 object(s):\n    [48, 52) 'sandwich' (line 8) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\n    [96, 128) 'lunch' (line 6)\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-scope /home/you/cpp-ch24/dangling_scope.cpp:9 in operator()\nShadow bytes around the buggy address:\n  0x7ffff48ffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x7ffff4900000: f1 f1 f1 f1 f1 f1[f8]f2 f8 f2 f2 f2 00 00 00 00\n  0x7ffff4900080: f3 f3 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1,
+     "merged": "inside: 7\n=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7ffff4900030 at pc 0x55555555a4e2 bp 0x7fffffffea40 sp 0x7fffffffea30\nREAD of size 4 at 0x7ffff4900030 thread T0\n    #0 0x55555555a4e1 in operator() /home/you/cpp-ch24/dangling_scope.cpp:9\n    #1 0x55555555b8b3 in __invoke_impl<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #2 0x55555555b571 in __invoke_r<int, main()::<lambda()>&> /usr/include/c++/13/bits/invoke.h:114\n    #3 0x55555555b252 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #4 0x55555555c295 in std::function<int ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #5 0x55555555a9f4 in main /home/you/cpp-ch24/dangling_scope.cpp:12\n    #6 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #7 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #8 0x55555555a364 in _start (/home/you/cpp-ch24/dangling_scope+0x6364) (BuildId: d74b0219624e61afd597ee3f65ef7c52c8a1cee1)\n\nAddress 0x7ffff4900030 is located in stack of thread T0 at offset 48 in frame\n    #0 0x55555555a4f5 in main /home/you/cpp-ch24/dangling_scope.cpp:5\n\n  This frame has 3 object(s):\n    [48, 52) 'sandwich' (line 8) <== Memory access at offset 48 is inside this variable\n    [64, 72) '<unknown>'\n    [96, 128) 'lunch' (line 6)\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-scope /home/you/cpp-ch24/dangling_scope.cpp:9 in operator()\nShadow bytes around the buggy address:\n  0x7ffff48ffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x7ffff4900000: f1 f1 f1 f1 f1 f1[f8]f2 f8 f2 f2 f2 00 00 00 00\n  0x7ffff4900080: f3 f3 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n"
+    }
+   ]
+  },
+  "devices.cpp": {
+   "src": "// devices.cpp: one base class, two derived classes that reuse it.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\n    void power_on() { std::cout << name_ << \" is on\\n\"; }\n    const std::string& name() const { return name_; }\nprivate:\n    std::string name_;\n};\n\nclass Tv : public Device {           // a Tv IS A Device, plus a channel\npublic:\n    explicit Tv(std::string name) : Device{std::move(name)} {}\n    void set_channel(int c) { channel_ = c; std::cout << name() << \" on channel \" << channel_ << '\\n'; }\nprivate:\n    int channel_{1};\n};\n\nclass Radio : public Device {        // a Radio IS A Device, plus a station\npublic:\n    explicit Radio(std::string name) : Device{std::move(name)} {}\n    void tune(double mhz) { std::cout << name() << \" tuned to \" << mhz << \" MHz\\n\"; }\n};\n\nint main() {\n    Tv tv{\"Lounge TV\"};\n    Radio radio{\"Kitchen radio\"};\n    tv.power_on();          // inherited from Device\n    tv.set_channel(4);      // Tv's own\n    radio.power_on();       // inherited from Device\n    radio.tune(98.5);       // Radio's own\n}\n",
+   "stdout": "Lounge TV is on\nLounge TV on channel 4\nKitchen radio is on\nKitchen radio tuned to 98.5 MHz\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g devices.cpp -o devices",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./devices",
+     "out": "Lounge TV is on\nLounge TV on channel 4\nKitchen radio is on\nKitchen radio tuned to 98.5 MHz\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Lounge TV is on\nLounge TV on channel 4\nKitchen radio is on\nKitchen radio tuned to 98.5 MHz\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g devices.cpp -o devices",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./devices",
+      "out": "Lounge TV is on\nLounge TV on channel 4\nKitchen radio is on\nKitchen radio tuned to 98.5 MHz\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "dyn_cast.cpp": {
+   "src": "// dyn_cast.cpp: asking \"are you really a Tv?\" at run time.\n#include <iostream>\n#include <memory>\n#include <vector>\n\nstruct Device {\n    virtual ~Device() = default;\n};\nstruct Tv : Device {\n    void set_channel(int c) { std::cout << \"Tv: channel \" << c << '\\n'; }\n};\nstruct Radio : Device {};\n\nint main() {\n    std::vector<std::unique_ptr<Device>> shelf;\n    shelf.push_back(std::make_unique<Radio>());\n    shelf.push_back(std::make_unique<Tv>());\n    for (const auto& d : shelf) {\n        if (auto* tv = dynamic_cast<Tv*>(d.get())) {   // nullptr if it's not a Tv\n            tv->set_channel(7);\n        } else {\n            std::cout << \"not a Tv: skipped\\n\";\n        }\n    }\n}\n",
+   "stdout": "not a Tv: skipped\nTv: channel 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g dyn_cast.cpp -o dyn_cast",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./dyn_cast",
+     "out": "not a Tv: skipped\nTv: channel 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "not a Tv: skipped\nTv: channel 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g dyn_cast.cpp -o dyn_cast",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./dyn_cast",
+      "out": "not a Tv: skipped\nTv: channel 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "empty_function.cpp": {
+   "src": "// empty_function.cpp: calling an empty std::function throws.\n#include <functional>\n#include <iostream>\n\nint main() {\n    std::function<int(int)> button;          // nothing plugged in yet\n    std::cout << \"pressing...\" << std::endl;\n    std::cout << button(7) << '\\n';\n}\n",
+   "stdout": "pressing...\n",
+   "stderr": "terminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g empty_function.cpp -o empty_function",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./empty_function",
+     "out": "pressing...\n",
+     "err": "terminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n",
+     "exit": 134,
+     "merged": "pressing...\nterminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "pressing...\n",
+    "stderr": "terminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g empty_function.cpp -o empty_function",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./empty_function",
+      "out": "pressing...\n",
+      "err": "terminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n",
+      "exit": 134,
+      "merged": "pressing...\nterminate called after throwing an instance of 'std::bad_function_call'\n  what():  bad_function_call\nAborted\n"
+     }
+    ]
+   }
+  },
+  "fill_base_ctor.cpp": {
+   "src": "// fill_base_ctor.cpp: a Speaker is a Device with a volume.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\n    const std::string& name() const { return name_; }\nprivate:\n    std::string name_;\n};\n\nclass Speaker : public Device {\npublic:\n    Speaker(std::string name, int volume) : Device{std::move(name)}, volume_{volume} {}\n    void show() const { std::cout << name() << \" at volume \" << volume_ << '\\n'; }\nprivate:\n    int volume_;\n};\n\nint main() {\n    Speaker s{\"Garden speaker\", 7};\n    s.show();\n}\n",
+   "stdout": "Garden speaker at volume 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_base_ctor.cpp -o fill_base_ctor",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_base_ctor",
+     "out": "Garden speaker at volume 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Garden speaker at volume 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_base_ctor.cpp -o fill_base_ctor",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_base_ctor",
+      "out": "Garden speaker at volume 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_mutable.cpp": {
+   "src": "// fill_mutable.cpp: a ticket machine that remembers the last number it gave.\n#include <iostream>\n\nint main() {\n    int start{100};\n    auto next_ticket = [n = start]() mutable { return n++; };\n    std::cout << next_ticket() << ' ';\n    std::cout << next_ticket() << ' ';\n    std::cout << next_ticket() << '\\n';\n    std::cout << \"start is still \" << start << '\\n';\n}\n",
+   "stdout": "100 101 102\nstart is still 100\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_mutable.cpp -o fill_mutable",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_mutable",
+     "out": "100 101 102\nstart is still 100\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "100 101 102\nstart is still 100\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_mutable.cpp -o fill_mutable",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_mutable",
+      "out": "100 101 102\nstart is still 100\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_shapes.cpp": {
+   "src": "// fill_shapes.cpp: an abstract Shape and two real ones.\n#include <iostream>\n#include <memory>\n#include <vector>\n\nstruct Shape {\n    virtual double area() const = 0;\n    virtual ~Shape() = default;\n};\n\nstruct Rect : Shape {\n    double w, h;\n    Rect(double w_, double h_) : w{w_}, h{h_} {}\n    double area() const override { return w * h; }\n};\n\nstruct Triangle : Shape {\n    double base, height;\n    Triangle(double b, double h) : base{b}, height{h} {}\n    double area() const override { return base * height / 2; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Shape>> shapes;\n    shapes.push_back(std::make_unique<Rect>(2, 5));\n    shapes.push_back(std::make_unique<Triangle>(6, 3));\n    for (const auto& s : shapes) std::cout << s->area() << '\\n';\n}\n",
+   "stdout": "10\n9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_shapes.cpp -o fill_shapes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_shapes",
+     "out": "10\n9\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "10\n9\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_shapes.cpp -o fill_shapes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_shapes",
+      "out": "10\n9\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "final_bad.cpp": {
+   "src": "// final_bad.cpp: final means \"no further changes below here\".\n#include <iostream>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device\\n\"; }\n    virtual ~Device() = default;\n};\n\nstruct Tv : Device {\n    void play() const final { std::cout << \"Tv\\n\"; }\n};\n\nstruct SmartTv : Tv {\n    void play() const override { std::cout << \"SmartTv\\n\"; }\n};\n\nint main() {\n    SmartTv s;\n    s.play();\n}\n",
+   "stdout": "",
+   "stderr": "final_bad.cpp:14:10: error: virtual function ‘virtual void SmartTv::play() const’ overriding final function\n   14 |     void play() const override { std::cout << \"SmartTv\\n\"; }\n      |          ^~~~\nfinal_bad.cpp:10:10: note: overridden function is ‘virtual void Tv::play() const’\n   10 |     void play() const final { std::cout << \"Tv\\n\"; }\n      |          ^~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g final_bad.cpp -o final_bad",
+     "out": "",
+     "err": "final_bad.cpp:14:10: error: virtual function ‘virtual void SmartTv::play() const’ overriding final function\n   14 |     void play() const override { std::cout << \"SmartTv\\n\"; }\n      |          ^~~~\nfinal_bad.cpp:10:10: note: overridden function is ‘virtual void Tv::play() const’\n   10 |     void play() const final { std::cout << \"Tv\\n\"; }\n      |          ^~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "final_bad.cpp:14:10: error: declaration of 'play' overrides a 'final' function\n   14 |     void play() const override { std::cout << \"SmartTv\\n\"; }\n      |          ^\nfinal_bad.cpp:10:10: note: overridden virtual function is here\n   10 |     void play() const final { std::cout << \"Tv\\n\"; }\n      |          ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g final_bad.cpp -o final_bad",
+      "out": "",
+      "err": "final_bad.cpp:14:10: error: declaration of 'play' overrides a 'final' function\n   14 |     void play() const override { std::cout << \"SmartTv\\n\"; }\n      |          ^\nfinal_bad.cpp:10:10: note: overridden virtual function is here\n   10 |     void play() const final { std::cout << \"Tv\\n\"; }\n      |          ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "final_class_bad.cpp": {
+   "src": "// final_class_bad.cpp: a final class can't be a base at all.\nstruct Toaster final {\n    void pop() {}\n};\n\nstruct SmartToaster : Toaster {};\n\nint main() {\n    SmartToaster t;\n    t.pop();\n}\n",
+   "stdout": "",
+   "stderr": "final_class_bad.cpp:6:8: error: cannot derive from ‘final’ base ‘Toaster’ in derived type ‘SmartToaster’\n    6 | struct SmartToaster : Toaster {};\n      |        ^~~~~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g final_class_bad.cpp -o final_class_bad",
+     "out": "",
+     "err": "final_class_bad.cpp:6:8: error: cannot derive from ‘final’ base ‘Toaster’ in derived type ‘SmartToaster’\n    6 | struct SmartToaster : Toaster {};\n      |        ^~~~~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "final_class_bad.cpp:6:23: error: base 'Toaster' is marked 'final'\n    6 | struct SmartToaster : Toaster {};\n      |                       ^\nfinal_class_bad.cpp:2:8: note: 'Toaster' declared here\n    2 | struct Toaster final {\n      |        ^       ~~~~~\nfinal_class_bad.cpp:10:7: error: no member named 'pop' in 'SmartToaster'\n   10 |     t.pop();\n      |     ~ ^\n2 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g final_class_bad.cpp -o final_class_bad",
+      "out": "",
+      "err": "final_class_bad.cpp:6:23: error: base 'Toaster' is marked 'final'\n    6 | struct SmartToaster : Toaster {};\n      |                       ^\nfinal_class_bad.cpp:2:8: note: 'Toaster' declared here\n    2 | struct Toaster final {\n      |        ^       ~~~~~\nfinal_class_bad.cpp:10:7: error: no member named 'pop' in 'SmartToaster'\n   10 |     t.pop();\n      |     ~ ^\n2 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "func_ptr.cpp": {
+   "src": "// func_ptr.cpp: the old C way: a pointer to a function.\n#include <iostream>\n\nint square(int x) { return x * x; }\nint negate(int x) { return -x; }\n\nint apply(int (*f)(int), int value) { return f(value); }   // f is a function pointer\n\nint main() {\n    int (*button)(int) = square;          // point at square\n    std::cout << button(5) << '\\n';\n    button = negate;                      // re-point at negate\n    std::cout << button(5) << '\\n';\n    std::cout << apply(square, 9) << '\\n';\n    std::cout << apply([](int x) { return x + 1; }, 9) << '\\n';   // no captures: converts\n}\n",
+   "stdout": "25\n-5\n81\n10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g func_ptr.cpp -o func_ptr",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./func_ptr",
+     "out": "25\n-5\n81\n10\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "25\n-5\n81\n10\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g func_ptr.cpp -o func_ptr",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./func_ptr",
+      "out": "25\n-5\n81\n10\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "func_ptr_bad.cpp": {
+   "src": "// func_ptr_bad.cpp: a lambda with a capture can't become a function pointer.\n#include <iostream>\n\nint apply(int (*f)(int), int value) { return f(value); }\n\nint main() {\n    int bonus{100};\n    std::cout << apply([bonus](int x) { return x + bonus; }, 9) << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "func_ptr_bad.cpp: In function ‘int main()’:\nfunc_ptr_bad.cpp:8:24: error: cannot convert ‘main()::<lambda(int)>’ to ‘int (*)(int)’\n    8 |     std::cout << apply([bonus](int x) { return x + bonus; }, 9) << '\\n';\n      |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                        |\n      |                        main()::<lambda(int)>\nfunc_ptr_bad.cpp:4:17: note:   initializing argument 1 of ‘int apply(int (*)(int), int)’\n    4 | int apply(int (*f)(int), int value) { return f(value); }\n      |           ~~~~~~^~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g func_ptr_bad.cpp -o func_ptr_bad",
+     "out": "",
+     "err": "func_ptr_bad.cpp: In function ‘int main()’:\nfunc_ptr_bad.cpp:8:24: error: cannot convert ‘main()::<lambda(int)>’ to ‘int (*)(int)’\n    8 |     std::cout << apply([bonus](int x) { return x + bonus; }, 9) << '\\n';\n      |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                        |\n      |                        main()::<lambda(int)>\nfunc_ptr_bad.cpp:4:17: note:   initializing argument 1 of ‘int apply(int (*)(int), int)’\n    4 | int apply(int (*f)(int), int value) { return f(value); }\n      |           ~~~~~~^~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "func_ptr_bad.cpp:8:18: error: no matching function for call to 'apply'\n    8 |     std::cout << apply([bonus](int x) { return x + bonus; }, 9) << '\\n';\n      |                  ^~~~~\nfunc_ptr_bad.cpp:4:5: note: candidate function not viable: no known conversion from '(lambda at func_ptr_bad.cpp:8:24)' to 'int (*)(int)' for 1st argument\n    4 | int apply(int (*f)(int), int value) { return f(value); }\n      |     ^     ~~~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g func_ptr_bad.cpp -o func_ptr_bad",
+      "out": "",
+      "err": "func_ptr_bad.cpp:8:18: error: no matching function for call to 'apply'\n    8 |     std::cout << apply([bonus](int x) { return x + bonus; }, 9) << '\\n';\n      |                  ^~~~~\nfunc_ptr_bad.cpp:4:5: note: candidate function not viable: no known conversion from '(lambda at func_ptr_bad.cpp:8:24)' to 'int (*)(int)' for 1st argument\n    4 | int apply(int (*f)(int), int value) { return f(value); }\n      |     ^     ~~~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "functor.cpp": {
+   "src": "// functor.cpp: an object you can call, written by hand and by the Compiler.\n#include <iostream>\n\nstruct AddBonus {                        // a function object (functor)\n    int bonus;                           // its \"capture\"\n    int operator()(int x) const { return x + bonus; }\n};\n\nint main() {\n    AddBonus by_hand{10};\n    int bonus{10};\n    auto by_lambda = [bonus](int x) { return x + bonus; };   // the Compiler writes a class like AddBonus\n\n    std::cout << by_hand(5) << ' ' << by_lambda(5) << '\\n';\n    std::cout << sizeof(by_hand) << ' ' << sizeof(by_lambda) << '\\n';   // same shape, same size\n}\n",
+   "stdout": "15 15\n4 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g functor.cpp -o functor",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./functor",
+     "out": "15 15\n4 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "15 15\n4 4\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g functor.cpp -o functor",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./functor",
+      "out": "15 15\n4 4\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "generic.cpp": {
+   "src": "// generic.cpp: an auto parameter makes one lambda work for many types.\n#include <iostream>\n#include <string>\n\nint main() {\n    auto twice = [](auto x) { return x + x; };\n    std::cout << twice(21) << '\\n';                    // int\n    std::cout << twice(1.25) << '\\n';                  // double\n    std::cout << twice(std::string{\"ho\"}) << '\\n';     // std::string\n    std::cout << twice('A') << '\\n';                   // char: watch out!\n}\n",
+   "stdout": "42\n2.5\nhoho\n130\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g generic.cpp -o generic",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./generic",
+     "out": "42\n2.5\nhoho\n130\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "42\n2.5\nhoho\n130\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g generic.cpp -o generic",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./generic",
+      "out": "42\n2.5\nhoho\n130\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "generic_bad.cpp": {
+   "src": "// generic_bad.cpp: auto accepts any type, but the body must still make sense.\n#include <iostream>\n#include <vector>\n\nint main() {\n    auto twice = [](auto x) { return x + x; };\n    std::vector<int> v{1, 2};\n    auto w = twice(v);\n    std::cout << w.size() << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "generic_bad.cpp: In instantiation of ‘main()::<lambda(auto:16)> [with auto:16 = std::vector<int>]’:\ngeneric_bad.cpp:8:19:   required from here\ngeneric_bad.cpp:6:40: error: no match for ‘operator+’ (operand types are ‘std::vector<int>’ and ‘std::vector<int>’)\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\nIn file included from /usr/include/c++/13/string:48,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from generic_bad.cpp:2:\n/usr/include/c++/13/bits/stl_iterator.h:634:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename reverse_iterator<_IteratorL>::difference_type, const reverse_iterator<_IteratorL>&)’\n  634 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/stl_iterator.h:634:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::reverse_iterator<_IteratorL>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/stl_iterator.h:1808:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename move_iterator<_IteratorL>::difference_type, const move_iterator<_IteratorL>&)’\n 1808 |     operator+(typename move_iterator<_Iterator>::difference_type __n,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/stl_iterator.h:1808:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::move_iterator<_IteratorL>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\nIn file included from /usr/include/c++/13/string:54:\n/usr/include/c++/13/bits/basic_string.h:3553:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3553 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3553:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3571:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3571 |     operator+(const _CharT* __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3571:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   mismatched types ‘const _CharT*’ and ‘std::vector<int>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3590:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3590 |     operator+(_CharT __lhs, const basic_string<_CharT,_Traits,_Alloc>& __rhs)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3590:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3607:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’\n 3607 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3607:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3625:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’\n 3625 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3625:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3637:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3637 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3637:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3644:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3644 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3644:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3651:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3651 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3651:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3674:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3674 |     operator+(const _CharT* __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3674:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   mismatched types ‘const _CharT*’ and ‘std::vector<int>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3681:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3681 |     operator+(_CharT __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3681:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3688:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’\n 3688 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3688:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3695:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’\n 3695 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3695:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g generic_bad.cpp -o generic_bad",
+     "out": "",
+     "err": "generic_bad.cpp: In instantiation of ‘main()::<lambda(auto:16)> [with auto:16 = std::vector<int>]’:\ngeneric_bad.cpp:8:19:   required from here\ngeneric_bad.cpp:6:40: error: no match for ‘operator+’ (operand types are ‘std::vector<int>’ and ‘std::vector<int>’)\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\nIn file included from /usr/include/c++/13/string:48,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from generic_bad.cpp:2:\n/usr/include/c++/13/bits/stl_iterator.h:634:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename reverse_iterator<_IteratorL>::difference_type, const reverse_iterator<_IteratorL>&)’\n  634 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/stl_iterator.h:634:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::reverse_iterator<_IteratorL>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/stl_iterator.h:1808:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename move_iterator<_IteratorL>::difference_type, const move_iterator<_IteratorL>&)’\n 1808 |     operator+(typename move_iterator<_Iterator>::difference_type __n,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/stl_iterator.h:1808:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::move_iterator<_IteratorL>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\nIn file included from /usr/include/c++/13/string:54:\n/usr/include/c++/13/bits/basic_string.h:3553:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3553 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3553:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3571:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3571 |     operator+(const _CharT* __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3571:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   mismatched types ‘const _CharT*’ and ‘std::vector<int>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3590:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3590 |     operator+(_CharT __lhs, const basic_string<_CharT,_Traits,_Alloc>& __rhs)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3590:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3607:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’\n 3607 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3607:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3625:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’\n 3625 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3625:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3637:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’\n 3637 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3637:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3644:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3644 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3644:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3651:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3651 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3651:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3674:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3674 |     operator+(const _CharT* __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3674:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   mismatched types ‘const _CharT*’ and ‘std::vector<int>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3681:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’\n 3681 |     operator+(_CharT __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3681:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3688:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’\n 3688 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3688:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n/usr/include/c++/13/bits/basic_string.h:3695:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’\n 3695 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/basic_string.h:3695:5: note:   template argument deduction/substitution failed:\ngeneric_bad.cpp:6:40: note:   ‘std::vector<int>’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~~^~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "generic_bad.cpp:6:40: error: invalid operands to binary expression ('std::vector<int>' and 'std::vector<int>')\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~ ^ ~\ngeneric_bad.cpp:8:19: note: in instantiation of function template specialization 'main()::(anonymous class)::operator()<std::vector<int>>' requested here\n    8 |     auto w = twice(v);\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_iterator.h:634:5: note: candidate template ignored: could not match 'reverse_iterator' against 'vector'\n  634 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_iterator.h:1808:5: note: candidate template ignored: could not match 'move_iterator' against 'vector'\n 1808 |     operator+(typename move_iterator<_Iterator>::difference_type __n,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3553:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3553 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3571:5: note: candidate template ignored: could not match 'const _CharT *' against 'std::vector<int>'\n 3571 |     operator+(const _CharT* __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3590:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3590 |     operator+(_CharT __lhs, const basic_string<_CharT,_Traits,_Alloc>& __rhs)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3607:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3607 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3625:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3625 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3637:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3637 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3644:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3644 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3651:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3651 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3674:5: note: candidate template ignored: could not match 'const _CharT *' against 'std::vector<int>'\n 3674 |     operator+(const _CharT* __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3681:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3681 |     operator+(_CharT __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3688:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3688 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3695:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3695 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g generic_bad.cpp -o generic_bad",
+      "out": "",
+      "err": "generic_bad.cpp:6:40: error: invalid operands to binary expression ('std::vector<int>' and 'std::vector<int>')\n    6 |     auto twice = [](auto x) { return x + x; };\n      |                                      ~ ^ ~\ngeneric_bad.cpp:8:19: note: in instantiation of function template specialization 'main()::(anonymous class)::operator()<std::vector<int>>' requested here\n    8 |     auto w = twice(v);\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_iterator.h:634:5: note: candidate template ignored: could not match 'reverse_iterator' against 'vector'\n  634 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_iterator.h:1808:5: note: candidate template ignored: could not match 'move_iterator' against 'vector'\n 1808 |     operator+(typename move_iterator<_Iterator>::difference_type __n,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3553:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3553 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3571:5: note: candidate template ignored: could not match 'const _CharT *' against 'std::vector<int>'\n 3571 |     operator+(const _CharT* __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3590:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3590 |     operator+(_CharT __lhs, const basic_string<_CharT,_Traits,_Alloc>& __rhs)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3607:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3607 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3625:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3625 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3637:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3637 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3644:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3644 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3651:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3651 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3674:5: note: candidate template ignored: could not match 'const _CharT *' against 'std::vector<int>'\n 3674 |     operator+(const _CharT* __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3681:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3681 |     operator+(_CharT __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3688:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3688 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/basic_string.h:3695:5: note: candidate template ignored: could not match 'basic_string' against 'vector'\n 3695 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,\n      |     ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "hidden_quiet.cpp": {
+   "src": "// hidden_quiet.cpp: the same slip without override. It builds and runs.\n#include <iostream>\n\nstruct B {\n    virtual void f(int) { std::cout << \"B::f(int)\\n\"; }\n    virtual ~B() = default;\n};\n\nstruct D : B {\n    void f(long) { std::cout << \"D::f(long)\\n\"; }   // meant to override...\n};\n\nint main() {\n    D d;\n    B& b = d;\n    b.f(1);     // through the base: which f runs?\n}\n",
+   "stdout": "B::f(int)\n",
+   "stderr": "hidden_quiet.cpp:5:18: warning: ‘virtual void B::f(int)’ was hidden [-Woverloaded-virtual=]\n    5 |     virtual void f(int) { std::cout << \"B::f(int)\\n\"; }\n      |                  ^\nhidden_quiet.cpp:10:10: note:   by ‘void D::f(long int)’\n   10 |     void f(long) { std::cout << \"D::f(long)\\n\"; }   // meant to override...\n      |          ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g hidden_quiet.cpp -o hidden_quiet",
+     "out": "",
+     "err": "hidden_quiet.cpp:5:18: warning: ‘virtual void B::f(int)’ was hidden [-Woverloaded-virtual=]\n    5 |     virtual void f(int) { std::cout << \"B::f(int)\\n\"; }\n      |                  ^\nhidden_quiet.cpp:10:10: note:   by ‘void D::f(long int)’\n   10 |     void f(long) { std::cout << \"D::f(long)\\n\"; }   // meant to override...\n      |          ^\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./hidden_quiet",
+     "out": "B::f(int)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "B::f(int)\n",
+    "stderr": "hidden_quiet.cpp:10:10: warning: 'D::f' hides overloaded virtual function [-Woverloaded-virtual]\n   10 |     void f(long) { std::cout << \"D::f(long)\\n\"; }   // meant to override...\n      |          ^\nhidden_quiet.cpp:5:18: note: hidden overloaded virtual function 'B::f' declared here: type mismatch at 1st parameter ('int' vs 'long')\n    5 |     virtual void f(int) { std::cout << \"B::f(int)\\n\"; }\n      |                  ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g hidden_quiet.cpp -o hidden_quiet",
+      "out": "",
+      "err": "hidden_quiet.cpp:10:10: warning: 'D::f' hides overloaded virtual function [-Woverloaded-virtual]\n   10 |     void f(long) { std::cout << \"D::f(long)\\n\"; }   // meant to override...\n      |          ^\nhidden_quiet.cpp:5:18: note: hidden overloaded virtual function 'B::f' declared here: type mismatch at 1st parameter ('int' vs 'long')\n    5 |     virtual void f(int) { std::cout << \"B::f(int)\\n\"; }\n      |                  ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./hidden_quiet",
+      "out": "B::f(int)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "iife.cpp": {
+   "src": "// iife.cpp: work out a const value with a lambda that is called at once.\n#include <iostream>\n#include <string>\n\nint main() {\n    int hour{19};\n    const std::string greeting = [&] {     // made...\n        if (hour < 12) return std::string{\"Good morning\"};\n        if (hour < 18) return std::string{\"Good afternoon\"};\n        return std::string{\"Good evening\"};\n    }();                                   // ...and called right here\n    std::cout << greeting << \", Wren\\n\";\n    // greeting = \"Hi\";   // refused: greeting is const\n}\n",
+   "stdout": "Good evening, Wren\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g iife.cpp -o iife",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./iife",
+     "out": "Good evening, Wren\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Good evening, Wren\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g iife.cpp -o iife",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./iife",
+      "out": "Good evening, Wren\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "init_capture.cpp": {
+   "src": "// init_capture.cpp: give a capture a new name, a new value, or a moved-in owner.\n#include <iostream>\n#include <memory>\n#include <string>\n#include <utility>\n\nint main() {\n    int price{3};\n    auto deal = [total = price * 4] { return total; };        // a fresh variable, computed once\n    std::cout << \"4 for \" << deal() << '\\n';\n\n    auto card = std::make_unique<std::string>(\"library card\");\n    auto keeper = [c = std::move(card)] { return *c; };       // the lambda now owns it\n    std::cout << \"keeper holds: \" << keeper() << '\\n';\n    std::cout << \"card is \" << (card ? \"still here\" : \"empty\") << '\\n';\n}\n",
+   "stdout": "4 for 12\nkeeper holds: library card\ncard is empty\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g init_capture.cpp -o init_capture",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./init_capture",
+     "out": "4 for 12\nkeeper holds: library card\ncard is empty\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "4 for 12\nkeeper holds: library card\ncard is empty\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g init_capture.cpp -o init_capture",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./init_capture",
+      "out": "4 for 12\nkeeper holds: library card\ncard is empty\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lambda_parts.cpp": {
+   "src": "// lambda_parts.cpp: every part of a lambda, from shortest to longest.\n#include <iostream>\n\nint main() {\n    auto hello = [] { std::cout << \"hello\\n\"; };          // capture list and body only\n    auto twice = [](int x) { return x * 2; };             // + a parameter\n    auto half = [](int x) -> double { return x / 2.0; };  // + a written return type\n    int bonus{10};\n    auto add_bonus = [bonus](int x) { return x + bonus; };  // + a capture\n\n    hello();\n    std::cout << twice(21) << '\\n';\n    std::cout << half(7) << '\\n';\n    std::cout << add_bonus(5) << '\\n';\n    std::cout << [](int a, int b) { return a * b; }(6, 7) << '\\n';   // made and called at once\n}\n",
+   "stdout": "hello\n42\n3.5\n15\n42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g lambda_parts.cpp -o lambda_parts",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lambda_parts",
+     "out": "hello\n42\n3.5\n15\n42\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "hello\n42\n3.5\n15\n42\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g lambda_parts.cpp -o lambda_parts",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./lambda_parts",
+      "out": "hello\n42\n3.5\n15\n42\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lunch.cpp": {
+   "src": "// lunch.cpp: pack a copy of the sandwich, or a note saying where it is.\n#include <iostream>\n\nint main() {\n    int sandwich{1};                                   // one sandwich in the fridge\n    auto packed = [sandwich] { return sandwich; };     // by value: a copy goes in the box\n    auto note = [&sandwich] { return sandwich; };      // by reference: \"it's in my fridge\"\n    sandwich = 2;                                      // swap it for a better sandwich\n    std::cout << \"packed lunch: sandwich \" << packed() << '\\n';\n    std::cout << \"note lunch:   sandwich \" << note() << '\\n';\n}\n",
+   "stdout": "packed lunch: sandwich 1\nnote lunch:   sandwich 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g lunch.cpp -o lunch",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lunch",
+     "out": "packed lunch: sandwich 1\nnote lunch:   sandwich 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "packed lunch: sandwich 1\nnote lunch:   sandwich 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g lunch.cpp -o lunch",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./lunch",
+      "out": "packed lunch: sandwich 1\nnote lunch:   sandwich 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "mutable_bad.cpp": {
+   "src": "// mutable_bad.cpp: a by-value capture is read-only inside the lambda.\n#include <iostream>\n\nint main() {\n    int count{0};\n    auto tick = [count]() { count = count + 1; return count; };\n    std::cout << tick() << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "mutable_bad.cpp: In lambda function:\nmutable_bad.cpp:6:35: error: assignment of read-only variable ‘count’\n    6 |     auto tick = [count]() { count = count + 1; return count; };\n      |                             ~~~~~~^~~~~~~~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g mutable_bad.cpp -o mutable_bad",
+     "out": "",
+     "err": "mutable_bad.cpp: In lambda function:\nmutable_bad.cpp:6:35: error: assignment of read-only variable ‘count’\n    6 |     auto tick = [count]() { count = count + 1; return count; };\n      |                             ~~~~~~^~~~~~~~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "mutable_bad.cpp:6:35: error: cannot assign to a variable captured by copy in a non-mutable lambda\n    6 |     auto tick = [count]() { count = count + 1; return count; };\n      |                             ~~~~~ ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g mutable_bad.cpp -o mutable_bad",
+      "out": "",
+      "err": "mutable_bad.cpp:6:35: error: cannot assign to a variable captured by copy in a non-mutable lambda\n    6 |     auto tick = [count]() { count = count + 1; return count; };\n      |                             ~~~~~ ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "mutable_ok.cpp": {
+   "src": "// mutable_ok.cpp: mutable lets the lambda change its own copy.\n#include <iostream>\n\nint main() {\n    int count{0};\n    auto tick = [count]() mutable { count = count + 1; return count; };\n    std::cout << tick() << ' ';\n    std::cout << tick() << ' ';\n    std::cout << tick() << '\\n';\n    std::cout << \"count outside is still \" << count << '\\n';\n}\n",
+   "stdout": "1 2 3\ncount outside is still 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g mutable_ok.cpp -o mutable_ok",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./mutable_ok",
+     "out": "1 2 3\ncount outside is still 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 2 3\ncount outside is still 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g mutable_ok.cpp -o mutable_ok",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./mutable_ok",
+      "out": "1 2 3\ncount outside is still 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "no_virtual.cpp": {
+   "src": "// no_virtual.cpp: one play() button, but the remote only knows the base.\n#include <iostream>\n\nstruct Device {\n    void play() const { std::cout << \"Device: play... something?\\n\"; }\n};\n\nstruct Tv : Device {\n    void play() const { std::cout << \"Tv: showing the film\\n\"; }\n};\n\nstruct Radio : Device {\n    void play() const { std::cout << \"Radio: playing music\\n\"; }\n};\n\nvoid press_play(const Device& d) { d.play(); }   // the universal remote\n\nint main() {\n    Tv tv;\n    Radio radio;\n    tv.play();            // called on a Tv directly\n    press_play(tv);       // called through a Device&\n    press_play(radio);\n}\n",
+   "stdout": "Tv: showing the film\nDevice: play... something?\nDevice: play... something?\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g no_virtual.cpp -o no_virtual",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./no_virtual",
+     "out": "Tv: showing the film\nDevice: play... something?\nDevice: play... something?\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Tv: showing the film\nDevice: play... something?\nDevice: play... something?\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g no_virtual.cpp -o no_virtual",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./no_virtual",
+      "out": "Tv: showing the film\nDevice: play... something?\nDevice: play... something?\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "no_virtual_dtor.cpp": {
+   "src": "// no_virtual_dtor.cpp: deleting a Tv through a Device* that has no virtual destructor.\n#include <iostream>\n#include <string>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device\" << std::endl; }\n    ~Device() { std::cout << \"~Device\" << std::endl; }            // not virtual!\n};\n\nstruct Tv : Device {\n    std::string guide{\"Tonight: films, news, more films\"};\n    void play() const override { std::cout << \"Tv\" << std::endl; }\n    ~Tv() { std::cout << \"~Tv\" << std::endl; }\n};\n\nint main() {\n    Device* d = new Tv;\n    d->play();\n    delete d;            // which destructors run?\n}\n",
+   "stdout": "Tv\n~Device\n",
+   "stderr": "no_virtual_dtor.cpp: In function ‘int main()’:\nno_virtual_dtor.cpp:19:5: warning: deleting object of polymorphic class type ‘Device’ which has non-virtual destructor might cause undefined behavior [-Wdelete-non-virtual-dtor]\n   19 |     delete d;            // which destructors run?\n      |     ^~~~~~~~\n=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x504000000010 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   40 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555b7cf in main /home/you/cpp-ch24/no_virtual_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\n0x504000000010 is located 0 bytes inside of 40-byte region [0x504000000010,0x504000000038)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555b4e3 in main /home/you/cpp-ch24/no_virtual_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer no_virtual_dtor.cpp -o no_virtual_dtor",
+     "out": "",
+     "err": "no_virtual_dtor.cpp: In function ‘int main()’:\nno_virtual_dtor.cpp:19:5: warning: deleting object of polymorphic class type ‘Device’ which has non-virtual destructor might cause undefined behavior [-Wdelete-non-virtual-dtor]\n   19 |     delete d;            // which destructors run?\n      |     ^~~~~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./no_virtual_dtor",
+     "out": "Tv\n~Device\n",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x504000000010 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   40 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555b7cf in main /home/you/cpp-ch24/no_virtual_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\n0x504000000010 is located 0 bytes inside of 40-byte region [0x504000000010,0x504000000038)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555b4e3 in main /home/you/cpp-ch24/no_virtual_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n",
+     "exit": 1,
+     "merged": "Tv\n~Device\n=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x504000000010 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   40 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555b7cf in main /home/you/cpp-ch24/no_virtual_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\n0x504000000010 is located 0 bytes inside of 40-byte region [0x504000000010,0x504000000038)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555b4e3 in main /home/you/cpp-ch24/no_virtual_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555b404 in _start (/home/you/cpp-ch24/no_virtual_dtor+0x7404) (BuildId: 0085e0947695bcf0b511b7d353403fa90af65e8d)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n"
+    }
+   ]
+  },
+  "not_captured.cpp": {
+   "src": "// not_captured.cpp: a lambda only sees what it was given.\n#include <algorithm>\n#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> scores{40, 75, 90, 55};\n    int lim{60};\n    auto passed = std::count_if(scores.begin(), scores.end(),\n                                [](int s) { return s >= lim; });\n    std::cout << passed << \" passed\\n\";\n}\n",
+   "stdout": "",
+   "stderr": "not_captured.cpp: In lambda function:\nnot_captured.cpp:10:57: error: ‘lim’ is not captured\n   10 |                                 [](int s) { return s >= lim; });\n      |                                                         ^~~\nnot_captured.cpp:10:34: note: the lambda has no capture-default\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\nnot_captured.cpp:8:9: note: ‘int lim’ declared here\n    8 |     int lim{60};\n      |         ^~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g not_captured.cpp -o not_captured",
+     "out": "",
+     "err": "not_captured.cpp: In lambda function:\nnot_captured.cpp:10:57: error: ‘lim’ is not captured\n   10 |                                 [](int s) { return s >= lim; });\n      |                                                         ^~~\nnot_captured.cpp:10:34: note: the lambda has no capture-default\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\nnot_captured.cpp:8:9: note: ‘int lim’ declared here\n    8 |     int lim{60};\n      |         ^~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "not_captured.cpp:10:57: error: variable 'lim' cannot be implicitly captured in a lambda with no capture-default specified\n   10 |                                 [](int s) { return s >= lim; });\n      |                                                         ^\nnot_captured.cpp:8:9: note: 'lim' declared here\n    8 |     int lim{60};\n      |         ^\nnot_captured.cpp:10:33: note: lambda expression begins here\n   10 |                                 [](int s) { return s >= lim; });\n      |                                 ^\nnot_captured.cpp:10:34: note: capture 'lim' by value\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  lim\nnot_captured.cpp:10:34: note: capture 'lim' by reference\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  &lim\nnot_captured.cpp:10:34: note: default capture by value\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  =\nnot_captured.cpp:10:34: note: default capture by reference\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  &\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g not_captured.cpp -o not_captured",
+      "out": "",
+      "err": "not_captured.cpp:10:57: error: variable 'lim' cannot be implicitly captured in a lambda with no capture-default specified\n   10 |                                 [](int s) { return s >= lim; });\n      |                                                         ^\nnot_captured.cpp:8:9: note: 'lim' declared here\n    8 |     int lim{60};\n      |         ^\nnot_captured.cpp:10:33: note: lambda expression begins here\n   10 |                                 [](int s) { return s >= lim; });\n      |                                 ^\nnot_captured.cpp:10:34: note: capture 'lim' by value\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  lim\nnot_captured.cpp:10:34: note: capture 'lim' by reference\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  &lim\nnot_captured.cpp:10:34: note: default capture by value\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  =\nnot_captured.cpp:10:34: note: default capture by reference\n   10 |                                 [](int s) { return s >= lim; });\n      |                                  ^\n      |                                  &\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "override_bad.cpp": {
+   "src": "// override_bad.cpp: override asks the Compiler to check the signature.\nstruct B {\n    virtual void f(int) {}\n    virtual ~B() = default;\n};\n\nstruct D : B {\n    void f(long) override {}\n};\n\nint main() {\n    D d;\n    d.f(1);\n}\n",
+   "stdout": "",
+   "stderr": "override_bad.cpp:8:10: error: ‘void D::f(long int)’ marked ‘override’, but does not override\n    8 |     void f(long) override {}\n      |          ^\noverride_bad.cpp:3:18: warning: ‘virtual void B::f(int)’ was hidden [-Woverloaded-virtual=]\n    3 |     virtual void f(int) {}\n      |                  ^\noverride_bad.cpp:8:10: note:   by ‘void D::f(long int)’\n    8 |     void f(long) override {}\n      |          ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g override_bad.cpp -o override_bad",
+     "out": "",
+     "err": "override_bad.cpp:8:10: error: ‘void D::f(long int)’ marked ‘override’, but does not override\n    8 |     void f(long) override {}\n      |          ^\noverride_bad.cpp:3:18: warning: ‘virtual void B::f(int)’ was hidden [-Woverloaded-virtual=]\n    3 |     virtual void f(int) {}\n      |                  ^\noverride_bad.cpp:8:10: note:   by ‘void D::f(long int)’\n    8 |     void f(long) override {}\n      |          ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "override_bad.cpp:8:18: error: non-virtual member function marked 'override' hides virtual member function\n    8 |     void f(long) override {}\n      |                  ^\noverride_bad.cpp:3:18: note: hidden overloaded virtual function 'B::f' declared here: type mismatch at 1st parameter ('int' vs 'long')\n    3 |     virtual void f(int) {}\n      |                  ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g override_bad.cpp -o override_bad",
+      "out": "",
+      "err": "override_bad.cpp:8:18: error: non-virtual member function marked 'override' hides virtual member function\n    8 |     void f(long) override {}\n      |                  ^\noverride_bad.cpp:3:18: note: hidden overloaded virtual function 'B::f' declared here: type mismatch at 1st parameter ('int' vs 'long')\n    3 |     virtual void f(int) {}\n      |                  ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "parsons_hierarchy.cpp": {
+   "src": "#include <iostream>\n\nstruct Greeter {\n    virtual ~Greeter() = default;\n    virtual void greet() const = 0;\n};\nstruct Polite : Greeter {\n    void greet() const override { std::cout << \"Good day!\\n\"; }\n};\nint main() {\n    Polite p;\n    const Greeter& g = p;\n    g.greet();\n}\n",
+   "stdout": "Good day!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_hierarchy.cpp -o parsons_hierarchy",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_hierarchy",
+     "out": "Good day!\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Good day!\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_hierarchy.cpp -o parsons_hierarchy",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_hierarchy",
+      "out": "Good day!\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_iife.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> temps{18, 25, 31, 22};\n    const int hottest = [&] {\n        int best = temps[0];\n        for (int t : temps) if (t > best) best = t;\n        return best;\n    }();\n    std::cout << \"hottest: \" << hottest << '\\n';\n}\n",
+   "stdout": "hottest: 31\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_iife.cpp -o parsons_iife",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_iife",
+     "out": "hottest: 31\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "hottest: 31\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_iife.cpp -o parsons_iife",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_iife",
+      "out": "hottest: 31\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_abstract.cpp": {
+   "src": "// predict_abstract.cpp: Instrument promises sound() but never says what it is.\n#include <iostream>\n\nstruct Instrument {\n    virtual void sound() const = 0;\n    virtual ~Instrument() = default;\n};\n\nstruct Drum : Instrument {\n    void sound() const override { std::cout << \"boom\\n\"; }\n};\n\nint main() {\n    Drum d;\n    d.sound();\n    Instrument i;\n    i.sound();\n}\n",
+   "stdout": "",
+   "stderr": "predict_abstract.cpp: In function ‘int main()’:\npredict_abstract.cpp:16:16: error: cannot declare variable ‘i’ to be of abstract type ‘Instrument’\n   16 |     Instrument i;\n      |                ^\npredict_abstract.cpp:4:8: note:   because the following virtual functions are pure within ‘Instrument’:\n    4 | struct Instrument {\n      |        ^~~~~~~~~~\npredict_abstract.cpp:5:18: note:     ‘virtual void Instrument::sound() const’\n    5 |     virtual void sound() const = 0;\n      |                  ^~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_abstract.cpp -o predict_abstract",
+     "out": "",
+     "err": "predict_abstract.cpp: In function ‘int main()’:\npredict_abstract.cpp:16:16: error: cannot declare variable ‘i’ to be of abstract type ‘Instrument’\n   16 |     Instrument i;\n      |                ^\npredict_abstract.cpp:4:8: note:   because the following virtual functions are pure within ‘Instrument’:\n    4 | struct Instrument {\n      |        ^~~~~~~~~~\npredict_abstract.cpp:5:18: note:     ‘virtual void Instrument::sound() const’\n    5 |     virtual void sound() const = 0;\n      |                  ^~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "predict_abstract.cpp:16:16: error: variable type 'Instrument' is an abstract class\n   16 |     Instrument i;\n      |                ^\npredict_abstract.cpp:5:18: note: unimplemented pure virtual method 'sound' in 'Instrument'\n    5 |     virtual void sound() const = 0;\n      |                  ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_abstract.cpp -o predict_abstract",
+      "out": "",
+      "err": "predict_abstract.cpp:16:16: error: variable type 'Instrument' is an abstract class\n   16 |     Instrument i;\n      |                ^\npredict_abstract.cpp:5:18: note: unimplemented pure virtual method 'sound' in 'Instrument'\n    5 |     virtual void sound() const = 0;\n      |                  ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "predict_capture.cpp": {
+   "src": "// predict_capture.cpp: three lunches packed before the fridge changes.\n#include <iostream>\n\nint main() {\n    int apples{2};\n    int pears{5};\n    auto a = [apples] { return apples; };\n    auto b = [&pears] { return pears; };\n    auto c = [=] { return apples + pears; };\n    apples = 10;\n    pears = 20;\n    std::cout << a() << ' ' << b() << ' ' << c() << '\\n';\n}\n",
+   "stdout": "2 20 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_capture.cpp -o predict_capture",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_capture",
+     "out": "2 20 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "2 20 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_capture.cpp -o predict_capture",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_capture",
+      "out": "2 20 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_dispatch.cpp": {
+   "src": "// predict_dispatch.cpp: which speak() and which name() run through an Animal&?\n#include <iostream>\n#include <string>\n\nstruct Animal {\n    virtual std::string speak() const { return \"...\"; }\n    std::string name() const { return \"animal\"; }          // not virtual\n    virtual ~Animal() = default;\n};\n\nstruct Dog : Animal {\n    std::string speak() const override { return \"Woof\"; }\n    std::string name() const { return \"dog\"; }\n};\n\nstruct Fish : Animal {\n    std::string name() const { return \"fish\"; }\n};\n\nvoid intro(const Animal& a) { std::cout << a.name() << \" says \" << a.speak() << '\\n'; }\n\nint main() {\n    Dog rex;\n    Fish nemo;\n    intro(rex);\n    intro(nemo);\n    std::cout << rex.name() << \" says \" << rex.speak() << '\\n';\n}\n",
+   "stdout": "animal says Woof\nanimal says ...\ndog says Woof\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_dispatch.cpp -o predict_dispatch",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_dispatch",
+     "out": "animal says Woof\nanimal says ...\ndog says Woof\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "animal says Woof\nanimal says ...\ndog says Woof\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_dispatch.cpp -o predict_dispatch",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_dispatch",
+      "out": "animal says Woof\nanimal says ...\ndog says Woof\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_generic.cpp": {
+   "src": "// predict_generic.cpp: one generic lambda, four kinds of argument.\n#include <iostream>\n#include <string>\n\nint main() {\n    auto bigger = [](auto a, auto b) { return a > b ? a : b; };\n    std::cout << bigger(3, 8) << '\\n';\n    std::cout << bigger(2.5, 1.5) << '\\n';\n    std::cout << bigger(std::string{\"pear\"}, std::string{\"apple\"}) << '\\n';\n    std::cout << bigger('a', 'b') << '\\n';\n}\n",
+   "stdout": "8\n2.5\npear\nb\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_generic.cpp -o predict_generic",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_generic",
+     "out": "8\n2.5\npear\nb\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "8\n2.5\npear\nb\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_generic.cpp -o predict_generic",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_generic",
+      "out": "8\n2.5\npear\nb\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_order.cpp": {
+   "src": "// predict_order.cpp: three floors, built bottom-up, knocked down top-down.\n#include <iostream>\n\nstruct Battery {\n    Battery()  { std::cout << \"Battery+ \"; }\n    ~Battery() { std::cout << \"Battery- \"; }\n};\n\nstruct Gadget {\n    Gadget()  { std::cout << \"Gadget+ \"; }\n    ~Gadget() { std::cout << \"Gadget- \"; }\n};\n\nstruct Remote : Gadget {\n    Battery battery;                       // a member\n    Remote()  { std::cout << \"Remote+ \"; }\n    ~Remote() { std::cout << \"Remote- \"; }\n};\n\nint main() {\n    {\n        Remote r;\n        std::cout << \"| \";\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "Gadget+ Battery+ Remote+ | Remote- Battery- Gadget- \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_order.cpp -o predict_order",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_order",
+     "out": "Gadget+ Battery+ Remote+ | Remote- Battery- Gadget- \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Gadget+ Battery+ Remote+ | Remote- Battery- Gadget- \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_order.cpp -o predict_order",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_order",
+      "out": "Gadget+ Battery+ Remote+ | Remote- Battery- Gadget- \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_slice.cpp": {
+   "src": "// predict_slice.cpp: the same two pets, stored two ways.\n#include <iostream>\n#include <memory>\n#include <string>\n#include <vector>\n\nstruct Pet {\n    virtual std::string sound() const { return \"?\"; }\n    virtual ~Pet() = default;\n};\nstruct Cat : Pet {\n    std::string sound() const override { return \"meow\"; }\n};\nstruct Cow : Pet {\n    std::string sound() const override { return \"moo\"; }\n};\n\nint main() {\n    std::vector<Pet> photos{Cat{}, Cow{}};\n    std::vector<std::unique_ptr<Pet>> pets;\n    pets.push_back(std::make_unique<Cat>());\n    pets.push_back(std::make_unique<Cow>());\n    for (const auto& p : photos) std::cout << p.sound() << ' ';\n    std::cout << '\\n';\n    for (const auto& p : pets) std::cout << p->sound() << ' ';\n    std::cout << '\\n';\n}\n",
+   "stdout": "? ? \nmeow moo \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_slice.cpp -o predict_slice",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_slice",
+     "out": "? ? \nmeow moo \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "? ? \nmeow moo \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_slice.cpp -o predict_slice",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_slice",
+      "out": "? ? \nmeow moo \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "private_bad.cpp": {
+   "src": "// private_bad.cpp: a derived class can't open its base's private drawer.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\nprivate:\n    std::string name_;\n};\n\nclass Tv : public Device {\npublic:\n    explicit Tv(std::string name) : Device{std::move(name)} {}\n    void show() const { std::cout << name_ << '\\n'; }\n};\n\nint main() {\n    Tv tv{\"Lounge TV\"};\n    tv.show();\n}\n",
+   "stdout": "",
+   "stderr": "private_bad.cpp: In member function ‘void Tv::show() const’:\nprivate_bad.cpp:16:38: error: ‘std::string Device::name_’ is private within this context\n   16 |     void show() const { std::cout << name_ << '\\n'; }\n      |                                      ^~~~~\nprivate_bad.cpp:10:17: note: declared private here\n   10 |     std::string name_;\n      |                 ^~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g private_bad.cpp -o private_bad",
+     "out": "",
+     "err": "private_bad.cpp: In member function ‘void Tv::show() const’:\nprivate_bad.cpp:16:38: error: ‘std::string Device::name_’ is private within this context\n   16 |     void show() const { std::cout << name_ << '\\n'; }\n      |                                      ^~~~~\nprivate_bad.cpp:10:17: note: declared private here\n   10 |     std::string name_;\n      |                 ^~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "private_bad.cpp:16:38: error: 'name_' is a private member of 'Device'\n   16 |     void show() const { std::cout << name_ << '\\n'; }\n      |                                      ^\nprivate_bad.cpp:10:17: note: declared private here\n   10 |     std::string name_;\n      |                 ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g private_bad.cpp -o private_bad",
+      "out": "",
+      "err": "private_bad.cpp:16:38: error: 'name_' is a private member of 'Device'\n   16 |     void show() const { std::cout << name_ << '\\n'; }\n      |                                      ^\nprivate_bad.cpp:10:17: note: declared private here\n   10 |     std::string name_;\n      |                 ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "protected_bad.cpp": {
+   "src": "// protected_bad.cpp: protected is still closed to strangers like main.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\nprotected:\n    std::string name_;\n};\n\nclass Tv : public Device {\npublic:\n    explicit Tv(std::string name) : Device{std::move(name)} {}\n};\n\nint main() {\n    Tv tv{\"Lounge TV\"};\n    std::cout << tv.name_ << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "protected_bad.cpp: In function ‘int main()’:\nprotected_bad.cpp:20:21: error: ‘std::string Device::name_’ is protected within this context\n   20 |     std::cout << tv.name_ << '\\n';\n      |                     ^~~~~\nprotected_bad.cpp:10:17: note: declared protected here\n   10 |     std::string name_;\n      |                 ^~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g protected_bad.cpp -o protected_bad",
+     "out": "",
+     "err": "protected_bad.cpp: In function ‘int main()’:\nprotected_bad.cpp:20:21: error: ‘std::string Device::name_’ is protected within this context\n   20 |     std::cout << tv.name_ << '\\n';\n      |                     ^~~~~\nprotected_bad.cpp:10:17: note: declared protected here\n   10 |     std::string name_;\n      |                 ^~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "protected_bad.cpp:20:21: error: 'name_' is a protected member of 'Device'\n   20 |     std::cout << tv.name_ << '\\n';\n      |                     ^\nprotected_bad.cpp:10:17: note: declared protected here\n   10 |     std::string name_;\n      |                 ^\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g protected_bad.cpp -o protected_bad",
+      "out": "",
+      "err": "protected_bad.cpp:20:21: error: 'name_' is a protected member of 'Device'\n   20 |     std::cout << tv.name_ << '\\n';\n      |                     ^\nprotected_bad.cpp:10:17: note: declared protected here\n   10 |     std::string name_;\n      |                 ^\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "protected_ok.cpp": {
+   "src": "// protected_ok.cpp: protected opens the drawer to derived classes only.\n#include <iostream>\n#include <string>\n#include <utility>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\nprotected:\n    std::string name_;      // family only: Device and classes derived from it\n};\n\nclass Tv : public Device {\npublic:\n    explicit Tv(std::string name) : Device{std::move(name)} {}\n    void show() const { std::cout << \"[\" << name_ << \"]\\n\"; }\n};\n\nint main() {\n    Tv tv{\"Lounge TV\"};\n    tv.show();\n    // std::cout << tv.name_;   // still refused out here: protected, not public\n}\n",
+   "stdout": "[Lounge TV]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g protected_ok.cpp -o protected_ok",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./protected_ok",
+     "out": "[Lounge TV]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "[Lounge TV]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g protected_ok.cpp -o protected_ok",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./protected_ok",
+      "out": "[Lounge TV]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "remote_shelf.cpp": {
+   "src": "// remote_shelf.cpp: many kinds of device on one shelf, through unique_ptr<Device>.\n#include <iostream>\n#include <memory>\n#include <string>\n#include <utility>\n#include <vector>\n\nclass Device {\npublic:\n    explicit Device(std::string name) : name_{std::move(name)} {}\n    virtual ~Device() { std::cout << \"  recycled \" << name_ << '\\n'; }\n    virtual void play() const = 0;\nprotected:\n    std::string name_;\n};\n\nclass Tv : public Device {\npublic:\n    using Device::Device;            // reuse Device's constructor\n    void play() const override { std::cout << name_ << \": film\\n\"; }\n};\n\nclass Radio : public Device {\npublic:\n    using Device::Device;\n    void play() const override { std::cout << name_ << \": music\\n\"; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Device>> shelf;\n    shelf.push_back(std::make_unique<Tv>(\"Lounge TV\"));\n    shelf.push_back(std::make_unique<Radio>(\"Kitchen radio\"));\n    shelf.push_back(std::make_unique<Tv>(\"Bedroom TV\"));\n    for (const auto& d : shelf) d->play();     // one button, three answers\n    std::cout << \"clearing the shelf\\n\";\n    shelf.clear();                             // each unique_ptr deletes its device\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "Lounge TV: film\nKitchen radio: music\nBedroom TV: film\nclearing the shelf\n  recycled Lounge TV\n  recycled Kitchen radio\n  recycled Bedroom TV\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g remote_shelf.cpp -o remote_shelf",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./remote_shelf",
+     "out": "Lounge TV: film\nKitchen radio: music\nBedroom TV: film\nclearing the shelf\n  recycled Lounge TV\n  recycled Kitchen radio\n  recycled Bedroom TV\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Lounge TV: film\nKitchen radio: music\nBedroom TV: film\nclearing the shelf\n  recycled Lounge TV\n  recycled Kitchen radio\n  recycled Bedroom TV\ndone\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g remote_shelf.cpp -o remote_shelf",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./remote_shelf",
+      "out": "Lounge TV: film\nKitchen radio: music\nBedroom TV: film\nclearing the shelf\n  recycled Lounge TV\n  recycled Kitchen radio\n  recycled Bedroom TV\ndone\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_lamp.cpp": {
+   "src": "// road_lamp.cpp: play is virtual, but Lamp has no play of its own.\n#include <iostream>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device::play\\n\"; }\n    virtual ~Device() = default;\n};\nstruct Lamp : Device {};\n\nvoid press_play(const Device& d) { d.play(); }\n\nint main() {\n    Lamp lamp;\n    press_play(lamp);\n}\n",
+   "stdout": "Device::play\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_lamp.cpp -o road_lamp",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_lamp",
+     "out": "Device::play\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Device::play\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_lamp.cpp -o road_lamp",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_lamp",
+      "out": "Device::play\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_sliced.cpp": {
+   "src": "// road_sliced.cpp: play is virtual, but the Tv was copied into a Device.\n#include <iostream>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device::play\\n\"; }\n    virtual ~Device() = default;\n};\nstruct Tv : Device {\n    void play() const override { std::cout << \"Tv::play\\n\"; }\n};\n\nvoid press_play(Device d) { d.play(); }      // by value!\n\nint main() {\n    Tv tv;\n    press_play(tv);\n}\n",
+   "stdout": "Device::play\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_sliced.cpp -o road_sliced",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_sliced",
+     "out": "Device::play\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Device::play\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_sliced.cpp -o road_sliced",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_sliced",
+      "out": "Device::play\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_static.cpp": {
+   "src": "// road_static.cpp: play is NOT virtual. Tv's version is never asked.\n#include <iostream>\n\nstruct Device {\n    void play() const { std::cout << \"Device::play\\n\"; }\n};\nstruct Tv : Device {\n    void play() const { std::cout << \"Tv::play\\n\"; }\n};\n\nvoid press_play(const Device& d) { d.play(); }\n\nint main() {\n    Tv tv;\n    press_play(tv);\n}\n",
+   "stdout": "Device::play\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_static.cpp -o road_static",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_static",
+     "out": "Device::play\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Device::play\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_static.cpp -o road_static",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_static",
+      "out": "Device::play\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_tv.cpp": {
+   "src": "// road_tv.cpp: play is virtual and Tv overrides it.\n#include <iostream>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device::play\\n\"; }\n    virtual ~Device() = default;\n};\nstruct Tv : Device {\n    void play() const override { std::cout << \"Tv::play\\n\"; }\n};\n\nvoid press_play(const Device& d) { d.play(); }\n\nint main() {\n    Tv tv;\n    press_play(tv);\n}\n",
+   "stdout": "Tv::play\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_tv.cpp -o road_tv",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_tv",
+     "out": "Tv::play\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Tv::play\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_tv.cpp -o road_tv",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_tv",
+      "out": "Tv::play\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "safe_counter.cpp": {
+   "src": "// safe_counter.cpp: pack the counter in the lunch box itself.\n#include <functional>\n#include <iostream>\n\nstd::function<int()> make_counter() {\n    int count{0};\n    return [count]() mutable { return ++count; };   // the lambda owns its own copy\n}\n\nint main() {\n    auto next = make_counter();\n    std::cout << next() << ' ';\n    std::cout << next() << ' ';\n    std::cout << next() << '\\n';\n}\n",
+   "stdout": "1 2 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer safe_counter.cpp -o safe_counter",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./safe_counter",
+     "out": "1 2 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sizes.cpp": {
+   "src": "// sizes.cpp: the hidden pointer that virtual adds to every object.\n#include <iostream>\n\nstruct Plain {                   // no virtual functions\n    int volume{5};\n    void play() const {}\n};\n\nstruct Virtual {                 // two virtual functions: play and the destructor\n    int volume{5};\n    virtual void play() const {}\n    virtual ~Virtual() = default;\n};\n\nstruct MoreVirtual {             // three: play, stop and the destructor\n    int volume{5};\n    virtual void play() const {}\n    virtual void stop() const {}\n    virtual ~MoreVirtual() = default;\n};\n\nint main() {\n    std::cout << \"sizeof(int)         = \" << sizeof(int) << '\\n';\n    std::cout << \"sizeof(Plain)       = \" << sizeof(Plain) << '\\n';\n    std::cout << \"sizeof(Virtual)     = \" << sizeof(Virtual) << '\\n';\n    std::cout << \"sizeof(MoreVirtual) = \" << sizeof(MoreVirtual) << '\\n';\n    std::cout << \"sizeof(void*)       = \" << sizeof(void*) << '\\n';\n}\n",
+   "stdout": "sizeof(int)         = 4\nsizeof(Plain)       = 4\nsizeof(Virtual)     = 16\nsizeof(MoreVirtual) = 16\nsizeof(void*)       = 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sizes.cpp -o sizes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sizes",
+     "out": "sizeof(int)         = 4\nsizeof(Plain)       = 4\nsizeof(Virtual)     = 16\nsizeof(MoreVirtual) = 16\nsizeof(void*)       = 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "sizeof(int)         = 4\nsizeof(Plain)       = 4\nsizeof(Virtual)     = 16\nsizeof(MoreVirtual) = 16\nsizeof(void*)       = 8\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sizes.cpp -o sizes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sizes",
+      "out": "sizeof(int)         = 4\nsizeof(Plain)       = 4\nsizeof(Virtual)     = 16\nsizeof(MoreVirtual) = 16\nsizeof(void*)       = 8\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "slicing.cpp": {
+   "src": "// slicing.cpp: copying a Tv into a Device keeps only the Device part.\n#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Device {\n    std::string name{\"device\"};\n    virtual std::string play() const { return name + \": play... something?\"; }\n    virtual ~Device() = default;\n};\n\nstruct Tv : Device {\n    int channel{4};\n    std::string play() const override { return name + \": channel \" + std::to_string(channel); }\n};\n\nvoid by_ref(const Device& d) { std::cout << \"by ref:   \" << d.play() << '\\n'; }\nvoid by_value(Device d)      { std::cout << \"by value: \" << d.play() << '\\n'; }\n\nint main() {\n    Tv tv;\n    tv.name = \"Lounge TV\";\n    by_ref(tv);\n    by_value(tv);                       // a Device is copied out of the Tv\n    std::vector<Device> shelf{tv};      // same again: the shelf holds Devices\n    std::cout << \"on shelf: \" << shelf[0].play() << '\\n';\n}\n",
+   "stdout": "by ref:   Lounge TV: channel 4\nby value: Lounge TV: play... something?\non shelf: Lounge TV: play... something?\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g slicing.cpp -o slicing",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./slicing",
+     "out": "by ref:   Lounge TV: channel 4\nby value: Lounge TV: play... something?\non shelf: Lounge TV: play... something?\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "by ref:   Lounge TV: channel 4\nby value: Lounge TV: play... something?\non shelf: Lounge TV: play... something?\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g slicing.cpp -o slicing",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./slicing",
+      "out": "by ref:   Lounge TV: channel 4\nby value: Lounge TV: play... something?\non shelf: Lounge TV: play... something?\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_dtor.cpp": {
+   "src": "// spot_dtor.cpp: a playlist owned through a Media pointer.\n#include <iostream>\n#include <string>\n#include <vector>\n\nstruct Media {\n    virtual void play() const = 0;\n    ~Media() = default;\n};\n\nstruct Playlist : Media {\n    std::vector<std::string> songs{\"intro\", \"chorus\", \"outro\"};\n    void play() const override { std::cout << songs.size() << \" songs\" << std::endl; }\n};\n\nint main() {\n    Media* m = new Playlist;\n    m->play();\n    delete m;\n}\n",
+   "stdout": "3 songs\n",
+   "stderr": "spot_dtor.cpp: In function ‘int main()’:\nspot_dtor.cpp:19:5: warning: deleting object of abstract class type ‘Media’ which has non-virtual destructor will cause undefined behavior [-Wdelete-non-virtual-dtor]\n   19 |     delete m;\n      |     ^~~~~~~~\n=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x503000000040 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   32 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555e76c in main /home/you/cpp-ch24/spot_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\n0x503000000040 is located 0 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555e583 in main /home/you/cpp-ch24/spot_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer spot_dtor.cpp -o spot_dtor",
+     "out": "",
+     "err": "spot_dtor.cpp: In function ‘int main()’:\nspot_dtor.cpp:19:5: warning: deleting object of abstract class type ‘Media’ which has non-virtual destructor will cause undefined behavior [-Wdelete-non-virtual-dtor]\n   19 |     delete m;\n      |     ^~~~~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_dtor",
+     "out": "3 songs\n",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x503000000040 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   32 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555e76c in main /home/you/cpp-ch24/spot_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\n0x503000000040 is located 0 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555e583 in main /home/you/cpp-ch24/spot_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n",
+     "exit": 1,
+     "merged": "3 songs\n=================================================================\n==2==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x503000000040 in thread T0:\n  object passed to delete has wrong type:\n  size of the allocated type:   32 bytes;\n  size of the deallocated type: 8 bytes.\n    #0 0x7ffff78ff5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164\n    #1 0x55555555e76c in main /home/you/cpp-ch24/spot_dtor.cpp:19\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\n0x503000000040 is located 0 bytes inside of 32-byte region [0x503000000040,0x503000000060)\nallocated by thread T0 here:\n    #0 0x7ffff78fe548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95\n    #1 0x55555555e583 in main /home/you/cpp-ch24/spot_dtor.cpp:17\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x55555555e4a4 in _start (/home/you/cpp-ch24/spot_dtor+0xa4a4) (BuildId: 75f3aedc3b4850367500dce4a606394e1af92933)\n\nSUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164 in operator delete(void*, unsigned long)\n==2==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0\n==2==ABORTING\n"
+    }
+   ]
+  },
+  "spot_scope.cpp": {
+   "src": "// spot_scope.cpp: buttons that remember a label... or do they?\n#include <functional>\n#include <iostream>\n#include <string>\n#include <vector>\n\nstd::vector<std::function<void()>> buttons;\n\nvoid add_button(int number) {\n    std::string label = \"button \" + std::to_string(number);\n    buttons.push_back([&label] { std::cout << label << std::endl; });\n}\n\nint main() {\n    add_button(1);\n    add_button(2);\n    for (const auto& b : buttons) b();\n}\n",
+   "stdout": "",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-return on address 0x7ffff4900050 at pc 0x7ffff787f05f bp 0x7fffffffe9e0 sp 0x7fffffffe188\nREAD of size 8 at 0x7ffff4900050 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555556775d in operator() /home/you/cpp-ch24/spot_scope.cpp:11\n    #3 0x5555555689f5 in __invoke_impl<void, add_button(int)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #4 0x5555555686b2 in __invoke_r<void, add_button(int)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:111\n    #5 0x555555568392 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #6 0x55555556c081 in std::function<void ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #7 0x555555567eb1 in main /home/you/cpp-ch24/spot_scope.cpp:17\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x5555555675e4 in _start (/home/you/cpp-ch24/spot_scope+0x135e4) (BuildId: c8ee59dcdced9f010c9f480e91b8a54b97078b99)\n\nAddress 0x7ffff4900050 is located in stack of thread T0 at offset 80 in frame\n    #0 0x555555567880 in add_button(int) /home/you/cpp-ch24/spot_scope.cpp:9\n\n  This frame has 4 object(s):\n    [32, 40) '<unknown>'\n    [64, 96) 'label' (line 10) <== Memory access at offset 80 is inside this variable\n    [128, 160) '<unknown>'\n    [192, 224) '<unknown>'\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-return ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x7ffff48ffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x7ffff4900000: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5[f5]f5 f5 f5 f5 f5\n  0x7ffff4900080: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900100: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900180: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer spot_scope.cpp -o spot_scope",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_scope",
+     "out": "",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: stack-use-after-return on address 0x7ffff4900050 at pc 0x7ffff787f05f bp 0x7fffffffe9e0 sp 0x7fffffffe188\nREAD of size 8 at 0x7ffff4900050 thread T0\n    #0 0x7ffff787f05e in fwrite ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110\n    #1 0x7ffff7556dc3 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) (/lib/x86_64-linux-gnu/libstdc++.so.6+0x156dc3) (BuildId: 753c6c8608b61d4e67be8f0c890e03e0aa046b8b)\n    #2 0x55555556775d in operator() /home/you/cpp-ch24/spot_scope.cpp:11\n    #3 0x5555555689f5 in __invoke_impl<void, add_button(int)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61\n    #4 0x5555555686b2 in __invoke_r<void, add_button(int)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:111\n    #5 0x555555568392 in _M_invoke /usr/include/c++/13/bits/std_function.h:290\n    #6 0x55555556c081 in std::function<void ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591\n    #7 0x555555567eb1 in main /home/you/cpp-ch24/spot_scope.cpp:17\n    #8 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #9 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #10 0x5555555675e4 in _start (/home/you/cpp-ch24/spot_scope+0x135e4) (BuildId: c8ee59dcdced9f010c9f480e91b8a54b97078b99)\n\nAddress 0x7ffff4900050 is located in stack of thread T0 at offset 80 in frame\n    #0 0x555555567880 in add_button(int) /home/you/cpp-ch24/spot_scope.cpp:9\n\n  This frame has 4 object(s):\n    [32, 40) '<unknown>'\n    [64, 96) 'label' (line 10) <== Memory access at offset 80 is inside this variable\n    [128, 160) '<unknown>'\n    [192, 224) '<unknown>'\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-use-after-return ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1110 in fwrite\nShadow bytes around the buggy address:\n  0x7ffff48ffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48ffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff48fff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x7ffff4900000: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5[f5]f5 f5 f5 f5 f5\n  0x7ffff4900080: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900100: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900180: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5\n  0x7ffff4900200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x7ffff4900280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==2==ABORTING\n",
+     "exit": 1
+    }
+   ]
+  },
+  "spot_virtual.cpp": {
+   "src": "// spot_virtual.cpp: every instrument should play its own sound.\n#include <iostream>\n#include <memory>\n#include <vector>\n\nstruct Instrument {\n    void sound() const { std::cout << \"(silence)\\n\"; }\n    virtual ~Instrument() = default;\n};\n\nstruct Drum : Instrument {\n    void sound() const { std::cout << \"boom\\n\"; }\n};\n\nstruct Bell : Instrument {\n    void sound() const { std::cout << \"ding\\n\"; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Instrument>> band;\n    band.push_back(std::make_unique<Drum>());\n    band.push_back(std::make_unique<Bell>());\n    for (const auto& i : band) i->sound();\n}\n",
+   "stdout": "(silence)\n(silence)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_virtual.cpp -o spot_virtual",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_virtual",
+     "out": "(silence)\n(silence)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "(silence)\n(silence)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_virtual.cpp -o spot_virtual",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_virtual",
+      "out": "(silence)\n(silence)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "std_function.cpp": {
+   "src": "// std_function.cpp: one box that can hold any callable with the right shape.\n#include <functional>\n#include <iostream>\n#include <string>\n#include <vector>\n\nint square(int x) { return x * x; }                       // an ordinary function\n\nstruct Times {                                            // a functor\n    int k;\n    int operator()(int x) const { return x * k; }\n};\n\nint main() {\n    int bonus{100};\n    std::vector<std::function<int(int)>> buttons;         // all take an int, return an int\n    buttons.push_back(square);\n    buttons.push_back(Times{3});\n    buttons.push_back([bonus](int x) { return x + bonus; });\n    buttons.push_back([](int x) { return -x; });\n    for (const auto& b : buttons) std::cout << b(7) << ' ';\n    std::cout << '\\n';\n\n    auto plain = [bonus](int x) { return x + bonus; };\n    std::cout << \"lambda: \" << sizeof(plain) << \" bytes, std::function: \"\n              << sizeof(std::function<int(int)>) << \" bytes\\n\";\n    std::function<int(int)> empty;\n    std::cout << \"empty box holds something? \" << std::boolalpha << static_cast<bool>(empty) << '\\n';\n}\n",
+   "stdout": "49 21 107 -7 \nlambda: 4 bytes, std::function: 32 bytes\nempty box holds something? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g std_function.cpp -o std_function",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./std_function",
+     "out": "49 21 107 -7 \nlambda: 4 bytes, std::function: 32 bytes\nempty box holds something? false\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "49 21 107 -7 \nlambda: 4 bytes, std::function: 32 bytes\nempty box holds something? false\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g std_function.cpp -o std_function",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./std_function",
+      "out": "49 21 107 -7 \nlambda: 4 bytes, std::function: 32 bytes\nempty box holds something? false\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "this_capture.cpp": {
+   "src": "// this_capture.cpp: [=] inside a member function quietly captures this.\n#include <functional>\n#include <iostream>\n\nstruct Remote {\n    int volume{3};\n    std::function<int()> louder() {\n        return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n    }\n};\n\nint main() {\n    Remote r;\n    auto f = r.louder();\n    r.volume = 8;\n    std::cout << f() << '\\n';\n}\n",
+   "stdout": "9\n",
+   "stderr": "this_capture.cpp: In lambda function:\nthis_capture.cpp:8:16: warning: implicit capture of ‘this’ via ‘[=]’ is deprecated in C++20 [-Wdeprecated]\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                ^\nthis_capture.cpp:8:16: note: add explicit ‘this’ or ‘*this’ capture\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g this_capture.cpp -o this_capture",
+     "out": "",
+     "err": "this_capture.cpp: In lambda function:\nthis_capture.cpp:8:16: warning: implicit capture of ‘this’ via ‘[=]’ is deprecated in C++20 [-Wdeprecated]\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                ^\nthis_capture.cpp:8:16: note: add explicit ‘this’ or ‘*this’ capture\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./this_capture",
+     "out": "9\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "9\n",
+    "stderr": "this_capture.cpp:8:29: warning: implicit capture of 'this' with a capture default of '=' is deprecated [-Wdeprecated-this-capture]\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                             ^\nthis_capture.cpp:8:17: note: add an explicit capture of 'this' to capture '*this' by reference\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                 ^\n      |                  , this\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g this_capture.cpp -o this_capture",
+      "out": "",
+      "err": "this_capture.cpp:8:29: warning: implicit capture of 'this' with a capture default of '=' is deprecated [-Wdeprecated-this-capture]\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                             ^\nthis_capture.cpp:8:17: note: add an explicit capture of 'this' to capture '*this' by reference\n    8 |         return [=] { return volume + 1; };   // looks like a copy of volume... it isn't\n      |                 ^\n      |                  , this\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./this_capture",
+      "out": "9\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "this_explicit.cpp": {
+   "src": "// this_explicit.cpp: say what you mean: [this] shares, [*this] copies.\n#include <functional>\n#include <iostream>\n\nstruct Remote {\n    int volume{3};\n    std::function<int()> live()     { return [this]  { return volume + 1; }; }  // a note: \"ask r\"\n    std::function<int()> snapshot() { return [*this] { return volume + 1; }; }  // a copy of the whole remote\n};\n\nint main() {\n    Remote r;\n    auto a = r.live();\n    auto b = r.snapshot();\n    r.volume = 8;\n    std::cout << a() << ' ' << b() << '\\n';\n}\n",
+   "stdout": "9 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g this_explicit.cpp -o this_explicit",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./this_explicit",
+     "out": "9 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "9 4\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g this_explicit.cpp -o this_explicit",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./this_explicit",
+      "out": "9 4\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_counter.cpp": {
+   "src": "// trace_counter.cpp: a lunch box with its own copy, and a note to the real thing.\n#include <iostream>\n\nint main() {\n    int coins{0};\n    auto own = [coins]() mutable { coins += 5; return coins; };\n    auto shared = [&coins] { coins += 1; return coins; };\n    for (int day = 1; day <= 3; ++day) {\n        int a = own();\n        int b = shared();\n        std::cout << day << ' ' << a << ' ' << b << ' ' << coins << '\\n';\n    }\n}\n",
+   "stdout": "1 5 1 1\n2 10 2 2\n3 15 3 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_counter.cpp -o trace_counter",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_counter",
+     "out": "1 5 1 1\n2 10 2 2\n3 15 3 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 5 1 1\n2 10 2 2\n3 15 3 3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_counter.cpp -o trace_counter",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_counter",
+      "out": "1 5 1 1\n2 10 2 2\n3 15 3 3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_shelf.cpp": {
+   "src": "// trace_shelf.cpp: one loop, three kinds of shape.\n#include <iostream>\n#include <memory>\n#include <string>\n#include <vector>\n\nstruct Shape {\n    virtual int area() const = 0;\n    virtual std::string kind() const { return \"shape\"; }\n    virtual ~Shape() = default;\n};\nstruct Square : Shape {\n    int s;\n    explicit Square(int s_) : s{s_} {}\n    int area() const override { return s * s; }\n    std::string kind() const override { return \"square\"; }\n};\nstruct Rect : Shape {\n    int w, h;\n    Rect(int w_, int h_) : w{w_}, h{h_} {}\n    int area() const override { return w * h; }\n};\n\nint main() {\n    std::vector<std::unique_ptr<Shape>> shelf;\n    shelf.push_back(std::make_unique<Square>(3));\n    shelf.push_back(std::make_unique<Rect>(2, 5));\n    shelf.push_back(std::make_unique<Square>(1));\n    int total{0};\n    for (std::size_t i = 0; i < shelf.size(); ++i) {\n        total += shelf[i]->area();\n        std::cout << i << ' ' << shelf[i]->kind() << ' ' << shelf[i]->area() << ' ' << total << '\\n';\n    }\n}\n",
+   "stdout": "0 square 9 9\n1 shape 10 19\n2 square 1 20\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_shelf.cpp -o trace_shelf",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_shelf",
+     "out": "0 square 9 9\n1 shape 10 19\n2 square 1 20\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0 square 9 9\n1 shape 10 19\n2 square 1 20\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_shelf.cpp -o trace_shelf",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_shelf",
+      "out": "0 square 9 9\n1 shape 10 19\n2 square 1 20\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "virtual_dtor.cpp": {
+   "src": "// virtual_dtor.cpp: the fix is one word on the base destructor.\n#include <iostream>\n#include <memory>\n#include <string>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device\\n\"; }\n    virtual ~Device() { std::cout << \"~Device\\n\"; }    // virtual now\n};\n\nstruct Tv : Device {\n    std::string guide{\"Tonight: films, news, more films\"};\n    void play() const override { std::cout << \"Tv\\n\"; }\n    ~Tv() override { std::cout << \"~Tv\\n\"; }\n};\n\nint main() {\n    std::unique_ptr<Device> d = std::make_unique<Tv>();\n    d->play();\n}                        // the unique_ptr deletes through a Device*\n",
+   "stdout": "Tv\n~Tv\n~Device\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer virtual_dtor.cpp -o virtual_dtor",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./virtual_dtor",
+     "out": "Tv\n~Tv\n~Device\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "virtual_play.cpp": {
+   "src": "// virtual_play.cpp: virtual lets each device decide what play means.\n#include <iostream>\n\nstruct Device {\n    virtual void play() const { std::cout << \"Device: play... something?\\n\"; }\n    virtual ~Device() = default;\n};\n\nstruct Tv : Device {\n    void play() const override { std::cout << \"Tv: showing the film\\n\"; }\n};\n\nstruct Radio : Device {\n    void play() const override { std::cout << \"Radio: playing music\\n\"; }\n};\n\nstruct Lamp : Device {};      // no play() of its own\n\nvoid press_play(const Device& d) { d.play(); }   // the universal remote\n\nint main() {\n    Tv tv;\n    Radio radio;\n    Lamp lamp;\n    press_play(tv);\n    press_play(radio);\n    press_play(lamp);\n}\n",
+   "stdout": "Tv: showing the film\nRadio: playing music\nDevice: play... something?\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g virtual_play.cpp -o virtual_play",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./virtual_play",
+     "out": "Tv: showing the film\nRadio: playing music\nDevice: play... something?\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Tv: showing the film\nRadio: playing music\nDevice: play... something?\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g virtual_play.cpp -o virtual_play",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./virtual_play",
+      "out": "Tv: showing the film\nRadio: playing music\nDevice: play... something?\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
