@@ -1,0 +1,1301 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Many Cooks, One Stopwatch</title>
+<meta name="description" content="Chapter 29, the last chapter of the Pip &amp; Friends C++ book, a comic course: threads (std::thread, std::jthread, joining), data races and ThreadSanitizer, std::mutex, lock_guard, scoped_lock, std::atomic, deadlock, a first look at condition_variable, std::async and std::future; then measuring performance (steady_clock, duration_cast, -O0 vs -O2, gprof, assembly), avoiding needless copies, reserve, std::endl, caches and complexity. Ends with a recap of the whole book.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch29.css">
+<script defer src="../data/cpp-ch29.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch29.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch28.html">&larr; Ch 28</a><span aria-current="page">Ch 29 of 29</span>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 29 · THE LAST ONE</p>
+    <h1 id="cover-h">MANY COOKS, ONE STOPWATCH</h1>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <div class="castline">
+        <svg class="char" data-char="kitchenhand" data-label="1" data-state="busy"></svg>
+        <svg class="char" data-char="kitchenhand" data-label="2" data-state="busy"></svg>
+        <svg class="char" data-char="timekeeper" data-mood="happy" data-label="0:42"></svg>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Beside her two little numbered cooks stir pots, and Tick the timekeeper holds up a big stopwatch reading 0:42.</p>
+    <p class="caption blurb">Wren's workshop has a new kitchen out back, and it's the busiest place in town. Today you'll hire <b>helpers</b>: several cooks working at the same time, each one a <b>thread</b>. You'll see why two cooks scribbling in one notebook lose orders, how a single <b>pen</b> (a mutex) fixes it, why two cooks each holding one tool can freeze forever, and how a courier knows when to come and collect. Then Tick the timekeeper hands you a <b>stopwatch</b>: measure before you speed anything up, time the right build, and stop doing needless work. And because this is the <b>last chapter of the book</b>, it ends with a party and a look back at everything you've learned. About 140 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Many cooks: threads, join and jthread</a></li>
+      <li><a href="#part-2">One notebook, two pens: data races</a></li>
+      <li><a href="#part-3">Pass the pen: mutex, atomic and deadlock</a></li>
+      <li><a href="#part-4">Ring the bell, collect the order: condition_variable, async and future</a></li>
+      <li><a href="#part-5">The stopwatch: measure first, measure the right build</a></li>
+      <li><a href="#part-6">Stop doing needless work: algorithms, copies, reserve, endl, caches</a></li>
+      <li><a href="#part-7">Boss level, graduation and the whole book</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · MANY COOKS<small>What a thread is, starting one, waiting for it with <code>join()</code>, and <code>std::jthread</code></small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: one cook, a long queue">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Lunchtime. Twelve orders are pinned up, and one cook works through them, one at a time, from top to bottom. That's every program in this book so far: one list of steps, followed in order.</p>
+    <div class="scene">
+      <svg class="char" data-char="kitchenhand" data-label="1" data-state="busy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cook 1 says: </span>Soup, then pasta, then cake, then... There's a <b>second stove</b> standing cold over there, and I've only got two hands!</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>Then let's hire a helper. Two cooks, two stoves, two dishes at once. Your computer is the same: it almost certainly has <b>several cores</b>, and a program can put more than one of them to work. But more cooks means new kinds of trouble. <b>Close to the metal. Careful with the wrench.</b></p></div>
+      <svg class="char" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: a little cook stirs a pot, overwhelmed. Wren points at an empty stove.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: kitchen, cooks and stoves">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Three words you'll need all chapter. A running program is a <b>process</b>. Inside it, each separate list of steps being followed is a <b>thread</b>. The chips that actually do the steps are <b>cores</b>.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 250" role="img" aria-label="A big kitchen labelled process. Inside it: a shared pantry shelf labelled memory, and two cooks labelled thread 1 and thread 2, each at a stove labelled core. Dashed lines show both cooks reaching into the same pantry.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="10" y="20" width="640" height="220" rx="16" fill="#F4F1EA"/>
+        <rect x="30" y="60" width="180" height="150" rx="10" fill="#FFF6CC"/>
+        <path d="M30 110 H210 M30 160 H210" fill="none" stroke-width="3"/>
+        <rect x="48" y="78" width="26" height="28" rx="4" fill="#C9F2D9"/><rect x="86" y="74" width="30" height="32" rx="4" fill="#FFE1E1"/><rect x="130" y="80" width="22" height="26" rx="4" fill="#DDE8FF"/>
+        <rect x="52" y="124" width="40" height="32" rx="4" fill="#DDE8FF"/><rect x="108" y="128" width="28" height="28" rx="4" fill="#C9F2D9"/>
+        <rect x="290" y="150" width="140" height="70" rx="8" fill="#DDE8FF"/><circle cx="330" cy="172" r="12" fill="#FF5A4E"/><circle cx="390" cy="172" r="12" fill="#FFFFFF"/>
+        <rect x="480" y="150" width="140" height="70" rx="8" fill="#DDE8FF"/><circle cx="520" cy="172" r="12" fill="#FF5A4E"/><circle cx="580" cy="172" r="12" fill="#FFFFFF"/>
+        <circle cx="360" cy="96" r="26" fill="#F7C59F"/><path d="M340 74 Q336 56 352 54 Q360 44 372 54 Q386 56 380 74 Z" fill="#FFFFFF"/>
+        <circle cx="550" cy="96" r="26" fill="#F7C59F"/><path d="M530 74 Q526 56 542 54 Q550 44 562 54 Q576 56 570 74 Z" fill="#FFFFFF"/>
+        <path d="M334 100 Q280 96 214 92 M528 78 Q420 -10 214 76" fill="none" stroke-width="3" stroke-dasharray="8 7"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="28" y="48" font-size="17">process (the kitchen)</text>
+        <text x="30" y="232" font-size="15">memory: shared</text>
+        <text x="306" y="142" font-size="15">thread 1</text>
+        <text x="496" y="142" font-size="15">thread 2</text>
+        <text x="336" y="210" font-size="15">core</text>
+        <text x="526" y="210" font-size="15">core</text>
+      </g>
+    </svg></div>
+    <div class="cards4 three">
+      <div class="card4"><p class="where">PROCESS</p><p>The whole kitchen: your running program, with its own memory that no other program can touch.</p></div>
+      <div class="card4 sky"><p class="where">THREAD</p><p>One cook following steps. Every program starts with one, the <b>main thread</b>, which runs <code>main</code>. All threads of a process <b>share</b> its memory.</p></div>
+      <div class="card4 dashed"><p class="where">CORE</p><p>A stove: hardware that runs one thread at a time. With more threads than cores, the operating system takes turns, many times a second.</p></div>
+    </div>
+    <p class="sr-only">Three cards. Process: the whole kitchen, the running program with its own memory. Thread: one cook following steps; the main thread runs main; threads share memory. Core, dashed: a stove, hardware that runs one thread at a time; the operating system takes turns when there are more threads than cores.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: how many stoves">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">The header <code>&lt;thread&gt;</code> can ask how many threads the machine can really run at the same moment. On the machine that captured this book, the answer is small.</p>
+    <span class="file-tab">cores.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="cores.cpp"></pre>
+      <pre class="term wrap" data-run="cores.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="normal" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Two stoves here. Run it on your laptop and you'll probably see 4, 8, 12 or more: this number belongs to the <b>computer</b>, not the program. It's a hint, too: it may print 0 if it can't tell. That's why this page never asks you to predict anything that depends on it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: hire a helper, then wait for it">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Your first second thread. Making a <code>std::thread</code> object and handing it a function (line 10) <b>starts</b> a new thread that runs that function, while <code>main</code> carries straight on. Line 11, <code>join()</code>, means "wait here until that helper has finished".</p>
+    <span class="file-tab">first_thread.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="first_thread.cpp"></pre>
+      <pre class="term wrap" data-run="first_thread.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the code">
+      <li><span><b>Line 10</b>: <code>std::thread helper{chop};</code> gives <code>chop</code> to a new cook. Note there are no brackets after <code>chop</code>: you hand over the <b>recipe</b>, you don't cook it yourself.</span></li>
+      <li><span><b>Line 11</b>: <code>helper.join();</code> blocks <code>main</code> until <code>chop</code> has returned. Only then does line 12 run, so the three lines always come out in this order.</span></li>
+      <li><span><b>The build line</b> is the usual one. On older Linux systems you may also need <code>-pthread</code>; with this g++ and glibc, threads work without it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: the helper nobody waited for">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="ABORT!" data-seed="5"></svg>
+    <p class="caption">Same idea, but <code>main</code> forgets line 11. It prints its goodbye and reaches its closing brace, where <code>helper</code>'s life ends.</p>
+    <span class="file-tab">unjoined.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="unjoined.cpp"></pre>
+      <pre class="term wrap" data-run="unjoined.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the terminal like a detective">
+      <li><span><b>Last line first</b>: <samp>Aborted</samp> and exit code 134, the same crash sound as a failed <code>assert</code> (Chapter 11).</span></li>
+      <li><span><b>The clue</b>: <samp>terminate called without an active exception</samp>. Something called <code>std::terminate</code>, and no exception was flying. That's the signature of a <code>std::thread</code> destroyed while it was still <b>joinable</b>: started, and never joined.</span></li>
+      <li><span><b>Why so harsh?</b> If <code>main</code> walked away, the helper might still be using things that are about to disappear. Rather than guess, C++ stops everything. The <code>std::endl</code>s on lines 9 and 11 flush the bucket (Chapter 10), so the two lines reached the screen before the crash.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>No compiler warning, either: forgetting a <code>join</code> is legal code. There is a way to cut a thread loose, <code>detach()</code>, but then nobody can ever wait for it or know when it's finished. Core Guideline CP.26 says plainly: don't. <b>No cook left behind.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: jthread joins by itself">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">C++20 added <code>std::jthread</code> ("joining thread"). It works like <code>std::thread</code>, with one difference: when its life ends at a closing brace, its destructor <b>joins for you</b>. The extra braces on lines 10 and 12 give it a short life on purpose.</p>
+    <span class="file-tab">jthread_auto.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="jthread_auto.cpp"></pre>
+      <pre class="term wrap" data-run="jthread_auto.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same output as panel 4, no <code>join()</code> in sight. It's RAII again, like Chapter 22's key cards: the destructor does the cleanup, on every way out, even if an exception flies past. <b>Every bolt you tighten, you loosen later</b>, and jthread loosens its own. Core Guideline CP.25 asks for exactly this kind of joining thread.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: the map of a helper's life" data-map="map-life">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Every helper's life as a map. Three programs from this part, three roads; each road is checked against its real run.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map: how a helper thread's life can end</title><desc id="mapl-d">main starts a helper, which cooks on its own. Then one of three things happens. main calls join and waits, then carries on. Or a jthread reaches its closing brace and joins by itself, then main carries on. Or a std::thread reaches its closing brace still joinable, and std::terminate ends the program with exit code 134.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-life">{"seed": 29, "size": [690, 440], "start": [[170, 14], [170, 54]],
+      "states": [
+        {"id": "S", "x": 20, "y": 60, "w": 300, "h": 66, "label": "main starts a helper", "sub": "std::thread or std::jthread"},
+        {"id": "R", "x": 370, "y": 60, "w": 300, "h": 66, "label": "helper cooks", "sub": "on its own"},
+        {"id": "J", "x": 20, "y": 210, "w": 200, "h": 66, "label": "join()", "sub": "main waits"},
+        {"id": "A", "x": 245, "y": 210, "w": 200, "h": 66, "label": "jthread's }", "sub": "joins by itself"},
+        {"id": "D", "x": 470, "y": 210, "w": 200, "h": 66, "label": "thread's }", "sub": "still joinable!"},
+        {"id": "T", "x": 470, "y": 350, "w": 200, "h": 66, "label": "std::terminate", "sub": "exit 134", "kind": "error"},
+        {"id": "E", "x": 20, "y": 350, "w": 425, "h": 66, "label": "main carries on", "sub": "safely", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "S", "to": "R", "pts": [[322, 93], [364, 93]], "label": "go", "lx": 343, "ly": 82, "anchor": "middle"},
+        {"id": "t2", "from": "R", "to": "J", "pts": [[400, 130], [120, 204]], "label": "join()", "lx": 196, "ly": 168, "anchor": "end"},
+        {"id": "t3", "from": "R", "to": "A", "pts": [[480, 130], [345, 204]], "label": "}", "lx": 430, "ly": 182, "anchor": "start"},
+        {"id": "t4", "from": "R", "to": "D", "pts": [[600, 130], [600, 204]], "label": "}", "lx": 612, "ly": 172, "anchor": "start", "bug": true},
+        {"id": "t5", "from": "J", "to": "E", "pts": [[120, 280], [120, 344]], "label": "done", "lx": 108, "ly": 318, "anchor": "end"},
+        {"id": "t6", "from": "A", "to": "E", "pts": [[345, 280], [345, 344]], "label": "done", "lx": 333, "ly": 318, "anchor": "end"},
+        {"id": "t7", "from": "D", "to": "T", "pts": [[570, 280], [570, 344]], "label": "no join", "lx": 582, "ly": 318, "anchor": "start", "bug": true}],
+      "paths": [
+        {"id": "join", "label": "std::thread + join()", "program": "first_thread.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S"], "output": ["main: hiring a helper"], "mood": "focus", "note": "Line 9 prints, then line 10 makes the <code>std::thread</code>: a second cook starts on <code>chop</code>."},
+          {"on": ["S", "R"], "via": ["t1"], "output": ["main: hiring a helper"], "note": "Now two threads exist. <code>main</code> goes straight on to line 11 while the helper starts cooking."},
+          {"on": ["J"], "via": ["t2"], "output": ["main: hiring a helper", "helper: chopping onions"], "note": "Line 11, <code>join()</code>: <code>main</code> stands still until <code>chop</code> returns. Meanwhile the helper prints its line."},
+          {"on": ["E"], "via": ["t5"], "output": ["main: hiring a helper", "helper: chopping onions", "main: the helper is done"], "mood": "happy", "note": "The helper finished, so <code>join()</code> returns. Line 12 prints. When <code>helper</code> is destroyed at the end, it's no longer joinable: nothing to worry about."}]},
+        {"id": "forgot", "label": "std::thread, no join", "bug": true, "program": "unjoined.cpp", "expect": {"exit": 134, "stdoutExact": true, "stderrContains": "terminate called without an active exception"}, "steps": [
+          {"on": ["S"], "output": ["main: hiring a helper"], "mood": "focus", "note": "Line 9 prints (and flushes). Line 10 starts the helper."},
+          {"on": ["S", "R"], "via": ["t1"], "output": ["main: hiring a helper", "main: off home, without waiting"], "note": "The helper does its quiet job. <code>main</code> carries on to line 11 and prints its goodbye. No <code>join()</code> anywhere."},
+          {"on": ["D"], "via": ["t4"], "output": ["main: hiring a helper", "main: off home, without waiting"], "mood": "worried", "note": "Line 12, the closing brace: <code>helper</code>'s destructor runs. It was started and never joined, so it is still <b>joinable</b>."},
+          {"on": ["T"], "via": ["t7"], "output": ["main: hiring a helper", "main: off home, without waiting"], "error": "terminate called without an active exception", "mood": "surprised", "note": "A joinable <code>std::thread</code>'s destructor calls <code>std::terminate</code>. The program aborts with exit code 134."}]},
+        {"id": "auto", "label": "std::jthread", "program": "jthread_auto.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S"], "output": ["main: hiring a helper"], "mood": "focus", "note": "Line 9 prints. Line 11 makes a <code>std::jthread</code> inside its own little block."},
+          {"on": ["S", "R"], "via": ["t1"], "output": ["main: hiring a helper"], "note": "The helper starts on <code>chop</code>. <code>main</code> reaches line 12, the block's closing brace, right away."},
+          {"on": ["A"], "via": ["t3"], "output": ["main: hiring a helper", "helper: chopping onions"], "note": "The <code>jthread</code>'s life ends, and its destructor calls <code>join()</code> itself: <code>main</code> waits there while the helper prints."},
+          {"on": ["E"], "via": ["t6"], "output": ["main: hiring a helper", "helper: chopping onions", "main: the helper is done"], "mood": "happy", "note": "Joined. Line 13 prints. Nobody had to remember anything."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-join-m" id="ex-join"></div>
+  <script type="application/json" id="ex-join-m">{"program": "predict_join.cpp", "prompt": "Two helpers each run <code>wash</code>, which sets <code>done</code> to 3. The first is a <code>std::thread</code> with a <code>join()</code>; the second is a <code>jthread</code> in its own block. Predict every line.", "hint": "Who prints? Only <code>main</code>. When does <code>main</code> print <code>done</code>: before or after the helper has certainly finished?", "explain": "<samp>start</samp>, then the first helper is joined before <code>done</code> is printed, so it's certainly 3: <samp>pans washed: 3</samp>. The second helper joins at its closing brace, then <samp>end</samp>. Because <code>join()</code> waits, reading <code>done</code> afterwards is safe: the helper's write <b>happened before</b> the join returned."}</script>
+
+  <div data-ex="spot" data-model="ex-spotjoin-m" id="ex-spotjoin"></div>
+  <script type="application/json" id="ex-spotjoin-m">{"program": "spot_join.cpp", "bug": 14, "prompt": "Today the kitchen is closed, and the program ends with <samp>terminate called without an active exception</samp> and exit 134. Click the line that causes it.", "explain": "Line 14's early <code>return 0;</code> leaves <code>main</code> before line 17's <code>join()</code> ever runs. <code>helper</code> is destroyed while still joinable, and its destructor calls <code>std::terminate</code>. A hand-written <code>join()</code> only protects one way out. Fix: make line 11 a <code>std::jthread</code>, which joins on <b>every</b> way out: early returns and exceptions included."}</script>
+
+  <div data-ex="fill" data-model="ex-fillthr-m" id="ex-fillthr"></div>
+  <script type="application/json" id="ex-fillthr-m">{"program": "fill_thread.cpp", "prompt": "Two helpers knead dough. The first is a plain thread that <code>main</code> must wait for by hand. The second must wait <b>by itself</b> at its closing brace. Fill in the gaps.", "blanks": [{"line": 9, "text": "std::thread"}, {"line": 10, "text": "join()"}, {"line": 13, "text": "std::jthread", "accept": ["jthread"]}], "explain": "<code>std::thread first{knead};</code> starts the first helper, and <code>first.join();</code> waits for it. <code>std::jthread second{knead};</code> joins in its destructor at line 14's brace. Real run: kneading, first helper done, kneading, second helper done."}</script>
+
+  <section class="panel clean" aria-label="Panel 8: give each cook their own page">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Now real teamwork: add up 1 to 400,000 with four cooks, each taking 100,000 numbers. The trick is in line 14: <b>every cook gets their own page</b> of <code>pages</code> to write on, so no two cooks ever touch the same spot. Each cook is a lambda (Chapter 24) that captures <code>pages</code> by reference and its own <code>i</code> and <code>first</code> by value.</p>
+    <span class="file-tab">split_sum.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="split_sum.cpp"></pre>
+      <pre class="term wrap" data-run="split_sum.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the code">
+      <li><span><b>Line 16</b>: a <code>std::vector&lt;std::jthread&gt;</code> holds the team. <code>emplace_back</code> (line 19) builds each jthread in place, which starts it.</span></li>
+      <li><span><b>Line 23</b>: the closing brace destroys the vector, and each jthread joins. Only then does <code>main</code> read the pages. Reading them earlier, while cooks might still be writing, would be a race (Part 2).</span></li>
+      <li><span><b>Lines 25 to 29</b> print in a fixed order because only <code>main</code> prints, after everyone has finished. Threads that print as they go come out in a different order on different runs.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This is the safest teamwork there is. Nothing writable is shared, so nothing can go wrong between cooks (Core Guideline CP.3: minimize explicit sharing of writable data). <b>Give each cook their own page</b>, and add up the pages at the end.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pzsplit-m" id="ex-pzsplit"></div>
+  <script type="application/json" id="ex-pzsplit-m">{"program": "pz_split.cpp", "seed": 4, "pin": [1, 2, 3], "prompt": "Three cooks each write 10, 20 and 30 on their own page; <code>main</code> prints the sum only after everyone has joined. Put the lines in order.", "explain": "Make the pages first, then open a block, make the team inside it, and start one cook per page in the loop. The block's closing brace joins every jthread; only after it does <code>main</code> add the pages: <samp>60</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 9: a thread copies what you hand it">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="HALT!" data-seed="9"></svg>
+    <p class="caption">One surprise when you pass arguments. <code>count_eggs</code> wants a <b>reference</b> (a nickname, Chapter 8) so it can write the answer into <code>eggs</code>. But a thread <b>copies</b> every argument you give it, so the helper can't end up with a nickname for something that might vanish.</p>
+    <span class="file-tab">ref_bug.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="ref_bug.cpp"></pre>
+      <pre class="term wrap" data-run="ref_bug.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>The trail starts at <samp>ref_bug.cpp:10:41: required from here</samp>: that's your line. The verdict is the <samp>static assertion failed</samp>: <samp>std::jthread arguments must be invocable after conversion to rvalues</samp>. In plain words: after I copy <code>eggs</code>, the copy is a temporary <code>int</code>, and a temporary can't be bound to an <code>int&amp;</code>. My last note says it outright: <samp>is_invocable_v&lt;void (*)(int&amp;), int&gt;</samp> is false.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler robot, beacon red, gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: std::ref, a nickname on purpose">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">If you really mean "give the helper a nickname for my <code>eggs</code>", say so with <code>std::ref</code> (header <code>&lt;functional&gt;</code>), line 11. Then it's your job to keep <code>eggs</code> alive until the helper has finished; the <code>join()</code> on line 12 does that.</p>
+    <span class="file-tab">ref_fixed.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="ref_fixed.cpp"></pre>
+      <pre class="term wrap" data-run="ref_fixed.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The copying default is a safety feature. A lambda capturing <code>[&amp;eggs]</code> would do the same as <code>std::ref</code>, with the same duty: the thing you point at must outlive the helper. Panel 8 kept that promise by joining before reading the pages.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · ONE NOTEBOOK, TWO PENS<small>Data races: why orders vanish, why it's undefined behaviour, and ThreadSanitizer</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 11: two cooks, one notebook">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tr" data-sfx="SCRIBBLE!" data-seed="11"></svg>
+    <p class="caption">Panel 8 gave every cook a page. But Wren's kitchen also keeps <b>one</b> tally notebook by the door: every cook who takes an order adds 1 to the number written there. Two cooks take an order at the same moment...</p>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <div class="scene">
+        <svg class="char sm" data-char="kitchenhand" data-label="A" data-state="busy"></svg>
+        <div class="talk"><p class="bubble"><span class="sr-only">Cook A says: </span>Notebook says 41. Plus one... 42!</p></div>
+      </div>
+      <div class="scene flip">
+        <div class="talk"><p class="bubble right"><span class="sr-only">Cook B says: </span>Notebook says 41. Plus one... 42!</p></div>
+        <svg class="char sm" data-char="kitchenhand" data-label="B" data-state="busy"></svg>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble shout"><span class="sr-only">Wren says: </span>Two orders taken, and the notebook went up by <b>one</b>. An order just vanished, and nobody did anything "wrong" on their own!</p></div>
+    </div>
+    <p class="sr-only">Picture: two numbered cooks, A and B, each read 41 from the same notebook and both write 42. Wren is shocked.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 12: plus-plus is three tiny steps">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Why it happens. To you, <code>++orders</code> is one thing. To the processor, it is <b>three</b> tiny steps, and another core can sneak in between any two of them.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 200" role="img" aria-label="Three boxes in a row joined by arrows: 1 read the notebook into your head, 2 add 1 in your head, 3 write the number back. Two small gaps between the boxes are marked with a warning sign: another cook can act here.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="20" y="40" width="170" height="100" rx="12" fill="#DDE8FF"/>
+        <rect x="245" y="40" width="170" height="100" rx="12" fill="#FFF6CC"/>
+        <rect x="470" y="40" width="170" height="100" rx="12" fill="#C9F2D9"/>
+        <path d="M194 90 H238 M419 90 H463" fill="none" stroke-width="5"/>
+        <path d="M226 78 L240 90 L226 102 M451 78 L465 90 L451 102" fill="none" stroke-width="5"/>
+        <path d="M216 150 l14 -26 l14 26 z M441 150 l14 -26 l14 26 z" fill="#FFD60A" stroke-width="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="105" y="78" font-size="20">1 READ</text>
+        <text x="330" y="78" font-size="20">2 ADD</text>
+        <text x="555" y="78" font-size="20">3 WRITE</text>
+        <text x="230" y="146" font-size="13">!</text><text x="455" y="146" font-size="13">!</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="105" y="108">notebook</text><text x="105" y="126">into your head</text>
+        <text x="330" y="108">add 1</text><text x="330" y="126">in your head</text>
+        <text x="555" y="108">head back</text><text x="555" y="126">onto the page</text>
+        <text x="330" y="186">Another cook can act in either gap.</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"In your head" is a <b>register</b>: a tiny storage spot inside each core. Each core has its own, so two cooks can each hold their own 41 at the same moment. Let's act it out slowly.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean cookrail" aria-label="Panel 13: the ticket rail, one order vanishes" data-cookrail="rail-race">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The ticket rail pins one tiny step per ticket, in time order. <code>race_replay.cpp</code> acts out <b>one possible order</b> of the two cooks' steps in a <b>single</b> thread (so it's perfectly safe to run), using <code>a</code> and <code>b</code> for what each cook holds in her head. Step through it.</p>
+    <span class="file-tab">race_replay.cpp</span>
+    <pre class="code" data-src="race_replay.cpp"></pre>
+    <div class="rail"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next ticket <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every ticket</summary><table class="transcript"><thead><tr><th>Step</th><th>Who</th><th>What happens</th><th>In their heads</th><th>Notebook</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="rail-race">{"program": "race_replay.cpp", "lanes": ["Cook A", "Cook B"], "labels": ["A", "B"], "steps": [
+      {"who": null, "heads": ["", ""], "book": "41", "output": [], "note": "The notebook says 41. Two orders arrive at once, and each cook will do <code>++orders</code>: read, add 1, write."},
+      {"who": 0, "act": "reads 41", "heads": ["41", ""], "book": "41", "output": ["A reads 41"], "note": "Line 10: A copies the notebook into her head."},
+      {"who": 1, "act": "reads 41", "heads": ["41", "41"], "book": "41", "output": ["A reads 41", "B reads 41"], "note": "Line 11: B reads <b>before</b> A has written anything. Now both hold 41. The damage is already done."},
+      {"who": 0, "act": "adds 1: 42", "heads": ["42", "41"], "book": "41", "output": ["A reads 41", "B reads 41", "A adds 1: 42"], "note": "Line 12: A adds 1 in her head. The notebook hasn't changed."},
+      {"who": 1, "act": "adds 1: 42", "heads": ["42", "42"], "book": "41", "output": ["A reads 41", "B reads 41", "A adds 1: 42", "B adds 1: 42"], "note": "Line 13: B adds 1 to <b>her</b> 41. She also gets 42."},
+      {"who": 0, "act": "writes 42", "heads": ["42", "42"], "book": "42", "output": ["A reads 41", "B reads 41", "A adds 1: 42", "B adds 1: 42", "A writes 42"], "note": "Line 14: A writes 42. So far, so good."},
+      {"who": 1, "act": "writes 42", "heads": ["42", "42"], "book": "42", "output": ["A reads 41", "B reads 41", "A adds 1: 42", "B adds 1: 42", "A writes 42", "B writes 42"], "note": "Line 15: B writes 42 <b>over</b> A's 42. The notebook doesn't change at all. A's order has vanished: a <b>lost update</b>."},
+      {"who": null, "heads": ["42", "42"], "book": "42", "output": ["A reads 41", "B reads 41", "A adds 1: 42", "B adds 1: 42", "A writes 42", "B writes 42", "2 orders taken, notebook says 42"], "note": "Line 16: two orders, but the notebook says 42, not 43. With real threads, which order of steps happens changes from run to run, so the loss comes and goes. That's what makes it so nasty."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trrace-m" id="ex-trrace"></div>
+  <script type="application/json" id="ex-trrace-m">{"program": "trace_race.cpp", "columns": ["step", "A holds", "B holds", "notebook"], "given": [0], "prompt": "Another possible order of the same six tiny steps, acted out in one thread. The notebook starts at 7; <code>a</code> and <code>b</code> start at 0. Fill in what each cook holds and what the notebook says after every step.", "explain": "1: A reads 7. 2: A adds 1, holding 8; the notebook still says 7. 3: B reads the notebook, which <b>still</b> says 7, because A hasn't written yet. 4: A writes 8. 5: B adds 1 to her 7: 8. 6: B writes 8 over 8. Two orders, and the notebook went from 7 to 8: lost again, even though A wrote first. Any order where the second read happens before the first write loses an update."}</script>
+
+  <section class="panel pop" aria-label="Panel 14: the real racing kitchen, under the night-vision goggles">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="RACE!" data-seed="14"></svg>
+    <p class="caption">Now the real thing: four cooks, 100,000 orders each, all doing <code>++orders</code> on one plain <code>int</code>. This is a <b>data race</b>: two threads touch the same memory at the same time, at least one of them writes, and nothing orders them. In C++ that is <b>undefined behaviour</b>, so this book won't show it as an ordinary run. Instead it's built with <code>-fsanitize=thread</code>: <b>ThreadSanitizer</b> (TSan), the Sanitizer's thread-watching goggles from Chapter 18.</p>
+    <span class="file-tab">race.cpp</span>
+    <pre class="code" data-src="race.cpp"></pre>
+    <span class="file-tab">race.cpp · built with -fsanitize=thread · one possible run</span>
+    <pre class="term wrap" data-run="race.cpp" data-exit data-libfold></pre>
+    <ol class="readlist" aria-label="Reading the TSan report like a detective">
+      <li><span><b>The headline</b>: <samp>WARNING: ThreadSanitizer: data race</samp>.</span></li>
+      <li><span><b>Two accesses</b>: one block starts <samp>Read of size 4</samp> (or <samp>Write</samp>) <samp>by thread T…</samp>, the next <samp>Previous write of size 4 ... by thread T…</samp>. The frames inside the standard library are folded to one line per block (the whole report is in the box under the terminal): frame <samp>#0</samp> of each block is yours, <samp>tally() .../race.cpp:7</samp>, the <code>++orders</code> line.</span></li>
+      <li><span><b>The victim</b>: <samp>Location is global 'orders' of size 4</samp>. An <code>int</code> is 4 bytes.</span></li>
+      <li><span><b>The suspects</b>: each <samp>Thread T… created by main thread at</samp> block points at <samp>race.cpp:12</samp>, where the cooks were hired.</span></li>
+      <li><span><b>The ending</b>: <samp>ThreadSanitizer: reported 2 warnings</samp>, and TSan makes the program exit with code 66 so a test script notices.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Notice that this program doesn't even print its total. A data race makes the <b>whole program</b> undefined, so any number it printed would be meaningless: never trustworthy, even when it looks right. Thread numbers like T1 and T2, and which cook gets caught first, can also change from run to run. What stays the same is the line, the variable and the verdict.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Sanitizer, in night-vision goggles, looking stern.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 15: why a race is undefined, not just wrong">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">"Undefined behaviour" sounds dramatic for a missing order or two. Here is why C++ treats it so seriously.</p>
+    <div class="scene">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>To make code fast, the compiler and the processor <b>reorder and combine</b> work, on the promise that no other thread is touching your plain variables at the same moment. In a loop like <code>tally</code>, an optimiser is allowed to keep <code>orders</code> in a register and write it back once at the end, or add 100000 in a single step. Each of those is a fine program on one thread. With four threads racing, each turns into a different wrong answer.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>So the rule is simple and strict: if two threads touch the same memory and either one writes, something must put them in order. That something is a <b>mutex</b>, an <b>atomic</b>, or a <code>join()</code>, which is why panel 8 was safe. Core Guideline CP.2: <b>avoid data races</b>. CP.9: let tools like TSan check you, because races hide from testing.</p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="down"></svg>
+    </div>
+    <p class="sr-only">Picture: the Professor explains, Wren listens.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-totals-m" id="ex-totals"></div>
+  <script type="application/json" id="ex-totals-m">{"q": "Without any sanitizer, someone builds <code>race.cpp</code> normally and runs it four times. Which statement is true?", "options": [{"t": "No promise: a race is undefined behaviour, so any total, or anything, can happen", "correct": true, "why": "Right. A data race is undefined behaviour, so the standard says nothing about what happens: the total can change from run to run, and an optimised build may behave differently again."}, {"t": "It always prints 400000, because <code>++</code> is one single operation", "why": "<code>++orders</code> is read, add, write (panel 12). Another thread can act between those steps."}, {"t": "It always prints the same wrong total, so a simple test can catch it", "why": "Which steps interleave depends on timing, which changes every run. That's why races slip through testing."}, {"t": "The compiler spots the race and refuses to build the program at all", "why": "The compiler can't see races: it compiles each function as if it runs alone. Only a tool like TSan, watching a real run, catches them."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · PASS THE PEN<small><code>std::mutex</code> with <code>lock_guard</code>, <code>std::atomic</code>, deadlock, and <code>std::scoped_lock</code></small></h2>
+
+  <section class="panel clean cookrail" aria-label="Panel 16: the ticket rail with one pen" data-cookrail="rail-pen">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The fix, acted out: the notebook gets <b>one pen</b>. Only the cook holding the pen may read, add and write, and she does all three before handing it over. The other cook waits. That pen is a <b>mutex</b> ("mutual exclusion": one at a time).</p>
+    <span class="file-tab">race_locked.cpp</span>
+    <pre class="code" data-src="race_locked.cpp"></pre>
+    <div class="rail"></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next ticket <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every ticket</summary><table class="transcript"><thead><tr><th>Step</th><th>Who</th><th>What happens</th><th>In their heads</th><th>Notebook</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="rail-pen">{"program": "race_locked.cpp", "lanes": ["Cook A", "Cook B"], "labels": ["A", "B"], "steps": [
+      {"who": null, "heads": ["", ""], "book": "41", "output": [], "note": "Same start: 41, two orders at once. But now there's a pen on a string."},
+      {"who": 0, "act": "takes the pen", "heads": ["", ""], "book": "41", "output": ["A takes the pen"], "note": "A grabs the pen first. If B reaches for it now, she has to <b>wait</b>."},
+      {"who": 0, "act": "reads 41", "heads": ["41", ""], "book": "41", "output": ["A takes the pen", "A reads 41"], "note": "A reads, holding the pen."},
+      {"who": 0, "act": "adds 1: 42", "heads": ["42", ""], "book": "41", "output": ["A takes the pen", "A reads 41", "A adds 1: 42"], "note": "A adds. B is still waiting: no sneaking in between."},
+      {"who": 0, "act": "writes 42", "heads": ["42", ""], "book": "42", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42"], "note": "A writes 42. Her whole <code>++</code> is done."},
+      {"who": 0, "act": "hands over the pen", "heads": ["42", ""], "book": "42", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42", "A hands over the pen"], "note": "Now B may go."},
+      {"who": 1, "act": "reads 42", "heads": ["42", "42"], "book": "42", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42", "A hands over the pen", "B reads 42"], "note": "B reads the <b>new</b> number, 42."},
+      {"who": 1, "act": "adds 1: 43", "heads": ["42", "43"], "book": "42", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42", "A hands over the pen", "B reads 42", "B adds 1: 43"], "note": "B adds."},
+      {"who": 1, "act": "writes 43", "heads": ["42", "43"], "book": "43", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42", "A hands over the pen", "B reads 42", "B adds 1: 43", "B writes 43"], "note": "B writes 43."},
+      {"who": null, "heads": ["42", "43"], "book": "43", "output": ["A takes the pen", "A reads 41", "A adds 1: 42", "A writes 42", "A hands over the pen", "B reads 42", "B adds 1: 43", "B writes 43", "2 orders taken, notebook says 43"], "note": "Two orders, 43. Whoever grabs the pen first, the answer is the same. The price: B spent a while just waiting."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: std::mutex and lock_guard">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">In real C++, the pen is a <code>std::mutex</code> (header <code>&lt;mutex&gt;</code>, line 6). You never pick it up and put it down by hand: a <code>std::lock_guard</code> (line 10) <b>locks</b> the mutex when it's made, waiting if another thread holds it, and <b>unlocks</b> it in its destructor at the closing brace on line 12.</p>
+    <span class="file-tab">counter_mutex.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="counter_mutex.cpp"></pre>
+      <pre class="term wrap" data-run="counter_mutex.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>400000 every single time. Why a guard object instead of <code>pen.lock()</code> and <code>pen.unlock()</code>? Because an early <code>return</code> or an exception between them would leave the pen locked forever, and every other cook would wait forever. RAII hands it back on every way out (Core Guideline CP.20: use RAII, never plain lock and unlock). <b>One pen, one writer.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: the goggles stay quiet">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">The proof that matters: the very same source, built with ThreadSanitizer. The badge below checks that the two captured files are identical.</p>
+    <span class="parity" data-same-src="counter_mutex.cpp,counter_mutex_tsan.cpp"></span>
+    <span class="file-tab">counter_mutex_tsan.cpp · built with -fsanitize=thread</span>
+    <pre class="term wrap" data-run="counter_mutex_tsan.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Not a peep. Every access to <code>orders</code> happens while holding <code>pen</code>, so each <code>++</code> is ordered after the one before. Exit code 0. A quiet TSan run is good evidence, though not proof: I only see the paths a run actually takes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: std::atomic, a clicker that clicks in one go">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">For a plain counter there's a lighter tool. <code>std::atomic&lt;int&gt;</code> (header <code>&lt;atomic&gt;</code>, line 5) is like a hand tally clicker: each <code>++</code> is one <b>indivisible</b> step that no other thread can split. Compare with <code>race.cpp</code>: the type of <code>orders</code> is the only real change.</p>
+    <span class="file-tab">counter_atomic.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="counter_atomic.cpp"></pre>
+      <pre class="term wrap" data-run="counter_atomic.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="kitchenhand" data-label="3" data-state="done"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cook 3 says: </span>Click! No pen to wait for. The processor has special instructions that read, add and write a number as one step. But it only works for <b>one</b> small value at a time. "Take an egg from the fridge <b>and</b> put it in the pantry" is two changes that must happen together, and that still needs a mutex.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillctr-m" id="ex-fillctr"></div>
+  <script type="application/json" id="ex-fillctr-m">{"program": "fill_counter.cpp", "prompt": "Two cooks each wash 50,000 cups and 50,000 plates. Make <code>cups</code> safe with an atomic, and make <code>plates</code> safe by holding the plate pen with a guard.", "blanks": [{"line": 6, "text": "std::atomic<int>", "accept": ["std::atomic_int"]}, {"line": 13, "text": "std::lock_guard<std::mutex>", "accept": ["std::lock_guard", "std::scoped_lock", "std::scoped_lock<std::mutex>", "std::unique_lock<std::mutex>", "std::unique_lock"]}], "explain": "<code>std::atomic&lt;int&gt; cups{0};</code> makes each <code>++cups</code> one indivisible click. <code>std::lock_guard&lt;std::mutex&gt; hold{plate_pen};</code> locks before <code>++plates</code> and unlocks at the end of each loop trip. (Since C++17 you may leave out <code>&lt;std::mutex&gt;</code>: the compiler works it out.) Real run: <samp>cups: 100000, plates: 100000</samp>, every time."}</script>
+
+  <section class="panel sketch" aria-label="Panel 20: mutex or atomic">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Pick the lightest tool that keeps every shared write in order.</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>Situation</th><th>Tool</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Each cook can work on their own data, combined at the end</td><td>nothing shared: own pages, then <code>join</code></td><td>No sharing, no races, no waiting (panel 8). Always the first choice.</td></tr>
+        <tr><td>One counter or flag that several threads bump or check</td><td><code>std::atomic&lt;int&gt;</code>, <code>std::atomic&lt;bool&gt;</code></td><td>One small value, one indivisible step. No lock to wait for.</td></tr>
+        <tr><td>Several values that must change together (a queue, a map, two shelves)</td><td><code>std::mutex</code> + <code>std::lock_guard</code> or <code>std::scoped_lock</code></td><td>The lock makes the whole group of changes one step for everyone else.</td></tr>
+        <tr><td>"Is the work ready yet?"</td><td><code>std::condition_variable</code> or a <code>std::future</code></td><td>Part 4: sleep until told, instead of checking again and again.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Keep each locked stretch short: lock, change, unlock. Never call some unknown function, or print a long report, while holding the pen (Core Guideline CP.22): every other cook is standing there waiting.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 21: deadlock, two cooks frozen forever">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="FROZEN" data-seed="21"></svg>
+    <p class="caption">A new kind of trouble that only exists with locks. Moving an egg from the fridge to the pantry needs <b>both</b> shelf locks. Cook 1 grabs the fridge lock, then reaches for the pantry. At that very moment, Cook 2, moving an egg the other way, grabs the pantry lock, then reaches for the fridge.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 210" role="img" aria-label="Two cooks face each other. Cook 1 holds a padlock labelled fridge and reaches for a padlock labelled pantry, which Cook 2 is holding. Cook 2 holds the pantry lock and reaches for the fridge lock. Two curved arrows form a circle between them, labelled waits for. Zzz marks float above.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <circle cx="120" cy="96" r="44" fill="#F7C59F"/><path d="M88 60 Q80 32 104 28 Q120 10 138 28 Q160 32 152 60 Z" fill="#FFFFFF"/>
+        <circle cx="540" cy="96" r="44" fill="#F7C59F"/><path d="M508 60 Q500 32 524 28 Q540 10 558 28 Q580 32 572 60 Z" fill="#FFFFFF"/>
+        <rect x="190" y="120" width="70" height="56" rx="8" fill="#DDE8FF"/><path d="M204 120 V102 Q225 78 246 102 V120" fill="none"/>
+        <rect x="400" y="120" width="70" height="56" rx="8" fill="#FFF6CC"/><path d="M414 120 V102 Q435 78 456 102 V120" fill="none"/>
+        <path d="M160 130 H188 M500 130 H472" fill="none" stroke-width="6"/>
+        <path d="M270 110 Q330 60 392 110" fill="none" stroke-width="3.5" stroke-dasharray="9 7"/><path d="M380 98 L394 112 L376 116" fill="none" stroke-width="3.5"/>
+        <path d="M392 190 Q330 236 268 190" fill="none" stroke-width="3.5" stroke-dasharray="9 7"/><path d="M282 202 L266 190 L284 182" fill="none" stroke-width="3.5"/>
+      </g>
+      <g fill="#111"><circle cx="106" cy="92" r="4"/><circle cx="134" cy="92" r="4"/><circle cx="526" cy="92" r="4"/><circle cx="554" cy="92" r="4"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="225" y="154" font-size="14">fridge</text>
+        <text x="435" y="154" font-size="14">pantry</text>
+        <text x="120" y="170" font-size="16">cook 1</text>
+        <text x="540" y="170" font-size="16">cook 2</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="330" y="66">waits for</text>
+        <text x="330" y="204">waits for</text>
+        <text x="96" y="24">z z z</text><text x="566" y="24">z z z</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Each holds one lock and waits for the other's. Neither will ever let go. That's a <b>deadlock</b>: no crash, no message, the program just sits there forever. That's why this one has no terminal: a frozen program has nothing to show, and the capture tool stops any run after 10 seconds. The fix isn't "be quicker". It's to never hold one lock while waiting for another.</p></div>
+    </div>
+    <p class="sr-only">Picture: two cooks, each holding one padlock and reaching for the other's, in a circle of waiting.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: scoped_lock takes both at once">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">C++17's <code>std::scoped_lock</code> (line 12) takes <b>several</b> mutexes in one go, using a deadlock-avoidance method: in this book's library, if it can't get them all, it lets go of the ones it has and tries again, so it never sits holding one while blocking on another. Here two cooks move 1,000 eggs each, in opposite directions, exactly the setup from panel 21.</p>
+    <span class="file-tab">transfer.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="transfer.cpp"></pre>
+      <pre class="term wrap" data-run="transfer.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Finished, and not one egg lost or doubled: 100 in the kitchen. <code>std::ref</code> again on lines 22 and 23, because <code>move_eggs</code> wants nicknames for the shelves. Core Guideline CP.21: use <code>std::scoped_lock</code> (or <code>std::lock</code>) to take more than one mutex. <b>Grab both tools at once.</b></p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · RING THE BELL, COLLECT THE ORDER<small>A first look at <code>std::condition_variable</code>, then tasks with <code>std::async</code> and <code>std::future</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 23: the courier and the bell">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">The kitchen puts finished dishes on a counter, and a courier takes them out to the customers. How does the courier know when there's something to carry? Walking over every second to look would wear out her shoes (and waste a whole core). Instead, she naps until the cook <b>rings the bell</b>.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 205" role="img" aria-label="Left: a cook has put a bowl on the counter and rings a small bell on it: ding. Right: a courier dozes on a chair, z z z, until the bell rings. Under the counter: check it after every ding.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M60 178 V128 Q90 108 120 128 V178 Z" fill="#FFFFFF"/>
+        <circle cx="90" cy="78" r="28" fill="#F7C59F"/><path d="M66 58 Q60 34 78 32 Q90 18 104 32 Q122 34 114 58 Z" fill="#FFFFFF"/>
+        <path d="M120 132 Q170 112 214 108" fill="none" stroke-width="6"/>
+        <rect x="200" y="118" width="250" height="22" rx="4" fill="#FFF6CC"/>
+        <path d="M215 140 V192 M435 140 V192" fill="none"/>
+        <path d="M218 118 q14 -28 28 0 z" fill="#FFD60A"/><circle cx="232" cy="86" r="4.5" fill="#111"/>
+        <path d="M300 118 q40 -42 80 0 z" fill="#DDE8FF"/><path d="M322 82 q4 -10 0 -18 M340 80 q4 -10 0 -18 M358 82 q4 -10 0 -18" fill="none" stroke-width="2.5"/>
+        <path d="M600 92 V188 M528 158 H600 M532 158 V188" fill="none"/>
+        <rect x="536" y="112" width="52" height="46" rx="12" fill="#2F3A5A"/>
+        <circle cx="562" cy="86" r="26" fill="#E9B98F"/>
+        <path d="M548 86 q5 4 10 0 M566 86 q5 4 10 0 M556 98 h12" fill="none" stroke-width="3"/>
+      </g>
+      <g fill="#111"><circle cx="82" cy="76" r="3.5"/><circle cx="98" cy="76" r="3.5"/></g>
+      <path d="M82 88 q8 7 16 0" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="26" fill="#111"><text x="196" y="62">DING!</text><text x="596" y="50">z z z</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle"><text x="325" y="134">counter</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="325" y="170">check it after every ding</text>
+        <text x="90" y="200">cook</text><text x="566" y="203">courier</text>
+      </g>
+    </svg></div>
+    <div class="cards4 three">
+      <div class="card4 cream"><p class="where">THE COUNTER</p><p>Shared data (a queue of dishes), protected by a mutex, as always.</p></div>
+      <div class="card4 sky"><p class="where">THE BELL</p><p>A <code>std::condition_variable</code>. The cook calls <code>notify_one()</code> after putting a dish down.</p></div>
+      <div class="card4 dashed"><p class="where">THE CHECK</p><p>The courier's <code>wait(lock, condition)</code> sleeps until the condition is true. It always re-checks, because a courier can wake up when nobody rang.</p></div>
+    </div>
+    <p class="sr-only">Three cards. The counter: shared data protected by a mutex. The bell: a condition variable; the cook calls notify_one. The check, dashed: wait with a condition sleeps until the condition is true and always re-checks.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: the courier in code">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">The courier is a thread running <code>courier()</code>; <code>main</code> plays the cook. Only the courier prints, so the output is the same on every run.</p>
+    <span class="file-tab">cv_orders.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="cv_orders.cpp"></pre>
+      <pre class="term wrap" data-run="cv_orders.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the code">
+      <li><span><b>Line 15</b>: a <code>std::unique_lock</code>, not a <code>lock_guard</code>. It's a guard that can be <b>unlocked and relocked</b>, which waiting needs.</span></li>
+      <li><span><b>Line 16</b>: <code>wait</code> checks the condition (a lambda). If it's false, it unlocks the mutex and sleeps. On a ding it wakes, relocks, and checks again. It only returns when the condition is true, holding the lock.</span></li>
+      <li><span><b>Line 22</b>: unlock <b>before</b> printing, so the cook isn't kept waiting for the counter while the courier talks (panel 20).</span></li>
+      <li><span><b>Lines 37 to 41</b>: closing time is also news, so it's written under the lock and announced with a ding too. Without that, the courier would sleep forever.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>That's the "first look" this book promised: there's a lot more to condition variables. Always wait <b>with a condition</b> (Core Guideline CP.42), and keep the pattern exactly as here: lock, wait with a check, take, unlock.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-cvbug-m" id="ex-cvbug"></div>
+  <script type="application/json" id="ex-cvbug-m">{"program": "cv_bug.cpp", "bug": 11, "prompt": "This courier doesn't even compile. g++ points at one line, but the mistake is on another. Click the line that must change.", "explain": "g++ complains on line 12: <samp>no matching function for call to ‘std::condition_variable::wait(std::lock_guard&lt;std::mutex&gt;&amp;, ...)’</samp>, and its note says it <samp>cannot convert ‘hold’ (type ‘std::lock_guard&lt;std::mutex&gt;’) to type ‘std::unique_lock&lt;std::mutex&gt;&amp;’</samp>. The cause is line 11: a <code>lock_guard</code> can never be unlocked, and <code>wait</code> must unlock while it sleeps. Fix: <code>std::unique_lock&lt;std::mutex&gt; hold{m};</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 25: an order ticket you trade for the dish">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">Often you don't want to manage a thread at all. You just want a job done in the background and its <b>answer</b> later. That's a <b>task</b>: you hand in the job and get an order ticket back.</p>
+    <svg class="pic-wide hatch" viewBox="0 0 480 190" role="img" aria-label="A hand gives a recipe card labelled std::async to a kitchen hatch and receives a ticket labelled future. Later, the same ticket is handed back at the hatch with get(), and a dish comes out.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="170" y="30" width="140" height="110" rx="10" fill="#DDE8FF"/><rect x="194" y="62" width="92" height="56" rx="6" fill="#111"/>
+        <rect x="30" y="56" width="100" height="62" rx="6" fill="#FFF6CC"/><path d="M134 88 H186" fill="none" stroke-width="5"/><path d="M174 78 L188 88 L174 98" fill="none" stroke-width="5"/>
+        <rect x="350" y="40" width="100" height="44" rx="6" fill="#FFFFFF" stroke-dasharray="7 5"/>
+        <path d="M290 76 Q320 60 346 62" fill="none" stroke-width="3.5"/><path d="M334 54 L348 62 L334 70" fill="none" stroke-width="3.5"/>
+        <path d="M350 140 q50 -30 100 0 z" fill="#FFE1E1"/>
+        <path d="M346 116 Q318 112 294 108" fill="none" stroke-width="3.5"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="80" y="83" font-size="20">std::</text><text x="80" y="104" font-size="20">async</text>
+        <text x="400" y="69" font-size="20">future</text>
+        <text x="400" y="172" font-size="20">.get()</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="240" y="22">the kitchen hatch</text></g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="kitchenhand" data-label="4" data-state="busy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Cook 4 says: </span><code>std::async(std::launch::async, job, args...)</code> starts the job on another thread and hands you a <code>std::future&lt;T&gt;</code>: a ticket for a <code>T</code> that doesn't exist yet. Later, <code>.get()</code> trades the ticket for the answer, waiting if it isn't ready. One ticket, one <code>get()</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: async in code">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Add up 1 to 1,000,000 in two halves: a helper takes the bottom half, 1 to 500,000 (line 13), while <code>main</code> does the top half itself (line 14). No mutex, no join, no shared variable: the answer travels back through the future.</p>
+    <span class="file-tab">async_sum.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="async_sum.cpp"></pre>
+      <pre class="term wrap" data-run="async_sum.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Always pass <code>std::launch::async</code>. Without it, the library may decide to run the job <b>later, on your own thread</b>, at the moment you call <code>get()</code>: correct, but not in the background at all. Core Guideline CP.4: think in terms of <b>tasks</b>, rather than threads.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: an exception rides home on the ticket">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">What if the job <b>throws</b>? An exception can't jump from one thread's stack to another's. So the future <b>stores</b> it, and <code>get()</code> throws it again, in the thread that asked (line 18).</p>
+    <span class="file-tab">async_throw.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="async_throw.cpp"></pre>
+      <pre class="term wrap" data-run="async_throw.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>My alarm, carried home on the ticket and rung again in <code>main</code>, where there's a <code>catch</code> for it (Chapter 15). And look closely at that last line: <samp>ice cake: caught in main: ...</samp>. Since C++17 a chain of <code>&lt;&lt;</code> runs left to right, so <samp>ice cake: </samp> was already printed when <code>bad.get()</code> threw. Get the value into a variable first if you don't want half a sentence.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-async-m" id="ex-async"></div>
+  <script type="application/json" id="ex-async-m">{"program": "predict_async.cpp", "prompt": "Two pots boil on helper threads. Predict all three lines.", "hint": "<code>std::length_error</code> is another child of <code>std::logic_error</code>, like the <code>out_of_range</code> you met in Chapter 15. When does <code>huge pot: </code> get printed, compared with the throw from <code>huge.get()</code>?", "explain": "<samp>small pot: 8 minutes</samp> (2 × 4). Then <code>huge pot: </code> is printed, <b>then</b> <code>huge.get()</code> rethrows the helper's <code>length_error</code>, which a <code>logic_error</code> handler catches: so the line reads <samp>huge pot: main caught: pot too small</samp>. Finally <samp>dinner is served</samp>: the exception was handled, so <code>main</code> carries on."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzasync-m" id="ex-pzasync"></div>
+  <script type="application/json" id="ex-pzasync-m">{"program": "pz_async.cpp", "seed": 8, "pin": [1, 2, 3, 4, 5, 6, 7], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 12, 13, 14, 15, 16, 17], "program": "pz_async_alt.cpp"}], "prompt": "<code>bake</code> always throws. Build a <code>main</code> that starts it as a task, collects the result inside a <code>try</code>, and catches whatever comes back.", "explain": "The task starts and hands back the future (starting it just inside the <code>try</code> works too, and is accepted: that order was run, with the same output). Inside the <code>try</code>, <code>cake.get()</code> rethrows the helper's exception, so the <code>baked in</code> line never runs; the handler for <code>std::exception</code> prints <samp>caught: the oven is cold</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-tool-m" id="ex-tool"></div>
+  <script type="application/json" id="ex-tool-m">{"q": "Wren needs one value computed in the background, the file's checksum, while <code>main</code> keeps drawing the screen. Later <code>main</code> needs that number. Which is the simplest correct tool?", "options": [
+    {"t": "<code>std::async(std::launch::async, checksum, path)</code>, then <code>.get()</code> on the future when the number is needed", "correct": true, "why": "Right. A task with a result is exactly what <code>async</code> and <code>future</code> are for: no shared variable, no mutex, and exceptions come home too."},
+    {"t": "A <code>std::jthread</code> that writes the answer into a global <code>int</code>, which <code>main</code> reads whenever it likes", "why": "Reading the global while the helper might still be writing it is a data race. You'd need a join (or a mutex or atomic) before reading: more parts, same result."},
+    {"t": "A <code>std::thread</code> with <code>detach()</code>", "why": "A detached thread can never be waited for, so <code>main</code> has no safe way to know the answer is ready (CP.26)."},
+    {"t": "A <code>std::condition_variable</code> and a <code>bool done</code>", "why": "It works, but it's the hand-built version of a future. Save condition variables for a stream of events, like the courier's dishes."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 28: the head chef's rules for a busy kitchen">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Pin these by the kitchen door. They're the C++ Core Guidelines' concurrency rules, in kitchen words.</p>
+    <ol class="checklist">
+      <li><b>Prefer tasks to threads</b> (CP.4). <code>std::async</code> plus a future is often all you need.</li>
+      <li><b>Give each cook their own page</b> (CP.3). Share as little writable data as possible.</li>
+      <li><b>Every shared write is ordered</b> (CP.2): a mutex, an atomic, or a join. No exceptions.</li>
+      <li><b>Locks are objects, never hands</b> (CP.20): <code>lock_guard</code>, <code>unique_lock</code>, <code>scoped_lock</code>.</li>
+      <li><b>Two locks? Take them together</b> (CP.21) with <code>std::scoped_lock</code>.</li>
+      <li><b>No cook left behind</b> (CP.25, CP.26): <code>std::jthread</code>, never <code>detach()</code>.</li>
+      <li><b>Run the goggles</b> (CP.9): build your tests with <code>-fsanitize=thread</code> too. (It can't be combined with AddressSanitizer: two separate builds, Chapter 18.)</li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE STOPWATCH<small>Measure first: steady_clock and duration_cast, Debug vs Release, a profiler, and a peek at the assembly</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 29: which runner is slow">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">The kitchen's relay team takes too long to get a dish out: warm-up, the main job, cool-down. Everyone has an opinion about whose leg is slow. Enter Tick, the kitchen's timekeeper.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 150" role="img" aria-label="A running track split into three legs labelled warm up, main job and cool down, each with a baton handover mark. Under each leg is a blank stopwatch with a question mark.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M20 60 H640 M20 100 H640" fill="none"/>
+        <path d="M230 50 V110 M440 50 V110" fill="none" stroke-width="6" stroke-dasharray="6 6"/>
+        <circle cx="125" cy="128" r="16" fill="#FFFFFF"/><circle cx="335" cy="128" r="16" fill="#FFFFFF"/><circle cx="545" cy="128" r="16" fill="#FFFFFF"/>
+        <rect x="120" y="106" width="10" height="6" fill="#D9D9D9"/><rect x="330" y="106" width="10" height="6" fill="#D9D9D9"/><rect x="540" y="106" width="10" height="6" fill="#D9D9D9"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="125" y="88" font-size="17">warm up</text><text x="335" y="88" font-size="17">main job</text><text x="545" y="88" font-size="17">cool down</text>
+        <text x="125" y="134" font-size="16">?</text><text x="335" y="134" font-size="16">?</text><text x="545" y="134" font-size="16">?</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111"><text x="20" y="40">start</text><text x="598" y="40">finish</text></g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char" data-char="timekeeper" data-mood="focus" data-label="?:??"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>Opinions are free, and usually wrong. Programmers are famous for guessing the slow part badly. So: <b>don't guess the slow runner. Time each leg.</b> Only then do we change anything, and then we time it again to prove the change helped (Core Guideline Per.6: don't make claims about performance without measurements).</p></div>
+    </div>
+    <p class="sr-only">Picture: a three-leg relay track with blank stopwatches under each leg, and Tick the timekeeper in a striped shirt and flat cap, holding a stopwatch showing question marks.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: a stopwatch in code">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">C++'s stopwatch lives in <code>&lt;chrono&gt;</code>. <code>std::chrono::steady_clock::now()</code> (lines 14 and 16) reads a clock that only ever moves forward. Subtracting two readings gives a <b>duration</b>, and <code>duration_cast</code> (line 17) turns it into the unit you want to print. This program times the same job three times.</p>
+    <span class="file-tab">stopwatch.cpp</span>
+    <pre class="code" data-src="stopwatch.cpp"></pre>
+    <span class="file-tab">one possible run</span>
+    <pre class="term wrap" data-run="stopwatch.cpp"></pre>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>The answer</b> is the same on every lap and every run: that part is the program's logic.</span></li>
+      <li><span><b>The times</b> are different on every lap, and different again every time the page's capture ran it. Other programs share the machine, the processor speeds up and slows down, and the first lap often pays for warming things up. Run it yourself and you'll get your own numbers.</span></li>
+      <li><span><b>Why steady_clock?</b> <code>system_clock</code> is the wall clock, and it can jump: the computer may correct its time in the middle of your measurement. A stopwatch must never run backwards.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="timekeeper" data-mood="normal" data-label="0:08"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>That's why this page never asks you to predict a time, and never uses one as an answer. Time several runs, look at the spread, and only trust differences much bigger than the wobble.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 31: the duration_cast machine" data-machine="m-dur">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Feed the unit converter a duration and pick the unit. Watch what happens when the answer isn't a whole number. Every answer is a real line from <code>durations.cpp</code>. Line 5's <code>using namespace std::chrono;</code> also switches on handy suffixes: <code>1500ms</code> is 1500 milliseconds, <code>150s</code> is 150 seconds.</p>
+    <span class="file-tab">durations.cpp</span>
+    <pre class="code" data-src="durations.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-dur">{"label": "duration_cast", "program": "durations.cpp", "examples": [
+      {"in": "1500 ms → seconds", "out": "1 s", "outKind": "seconds (whole)", "note": "Line 7. 1500 ms is 1.5 seconds, but <code>seconds</code> counts in whole numbers, so <code>duration_cast</code> <b>chops off</b> the half. It never rounds."},
+      {"in": "999 ms → seconds", "out": "0 s", "outKind": "seconds (whole)", "note": "Line 8. Nearly a whole second, and still 0. Timing short jobs in seconds hides everything: pick a small enough unit."},
+      {"in": "150 s → minutes", "out": "2 min", "outKind": "minutes (whole)", "note": "Line 9. Two and a half minutes, chopped to 2."},
+      {"in": "2 s → milliseconds", "out": "2000 ms", "outKind": "milliseconds", "note": "Line 10. Going to a <b>smaller</b> unit never loses anything."},
+      {"in": "3 ms → microseconds", "out": "3000 us", "outKind": "microseconds", "note": "Line 11. <code>us</code> is the usual plain-text spelling of µs, a millionth of a second."},
+      {"in": "1500 ms → duration<double>", "out": "1.5 s (as a double)", "outKind": "seconds (double)", "note": "Line 12. A duration that counts in <code>double</code> keeps the fraction: 1.5."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-filltime-m" id="ex-filltime"></div>
+  <script type="application/json" id="ex-filltime-m">{"program": "fill_timer.cpp", "prompt": "Build a timing harness around <code>job()</code>: read the steady clock before and after, and turn the difference into microseconds. (The program prints whether the clock moved forward, not the time itself, so the answer is the same on every run.)", "blanks": [{"line": 13, "text": "steady_clock::now()"}, {"line": 15, "text": "steady_clock::now()"}, {"line": 16, "text": "duration_cast<std::chrono::microseconds>"}], "explain": "<code>std::chrono::steady_clock::now()</code> before and after, then <code>std::chrono::duration_cast&lt;std::chrono::microseconds&gt;(stop - start)</code>. A steady clock never goes backwards, so <code>us.count() &gt;= 0</code> is always true: <samp>the clock went forward: true</samp>. The answer, <samp>500500</samp>, is 1 + 2 + ... + 1000."}</script>
+
+  <section class="panel pop" aria-label="Panel 32: never time the training wheels">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="ZOOM!" data-seed="32"></svg>
+    <p class="caption">Almost every build in this book used the compiler's default, <code>-O0</code> (you met <code>-O2</code> briefly in Chapters 1, 10 and 19, and CMake's Release build in Chapter 17): no optimisation, so the machine code follows your source line by line, which is perfect for debugging (Chapter 10). Real programs ship with <code>-O2</code> or higher: the optimiser rewrites everything to be fast. Here's the very same file built both ways.</p>
+    <span class="parity" data-same-src="bench_o0.cpp,bench_o2.cpp"></span>
+    <span class="file-tab">bench_o0.cpp (= bench_o2.cpp)</span>
+    <pre class="code" data-src="bench_o0.cpp"></pre>
+    <div class="pair2">
+      <div><p class="who">DEFAULT, -O0 · ONE POSSIBLE RUN</p><pre class="term wrap" data-run="bench_o0.cpp"></pre></div>
+      <div><p class="who">WITH -O2 · ONE POSSIBLE RUN</p><pre class="term wrap" data-run="bench_o2.cpp"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="timekeeper" data-mood="surprised" data-label="!!"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>Same answer, and in this capture the <code>-O2</code> build took a small fraction of the time. At <code>-O0</code>, every step of the range-for goes through little iterator functions, and every value makes a trip to memory. At <code>-O2</code> those vanish, and the loop may even add several numbers per instruction. So timing a <code>-O0</code> build tells you almost nothing about the real program. <b>Time the race car, not the training wheels.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-build-m" id="ex-build"></div>
+  <script type="application/json" id="ex-build-m">{"q": "Wren wants to know whether her new parser is faster than the old one. Which measurement plan is sound?", "options": [{"t": "Build both with <code>-O2</code>; time each several times on the same input; compare the spread", "correct": true, "why": "Right. Same optimisation as the shipped program, same conditions, several runs to see the wobble."}, {"t": "Time each once in the debug build (<code>-O0 -g</code>), the one she tests with", "why": "A <code>-O0</code> build can be many times slower and slow in different places (panel 32). And one run can't tell a real difference from noise."}, {"t": "Count the lines of code: the version with fewer lines runs faster", "why": "Panel 34's three lines of C++ became different amounts of machine code at different settings; and two nested loops can hide half a million steps (panel 35)."}, {"t": "Time both with <code>-fsanitize=address</code> so that bugs show up too", "why": "Sanitizers are for finding bugs; they slow a program down a lot and unevenly. Never time a sanitized build."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 33: a profiler times every leg at once">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Putting <code>now()</code> calls around every function gets tiring. A <b>profiler</b> times every function for you. This machine has <b>gprof</b>: build with <code>-pg</code>, run the program once (it quietly writes <code>gmon.out</code>), then ask <code>gprof</code> for the "flat profile". The three relay legs are marked <code>[[gnu::noinline]]</code> so the optimiser keeps them as separate functions you can see.</p>
+    <span class="file-tab">prof.cpp</span>
+    <pre class="code" data-src="prof.cpp"></pre>
+    <span class="file-tab">one possible run</span>
+    <pre class="term" data-run="prof.cpp"></pre>
+    <ol class="readlist" aria-label="Reading the flat profile">
+      <li><span><b>Sorted by time</b>, slowest first. <samp>% time</samp> and <samp>self seconds</samp> say how much of the run was spent inside each function itself.</span></li>
+      <li><span><b>The verdict</b>: <code>find_pairs</code> takes essentially all of it. Its two nested loops visit about 200 million pairs (panel 35 explains why that number explodes). <code>warm_up</code> and <code>cool_down</code> each visit 20,000 numbers once: too fast to even register.</span></li>
+      <li><span><b>calls</b> counts exact calls: one each. That column is the same every run; the times are not (gprof samples the program every hundredth of a second).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="timekeeper" data-mood="happy" data-label="0:18"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>If you'd guessed and polished <code>warm_up</code>, you'd have saved nothing at all. On other systems you'll meet other profilers: <b>perf</b> on Linux (not installed here), Instruments on macOS, the Visual Studio profiler on Windows. They all answer the same question: <b>where does the time go?</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: what did the compiler actually make">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Curious what the optimiser really did? As in Chapter 19, <code>-S</code> asks g++ for <b>assembly</b>, the human-readable form of machine code, instead of a program. <code>-o -</code> prints it to the screen, and <code>grep</code> filters out the bookkeeping lines (the ones starting with a dot, and a few numbered labels). Here is a three-line function at both settings.</p>
+    <span class="file-tab">square.cpp</span>
+    <pre class="code" data-src="square.cpp"></pre>
+    <pre class="term wrap" data-run="square.cpp"></pre>
+    <ol class="readlist" aria-label="Reading the assembly">
+      <li><span><b><samp>_Z6squarei</samp></b> is <code>square(int)</code>, mangled (Chapter 28). <samp>endbr64</samp> is a security landing pad; ignore it.</span></li>
+      <li><span><b>At -O0</b>: set up a stack frame (<samp>pushq</samp>, <samp>movq</samp>), copy <code>x</code> from its register <samp>%edi</samp> into memory and back again, multiply (<samp>imull</samp>), tidy up, return. Every line of C++ is faithfully acted out.</span></li>
+      <li><span><b>At -O2</b>: multiply the register by itself, move it into <samp>%eax</samp> (where a returned <code>int</code> goes), return. Same meaning, less than half the work.</span></li>
+    </ol>
+    <p class="caption soft">The same two commands with <code>clang++</code> in place of <code>g++</code> made slightly different code: no <samp>endbr64</samp>, <samp>retq</samp> instead of <samp>ret</samp>, comment lines starting with <samp>#</samp> that the <code>grep</code> lets through, and at -O2 the move first, then the multiply (<samp>movl %edi, %eax</samp>, <samp>imull %edi, %eax</samp>). Its -O0 version still copies <code>x</code> into memory and reads it back. Two compilers, two ways to write the same meaning.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-mood="happy" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>You don't need to read assembly to write good C++. But a quick look settles arguments like "is this copy really made?". The website <b>Compiler Explorer</b> (godbolt.org) shows this side by side for any compiler, as you type.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon green, gate up.</p>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · STOP DOING NEEDLESS WORK<small>The algorithm first, then hidden copies, <code>reserve</code>, <code>std::endl</code>, caches and small strings</small></h2>
+
+  <section class="panel clean" aria-label="Panel 35: fix the route before the engine">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Panel 33's slow leg compared every pair. Here are two ways to check 1,000 tickets for duplicates, counting the work instead of timing it, so the numbers are exact.</p>
+    <span class="file-tab">dupes.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="dupes.cpp"></pre>
+      <pre class="term wrap" data-run="dupes.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the numbers">
+      <li><span><b>Every pair</b>: ticket 0 meets 999 others, ticket 1 meets 998, and so on: 999 + 998 + ... + 1 = 499,500. Double the tickets and the work roughly <b>quadruples</b>. That growth is called <b>O(n²)</b>, "order n squared".</span></li>
+      <li><span><b>A seen-set</b> (Chapter 14's <code>unordered_set</code>): one lookup per ticket, 1,000. Double the tickets, double the work: <b>O(n)</b>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="timekeeper" data-mood="focus" data-label="O(n²)"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>No compiler flag turns 499,500 steps into 1,000. Choosing a better method beats any amount of polishing (Core Guideline Per.7: "Design to enable optimization"). <b>Fix the route before you tune the engine.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-dupes-m" id="ex-dupes"></div>
+  <script type="application/json" id="ex-dupes-m">{"program": "dupes_small.cpp", "prompt": "The same two methods on just 10 tickets. The program prints the number of pairs compared, then the number of set lookups, on one line.", "hint": "9 + 8 + 7 + ... + 1.", "explain": "Every pair of 10 tickets: 9 + 8 + ... + 1 = 45 (the formula is n × (n − 1) / 2). The seen-set: one lookup each, 10. So <samp>45 10</samp>. At 10 items the difference is small; at 1,000 it was 499,500 against 1,000; at a million it would be about 500 billion against a million."}</script>
+
+  <section class="panel clean walk-wide" aria-label="Panel 36: walk Wren through the photocopier" data-walk="walk-copies">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Now small waste that adds up. <code>Tray</code> counts its own copies: <code>copies</code> is one counter shared by all trays: <code>static</code> means one for the whole class, and <code>inline</code> lets it be defined right here (Chapter 28's inline variables). Line 7's copy constructor bumps it. Walk Wren through two calls by value and two by <code>const&amp;</code>.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">copies.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-copies">{"program": "copies.cpp", "steps": [
+      {"line": 14, "output": [], "mood": "normal", "arms": "point", "note": "<code>main</code> starts. <code>copies</code> is 0."},
+      {"line": 15, "output": [], "mood": "happy", "arms": "point", "note": "Line 14 makes one <code>tray</code> of 12 cakes."},
+      {"line": 7, "output": [], "mood": "focus", "arms": "point", "note": "Line 15 calls <code>count_copy(tray)</code>. Its parameter <code>t</code> is a <code>Tray</code> <b>by value</b>, so C++ must build a new tray from <code>tray</code>: up to the copy constructor."},
+      {"line": 10, "output": [], "mood": "focus", "arms": "point", "note": "Line 7 copies the cakes and bumps <code>copies</code> to 1. Now <code>count_copy</code>'s body runs, on the photocopy."},
+      {"line": 16, "output": [], "mood": "normal", "arms": "point", "note": "It returns 12, which <code>main</code> ignores, and the photocopy is thrown away at the end of the call."},
+      {"line": 7, "output": [], "mood": "focus", "arms": "point", "note": "Line 16: the same call again, so another photocopy."},
+      {"line": 10, "output": [], "mood": "worried", "arms": "point", "note": "<code>copies</code> is now 2. Two whole trays copied just to read one number from each."},
+      {"line": 17, "output": [], "mood": "normal", "arms": "point", "note": "Back in <code>main</code>."},
+      {"line": 18, "output": ["by value: 2 copies"], "mood": "normal", "arms": "point", "note": "Line 17 prints the count."},
+      {"line": 19, "output": ["by value: 2 copies"], "mood": "normal", "arms": "point", "note": "Line 18 resets the counter to 0."},
+      {"line": 11, "output": ["by value: 2 copies"], "mood": "happy", "arms": "point", "note": "Line 19 calls <code>count_look(tray)</code>. Its parameter is <code>const Tray&amp;</code>: a nickname for the very same tray (Chapter 8). No new tray, no copy constructor: straight into the body."},
+      {"line": 20, "output": ["by value: 2 copies"], "mood": "happy", "arms": "point", "note": "It reads 12 straight off the original."},
+      {"line": 11, "output": ["by value: 2 copies"], "mood": "happy", "arms": "point", "note": "Line 20: again, no copy."},
+      {"line": 21, "output": ["by value: 2 copies"], "mood": "happy", "arms": "point", "note": "Back in <code>main</code>."},
+      {"line": null, "output": ["by value: 2 copies", "by const&: 0 copies"], "mood": "happy", "arms": "cheer", "note": "Line 21: zero copies. Same answers, no photocopier. With a tray holding a big vector, each of those copies would also copy every element."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-copies-m" id="ex-copies"></div>
+  <script type="application/json" id="ex-copies-m">{"program": "predict_copies.cpp", "prompt": "<code>inspect</code> takes a <code>Tray</code> by value; <code>glance</code> takes a <code>const Tray&amp;</code>. Predict the three numbers.", "hint": "Count only trays that are <b>built from another tray</b>. Making the vector of 3 trays builds them fresh, without copying. But what does <code>auto t</code> in a range-for do?", "explain": "100 calls by value: <samp>100</samp>. 100 glances: still <samp>100</samp>, no new copies. Then <code>for (auto t : stack)</code> copies each of the 3 trays into <code>t</code>, even though <code>glance</code> only looks: <samp>103</samp>. Writing <code>const auto&amp; t</code> would have kept it at 100."}</script>
+
+  <div data-ex="spot" data-model="ex-rangefor-m" id="ex-rangefor"></div>
+  <script type="application/json" id="ex-rangefor-m">{"program": "rangefor_bug.cpp", "bug": 14, "prompt": "This program only <b>reads</b> the trays, yet it makes 5 copies. Click the line that makes them.", "explain": "Line 14, <code>for (auto tray : trays)</code>: <code>auto</code> on its own means \"a new <code>Tray</code>, copied from each element\". For reading, write <code>for (const auto&amp; tray : trays)</code>: a look-only nickname for each element, and 0 copies. It compiles cleanly either way, which is why it hides so well."}</script>
+
+  <section class="panel clean" aria-label="Panel 37: reserve, buy the big carton first">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Chapter 8's egg carton: when a vector is full, <code>push_back</code> gets a bigger block of memory, <b>moves every element</b> across, and frees the old block. This program counts how often that happens while adding a million numbers, without and with <code>reserve</code> (line 7), which buys the big carton up front.</p>
+    <span class="file-tab">reserve_count.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="reserve_count.cpp"></pre>
+      <pre class="term wrap" data-run="reserve_count.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>21 moves sounds like nothing, because the carton <b>doubles</b> each time, so moves get rarer as it grows. But the last few moves each carry hundreds of thousands of elements, and every move invalidates old pointers and iterators (Chapter 25). If you know the size, say so: one <code>reserve</code>, zero moves.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-trres-m" id="ex-trres"></div>
+  <script type="application/json" id="ex-trres-m">{"program": "reserve_trace.cpp", "columns": ["size", "capacity"], "given": [0], "prompt": "Nine <code>push_back</code>s into an empty vector, with this book's standard library (libstdc++, which both of its compilers use). After each one the program prints the size and the capacity. Fill in the capacities.", "explain": "The capacity starts at 1, then doubles whenever a push finds the carton full: 1, 2, 4, 4, 8, 8, 8, 8, 16. Each jump (at sizes 2, 3, 5 and 9) is a move of every element. The standard only promises that pushing is fast on average; doubling is libstdc++'s choice, and other libraries may grow by a different factor (this book only ran libstdc++)."}</script>
+
+  <section class="panel clean" aria-label="Panel 38: std::endl in a big loop">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Chapter 10's bucket: output collects in a bucket and goes out in big pours. <code>std::endl</code> is a newline <b>plus a flush</b>: it empties the bucket every single line. Here, 300,000 lines go to a file, once each way.</p>
+    <span class="file-tab">endl_cost.cpp</span>
+    <pre class="code" data-src="endl_cost.cpp"></pre>
+    <span class="file-tab">one possible run</span>
+    <pre class="term wrap" data-run="endl_cost.cpp"></pre>
+    <div class="scene">
+      <svg class="char" data-char="timekeeper" data-mood="happy" data-label="0:02"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Tick says: </span>Same file contents, and in this capture <code>std::endl</code> took several times longer: each flush is a separate trip to the operating system. Use <code>'\n'</code>, and flush only when someone needs to see the output <b>right now</b> (Core Guideline SL.io.50: avoid <code>endl</code>). Panel 5 was such a moment: the program was about to crash.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: a row of boxes or a chain of beads">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Why <code>std::vector</code> is usually the fastest container, even where a <code>std::list</code> "should" win. The processor doesn't fetch one number from memory at a time. It fetches a whole <b>cache line</b>, usually 64 bytes, into a small, very fast store called the <b>cache</b>.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 210" role="img" aria-label="Top: a vector drawn as one row of 16 touching boxes; a bracket over the first 16 says one trip fetches all of these. Bottom: a list drawn as five beads scattered around memory, joined by long arrows; each bead is labelled one trip.">
+      <g stroke="#111" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="20" y="40" width="400" height="36" rx="4" fill="#C9F2D9"/>
+        <path d="M45 40 V76 M70 40 V76 M95 40 V76 M120 40 V76 M145 40 V76 M170 40 V76 M195 40 V76 M220 40 V76 M245 40 V76 M270 40 V76 M295 40 V76 M320 40 V76 M345 40 V76 M370 40 V76 M395 40 V76" fill="none" stroke-width="2.5"/>
+        <path d="M20 30 V20 H420 V30" fill="none"/>
+        <circle cx="60" cy="150" r="18" fill="#FFE1E1"/><circle cx="210" cy="186" r="18" fill="#FFE1E1"/><circle cx="330" cy="120" r="18" fill="#FFE1E1"/><circle cx="480" cy="176" r="18" fill="#FFE1E1"/><circle cx="600" cy="128" r="18" fill="#FFE1E1"/>
+        <path d="M78 156 L190 180 M228 180 L312 128 M348 124 L462 170 M498 170 L582 134" fill="none" stroke-dasharray="8 6"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="440" y="64" font-size="17">vector</text>
+        <text x="20" y="114" font-size="17">list</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="110" y="14">one trip to memory brings all of these</text>
+        <text x="60" y="192" text-anchor="middle">trip</text><text x="330" y="95" text-anchor="middle">trip</text><text x="600" y="102" text-anchor="middle">trip</text>
+        <text x="440" y="120">one trip per bead</text>
+      </g>
+    </svg></div>
+    <span class="file-tab">vec_list.cpp · built with -O2 · one possible run</span>
+    <pre class="code" data-src="vec_list.cpp"></pre>
+    <pre class="term wrap" data-run="vec_list.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same two million ones, same total, and the list is several times slower in this capture. A vector's elements sit side by side, so each trip brings the next several for free, and the processor can even guess the next trip. A list's beads are scattered, so every step is a fresh trip. Chapter 25 said it: <b>pick the container by what you do most</b>, and that's nearly always a vector.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-vl-m" id="ex-vl"></div>
+  <script type="application/json" id="ex-vl-m">{"q": "A game keeps 50,000 particles. Every frame it walks through all of them to move them, and now and then adds new ones at the end. Which container?", "options": [{"t": "<code>std::vector</code>, with a <code>reserve</code> if the usual count is known", "correct": true, "why": "Right. Walking every element is where the time goes, and contiguous elements make that fast (panel 39). Adding at the end is cheap for a vector, and <code>reserve</code> avoids the moves."}, {"t": "<code>std::list</code>, because adding a particle never moves the others", "why": "True, but particles are added rarely and walked every frame. The list pays a fresh trip to memory for every particle, every frame."}, {"t": "<code>std::map&lt;int, Particle&gt;</code>, keyed by each particle's id number", "why": "A map is a tree of scattered nodes, kept sorted: slow to walk and the sorting isn't needed here."}, {"t": "Any of them: the optimiser makes all the containers equally fast", "why": "The optimiser can't move your elements next to each other in memory. The data layout is your decision."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 40: small strings live inside">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">One more piece of library cleverness. A <code>std::string</code> object has a little room <b>inside itself</b>. Text that fits is stored right there, with no trip to the heap; longer text gets a heap block. This is called the <b>small-string optimisation</b> (SSO). The program checks where each string's characters really live.</p>
+    <span class="file-tab">sso.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sso.cpp"></pre>
+      <pre class="term wrap" data-run="sso.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>With libstdc++, a string object is 32 bytes and holds up to 15 characters inside. Other libraries choose other sizes (this book only ran libstdc++), and the standard doesn't require SSO at all, so never rely on the exact numbers. Just know that short strings are cheap, and copying long ones isn't.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 41: Tick's checklist before you speed anything up">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">Tick's checklist, in order. Most programs never need step 4.</p>
+    <ol class="checklist">
+      <li><b>Make it correct first</b>, with tests (Chapter 17). A fast wrong answer is still wrong (Per.1, Per.2: don't optimise without reason, or too early).</li>
+      <li><b>Measure the release build</b>: <code>-O2</code>, several runs, a profiler to find the slow leg (Per.6).</li>
+      <li><b>Fix the route</b>: a better algorithm or data structure, such as a set instead of every pair, or a vector instead of a list (Per.7).</li>
+      <li><b>Stop needless work</b>: <code>const&amp;</code> for big things you only read, <code>const auto&amp;</code> in range-fors, moves (Chapter 22) for things you hand over, <code>reserve</code>, <code>'\n'</code> instead of <code>std::endl</code>.</li>
+      <li><b>Then more cooks</b>: split the work across threads, each with its own page, only if measuring says it helps. Starting threads, and waiting for locks, costs time too.</li>
+      <li><b>Measure again</b>, and keep the change only if the numbers say so.</li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL AND GRADUATION<small>Six last checks, what this chapter taught, and the whole book in one wall</small></h2>
+
+  <section class="panel pop" aria-label="Panel 42: the final boss">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="boss-h">BOSS LEVEL</p>
+    <p class="caption">The last boss of the book. Six checks that mix everything from this chapter: cooks, pens, tickets, stopwatches and photocopiers. Take your time; every answer is a real run.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read each program like a detective: who touches what, who waits for whom, and what gets copied.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. Two cooks serve tables on an atomic counter, a task works out the tips, and two more cooks each write one page. Predict all three lines.", "hint": "Is anything here racy? Check what each cook touches, and when <code>main</code> reads it.", "explain": "Nothing races: <code>served</code> is atomic, and both jthreads join at the block's brace before <code>main</code> reads it: 30 + 12 = <samp>served: 42</samp>. The task gets a copy of 42 (from <code>served.load()</code>) and 2: <samp>tips: 84</samp>. The last two cooks write <b>different</b> pages and join before the read: 5 × 6 = <samp>pages: 30</samp>. Same output on every run."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 11, "prompt": "Boss 2. The cake count is right, but the profiler says this program spends its time copying trays: 240 copies, just to count cakes once an hour. The range-for is already <code>const auto&amp;</code>. Click the line that makes the copies.", "explain": "Line 11 takes <code>std::vector&lt;Tray&gt; trays</code> <b>by value</b>, so every call copies the whole vector: 10 trays × 24 calls = <samp>240</samp>. The function only reads, so it should take <code>const std::vector&lt;Tray&gt;&amp; trays</code>: zero copies. The range-for on line 13 was fine; the photocopier was at the door (Core Guideline F.16: pass cheap things by value, others by <code>const&amp;</code>)."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.cpp", "prompt": "Boss 3. Two cooks move cookies between two jars in opposite directions. Take both jar locks at once so they can never deadlock, and hand each cook nicknames for the real jars.", "blanks": [{"line": 12, "text": "std::scoped_lock"}, {"line": 22, "text": "std::ref(red)"}, {"line": 22, "text": "std::ref(blue)"}], "explain": "<code>std::scoped_lock both{from.lock, to.lock};</code> takes both mutexes together, so the two cooks can't each end up holding one (panel 21). <code>std::ref(red)</code> and <code>std::ref(blue)</code> are needed because a thread copies its arguments, and <code>move_cookies</code> wants references (panel 9); copying a <code>Jar</code> wouldn't even compile, since a mutex can't be copied. Real run: red 100 − 30 + 10 = <samp>80</samp>, blue <samp>120</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.cpp", "columns": ["cook", "first", "last", "sum"], "given": [0], "prompt": "Boss 4. Four cooks share the numbers 1 to 20, five each, and each writes only its own slots. After everyone joins, <code>main</code> prints one row per cook. Fill in each cook's first and last number and its sum.", "explain": "Cook <code>c</code> starts at <code>c × 5 + 1</code> and ends 4 later: 1 to 5, 6 to 10, 11 to 15, 16 to 20. Sums: 15, 40, 65, 90 (together 210, which is 1 + 2 + ... + 20). The lambda captures everything by reference (<code>[&amp;, c]</code>) but each cook only writes index <code>c</code> of each vector, so no two cooks touch the same element: own pages again."}</script>
+
+  <div data-ex="parsons" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_parsons.cpp", "seed": 11, "pin": [1, 2, 3, 4, 6, 7, 8, 10, 15, 17, 18, 24], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 22, 24], "program": "boss_parsons_alt.cpp"}], "prompt": "Boss 5. Put the courier's four steps in order, then the cook's: set the number of dishes under the lock, and ring the bell.", "explain": "Courier: lock with a <code>unique_lock</code>, <code>wait</code> with a condition, read <code>dishes</code> while still holding the lock, then print. Cook: open a block, take a <code>lock_guard</code>, set <code>dishes = 2</code>, close the block (unlocking), then <code>notify_one()</code>. Ringing the bell just before the closing brace, while still holding the lock, also works (it was run too, with the same output), so that order is accepted. Ringing after unlocking, as here, is the more common habit. Because the courier waits <b>with a condition</b>, it works whichever thread gets there first: <samp>delivering 2 dishes</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Wren's photo-resizing tool is slow, and a friend says \"just use 8 threads!\". It resizes each photo independently, keeps a running total of bytes saved, and was timed once, in a debug build. What should she do first?", "options": [{"t": "Profile the <code>-O2</code> build, fix what it shows, then give each thread its own photos and subtotal; run TSan", "correct": true, "why": "Right: measure the real build (several runs of <code>-O2</code>, not one debug run), fix the route the profile points to (algorithm first), then add cooks with their own pages: each thread its own photos and its own subtotal, added after joining. Then run the goggles. The independent photos make threads a good fit, once it's known where the time goes."}, {"t": "Start 8 <code>std::thread</code>s straight away, all adding to one global <code>long long saved</code> counter", "why": "A data race on <code>saved</code>: undefined behaviour (panel 14). And the debug-build timing might have been misleading anyway."}, {"t": "Put one mutex around the whole resize function, then start 8 threads so they can share the work", "why": "If the whole job holds one pen, only one cook can work at a time: 8 threads, the speed of 1, plus waiting."}, {"t": "Swap every <code>'\\n'</code> for <code>std::endl</code>, so the output can keep up with the 8 new threads", "why": "That adds a flush per line: slower, not faster (panel 38)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 43: what you learned in chapter 29">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">What you learned in Chapter 29</p>
+    <ul class="recap">
+      <li><b>NO COOK LEFT BEHIND</b>A <code>std::thread</code> runs a function alongside <code>main</code>. Join it before it's destroyed, or <samp>terminate called without an active exception</samp>, exit 134. <code>std::jthread</code> joins in its destructor, on every way out. Never <code>detach()</code>. Threads copy their arguments: <code>std::ref</code> for a nickname.</li>
+      <li><b>GIVE EACH COOK THEIR OWN PAGE</b>Two threads touching the same memory, at least one writing, with nothing ordering them, is a <em>data race</em>: undefined behaviour. <code>++x</code> is read, add, write. Find races with <code>-fsanitize=thread</code>; avoid them by not sharing.</li>
+      <li><b>ONE PEN, ONE WRITER</b><code>std::mutex</code> held by a <code>std::lock_guard</code> for groups of changes; <code>std::atomic&lt;int&gt;</code> for one counter. Keep locked stretches short.</li>
+      <li><b>GRAB BOTH TOOLS AT ONCE</b>Holding one lock while waiting for another can deadlock. <code>std::scoped_lock</code> takes several together. Wait for news with a <code>condition_variable</code> and a <code>unique_lock</code>, always with a condition.</li>
+      <li><b>HAND IN THE JOB, KEEP THE TICKET</b><code>std::async(std::launch::async, f, args)</code> returns a <code>std::future</code>; <code>get()</code> waits for the answer, or rethrows the job's exception in your thread.</li>
+      <li><b>DON'T GUESS THE SLOW RUNNER: TIME EACH LEG</b><code>steady_clock</code> and <code>duration_cast</code> (which chops), several runs, the <code>-O2</code> build, a profiler. Then fix the route (O(n²) to O(n)) before the engine: <code>const&amp;</code>, <code>const auto&amp;</code>, <code>reserve</code>, <code>'\n'</code>, vectors.</li>
+    </ul>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel cover" data-play aria-label="Panel 44: graduation day">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <svg class="sfx tr" data-sfx="HOORAY!" data-seed="44"></svg>
+    <p class="kicker">THE END OF THE C++ BOOK</p>
+    <h2 class="boss-h" style="text-align:center">YOU DID IT!</h2>
+    <svg class="confetti" viewBox="0 0 680 60" aria-hidden="true">
+      <g stroke="#111" stroke-width="2.5" stroke-linejoin="round">
+        <rect x="20" y="10" width="14" height="8" fill="#FFD60A" transform="rotate(20 27 14)"/><rect x="90" y="34" width="14" height="8" fill="#7FB2FF" transform="rotate(-30 97 38)"/>
+        <rect x="160" y="8" width="14" height="8" fill="#FF5A4E" transform="rotate(45 167 12)"/><rect x="236" y="30" width="14" height="8" fill="#C9F2D9" transform="rotate(10 243 34)"/>
+        <rect x="310" y="12" width="14" height="8" fill="#FFD60A" transform="rotate(-20 317 16)"/><rect x="384" y="36" width="14" height="8" fill="#FFE1E1" transform="rotate(35 391 40)"/>
+        <rect x="456" y="10" width="14" height="8" fill="#7FB2FF" transform="rotate(-45 463 14)"/><rect x="530" y="32" width="14" height="8" fill="#FF5A4E" transform="rotate(15 537 36)"/>
+        <rect x="604" y="12" width="14" height="8" fill="#C9F2D9" transform="rotate(-10 611 16)"/><circle cx="60" cy="48" r="5" fill="#FF5A4E"/><circle cx="200" cy="44" r="5" fill="#FFD60A"/>
+        <circle cx="350" cy="50" r="5" fill="#7FB2FF"/><circle cx="500" cy="46" r="5" fill="#FFD60A"/><circle cx="650" cy="44" r="5" fill="#FF5A4E"/>
+      </g>
+    </svg>
+    <div class="castline">
+      <svg class="char lg" data-char="compiler" data-mood="happy" data-label="g++"></svg>
+      <svg class="char" data-char="linker" data-mood="happy"></svg>
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-mouth="shout" data-arms="cheer" data-prop="none"></svg>
+      <svg class="char" data-char="marshal" data-mood="happy" data-arms="point"></svg>
+      <svg class="char" data-char="sanitizer" data-mood="happy"></svg>
+      <svg class="char" data-char="professor"></svg>
+      <svg class="char" data-char="timekeeper" data-mood="happy" data-label="DONE"></svg>
+      <svg class="char" data-char="kitchenhand" data-label="1" data-state="done"></svg>
+      <svg class="char" data-char="kitchenhand" data-label="2" data-state="done"></svg>
+    </div>
+    <p class="sr-only">Picture: confetti over the whole cast cheering together: the Compiler with its beacon green and gate up, the Linker, Wren with both arms in the air, Ember the fire marshal, the Sanitizer in goggles, the Professor, Tick with a stopwatch reading DONE, and two cooks holding up finished plates.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Twenty-nine chapters ago you didn't know what a compiler was. Now you can split a program into files and libraries, build it with CMake, test it, give it classes that clean up after themselves, hand ownership around safely, write templates, handle errors on purpose, put several cores to work without losing a single order, and measure whether any of it is fast. That's real C++. Welcome to the workshop.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Compiler says: </span>And I still check everything before anything runs. Bring me your next program. Gate's up.</p></div>
+      <svg class="char sm" data-char="compiler" data-mood="happy" data-label="g++"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 45: the whole book on one wall">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption soft">The whole book on one wall: every chapter, with the one sentence to remember from it. White badges are the beginner half (Chapters 1 to 16); blue badges are the intermediate half (17 to 28); this chapter is cream, with a double border.</p>
+    <ol class="bookwall" aria-label="All 29 chapters of the C++ book">
+      <li><span class="n" aria-hidden="true">1</span><b>From Recipe to Cake</b><span>You can't eat the recipe card: compile, then run.</span></li>
+      <li><span class="n" aria-hidden="true">2</span><b>Hello, Detective!</b><span>Question the first suspect first: read the first error.</span></li>
+      <li><span class="n" aria-hidden="true">3</span><b>Boxes and Odometers</b><span>Kind, name, value. Fill the box when you make it.</span></li>
+      <li><span class="n" aria-hidden="true">4</span><b>Mail Sorters and Jugs</b><span>A jam stops everything. Cast out loud.</span></li>
+      <li><span class="n" aria-hidden="true">5</span><b>Trains at the Junction</b><span>One sign stores, two signs ask. First true rung wins.</span></li>
+      <li><span class="n" aria-hidden="true">6</span><b>Lifts and Racetracks</b><span>Every floor needs a stop. Count from zero, stop before the size.</span></li>
+      <li><span class="n" aria-hidden="true">7</span><b>Machines in Many Rooms</b><span>The machine gets a photocopy. What's made in a room stays in the room.</span></li>
+      <li><span class="n" aria-hidden="true">8</span><b>Nicknames and Egg Cartons</b><span>Look, don't touch: <code>const&amp;</code>. When the carton grows, old fingers point at air.</span></li>
+      <li><span class="n" aria-hidden="true">9</span><b>Forms and Map Legends</b><span>One form, many fields; never leave a field blank.</span></li>
+      <li><span class="n" aria-hidden="true">10</span><b>Menus and Pause Buttons</b><span>The menu promises, the kitchen cooks. Don't guess: pause and look.</span></li>
+      <li><span class="n" aria-hidden="true">11</span><b>Smoke Alarms, Dark Rooms</b><span>Know the answer, then ask the question. Bugs live at the edges.</span></li>
+      <li><span class="n" aria-hidden="true">12</span><b>The Bank Vault</b><span>Lock the vault, open a window. Born valid.</span></li>
+      <li><span class="n" aria-hidden="true">13</span><b>Sticky Notes, Library Cards</b><span>The note is not the house. One book, one card.</span></li>
+      <li><span class="n" aria-hidden="true">14</span><b>Coat Checks and Gadgets</b><span>Ticket in, coat out. Unordered means never count on the order.</span></li>
+      <li><span class="n" aria-hidden="true">15</span><b>Fire Alarms and Scrolls</b><span>Don't whisper: pull the alarm. Catch by const reference.</span></li>
+      <li><span class="n" aria-hidden="true">16</span><b>The Flat-Pack Finale</b><span>Lay out the parts, read the steps, then build.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">17</span><b>Head Chefs and Examiners</b><span>Write the menu, not the commands. Red, green, keep it.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">18</span><b>Inspectors and Magnifiers</b><span>A clean build isn't a right build.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">19</span><b>Baked Before the Party</b><span>Seal it unless it must change. Bake it before the party.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">20</span><b>Gift Boxes, Clock Faces</b><span>A maybe should look like a maybe. The dial never lies.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">21</span><b>New Words, Spare Keys</b><span>An operator is a function with a funny name.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">22</span><b>Key Cards, Moving Day</b><span>The card is the room. Every exit leads to check-out.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">23</span><b>Shared Custody, Old Mailboxes</b><span>The parameter type is the promise. Last one out takes the pet home.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">24</span><b>Remotes and Packed Lunches</b><span>One button, each device decides. Override is a seatbelt.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">25</span><b>Bookmarks on the Line</b><span>Name the job, and let the toolbox do the loop.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">26</span><b>Cookie Cutters and Bouncers</b><span>The cutter is not a cookie. Check at the door.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">27</span><b>Signposts and Sticky Printers</b><span>Not every problem is a fire. Settings stick until you change them back.</span></li>
+      <li class="inter"><span class="n" aria-hidden="true">28</span><b>A City of Addresses</b><span>Local lanes, city-wide addresses. Identical copies are fine.</span></li>
+      <li class="inter now"><span class="n" aria-hidden="true">29</span><b>Many Cooks, One Stopwatch</b><span>One pen, one writer. Don't guess the slow runner: time each leg.</span></li>
+    </ol>
+    <p class="bookwall-key">Badge colours repeat what the numbers say: 1 to 16 are white, 17 to 28 are blue, and 29 is cream with a double border.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 46: the three things Wren hopes you keep">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption soft">If you forget everything else, keep Wren's three catchphrases. You've heard them all through the book, and nearly every chapter was really about one of them.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>CLOSE TO THE METAL. CAREFUL WITH THE WRENCH.<small>power and responsibility</small></h3><p>C++ lets you touch memory, cores and bytes directly. So check bounds, initialise everything, never trust undefined behaviour, and run the Sanitizer's goggles: AddressSanitizer, UBSan and now ThreadSanitizer.</p></div>
+      <div class="duo-card"><h3>EVERY BOLT YOU TIGHTEN, YOU LOOSEN LATER.<small>RAII</small></h3><p>Destructors clean up on every way out: files close, memory returns (<code>unique_ptr</code>), locks unlock (<code>lock_guard</code>), threads join (<code>jthread</code>). Let objects do the remembering.</p></div>
+      <div class="duo-card dashed"><h3>MEASURE TWICE, COMPILE ONCE.<small>think, then check</small></h3><p>Read the first error first, write the test before the fix, warnings on, and now: time the release build before you believe anything is fast or slow.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 47: where to go from here">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <p class="caption soft">The book ends here. Your C++ doesn't. Some next steps, roughly from nearest to furthest:</p>
+    <ol class="checklist">
+      <li><b>Build something you want.</b> A text adventure, a budget tracker, a tiny game with a graphics library such as SFML or raylib. Use CMake (Chapter 17), tests (Chapter 11) and the sanitizers (Chapter 18) from day one.</li>
+      <li><b>Read other people's code.</b> Pick a small open-source C++ project, build it, and run its tests. Reading code is a skill of its own.</li>
+      <li><b>Go deeper on concurrency.</b> This chapter stopped at the doors marked "memory model", "atomic orderings", "lock-free" and "coroutines" on purpose. <i>C++ Concurrency in Action</i> by Anthony Williams is the classic next step.</li>
+      <li><b>Keep the references open.</b> cppreference.com for exact rules, the C++ Core Guidelines for good habits, Compiler Explorer to see what the compiler did.</li>
+      <li><b>Watch the language move.</b> C++23 is the current standard. The committee has finished a C++26 draft and sent it to the national standards bodies for their vote, but as of November 2026 it is not an official ISO standard yet (Chapter 27 tells the story). <code>std::print</code> (missing from this toolchain) and modules (Chapter 28) are already standard, and are reaching compilers one version at a time.</li>
+    </ol>
+    <div class="scene">
+      <svg class="char" data-char="mechanic" data-mood="happy" data-arms="wave" data-prop="wrench"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The workshop door stays open. Come back whenever you need to look something up: every chapter, every exercise and every Professor's notebook will still be here. Now go and build something. And clean up after yourself.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch28.html">← Ch 28 · A City of Addresses</a><a class="next" href="index.html">Back to the contents ↑</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what a thread is made of, what "happens before" means, how a mutex waits, how a profiler counts</summary>
+    <div class="page-body">
+      <h3>What a thread owns, and what it shares</h3>
+      <p>Each thread gets its own <b>stack</b> (its own plates of local variables, Chapter 13's picture) and its own copy of the processor's registers while it runs. Everything else is shared by the whole process: global variables, the heap, open files, <code>std::cout</code>. That's why a local variable inside <code>tally</code> is always safe, and a global <code>orders</code> is not. On Linux, <code>std::thread</code> is built on the operating system's <b>POSIX threads</b> (pthreads); that's the <samp>pthread_create</samp> you saw in the TSan report.</p>
+      <h3>"Happens before"</h3>
+      <p>The C++ standard defines a data race precisely: two accesses to the same memory location from different threads, at least one a write, where neither <b>happens before</b> the other. Things that create happens-before links include: everything a thread did before it finished happens before <code>join()</code> returns; unlocking a mutex happens before the next lock of that mutex; a write to an atomic happens before a read that sees it; setting a future's value happens before <code>get()</code> returns it. ThreadSanitizer tracks exactly these links during a run, which is how it can report a race even when the total happened to come out right.</p>
+      <h3>Why TSan only works with g++ here</h3>
+      <p>Sanitizers need a run-time library. g++ ships its own (<code>libtsan</code>); clang's sanitizer libraries aren't installed on this machine (Chapter 18), so the TSan builds on this page have no clang comparison (the footer lists every build that had none). TSan slows a program down several times and uses much more memory, so it's for test builds only, and it can't be combined with AddressSanitizer.</p>
+      <h3>How a mutex waits</h3>
+      <p>Locking a free mutex costs one atomic instruction. If it's taken, the thread may spin for a moment, then asks the operating system to put it to sleep until the holder unlocks (on Linux, a "futex"). That's why holding a lock for a long time wastes so much: every waiting cook is asleep. <code>std::atomic&lt;int&gt;</code>'s <code>++</code> uses one special locking instruction instead (<samp>lock xadd</samp> on x86-64) and never sleeps.</p>
+      <h3>Atomics have settings too</h3>
+      <p>Every atomic operation takes an optional <b>memory order</b>. The default, <code>std::memory_order_seq_cst</code>, is the simplest to reason about and what this chapter used everywhere. The weaker orders (<code>relaxed</code>, <code>acquire</code>, <code>release</code>) can be faster but are famously easy to get wrong; they belong to the "memory model" topic this book leaves for later.</p>
+      <h3>What <code>std::jthread</code> adds besides joining</h3>
+      <p>A <code>std::jthread</code> also carries a <b>stop token</b>. If its function takes a <code>std::stop_token</code> as its first parameter, it can ask <code>token.stop_requested()</code> in its loop; <code>request_stop()</code> sets that flag, and the destructor calls <code>request_stop()</code> and then <code>join()</code>. That gives long-running helpers a polite way to be told "kitchen's closing".</p>
+      <h3>Two compilers, two ways to say "wrong lock"</h3>
+      <p>clang++ 18 rejects <code>cv_bug.cpp</code> too, and its note says the same thing more directly: <samp>no known conversion from 'std::lock_guard&lt;std::mutex&gt;' to 'unique_lock&lt;mutex&gt; &amp;'</samp>.</p>
+      <pre class="term wrap" data-run="cv_bug.cpp" data-alt data-exit></pre>
+      <p>And its message for the missing <code>std::ref</code> puts the failed requirement in the first line:</p>
+      <pre class="term wrap" data-run="ref_bug.cpp" data-alt data-exit data-libfold="rest"></pre>
+      <h3>How gprof counts</h3>
+      <p><code>-pg</code> makes every function record each call (that's the exact <samp>calls</samp> column), and the program is interrupted about 100 times a second to note which function was running (the sampled <samp>seconds</samp> columns, hence "Each sample counts as 0.01 seconds"). Very short programs get too few samples to say much; that's why <code>find_pairs</code> needed real work to measure.</p>
+      <h3>Why -O2 doesn't simply delete benchmark loops</h3>
+      <p>An optimiser may remove any work whose result is never used. The benchmarks here all print their totals, which forces the work to happen. A loop whose answer you throw away can be timed at 0 ms at <code>-O2</code>: a classic benchmarking trap.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Thread pools.</b> Starting a thread costs time, so servers and game engines start a fixed team of worker threads once (often one per core) and feed them tasks from a queue: Part 4's courier, grown up.</li>
+        <li><b>The UI thread.</b> Programs with windows keep one thread for drawing and clicks, and move slow jobs (loading, saving, network) to helpers, so the window never freezes. Results come back through futures or message queues.</li>
+        <li><b>Parallel algorithms.</b> C++17 lets many standard algorithms run in parallel by passing an execution policy, as in <code>std::sort(std::execution::par, v.begin(), v.end())</code>. With libstdc++ this needs Intel's TBB library installed, so this book didn't use it.</li>
+        <li><b>Benchmark libraries.</b> Real projects measure with tools like Google Benchmark, which repeats each test until the timing settles and reports the spread, doing panel 30's "several laps" properly.</li>
+        <li><b>Profilers.</b> <code>perf</code> on Linux, Instruments on macOS, the Visual Studio profiler and Intel VTune show where time goes without rebuilding with <code>-pg</code>, often as "flame graphs".</li>
+        <li><b>Release builds.</b> CMake's <code>Release</code> build type (Chapter 17) means <code>-O3 -DNDEBUG</code> with g++; <code>RelWithDebInfo</code> means <code>-O2 -g -DNDEBUG</code>, a common choice for profiling.</li>
+        <li><b>Data layout.</b> Games often store each field of many objects in its own vector ("structure of arrays") so a loop over positions touches only positions: panel 39's cache lines, taken seriously.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"More threads is always faster."</b> Beyond the number of cores, threads just take turns; and locks, sharing and starting threads all cost time. Measure.</li>
+        <li><b>"My race printed the right answer, so the code is fine."</b> A data race is undefined behaviour whether or not today's run looked right (panel 14's notes).</li>
+        <li><b>"<code>++x</code> is one step."</b> On a plain <code>int</code> it's read, add, write. Only on a <code>std::atomic</code> is it one indivisible step.</li>
+        <li><b>"<code>volatile</code> makes a variable thread-safe."</b> It doesn't, in C++. It's for hardware registers. Use <code>std::atomic</code> (Core Guideline CP.8).</li>
+        <li><b>"<code>join()</code> runs the thread."</b> The thread started when it was made. <code>join()</code> only waits for it to finish.</li>
+        <li><b>"A thread gets my variable."</b> It gets a copy, unless you pass <code>std::ref</code> or capture by reference.</li>
+        <li><b>"<code>std::async</code> always makes a new thread."</b> Only with <code>std::launch::async</code>; otherwise the library may run the job later, on the thread that calls <code>get()</code>.</li>
+        <li><b>"A deadlock crashes the program."</b> It freezes it, silently.</li>
+        <li><b>"Timing the debug build is good enough for comparing."</b> <code>-O0</code> and <code>-O2</code> can differ many times over, and not evenly (panel 32).</li>
+        <li><b>"<code>duration_cast</code> rounds."</b> It chops towards zero: 1500 ms is 1 second.</li>
+        <li><b>"Lists are faster for everything except indexing."</b> Walking a list is usually far slower than walking a vector, because of the cache (panel 39).</li>
+        <li><b>"Fewer lines of code means faster."</b> One line can hide a million steps, or a whole copied vector.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build and run a threaded program</h3>
+      <p>Make a folder <code>cpp-ch29</code>, save <code>split_sum.cpp</code>, then <code>g++ -std=c++23 -Wall -Wextra -g split_sum.cpp -o split_sum</code> and <code>./split_sum</code>. (Only the Linux build was run for this book; the macOS and Windows notes are pointers to check on your own machine.)</p>
+      <ul>
+        <li><b>Linux:</b> <code>sudo apt install g++</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++</code> (Fedora). With older glibc (before 2.34) add <code>-pthread</code> to the build line, or you'll get link errors about <code>pthread_create</code>. <code>std::jthread</code> needs g++ 10 or newer with <code>-std=c++20</code> or later.</li>
+        <li><b>macOS:</b> <code>xcode-select --install</code>, then <code>clang++ -std=c++20 split_sum.cpp -o split_sum</code>. Apple's libc++ added <code>std::jthread</code> later than libstdc++; if yours lacks it, use <code>std::thread</code> with <code>join()</code>. Apple's clang does include ThreadSanitizer: <code>clang++ -std=c++20 -g -fsanitize=thread race.cpp -o race</code>.</li>
+        <li><b>Windows:</b> MSYS2's MinGW g++ works as above. With Visual Studio: <code>cl /std:c++20 /EHsc /W4 split_sum.cpp</code>; Visual Studio has AddressSanitizer but not ThreadSanitizer, so run race checks under WSL (Linux inside Windows).</li>
+      </ul>
+      <h3>2. See the race for yourself, safely</h3>
+      <p>Build <code>race.cpp</code> with <code>g++ -std=c++23 -g -fsanitize=thread race.cpp -o race</code> and run it several times: watch the thread numbers change while the line number stays put. Then change line 3 to <code>std::atomic&lt;int&gt; orders{0};</code> (add <code>#include &lt;atomic&gt;</code>) and run it again: silence.</p>
+      <h3>3. Time things yourself</h3>
+      <ol>
+        <li>Build <code>bench_o0.cpp</code> twice, with and without <code>-O2</code>, and run each five times. How big is the wobble compared with the difference?</li>
+        <li>In <code>stopwatch.cpp</code>, change <code>microseconds</code> to <code>seconds</code>. What do you see, and why (panel 31)?</li>
+        <li>In <code>endl_cost.cpp</code>, write to <code>std::cout</code> instead of a file, and run it with <code>./endl_cost &gt; out.txt</code> (PowerShell: <code>.\endl_cost.exe &gt; out.txt</code>). Then run it straight to the terminal: a terminal flushes at every newline anyway (Chapter 10), so the difference shrinks.</li>
+        <li>Profile <code>prof.cpp</code>: <code>g++ -std=c++23 -O2 -pg prof.cpp -o prof</code>, <code>./prof</code>, <code>gprof -b -p ./prof gmon.out</code>. Then replace <code>find_pairs</code>'s method with a counting array, and profile again. (gprof is Linux-only; on macOS use Instruments, on Windows the Visual Studio profiler.)</li>
+        <li>Paste <code>square.cpp</code> into Compiler Explorer (godbolt.org), pick x86-64 gcc 13, and switch between <code>-O0</code> and <code>-O2</code>. Try clang too.</li>
+      </ol>
+      <h3>4. Try these on purpose</h3>
+      <ol>
+        <li>In <code>first_thread.cpp</code>, write <code>std::thread helper{chop()};</code> (with brackets). Read the Compiler's message: you tried to hand over the <b>result</b> of <code>chop</code>, which is <code>void</code>.</li>
+        <li>In <code>cv_orders.cpp</code>, delete the final <code>bell.notify_one();</code>. The program <b>may</b> now freeze at the end: run it several times, and press <kbd>Ctrl</kbd>+<kbd>C</kbd> if it hangs. Why does it only sometimes wait forever? (Hint: where is the courier when <code>closed</code> becomes true?)</li>
+        <li>In <code>split_sum.cpp</code>, move the printing loop <b>inside</b> the block, before the closing brace. Build with <code>-fsanitize=thread</code> and read the report.</li>
+        <li>Make <code>Tray</code>'s copy constructor <code>= delete</code> in <code>rangefor_bug.cpp</code>. Now the Compiler finds the hidden copy for you.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>process</dt><dd>A running program, with its own memory.</dd>
+        <dt>thread</dt><dd>One sequence of steps being followed inside a process; all threads of a process share its memory. The <b>main thread</b> runs <code>main</code>.</dd>
+        <dt>core</dt><dd>A part of the processor that runs one thread at a time.</dd>
+        <dt>concurrency</dt><dd>Several tasks in progress at the same time (taking turns or truly side by side).</dd>
+        <dt>std::thread</dt><dd>Starts a new thread running a function; must be joined (or detached) before it's destroyed.</dd>
+        <dt>join()</dt><dd>Wait until a thread has finished.</dd>
+        <dt>joinable</dt><dd>A thread object that still owns a running or finished-but-unjoined thread; destroying a joinable <code>std::thread</code> calls <code>std::terminate</code>.</dd>
+        <dt>detach()</dt><dd>Let a thread run on with no owner; nobody can wait for it afterwards (avoid: CP.26).</dd>
+        <dt>std::jthread</dt><dd>C++20 joining thread: its destructor requests a stop and joins.</dd>
+        <dt>std::ref</dt><dd>Wraps a variable so a thread (or <code>std::bind</code>) passes a reference instead of a copy.</dd>
+        <dt>data race</dt><dd>Two threads access the same memory, at least one writes, and nothing orders them: undefined behaviour.</dd>
+        <dt>lost update</dt><dd>One thread's write overwritten by another that read the old value.</dd>
+        <dt>register</dt><dd>A tiny, very fast storage spot inside a core.</dd>
+        <dt>ThreadSanitizer (TSan)</dt><dd>A g++/clang tool, enabled with <code>-fsanitize=thread</code>, that reports data races seen during a run.</dd>
+        <dt>mutex</dt><dd>"Mutual exclusion": a lock that only one thread can hold at a time; <code>std::mutex</code>.</dd>
+        <dt>std::lock_guard</dt><dd>Locks a mutex when made, unlocks it when destroyed.</dd>
+        <dt>std::unique_lock</dt><dd>A lock guard that can also unlock and relock; needed by <code>condition_variable::wait</code>.</dd>
+        <dt>std::scoped_lock</dt><dd>C++17: locks one or more mutexes together, avoiding deadlock.</dd>
+        <dt>std::atomic</dt><dd>A value whose operations (like <code>++</code>) are indivisible, so threads can share it safely.</dd>
+        <dt>deadlock</dt><dd>Threads each waiting for a lock another holds, forever.</dd>
+        <dt>std::condition_variable</dt><dd>Lets a thread sleep until another notifies it; always wait with a condition.</dd>
+        <dt>notify_one / notify_all</dt><dd>Wake one, or every, thread waiting on a condition variable.</dd>
+        <dt>task</dt><dd>A piece of work whose result you want, rather than a thread you manage.</dd>
+        <dt>std::async</dt><dd>Runs a function as a task (on a new thread with <code>std::launch::async</code>) and returns a future.</dd>
+        <dt>std::future</dt><dd>A ticket for a result that may not exist yet; <code>get()</code> waits for it, or rethrows the task's exception.</dd>
+        <dt>happens before</dt><dd>The standard's word for "is guaranteed to be finished and visible before"; joins, locks, atomics and futures create it.</dd>
+        <dt>std::chrono</dt><dd>The time library: clocks, time points and durations, in <code>&lt;chrono&gt;</code>.</dd>
+        <dt>steady_clock</dt><dd>A clock that never goes backwards; the one to time things with.</dd>
+        <dt>duration / duration_cast</dt><dd>A length of time with a unit; <code>duration_cast</code> converts units, chopping towards zero.</dd>
+        <dt>-O0 / -O2</dt><dd>No optimisation (the default, best for debugging) / the usual optimisation level for released programs.</dd>
+        <dt>benchmark</dt><dd>A careful measurement of how long something takes.</dd>
+        <dt>profiler</dt><dd>A tool that reports where a program spends its time; gprof (<code>-pg</code>), perf and others.</dd>
+        <dt>assembly</dt><dd>Human-readable machine code; <code>g++ -S</code> writes it.</dd>
+        <dt>O(n), O(n²)</dt><dd>"Big O": how the work grows as the input grows; linear, or with the square.</dd>
+        <dt>reserve</dt><dd>Ask a vector for room for n elements up front, so it doesn't have to move them as it grows.</dd>
+        <dt>flush</dt><dd>Push buffered output out now; <code>std::endl</code> does it after every line.</dd>
+        <dt>cache / cache line</dt><dd>Small fast memory inside the processor / the 64-byte chunk it fetches from main memory at once.</dd>
+        <dt>small-string optimisation (SSO)</dt><dd>Storing short strings inside the <code>std::string</code> object itself, with no heap block.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/thread">cppreference: the concurrency support library</a>: <a href="https://en.cppreference.com/w/cpp/thread/thread">std::thread</a>, <a href="https://en.cppreference.com/w/cpp/thread/jthread">std::jthread</a>, <a href="https://en.cppreference.com/w/cpp/thread/mutex">std::mutex</a>, <a href="https://en.cppreference.com/w/cpp/thread/scoped_lock">std::scoped_lock</a>, <a href="https://en.cppreference.com/w/cpp/thread/condition_variable">std::condition_variable</a>, <a href="https://en.cppreference.com/w/cpp/thread/async">std::async</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/atomic/atomic">cppreference: std::atomic</a> and <a href="https://en.cppreference.com/w/cpp/language/multithread">multi-threaded executions and data races</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/chrono">cppreference: the date and time library</a> and <a href="https://en.cppreference.com/w/cpp/chrono/duration/duration_cast">duration_cast</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: CP.1 to CP.9, CP.20 to CP.26 and CP.42 (concurrency), Per.1 to Per.7 (performance), SL.io.50 (avoid endl), F.16 (passing parameters)</li>
+        <li><a href="https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html">GCC manual: instrumentation options</a> (<code>-fsanitize=thread</code>, <code>-pg</code>) and <a href="https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html">optimization options</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://github.com/google/sanitizers/wiki/ThreadSanitizerCppManual">ThreadSanitizer C++ manual</a> (Google's sanitizers wiki), with how to read its reports.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, for diagram-style summaries of containers, algorithms and their costs.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to see what the compiler made of your code.</li>
+        <li><a href="https://www.learncpp.com/">learncpp.com</a>, to look back over anything from the whole book in more detail.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch29</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, plus <code>-O2</code> or <code>-fsanitize=thread</code> where a terminal shows it) and each was also built and run with clang++ 18.1 for comparison (step-by-step tool sessions with <code>clang++</code> in place of <code>g++</code>), except the two ThreadSanitizer builds (<code>race.cpp</code>, <code>counter_mutex_tsan.cpp</code>), because clang's sanitizer libraries aren't installed here. The capture lists 9 programs whose clang++ run differed: clang's wording of the two compile errors (<code>cv_bug.cpp</code>, <code>ref_bug.cpp</code>, shown in the notebook), the times printed by the clang builds of five timing programs (<code>stopwatch.cpp</code>, <code>bench_o0.cpp</code>, <code>bench_o2.cpp</code>, <code>endl_cost.cpp</code>, <code>vec_list.cpp</code>) and by gprof for <code>prof.cpp</code> (times differ on every run by nature; its <samp>calls</samp> column and the program's own line were the same), and clang's assembly for <code>square.cpp</code> (described in panel 34). All the others gave the same output with both compilers. Every timing terminal, and the ThreadSanitizer race report, is labelled "one possible run"; none of them is used as an exercise answer. Programs ran inside a fresh process namespace with address randomisation off, from their own folder, on a machine that reports 2 hardware threads; <code>endl_cost.cpp</code> writes <code>log.txt</code>, and <code>prof.cpp</code>'s run writes <code>gmon.out</code>, in that folder. The vector growth numbers are libstdc++ 13's (both compilers here use it). <code>scoped_lock</code>'s way of avoiding deadlock (lock one, try the rest, let go and retry) was checked against libstdc++ 13's own <code>&lt;mutex&gt;</code> header. The ticket rails replay one possible order of steps with single-threaded programs, and, like the map, the walk-through and the machine, check themselves against those real runs. Deadlock is described in words and a picture only: a frozen program has no output to show.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): cppreference (std::thread, std::jthread, std::mutex, std::scoped_lock, std::condition_variable, std::async, std::atomic, the data-race rules, std::chrono and duration_cast; cppreference refused fetches during the 2026-11-08 review, so its wording was not re-checked then), the C++ Core Guidelines concurrency section (CP rules) and performance section (Per.1 to Per.7), every cited rule title checked against the official repository (github.com/isocpp/CppCoreGuidelines) on 2026-11-08; jthread's destructor (it calls request_stop(), then join()) checked against libstdc++ 13's own <code>&lt;thread&gt;</code> header; the language-version facts (C++17 <code>scoped_lock</code>, class template argument deduction and left-to-right <code>&lt;&lt;</code> chains, C++20 <code>jthread</code>, C++23 <code>std::print</code> and <code>import std</code>) checked against GCC's C++ status page and the libstdc++ status page (gcc.gnu.org), fetched 2026-11-08; the C++26 status sentence rests on WG21 paper P4238R0 (open-std.org), which discusses the national-body ballot on the C++26 draft; the course's C++ research map (module rows I24 and I25, and its toolchain notes on sanitizers and threads), Chapters 8, 10, 14, 18, 22, 25 and 27 of this book for the ideas they introduced, and the g++ 13.3, clang++ 18.1, ThreadSanitizer and gprof output recorded above. A Tour of C++ (3rd ed., ch. 18) and Effective Modern C++ (items 35 to 40) are listed in the research map for this module; they were not re-read for this page.</p>
+  <p>Wren, Tick the timekeeper, the numbered cooks, Ember the fire marshal, the Sanitizer, the Linker, the Professor and the Compiler are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A City of Addresses</title>
+<meta name="description" content="Chapter 28 of the Pip &amp; Friends C++ book, a comic course: program structure. Translation units, external and internal linkage, static and unnamed namespaces, inline functions and inline variables in headers, the one-definition rule, extern, the static initialisation order fiasco, static libraries (ar) and shared libraries (-shared -fPIC, LD_LIBRARY_PATH, rpath), the preprocessor (#define, #ifdef, -D, macros that leak), name mangling with nm and c++filt, extern &quot;C&quot;, and the status of C++20 modules and import std, with every real linker, loader and compiler message read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch28.css">
+<script defer src="../data/cpp-ch28.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch27.html">&larr; Ch 27</a><span aria-current="page">Ch 28 of 29</span><a href="ch29.html">Ch 29 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 28</p>
+    <h1 id="cover-h">A CITY OF ADDRESSES</h1>
+    <div class="trio">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char lg" data-char="linker" data-mood="happy"></svg>
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="happy"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Beside her stands the Linker in a red cap and apron, holding a taped box marked LINK, and the Compiler, the big checkpoint robot, with its gate up.</p>
+    <p class="caption blurb">A big C++ program is a <b>city</b>. Every <code>.cpp</code> file is a neighbourhood, built on its own by the Compiler. The <b>Linker</b> is the city planner: it joins the neighbourhoods and keeps the city's address book. Some names are <b>local street names</b> that only one neighbourhood uses. Others are <b>city-wide addresses</b>, and there must be exactly one of each. Today Wren learns which is which, how to share signs between neighbourhoods, who gets set up first, how to pack neighbourhoods into <b>libraries</b>, and what the names really look like inside the address book. About 120 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One city, many neighbourhoods: translation units, the address book, external and internal linkage, static and unnamed namespaces</a></li>
+      <li><a href="#part-2">Signs every street can share: headers, inline functions and variables, the one-definition rule, extern</a></li>
+      <li><a href="#part-3">Who arrives first: globals before main, the static initialisation order fiasco, construct on first use</a></li>
+      <li><a href="#part-4">Warehouses and lending libraries: static libraries with ar, shared libraries, LD_LIBRARY_PATH and rpath, the map of a build</a></li>
+      <li><a href="#part-5">Sign painters and name stamps: the preprocessor, macros that leak, #ifdef, name mangling, extern "C", modules</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE CITY, MANY NEIGHBOURHOODS<small>Translation units, the address book, and two kinds of names</small></h2>
+
+  <section class="panel sketch tilt-l" data-play aria-label="Panel 1: the city and its address book">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption soft">Imagine a city with three neighbourhoods: the Harbor, the Market and Main Square. Each one has little lanes that only locals use. Two neighbourhoods may both have a "Mill Lane", and nobody minds, because a local lane is only ever used inside its own neighbourhood. But a <b>city-wide address</b>, the kind a letter from anywhere can reach, must be unique. The city planner keeps the address book.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 300" role="img" aria-label="A map of three neighbourhoods, each a box labelled with a file name: harbor.cpp, market.cpp and main.cpp. Harbor and Market each have a small dashed street sign reading helper, marked local lane. Each neighbourhood also has a solid sign with a city-wide address: harbor_boats, market_stalls and main. Below, the Linker's address book lists the three city-wide addresses and the file each one lives in. The local lanes are not in the book.">
+      <rect x="6" y="6" width="648" height="288" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="3.5" stroke-linejoin="round">
+        <rect x="24" y="24" width="190" height="140" rx="10" fill="#DDE8FF"/>
+        <rect x="235" y="24" width="190" height="140" rx="10" fill="#FFF6CC"/>
+        <rect x="446" y="24" width="190" height="140" rx="10" fill="#C9F2D9"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle">
+        <text x="119" y="50">harbor.cpp</text><text x="330" y="50">market.cpp</text><text x="541" y="50">main.cpp</text>
+      </g>
+      <g stroke="#111" stroke-width="3" stroke-linejoin="round">
+        <rect x="40" y="66" width="158" height="36" rx="6" fill="#FFFFFF" stroke-dasharray="7 5"/>
+        <rect x="251" y="66" width="158" height="36" rx="6" fill="#FFFFFF" stroke-dasharray="7 5"/>
+        <rect x="40" y="114" width="158" height="36" rx="6" fill="#FFE1EC"/>
+        <rect x="251" y="114" width="158" height="36" rx="6" fill="#FFE1EC"/>
+        <rect x="462" y="114" width="158" height="36" rx="6" fill="#FFE1EC"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="119" y="90">helper() local</text><text x="330" y="90">helper() local</text>
+        <text x="119" y="138">harbor_boats()</text><text x="330" y="138">market_stalls()</text><text x="541" y="138">main()</text>
+      </g>
+      <text x="541" y="90" text-anchor="middle" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">(no local lanes)</text>
+      <g stroke="#111" stroke-width="3" fill="none" stroke-dasharray="6 5"><path d="M119 152 L250 196"/><path d="M330 152 L330 196"/><path d="M541 152 L410 196"/></g>
+      <rect x="170" y="196" width="320" height="86" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="3.5"/>
+      <text x="330" y="218" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="19" letter-spacing="1" fill="#111">THE LINKER'S ADDRESS BOOK</text>
+      <g font-family="JetBrains Mono, monospace" font-weight="600" font-size="14" fill="#111">
+        <text x="186" y="240">harbor_boats()  → harbor.cpp</text>
+        <text x="186" y="258">market_stalls() → market.cpp</text>
+        <text x="186" y="276">main()          → main.cpp</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>You've met me as the waiter in Chapter 10. Today I'm the <b>city planner</b>. The Compiler builds each neighbourhood alone. I join them and look up every city-wide name in my book. A name with <b>no</b> entry? <code>undefined reference</code>. A name with <b>two</b> entries? <code>multiple definition</code>. Local lanes never reach my book at all.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: a translation unit is what the Compiler really reads">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">First, a precise word for "neighbourhood". The Compiler never reads a header by itself. It reads one <code>.cpp</code> file <b>after</b> the preprocessor has pasted in every <code>#include</code> and replaced every macro. That pasted-together text is a <b>translation unit</b> (a <b>TU</b>). <code>g++ -E</code> stops after the pasting and prints the TU; <code>-P</code> leaves out its bookkeeping lines.</p>
+    <div class="files">
+      <div><span class="file-tab">sign.h</span><pre class="code" data-src="tu/sign.h"></pre></div>
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="tu.cpp"></pre></div>
+    </div>
+    <pre class="term" data-run="tu.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in the project folder <code>~/cpp-ch28/tu</code>. Several scenarios in this chapter share one project's other files, so the chapter folder keeps one copy of each scenario's changed file under the scenario's own name (here <code>tu.cpp</code>). Before the command, a hidden step copied that file in as <code>main.cpp</code>; then the command shown ran word for word. Every project terminal in this chapter was made this way, and each says which file was copied in and what was deleted first.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Look what the Compiler gets: no <code>#include</code> line, no <code>CITY</code>, no comments. The promise <code>int street_count();</code> from the header sits right at the top, and <code>CITY</code> has become <code>"Gearford"</code>. One <code>.cpp</code> plus everything it pastes: <b>one TU, one neighbourhood, one <code>.o</code> file.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tu-m" id="ex-tu"></div>
+  <script type="application/json" id="ex-tu-m">{"q": "A project has <code>main.cpp</code>, <code>north.cpp</code> and <code>south.cpp</code>, and all three <code>#include \"city.h\"</code>. Wren runs <code>g++ -c main.cpp north.cpp south.cpp</code>. How many translation units does the Compiler work on?", "keepOrder": true, "options": [
+    {"t": "1: the whole project", "why": "The Compiler never sees the whole project at once. That's the Linker's view."},
+    {"t": "3: one per <code>.cpp</code> file", "correct": true, "why": "Right. Each <code>.cpp</code>, with its pasted headers, is one translation unit, compiled alone into its own <code>.o</code>. <code>city.h</code> is pasted into all three, so its text is compiled three times."},
+    {"t": "4: three <code>.cpp</code> files plus <code>city.h</code>", "why": "A header is never compiled on its own. It only exists inside the TUs that include it."},
+    {"t": "6: each <code>.cpp</code> and each paste of <code>city.h</code>", "why": "The paste becomes part of the <code>.cpp</code>'s text. One <code>.cpp</code> plus its pastes is a single TU."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 3: reading the address book with nm">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Every object file carries its own page of the address book: a <b>symbol table</b>. <code>nm</code> prints it (Chapters 1, 7 and 26 used it to peek). <code>-C</code> shows C++ names instead of their coded form. Here is one neighbourhood, <code>hall.cpp</code>, with some city-wide names, some local ones, and one name it only <em>uses</em>.</p>
+    <span class="file-tab">hall.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="hall.cpp"></pre>
+      <pre class="term" data-run="hall.cpp" data-exit></pre>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <caption class="sr-only">What each nm letter means</caption>
+      <thead><tr><th scope="col">letter</th><th scope="col">means</th><th scope="col">in hall.o</th></tr></thead>
+      <tbody>
+        <tr><td class="letter">T</td><td>a function's code, <b>city-wide</b> (capital letter = external)</td><td><code>open_hall()</code>, line 11</td></tr>
+        <tr><td class="letter">t</td><td>a function's code, <b>this file only</b> (small letter = local)</td><td><code>count_doors()</code>, line 7, marked <code>static</code></td></tr>
+        <tr><td class="letter">B</td><td>a city-wide variable that starts as zero</td><td><code>visitors</code>, line 2</td></tr>
+        <tr><td class="letter">d</td><td>a local variable with a starting value</td><td><code>doors</code>, line 3, marked <code>static</code></td></tr>
+        <tr><td class="letter">U</td><td><b>undefined</b> here: used, but defined somewhere else</td><td><code>ring_bell()</code>, promised on line 5</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="normal"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>Capital letters are city-wide addresses: I put those in my book. Small letters stay inside the neighbourhood. And every <code>U</code> is an <b>order</b> I must fill from some other object file. If nobody has a capital <code>T</code> for <code>ring_bell()</code>, that's my <code>undefined reference</code>. (The numbers on the left are positions inside the file; ignore them.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-nm-m" id="ex-nm"></div>
+  <script type="application/json" id="ex-nm-m">{"q": "<code>nm -C park.o</code> prints, among other lines, <samp>U water_fountain()</samp> and <samp>t sweep_paths()</samp>. Which is true?", "options": [
+    {"t": "<code>water_fountain()</code> must come from another file; <code>sweep_paths()</code> is here, but local", "correct": true, "why": "Yes. <code>U</code> = undefined here, so another object file must provide it at link time. A small <code>t</code> = code with internal linkage: it's real, but it never goes in the Linker's city-wide book, so other files can't use it."},
+    {"t": "Both functions are missing from <code>park.o</code>, so the link step will fail", "why": "Only <code>U</code> means missing from this file, and even that is normal: the Linker fills it from another object. <code>t</code> means the code is right here."},
+    {"t": "<code>sweep_paths()</code> is a city-wide address; <code>water_fountain()</code> is a local lane", "why": "Upside down. Capital letters are external (city-wide). A small <code>t</code> is local, and <code>U</code> isn't a definition at all."},
+    {"t": "<code>U</code> means \"unused\", so <code>water_fountain()</code> can safely be deleted", "why": "<code>U</code> means <b>undefined</b>: this file uses the name and needs someone else's definition."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 4: two kinds of linkage">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">The grown-up word for "can other files reach this name?" is <b>linkage</b>. A name with <b>external linkage</b> is a city-wide address. A name with <b>internal linkage</b> is a local lane. (Names inside a function, like a loop counter, have <b>no linkage</b> at all: they aren't even on the map.)</p>
+    <div class="duo">
+      <div class="duo-card"><h3>EXTERNAL LINKAGE<small>a city-wide address</small></h3><p><b>The default</b> for functions and for global variables that aren't <code>const</code>. Other files can reach the name with a declaration. There must be <b>exactly one</b> definition in the whole program. <code>nm</code> shows a capital letter.</p></div>
+      <div class="duo-card"><h3>INTERNAL LINKAGE<small>a local lane</small></h3><p>Anything marked <code>static</code> at file level, anything inside an <b>unnamed namespace</b>, and global <code>const</code> or <code>constexpr</code> variables. Every TU can have its own, with the same name, and they never meet. <code>nm</code> shows a small letter.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Here's the rule of thumb for every name you write at the top of a <code>.cpp</code> file: <b>"Does any other file need this?"</b> Yes: put a declaration in the header, leave the definition external. No: make it local. Most little helpers should be local lanes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 5: two helpers, one address">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <svg class="sfx tr" data-sfx="CLASH!" data-seed="5"></svg>
+    <p class="caption">The Harbor and the Market each wrote a tiny <code>helper()</code> for themselves. Neither header mentions it. Neither file knows the other has one. Each compiles perfectly.</p>
+    <div class="files">
+      <div><span class="file-tab">harbor.cpp</span><pre class="code" data-src="clash.cpp"></pre></div>
+      <div><span class="file-tab">market.cpp</span><pre class="code" data-src="clash/market.cpp"></pre></div>
+    </div>
+    <span class="file-tab">main.cpp</span>
+    <pre class="code" data-src="clash/main.cpp"></pre>
+    <pre class="term wrap" data-run="clash.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/clash</code>, after <code>clash.cpp</code> was copied in as <code>harbor.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <ol class="readlist" aria-label="Reading the link error like a detective">
+      <li><span><b>Who's talking:</b> <code>/usr/bin/ld</code>, the Linker. Step 1 printed nothing, so every file compiled.</span></li>
+      <li><span><b>The accusation:</b> <samp>multiple definition of `helper()'</samp>. Two city-wide addresses with one name.</span></li>
+      <li><span><b>The two suspects:</b> <code>harbor.cpp:2</code>, and "first defined here", <code>market.cpp:2</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="worried"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>Both <code>.o</code> files told me "I have <code>helper()</code>, city-wide". You never said either one was private, so to me they're two houses claiming the same address. A function is external <b>by default</b>, even if no header mentions it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: static makes a local lane">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The old fix is one word: <code>static</code> in front of each helper. At file level, <code>static</code> means <b>"this file only"</b>: internal linkage. Here is the new <code>harbor.cpp</code>; <code>market.cpp</code> got the same word on its own <code>helper()</code>. <code>main.cpp</code> didn't change.</p>
+    <span class="file-tab">harbor.cpp</span>
+    <pre class="code" data-src="clash_static.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Careful: <code>static</code> has more than one job. Inside a <b>function</b> (Chapter 7), <code>static int n</code> means "made once, kept between calls". At <b>file level</b>, it means "local lane". Inside a <b>class</b>, it means "one shared by all objects". Same word, three meanings, decided by where you write it.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pstatic-m" id="ex-pstatic"></div>
+  <script type="application/json" id="ex-pstatic-m">{"program": "clash_static.cpp", "prompt": "Both <code>helper()</code>s are now <code>static</code>. <code>market_stalls()</code> returns <code>helper() * 4</code> (market's helper returns 3), and <code>main</code> prints <code>market_stalls() << \" stalls, \" << harbor_boats() << \" boats\"</code>. Does it link? If so, what's the line?", "hint": "Each file calls its own local helper. Market: 3 × 4. Harbor: 5 × 2.", "explain": "It links: neither <code>helper()</code> is in the Linker's book any more, so there's nothing to clash. Each file's calls go to its <b>own</b> helper, because the Compiler already connected them inside the TU. 3 × 4 = 12 and 5 × 2 = 10: <samp>12 stalls, 10 boats</samp>."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/clash_static</code>, after <code>clash_static.cpp</code> was copied in as <code>harbor.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <section class="panel sketch" aria-label="Panel 7: the unnamed namespace">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Modern C++ prefers a different spelling for "this file only": an <b>unnamed namespace</b>. It's a <code>namespace</code> with no name. Everything inside it gets internal linkage, and you can put many helpers, and even types, in one block. The C++ Core Guidelines recommend it for anything a <code>.cpp</code> file doesn't export (SF.22).</p>
+    <ul class="anatomy" aria-label="The parts of an unnamed namespace">
+      <li><code>namespace {</code><span>opens it: no name after the word</span></li>
+      <li><code>int helper() { ... }</code><span>everything in here is a local lane</span></li>
+      <li><code>}  // namespace</code><span>closes it; the comment is a common habit</span></li>
+      <li class="opt"><code>static int helper()</code><span>the older spelling, same effect, functions and variables only</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Why "unnamed"? The Compiler secretly gives the namespace a name that's unique to this TU, so nobody else can ever write it. You call <code>helper()</code> as usual inside the file. Your turn: wrap harbor's helper.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-anon-m" id="ex-anon"></div>
+  <script type="application/json" id="ex-anon-m">{"program": "clash_anon.cpp", "prompt": "Give harbor's <code>helper()</code> internal linkage the modern way. <code>market.cpp</code> wraps its helper the same way. Fill in line 2.", "blanks": [{"line": 2, "text": "namespace {", "accept": ["namespace{"]}], "explain": "<code>namespace {</code> opens an unnamed namespace, and line 6 closes it. <code>helper()</code> is now a local lane in each file, so the build links and prints <samp>12 stalls, 10 boats</samp>, exactly like the <code>static</code> version."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/clash_anon</code>, after <code>clash_anon.cpp</code> was copied in as <code>harbor.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <section class="panel clean tracer" aria-label="Panel 8: one city-wide counter and two local ones" data-tracer="tr-towns" id="tr-towns-box">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Variables follow the same rules. <code>towns</code> has three counters with long lives. <code>city_total</code> is city-wide: declared with <code>extern</code> in <code>city.h</code> (Part 2 explains the word) and defined once in <code>main.cpp</code>. North and South each have a local counter, both named <code>visits</code>: North uses <code>static</code>, South an unnamed namespace. Step through <code>main.cpp</code> and watch all three.</p>
+    <div class="files">
+      <div><span class="file-tab">city.h</span><pre class="code" data-src="towns/city.h"></pre></div>
+      <div><span class="file-tab">north.cpp</span><pre class="code" data-src="towns/north.cpp"></pre></div>
+      <div><span class="file-tab">south.cpp</span><pre class="code" data-src="towns/south.cpp"></pre></div>
+    </div>
+    <span class="file-tab">main.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-towns-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-towns">{"program": "towns.cpp", "steps": [
+      {"line": 7, "note": "Before <code>main</code> starts, all three counters already exist and hold 0. Each is a different variable in a different neighbourhood, even though two share the name <code>visits</code>.", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}], "objects": {"c": {"kind": "int", "value": "0"}, "n": {"kind": "int", "value": "0", "label": "north's"}, "s": {"kind": "int", "value": "0", "label": "south's"}}, "changed": []},
+      {"line": 8, "note": "<code>north_visit()</code> adds one to <b>north's</b> <code>visits</code> and one to the shared <code>city_total</code>.", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}], "objects": {"c": {"kind": "int", "value": "1"}, "n": {"kind": "int", "value": "1", "label": "north's"}, "s": {"kind": "int", "value": "0", "label": "south's"}}, "changed": ["city_total", "visits"]},
+      {"line": 9, "note": "Again: north's count is 2, and so is the city total. South's <code>visits</code> hasn't moved: it's a different variable.", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}], "objects": {"c": {"kind": "int", "value": "2"}, "n": {"kind": "int", "value": "2", "label": "north's"}, "s": {"kind": "int", "value": "0", "label": "south's"}}, "changed": ["city_total", "visits"]},
+      {"line": 10, "note": "<code>south_visit()</code> adds one to <b>south's</b> <code>visits</code> (now 1) and one to <code>city_total</code> (now 3).", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}], "objects": {"c": {"kind": "int", "value": "3"}, "n": {"kind": "int", "value": "2", "label": "north's"}, "s": {"kind": "int", "value": "1", "label": "south's"}}, "changed": ["city_total", "visits"]},
+      {"line": 11, "note": "North's third visit: its count is 3, the total 4, and <code>main</code>'s local <code>n</code> keeps the 3.", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}, {"name": "main()", "vars": [{"n": "n", "ref": "mn"}]}], "objects": {"c": {"kind": "int", "value": "4"}, "n": {"kind": "int", "value": "3", "label": "north's"}, "s": {"kind": "int", "value": "1", "label": "south's"}, "mn": {"kind": "int", "value": "3"}}, "changed": ["city_total", "visits", "n"]},
+      {"line": 12, "note": "South's second visit: its count is 2, the total 5, and <code>s</code> keeps the 2.", "output": [], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}, {"name": "main()", "vars": [{"n": "n", "ref": "mn"}, {"n": "s", "ref": "ms"}]}], "objects": {"c": {"kind": "int", "value": "5"}, "n": {"kind": "int", "value": "3", "label": "north's"}, "s": {"kind": "int", "value": "2", "label": "south's"}, "mn": {"kind": "int", "value": "3"}, "ms": {"kind": "int", "value": "2"}}, "changed": ["city_total", "visits", "s"]},
+      {"line": 13, "note": "Print north's count.", "output": ["north 3"], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}, {"name": "main()", "vars": [{"n": "n", "ref": "mn"}, {"n": "s", "ref": "ms"}]}], "objects": {"c": {"kind": "int", "value": "5"}, "n": {"kind": "int", "value": "3", "label": "north's"}, "s": {"kind": "int", "value": "2", "label": "south's"}, "mn": {"kind": "int", "value": "3"}, "ms": {"kind": "int", "value": "2"}}, "changed": []},
+      {"line": 14, "note": "Print south's count. Same name <code>visits</code> in both files, two different answers.", "output": ["north 3", "south 2"], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}, {"name": "main()", "vars": [{"n": "n", "ref": "mn"}, {"n": "s", "ref": "ms"}]}], "objects": {"c": {"kind": "int", "value": "5"}, "n": {"kind": "int", "value": "3", "label": "north's"}, "s": {"kind": "int", "value": "2", "label": "south's"}, "mn": {"kind": "int", "value": "3"}, "ms": {"kind": "int", "value": "2"}}, "changed": []},
+      {"line": null, "note": "Print the one shared counter: every visit, from both neighbourhoods, landed in it. Two local lanes, one city-wide address.", "output": ["north 3", "south 2", "total 5"], "frames": [{"name": "main.cpp: shared", "vars": [{"n": "city_total", "ref": "c"}]}, {"name": "north.cpp: local", "vars": [{"n": "visits", "ref": "n"}]}, {"name": "south.cpp: local", "vars": [{"n": "visits", "ref": "s"}]}, {"name": "main()", "vars": [{"n": "n", "ref": "mn"}, {"n": "s", "ref": "ms"}]}], "objects": {"c": {"kind": "int", "value": "5"}, "n": {"kind": "int", "value": "3", "label": "north's"}, "s": {"kind": "int", "value": "2", "label": "south's"}, "mn": {"kind": "int", "value": "3"}, "ms": {"kind": "int", "value": "2"}}, "changed": []}
+    ]}</script>
+    <pre class="term" data-run="towns.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/towns</code>, after <code>towns.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotclash-m" id="ex-spotclash"></div>
+  <script type="application/json" id="ex-spotclash-m">{"program": "spot_clash.cpp", "bug": 8, "prompt": "This is <code>park.cpp</code>. Another file, <code>zoo.cpp</code>, has its own <code>int tidy(int n)</code> that rounds down to a multiple of 4. Every file compiles, but the link fails with <samp>multiple definition of `tidy(int)'</samp>. Click the line in <code>park.cpp</code> that should have been a local lane.", "explain": "Line 8 defines <code>tidy(int)</code> with external linkage, the default, and so does <code>zoo.cpp</code>: two entries for one address. Wrap it in <code>namespace { ... }</code> or write <code>static int tidy(int n)</code>. (Fixing <code>zoo.cpp</code> instead would also link, but both are private helpers, so both should be local.) Line 4 is already local, and line 12 must stay city-wide: <code>main.cpp</code> calls <code>park_lamps()</code>."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/spot_clash</code>, after <code>spot_clash.cpp</code> was copied in as <code>park.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · SIGNS EVERY STREET CAN SHARE<small>Headers, inline, the one-definition rule, and extern</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 9: a body in a header, again">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="TWICE!" data-seed="9"></svg>
+    <p class="caption">Chapter 10's trap, met again on purpose. <code>tools.h</code> holds a whole function, body and all. It has a guard. <code>main.cpp</code> and <code>gate.cpp</code> both include it.</p>
+    <span class="file-tab">tools.h</span>
+    <pre class="code" data-src="hdr.cpp"></pre>
+    <div class="files">
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="hdr/main.cpp"></pre></div>
+      <div><span class="file-tab">gate.cpp</span><pre class="code" data-src="hdr/gate.cpp"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="hdr.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/hdr</code>, after <code>hdr.cpp</code> was copied in as <code>tools.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="surprised"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>Two TUs, two pastes, two cooked <code>helper()</code>s, both city-wide. The guard can't help: it only stops a second paste into the <b>same</b> TU. The line numbers point at line 5 of the pasted header, reported under the name of the <code>.cpp</code> that pasted it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: inline means identical copies are fine">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Chapter 10 promised a word that lets a body live in a header. Here it is: <code>inline</code> (line 5). An inline function may be defined in <b>many</b> TUs, as long as every definition is <b>identical</b>. The Linker keeps one and throws the rest away.</p>
+    <span class="file-tab">tools.h</span>
+    <pre class="code" data-src="hdr_inline.cpp"></pre>
+    <pre class="term" data-run="hdr_inline.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/hdr_inline</code>, after <code>hdr_inline.cpp</code> was copied in as <code>tools.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>See the <code>W</code> in my book? It means "weak": "I have a copy of <code>helper()</code>, but I'm one of many identical copies". Two weak copies don't clash. I keep one, and every call goes there.</p></div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>Old books say <code>inline</code> means "paste the body at every call, for speed". That was the original idea, and compilers still <em>may</em> do that, but they decide for themselves, with or without the word. Today, the meaning that matters is <b>"multiple identical definitions are allowed"</b>. Use <code>inline</code> when a function body belongs in a header, not to make code faster.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 11: the one-definition rule, fully">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">So here is the whole <b>one-definition rule</b> (the ODR): <b>every city-wide function and variable has exactly one definition in the program</b>, unless it's <code>inline</code>: then each TU that uses it has its own definition, and they must all be identical. Some things are <code>inline</code> without the word. Use this table when you decide where a definition goes.</p>
+    <div class="vswrap"><table class="vs odr ref-table">
+      <caption class="sr-only">Which definitions may go in a header included by many files</caption>
+      <thead><tr><th scope="col">definition</th><th scope="col">in a header?</th><th scope="col">why</th></tr></thead>
+      <tbody>
+        <tr><td><code>int area(int w, int h);</code></td><td class="yes">✓ yes</td><td>a declaration: promises are never a problem</td></tr>
+        <tr><td><code>struct Order { int soups; };</code></td><td class="yes">✓ yes</td><td>a type: one per TU is allowed, and it makes no code</td></tr>
+        <tr><td><code>inline int helper() { ... }</code></td><td class="yes">✓ yes</td><td>inline: identical copies are fine</td></tr>
+        <tr><td><code>constexpr int sq(int x) { ... }</code></td><td class="yes">✓ yes</td><td><code>constexpr</code> functions are inline automatically</td></tr>
+        <tr><td>member functions written inside the class body</td><td class="yes">✓ yes</td><td>inline automatically</td></tr>
+        <tr><td>templates (Chapter 26)</td><td class="yes">✓ yes</td><td>each stamped copy is inline-like (the <code>W</code> you saw in Chapter 26)</td></tr>
+        <tr><td><code>inline int next_ticket = 1;</code></td><td class="yes">✓ yes</td><td>an <b>inline variable</b> (C++17): one shared variable</td></tr>
+        <tr><td><code>constexpr int max_lamps = 12;</code></td><td class="yes">✓ yes</td><td><code>const</code>/<code>constexpr</code> globals are internal: each TU gets its own copy (add <code>inline</code> to share one)</td></tr>
+        <tr><td><code>int area(int w, int h) { ... }</code></td><td class="no">✗ no</td><td>external, not inline: <code>multiple definition</code> (panel 9)</td></tr>
+        <tr><td><code>int population = 0;</code></td><td class="no">✗ no</td><td>external variable definition: <code>multiple definition</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>"Identical" is your job, not the Linker's. If two TUs had <em>different</em> bodies for the same inline function (say, an old header in one folder and a new one in another), the Linker would still keep just one, silently. The standard calls that an ODR violation: the program is broken, but no compiler or linker is required to tell you (<b>"ill-formed, no diagnostic required"</b>). In practice, what it does is unpredictable. One header, included everywhere, keeps them identical.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: an inline variable, one shared ticket roll">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Variables can be inline too, since C++17. <code>tickets.h</code> defines a ticket roll, <code>next_ticket</code>, and a function that tears off the next ticket. <code>main.cpp</code> tears one, asks the booth (in <code>booth.cpp</code>) for one, then tears another.</p>
+    <span class="file-tab">tickets.h</span>
+    <pre class="code" data-src="tickets.cpp"></pre>
+    <div class="files">
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="tickets/main.cpp"></pre></div>
+      <div><span class="file-tab">booth.cpp</span><pre class="code" data-src="tickets/booth.cpp"></pre></div>
+    </div>
+    <pre class="term" data-run="tickets.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/tickets</code>, after <code>tickets.cpp</code> was copied in as <code>tickets.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>1 2 3</samp>: one roll, shared by both files. That's what <code>inline</code> on line 4 buys: the definition is in the header, every TU sees it, and the Linker makes sure there's only <b>one</b> <code>next_ticket</code> in the program. Now try it with the wrong word.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-tkstatic-m" id="ex-tkstatic"></div>
+  <script type="application/json" id="ex-tkstatic-m">{"program": "tickets_static.cpp", "prompt": "Same <code>main.cpp</code> and <code>booth.cpp</code> as panel 12. Only <code>tickets.h</code> changed: both <code>inline</code>s became <code>static</code>. It compiles and links. What does it print?", "hint": "<code>static</code> at file level means \"this TU only\". The header is pasted into two TUs. How many ticket rolls are there now?", "explain": "Each TU that pastes the header gets its <b>own</b> <code>next_ticket</code> and its own <code>take_ticket()</code>. <code>main.cpp</code>'s roll gives 1, then later 2. <code>booth.cpp</code>'s separate roll starts at 1. So <samp>1 1 2</samp>. No error, no warning: just two counters where you wanted one. That's why a <code>static</code> variable in a header is almost always a bug."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/tickets_static</code>, after <code>tickets_static.cpp</code> was copied in as <code>tickets.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="choice" data-model="ex-where-m" id="ex-where"></div>
+  <script type="application/json" id="ex-where-m">{"q": "Wren's <code>lamps.h</code> is included by twelve <code>.cpp</code> files. Which line can she put in it safely, so that all twelve files share it and the program links?", "options": [
+    {"t": "<code>int lamps_lit = 0;</code>", "why": "An external variable defined in twelve TUs: twelve definitions, <samp>multiple definition of `lamps_lit'</samp>."},
+    {"t": "<code>int lamp_watts(int n) { return n * 40; }</code>", "why": "A plain function body in a header: the same multiple-definition error as panel 9. Add <code>inline</code>, or move the body to one <code>.cpp</code>."},
+    {"t": "<code>inline constexpr int max_lamps = 12;</code>", "correct": true, "why": "Right. <code>constexpr</code> makes it a constant known while compiling, and <code>inline</code> makes it one shared variable however many TUs include it. (Plain <code>constexpr</code> would also link, but with twelve private copies.)"},
+    {"t": "<code>static int lamps_lit = 0;  // shared counter</code>", "why": "It links, but the comment lies: each of the twelve TUs gets its own private counter, exactly like the <samp>1 1 2</samp> in the last exercise."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 13: extern, a promise for variables">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption soft">What if a variable must be shared, but it shouldn't live in a header? For functions, a declaration without a body is a promise. Variables need a word to say "promise only, no memory here": <code>extern</code>.</p>
+    <ul class="anatomy" aria-label="Declaration and definition of a shared variable">
+      <li><code>extern int population;</code><span>a <b>declaration</b>: "it exists somewhere". Goes in the header. Any number allowed.</span></li>
+      <li><code>int population = 1200;</code><span>the <b>definition</b>: the memory lives here. In exactly one <code>.cpp</code> file.</span></li>
+      <li class="opt"><code>int population;</code><span>without <code>extern</code>, even with no value, this is a <b>definition</b> (set to 0)</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same pattern as functions: the promise goes on every menu (the header), the recipe lives in one kitchen (a <code>.cpp</code>). Better still, avoid shared global variables when you can; Chapter 29 will show why they get dangerous. But when you need one, this is how.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillext-m" id="ex-fillext"></div>
+  <script type="application/json" id="ex-fillext-m">{"program": "fill_extern.cpp", "prompt": "This is <code>city.h</code>, included by <code>main.cpp</code> and <code>census.cpp</code>. <code>census.cpp</code> holds the definition <code>int population = 1200;</code> and <code>welcome()</code>, which adds newcomers. <code>main.cpp</code> calls <code>welcome(34)</code> and prints the population. Fill in the one word that turns line 4 into a promise.", "blanks": [{"line": 4, "text": "extern"}], "explain": "<code>extern int population;</code> declares the variable without defining it, so the header can be pasted into any number of TUs. The one definition in <code>census.cpp</code> provides the memory. 1200 + 34: <samp>Population: 1234</samp>. Without <code>extern</code>, line 4 would be a definition in two TUs, plus the one in <code>census.cpp</code>: <samp>multiple definition of `population'</samp>."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/fill_extern</code>, after <code>fill_extern.cpp</code> was copied in as <code>city.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="predict" data-model="ex-forgot-m" id="ex-forgot"></div>
+  <script type="application/json" id="ex-forgot-m">{"program": "exforgot.cpp", "expect": "error", "answer": "undefined reference", "ask": "Someone deleted <code>int population = 1200;</code> from <code>census.cpp</code>. The header (above) still promises it, and both files still use it. Both files compile. What does the link step say? Type the two key words.", "prompt": "The header, unchanged.", "hint": "Every file has a promise. Does any object file have the memory?", "explain": "Every use of <code>population</code> is an order with no house to deliver to: <samp>undefined reference to `population'</samp>, three times (one in <code>main</code>, two in <code>welcome</code>: one to read it, one to write it back). The next panel reads the whole message."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 14: reading an undefined reference to a variable">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="WHERE?" data-seed="14"></svg>
+    <p class="caption">This message has some extra noise. Detectives learn to sort the clues from the chatter.</p>
+    <pre class="term wrap" data-run="exforgot.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/exforgot</code>, after <code>exforgot.cpp</code> was copied in as <code>city.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>The real clue:</b> <samp>undefined reference to `population'</samp>. No parentheses after the name, so it's a <b>variable</b>, not a function.</span></li>
+      <li><span><b>Where it's used:</b> <code>main.cpp:6</code> and twice at <code>census.cpp:5</code>. Each use is reported.</span></li>
+      <li><span><b>The chatter:</b> the two <samp>warning:</samp> lines about <samp>relocation</samp> and <samp>DT_TEXTREL</samp> are the Linker grumbling about how it would have had to patch the code to point at a variable that doesn't exist. They vanish when you fix the real problem.</span></li>
+      <li><span><b>The fix:</b> put <code>int population = 1200;</code> back in exactly one <code>.cpp</code> file.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · WHO ARRIVES FIRST<small>Globals before main, and the order between files</small></h2>
+
+  <section class="panel clean" aria-label="Panel 15: walk through the start and end of a program" data-walk="walk-arrivals">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">A global variable with a constructor (Chapter 12) is set up <b>before</b> <code>main</code> starts, and taken down <b>after</b> <code>main</code> ends. Each <code>Sign</code> prints when it's put up and taken down. Walk Wren through it: watch which line runs when.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">arrivals.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-arrivals">{"program": "arrivals.cpp", "steps": [
+      {"line": 14, "output": [], "mood": "focus", "arms": "point", "note": "The program starts, but not at <code>main</code>. First, every global in this file is set up, top to bottom. Line 14 is next."},
+      {"line": 15, "output": ["put up harbor sign"], "mood": "happy", "arms": "point", "note": "<code>harbor</code>'s constructor ran (lines 6 to 8) and printed. Still no <code>main</code>."},
+      {"line": 18, "output": ["put up harbor sign", "put up market sign"], "mood": "happy", "arms": "point", "note": "<code>market</code> is up too. Within one file, globals are made in the order they're written. Only now does <code>main</code> begin."},
+      {"line": 19, "output": ["put up harbor sign", "put up market sign", "main starts"], "mood": "focus", "arms": "point", "note": "<code>main</code>'s first line ran. Two signs were already up before it."},
+      {"line": 20, "output": ["put up harbor sign", "put up market sign", "main starts", "put up park sign"], "mood": "focus", "arms": "point", "note": "<code>park</code> is a local variable: made when its line runs, like always."},
+      {"line": 21, "output": ["put up harbor sign", "put up market sign", "main starts", "put up park sign", "main ends"], "mood": "focus", "arms": "point", "note": "Last line of <code>main</code>. The closing brace is next."},
+      {"line": 15, "output": ["put up harbor sign", "put up market sign", "main starts", "put up park sign", "main ends", "take down park sign"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "At <code>main</code>'s closing brace, the local <code>park</code> is taken down (Chapter 22's rule). <code>main</code> has returned, but the program isn't finished: the globals come down now, <b>last made, first taken down</b>. <code>market</code> (line 15) first."},
+      {"line": 14, "output": ["put up harbor sign", "put up market sign", "main starts", "put up park sign", "main ends", "take down park sign", "take down market sign"], "mood": "focus", "arms": "point", "note": "Then <code>harbor</code>, the first one made."},
+      {"line": null, "output": ["put up harbor sign", "put up market sign", "main starts", "put up park sign", "main ends", "take down park sign", "take down market sign", "take down harbor sign"], "mood": "happy", "arms": "cheer", "note": "All signs down; now the program really ends. Like a stack of plates: first up, last down."}
+    ]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: globals in two different files">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Inside one file, the order is top to bottom. But what about globals in <b>different</b> files? Here, <code>price.cpp</code> sets <code>base_price</code> by calling a function while the program starts (line 8), and <code>menu.cpp</code> computes <code>menu_price</code> from it. Wren links the three object files in this order: <code>main.o price.o menu.o</code>.</p>
+    <div class="files">
+      <div><span class="file-tab">prices.h</span><pre class="code" data-src="order/prices.h"></pre></div>
+      <div><span class="file-tab">price.cpp</span><pre class="code" data-src="order/price.cpp"></pre></div>
+    </div>
+    <div class="files">
+      <div><span class="file-tab">menu.cpp</span><pre class="code" data-src="order_ab.cpp"></pre></div>
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="order/main.cpp"></pre></div>
+    </div>
+    <pre class="term" data-run="order_ab.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/order</code>, after <code>order_ab.cpp</code> was copied in as <code>menu.cpp</code> and old <code>.o</code> files and the old program (<code>city_ab</code>) were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>10 plus 5 is 15. Fine. Now my colleague builds the very same files, but types the object files in a different order on the link line: <code>main.o menu.o price.o</code>. Same source, same compiler. What could possibly change?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"program": "order_ba.cpp", "prompt": "Same four files as panel 16 (this is <code>menu.cpp</code>), linked as <code>g++ main.o menu.o price.o -o city_ba</code>. With this toolchain, globals from different files are set up in the order their object files appear on the link line. Before anything runs, every global holds 0. What does <code>./city_ba</code> print?", "hint": "Who is set up first now: <code>menu_price</code> or <code>base_price</code>? What does <code>base_price</code> hold at that moment?", "explain": "<code>menu.o</code> comes first, so <code>menu_price = base_price + 5</code> runs while <code>base_price</code> is still its starting 0: <code>menu_price</code> becomes 5. Only afterwards does <code>price.o</code> set <code>base_price</code> to 10, too late. <samp>Soup costs 5 coins</samp>. Same code, different link order, different answer."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 17: the static initialisation order fiasco">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="SOON!" data-seed="17"></svg>
+    <p class="caption">Here's the colleague's build. The files are identical (the badge below proves it); only the link line differs.</p>
+    <div class="pair2">
+      <div><p class="who">LINKED main.o price.o menu.o</p><pre class="term wrap" data-run="order_ab.cpp" data-exit></pre></div>
+      <div><p class="who">LINKED main.o menu.o price.o</p><pre class="term wrap" data-run="order_ba.cpp" data-exit></pre></div>
+    </div>
+    <p class="howmade"><b>How these runs were really made:</b> both in <code>~/cpp-ch28/order</code>. Before each build, that build's copy of <code>menu.cpp</code> (<code>order_ab.cpp</code> or <code>order_ba.cpp</code>, identical, as the badge shows) was copied in as <code>menu.cpp</code>, and old <code>.o</code> files and that build's program were deleted; then the commands shown ran word for word.</p>
+    <span class="parity" data-same-src="order_ab.cpp,order_ba.cpp"></span>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneaky bug says: </span>No error, no warning, and the program runs. It just reads <code>base_price</code> before its own file has set it. Programmers call me the <b>static initialisation order fiasco</b>.</p></div>
+    </div>
+    <ol class="readlist" aria-label="What the C++ standard promises">
+      <li><span><b>Within one TU:</b> globals are set up top to bottom (panel 15).</span></li>
+      <li><span><b>Between TUs:</b> the standard does <b>not</b> say which file goes first. g++ happens to follow the link line, but another compiler, linker or build tool may not.</span></li>
+      <li><span><b>Why this one printed 5, not garbage:</b> every global is first filled with zeros before any code runs, so a plain <code>int</code> read too early is 0. If <code>base_price</code> were a <code>std::string</code>, reading it before its constructor ran would be <b>undefined behaviour</b>, so this course doesn't run that version.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: construct on first use">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">The fix: don't let other files <em>peek</em> at the global. Make them <b>ask</b> a function. A <code>static</code> local inside a function (Chapter 7) is created the first time the function runs, never before. So whoever asks first, it's ready. This trick is called <b>construct on first use</b>.</p>
+    <div class="files">
+      <div><span class="file-tab">price.cpp</span><pre class="code" data-src="order_fixed/price.cpp"></pre></div>
+      <div><span class="file-tab">prices.h</span><pre class="code" data-src="order_fixed/prices.h"></pre><span class="file-tab">menu.cpp</span><pre class="code" data-src="order_fixed.cpp"></pre></div>
+    </div>
+    <pre class="term" data-run="order_fixed.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/order_fixed</code>, after <code>order_fixed.cpp</code> was copied in as <code>menu.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Both link orders, both <samp>15</samp>. When <code>menu.cpp</code> calls <code>base_price()</code>, line 9 makes <code>value</code> right then, if nobody has yet. "Ask, don't peek."</p></div>
+    </div>
+    <p class="caption soft">If the value is known while compiling, there's an even simpler cure: <code>constexpr int base_price = 10;</code> (Chapter 19) is baked in before the program ever starts, so there's no order to get wrong. C++20's <code>constinit</code> asks the Compiler to <b>prove</b> a global is set up that way, and refuses to compile otherwise.</p>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-firstuse-m" id="ex-firstuse"></div>
+  <script type="application/json" id="ex-firstuse-m">{"program": "parsons_firstuse.cpp", "seed": 5, "pin": [1], "prompt": "Rebuild <code>price.cpp</code> from panel 18. <code>prices.h</code> only declares <code>base_price()</code>, so <code>read_base()</code> must be defined before anything in this file calls it. The program links <code>menu.o</code> before <code>price.o</code> on purpose, and still prints the right price.", "explain": "<code>read_base()</code> comes first, because <code>base_price()</code> calls it and nothing declared it earlier. Then <code>base_price()</code> with its <code>static int value = read_base();</code> line before <code>return value;</code>. The static local is made on the first call, so even with <code>menu.o</code> first on the link line: <samp>Soup costs 15 coins</samp>."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/parsons_firstuse</code>, after <code>parsons_firstuse.cpp</code> was copied in as <code>price.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="trace" data-model="ex-tstatic-m" id="ex-tstatic"></div>
+  <script type="application/json" id="ex-tstatic-m">{"program": "trace_static.cpp", "columns": ["calls", "stamp() returned"], "given": [0], "prompt": "Three lifetimes in one function: a global <code>calls</code>, a <code>static</code> local <code>next</code> (made once, kept between calls), and an ordinary local <code>fresh</code> (made again on every call). Fill in what each loop turn prints.", "explain": "<code>next</code> starts at 100 once, and grows by 5 on every call: 105, 110, 115, 120. <code>fresh</code> is made again as 0 on every call and bumped to 1, so it adds just 1 each time: 106, 111, 116, 121. If <code>fresh</code> were <code>static</code> too, it would keep growing."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · WAREHOUSES AND LENDING LIBRARIES<small>Static libraries, shared libraries, and how a program finds them</small></h2>
+
+  <section class="panel sketch tilt-r" aria-label="Panel 19: two kinds of library">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">Wren's shop code (prices and tax) is used by several programs. Instead of handing everyone a pile of <code>.o</code> files, she packs them into a <b>library</b>. There are two kinds. A <b>static library</b> is like photocopying the recipes you need into your own cookbook when you build it. A <b>shared library</b> is like a lending library: your cookbook just says "see the library", and the program goes there every time it opens.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 270" role="img" aria-label="Left, labelled static library, libshop.a: a box of recipe cards being photocopied into a program's book while it is built; afterwards the book contains the recipes and needs nothing else. Right, labelled shared library, libshop.so: a library building on a hill; the program's book contains only a card saying see libshop.so, and an arrow shows the program visiting the library each time it starts.">
+      <rect x="6" y="6" width="648" height="258" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M330 20 V250" stroke="#111" stroke-width="3" stroke-dasharray="8 7"/>
+      <text x="168" y="40" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111">STATIC: libshop.a</text>
+      <text x="494" y="40" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111">SHARED: libshop.so</text>
+      <g stroke="#111" stroke-width="3.5" stroke-linejoin="round">
+        <rect x="30" y="70" width="100" height="70" rx="6" fill="#FFF6CC"/>
+        <rect x="42" y="60" width="76" height="20" rx="4" fill="#FFFFFF"/>
+        <path d="M200 70 h90 v110 h-90 z" fill="#DDE8FF"/>
+        <path d="M245 70 v110" fill="none"/>
+        <rect x="210" y="88" width="28" height="12" fill="#FFE1EC"/><rect x="210" y="108" width="28" height="12" fill="#FFE1EC"/>
+        <rect x="380" y="100" width="90" height="110" rx="6" fill="#DDE8FF"/>
+        <path d="M425 100 v110" fill="none"/>
+        <rect x="386" y="118" width="36" height="26" fill="#FFFFFF"/>
+        <path d="M520 130 L580 92 L640 130 Z" fill="#FFE1EC"/>
+        <rect x="530" y="130" width="100" height="80" fill="#C9F2D9"/>
+        <rect x="568" y="170" width="24" height="40" fill="#FFFFFF"/>
+      </g>
+      <g stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round"><path d="M136 104 H192"/><path d="M180 94 L194 104 L180 114"/></g>
+      <g stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="7 6"><path d="M478 150 Q505 112 524 150"/></g>
+      <path d="M514 140 L526 152 L510 154" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle">
+        <text x="80" y="110">price.o</text><text x="80" y="128">tax.o</text>
+        <text x="245" y="200">shop</text><text x="425" y="230">shop</text><text x="580" y="152">.so</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="30" y="226">copied in at link time:</text><text x="30" y="246">the program stands alone</text>
+        <text x="350" y="252">found again at every start</text>
+        <text x="391" y="137" font-size="14">see</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>For a static library, I copy the pieces you need into your program. For a shared one, I only write down "needs <code>libshop.so</code>". Someone else, the <b>loader</b>, has to find that file each time the program starts.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: building a static library">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">A static library is just an archive: a bundle of <code>.o</code> files. The tool is <code>ar</code> (archiver). On Linux and macOS its name is <code>lib</code> + a name + <code>.a</code>.</p>
+    <div class="files">
+      <div><span class="file-tab">shop.h</span><pre class="code" data-src="shop/shop.h"></pre></div>
+      <div><span class="file-tab">price.cpp</span><pre class="code" data-src="shop/price.cpp"></pre></div>
+      <div><span class="file-tab">tax.cpp</span><pre class="code" data-src="shop/tax.cpp"></pre></div>
+    </div>
+    <span class="file-tab">main.cpp</span>
+    <pre class="code" data-src="staticlib.cpp"></pre>
+    <pre class="term" data-run="staticlib.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/shop</code>, after <code>staticlib.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+    <ul class="anatomy" aria-label="The parts of the library commands">
+      <li><code>ar rcs</code><span><b>r</b>eplace or add files, <b>c</b>reate the archive, write an index (<b>s</b>)</span></li>
+      <li><code>ar t</code><span>list what's inside (<b>t</b>able)</span></li>
+      <li><code>-L.</code><span>"also look for libraries in this folder" (<code>.</code>)</span></li>
+      <li><code>-lshop</code><span>"link with lib<b>shop</b>": the Linker adds <code>lib</code> and the ending itself</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>shop</code> now contains copies of <code>price_of</code> and <code>with_tax</code>. I could delete <code>libshop.a</code> and the program would still run. (Chapter 17's CMake does all of this with one line: <code>add_library(shop STATIC price.cpp tax.cpp)</code>.)</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 21: the library came too early">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="EARLY!" data-seed="21"></svg>
+    <p class="caption">Same files, same library. Wren just writes the link command with <code>-lshop</code> <b>before</b> <code>main.o</code>.</p>
+    <pre class="term wrap" data-run="libfirst.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/libfirst</code>, after <code>libfirst.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>The accusation:</b> <samp>undefined reference to `price_of(int)'</samp> and <samp>`with_tax(int)'</samp>. But they're right there in <code>libshop.a</code>!</span></li>
+      <li><span><b>The cause:</b> the Linker reads the command <b>left to right</b>. When it opened <code>libshop.a</code>, nobody had ordered anything yet, so it took nothing out. Then <code>main.o</code> placed two orders, and the library was already closed.</span></li>
+      <li><span><b>The rule:</b> object files first, then the libraries they need. If library A uses library B, write <code>-lA -lB</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-linkfix-m" id="ex-linkfix"></div>
+  <script type="application/json" id="ex-linkfix-m">{"q": "<code>main.o</code> calls <code>draw()</code>, which is in <code>libpaint.a</code>. <code>draw()</code> itself calls <code>mix()</code>, which is in <code>libcolor.a</code>. Which link command works?", "options": [
+    {"t": "<code>g++ main.o -L. -lpaint -lcolor -o app</code>", "correct": true, "why": "Yes. Left to right: <code>main.o</code> orders <code>draw()</code>; <code>libpaint.a</code> provides it and orders <code>mix()</code>; <code>libcolor.a</code> provides that. Every order comes before its supplier."},
+    {"t": "<code>g++ -L. -lpaint -lcolor main.o -o app</code>", "why": "Panel 21's mistake: both libraries are read before anyone orders anything, so nothing is taken from them."},
+    {"t": "<code>g++ main.o -L. -lcolor -lpaint -o app</code>", "why": "<code>libcolor.a</code> is read before <code>libpaint.a</code> orders <code>mix()</code>: <samp>undefined reference to `mix()'</samp>."},
+    {"t": "Any order works: the Linker searches every library for every name", "why": "Not for static libraries with the GNU linker: it reads them once, left to right, taking only what is already ordered."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 22: building a shared library">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">A shared library is built a little differently. Its code will be loaded at whatever memory address happens to be free when a program starts, so it must work from <b>any</b> position: <b>position-independent code</b>, flag <code>-fPIC</code>. Then <code>-shared</code> joins the objects into a <code>.so</code> ("shared object") instead of a program. Linking <code>main.o</code> against it looks exactly like before.</p>
+    <ul class="anatomy" aria-label="The commands for a shared library">
+      <li><code>g++ ... -fPIC -c price.cpp tax.cpp</code><span>objects that can live at any address</span></li>
+      <li><code>g++ -shared -o libshop.so price.o tax.o</code><span>bundle them into a shared library</span></li>
+      <li><code>g++ main.o -L. -lshop -o shop</code><span>link: the Linker checks every name is provided, then writes "needs <code>libshop.so</code>" into <code>shop</code></span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>It linked without a single complaint. The program says "needs <code>libshop.so</code>", and <code>libshop.so</code> is sitting right next to it in the same folder. Surely it'll run?</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-somissing-m" id="ex-somissing"></div>
+  <script type="application/json" id="ex-somissing-m">{"program": "sharedlib_missing.cpp", "expect": "error", "answer": "cannot open shared object file", "ask": "Wren builds the shared library and links <code>shop</code> exactly as in panel 22, with no errors. Then she runs <code>./shop</code> from the same folder. What happens? If it fails, type the key words of the message.", "prompt": "<code>main.cpp</code> (the same as in panel 20).", "hint": "The loader looks for shared libraries in a list of system folders. Is \"the folder I'm standing in\" on that list?", "explain": "The program never even starts: <samp>./shop: error while loading shared libraries: libshop.so: cannot open shared object file: No such file or directory</samp>, exit code 127. The <b>loader</b> searches system folders such as <code>/usr/lib</code>, not the current folder. Next panel."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/shared</code>, after <code>sharedlib_missing.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 23: the loader can't find the library">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <svg class="sfx tr" data-sfx="LOST!" data-seed="23"></svg>
+    <p class="caption">Here's the whole session, with one quick fix at the end.</p>
+    <pre class="term wrap" data-run="sharedlib.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/shared</code>, after <code>sharedlib.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>Who's talking:</b> not <code>ld</code> and not the Compiler. Building was finished. The message comes from the <b>loader</b> (on Linux, <code>ld.so</code>), which prepares a program each time it starts.</span></li>
+      <li><span><b>When:</b> <samp>error while loading shared libraries</samp>: before <code>main</code>, before any of your code.</span></li>
+      <li><span><b>What:</b> <samp>libshop.so: cannot open shared object file: No such file or directory</samp>. It searched its list of folders and didn't find the file.</span></li>
+      <li><span><b>The exit code:</b> 127, the loader's "couldn't start it" code. Your program never chose it.</span></li>
+      <li><span><b>The quick fix:</b> <code>LD_LIBRARY_PATH=. ./shop</code> adds a folder to the search list, for that one command. Good for trying things; bad for shipping, since every user would have to remember it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: rpath, the address written into the program">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">The lasting fix: write the library's folder into the program itself. <code>-Wl,-rpath,'$ORIGIN'</code> passes <code>-rpath</code> to the Linker (<code>-Wl,</code> means "hand this to the Linker"). <code>$ORIGIN</code> means "the folder the program itself is in", so the program and its library can move together. <code>readelf -d</code> shows what got written.</p>
+    <pre class="term wrap" data-run="rpathlib.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/rpath</code>, after <code>rpathlib.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>Library runpath: [$ORIGIN]</samp>: the program carries a note saying "my library is next to me". The single quotes around <code>'$ORIGIN'</code> stop the shell from treating <code>$ORIGIN</code> as a variable. Plain <code>./shop</code> works now. (Libraries installed system-wide, in <code>/usr/lib</code>, need neither trick.)</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: a new library, no relinking">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Why bother with shared libraries? Watch. The city council raises the tax to 20%. Wren rebuilds <b>only</b> the library from <code>tax_v2.cpp</code>, and runs the same <code>shop</code> program again, without relinking it.</p>
+    <div class="files">
+      <div><span class="file-tab">tax.cpp (old)</span><pre class="code" data-src="swap/tax.cpp"></pre></div>
+      <div><span class="file-tab">tax_v2.cpp (new)</span><pre class="code" data-src="swap.cpp"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="swap.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/swap</code>, after <code>swap.cpp</code> was copied in as <code>tax_v2.cpp</code> and old <code>.o</code>, library files and the old program were deleted; then the commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="surprised"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span><samp>495</samp>, then <samp>540</samp>, from the very same <code>shop</code> file! The program only ever said "needs <code>libshop.so</code>". Whatever <code>libshop.so</code> holds when it starts is what runs. That's how one security fix to a system library repairs every program using it. It's also how a careless library update can break them all.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-libkind-m" id="ex-libkind"></div>
+  <script type="application/json" id="ex-libkind-m">{"q": "Wren is shipping a single small tool to customers whose computers she knows nothing about. She wants them to copy one file and run it. Which kind of library should the shop code be?", "options": [
+    {"t": "A static library (<code>libshop.a</code>), linked into the tool", "correct": true, "why": "Yes. The code is copied into the program at link time, so there's one file to ship and nothing to find at start-up. The price: to update the shop code, she must rebuild and ship the tool again."},
+    {"t": "A shared library (<code>libshop.so</code>), shipped next to the tool", "why": "That's two files, and the tool needs an rpath or <code>LD_LIBRARY_PATH</code> to find its library. It shines when many programs share one library, or when the library must be updated alone."},
+    {"t": "No library: send the customers the <code>.cpp</code> files", "why": "They'd need a compiler and the build commands. A program is built once, by Wren."},
+    {"t": "It makes no difference to the customer", "why": "It does: with a shared library, a missing <code>.so</code> means <samp>cannot open shared object file</samp> on their machine."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 26: the map of a build with libraries" data-map="map-libs">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">The whole trip on one map. The library's sources become object files, then either an archive or a shared object; <code>main.cpp</code> becomes <code>main.o</code>; the Linker joins them; and for a shared library, the loader has one more job at start-up. Every road is a real build from this part. Pick one.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map of a build with a static or shared library</title><desc id="mapl-d">price.cpp and tax.cpp are compiled into price.o and tax.o. From there, one road bundles them with ar into libshop.a, another joins them with g++ -shared into libshop.so. main.cpp is compiled into main.o. All roads meet at the link step. From linking, a static build leads to the program running, and a link line with the library before main.o leads to undefined reference. A shared build leads to program start, where the loader looks for libshop.so: without a path it fails with cannot open shared object file; with an rpath the program runs.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-libs">{"seed": 28, "size": [690, 920], "start": [[180, 14], [180, 54]],
+      "states": [
+        {"id": "SRC", "x": 40, "y": 60, "w": 280, "h": 66, "label": "price.cpp, tax.cpp", "sub": "the library's sources"},
+        {"id": "MSRC", "x": 380, "y": 60, "w": 270, "h": 66, "label": "main.cpp", "sub": "your program"},
+        {"id": "OBJS", "x": 40, "y": 180, "w": 280, "h": 66, "label": "price.o, tax.o", "sub": "g++ -c (+ -fPIC if shared)"},
+        {"id": "MO", "x": 380, "y": 180, "w": 270, "h": 66, "label": "main.o", "sub": "g++ -c main.cpp"},
+        {"id": "AR", "x": 20, "y": 300, "w": 200, "h": 66, "label": "libshop.a", "sub": "ar rcs: a bundle"},
+        {"id": "SO", "x": 240, "y": 300, "w": 200, "h": 66, "label": "libshop.so", "sub": "g++ -shared"},
+        {"id": "LINK", "x": 170, "y": 430, "w": 350, "h": 66, "label": "link: g++ ... -lshop", "sub": "the Linker reads left to right"},
+        {"id": "RUNA", "x": 40, "y": 570, "w": 270, "h": 66, "label": "./shop runs", "sub": "the code was copied in", "kind": "end"},
+        {"id": "UNDEF", "x": 380, "y": 570, "w": 290, "h": 66, "label": "undefined reference", "sub": "-lshop came before main.o", "kind": "error"},
+        {"id": "LOAD", "x": 170, "y": 700, "w": 350, "h": 66, "label": "./shop starts", "sub": "the loader looks for libshop.so"},
+        {"id": "NOSO", "x": 20, "y": 830, "w": 310, "h": 66, "label": "cannot open shared object", "sub": "no folder on its list has it", "kind": "error"},
+        {"id": "RUNS", "x": 380, "y": 830, "w": 290, "h": 66, "label": "./shop runs", "sub": "rpath says where to look", "kind": "end"}
+      ],
+      "transitions": [
+        {"id": "s1", "from": "SRC", "to": "OBJS", "pts": [[180, 130], [180, 174]]},
+        {"id": "m1", "from": "MSRC", "to": "MO", "pts": [[515, 130], [515, 174]]},
+        {"id": "a1", "from": "OBJS", "to": "AR", "pts": [[100, 250], [100, 294]]},
+        {"id": "o1", "from": "OBJS", "to": "SO", "pts": [[290, 250], [290, 294]]},
+        {"id": "a2", "from": "AR", "to": "LINK", "pts": [[120, 370], [120, 400], [220, 400], [220, 424]]},
+        {"id": "o2", "from": "SO", "to": "LINK", "pts": [[340, 370], [340, 424]]},
+        {"id": "m2", "from": "MO", "to": "LINK", "pts": [[500, 250], [500, 424]]},
+        {"id": "l1", "from": "LINK", "to": "RUNA", "pts": [[200, 500], [200, 564]]},
+        {"id": "l2", "from": "LINK", "to": "UNDEF", "pts": [[480, 500], [480, 564]], "bug": true},
+        {"id": "l3", "from": "LINK", "to": "LOAD", "pts": [[345, 500], [345, 694]]},
+        {"id": "d1", "from": "LOAD", "to": "NOSO", "pts": [[200, 770], [200, 824]], "bug": true},
+        {"id": "d2", "from": "LOAD", "to": "RUNS", "pts": [[480, 770], [480, 824]]}
+      ],
+      "paths": [
+        {"id": "static", "label": "Static library", "program": "staticlib.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SRC", "MSRC"], "output": [], "mood": "focus", "note": "Two library sources, and the program's own <code>main.cpp</code>."},
+          {"on": ["OBJS", "MO"], "via": ["s1", "m1"], "output": [], "note": "<code>g++ -c</code> compiles each TU alone, as always."},
+          {"on": ["AR"], "via": ["a1"], "output": [], "note": "<code>ar rcs libshop.a price.o tax.o</code> bundles the two objects. <code>ar t</code> lists them."},
+          {"on": ["LINK"], "via": ["a2", "m2"], "output": [], "note": "<code>g++ main.o -L. -lshop -o shop</code>. <code>main.o</code> comes first and orders <code>price_of</code> and <code>with_tax</code>; the archive supplies copies of both."},
+          {"on": ["RUNA"], "via": ["l1"], "output": ["Total: 495 cents"], "mood": "happy", "note": "The program contains everything it needs (panel 20)."}]},
+        {"id": "early", "label": "Library too early", "program": "libfirst.cpp", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "undefined reference to `price_of(int)'"}, "steps": [
+          {"on": ["SRC", "MSRC"], "output": [], "mood": "focus", "note": "Same sources."},
+          {"on": ["OBJS", "MO"], "via": ["s1", "m1"], "output": [], "note": "<code>g++ -c main.cpp price.cpp tax.cpp</code>: three objects."},
+          {"on": ["AR"], "via": ["a1"], "output": [], "note": "The same archive."},
+          {"on": ["LINK"], "via": ["a2", "m2"], "output": [], "note": "<code>g++ -L. -lshop main.o -o shop</code>. The Linker opens <code>libshop.a</code> first, while nothing has been ordered, and takes nothing."},
+          {"on": ["UNDEF"], "via": ["l2"], "output": [], "error": "undefined reference to `price_of(int)'", "note": "Then <code>main.o</code> orders two names nobody will supply (panel 21)."}]},
+        {"id": "nopath", "label": "Shared, no path", "program": "sharedlib_missing.cpp", "expect": {"exit": 127, "stdoutExact": true, "stderrContains": "cannot open shared object file"}, "steps": [
+          {"on": ["SRC", "MSRC"], "output": [], "mood": "focus", "note": "Same sources."},
+          {"on": ["OBJS", "MO"], "via": ["s1", "m1"], "output": [], "note": "This time the library's objects are compiled with <code>-fPIC</code>."},
+          {"on": ["SO"], "via": ["o1"], "output": [], "note": "<code>g++ -shared -o libshop.so price.o tax.o</code>."},
+          {"on": ["LINK"], "via": ["o2", "m2"], "output": [], "note": "<code>g++ main.o -L. -lshop -o shop</code>. Every name is provided, so the link succeeds, and <code>shop</code> records \"needs <code>libshop.so</code>\"."},
+          {"on": ["LOAD"], "via": ["l3"], "output": [], "note": "<code>./shop</code>. Before <code>main</code>, the loader searches its folders for <code>libshop.so</code>."},
+          {"on": ["NOSO"], "via": ["d1"], "output": [], "error": "cannot open shared object file", "note": "The current folder isn't on its list. Exit 127; your code never ran (panel 23)."}]},
+        {"id": "rpath", "label": "Shared, with rpath", "program": "rpathlib.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SRC", "MSRC"], "output": [], "mood": "focus", "note": "Same sources."},
+          {"on": ["OBJS", "MO"], "via": ["s1", "m1"], "output": [], "note": "Objects compiled with <code>-fPIC</code>, plus <code>main.o</code>."},
+          {"on": ["SO"], "via": ["o1"], "output": [], "note": "<code>libshop.so</code> again."},
+          {"on": ["LINK"], "via": ["o2", "m2"], "output": [], "note": "Linked with <code>-Wl,-rpath,'$ORIGIN'</code>: the program now carries \"look next to me\"."},
+          {"on": ["LOAD"], "via": ["l3"], "output": [], "note": "The loader finds the runpath written in the program, looks in the program's own folder, and finds the library."},
+          {"on": ["RUNS"], "via": ["d2"], "output": ["Total: 495 cents"], "mood": "happy", "note": "Program served (panel 24)."}]}
+      ]}</script>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · SIGN PAINTERS AND NAME STAMPS<small>The preprocessor, macros, mangled names, C neighbours and modules</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 27: the preprocessor paints text">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Before the Compiler sees a single line, the <b>preprocessor</b> walks through the file like a sign painter with a stencil. It doesn't know C++. It only knows text: <code>#include</code> means "paste that file here", and <code>#define NAME text</code> means "from now on, wherever the word <code>NAME</code> appears, paint <code>text</code> instead". A <code>#define</code> with parentheses is a <b>function-like macro</b>.</p>
+    <span class="file-tab">expand.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="expand.cpp"></pre>
+      <pre class="term" data-run="expand.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The preprocessor is older than C++. It arrived in C around 1972 or 1973, for file inclusion and simple string replacement, and at first it was an optional extra. C++ inherited it. Look at line 5 after painting: <code>1 + 2 * 1 + 2</code>. The stencil pasted the text, not the value 3.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-square-m" id="ex-square"></div>
+  <script type="application/json" id="ex-square-m">{"program": "square_macro.cpp", "prompt": "A macro and a <code>constexpr</code> function that both claim to square a number. Each line prints the macro's answer, then the function's. Predict both lines.", "hint": "The function gets the <b>value</b> of its argument. The macro gets the <b>text</b>, pasted where <code>x</code> was. Then <code>*</code> happens before <code>+</code>.", "explain": "<code>SQUARE(3)</code> paints <code>3 * 3</code> = 9, and <code>square(3)</code> is 9: <samp>9 9</samp>. <code>SQUARE(1 + 2)</code> paints <code>1 + 2 * 1 + 2</code> = 1 + 2 + 2 = 5, while <code>square(1 + 2)</code> receives the value 3 and returns 9: <samp>5 9</samp>. Macros don't respect values, types or scopes. Prefer <code>constexpr</code> functions and constants (Core Guideline ES.31)."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 28: a macro leaks out of a header">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <svg class="sfx tr" data-sfx="SPLAT!" data-seed="28"></svg>
+    <p class="caption">Worse: a macro ignores namespaces and files. The water company's <code>gauge.h</code> defines <code>MAX</code>. Wren's own code, inside her own namespace, also has a <code>MAX</code>.</p>
+    <div class="files">
+      <div><span class="file-tab">gauge.h</span><pre class="code" data-src="leak/gauge.h"></pre></div>
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="leak.cpp"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="leak.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/leak</code>, after <code>leak.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code> files were deleted; then the commands shown ran word for word.</p>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>The odd message:</b> <samp>expected unqualified-id before numeric constant</samp>: "I wanted a <b>name</b>, and found a <b>number</b>". Where did a number come from? Wren wrote <code>MAX</code>.</span></li>
+      <li><span><b>The real clue:</b> <samp>note: in expansion of macro ‘MAX’</samp>. Line 5 of <code>main.cpp</code> became <code>const int 100 = 50;</code> before the Compiler ever saw it.</span></li>
+      <li><span><b>The trail:</b> <samp>In file included from main.cpp:2</samp> and <samp>gauge.h:4:13</samp>: the stencil came in with the header.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Your <code>namespace shop</code> couldn't protect you: the painting was finished before I saw any namespaces. The fixes: in headers, use real constants (<code>inline constexpr int max_reading = 100;</code> inside a namespace) instead of macros; and when a macro is truly needed, give it a long, ALL-CAPS, prefixed name like <code>GAUGE_MAX</code> that nobody else would write (ES.32, ES.33).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotmacro-m" id="ex-spotmacro"></div>
+  <script type="application/json" id="ex-spotmacro-m">{"program": "spot_macro.cpp", "bug": 4, "prompt": "The error points at line 8: <samp>expected unqualified-id before numeric constant</samp>, with a note about a macro. But line 8 isn't where the real mistake is. Click the line that causes it.", "explain": "Line 4 makes every later word <code>size</code> into <code>3</code>, so line 8's <code>street.size()</code> is painted as <code>street.3()</code>. Rename it to a real constant: <code>constexpr int lamps_per_street = 3;</code>. A lower-case macro with a common name is the most dangerous kind: it can collide with any member function, in any header included after it."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: switching code on and off with #ifdef">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">One job macros still do well: switching pieces of code on or off <b>while building</b>. <code>#ifdef NAME</code> keeps the lines down to <code>#endif</code> only if <code>NAME</code> is defined. You can define a name from the command line with <code>-D</code>, without touching the source. Guards from Chapter 10 are the same trick with <code>#ifndef</code> ("if <b>not</b> defined").</p>
+    <span class="file-tab">debug_flag.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="debug_flag.cpp"></pre>
+      <pre class="term wrap" data-run="debug_flag.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>First build: no <code>CITY_DEBUG</code>, so line 6 never reached the Compiler. Second build, with <code class="nobr">-DCITY_DEBUG</code>: the debug line is compiled in, and prints to <code>std::cerr</code> (shown in error style). Same file, two programs. Chapter 11's <code>NDEBUG</code>, which switches off <code>assert</code>, works exactly like this.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-ifdef-m" id="ex-ifdef"></div>
+  <script type="application/json" id="ex-ifdef-m">{"program": "fill_ifndef.cpp", "prompt": "The opposite switch. Line 6 should be kept in a normal build, and removed only when the program is built with <code>-DQUIET</code>. Write the two preprocessor lines around it. (The real run below is a normal build, with no <code>-D</code>.)", "blanks": [{"line": 5, "text": "#ifndef"}, {"line": 7, "text": "#endif"}], "explain": "<code>#ifndef QUIET</code> (\"if <b>not</b> defined\", the same word as a header guard) keeps line 6 unless <code>QUIET</code> is defined, and <code>#endif</code> closes the region. This build defined nothing, so both lines print: <samp>Opening 3 gates...</samp>, then <samp>Gates open: 3</samp>. <code>#ifdef</code> would do the reverse: keep the line only with <code>-DQUIET</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: the real names in the address book">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">One more secret of the address book. In C++ you can have two <code>area</code> functions (overloading, Chapter 7), functions inside namespaces, and member functions. The Linker only matches plain text, so the Compiler <b>mangles</b> each name: it stamps the namespace, class and parameter types into it. <code>nm -j</code> prints just the stamped names.</p>
+    <span class="file-tab">mangle.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="mangle.cpp"></pre>
+      <pre class="term" data-run="mangle.cpp" data-exit></pre>
+    </div>
+    <ul class="mangled" aria-label="The name _ZN4shop5priceEi taken apart">
+      <li><code>_Z</code><span>"a C++ name follows"</span></li>
+      <li><code>N</code><span>a nested name begins</span></li>
+      <li><code>4shop</code><span>4 letters: shop</span></li>
+      <li><code>5price</code><span>5 letters: price</span></li>
+      <li><code>E</code><span>end of the nested name</span></li>
+      <li><code>i</code><span>one <code>int</code> parameter</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>So <code>_Z4areaii</code> is "<code>area</code>, taking <code>int</code>, <code>int</code>", and <code>_Z4areadd</code> is the <code>double</code> one: two different addresses, which is why overloading works across files. And <code>c_area</code>, marked <code>extern "C"</code>, wasn't stamped at all. Hold on to that.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 31: the name stamper machine" data-machine="m-mangle">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The Compiler's name stamper as a machine: a C++ declaration goes in, a stamped name comes out. Every result is a real line from <code>nm</code>. The last two chips run it backwards with <code>c++filt</code> (which turns stamped names back into C++), and show what happens when a C++ file asks for a C function by a stamped name.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-mangle">{"label": "name stamper", "program": "mangle.cpp", "examples": [
+      {"in": "int area(int w, int h)", "out": "_Z4areaii", "outKind": "symbol", "note": "<code>_Z</code>, then the name with its length (<code>4area</code>), then one letter per parameter type: <code>i</code> for <code>int</code>, twice. The return type isn't included."},
+      {"in": "double area(double w, double h)", "out": "_Z4areadd", "outKind": "symbol", "note": "Same name, different parameters, different stamp: <code>d</code> for <code>double</code>. Two addresses, no clash."},
+      {"in": "namespace shop { int price(int item) }", "out": "_ZN4shop5priceEi", "outKind": "symbol", "note": "<code>N</code> ... <code>E</code> wraps a nested name: <code>4shop</code> then <code>5price</code>. That's how <code>shop::price</code> and some other <code>price</code> stay apart."},
+      {"in": "void Gate::open(bool wide)", "out": "_ZN4Gate4openEb", "outKind": "symbol", "note": "A member function is nested in its class the same way. <code>b</code> is <code>bool</code>."},
+      {"in": "extern \"C\" int c_area(int w, int h)", "out": "c_area", "outKind": "symbol", "note": "<code>extern \"C\"</code> turns the stamper off: the address is just the plain name, exactly as a C compiler would write it."},
+      {"in": "_ZN4shop5priceEi, through c++filt", "out": "shop::price(int)", "outKind": "C++ name", "program": "demangle.cpp", "note": "<code>nm -j demangle.o | c++filt</code>: the reverse machine. <code>nm -C</code> does the same thing internally."},
+      {"in": "int c_area(int, int) asked for by C++, cooked by C", "error": "undefined reference to `c_area(int, int)'", "program": "cfriend.cpp", "note": "C++ stamps its order as <code>_Z6c_areaii</code>, but the C file's address is plain <code>c_area</code>. No match. Next panel."}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 32: a neighbour written in C">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="32"></svg>
+    <p class="caption">Lots of useful code is written in C, the language C++ grew from. <code>area.c</code> is compiled by <code>gcc</code>, the C compiler. C doesn't stamp names. <code>main.cpp</code> declares the function the ordinary C++ way.</p>
+    <div class="files">
+      <div><span class="file-tab">area.c</span><pre class="code" data-src="cfriend/area.c"></pre></div>
+      <div><span class="file-tab">main.cpp</span><pre class="code" data-src="cfriend.cpp"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="cfriend.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/cfriend</code>, after <code>cfriend.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    <p class="caption">The Linker shows the order in C++ form, <samp>`c_area(int, int)'</samp>, with its parameter types: a hint that it was looking for a stamped C++ name. The fix is to tell the Compiler "this one is a C name": <code>extern "C"</code>.</p>
+    <span class="file-tab">main.cpp, fixed</span>
+    <div class="side">
+      <pre class="code" data-src="cfriend_ok.cpp"></pre>
+      <pre class="term wrap" data-run="cfriend_ok.cpp" data-exit></pre>
+      <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch28/cfriend_ok</code>, after <code>cfriend_ok.cpp</code> was copied in as <code>main.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="linker" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Linker says: </span>Now the order says plain <code>c_area</code>, and <code>area.o</code> has a house with that exact name. Real C libraries put <code>extern "C" { ... }</code> around their whole header, inside <code>#ifdef __cplusplus</code>, so the same header works for both languages.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-externc-m" id="ex-externc"></div>
+  <script type="application/json" id="ex-externc-m">{"q": "Why can't two <code>extern \"C\"</code> functions share a name with different parameters, like <code>extern \"C\" int area(int)</code> and <code>extern \"C\" double area(double)</code>?", "options": [
+    {"t": "Unstamped, both get the plain name <code>area</code>: two definitions at one address", "correct": true, "why": "Right. Overloading only works because mangling puts the parameter types into the address. C has no overloading, so C names carry no types, and two <code>area</code>s would clash. The Linker needs every city-wide address to be unique."},
+    {"t": "C functions can't take <code>double</code> parameters, so the second is rejected", "why": "They can. The problem is the name, not the types."},
+    {"t": "<code>extern \"C\"</code> gives a function internal linkage, so neither is reachable", "why": "No, they're city-wide addresses, just unstamped ones. That's exactly why they can clash."},
+    {"t": "It's allowed; the Linker picks the right one by its parameter types", "why": "The Linker never sees parameter types, only the stamped text. For unstamped C names there's nothing to tell them apart."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 33: modules, the city of the future">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Pasting headers again and again, macros leaking, include guards: C++20 started replacing all that with <b>modules</b>. A module is compiled <b>once</b> into a form the Compiler can load quickly, exports only what it chooses, and doesn't leak macros. C++23 adds <code>import std;</code>: the whole standard library in one line. Here's what this computer's compilers say.</p>
+    <span class="file-tab">import_std.cpp</span>
+    <pre class="code" data-src="import_std.cpp"></pre>
+    <p class="who">g++ 13.3</p>
+    <pre class="term wrap" data-run="import_std.cpp" data-exit></pre>
+    <p class="who">clang++ 18.1</p>
+    <pre class="term wrap" data-run="import_std.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="compiler" data-label="g++" data-mood="focus"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>g++ 13 reads <code>import</code> as an unknown type name and hints at an experimental <code>-fmodules-ts</code> switch. clang++ 18 understands the word, but has no ready-made <code>std</code> module here: <samp>fatal error: module 'std' not found</samp>. Newer compilers and build tools are getting there. For this book, <code>#include</code> it is.</p></div>
+    </div>
+    <p class="caption soft">The status, honestly: modules are standard C++20, and <code>import std;</code> is standard C++23. Support depends on your compiler version <em>and</em> your build tool, because modules must be compiled in the right order, so the build tool has to understand them. The notebook has pointers. Everything in this chapter about linkage, the ODR and libraries still applies to modules.</p>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 34: boss level">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="34"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>For every name, ask the city planner's questions. Is it a local lane or a city-wide address? How many definitions reach the Linker? Who is set up first? And where will the loader look?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_link.cpp", "expect": "error", "answer": "multiple definition", "ask": "Boss 1. <code>main.cpp</code> and <code>park.cpp</code> both include this guarded <code>park.h</code>. <code>main</code> prints <code>benches</code> and <code>free_benches()</code>; <code>park.cpp</code> defines <code>free_benches()</code>. Both compile. Does the link succeed? If not, type the key words of the Linker's complaint.", "prompt": "<code>park.h</code>", "hint": "Is line 5 a promise or a definition? How many TUs paste it?", "explain": "Line 5 has no <code>extern</code>, so it's a <b>definition</b> of an external variable, pasted into two TUs: <samp>multiple definition of `benches'</samp>, with <samp>park.h:5</samp> named for both. The guard doesn't help across TUs. Fixes: <code>extern int benches;</code> in the header plus <code>int benches = 8;</code> in <code>park.cpp</code>, or <code>inline int benches = 8;</code> in the header."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/boss_link</code>, after <code>boss_link.cpp</code> was copied in as <code>park.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 4, "prompt": "Boss 2. <code>tools.h</code> declares <code>int round_up(int n);</code> and <code>main.cpp</code> calls <code>round_up(42)</code>. This <code>tools.cpp</code> compiles with one warning, <samp>‘int {anonymous}::round_up(int)’ defined but not used</samp>, and then the link fails with <samp>undefined reference to `round_up(int)'</samp>. Click the line that causes both.", "explain": "Line 4 opens an unnamed namespace, so the <code>round_up</code> on line 6 is a <b>local lane</b>: a different function from the city-wide <code>round_up(int)</code> the header promised. Nothing in <code>tools.cpp</code> calls the local one (hence the warning), and nothing provides the city-wide one (hence the link error). The warning's <samp>{anonymous}::</samp> was the clue. Remove the namespace: a function declared in a header is meant to be city-wide."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/boss_spot</code>, after <code>boss_spot.cpp</code> was copied in as <code>tools.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.cpp", "seed": 11, "pin": [1, 2, 7], "prompt": "Boss 3. Build <code>park.h</code>: a promise that a city-wide <code>benches</code> exists (<code>park.cpp</code> defines it as 9), and a function, defined right in the header, that returns how many pairs of benches there are. The guard lines are fixed.", "explain": "The <code>extern</code> promise must come before the function that uses <code>benches</code>, because the Compiler reads top to bottom. The function is <code>inline</code> because its body is in a header that two TUs include. 9 / 2 in whole numbers: <samp>4 pairs of benches</samp>."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/boss_parsons</code>, after <code>boss_parsons.cpp</code> was copied in as <code>park.h</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.cpp", "prompt": "Boss 4. <code>menu.cpp</code> sets <code>menu_price = base_price() + 5</code> while the program starts, and this build links <code>menu.o</code> <b>before</b> <code>price.o</code>. Make <code>base_price</code> a function (line 8) whose value is made on first use (line 9), so the order can't matter.", "blanks": [{"line": 8, "text": "base_price()"}, {"line": 9, "text": "static"}], "explain": "<code>int base_price()</code> is a function, so <code>menu.cpp</code> must <em>ask</em>. Inside, <code>static int value = read_base();</code> is made the first time anyone asks, even if that's during <code>menu.cpp</code>'s start-up. Without <code>static</code>, it would work too, but call <code>read_base()</code> on every call. <samp>Soup costs 15 coins</samp> although <code>menu.o</code> came first."}</script>
+  <p class="howmade"><b>How this exercise's run was really made:</b> in <code>~/cpp-ch28/boss_fill</code>, after <code>boss_fill.cpp</code> was copied in as <code>price.cpp</code> and old <code>.o</code> files and the old program were deleted; then the commands shown ran word for word.</p>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.cpp", "columns": ["day", "north()", "south()", "city_total"], "given": [0], "prompt": "Boss 5. Two functions, each with its own <code>static</code> local called <code>visits</code>, and one global <code>city_total</code>. <code>south()</code> is only called on odd days; on even days the loop records 0 for it. Fill in each row.", "explain": "North's <code>visits</code> counts 1, 2, 3. South's separate <code>visits</code> starts at 10 and jumps by 10 only when called: 20 on day 1, skipped on day 2 (0 is printed), 30 on day 3. <code>city_total</code> gets +1 from each <code>north()</code> and +2 from each <code>south()</code>: 3, 4, 7. Same name, different variables; long life, but only one owner each."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Wren designs <code>libmeter</code>, used by twenty programs. (1) <code>check_digits()</code> is a helper used only inside <code>meter.cpp</code>. (2) <code>read_meter()</code> is called by every program. (3) <code>max_reading</code>, a constant 9999, is needed in every program's code. (4) The library gets security fixes that must reach all twenty programs without rebuilding them. Which design fits?", "options": [
+    {"t": "(1) in an unnamed namespace in <code>meter.cpp</code> (2) declared in <code>meter.h</code>, defined in <code>meter.cpp</code> (3) <code>inline constexpr int max_reading = 9999;</code> in <code>meter.h</code> (4) a shared library, <code>libmeter.so</code>", "correct": true, "why": "Right. The private helper is a local lane; the public function has one definition and a promise in the header; the constant is a real, shared, typed constant; and a shared library lets one rebuilt <code>.so</code> fix every program (panel 25)."},
+    {"t": "(1) declared in <code>meter.h</code> (2) defined in <code>meter.h</code> without <code>inline</code> (3) <code>#define max_reading 9999</code> (4) a static library", "why": "(1) exports a private helper, (2) is panel 9's multiple definition, (3) is a lower-case macro waiting to splat, and (4) means rebuilding all twenty programs for every fix."},
+    {"t": "(1) <code>static</code> in <code>meter.h</code> (2) declared in <code>meter.h</code>, defined in <code>meter.cpp</code> (3) <code>int max_reading = 9999;</code> in <code>meter.h</code> (4) a shared library", "why": "(1) gives every including file its own useless copy of a private helper, and (3) is a multiple definition in every program with two TUs."},
+    {"t": "(1) in an unnamed namespace in <code>meter.cpp</code> (2) in an unnamed namespace in <code>meter.cpp</code> (3) <code>inline constexpr int max_reading = 9999;</code> in <code>meter.h</code> (4) a static library", "why": "(2) hides the public function, so every program gets <samp>undefined reference to `read_meter()'</samp> (Boss 2's bug), and (4) doesn't let fixes reach programs without a rebuild."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 35: what you learned">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">What you learned in Chapter 28</p>
+    <ul class="recap">
+      <li><b>ONE .CPP, ONE NEIGHBOURHOOD</b>A translation unit is a <code>.cpp</code> plus everything the preprocessor pasted (<code>g++ -E</code>). Each is compiled alone into a <code>.o</code> with a symbol table: <code>nm</code> shows <code>T</code> (city-wide), <code>t</code> (local) and <code>U</code> (needed from elsewhere).</li>
+      <li><b>LOCAL LANES, CITY-WIDE ADDRESSES</b>Functions and non-const globals have external linkage by default: one definition in the program, or <samp>multiple definition</samp>. Helpers only one file uses go in an unnamed namespace (or <code>static</code>): internal linkage, no clashes.</li>
+      <li><b>IDENTICAL COPIES ARE FINE</b><code>inline</code> lets a function or variable be defined in a header included everywhere; the Linker keeps one (<code>W</code>). <code>extern int x;</code> promises a variable; <code>int x = 0;</code> in one <code>.cpp</code> defines it. A <code>static</code> variable in a header gives every file its own copy.</li>
+      <li><b>ASK, DON'T PEEK</b>Globals are set up before <code>main</code> (top to bottom in one file), but the order between files isn't promised: the static initialisation order fiasco. Use a function with a <code>static</code> local (construct on first use), or <code>constexpr</code>.</li>
+      <li><b>COPY IT IN, OR LOOK IT UP</b>A static library (<code>ar rcs libx.a</code>) is copied in at link time; objects before <code>-lx</code>. A shared library (<code>-fPIC</code>, <code>-shared</code>) is found by the loader at every start: <samp>cannot open shared object file</samp> until <code>LD_LIBRARY_PATH</code> or an rpath says where.</li>
+      <li><b>THE PAINTER DOESN'T READ</b>Macros paste text, ignore scopes and leak out of headers (<samp>expected unqualified-id before numeric constant</samp>). Prefer <code>constexpr</code>; keep macros for <code>#ifdef</code> switches and guards. Names are mangled (<code>_ZN4shop5priceEi</code>, read back with <code>c++filt</code>); <code>extern "C"</code> turns that off for C neighbours.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Now you can read the whole city: every <code>undefined reference</code>, every <code>multiple definition</code>, every loader complaint. Big projects are just more neighbourhoods, more libraries and a longer address book.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: next time, Many Cooks, One Stopwatch">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">Coming up in Chapter 29: Many Cooks, One Stopwatch</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: two cooks' hats beside one shared notebook with tally marks, and a stopwatch on the right.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M40 90 q-20 -40 20 -40 q10 -26 36 -10 q30 -14 34 20 q20 20 -6 30 v24 h-78 v-24 z" fill="#FFFFFF"/>
+          <path d="M150 90 q-20 -40 20 -40 q10 -26 36 -10 q30 -14 34 20 q20 20 -6 30 v24 h-78 v-24 z" fill="#FFFFFF"/>
+          <rect x="70" y="128" width="130" height="50" rx="4" fill="#FFF6CC"/>
+          <path d="M90 140 v26 M100 140 v26 M110 140 v26 M120 140 v26 M84 160 l44 -14" fill="none"/>
+          <circle cx="360" cy="92" r="52" fill="#DDE8FF"/>
+          <rect x="348" y="22" width="24" height="18" rx="3" fill="#FFD60A"/>
+          <path d="M360 92 L360 56 M360 92 L388 104" fill="none"/>
+        </g>
+        <text x="360" y="172" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111">steady_clock</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>One program, one cook, one line at a time? Not any more. Next time: <b>threads</b>, several cooks working in the same kitchen at once, and why two cooks writing in one notebook can lose orders unless they pass the pen properly. Then a <b>stopwatch</b>: measuring how fast code really runs, before trying to make it faster.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch27.html">← Ch 27 · Signposts and Sticky Printers</a><a class="next" href="ch29.html">Ch 29 · Many Cooks, One Stopwatch →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: object files, weak symbols, start-up code and the loader's search</summary>
+    <div class="page-body">
+      <h3>What's inside a .o file</h3>
+      <p>On Linux, object files, libraries and programs use a format called <b>ELF</b>. An object file holds <b>sections</b>: <code>.text</code> (machine code), <code>.data</code> (globals with a starting value), <code>.bss</code> (globals that start as zero, which take no space in the file), <code>.rodata</code> (constants and string literals), plus debug information from <code>-g</code>. It also holds a <b>symbol table</b> (what <code>nm</code> prints) and <b>relocations</b>: notes like "at offset 0x12 in <code>.text</code>, put the address of <code>price_of(int)</code>". Linking is mostly two jobs: match each undefined symbol to a definition, then patch every relocation with the final address. <code>readelf -s</code> and <code>objdump -dr</code> show all of this; <code>nm</code>'s letters are a summary (<code>T</code>/<code>t</code> = <code>.text</code>, <code>D</code>/<code>d</code> = <code>.data</code>, <code>B</code>/<code>b</code> = <code>.bss</code>, <code>R</code>/<code>r</code> = <code>.rodata</code>, <code>W</code> = weak, <code>U</code> = undefined).</p>
+      <h3>Why inline copies don't clash</h3>
+      <p>g++ puts each inline function, and each template instantiation, in its own little section marked as a group ("COMDAT"), and gives its symbol weak binding (<code>W</code>). When the Linker meets several groups with the same name, it keeps the first and discards the rest. It never compares their contents. That's why two <em>different</em> inline definitions with one name don't produce an error: one of them simply disappears. ASan can catch some such mismatches for global variables (<code>odr-violation</code>), and building with link-time optimisation (<code>-flto</code>) makes g++ warn about some of them (<code>-Wodr</code>).</p>
+      <h3>Who runs the global constructors</h3>
+      <p>The program's real entry point isn't <code>main</code>. A small piece of start-up code from the C library runs first. Each object file that has globals needing code to set them up contributes a pointer to an <code>.init_array</code> section; the start-up code calls them all, then calls <code>main</code>, then (after <code>main</code> returns, or on <code>std::exit</code>) runs the destructors in reverse. The order of entries in <code>.init_array</code> follows the order the Linker met the object files, which is why panel 17 depended on the link line. That's an implementation detail: the standard leaves the order between TUs unspecified.</p>
+      <h3>Zero first, then dynamic</h3>
+      <p>The standard splits start-up into <b>static initialisation</b> (zero-filling, plus anything the Compiler can compute, such as <code>int n = 10;</code> or a <code>constexpr</code> value) and <b>dynamic initialisation</b> (anything that runs code, like <code>read_base()</code>). Static initialisation is complete before any dynamic initialisation starts, which is why the early reader in panel 17 saw 0 rather than garbage. <code>constinit</code> (C++20) guarantees a variable is in the first group.</p>
+      <h3>Where the loader looks</h3>
+      <p>When a program that needs <code>libshop.so</code> starts, the Linux loader (<code>ld.so</code>) searches, in order: the program's <code>RPATH</code> (an older form of runpath, used only if there's no <code>RUNPATH</code>), the <code>LD_LIBRARY_PATH</code> folders, the program's <code>RUNPATH</code> (what g++ writes today, as panel 24 showed), the system cache built by <code>ldconfig</code> from <code>/etc/ld.so.conf</code>, and finally <code>/lib</code> and <code>/usr/lib</code> (the order in the <code>ld.so(8)</code> manual page). <code>ldd ./shop</code> prints where each needed library would be found, or <samp>not found</samp>. Never run <code>ldd</code> on a program you don't trust: it may run parts of it.</p>
+      <h3>Two compilers, same Linker</h3>
+      <p>Every program in this chapter also ran with clang++ 18: the same commands with <code>clang++</code> in place of <code>g++</code>. clang++ hands linking to the same GNU <code>ld</code> here, so most of its link errors read the same: the same <samp>undefined reference</samp> and <samp>multiple definition</samp> lines from <code>/usr/bin/ld</code> (only the <samp>.text+0x…</samp> offsets move), then <samp>clang++: error: linker command failed with exit code 1</samp> where g++ said <samp>collect2: error: ld returned 1 exit status</samp> (as Chapter 10 showed). Here is panel 21's session built with clang++:</p>
+      <pre class="term wrap" data-run="libfirst.cpp" data-alt data-exit></pre>
+      <p>Two link errors changed more than that. For panel 14's missing <code>population</code>, the clang++ build gave the same three <samp>undefined reference</samp> lines and neither of the <samp>relocation</samp> and <samp>DT_TEXTREL</samp> warnings. For Boss 1, it placed both copies of <code>benches</code> at <samp>(.data+0x0)</samp> in each object file instead of at <samp>park.h:5</samp>.</p>
+      <p>The compile-time messages differ more: for <code>spot_macro.cpp</code>, clang++ reports the error at line 8 first and then the macro, <samp>note: expanded from macro 'size'</samp> (panel 28's <code>MAX</code> got the same treatment: <samp>expected unqualified-id</samp>, then <samp>note: expanded from macro 'MAX'</samp>):</p>
+      <pre class="term wrap" data-run="spot_macro.cpp" data-alt data-exit></pre>
+      <p>The tool runs agree on what matters: <code>nm -C hall.o</code> lists the same five names with the same letters (at different offsets), <code>clang++ -E -P</code> prints the same translation unit as panel 2 with one extra blank line, and every program that ran printed the same output with both compilers.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>The standard library itself</b> is mostly header-only templates plus one shared library: on this system <code>libstdc++.so.6</code>. Every program in this book needed it at start-up; that's normal, and why system libraries never need an rpath.</li>
+        <li><b>Header-only libraries</b> rely on <code>inline</code> and templates (panel 11's table) so you can use them with a single <code>#include</code> and no link step.</li>
+        <li><b>Hiding symbols.</b> Big shared libraries are often built with <code>-fvisibility=hidden</code>, exporting only marked functions. It's the shared-library version of an unnamed namespace: fewer clashes, faster loading.</li>
+        <li><b>Plug-ins.</b> Programs such as image editors and audio software load extra shared libraries while running, with <code>dlopen</code> (Linux, macOS) or <code>LoadLibrary</code> (Windows), and look up functions by name. Plug-in interfaces are usually <code>extern "C"</code>, because unstamped names are easy to look up and don't depend on the compiler.</li>
+        <li><b>CMake</b> (Chapter 17) builds both kinds: <code>add_library(shop STATIC ...)</code> or <code>add_library(shop SHARED ...)</code>, and <code>target_link_libraries</code> puts things in the right order for you.</li>
+        <li><b>Versioned libraries.</b> System libraries have names like <code>libshop.so.2</code>, so an incompatible new version can live next to the old one. That's beyond this book, but now you know why the names have numbers.</li>
+        <li><b>Static analysis of linkage.</b> clang-tidy (Chapter 18) has checks aimed at two of this chapter's mistakes: <code>misc-use-anonymous-namespace</code> and <code>misc-definitions-in-headers</code>. Both are in this machine's clang-tidy 18 (<code>clang-tidy --list-checks</code> names them), but they weren't run on this chapter's code.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A header guard prevents multiple definitions."</b> Only within one TU. Across TUs, only <code>inline</code> or moving the definition to one <code>.cpp</code> helps (panel 9, Boss 1).</li>
+        <li><b>"If no header mentions a function, it's private."</b> Functions are external by default (panel 5). Private means an unnamed namespace or <code>static</code>.</li>
+        <li><b>"<code>static</code> in a header makes one shared variable."</b> It makes one per TU (the <samp>1 1 2</samp> exercise).</li>
+        <li><b>"<code>inline</code> makes code faster."</b> Today it means "identical definitions in many TUs are allowed". The Compiler decides about speed itself.</li>
+        <li><b>"Globals are set up in the order the files are listed in my project."</b> Within a file, top to bottom; between files, the order isn't promised (panel 17).</li>
+        <li><b>"If it linked, it will run."</b> A shared library can still be missing at start-up (panel 23).</li>
+        <li><b>"Library order on the link line doesn't matter."</b> With GNU <code>ld</code> and static libraries it does: users before suppliers (panel 21).</li>
+        <li><b>"Macros respect namespaces."</b> The painting happens before namespaces exist (panel 28).</li>
+        <li><b>"<code>extern \"C\"</code> means the function must be written in C."</b> It only changes the name's stamp (and calling rules) so C can link with it. The body can be any C++.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>The Professor's history corner: why C++ builds this way</summary>
+    <div class="page-body">
+      <p>C++ kept C's model of <b>separate compilation</b>: each source file compiled alone, joined later by a linker that knows nothing about the language. That made sense on 1970s machines with little memory, and it still makes big builds parallel, but it's why a header must be pasted into every file that uses it, and why the Linker can only compare names, not meanings. Name mangling was C++'s way of fitting overloading and namespaces into linkers built for C, which allowed only one meaning per name.</p>
+      <p>According to Dennis Ritchie's own history of C, the preprocessor arrived around 1972–73, partly at Alan Snyder's urging, inspired by the file-inclusion features of BCPL and PL/I. It began with only included files and simple string replacement, and was at first considered an optional adjunct to the language. Modules (C++20) are the first serious step away from that pasting model, half a century later.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Linux (any distribution)</h3>
+      <p>Install the tools: <code>sudo apt install g++ binutils</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++ binutils</code> (Fedora). Make the <code>shop</code> folder from panel 20 and repeat its session exactly. Then try the shared version from panels 22–24, and run <code>ldd ./shop</code> before and after adding the rpath.</p>
+      <p class="caption soft">Sections 2 and 3 describe other systems. Nothing in them was run for this book, so the commands and messages there are pointers to try on your own machine, not captured output.</p>
+      <h3>2. macOS</h3>
+      <p>Install Apple's command-line tools with <code>xcode-select --install</code>; <code>g++</code> there is really clang++. Static libraries work the same (<code>ar rcs libshop.a ...</code>, or <code>libtool -static</code>). Shared libraries are <code>.dylib</code> files: <code>clang++ -std=c++20 -shared -o libshop.dylib price.cpp tax.cpp</code>. The loader's variable is <code>DYLD_LIBRARY_PATH</code>, the rpath spelling is <code>-Wl,-rpath,@loader_path</code>, and <code>otool -L shop</code> lists needed libraries. <code>nm</code> works, with an extra underscore in front of every name. Apple's linker says <samp>Undefined symbols for architecture arm64</samp> and <samp>duplicate symbol</samp> instead of GNU's wording.</p>
+      <h3>3. Windows</h3>
+      <ul>
+        <li><b>MSVC</b> (Visual Studio's "Developer PowerShell"): compile with <code>cl /std:c++20 /W4 /EHsc /c price.cpp tax.cpp</code>, make a static library with <code>lib /OUT:shop.lib price.obj tax.obj</code>, and link with <code>cl main.cpp shop.lib</code>. Its link errors are <samp>LNK2005: already defined</samp> (multiple definition) and <samp>LNK2019: unresolved external symbol</samp> (undefined reference). Shared libraries are <code>.dll</code> files, and functions must be exported with <code>__declspec(dllexport)</code>. Windows looks for a DLL first in the program's own folder, so the "same folder" problem of panel 23 rarely happens there. <code>dumpbin /symbols</code> replaces <code>nm</code>, and <code>undname</code> replaces <code>c++filt</code>; MSVC's mangled names start with <code>?</code>.</li>
+        <li><b>MSYS2 / MinGW-w64</b>: <code>pacman -S mingw-w64-ucrt-x86_64-gcc</code> gives you g++, <code>ar</code>, <code>nm</code> and <code>c++filt</code> with the same commands as this chapter. A shared library is <code>g++ -shared -o shop.dll price.o tax.o</code>; keep the DLL next to the <code>.exe</code>.</li>
+      </ul>
+      <h3>4. Experiments</h3>
+      <p>These weren't captured for the page: run them and see.</p>
+      <ol>
+        <li>Run <code>nm -C</code> on <code>clash_static</code>'s <code>harbor.o</code> and <code>clash_anon</code>'s <code>harbor.o</code>. Which letter does each <code>helper()</code> get? How does the anonymous one's name read?</li>
+        <li>In <code>tickets</code>, run <code>nm -C main.o</code>. Find <code>next_ticket</code>: what letter does an inline variable get? (Look for <code>u</code>, a "unique global" symbol, a GNU extension used for some inline variables.)</li>
+        <li>Make two different inline <code>helper()</code>s in two <code>.cpp</code> files (an ODR violation) and link them in both orders. Which one runs? Now you know why it's dangerous. Then try <code>-flto -Wodr</code>.</li>
+        <li>Run <code>g++ -E main.cpp | wc -l</code> on a file that includes <code>&lt;iostream&gt;</code>: tens of thousands of lines, compiled again in every TU. That's what modules aim to stop.</li>
+        <li>Try <code>c++filt _ZNKSt6vectorIiSaIiEE4sizeEv</code>. Can you see the <code>const</code> (the <code>K</code>)?</li>
+      </ol>
+      <h3>5. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) shows the mangled names in its assembly view (untick "Demangle identifiers"), and lets you try <code>import std;</code> with newer compilers than this book's.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>translation unit (TU)</dt><dd>One <code>.cpp</code> file after the preprocessor has pasted its includes and expanded its macros: what the Compiler actually compiles.</dd>
+        <dt>symbol</dt><dd>A name in an object file's table: a function or variable it defines or needs.</dd>
+        <dt>symbol table</dt><dd>The list of symbols in an object file, shown by <code>nm</code>.</dd>
+        <dt>linkage</dt><dd>Whether a name can be reached from other TUs.</dd>
+        <dt>external linkage</dt><dd>The name is city-wide: other TUs can use it, and there must be one definition in the program.</dd>
+        <dt>internal linkage</dt><dd>The name is local to its TU; other TUs may have their own with the same name.</dd>
+        <dt>unnamed namespace</dt><dd><code>namespace { ... }</code>: gives everything inside internal linkage.</dd>
+        <dt>one-definition rule (ODR)</dt><dd>Each city-wide function and variable has exactly one definition in the program, except inline ones, which must be identical in every TU.</dd>
+        <dt>inline (today)</dt><dd>"Identical definitions in several TUs are allowed"; lets a function or variable be defined in a header.</dd>
+        <dt>inline variable</dt><dd>A variable defined with <code>inline</code> (C++17): one shared object even though its definition is in a header.</dd>
+        <dt>weak symbol</dt><dd>A symbol (<code>W</code> in <code>nm</code>) the Linker may meet several times, keeping one.</dd>
+        <dt>extern</dt><dd>Makes a variable declaration a promise without memory: <code>extern int x;</code>.</dd>
+        <dt>static initialisation order fiasco</dt><dd>A global reading another file's global before it has been set up, because the order between TUs isn't specified.</dd>
+        <dt>construct on first use</dt><dd>Replacing a global with a function that returns a <code>static</code> local, made the first time it's called.</dd>
+        <dt>constinit</dt><dd>C++20: requires a global to be set up before any code runs, or the build fails.</dd>
+        <dt>library</dt><dd>Compiled code packed for reuse by many programs.</dd>
+        <dt>static library</dt><dd>An archive of object files (<code>.a</code>, <code>.lib</code>); the pieces needed are copied into the program at link time.</dd>
+        <dt>ar</dt><dd>The archiver: makes (<code>rcs</code>) and lists (<code>t</code>) static libraries.</dd>
+        <dt>shared library</dt><dd>A library loaded when the program starts (<code>.so</code>, <code>.dylib</code>, <code>.dll</code>); one copy can serve many programs.</dd>
+        <dt>position-independent code</dt><dd>Machine code that works at any address (<code>-fPIC</code>); required for shared libraries.</dd>
+        <dt>loader</dt><dd>The system part (<code>ld.so</code> on Linux) that finds and loads shared libraries each time a program starts.</dd>
+        <dt>LD_LIBRARY_PATH</dt><dd>An environment variable listing extra folders for the Linux loader to search.</dd>
+        <dt>rpath / runpath</dt><dd>A folder list written into a program by the Linker (<code>-Wl,-rpath,...</code>) telling the loader where to look; <code>$ORIGIN</code> means the program's own folder.</dd>
+        <dt>preprocessor</dt><dd>The text-pasting step before compiling: <code>#include</code>, <code>#define</code>, <code>#ifdef</code>.</dd>
+        <dt>macro</dt><dd>A name the preprocessor replaces with text; a function-like macro takes arguments.</dd>
+        <dt>-D</dt><dd>Compiler flag that defines a macro from the command line: <code>-DCITY_DEBUG</code>.</dd>
+        <dt>name mangling</dt><dd>Stamping namespaces, classes and parameter types into a function's symbol name, so overloads get different addresses.</dd>
+        <dt>c++filt</dt><dd>Tool that turns mangled names back into C++.</dd>
+        <dt>extern "C"</dt><dd>Gives a C++ declaration C linkage: an unmangled name that C code can link with.</dd>
+        <dt>module</dt><dd>C++20: a unit compiled once and imported, exporting only what it chooses and leaking no macros.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/language/storage_duration">cppreference: storage duration and linkage</a>, <a href="https://en.cppreference.com/w/cpp/language/definition">definitions and the ODR</a>, <a href="https://en.cppreference.com/w/cpp/language/inline">the inline specifier</a>, <a href="https://en.cppreference.com/w/cpp/language/namespace">namespaces (including unnamed ones)</a>, <a href="https://en.cppreference.com/w/cpp/language/siof">the static initialisation order fiasco</a>, <a href="https://en.cppreference.com/w/cpp/language/constinit">constinit</a> and <a href="https://en.cppreference.com/w/cpp/language/modules">modules</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/preprocessor">cppreference: the preprocessor</a> and <a href="https://en.cppreference.com/w/cpp/language/language_linkage">language linkage (extern "C")</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: SF.2 (no definitions in headers that would break the ODR), SF.21 (no unnamed namespaces in headers), SF.22 (use unnamed namespaces for internal entities), I.22 (avoid complex initialisation of globals), ES.31 and ES.32 (macros)</li>
+        <li><a href="https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html">GCC manual: link options</a> (<code>-l</code>, <code>-L</code>, <code>-shared</code>, <code>-Wl</code>) and <a href="https://sourceware.org/binutils/docs/binutils/">GNU binutils manual</a> (<code>ar</code>, <code>nm</code>, <code>c++filt</code>, <code>readelf</code>)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/internal-linkage/">learncpp.com 7.6: internal linkage</a> and the lessons after it (external linkage, inline functions and variables, sharing global constants).</li>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/inline-functions-and-variables/">learncpp.com 7.9: inline functions and variables</a>.</li>
+        <li><a href="https://www.cs.tufts.edu/~nr/cs257/archive/dennis-ritchie/chist.pdf">Dennis Ritchie, "The Development of the C Language"</a>, for the history of the preprocessor and separate compilation.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to see mangled names and try modules on newer compilers.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch28</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page), linked by GNU ld, and run in a fresh process namespace with address randomisation off; the offsets <code>nm</code> prints are this build's, not something to rely on. Multi-file projects live in their own subfolders and compile named object files, so link messages carry no temporary file names. In each project, a hidden first step copies the file shown on the page into its project folder and deletes old <code>.o</code> files (and old libraries and programs), so each build starts clean; then the commands shown run word for word, and a "How this run was really made" note under each project terminal and exercise says which file was copied in. Comparison runs with clang++ 18.1 (the same commands with <code>clang++</code> in place of <code>g++</code>, still linked by GNU ld) exist for all 41 programs. 13 of them differ: <code>import_std.cpp</code> (shown in panel 33); the compiler messages of <code>spot_macro.cpp</code>, <code>leak.cpp</code> and <code>boss_spot.cpp</code> (one warning's wording); the link errors of <code>libfirst.cpp</code>, <code>boss_link.cpp</code>, <code>boss_spot.cpp</code>, <code>cfriend.cpp</code>, <code>clash.cpp</code>, <code>exforgot.cpp</code>, <code>hdr.cpp</code> and <code>spot_clash.cpp</code> (the last line, some offsets, and for <code>exforgot.cpp</code> and <code>boss_link.cpp</code> a little more); the offsets in <code>hall.cpp</code>'s <code>nm</code> listing; and one blank line in <code>tu.cpp</code>'s preprocessor output. The notebook's "Two compilers, same Linker" page describes each. The other 28 gave the same output and messages. Compiler messages show curly quotes because the capture ran in a UTF-8 locale. The tracer, the walk-through, the machine and the map are teaching models; each checks itself against those runs and says so. The city, library and teaser drawings are pictures only and claim no output.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com lessons 7.6 (internal linkage: static, const globals, unnamed namespaces preferred) and 7.9 (inline functions and variables: the modern meaning, identical definitions, implicitly inline cases), cppreference (the static initialisation order fiasco and construct on first use; inline; storage duration and linkage; modules), Dennis Ritchie's "The Development of the C Language" (the preprocessor's origin), GCC's C++ status page and the libstdc++ status page (gcc.gnu.org, fetched 2026-11-08: inline variables are C++17, <code>constinit</code> and modules C++20, <code>import std</code> C++23), the Linux <code>ld.so(8)</code> manual page (man7.org, fetched 2026-11-08: the loader's search order), the C++ Core Guidelines (SF.2, SF.21, SF.22, I.22, ES.31–ES.33), the C++ research map for this course (module row I23, which draws on learncpp 7.6–7.10, 7.14, 2.10 and A.1, Programming: Principles and Practice 7.7, A Tour of C++ 3.2 and its Module std appendix, and roadmap.sh; the books were not fetched for this chapter), and the g++ 13.3, clang++ 18.1, GNU ld and loader messages themselves, recorded above.</p>
+  <p>Wren, the Compiler, the Linker, the Professor and the sneaky bug are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
