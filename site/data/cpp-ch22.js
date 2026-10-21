@@ -1,0 +1,1829 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch22",
+  "versionDifferences": [
+   "bind_bad.cpp",
+   "bind_truck_bad.cpp",
+   "move_cast.cpp",
+   "return_move.cpp",
+   "throwing_dtor.cpp",
+   "truck_assign.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bind_bad.cpp, bind_truck_bad.cpp, move_cast.cpp, return_move.cpp, throwing_dtor.cpp, truck_assign.cpp."
+ },
+ "programs": {
+  "after_move.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n#include <vector>\n\nvoid show(const char* name, const std::vector<int>& v) {\n    std::cout << name << \": [\";\n    for (int box : v) {\n        std::cout << ' ' << box;\n    }\n    std::cout << \" ]\\n\";\n}\n\nint main() {\n    std::vector<int> a{1, 2, 3};\n    std::vector<int> b;\n    b = std::move(a);\n    show(\"b\", b);\n    show(\"a\", a);\n\n    a = {7, 8};\n    show(\"a\", a);\n    a.clear();\n    a.push_back(9);\n    show(\"a\", a);\n}\n",
+   "stdout": "b: [ 1 2 3 ]\na: [ ]\na: [ 7 8 ]\na: [ 9 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g after_move.cpp -o after_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./after_move",
+     "out": "b: [ 1 2 3 ]\na: [ ]\na: [ 7 8 ]\na: [ 9 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "b: [ 1 2 3 ]\na: [ ]\na: [ 7 8 ]\na: [ 9 ]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g after_move.cpp -o after_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./after_move",
+      "out": "b: [ 1 2 3 ]\na: [ ]\na: [ 7 8 ]\na: [ 9 ]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bind_bad.cpp": {
+   "src": "#include <string>\n\nint main() {\n    std::string house{\"cottage\"};\n    std::string&& keys = house;\n    keys += \" with a garden\";\n}\n",
+   "stdout": "",
+   "stderr": "bind_bad.cpp: In function ‘int main()’:\nbind_bad.cpp:5:26: error: cannot bind rvalue reference of type ‘std::string&&’ {aka ‘std::__cxx11::basic_string<char>&&’} to lvalue of type ‘std::string’ {aka ‘std::__cxx11::basic_string<char>’}\n    5 |     std::string&& keys = house;\n      |                          ^~~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bind_bad.cpp -o bind_bad",
+     "out": "",
+     "err": "bind_bad.cpp: In function ‘int main()’:\nbind_bad.cpp:5:26: error: cannot bind rvalue reference of type ‘std::string&&’ {aka ‘std::__cxx11::basic_string<char>&&’} to lvalue of type ‘std::string’ {aka ‘std::__cxx11::basic_string<char>’}\n    5 |     std::string&& keys = house;\n      |                          ^~~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "bind_bad.cpp:5:19: error: rvalue reference to type 'basic_string<...>' cannot bind to lvalue of type 'basic_string<...>'\n    5 |     std::string&& keys = house;\n      |                   ^      ~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bind_bad.cpp -o bind_bad",
+      "out": "",
+      "err": "bind_bad.cpp:5:19: error: rvalue reference to type 'basic_string<...>' cannot bind to lvalue of type 'basic_string<...>'\n    5 |     std::string&& keys = house;\n      |                   ^      ~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "bind_truck_bad.cpp": {
+   "src": "struct Truck {};\n\nint main() {\n    Truck a;\n    Truck&& keys = a;\n    (void)keys;\n}\n",
+   "stdout": "",
+   "stderr": "bind_truck_bad.cpp: In function ‘int main()’:\nbind_truck_bad.cpp:5:20: error: cannot bind rvalue reference of type ‘Truck&&’ to lvalue of type ‘Truck’\n    5 |     Truck&& keys = a;\n      |                    ^\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bind_truck_bad.cpp -o bind_truck_bad",
+     "out": "",
+     "err": "bind_truck_bad.cpp: In function ‘int main()’:\nbind_truck_bad.cpp:5:20: error: cannot bind rvalue reference of type ‘Truck&&’ to lvalue of type ‘Truck’\n    5 |     Truck&& keys = a;\n      |                    ^\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "bind_truck_bad.cpp:5:13: error: rvalue reference to type 'Truck' cannot bind to lvalue of type 'Truck'\n    5 |     Truck&& keys = a;\n      |             ^      ~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bind_truck_bad.cpp -o bind_truck_bad",
+      "out": "",
+      "err": "bind_truck_bad.cpp:5:13: error: rvalue reference to type 'Truck' cannot bind to lvalue of type 'Truck'\n    5 |     Truck&& keys = a;\n      |             ^      ~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_choice.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nstruct Truck {\n    Truck() = default;\n    Truck(const Truck&) { std::cout << \"copy\\n\"; }\n    Truck(Truck&&) noexcept { std::cout << \"move\\n\"; }\n};\n\nstruct Song {\n    Truck gear;\n    ~Song() {}                  // an empty destructor, \"just in case\"\n};\n\nint main() {\n    Song a;\n    Song b = std::move(a);\n}\n",
+   "stdout": "copy\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_choice.cpp -o boss_choice",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_choice",
+     "out": "copy\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "copy\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_choice.cpp -o boss_choice",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_choice",
+      "out": "copy\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n#include <vector>\n\nclass KeyCard {\npublic:\n    explicit KeyCard(int room) : room_{room} {}\n    KeyCard(KeyCard&& other) noexcept : room_{other.room_} { other.room_ = 0; }\n    KeyCard& operator=(KeyCard&&) = delete;\n    KeyCard(const KeyCard&) = delete;\n    KeyCard& operator=(const KeyCard&) = delete;\n    ~KeyCard() {\n        if (room_ != 0) {\n            std::cout << \"check out \" << room_ << '\\n';\n        }\n    }\n    int room() const { return room_; }\nprivate:\n    int room_;\n};\n\nint main() {\n    std::vector<KeyCard> drawer;\n    drawer.reserve(2);\n    KeyCard mine{12};\n    drawer.push_back(std::move(mine));\n    drawer.emplace_back(14);\n    std::cout << drawer.size() << \" cards in the drawer; mine says \" << mine.room() << '\\n';\n}\n",
+   "stdout": "2 cards in the drawer; mine says 0\ncheck out 12\ncheck out 14\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "2 cards in the drawer; mine says 0\ncheck out 12\ncheck out 14\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "2 cards in the drawer; mine says 0\ncheck out 12\ncheck out 14\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "2 cards in the drawer; mine says 0\ncheck out 12\ncheck out 14\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nclass Locker {\npublic:\n    explicit Locker(int item) : item_{new int{item}} {}\n    Locker(Locker&& other) noexcept : item_{other.item_} { other.item_ = nullptr; }\n    Locker& operator=(Locker&& other) noexcept {\n        if (this != &other) {\n            delete item_;\n            item_ = other.item_;\n            other.item_ = nullptr;\n        }\n        return *this;\n    }\n    ~Locker() { delete item_; }\n    bool empty() const { return item_ == nullptr; }\n    int item() const { return *item_; }\nprivate:\n    int* item_;\n};\n\nint main() {\n    Locker a{5};\n    Locker b{9};\n    b = std::move(a);\n    std::cout << \"b holds \" << b.item() << \", a is \" << (a.empty() ? \"empty\" : \"full\") << '\\n';\n}\n",
+   "stdout": "b holds 5, a is empty\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "b holds 5, a is empty\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "b holds 5, a is empty\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "b holds 5, a is empty\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n#include <string>\n#include <utility>\n\nstruct Card {\n    std::string guest;\n    explicit Card(std::string g) : guest{std::move(g)} {\n        std::cout << \"in \" << guest << '\\n';\n    }\n    Card(Card&& other) noexcept : guest{std::move(other.guest)} {\n        other.guest = \"nobody\";\n        std::cout << \"hand over \" << guest << '\\n';\n    }\n    ~Card() { std::cout << \"out \" << guest << '\\n'; }\n};\n\nint main() {\n    Card r12{\"Ada\"};\n    {\n        Card r14{std::move(r12)};\n        std::cout << \"upgrade done\\n\";\n    }\n    try {\n        Card r3{\"Cy\"};\n        throw std::runtime_error(\"fire drill\");\n    } catch (const std::exception& e) {\n        std::cout << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "in Ada\nhand over Ada\nupgrade done\nout Ada\nin Cy\nout Cy\nfire drill\nout nobody\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "in Ada\nhand over Ada\nupgrade done\nout Ada\nin Cy\nout Cy\nfire drill\nout nobody\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "in Ada\nhand over Ada\nupgrade done\nout Ada\nin Cy\nout Cy\nfire drill\nout nobody\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "in Ada\nhand over Ada\nupgrade done\nout Ada\nin Cy\nout Cy\nfire drill\nout nobody\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nclass Truck {\npublic:\n    explicit Truck(int boxes) : size_{boxes}, data_{new int[boxes]{}} {}\n    Truck(Truck&& other) noexcept : size_{other.size_}, data_{other.data_} {}\n    Truck(const Truck&) = delete;\n    Truck& operator=(const Truck&) = delete;\n    Truck& operator=(Truck&&) = delete;\n    ~Truck() { delete[] data_; }\n    int size() const { return size_; }\nprivate:\n    int size_;\n    int* data_;\n};\n\nint main() {\n    Truck a{3};\n    Truck b{std::move(a)};\n    std::cout << \"b has \" << b.size() << \" boxes\" << std::endl;\n}\n",
+   "stdout": "b has 3 boxes\n",
+   "stderr": "=================================================================\n==2==ERROR: AddressSanitizer: attempting double-free on 0x502000000010 in thread T0:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x555555556759 in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\n0x502000000010 is located 0 bytes inside of 12-byte region [0x502000000010,0x50200000001c)\nfreed by thread T0 here:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x55555555674d in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe6c8 in operator new[](unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:98\n    #1 0x5555555568f4 in Truck::Truck(int) /home/you/cpp-ch22/boss_spot.cpp:6\n    #2 0x555555556497 in main /home/you/cpp-ch22/boss_spot.cpp:19\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\nSUMMARY: AddressSanitizer: double-free ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155 in operator delete[](void*)\n==2==ABORTING\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "b has 3 boxes\n",
+     "err": "=================================================================\n==2==ERROR: AddressSanitizer: attempting double-free on 0x502000000010 in thread T0:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x555555556759 in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\n0x502000000010 is located 0 bytes inside of 12-byte region [0x502000000010,0x50200000001c)\nfreed by thread T0 here:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x55555555674d in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe6c8 in operator new[](unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:98\n    #1 0x5555555568f4 in Truck::Truck(int) /home/you/cpp-ch22/boss_spot.cpp:6\n    #2 0x555555556497 in main /home/you/cpp-ch22/boss_spot.cpp:19\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\nSUMMARY: AddressSanitizer: double-free ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155 in operator delete[](void*)\n==2==ABORTING\n",
+     "exit": 1,
+     "merged": "b has 3 boxes\n=================================================================\n==2==ERROR: AddressSanitizer: attempting double-free on 0x502000000010 in thread T0:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x555555556759 in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\n0x502000000010 is located 0 bytes inside of 12-byte region [0x502000000010,0x50200000001c)\nfreed by thread T0 here:\n    #0 0x7ffff78ff1f8 in operator delete[](void*) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155\n    #1 0x555555556cf5 in Truck::~Truck() /home/you/cpp-ch22/boss_spot.cpp:11\n    #2 0x55555555674d in main /home/you/cpp-ch22/boss_spot.cpp:22\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\npreviously allocated by thread T0 here:\n    #0 0x7ffff78fe6c8 in operator new[](unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:98\n    #1 0x5555555568f4 in Truck::Truck(int) /home/you/cpp-ch22/boss_spot.cpp:6\n    #2 0x555555556497 in main /home/you/cpp-ch22/boss_spot.cpp:19\n    #3 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #4 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #5 0x555555556324 in _start (/home/you/cpp-ch22/boss_spot+0x2324) (BuildId: a09012248882ced4a15f559d16913ced7edf313e)\n\nSUMMARY: AddressSanitizer: double-free ../../../../src/libsanitizer/asan/asan_new_delete.cpp:155 in operator delete[](void*)\n==2==ABORTING\n"
+    }
+   ]
+  },
+  "boss_trace.cpp": {
+   "src": "#include <iostream>\n\nstruct Truck {\n    int id;\n    explicit Truck(int i) : id{i} { std::cout << \"build \" << id << '\\n'; }\n    Truck(Truck&& other) noexcept : id{other.id} {\n        other.id = 0;\n        std::cout << \"move \" << id << '\\n';\n    }\n    ~Truck() { std::cout << \"scrap \" << id << '\\n'; }\n};\n\nTruck pick(bool big) {\n    Truck small{1};\n    Truck large{2};\n    if (big) {\n        return large;\n    }\n    return small;\n}\n\nint main() {\n    Truck t = pick(true);\n    std::cout << \"drive \" << t.id << '\\n';\n}\n",
+   "stdout": "build 1\nbuild 2\nmove 2\nscrap 0\nscrap 1\ndrive 2\nscrap 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "build 1\nbuild 2\nmove 2\nscrap 0\nscrap 1\ndrive 2\nscrap 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "build 1\nbuild 2\nmove 2\nscrap 0\nscrap 1\ndrive 2\nscrap 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "build 1\nbuild 2\nmove 2\nscrap 0\nscrap 1\ndrive 2\nscrap 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "const_move.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nstruct Truck {\n    Truck() = default;\n    Truck(const Truck&) { std::cout << \"  copy\\n\"; }\n    Truck(Truck&&) noexcept { std::cout << \"  move\\n\"; }\n    void drive() const { std::cout << \"  drive\\n\"; }\n};\n\nint main() {\n    const Truck spare{};\n    std::cout << \"Truck mine = std::move(spare);\\n\";\n    Truck mine = std::move(spare);\n    mine.drive();\n\n    const std::string sign{\"Welcome to the Hotel Ferrum\"};\n    std::string taken = std::move(sign);\n    std::cout << \"sign:  [\" << sign << \"]\\n\";\n    std::cout << \"taken: [\" << taken << \"]\\n\";\n}\n",
+   "stdout": "Truck mine = std::move(spare);\n  copy\n  drive\nsign:  [Welcome to the Hotel Ferrum]\ntaken: [Welcome to the Hotel Ferrum]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g const_move.cpp -o const_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./const_move",
+     "out": "Truck mine = std::move(spare);\n  copy\n  drive\nsign:  [Welcome to the Hotel Ferrum]\ntaken: [Welcome to the Hotel Ferrum]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Truck mine = std::move(spare);\n  copy\n  drive\nsign:  [Welcome to the Hotel Ferrum]\ntaken: [Welcome to the Hotel Ferrum]\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g const_move.cpp -o const_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./const_move",
+      "out": "Truck mine = std::move(spare);\n  copy\n  drive\nsign:  [Welcome to the Hotel Ferrum]\ntaken: [Welcome to the Hotel Ferrum]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "copy_or_move.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nstd::string last;                       // what the last statement called\n\nstruct Truck {\n    Truck() = default;\n    Truck(const Truck&) { last = \"copy\"; }\n    Truck(Truck&&) noexcept { last = \"move\"; }\n};\n\nTruck make() { return Truck{}; }\nTruck make_named() {\n    Truck t;\n    return t;\n}\n\nvoid report(const char* code, const Truck&) {\n    std::cout << code << \"  ->  \" << (last.empty() ? \"elided\" : last) << '\\n';\n    last.clear();\n}\n\nint main() {\n    Truck a;\n    const Truck spare{};\n    { Truck t = a; report(\"Truck t = a;\", t); }\n    { Truck t = std::move(a); report(\"Truck t = std::move(a);\", t); }\n    { Truck t = make(); report(\"Truck t = make();\", t); }\n    { Truck t = Truck{}; report(\"Truck t = Truck{};\", t); }\n    { Truck t = make_named(); report(\"Truck t = make_named();\", t); }\n    { Truck t = std::move(spare); report(\"Truck t = std::move(spare);\", t); }\n}\n",
+   "stdout": "Truck t = a;  ->  copy\nTruck t = std::move(a);  ->  move\nTruck t = make();  ->  elided\nTruck t = Truck{};  ->  elided\nTruck t = make_named();  ->  elided\nTruck t = std::move(spare);  ->  copy\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g copy_or_move.cpp -o copy_or_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./copy_or_move",
+     "out": "Truck t = a;  ->  copy\nTruck t = std::move(a);  ->  move\nTruck t = make();  ->  elided\nTruck t = Truck{};  ->  elided\nTruck t = make_named();  ->  elided\nTruck t = std::move(spare);  ->  copy\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Truck t = a;  ->  copy\nTruck t = std::move(a);  ->  move\nTruck t = make();  ->  elided\nTruck t = Truck{};  ->  elided\nTruck t = make_named();  ->  elided\nTruck t = std::move(spare);  ->  copy\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g copy_or_move.cpp -o copy_or_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./copy_or_move",
+      "out": "Truck t = a;  ->  copy\nTruck t = std::move(a);  ->  move\nTruck t = make();  ->  elided\nTruck t = Truck{};  ->  elided\nTruck t = make_named();  ->  elided\nTruck t = std::move(spare);  ->  copy\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_file.cpp": {
+   "src": "#include <cstdio>\n#include <filesystem>\n#include <iostream>\n\nclass File {\npublic:\n    File(const char* name, const char* mode) : f_{std::fopen(name, mode)} {\n        std::cout << \"opened \" << name << '\\n';\n    }\n    ~File() {\n        if (f_ != nullptr) {\n            std::fclose(f_);\n            std::cout << \"closed\\n\";\n        }\n    }\n    File(const File&) = delete;\n    File& operator=(const File&) = delete;\n    std::FILE* get() const { return f_; }\nprivate:\n    std::FILE* f_;\n};\n\nint main() {\n    {\n        File out{\"guests.txt\", \"w\"};\n        std::fputs(\"Ada\\nBen\\n\", out.get());\n    }\n    std::cout << \"guests.txt holds \" << std::filesystem::file_size(\"guests.txt\") << \" bytes\\n\";\n}\n",
+   "stdout": "opened guests.txt\nclosed\nguests.txt holds 8 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_file.cpp -o fill_file",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_file",
+     "out": "opened guests.txt\nclosed\nguests.txt holds 8 bytes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "opened guests.txt\nclosed\nguests.txt holds 8 bytes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_file.cpp -o fill_file",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_file",
+      "out": "opened guests.txt\nclosed\nguests.txt holds 8 bytes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_move_ctor.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nclass Truck {\npublic:\n    explicit Truck(int boxes) : size_{boxes}, data_{new int[boxes]{}} {}\n    Truck(Truck&& other) noexcept : size_{other.size_}, data_{other.data_} {\n        other.size_ = 0;\n        other.data_ = nullptr;\n    }\n    Truck(const Truck&) = delete;\n    Truck& operator=(const Truck&) = delete;\n    Truck& operator=(Truck&&) = delete;\n    ~Truck() { delete[] data_; }\n    int size() const { return size_; }\nprivate:\n    int size_;\n    int* data_;\n};\n\nint main() {\n    Truck a{4};\n    Truck b{std::move(a)};\n    std::cout << \"a: \" << a.size() << \" boxes, b: \" << b.size() << \" boxes\\n\";\n}\n",
+   "stdout": "a: 0 boxes, b: 4 boxes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_move_ctor.cpp -o fill_move_ctor",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_move_ctor",
+     "out": "a: 0 boxes, b: 4 boxes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "a: 0 boxes, b: 4 boxes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_move_ctor.cpp -o fill_move_ctor",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_move_ctor",
+      "out": "a: 0 boxes, b: 4 boxes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flush_on_close.cpp": {
+   "src": "#include <fstream>\n#include <iostream>\n#include <string>\n\nint lines_in(const std::string& name) {\n    std::ifstream in{name};\n    std::string line;\n    int n = 0;\n    while (std::getline(in, line)) {\n        ++n;\n    }\n    return n;\n}\n\nint main() {\n    {\n        std::ofstream diary{\"diary.txt\"};\n        diary << \"07:00 breakfast\\n\";\n        diary << \"09:00 pool\\n\";\n        diary << \"13:00 lunch\\n\";\n        std::cout << \"inside the block, the file has \" << lines_in(\"diary.txt\") << \" lines\\n\";\n    }\n    std::cout << \"after the block, the file has \" << lines_in(\"diary.txt\") << \" lines\\n\";\n}\n",
+   "stdout": "inside the block, the file has 0 lines\nafter the block, the file has 3 lines\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flush_on_close.cpp -o flush_on_close",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flush_on_close",
+     "out": "inside the block, the file has 0 lines\nafter the block, the file has 3 lines\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "inside the block, the file has 0 lines\nafter the block, the file has 3 lines\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flush_on_close.cpp -o flush_on_close",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flush_on_close",
+      "out": "inside the block, the file has 0 lines\nafter the block, the file has 3 lines\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "key_card.cpp": {
+   "src": "#include <iostream>\n\nclass KeyCard {\npublic:\n    explicit KeyCard(int room) : room_{room} {\n        std::cout << \"check in: room \" << room_ << '\\n';\n    }\n    ~KeyCard() {\n        std::cout << \"check out: room \" << room_ << '\\n';\n    }\nprivate:\n    int room_;\n};\n\nint main() {\n    std::cout << \"arrive at the hotel\\n\";\n    KeyCard mine{12};\n    {\n        KeyCard pool{3};\n        std::cout << \"swim\\n\";\n    }\n    std::cout << \"dinner\\n\";\n}\n",
+   "stdout": "arrive at the hotel\ncheck in: room 12\ncheck in: room 3\nswim\ncheck out: room 3\ndinner\ncheck out: room 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g key_card.cpp -o key_card",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./key_card",
+     "out": "arrive at the hotel\ncheck in: room 12\ncheck in: room 3\nswim\ncheck out: room 3\ndinner\ncheck out: room 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "arrive at the hotel\ncheck in: room 12\ncheck in: room 3\nswim\ncheck out: room 3\ndinner\ncheck out: room 12\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g key_card.cpp -o key_card",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./key_card",
+      "out": "arrive at the hotel\ncheck in: room 12\ncheck in: room 3\nswim\ncheck out: room 3\ndinner\ncheck out: room 12\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lock_preview.cpp": {
+   "src": "#include <iostream>\n#include <mutex>\n\nstd::mutex lift;            // one key for the lift: one rider at a time\nint rides = 0;\n\nvoid ride(int floor) {\n    std::scoped_lock key{lift};     // lock now; unlock at the closing brace\n    if (floor < 0) {\n        std::cout << \"no floor \" << floor << \", stepping out\\n\";\n        return;\n    }\n    ++rides;\n    std::cout << \"ride to floor \" << floor << '\\n';\n}\n\nint main() {\n    ride(4);\n    ride(-1);\n    ride(7);\n    if (lift.try_lock()) {\n        std::cout << \"the lift is free again after \" << rides << \" rides\\n\";\n        lift.unlock();\n    }\n}\n",
+   "stdout": "ride to floor 4\nno floor -1, stepping out\nride to floor 7\nthe lift is free again after 2 rides\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g lock_preview.cpp -o lock_preview",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lock_preview",
+     "out": "ride to floor 4\nno floor -1, stepping out\nride to floor 7\nthe lift is free again after 2 rides\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "ride to floor 4\nno floor -1, stepping out\nride to floor 7\nthe lift is free again after 2 rides\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g lock_preview.cpp -o lock_preview",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./lock_preview",
+      "out": "ride to floor 4\nno floor -1, stepping out\nride to floor 7\nthe lift is free again after 2 rides\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "manual_files.cpp": {
+   "src": "#include <cstdio>\n#include <filesystem>\n#include <iostream>\n\n// Helper: how many files does this program still hold open?\n// Linux lists them in /proc/self/fd. Four entries are always there:\n// the keyboard, the screen, the error screen, and this listing itself.\nint files_open() {\n    std::filesystem::directory_iterator list{\"/proc/self/fd\"};\n    int n = 0;\n    for ([[maybe_unused]] const auto& entry : list) {\n        ++n;\n    }\n    return n - 4;\n}\n\nbool save_score(const char* name, int score) {\n    std::FILE* f = std::fopen(name, \"w\");\n    if (f == nullptr) {\n        return false;\n    }\n    if (score < 0) {\n        std::cout << \"bad score \" << score << \", giving up\\n\";\n        return false;\n    }\n    std::fprintf(f, \"%d\\n\", score);\n    std::fclose(f);\n    return true;\n}\n\nint main() {\n    save_score(\"ada.txt\", 90);\n    save_score(\"ben.txt\", -5);\n    save_score(\"cy.txt\", -1);\n    std::cout << \"files still open: \" << files_open() << '\\n';\n}\n",
+   "stdout": "bad score -5, giving up\nbad score -1, giving up\nfiles still open: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g manual_files.cpp -o manual_files",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./manual_files",
+     "out": "bad score -5, giving up\nbad score -1, giving up\nfiles still open: 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "bad score -5, giving up\nbad score -1, giving up\nfiles still open: 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g manual_files.cpp -o manual_files",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./manual_files",
+      "out": "bad score -5, giving up\nbad score -1, giving up\nfiles still open: 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "move_cast.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nint main() {\n    std::string house{\"sofa, piano, 40 boxes of books\"};\n    std::move(house);\n    std::cout << \"after std::move(house); -> [\" << house << \"]\\n\";\n}\n",
+   "stdout": "after std::move(house); -> [sofa, piano, 40 boxes of books]\n",
+   "stderr": "move_cast.cpp: In function ‘int main()’:\nmove_cast.cpp:7:14: warning: ignoring return value of ‘constexpr typename std::remove_reference<_Tp>::type&& std::move(_Tp&&) [with _Tp = __cxx11::basic_string<char>&; typename remove_reference<_Tp>::type = __cxx11::basic_string<char>]’, declared with attribute ‘nodiscard’ [-Wunused-result]\n    7 |     std::move(house);\n      |     ~~~~~~~~~^~~~~~~\nIn file included from /usr/include/c++/13/bits/exception_ptr.h:41,\n                 from /usr/include/c++/13/exception:164,\n                 from /usr/include/c++/13/ios:41,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from move_cast.cpp:1:\n/usr/include/c++/13/bits/move.h:97:5: note: declared here\n   97 |     move(_Tp&& __t) noexcept\n      |     ^~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g move_cast.cpp -o move_cast",
+     "out": "",
+     "err": "move_cast.cpp: In function ‘int main()’:\nmove_cast.cpp:7:14: warning: ignoring return value of ‘constexpr typename std::remove_reference<_Tp>::type&& std::move(_Tp&&) [with _Tp = __cxx11::basic_string<char>&; typename remove_reference<_Tp>::type = __cxx11::basic_string<char>]’, declared with attribute ‘nodiscard’ [-Wunused-result]\n    7 |     std::move(house);\n      |     ~~~~~~~~~^~~~~~~\nIn file included from /usr/include/c++/13/bits/exception_ptr.h:41,\n                 from /usr/include/c++/13/exception:164,\n                 from /usr/include/c++/13/ios:41,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from move_cast.cpp:1:\n/usr/include/c++/13/bits/move.h:97:5: note: declared here\n   97 |     move(_Tp&& __t) noexcept\n      |     ^~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./move_cast",
+     "out": "after std::move(house); -> [sofa, piano, 40 boxes of books]\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "after std::move(house); -> [sofa, piano, 40 boxes of books]\n",
+    "stderr": "move_cast.cpp:7:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]\n    7 |     std::move(house);\n      |     ^~~~~~~~~ ~~~~~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g move_cast.cpp -o move_cast",
+      "out": "",
+      "err": "move_cast.cpp:7:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]\n    7 |     std::move(house);\n      |     ^~~~~~~~~ ~~~~~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./move_cast",
+      "out": "after std::move(house); -> [sofa, piano, 40 boxes of books]\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "moving_day.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nint main() {\n    std::string house{\"sofa, piano, 40 boxes of books\"};\n\n    std::string copy = house;               // build a second house\n    std::cout << \"house:    [\" << house << \"]\\n\";\n    std::cout << \"copy:     [\" << copy << \"]\\n\";\n\n    std::string new_home = std::move(house);  // hand over the keys\n    std::cout << \"new_home: [\" << new_home << \"]\\n\";\n    std::cout << \"house:    [\" << house << \"]\\n\";\n}\n",
+   "stdout": "house:    [sofa, piano, 40 boxes of books]\ncopy:     [sofa, piano, 40 boxes of books]\nnew_home: [sofa, piano, 40 boxes of books]\nhouse:    []\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g moving_day.cpp -o moving_day",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./moving_day",
+     "out": "house:    [sofa, piano, 40 boxes of books]\ncopy:     [sofa, piano, 40 boxes of books]\nnew_home: [sofa, piano, 40 boxes of books]\nhouse:    []\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "house:    [sofa, piano, 40 boxes of books]\ncopy:     [sofa, piano, 40 boxes of books]\nnew_home: [sofa, piano, 40 boxes of books]\nhouse:    []\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g moving_day.cpp -o moving_day",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./moving_day",
+      "out": "house:    [sofa, piano, 40 boxes of books]\ncopy:     [sofa, piano, 40 boxes of books]\nnew_home: [sofa, piano, 40 boxes of books]\nhouse:    []\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "overloads.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n\nvoid visit(const std::string& house) {\n    std::cout << \"lvalue: look only (\" << house << \")\\n\";\n}\n\nvoid visit(std::string&& house) {\n    std::cout << \"rvalue: yours to take (\" << house << \")\\n\";\n}\n\nstd::string pop_up_tent() { return \"tent\"; }\n\nint main() {\n    std::string house{\"cottage\"};\n    visit(house);\n    visit(std::string{\"caravan\"});\n    visit(pop_up_tent());\n    visit(house + \" annex\");\n    visit(std::move(house));\n}\n",
+   "stdout": "lvalue: look only (cottage)\nrvalue: yours to take (caravan)\nrvalue: yours to take (tent)\nrvalue: yours to take (cottage annex)\nrvalue: yours to take (cottage)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g overloads.cpp -o overloads",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./overloads",
+     "out": "lvalue: look only (cottage)\nrvalue: yours to take (caravan)\nrvalue: yours to take (tent)\nrvalue: yours to take (cottage annex)\nrvalue: yours to take (cottage)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "lvalue: look only (cottage)\nrvalue: yours to take (caravan)\nrvalue: yours to take (tent)\nrvalue: yours to take (cottage annex)\nrvalue: yours to take (cottage)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g overloads.cpp -o overloads",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./overloads",
+      "out": "lvalue: look only (cottage)\nrvalue: yours to take (caravan)\nrvalue: yours to take (tent)\nrvalue: yours to take (cottage annex)\nrvalue: yours to take (cottage)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_move.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nstruct Truck {\n    int boxes;\n    explicit Truck(int n) : boxes{n} { std::cout << \"  load \" << boxes << '\\n'; }\n    Truck(const Truck& o) : boxes{o.boxes} { std::cout << \"  copy\\n\"; }\n    Truck(Truck&& o) noexcept : boxes{o.boxes} { o.boxes = 0; std::cout << \"  move\\n\"; }\n};\n\nint main() {\n    Truck a{2};\n    std::cout << \"copy it:\\n\";\n    Truck b{a};\n    std::cout << \"move it:\\n\";\n    Truck c{std::move(a)};\n    std::cout << \"a has \" << a.boxes << \" boxes\\n\";\n}\n",
+   "stdout": "  load 2\ncopy it:\n  copy\nmove it:\n  move\na has 0 boxes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_move.cpp -o parsons_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_move",
+     "out": "  load 2\ncopy it:\n  copy\nmove it:\n  move\na has 0 boxes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  load 2\ncopy it:\n  copy\nmove it:\n  move\na has 0 boxes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_move.cpp -o parsons_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_move",
+      "out": "  load 2\ncopy it:\n  copy\nmove it:\n  move\na has 0 boxes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_raii.cpp": {
+   "src": "#include <iostream>\n\nstruct Card {\n    int room;\n    explicit Card(int r) : room{r} { std::cout << \"check in \" << room << '\\n'; }\n    ~Card() { std::cout << \"check out \" << room << '\\n'; }\n};\n\nint main() {\n    std::cout << \"arrive\\n\";\n    Card room{7};\n    {\n        Card spa{2};\n        std::cout << \"sauna\\n\";\n    }\n    std::cout << \"sleep\\n\";\n}\n",
+   "stdout": "arrive\ncheck in 7\ncheck in 2\nsauna\ncheck out 2\nsleep\ncheck out 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_raii.cpp -o parsons_raii",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_raii",
+     "out": "arrive\ncheck in 7\ncheck in 2\nsauna\ncheck out 2\nsleep\ncheck out 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "arrive\ncheck in 7\ncheck in 2\nsauna\ncheck out 2\nsleep\ncheck out 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_raii.cpp -o parsons_raii",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_raii",
+      "out": "arrive\ncheck in 7\ncheck in 2\nsauna\ncheck out 2\nsleep\ncheck out 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_counts.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n#include <vector>\n\nint copies = 0;\nint moves = 0;\n\nstruct Box {\n    Box() = default;\n    Box(const Box&) { ++copies; }\n    Box(Box&&) noexcept { ++moves; }\n};\n\nBox make() { return Box{}; }\n\nint main() {\n    Box a;\n    Box b = a;\n    Box c = std::move(b);\n    std::vector<Box> van;\n    van.reserve(3);\n    van.push_back(a);\n    van.push_back(std::move(c));\n    van.push_back(make());\n    std::cout << \"copies \" << copies << \", moves \" << moves << '\\n';\n}\n",
+   "stdout": "copies 2, moves 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_counts.cpp -o predict_counts",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_counts",
+     "out": "copies 2, moves 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "copies 2, moves 3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_counts.cpp -o predict_counts",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_counts",
+      "out": "copies 2, moves 3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_exits.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nstruct Card {\n    int room;\n    explicit Card(int r) : room{r} { std::cout << \"in \" << room << '\\n'; }\n    ~Card() { std::cout << \"out \" << room << '\\n'; }\n};\n\nvoid tour(int stop) {\n    Card hall{1};\n    if (stop == 1) {\n        return;\n    }\n    Card roof{2};\n    if (stop == 2) {\n        throw std::runtime_error(\"storm\");\n    }\n    std::cout << \"tour done\\n\";\n}\n\nint main() {\n    tour(1);\n    try {\n        tour(2);\n    } catch (const std::exception& e) {\n        std::cout << \"caught \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "in 1\nout 1\nin 1\nin 2\nout 2\nout 1\ncaught storm\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_exits.cpp -o predict_exits",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_exits",
+     "out": "in 1\nout 1\nin 1\nin 2\nout 2\nout 1\ncaught storm\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "in 1\nout 1\nin 1\nin 2\nout 2\nout 1\ncaught storm\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_exits.cpp -o predict_exits",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_exits",
+      "out": "in 1\nout 1\nin 1\nin 2\nout 2\nout 1\ncaught storm\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_nested.cpp": {
+   "src": "#include <iostream>\n\nstruct Card {\n    int room;\n    explicit Card(int r) : room{r} { std::cout << \"in \" << room << '\\n'; }\n    ~Card() { std::cout << \"out \" << room << '\\n'; }\n};\n\nint main() {\n    Card a{1};\n    {\n        Card b{2};\n        Card c{3};\n        std::cout << \"lights off\\n\";\n    }\n    Card d{4};\n}\n",
+   "stdout": "in 1\nin 2\nin 3\nlights off\nout 3\nout 2\nin 4\nout 4\nout 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_nested.cpp -o predict_nested",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_nested",
+     "out": "in 1\nin 2\nin 3\nlights off\nout 3\nout 2\nin 4\nout 4\nout 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "in 1\nin 2\nin 3\nlights off\nout 3\nout 2\nin 4\nout 4\nout 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_nested.cpp -o predict_nested",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_nested",
+      "out": "in 1\nin 2\nin 3\nlights off\nout 3\nout 2\nin 4\nout 4\nout 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_overload.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nvoid take(const int& x) { std::cout << \"look at \" << x << '\\n'; }\nvoid take(int&& x) { std::cout << \"take \" << x << '\\n'; }\n\nint main() {\n    int n{5};\n    take(n);\n    take(7);\n    take(n + 1);\n    take(std::move(n));\n    const int c{9};\n    take(std::move(c));\n}\n",
+   "stdout": "look at 5\ntake 7\ntake 6\ntake 5\nlook at 9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_overload.cpp -o predict_overload",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_overload",
+     "out": "look at 5\ntake 7\ntake 6\ntake 5\nlook at 9\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "look at 5\ntake 7\ntake 6\ntake 5\nlook at 9\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_overload.cpp -o predict_overload",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_overload",
+      "out": "look at 5\ntake 7\ntake 6\ntake 5\nlook at 9\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_sink.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nint copies = 0;\nint moves = 0;\n\nstruct Bag {\n    Bag() = default;\n    Bag(const Bag&) { ++copies; }\n    Bag(Bag&&) noexcept { ++moves; }\n    Bag& operator=(const Bag&) { ++copies; return *this; }\n    Bag& operator=(Bag&&) noexcept { ++moves; return *this; }\n};\n\nclass Room {\npublic:\n    void store(Bag b) { bag_ = std::move(b); }\nprivate:\n    Bag bag_;\n};\n\nint main() {\n    Room room;\n    Bag red;\n    room.store(red);\n    room.store(Bag{});\n    std::cout << \"copies \" << copies << \", moves \" << moves << '\\n';\n}\n",
+   "stdout": "copies 1, moves 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_sink.cpp -o predict_sink",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_sink",
+     "out": "copies 1, moves 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "copies 1, moves 2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_sink.cpp -o predict_sink",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_sink",
+      "out": "copies 1, moves 2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "raii_files.cpp": {
+   "src": "#include <cstdio>\n#include <filesystem>\n#include <iostream>\n#include <memory>\n\nint files_open() {\n    std::filesystem::directory_iterator list{\"/proc/self/fd\"};\n    int n = 0;\n    for ([[maybe_unused]] const auto& entry : list) {\n        ++n;\n    }\n    return n - 4;\n}\n\nstruct CloseFile {                      // the \"deleter\": how to give a FILE* back\n    void operator()(std::FILE* f) const {\n        std::cout << \"  (file closed)\\n\";\n        std::fclose(f);\n    }\n};\nusing FilePtr = std::unique_ptr<std::FILE, CloseFile>;\n\nbool save_score(const char* name, int score) {\n    FilePtr f{std::fopen(name, \"w\")};\n    if (!f) {\n        return false;\n    }\n    if (score < 0) {\n        std::cout << \"bad score \" << score << \", giving up\\n\";\n        return false;\n    }\n    std::fprintf(f.get(), \"%d\\n\", score);\n    return true;\n}\n\nint main() {\n    save_score(\"ada.txt\", 90);\n    save_score(\"ben.txt\", -5);\n    save_score(\"cy.txt\", -1);\n    std::cout << \"files still open: \" << files_open() << '\\n';\n}\n",
+   "stdout": "  (file closed)\nbad score -5, giving up\n  (file closed)\nbad score -1, giving up\n  (file closed)\nfiles still open: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g raii_files.cpp -o raii_files",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./raii_files",
+     "out": "  (file closed)\nbad score -5, giving up\n  (file closed)\nbad score -1, giving up\n  (file closed)\nfiles still open: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  (file closed)\nbad score -5, giving up\n  (file closed)\nbad score -1, giving up\n  (file closed)\nfiles still open: 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g raii_files.cpp -o raii_files",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./raii_files",
+      "out": "  (file closed)\nbad score -5, giving up\n  (file closed)\nbad score -1, giving up\n  (file closed)\nfiles still open: 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "return_local.cpp": {
+   "src": "#include <iostream>\n\nstruct Truck {\n    Truck() { std::cout << \"  build\\n\"; }\n    Truck(const Truck&) { std::cout << \"  copy\\n\"; }\n    Truck(Truck&&) noexcept { std::cout << \"  move\\n\"; }\n    ~Truck() { std::cout << \"  scrap\\n\"; }\n};\n\nTruck order_truck() {\n    Truck t;\n    return t;\n}\n\nint main() {\n    Truck mine = order_truck();\n    std::cout << \"back in main\\n\";\n}\n",
+   "stdout": "  build\nback in main\n  scrap\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g return_local.cpp -o return_local",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./return_local",
+     "out": "  build\nback in main\n  scrap\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  build\nback in main\n  scrap\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g return_local.cpp -o return_local",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./return_local",
+      "out": "  build\nback in main\n  scrap\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "return_move.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nstruct Truck {\n    Truck() { std::cout << \"  build\\n\"; }\n    Truck(const Truck&) { std::cout << \"  copy\\n\"; }\n    Truck(Truck&&) noexcept { std::cout << \"  move\\n\"; }\n    ~Truck() { std::cout << \"  scrap\\n\"; }\n};\n\nTruck order_truck() {\n    Truck t;\n    return std::move(t);\n}\n\nint main() {\n    Truck mine = order_truck();\n    std::cout << \"back in main\\n\";\n}\n",
+   "stdout": "  build\n  move\n  scrap\nback in main\n  scrap\n",
+   "stderr": "return_move.cpp: In function ‘Truck order_truck()’:\nreturn_move.cpp:13:21: warning: moving a local object in a return statement prevents copy elision [-Wpessimizing-move]\n   13 |     return std::move(t);\n      |            ~~~~~~~~~^~~\nreturn_move.cpp:13:21: note: remove ‘std::move’ call\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g return_move.cpp -o return_move",
+     "out": "",
+     "err": "return_move.cpp: In function ‘Truck order_truck()’:\nreturn_move.cpp:13:21: warning: moving a local object in a return statement prevents copy elision [-Wpessimizing-move]\n   13 |     return std::move(t);\n      |            ~~~~~~~~~^~~\nreturn_move.cpp:13:21: note: remove ‘std::move’ call\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./return_move",
+     "out": "  build\n  move\n  scrap\nback in main\n  scrap\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  build\n  move\n  scrap\nback in main\n  scrap\n",
+    "stderr": "return_move.cpp:13:12: warning: moving a local object in a return statement prevents copy elision [-Wpessimizing-move]\n   13 |     return std::move(t);\n      |            ^\nreturn_move.cpp:13:12: note: remove std::move call here\n   13 |     return std::move(t);\n      |            ^~~~~~~~~~ ~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g return_move.cpp -o return_move",
+      "out": "",
+      "err": "return_move.cpp:13:12: warning: moving a local object in a return statement prevents copy elision [-Wpessimizing-move]\n   13 |     return std::move(t);\n      |            ^\nreturn_move.cpp:13:12: note: remove std::move call here\n   13 |     return std::move(t);\n      |            ^~~~~~~~~~ ~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./return_move",
+      "out": "  build\n  move\n  scrap\nback in main\n  scrap\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_normal.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nclass KeyCard {\npublic:\n    explicit KeyCard(int room) : room_{room} {\n        std::cout << \"check in: room \" << room_ << '\\n';\n    }\n    ~KeyCard() {\n        std::cout << \"check out: room \" << room_ << '\\n';\n    }\nprivate:\n    int room_;\n};\n\nvoid stay(int nights) {\n    KeyCard card{12};\n    if (nights == 0) {\n        std::cout << \"changed my mind, leaving early\\n\";\n        return;\n    }\n    if (nights > 7) {\n        throw std::runtime_error(\"too many nights\");\n    }\n    std::cout << \"sleeping \" << nights << \" nights\\n\";\n}\n\nint main() {\n    try {\n        stay(2);\n    } catch (const std::exception& e) {\n        std::cout << \"caught: \" << e.what() << '\\n';\n    }\n    std::cout << \"back home\\n\";\n}\n",
+   "stdout": "check in: room 12\nsleeping 2 nights\ncheck out: room 12\nback home\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_normal.cpp -o road_normal",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_normal",
+     "out": "check in: room 12\nsleeping 2 nights\ncheck out: room 12\nback home\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "check in: room 12\nsleeping 2 nights\ncheck out: room 12\nback home\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_normal.cpp -o road_normal",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_normal",
+      "out": "check in: room 12\nsleeping 2 nights\ncheck out: room 12\nback home\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_return.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nclass KeyCard {\npublic:\n    explicit KeyCard(int room) : room_{room} {\n        std::cout << \"check in: room \" << room_ << '\\n';\n    }\n    ~KeyCard() {\n        std::cout << \"check out: room \" << room_ << '\\n';\n    }\nprivate:\n    int room_;\n};\n\nvoid stay(int nights) {\n    KeyCard card{12};\n    if (nights == 0) {\n        std::cout << \"changed my mind, leaving early\\n\";\n        return;\n    }\n    if (nights > 7) {\n        throw std::runtime_error(\"too many nights\");\n    }\n    std::cout << \"sleeping \" << nights << \" nights\\n\";\n}\n\nint main() {\n    try {\n        stay(0);\n    } catch (const std::exception& e) {\n        std::cout << \"caught: \" << e.what() << '\\n';\n    }\n    std::cout << \"back home\\n\";\n}\n",
+   "stdout": "check in: room 12\nchanged my mind, leaving early\ncheck out: room 12\nback home\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_return.cpp -o road_return",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_return",
+     "out": "check in: room 12\nchanged my mind, leaving early\ncheck out: room 12\nback home\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "check in: room 12\nchanged my mind, leaving early\ncheck out: room 12\nback home\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_return.cpp -o road_return",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_return",
+      "out": "check in: room 12\nchanged my mind, leaving early\ncheck out: room 12\nback home\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "road_throw.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nclass KeyCard {\npublic:\n    explicit KeyCard(int room) : room_{room} {\n        std::cout << \"check in: room \" << room_ << '\\n';\n    }\n    ~KeyCard() {\n        std::cout << \"check out: room \" << room_ << '\\n';\n    }\nprivate:\n    int room_;\n};\n\nvoid stay(int nights) {\n    KeyCard card{12};\n    if (nights == 0) {\n        std::cout << \"changed my mind, leaving early\\n\";\n        return;\n    }\n    if (nights > 7) {\n        throw std::runtime_error(\"too many nights\");\n    }\n    std::cout << \"sleeping \" << nights << \" nights\\n\";\n}\n\nint main() {\n    try {\n        stay(9);\n    } catch (const std::exception& e) {\n        std::cout << \"caught: \" << e.what() << '\\n';\n    }\n    std::cout << \"back home\\n\";\n}\n",
+   "stdout": "check in: room 12\ncheck out: room 12\ncaught: too many nights\nback home\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g road_throw.cpp -o road_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./road_throw",
+     "out": "check in: room 12\ncheck out: room 12\ncaught: too many nights\nback home\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "check in: room 12\ncheck out: room 12\ncaught: too many nights\nback home\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g road_throw.cpp -o road_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./road_throw",
+      "out": "check in: room 12\ncheck out: room 12\ncaught: too many nights\nback home\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "rule_zero_move.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <type_traits>\n#include <utility>\n#include <vector>\n\nstruct Room {                       // no special members written at all\n    std::string guest;\n    std::vector<std::string> bags;\n};\n\nstatic_assert(std::is_nothrow_move_constructible_v<Room>);\n\nint main() {\n    Room twelve{\"Ada\", {\"red suitcase\", \"hat box\"}};\n    Room upgrade = std::move(twelve);\n    std::cout << upgrade.guest << \" moved with \" << upgrade.bags.size() << \" bags\\n\";\n    twelve = Room{\"Ben\", {\"rucksack\"}};\n    std::cout << \"room twelve now: \" << twelve.guest << '\\n';\n}\n",
+   "stdout": "Ada moved with 2 bags\nroom twelve now: Ben\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g rule_zero_move.cpp -o rule_zero_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./rule_zero_move",
+     "out": "Ada moved with 2 bags\nroom twelve now: Ben\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada moved with 2 bags\nroom twelve now: Ben\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g rule_zero_move.cpp -o rule_zero_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./rule_zero_move",
+      "out": "Ada moved with 2 bags\nroom twelve now: Ben\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "scope_guard.cpp": {
+   "src": "#include <experimental/scope>\n#include <iostream>\n\nvoid clean_room(int number) {\n    std::cout << \"start room \" << number << '\\n';\n    std::experimental::scope_exit sign{[] {\n        std::cout << \"  hang the CLEAN sign\\n\";\n    }};\n    if (number == 13) {\n        std::cout << \"  there is no room 13\\n\";\n        return;\n    }\n    std::cout << \"  vacuum, dust, fresh towels\\n\";\n}\n\nint main() {\n    clean_room(12);\n    clean_room(13);\n}\n",
+   "stdout": "start room 12\n  vacuum, dust, fresh towels\n  hang the CLEAN sign\nstart room 13\n  there is no room 13\n  hang the CLEAN sign\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g scope_guard.cpp -o scope_guard",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./scope_guard",
+     "out": "start room 12\n  vacuum, dust, fresh towels\n  hang the CLEAN sign\nstart room 13\n  there is no room 13\n  hang the CLEAN sign\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "start room 12\n  vacuum, dust, fresh towels\n  hang the CLEAN sign\nstart room 13\n  there is no room 13\n  hang the CLEAN sign\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g scope_guard.cpp -o scope_guard",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./scope_guard",
+      "out": "start room 12\n  vacuum, dust, fresh towels\n  hang the CLEAN sign\nstart room 13\n  there is no room 13\n  hang the CLEAN sign\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sink.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nstruct Truck {\n    Truck() = default;\n    Truck(const Truck&) { std::cout << \"  copy\\n\"; }\n    Truck(Truck&&) noexcept { std::cout << \"  move\\n\"; }\n};\n\nclass Garage {\npublic:\n    explicit Garage(Truck t) : parked_{std::move(t)} {}\nprivate:\n    Truck parked_;\n};\n\nint main() {\n    Truck mine;\n    std::cout << \"Garage g1{mine};\\n\";\n    Garage g1{mine};\n    std::cout << \"Garage g2{Truck{}};\\n\";\n    Garage g2{Truck{}};\n    std::cout << \"Garage g3{std::move(mine)};\\n\";\n    Garage g3{std::move(mine)};\n}\n",
+   "stdout": "Garage g1{mine};\n  copy\n  move\nGarage g2{Truck{}};\n  move\nGarage g3{std::move(mine)};\n  move\n  move\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sink.cpp -o sink",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sink",
+     "out": "Garage g1{mine};\n  copy\n  move\nGarage g2{Truck{}};\n  move\nGarage g3{std::move(mine)};\n  move\n  move\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Garage g1{mine};\n  copy\n  move\nGarage g2{Truck{}};\n  move\nGarage g3{std::move(mine)};\n  move\n  move\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sink.cpp -o sink",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sink",
+      "out": "Garage g1{mine};\n  copy\n  move\nGarage g2{Truck{}};\n  move\nGarage g3{std::move(mine)};\n  move\n  move\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_after_move.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <utility>\n#include <vector>\n\nint main() {\n    std::vector<std::string> guests;\n    std::string name{\"Ada Lovelace, room 12\"};\n    guests.push_back(std::move(name));\n    std::cout << \"welcome, \" << name << \"!\\n\";\n    std::cout << guests.size() << \" guest in the book\\n\";\n}\n",
+   "stdout": "welcome, !\n1 guest in the book\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_after_move.cpp -o spot_after_move",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_after_move",
+     "out": "welcome, !\n1 guest in the book\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "welcome, !\n1 guest in the book\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_after_move.cpp -o spot_after_move",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_after_move",
+      "out": "welcome, !\n1 guest in the book\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_guard.cpp": {
+   "src": "#include <iostream>\n#include <string>\n\nstruct Guard {\n    const char* what;\n    explicit Guard(const char* w) : what{w} { std::cout << \"lock \" << what << '\\n'; }\n    ~Guard() { std::cout << \"unlock \" << what << '\\n'; }\n};\n\nvoid write_log(const std::string& message) {\n    Guard{\"log book\"};\n    std::cout << \"  write: \" << message << '\\n';\n}\n\nint main() {\n    write_log(\"room 12 checked in\");\n    write_log(\"room 3 wants towels\");\n}\n",
+   "stdout": "lock log book\nunlock log book\n  write: room 12 checked in\nlock log book\nunlock log book\n  write: room 3 wants towels\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_guard.cpp -o spot_guard",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_guard",
+     "out": "lock log book\nunlock log book\n  write: room 12 checked in\nlock log book\nunlock log book\n  write: room 3 wants towels\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "lock log book\nunlock log book\n  write: room 12 checked in\nlock log book\nunlock log book\n  write: room 3 wants towels\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_guard.cpp -o spot_guard",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_guard",
+      "out": "lock log book\nunlock log book\n  write: room 12 checked in\nlock log book\nunlock log book\n  write: room 3 wants towels\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_return.cpp": {
+   "src": "#include <iostream>\n\nint rooms_in_use = 0;\n\nvoid check_in() { ++rooms_in_use; }\nvoid check_out() { --rooms_in_use; }\n\nvoid stay(int nights) {\n    check_in();\n    if (nights > 3) {\n        std::cout << nights << \" nights? too long, leaving\\n\";\n        return;\n    }\n    std::cout << \"slept \" << nights << \" nights\\n\";\n    check_out();\n}\n\nint main() {\n    stay(2);\n    stay(5);\n    stay(1);\n    std::cout << \"rooms still in use: \" << rooms_in_use << '\\n';\n}\n",
+   "stdout": "slept 2 nights\n5 nights? too long, leaving\nslept 1 nights\nrooms still in use: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_return.cpp -o spot_return",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_return",
+     "out": "slept 2 nights\n5 nights? too long, leaving\nslept 1 nights\nrooms still in use: 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "slept 2 nights\n5 nights? too long, leaving\nslept 1 nights\nrooms still in use: 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_return.cpp -o spot_return",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_return",
+      "out": "slept 2 nights\n5 nights? too long, leaving\nslept 1 nights\nrooms still in use: 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "temp_guard.cpp": {
+   "src": "#include <iostream>\n\nstruct Guard {\n    const char* what;\n    explicit Guard(const char* w) : what{w} { std::cout << \"  lock \" << what << '\\n'; }\n    ~Guard() { std::cout << \"  unlock \" << what << '\\n'; }\n};\n\nint main() {\n    std::cout << \"named guard:\\n\";\n    {\n        Guard g{\"door\"};\n        std::cout << \"  tidy the room\\n\";\n    }\n    std::cout << \"temporary guard:\\n\";\n    {\n        Guard{\"door\"};\n        std::cout << \"  tidy the room\\n\";\n    }\n}\n",
+   "stdout": "named guard:\n  lock door\n  tidy the room\n  unlock door\ntemporary guard:\n  lock door\n  unlock door\n  tidy the room\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g temp_guard.cpp -o temp_guard",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./temp_guard",
+     "out": "named guard:\n  lock door\n  tidy the room\n  unlock door\ntemporary guard:\n  lock door\n  unlock door\n  tidy the room\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "named guard:\n  lock door\n  tidy the room\n  unlock door\ntemporary guard:\n  lock door\n  unlock door\n  tidy the room\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g temp_guard.cpp -o temp_guard",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./temp_guard",
+      "out": "named guard:\n  lock door\n  tidy the room\n  unlock door\ntemporary guard:\n  lock door\n  unlock door\n  tidy the room\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "throwing_dtor.cpp": {
+   "src": "#include <iostream>\n#include <stdexcept>\n\nclass Minibar {\npublic:\n    ~Minibar() {\n        std::cout << \"checking the minibar...\" << std::endl;\n        throw std::runtime_error(\"someone ate the peanuts\");\n    }\n};\n\nint main() {\n    try {\n        Minibar bar;\n        std::cout << \"enjoy your stay\" << std::endl;\n    } catch (const std::exception& e) {\n        std::cout << \"caught: \" << e.what() << '\\n';\n    }\n    std::cout << \"goodbye\\n\";\n}\n",
+   "stdout": "enjoy your stay\nchecking the minibar...\n",
+   "stderr": "throwing_dtor.cpp: In destructor ‘Minibar::~Minibar()’:\nthrowing_dtor.cpp:8:9: warning: ‘throw’ will always call ‘terminate’ [-Wterminate]\n    8 |         throw std::runtime_error(\"someone ate the peanuts\");\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nthrowing_dtor.cpp:8:9: note: in C++11 destructors default to ‘noexcept’\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g throwing_dtor.cpp -o throwing_dtor",
+     "out": "",
+     "err": "throwing_dtor.cpp: In destructor ‘Minibar::~Minibar()’:\nthrowing_dtor.cpp:8:9: warning: ‘throw’ will always call ‘terminate’ [-Wterminate]\n    8 |         throw std::runtime_error(\"someone ate the peanuts\");\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nthrowing_dtor.cpp:8:9: note: in C++11 destructors default to ‘noexcept’\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./throwing_dtor",
+     "out": "enjoy your stay\nchecking the minibar...\n",
+     "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n",
+     "exit": 134,
+     "merged": "enjoy your stay\nchecking the minibar...\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "enjoy your stay\nchecking the minibar...\n",
+    "stderr": "throwing_dtor.cpp:8:9: warning: '~Minibar' has a non-throwing exception specification but can still throw [-Wexceptions]\n    8 |         throw std::runtime_error(\"someone ate the peanuts\");\n      |         ^\nthrowing_dtor.cpp:6:5: note: destructor has a implicit non-throwing exception specification\n    6 |     ~Minibar() {\n      |     ^\n1 warning generated.\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g throwing_dtor.cpp -o throwing_dtor",
+      "out": "",
+      "err": "throwing_dtor.cpp:8:9: warning: '~Minibar' has a non-throwing exception specification but can still throw [-Wexceptions]\n    8 |         throw std::runtime_error(\"someone ate the peanuts\");\n      |         ^\nthrowing_dtor.cpp:6:5: note: destructor has a implicit non-throwing exception specification\n    6 |     ~Minibar() {\n      |     ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./throwing_dtor",
+      "out": "enjoy your stay\nchecking the minibar...\n",
+      "err": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n",
+      "exit": 134,
+      "merged": "enjoy your stay\nchecking the minibar...\nterminate called after throwing an instance of 'std::runtime_error'\n  what():  someone ate the peanuts\nAborted\n"
+     }
+    ]
+   }
+  },
+  "trace_grow.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint moves = 0;\n\nstruct Safe {\n    Safe() = default;\n    Safe(const Safe&) = default;\n    Safe(Safe&&) noexcept { ++moves; }\n};\n\nint main() {\n    std::vector<Safe> v;\n    for (int i = 0; i < 5; ++i) {\n        v.emplace_back();\n        std::cout << v.size() << ' ' << v.capacity() << ' ' << moves << '\\n';\n    }\n}\n",
+   "stdout": "1 1 0\n2 2 1\n3 4 3\n4 4 3\n5 8 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_grow.cpp -o trace_grow",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_grow",
+     "out": "1 1 0\n2 2 1\n3 4 3\n4 4 3\n5 8 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 1 0\n2 2 1\n3 4 3\n4 4 3\n5 8 7\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_grow.cpp -o trace_grow",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_grow",
+      "out": "1 1 0\n2 2 1\n3 4 3\n4 4 3\n5 8 7\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_order.cpp": {
+   "src": "#include <iostream>\n\nstruct Card {\n    int room;\n    explicit Card(int r) : room{r} { std::cout << \"in \" << room << '\\n'; }\n    ~Card() { std::cout << \"out \" << room << '\\n'; }\n};\n\nint main() {\n    for (int night = 1; night <= 3; ++night) {\n        Card bed{100 + night};\n        if (night == 2) {\n            continue;\n        }\n        Card spa{night};\n    }\n}\n",
+   "stdout": "in 101\nin 1\nout 1\nout 101\nin 102\nout 102\nin 103\nin 3\nout 3\nout 103\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_order.cpp -o trace_order",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_order",
+     "out": "in 101\nin 1\nout 1\nout 101\nin 102\nout 102\nin 103\nin 3\nout 3\nout 103\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "in 101\nin 1\nout 1\nout 101\nin 102\nout 102\nin 103\nin 3\nout 3\nout 103\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_order.cpp -o trace_order",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_order",
+      "out": "in 101\nin 1\nout 1\nout 101\nin 102\nout 102\nin 103\nin 3\nout 3\nout 103\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "truck.cpp": {
+   "src": "#include <algorithm>\n#include <iostream>\n#include <utility>\n\nclass Truck {\npublic:\n    explicit Truck(int boxes) : size_{boxes}, data_{new int[boxes]} {\n        for (int i = 0; i < size_; ++i) data_[i] = i + 1;\n        std::cout << \"  load \" << size_ << \" new boxes\\n\";\n    }\n    Truck(const Truck& other) : size_{other.size_}, data_{new int[other.size_]} {\n        std::copy(other.data_, other.data_ + size_, data_);\n        std::cout << \"  copy: pack \" << size_ << \" more boxes\\n\";\n    }\n    Truck(Truck&& other) noexcept : size_{other.size_}, data_{other.data_} {\n        other.size_ = 0;\n        other.data_ = nullptr;\n        std::cout << \"  move: hand over the keys\\n\";\n    }\n    Truck& operator=(const Truck&) = delete;    // assignment: panel 27\n    Truck& operator=(Truck&&) = delete;\n    ~Truck() {\n        std::cout << \"  unload \" << size_ << \" boxes\\n\";\n        delete[] data_;\n    }\n    int size() const { return size_; }\nprivate:\n    int size_;\n    int* data_;\n};\n\nint main() {\n    Truck a{3};\n    Truck b{a};\n    Truck c{std::move(a)};\n    std::cout << \"a \" << a.size() << \", b \" << b.size() << \", c \" << c.size() << '\\n';\n}\n",
+   "stdout": "  load 3 new boxes\n  copy: pack 3 more boxes\n  move: hand over the keys\na 0, b 3, c 3\n  unload 3 boxes\n  unload 3 boxes\n  unload 0 boxes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g truck.cpp -o truck",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./truck",
+     "out": "  load 3 new boxes\n  copy: pack 3 more boxes\n  move: hand over the keys\na 0, b 3, c 3\n  unload 3 boxes\n  unload 3 boxes\n  unload 0 boxes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  load 3 new boxes\n  copy: pack 3 more boxes\n  move: hand over the keys\na 0, b 3, c 3\n  unload 3 boxes\n  unload 3 boxes\n  unload 0 boxes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g truck.cpp -o truck",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./truck",
+      "out": "  load 3 new boxes\n  copy: pack 3 more boxes\n  move: hand over the keys\na 0, b 3, c 3\n  unload 3 boxes\n  unload 3 boxes\n  unload 0 boxes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "truck_assign.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nclass Truck {\npublic:\n    explicit Truck(int boxes) : size_{boxes}, data_{new int[boxes]{}} {\n        std::cout << \"  load \" << size_ << \" boxes\\n\";\n    }\n    Truck(Truck&& other) noexcept : size_{other.size_}, data_{other.data_} {\n        other.size_ = 0;\n        other.data_ = nullptr;\n    }\n    Truck& operator=(Truck&& other) noexcept {\n        if (this != &other) {\n            delete[] data_;\n            size_ = other.size_;\n            data_ = other.data_;\n            other.size_ = 0;\n            other.data_ = nullptr;\n            std::cout << \"  move-assign: old boxes out, new keys in\\n\";\n        }\n        return *this;\n    }\n    Truck(const Truck&) = delete;\n    Truck& operator=(const Truck&) = delete;\n    ~Truck() {\n        std::cout << \"  unload \" << size_ << \" boxes\\n\";\n        delete[] data_;\n    }\n    int size() const { return size_; }\nprivate:\n    int size_;\n    int* data_;\n};\n\nint main() {\n    Truck a{3};\n    Truck b{2};\n    b = std::move(a);\n    std::cout << \"a \" << a.size() << \", b \" << b.size() << '\\n';\n    b = std::move(b);\n    std::cout << \"b \" << b.size() << \" after moving into itself\\n\";\n}\n",
+   "stdout": "  load 3 boxes\n  load 2 boxes\n  move-assign: old boxes out, new keys in\na 0, b 3\nb 3 after moving into itself\n  unload 3 boxes\n  unload 0 boxes\n",
+   "stderr": "truck_assign.cpp: In function ‘int main()’:\ntruck_assign.cpp:41:7: warning: moving ‘b’ of type ‘Truck’ to itself [-Wself-move]\n   41 |     b = std::move(b);\n      |     ~~^~~~~~~~~~~~~~\ntruck_assign.cpp:41:7: note: remove ‘std::move’ call\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g truck_assign.cpp -o truck_assign",
+     "out": "",
+     "err": "truck_assign.cpp: In function ‘int main()’:\ntruck_assign.cpp:41:7: warning: moving ‘b’ of type ‘Truck’ to itself [-Wself-move]\n   41 |     b = std::move(b);\n      |     ~~^~~~~~~~~~~~~~\ntruck_assign.cpp:41:7: note: remove ‘std::move’ call\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./truck_assign",
+     "out": "  load 3 boxes\n  load 2 boxes\n  move-assign: old boxes out, new keys in\na 0, b 3\nb 3 after moving into itself\n  unload 3 boxes\n  unload 0 boxes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "  load 3 boxes\n  load 2 boxes\n  move-assign: old boxes out, new keys in\na 0, b 3\nb 3 after moving into itself\n  unload 3 boxes\n  unload 0 boxes\n",
+    "stderr": "truck_assign.cpp:41:7: warning: explicitly moving variable of type 'Truck' to itself [-Wself-move]\n   41 |     b = std::move(b);\n      |     ~ ^           ~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g truck_assign.cpp -o truck_assign",
+      "out": "",
+      "err": "truck_assign.cpp:41:7: warning: explicitly moving variable of type 'Truck' to itself [-Wself-move]\n   41 |     b = std::move(b);\n      |     ~ ^           ~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./truck_assign",
+      "out": "  load 3 boxes\n  load 2 boxes\n  move-assign: old boxes out, new keys in\na 0, b 3\nb 3 after moving into itself\n  unload 3 boxes\n  unload 0 boxes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "vector_grow.cpp": {
+   "src": "#include <iostream>\n#include <vector>\n\nint copies = 0;\nint moves = 0;\n\nstruct Safe {                               // promises: my move never throws\n    Safe() = default;\n    Safe(const Safe&) { ++copies; }\n    Safe(Safe&&) noexcept { ++moves; }\n};\n\nstruct Unsure {                             // no promise\n    Unsure() = default;\n    Unsure(const Unsure&) { ++copies; }\n    Unsure(Unsure&&) { ++moves; }\n};\n\ntemplate <typename T>\nvoid fill_three(const char* label, bool plan_ahead) {\n    copies = 0;\n    moves = 0;\n    std::vector<T> v;\n    if (plan_ahead) {\n        v.reserve(3);\n    }\n    v.emplace_back();\n    v.emplace_back();\n    v.emplace_back();\n    std::cout << label << \": \" << copies << \" copies, \" << moves << \" moves\\n\";\n}\n\nint main() {\n    fill_three<Safe>(\"noexcept move          \", false);\n    fill_three<Unsure>(\"move without noexcept  \", false);\n    fill_three<Unsure>(\"no promise, reserve(3) \", true);\n}\n",
+   "stdout": "noexcept move          : 0 copies, 3 moves\nmove without noexcept  : 3 copies, 0 moves\nno promise, reserve(3) : 0 copies, 0 moves\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g vector_grow.cpp -o vector_grow",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./vector_grow",
+     "out": "noexcept move          : 0 copies, 3 moves\nmove without noexcept  : 3 copies, 0 moves\nno promise, reserve(3) : 0 copies, 0 moves\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "noexcept move          : 0 copies, 3 moves\nmove without noexcept  : 3 copies, 0 moves\nno promise, reserve(3) : 0 copies, 0 moves\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g vector_grow.cpp -o vector_grow",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./vector_grow",
+      "out": "noexcept move          : 0 copies, 3 moves\nmove without noexcept  : 3 copies, 0 moves\nno promise, reserve(3) : 0 copies, 0 moves\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

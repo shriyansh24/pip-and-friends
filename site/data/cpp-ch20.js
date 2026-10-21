@@ -1,0 +1,2475 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "cpp",
+  "capturedWith": [
+   "g++ 13.3 (-std=c++23)",
+   "clang++ 18.1 (-std=c++23)"
+  ],
+  "primary": "g++ 13.3 (-std=c++23)",
+  "date": "2026-11-08",
+  "workdir": "/home/you/cpp-ch20",
+  "versionDifferences": [
+   "countdown.cpp",
+   "deref_assert.cpp",
+   "enum_int_bad.cpp",
+   "perms_class_bad.cpp",
+   "sign_compare.cpp",
+   "spot_deref.cpp",
+   "switch_warn.cpp",
+   "visit_nostring.cpp",
+   "wrap_braces.cpp"
+  ],
+  "isolation": "run steps execute in a fresh PID namespace with ASLR off",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): countdown.cpp, deref_assert.cpp, enum_int_bad.cpp, perms_class_bad.cpp, sign_compare.cpp, spot_deref.cpp, switch_warn.cpp, visit_nostring.cpp, wrap_braces.cpp."
+ },
+ "programs": {
+  "any_demo.cpp": {
+   "src": "#include <any>\n#include <iostream>\n#include <string>\n\nint main() {\n    std::any thing{42};\n    std::cout << std::any_cast<int>(thing) << '\\n';\n    thing = std::string{\"anything\"};\n    std::cout << std::any_cast<std::string>(thing) << '\\n';\n    try {\n        std::cout << std::any_cast<int>(thing) << '\\n';\n    } catch (const std::bad_any_cast& e) {\n        std::cout << \"caught: \" << e.what() << '\\n';\n    }\n}\n",
+   "stdout": "42\nanything\ncaught: bad any_cast\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g any_demo.cpp -o any_demo",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./any_demo",
+     "out": "42\nanything\ncaught: bad any_cast\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "42\nanything\ncaught: bad any_cast\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g any_demo.cpp -o any_demo",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./any_demo",
+      "out": "42\nanything\ncaught: bad any_cast\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bad_get.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nint main() {\n    std::variant<int, std::string> label{std::string{\"fragile\"}};\n    std::cout << \"label holds index \" << label.index() << std::endl;\n    int n{std::get<int>(label)};\n    std::cout << \"n = \" << n << '\\n';\n}\n",
+   "stdout": "label holds index 1\n",
+   "stderr": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bad_get.cpp -o bad_get",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bad_get",
+     "out": "label holds index 1\n",
+     "err": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+     "exit": 134,
+     "merged": "label holds index 1\nterminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "label holds index 1\n",
+    "stderr": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bad_get.cpp -o bad_get",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bad_get",
+      "out": "label holds index 1\n",
+      "err": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+      "exit": 134,
+      "merged": "label holds index 1\nterminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n"
+     }
+    ]
+   }
+  },
+  "bitops.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::uint8_t a{0b1100'1010};\n    std::uint8_t b{0b1010'0110};\n    std::cout << std::format(\"a       {:08b}\\n\", a);\n    std::cout << std::format(\"b       {:08b}\\n\", b);\n    std::cout << std::format(\"a & b   {:08b}\\n\", a & b);\n    std::cout << std::format(\"a | b   {:08b}\\n\", a | b);\n    std::cout << std::format(\"a ^ b   {:08b}\\n\", a ^ b);\n    std::cout << std::format(\"~a      {:08b}\\n\", static_cast<std::uint8_t>(~a));\n    std::cout << std::format(\"a << 1  {:08b}\\n\", static_cast<std::uint8_t>(a << 1));\n    std::cout << std::format(\"a >> 2  {:08b}\\n\", a >> 2);\n    std::cout << std::format(\"~a as an int: {}\\n\", ~a);\n}\n",
+   "stdout": "a       11001010\nb       10100110\na & b   10000010\na | b   11101110\na ^ b   01101100\n~a      00110101\na << 1  10010100\na >> 2  00110010\n~a as an int: -203\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bitops.cpp -o bitops",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bitops",
+     "out": "a       11001010\nb       10100110\na & b   10000010\na | b   11101110\na ^ b   01101100\n~a      00110101\na << 1  10010100\na >> 2  00110010\n~a as an int: -203\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "a       11001010\nb       10100110\na & b   10000010\na | b   11101110\na ^ b   01101100\n~a      00110101\na << 1  10010100\na >> 2  00110010\n~a as an int: -203\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bitops.cpp -o bitops",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bitops",
+      "out": "a       11001010\nb       10100110\na & b   10000010\na | b   11101110\na ^ b   01101100\n~a      00110101\na << 1  10010100\na >> 2  00110010\n~a as an int: -203\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "bitset_pop.cpp": {
+   "src": "#include <bit>\n#include <bitset>\n#include <cstdint>\n#include <iostream>\n\nint main() {\n    std::bitset<8> seats{\"10110010\"};\n    std::cout << \"seats:       \" << seats << '\\n';\n    std::cout << \"taken:       \" << seats.count() << '\\n';\n    std::cout << \"seat 1?      \" << seats.test(1) << '\\n';\n    seats.set(0);\n    seats.reset(7);\n    std::cout << \"now:         \" << seats << '\\n';\n    std::cout << \"as a number: \" << seats.to_ulong() << '\\n';\n    std::uint8_t raw{0b1011'0010};\n    std::cout << \"popcount:    \" << std::popcount(raw) << '\\n';\n    std::cout << \"single bit?  \" << std::has_single_bit(raw) << '\\n';\n}\n",
+   "stdout": "seats:       10110010\ntaken:       4\nseat 1?      1\nnow:         00110011\nas a number: 51\npopcount:    4\nsingle bit?  0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g bitset_pop.cpp -o bitset_pop",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./bitset_pop",
+     "out": "seats:       10110010\ntaken:       4\nseat 1?      1\nnow:         00110011\nas a number: 51\npopcount:    4\nsingle bit?  0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "seats:       10110010\ntaken:       4\nseat 1?      1\nnow:         00110011\nas a number: 51\npopcount:    4\nsingle bit?  0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g bitset_pop.cpp -o bitset_pop",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./bitset_pop",
+      "out": "seats:       10110010\ntaken:       4\nseat 1?      1\nnow:         00110011\nas a number: 51\npopcount:    4\nsingle bit?  0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_fill.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n#include <vector>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Cell = std::variant<std::monostate, int, std::string>;\n\nint main() {\n    std::vector<Cell> row{42, std::monostate{}, std::string{\"total\"}};\n    for (const Cell& c : row) {\n        std::visit(overloaded{\n            [](std::monostate) { std::cout << \"(blank)\\n\"; },\n            [](int n) { std::cout << \"number \" << n << '\\n'; },\n            [](const std::string& s) { std::cout << \"text \" << s << '\\n'; },\n        }, c);\n    }\n}\n",
+   "stdout": "number 42\n(blank)\ntext total\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_fill",
+     "out": "number 42\n(blank)\ntext total\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "number 42\n(blank)\ntext total\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_fill.cpp -o boss_fill",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_fill",
+      "out": "number 42\n(blank)\ntext total\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_parsons.cpp": {
+   "src": "#include <bit>\n#include <cstdint>\n#include <format>\n#include <iostream>\n#include <optional>\n#include <string_view>\n\nstd::optional<int> bit_for(std::string_view name) {\n    if (name == \"lights\") {\n        return 0;\n    }\n    if (name == \"pump\") {\n        return 3;\n    }\n    return std::nullopt;\n}\n\nint main() {\n    std::uint8_t panel{0b1000'0000};\n    std::optional<int> b{bit_for(\"pump\")};\n    if (b) {\n        panel |= 1 << *b;\n    }\n    std::cout << std::format(\"{:08b}\\n\", panel);\n    std::cout << std::popcount(panel) << '\\n';\n}\n",
+   "stdout": "10001000\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_parsons",
+     "out": "10001000\n2\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "10001000\n2\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_parsons.cpp -o boss_parsons",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_parsons",
+      "out": "10001000\n2\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_predict.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n#include <optional>\n#include <string>\n#include <variant>\n\nstd::optional<std::uint8_t> level(const std::variant<int, std::string>& v) {\n    if (std::holds_alternative<int>(v)) {\n        int n{std::get<int>(v)};\n        if (n >= 0 && n <= 255) {\n            return static_cast<std::uint8_t>(n);\n        }\n    }\n    return std::nullopt;\n}\n\nint main() {\n    std::cout << +level(66).value_or(0) << '\\n';\n    std::cout << level(66).value_or(0) << '\\n';\n    std::cout << +level(300).value_or(7) << '\\n';\n    std::cout << level(std::string{\"x\"}).has_value() << '\\n';\n}\n",
+   "stdout": "66\nB\n7\n0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_predict",
+     "out": "66\nB\n7\n0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "66\nB\n7\n0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_predict.cpp -o boss_predict",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_predict",
+      "out": "66\nB\n7\n0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "boss_spot.cpp": {
+   "src": "#include <iostream>\n\nint average(int a, int b) {\n    return (a + b) / 2;\n}\n\nint main() {\n    std::cout << average(10, 20) << std::endl;\n    std::cout << average(2'000'000'000, 2'000'000'000) << '\\n';\n}\n",
+   "stdout": "15\n",
+   "stderr": "boss_spot.cpp:4:15: runtime error: signed integer overflow: 2000000000 + 2000000000 cannot be represented in type 'int'\n    #0 0x5555555562c1 in average(int, int) /home/you/cpp-ch20/boss_spot.cpp:4\n    #1 0x5555555565cc in main /home/you/cpp-ch20/boss_spot.cpp:9\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x5555555561c4 in _start (/home/you/cpp-ch20/boss_spot+0x21c4) (BuildId: a29d446073d35317e61a26814fd8a150566e0aa1)\n\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer boss_spot.cpp -o boss_spot",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_spot",
+     "out": "15\n",
+     "err": "boss_spot.cpp:4:15: runtime error: signed integer overflow: 2000000000 + 2000000000 cannot be represented in type 'int'\n    #0 0x5555555562c1 in average(int, int) /home/you/cpp-ch20/boss_spot.cpp:4\n    #1 0x5555555565cc in main /home/you/cpp-ch20/boss_spot.cpp:9\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x5555555561c4 in _start (/home/you/cpp-ch20/boss_spot+0x21c4) (BuildId: a29d446073d35317e61a26814fd8a150566e0aa1)\n\n",
+     "exit": 1,
+     "merged": "15\nboss_spot.cpp:4:15: runtime error: signed integer overflow: 2000000000 + 2000000000 cannot be represented in type 'int'\n    #0 0x5555555562c1 in average(int, int) /home/you/cpp-ch20/boss_spot.cpp:4\n    #1 0x5555555565cc in main /home/you/cpp-ch20/boss_spot.cpp:9\n    #2 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 0x5555555561c4 in _start (/home/you/cpp-ch20/boss_spot+0x21c4) (BuildId: a29d446073d35317e61a26814fd8a150566e0aa1)\n\n"
+    }
+   ]
+  },
+  "boss_trace.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n\nint main() {\n    std::uint8_t v{0};\n    for (int step{1}; step <= 5; ++step) {\n        v += 100;\n        std::cout << step << ' ' << +v << ' ' << (v < 100) << '\\n';\n    }\n}\n",
+   "stdout": "1 100 0\n2 200 0\n3 44 1\n4 144 0\n5 244 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./boss_trace",
+     "out": "1 100 0\n2 200 0\n3 44 1\n4 144 0\n5 244 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1 100 0\n2 200 0\n3 44 1\n4 144 0\n5 244 0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g boss_trace.cpp -o boss_trace",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./boss_trace",
+      "out": "1 100 0\n2 200 0\n3 44 1\n4 144 0\n5 244 0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "clock_u8.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::uint8_t hand{252};\n    for (int tick{0}; tick < 8; ++tick) {\n        std::cout << std::format(\"tick {}: {}\\n\", tick, hand);\n        hand += 1;\n    }\n    for (int tick{8}; tick < 11; ++tick) {\n        hand -= 3;\n        std::cout << std::format(\"tick {}: {}\\n\", tick, hand);\n    }\n}\n",
+   "stdout": "tick 0: 252\ntick 1: 253\ntick 2: 254\ntick 3: 255\ntick 4: 0\ntick 5: 1\ntick 6: 2\ntick 7: 3\ntick 8: 1\ntick 9: 254\ntick 10: 251\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g clock_u8.cpp -o clock_u8",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./clock_u8",
+     "out": "tick 0: 252\ntick 1: 253\ntick 2: 254\ntick 3: 255\ntick 4: 0\ntick 5: 1\ntick 6: 2\ntick 7: 3\ntick 8: 1\ntick 9: 254\ntick 10: 251\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "tick 0: 252\ntick 1: 253\ntick 2: 254\ntick 3: 255\ntick 4: 0\ntick 5: 1\ntick 6: 2\ntick 7: 3\ntick 8: 1\ntick 9: 254\ntick 10: 251\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g clock_u8.cpp -o clock_u8",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./clock_u8",
+      "out": "tick 0: 252\ntick 1: 253\ntick 2: 254\ntick 3: 255\ntick 4: 0\ntick 5: 1\ntick 6: 2\ntick 7: 3\ntick 8: 1\ntick 9: 254\ntick 10: 251\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "cmp_less.cpp": {
+   "src": "#include <cstddef>\n#include <cstdint>\n#include <iostream>\n#include <type_traits>\n#include <utility>\n\nint main() {\n    int temperature{-1};\n    unsigned int limit{1};\n    std::cout << \"cmp_less(-1, 1u): \" << std::cmp_less(temperature, limit) << '\\n';\n    std::cout << \"in_range<size_t>(-1): \" << std::in_range<std::size_t>(temperature) << '\\n';\n    std::uint8_t a{200};\n    std::uint8_t b{100};\n    auto sum = a + b;\n    static_assert(std::is_same_v<decltype(sum), int>);\n    std::cout << \"200 + 100 as uint8_t values: \" << sum << '\\n';\n}\n",
+   "stdout": "cmp_less(-1, 1u): 1\nin_range<size_t>(-1): 0\n200 + 100 as uint8_t values: 300\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g cmp_less.cpp -o cmp_less",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./cmp_less",
+     "out": "cmp_less(-1, 1u): 1\nin_range<size_t>(-1): 0\n200 + 100 as uint8_t values: 300\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "cmp_less(-1, 1u): 1\nin_range<size_t>(-1): 0\n200 + 100 as uint8_t values: 300\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g cmp_less.cpp -o cmp_less",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./cmp_less",
+      "out": "cmp_less(-1, 1u): 1\nin_range<size_t>(-1): 0\n200 + 100 as uint8_t values: 300\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "countdown.cpp": {
+   "src": "#include <cstddef>\n#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> parts{10, 20, 30};\n    int guard{0};\n    for (std::size_t i{parts.size() - 1}; i >= 0; --i) {\n        std::cout << \"i = \" << i << '\\n';\n        if (++guard == 5) {\n            std::cout << \"(stopped by the guard)\\n\";\n            break;\n        }\n    }\n}\n",
+   "stdout": "i = 2\ni = 1\ni = 0\ni = 18446744073709551615\ni = 18446744073709551614\n(stopped by the guard)\n",
+   "stderr": "countdown.cpp: In function ‘int main()’:\ncountdown.cpp:8:45: warning: comparison of unsigned expression in ‘>= 0’ is always true [-Wtype-limits]\n    8 |     for (std::size_t i{parts.size() - 1}; i >= 0; --i) {\n      |                                           ~~^~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g countdown.cpp -o countdown",
+     "out": "",
+     "err": "countdown.cpp: In function ‘int main()’:\ncountdown.cpp:8:45: warning: comparison of unsigned expression in ‘>= 0’ is always true [-Wtype-limits]\n    8 |     for (std::size_t i{parts.size() - 1}; i >= 0; --i) {\n      |                                           ~~^~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./countdown",
+     "out": "i = 2\ni = 1\ni = 0\ni = 18446744073709551615\ni = 18446744073709551614\n(stopped by the guard)\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "i = 2\ni = 1\ni = 0\ni = 18446744073709551615\ni = 18446744073709551614\n(stopped by the guard)\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g countdown.cpp -o countdown",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./countdown",
+      "out": "i = 2\ni = 1\ni = 0\ni = 18446744073709551615\ni = 18446744073709551614\n(stopped by the guard)\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "countdown_fixed.cpp": {
+   "src": "#include <cstddef>\n#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> parts{10, 20, 30};\n    for (std::size_t i{parts.size()}; i-- > 0;) {\n        std::cout << parts[i] << ' ';\n    }\n    std::cout << '\\n';\n    for (auto i{std::ssize(parts) - 1}; i >= 0; --i) {\n        std::cout << parts[i] << ' ';\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "30 20 10 \n30 20 10 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g countdown_fixed.cpp -o countdown_fixed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./countdown_fixed",
+     "out": "30 20 10 \n30 20 10 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "30 20 10 \n30 20 10 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g countdown_fixed.cpp -o countdown_fixed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./countdown_fixed",
+      "out": "30 20 10 \n30 20 10 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "deref_assert.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n\nint main() {\n    std::optional<int> parcel;\n    std::cout << \"opening the parcel...\" << std::endl;\n    int inside{*parcel};\n    std::cout << \"inside: \" << inside << '\\n';\n}\n",
+   "stdout": "opening the parcel...\n",
+   "stderr": "/usr/include/c++/13/optional:479: constexpr _Tp& std::_Optional_base_impl<_Tp, _Dp>::_M_get() [with _Tp = int; _Dp = std::_Optional_base<int, true, true>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS deref_assert.cpp -o deref_assert",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./deref_assert",
+     "out": "opening the parcel...\n",
+     "err": "/usr/include/c++/13/optional:479: constexpr _Tp& std::_Optional_base_impl<_Tp, _Dp>::_M_get() [with _Tp = int; _Dp = std::_Optional_base<int, true, true>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+     "exit": 134,
+     "merged": "opening the parcel...\n/usr/include/c++/13/optional:479: constexpr _Tp& std::_Optional_base_impl<_Tp, _Dp>::_M_get() [with _Tp = int; _Dp = std::_Optional_base<int, true, true>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "opening the parcel...\n",
+    "stderr": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/optional:479: _Tp &std::_Optional_base_impl<int, std::_Optional_base<int>>::_M_get() [_Tp = int, _Dp = std::_Optional_base<int>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS deref_assert.cpp -o deref_assert",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./deref_assert",
+      "out": "opening the parcel...\n",
+      "err": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/optional:479: _Tp &std::_Optional_base_impl<int, std::_Optional_base<int>>::_M_get() [_Tp = int, _Dp = std::_Optional_base<int>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+      "exit": 134,
+      "merged": "opening the parcel...\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/optional:479: _Tp &std::_Optional_base_impl<int, std::_Optional_base<int>>::_M_get() [_Tp = int, _Dp = std::_Optional_base<int>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n"
+     }
+    ]
+   }
+  },
+  "deref_san.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n\nint main() {\n    std::optional<int> parcel;\n    std::cout << \"opening the parcel...\" << std::endl;\n    int inside{*parcel};\n    std::cout << \"inside: \" << inside << '\\n';\n}\n",
+   "stdout": "opening the parcel...\ninside: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer deref_san.cpp -o deref_san",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./deref_san",
+     "out": "opening the parcel...\ninside: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "empty_value.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n\nint main() {\n    std::optional<int> parcel;\n    std::cout << \"opening the parcel...\" << std::endl;\n    int inside{parcel.value()};\n    std::cout << \"inside: \" << inside << '\\n';\n}\n",
+   "stdout": "opening the parcel...\n",
+   "stderr": "terminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g empty_value.cpp -o empty_value",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./empty_value",
+     "out": "opening the parcel...\n",
+     "err": "terminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n",
+     "exit": 134,
+     "merged": "opening the parcel...\nterminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "opening the parcel...\n",
+    "stderr": "terminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g empty_value.cpp -o empty_value",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./empty_value",
+      "out": "opening the parcel...\n",
+      "err": "terminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n",
+      "exit": 134,
+      "merged": "opening the parcel...\nterminate called after throwing an instance of 'std::bad_optional_access'\n  what():  bad optional access\nAborted\n"
+     }
+    ]
+   }
+  },
+  "enum_int_bad.cpp": {
+   "src": "#include <iostream>\n\nenum class Light { off, dim, bright };\n\nint main() {\n    int n{Light::dim};\n    std::cout << n << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "enum_int_bad.cpp: In function ‘int main()’:\nenum_int_bad.cpp:6:18: error: cannot convert ‘Light’ to ‘int’ in initialization\n    6 |     int n{Light::dim};\n      |           ~~~~~~~^~~\n      |                  |\n      |                  Light\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g enum_int_bad.cpp -o enum_int_bad",
+     "out": "",
+     "err": "enum_int_bad.cpp: In function ‘int main()’:\nenum_int_bad.cpp:6:18: error: cannot convert ‘Light’ to ‘int’ in initialization\n    6 |     int n{Light::dim};\n      |           ~~~~~~~^~~\n      |                  |\n      |                  Light\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "enum_int_bad.cpp:6:11: error: cannot initialize a variable of type 'int' with an rvalue of type 'Light'\n    6 |     int n{Light::dim};\n      |           ^~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g enum_int_bad.cpp -o enum_int_bad",
+      "out": "",
+      "err": "enum_int_bad.cpp:6:11: error: cannot initialize a variable of type 'int' with an rvalue of type 'Light'\n    6 |     int n{Light::dim};\n      |           ^~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "enum_strings.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n#include <optional>\n#include <string_view>\n\nenum class Light : std::uint8_t { off, dim, bright };\n\nstd::string_view to_string(Light l) {\n    switch (l) {\n        case Light::off: return \"off\";\n        case Light::dim: return \"dim\";\n        case Light::bright: return \"bright\";\n    }\n    return \"?\";\n}\n\nconstexpr Light all_lights[]{Light::off, Light::dim, Light::bright};\n\nstd::optional<Light> light_from(std::string_view text) {\n    for (Light l : all_lights) {\n        if (to_string(l) == text) {\n            return l;\n        }\n    }\n    return std::nullopt;\n}\n\nint main() {\n    Light l{Light::dim};\n    std::cout << to_string(l) << \" is number \" << static_cast<int>(l) << '\\n';\n    std::cout << \"size: \" << sizeof(Light) << \" byte\\n\";\n    for (std::string_view word : {\"bright\", \"purple\"}) {\n        if (std::optional<Light> got{light_from(word)}) {\n            std::cout << word << \" -> Light::\" << to_string(*got) << '\\n';\n        } else {\n            std::cout << word << \" -> not a light\\n\";\n        }\n    }\n}\n",
+   "stdout": "dim is number 1\nsize: 1 byte\nbright -> Light::bright\npurple -> not a light\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g enum_strings.cpp -o enum_strings",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./enum_strings",
+     "out": "dim is number 1\nsize: 1 byte\nbright -> Light::bright\npurple -> not a light\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "dim is number 1\nsize: 1 byte\nbright -> Light::bright\npurple -> not a light\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g enum_strings.cpp -o enum_strings",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./enum_strings",
+      "out": "dim is number 1\nsize: 1 byte\nbright -> Light::bright\npurple -> not a light\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_enum.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n#include <string_view>\n\nenum class Gear : std::uint8_t { low = 1, mid = 2, high = 3 };\n\nstd::string_view name(Gear g) {\n    switch (g) {\n        case Gear::low: return \"low\";\n        case Gear::mid: return \"mid\";\n        case Gear::high: return \"high\";\n    }\n    return \"?\";\n}\n\nint main() {\n    Gear g{Gear::mid};\n    std::cout << name(g) << \" = \" << static_cast<int>(g) << '\\n';\n    g = Gear::high;\n    std::cout << name(g) << \" = \" << static_cast<int>(g) << '\\n';\n}\n",
+   "stdout": "mid = 2\nhigh = 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_enum.cpp -o fill_enum",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_enum",
+     "out": "mid = 2\nhigh = 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "mid = 2\nhigh = 3\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_enum.cpp -o fill_enum",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_enum",
+      "out": "mid = 2\nhigh = 3\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_find_user.cpp": {
+   "src": "#include <iostream>\n#include <map>\n#include <optional>\n#include <string>\n\nstd::optional<int> find_user(const std::map<std::string, int>& ages, const std::string& name) {\n    auto it{ages.find(name)};\n    if (it == ages.end()) {\n        return std::nullopt;\n    }\n    return it->second;\n}\n\nint main() {\n    const std::map<std::string, int> ages{{\"Ada\", 36}, {\"Bo\", 9}};\n    std::optional<int> ada{find_user(ages, \"Ada\")};\n    std::optional<int> cy{find_user(ages, \"Cy\")};\n    std::cout << \"Ada: \" << ada.value_or(-1) << '\\n';\n    if (!cy) {\n        std::cout << \"Cy: not found\\n\";\n    }\n}\n",
+   "stdout": "Ada: 36\nCy: not found\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_find_user.cpp -o fill_find_user",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_find_user",
+     "out": "Ada: 36\nCy: not found\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Ada: 36\nCy: not found\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_find_user.cpp -o fill_find_user",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_find_user",
+      "out": "Ada: 36\nCy: not found\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "fill_flags.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::uint8_t lamp{0b0000'0000};\n    lamp |= 1 << 2;\n    std::cout << std::format(\"{:08b}\\n\", lamp);\n    lamp ^= 1 << 7;\n    std::cout << std::format(\"{:08b}\\n\", lamp);\n    lamp &= ~(1 << 2);\n    std::cout << std::format(\"{:08b}\\n\", lamp);\n}\n",
+   "stdout": "00000100\n10000100\n10000000\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g fill_flags.cpp -o fill_flags",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./fill_flags",
+     "out": "00000100\n10000100\n10000000\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "00000100\n10000100\n10000000\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g fill_flags.cpp -o fill_flags",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./fill_flags",
+      "out": "00000100\n10000100\n10000000\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "find_tool.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n#include <string>\n#include <vector>\n\nstd::optional<int> find_tool(const std::vector<std::string>& box, const std::string& name) {\n    for (int i{0}; i < std::ssize(box); ++i) {\n        if (box[i] == name) {\n            return i;\n        }\n    }\n    return std::nullopt;\n}\n\nint main() {\n    const std::vector<std::string> box{\"wrench\", \"pliers\", \"hammer\"};\n    std::optional<int> a{find_tool(box, \"pliers\")};\n    std::optional<int> b{find_tool(box, \"saw\")};\n    if (a) {\n        std::cout << \"pliers in slot \" << *a << '\\n';\n    }\n    if (!b.has_value()) {\n        std::cout << \"no saw in the box\\n\";\n    }\n}\n",
+   "stdout": "pliers in slot 1\nno saw in the box\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g find_tool.cpp -o find_tool",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./find_tool",
+     "out": "pliers in slot 1\nno saw in the box\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "pliers in slot 1\nno saw in the box\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g find_tool.cpp -o find_tool",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./find_tool",
+      "out": "pliers in slot 1\nno saw in the box\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flag_machine.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    const std::uint8_t start{0b0000'0101};\n    std::cout << std::format(\"start {:08b}\\n\", start);\n    std::cout << std::format(\"set bit 1 -> {:08b}\\n\", start | (1 << 1));\n    std::cout << std::format(\"clear bit 0 -> {:08b}\\n\", start & ~(1 << 0));\n    std::cout << std::format(\"toggle bit 2 -> {:08b}\\n\", start ^ (1 << 2));\n    std::cout << std::format(\"toggle bit 7 -> {:08b}\\n\", static_cast<std::uint8_t>(start ^ (1 << 7)));\n    std::cout << std::format(\"test bit 2 -> {}\\n\", (start & (1 << 2)) != 0);\n    std::cout << std::format(\"test bit 1 -> {}\\n\", (start & (1 << 1)) != 0);\n}\n",
+   "stdout": "start 00000101\nset bit 1 -> 00000111\nclear bit 0 -> 00000100\ntoggle bit 2 -> 00000001\ntoggle bit 7 -> 10000101\ntest bit 2 -> true\ntest bit 1 -> false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flag_machine.cpp -o flag_machine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flag_machine",
+     "out": "start 00000101\nset bit 1 -> 00000111\nclear bit 0 -> 00000100\ntoggle bit 2 -> 00000001\ntoggle bit 7 -> 10000101\ntest bit 2 -> true\ntest bit 1 -> false\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "start 00000101\nset bit 1 -> 00000111\nclear bit 0 -> 00000100\ntoggle bit 2 -> 00000001\ntoggle bit 7 -> 10000101\ntest bit 2 -> true\ntest bit 1 -> false\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flag_machine.cpp -o flag_machine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flag_machine",
+      "out": "start 00000101\nset bit 1 -> 00000111\nclear bit 0 -> 00000100\ntoggle bit 2 -> 00000001\ntoggle bit 7 -> 10000101\ntest bit 2 -> true\ntest bit 1 -> false\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "flags_steps.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::uint8_t flags{0};\n    std::cout << std::format(\"start:        {:08b}\\n\", flags);\n    flags |= 1 << 3;\n    std::cout << std::format(\"set bit 3:    {:08b}\\n\", flags);\n    flags |= 1 << 0;\n    std::cout << std::format(\"set bit 0:    {:08b}\\n\", flags);\n    flags ^= 1 << 6;\n    std::cout << std::format(\"toggle bit 6: {:08b}\\n\", flags);\n    flags ^= 1 << 0;\n    std::cout << std::format(\"toggle bit 0: {:08b}\\n\", flags);\n    flags &= ~(1 << 3);\n    std::cout << std::format(\"clear bit 3:  {:08b}\\n\", flags);\n    bool on{(flags & (1 << 6)) != 0};\n    std::cout << std::format(\"bit 6 is on:  {}\\n\", on);\n}\n",
+   "stdout": "start:        00000000\nset bit 3:    00001000\nset bit 0:    00001001\ntoggle bit 6: 01001001\ntoggle bit 0: 01001000\nclear bit 3:  01000000\nbit 6 is on:  true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g flags_steps.cpp -o flags_steps",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./flags_steps",
+     "out": "start:        00000000\nset bit 3:    00001000\nset bit 0:    00001001\ntoggle bit 6: 01001001\ntoggle bit 0: 01001000\nclear bit 3:  01000000\nbit 6 is on:  true\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "start:        00000000\nset bit 3:    00001000\nset bit 0:    00001001\ntoggle bit 6: 01001001\ntoggle bit 0: 01001000\nclear bit 3:  01000000\nbit 6 is on:  true\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g flags_steps.cpp -o flags_steps",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./flags_steps",
+      "out": "start:        00000000\nset bit 3:    00001000\nset bit 0:    00001001\ntoggle bit 6: 01001001\ntoggle bit 0: 01001000\nclear bit 3:  01000000\nbit 6 is on:  true\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "float_sum.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    double a{0.1};\n    double b{0.2};\n    double sum{a + b};\n    std::cout << \"sum:         \" << sum << '\\n';\n    std::cout << \"sum == 0.3?  \" << (sum == 0.3) << '\\n';\n    std::cout << std::format(\"sum, 17 digits: {:.17g}\\n\", sum);\n    std::cout << std::format(\"0.3, 17 digits: {:.17g}\\n\", 0.3);\n}\n",
+   "stdout": "sum:         0.3\nsum == 0.3?  0\nsum, 17 digits: 0.30000000000000004\n0.3, 17 digits: 0.29999999999999999\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g float_sum.cpp -o float_sum",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./float_sum",
+     "out": "sum:         0.3\nsum == 0.3?  0\nsum, 17 digits: 0.30000000000000004\n0.3, 17 digits: 0.29999999999999999\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "sum:         0.3\nsum == 0.3?  0\nsum, 17 digits: 0.30000000000000004\n0.3, 17 digits: 0.29999999999999999\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g float_sum.cpp -o float_sum",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./float_sum",
+      "out": "sum:         0.3\nsum == 0.3?  0\nsum, 17 digits: 0.30000000000000004\n0.3, 17 digits: 0.29999999999999999\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "get_if.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nvoid peek(const std::variant<int, std::string>& box) {\n    if (const int* n = std::get_if<int>(&box)) {\n        std::cout << \"a number: \" << *n << '\\n';\n    } else if (const std::string* s = std::get_if<std::string>(&box)) {\n        std::cout << \"a word: \" << *s << '\\n';\n    }\n}\n\nint main() {\n    peek(42);\n    peek(std::string{\"gears\"});\n}\n",
+   "stdout": "a number: 42\na word: gears\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g get_if.cpp -o get_if",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./get_if",
+     "out": "a number: 42\na word: gears\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "a number: 42\na word: gears\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g get_if.cpp -o get_if",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./get_if",
+      "out": "a number: 42\na word: gears\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "get_machine.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nint main() {\n    std::variant<int, std::string> box{std::string{\"robot\"}};\n    std::cout << \"index() -> \" << box.index() << '\\n';\n    std::cout << \"holds_alternative<int> -> \" << std::holds_alternative<int>(box) << '\\n';\n    std::cout << \"holds_alternative<std::string> -> \" << std::holds_alternative<std::string>(box) << '\\n';\n    std::cout << \"get<std::string> -> \" << std::get<std::string>(box) << '\\n';\n    std::cout << \"get_if<int> is nullptr -> \" << (std::get_if<int>(&box) == nullptr) << '\\n';\n}\n",
+   "stdout": "index() -> 1\nholds_alternative<int> -> 0\nholds_alternative<std::string> -> 1\nget<std::string> -> robot\nget_if<int> is nullptr -> 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g get_machine.cpp -o get_machine",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./get_machine",
+     "out": "index() -> 1\nholds_alternative<int> -> 0\nholds_alternative<std::string> -> 1\nget<std::string> -> robot\nget_if<int> is nullptr -> 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "index() -> 1\nholds_alternative<int> -> 0\nholds_alternative<std::string> -> 1\nget<std::string> -> robot\nget_if<int> is nullptr -> 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g get_machine.cpp -o get_machine",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./get_machine",
+      "out": "index() -> 1\nholds_alternative<int> -> 0\nholds_alternative<std::string> -> 1\nget<std::string> -> robot\nget_if<int> is nullptr -> 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "lab_int8_clock.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::int8_t hand{124};\n    for (int tick{0}; tick < 8; ++tick) {\n        std::cout << std::format(\"tick {}: {}\\n\", tick, hand);\n        hand += 1;\n    }\n    for (int tick{8}; tick < 11; ++tick) {\n        hand -= 3;\n        std::cout << std::format(\"tick {}: {}\\n\", tick, hand);\n    }\n}\n",
+   "stdout": "tick 0: 124\ntick 1: 125\ntick 2: 126\ntick 3: 127\ntick 4: -128\ntick 5: -127\ntick 6: -126\ntick 7: -125\ntick 8: -127\ntick 9: 126\ntick 10: 123\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer lab_int8_clock.cpp -o lab_int8_clock",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./lab_int8_clock",
+     "out": "tick 0: 124\ntick 1: 125\ntick 2: 126\ntick 3: 127\ntick 4: -128\ntick 5: -127\ntick 6: -126\ntick 7: -125\ntick 8: -127\ntick 9: 126\ntick 10: 123\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "limits.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n#include <limits>\n\nint main() {\n    using std::numeric_limits;\n    std::cout << std::format(\"std::uint8_t   {} to {}\\n\", numeric_limits<std::uint8_t>::min(), numeric_limits<std::uint8_t>::max());\n    std::cout << std::format(\"std::int8_t    {} to {}\\n\", numeric_limits<std::int8_t>::min(), numeric_limits<std::int8_t>::max());\n    std::cout << std::format(\"std::int32_t   {} to {}\\n\", numeric_limits<std::int32_t>::min(), numeric_limits<std::int32_t>::max());\n    std::cout << std::format(\"std::uint32_t  {} to {}\\n\", numeric_limits<std::uint32_t>::min(), numeric_limits<std::uint32_t>::max());\n    std::cout << std::format(\"std::int64_t   {} to {}\\n\", numeric_limits<std::int64_t>::min(), numeric_limits<std::int64_t>::max());\n    std::cout << std::format(\"std::size_t    {} to {}\\n\", numeric_limits<std::size_t>::min(), numeric_limits<std::size_t>::max());\n    std::cout << std::format(\"int is signed? {}\\n\", numeric_limits<int>::is_signed);\n}\n",
+   "stdout": "std::uint8_t   0 to 255\nstd::int8_t    -128 to 127\nstd::int32_t   -2147483648 to 2147483647\nstd::uint32_t  0 to 4294967295\nstd::int64_t   -9223372036854775808 to 9223372036854775807\nstd::size_t    0 to 18446744073709551615\nint is signed? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g limits.cpp -o limits",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./limits",
+     "out": "std::uint8_t   0 to 255\nstd::int8_t    -128 to 127\nstd::int32_t   -2147483648 to 2147483647\nstd::uint32_t  0 to 4294967295\nstd::int64_t   -9223372036854775808 to 9223372036854775807\nstd::size_t    0 to 18446744073709551615\nint is signed? true\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "std::uint8_t   0 to 255\nstd::int8_t    -128 to 127\nstd::int32_t   -2147483648 to 2147483647\nstd::uint32_t  0 to 4294967295\nstd::int64_t   -9223372036854775808 to 9223372036854775807\nstd::size_t    0 to 18446744073709551615\nint is signed? true\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g limits.cpp -o limits",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./limits",
+      "out": "std::uint8_t   0 to 255\nstd::int8_t    -128 to 127\nstd::int32_t   -2147483648 to 2147483647\nstd::uint32_t  0 to 4294967295\nstd::int64_t   -9223372036854775808 to 9223372036854775807\nstd::size_t    0 to 18446744073709551615\nint is signed? true\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "literals.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    int a{0b0000'0101};\n    int b{0x1F};\n    int c{0xFF};\n    long long big{1'000'000'000'000};\n    std::cout << std::format(\"a = {} = {:08b} = {:#x}\\n\", a, a, a);\n    std::cout << std::format(\"b = {} = {:08b} = {:#x}\\n\", b, b, b);\n    std::cout << std::format(\"c = {} = {:08b} = {:#x}\\n\", c, c, c);\n    std::cout << std::format(\"big = {}\\n\", big);\n}\n",
+   "stdout": "a = 5 = 00000101 = 0x5\nb = 31 = 00011111 = 0x1f\nc = 255 = 11111111 = 0xff\nbig = 1000000000000\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g literals.cpp -o literals",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./literals",
+     "out": "a = 5 = 00000101 = 0x5\nb = 31 = 00011111 = 0x1f\nc = 255 = 11111111 = 0xff\nbig = 1000000000000\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "a = 5 = 00000101 = 0x5\nb = 31 = 00011111 = 0x1f\nc = 255 = 11111111 = 0xff\nbig = 1000000000000\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g literals.cpp -o literals",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./literals",
+      "out": "a = 5 = 00000101 = 0x5\nb = 31 = 00011111 = 0x1f\nc = 255 = 11111111 = 0xff\nbig = 1000000000000\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "midpoint.cpp": {
+   "src": "#include <iostream>\n#include <numeric>\n\nint main() {\n    int low{2'000'000'000};\n    int high{2'100'000'000};\n    std::cout << \"midpoint:       \" << std::midpoint(low, high) << '\\n';\n    std::cout << \"safe by hand:   \" << low + (high - low) / 2 << '\\n';\n    std::cout << \"midpoint(1, 4): \" << std::midpoint(1, 4) << '\\n';\n    std::cout << \"midpoint(4, 1): \" << std::midpoint(4, 1) << '\\n';\n    std::cout << \"doubles:        \" << std::midpoint(1.0, 4.0) << '\\n';\n}\n",
+   "stdout": "midpoint:       2050000000\nsafe by hand:   2050000000\nmidpoint(1, 4): 2\nmidpoint(4, 1): 3\ndoubles:        2.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g midpoint.cpp -o midpoint",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./midpoint",
+     "out": "midpoint:       2050000000\nsafe by hand:   2050000000\nmidpoint(1, 4): 2\nmidpoint(4, 1): 3\ndoubles:        2.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "midpoint:       2050000000\nsafe by hand:   2050000000\nmidpoint(1, 4): 2\nmidpoint(4, 1): 3\ndoubles:        2.5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g midpoint.cpp -o midpoint",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./midpoint",
+      "out": "midpoint:       2050000000\nsafe by hand:   2050000000\nmidpoint(1, 4): 2\nmidpoint(4, 1): 3\ndoubles:        2.5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "monostate.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Slot = std::variant<std::monostate, int, std::string>;\n\nvoid show(const Slot& slot) {\n    std::visit(overloaded{\n        [](std::monostate) { std::cout << \"empty slot\\n\"; },\n        [](int n) { std::cout << \"part #\" << n << '\\n'; },\n        [](const std::string& s) { std::cout << \"label \" << s << '\\n'; },\n    }, slot);\n}\n\nint main() {\n    Slot slot;\n    show(slot);\n    slot = 404;\n    show(slot);\n    slot = std::string{\"spare\"};\n    show(slot);\n    slot = std::monostate{};\n    std::cout << \"index \" << slot.index() << \": \";\n    show(slot);\n}\n",
+   "stdout": "empty slot\npart #404\nlabel spare\nindex 0: empty slot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g monostate.cpp -o monostate",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./monostate",
+     "out": "empty slot\npart #404\nlabel spare\nindex 0: empty slot\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "empty slot\npart #404\nlabel spare\nindex 0: empty slot\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g monostate.cpp -o monostate",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./monostate",
+      "out": "empty slot\npart #404\nlabel spare\nindex 0: empty slot\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "nan_inf.cpp": {
+   "src": "#include <cmath>\n#include <iostream>\n#include <limits>\n\nint main() {\n    double zero{0.0};\n    double big{1.0 / zero};\n    double odd{zero / zero};\n    std::cout << \"1.0 / 0.0 = \" << big << '\\n';\n    std::cout << \"0.0 / 0.0 = \" << odd << '\\n';\n    std::cout << \"odd == odd?  \" << (odd == odd) << '\\n';\n    std::cout << \"isnan(odd)?  \" << std::isnan(odd) << '\\n';\n    std::cout << \"big > max?   \" << (big > std::numeric_limits<double>::max()) << '\\n';\n    std::cout << \"quiet_NaN(): \" << std::numeric_limits<double>::quiet_NaN() << '\\n';\n}\n",
+   "stdout": "1.0 / 0.0 = inf\n0.0 / 0.0 = -nan\nodd == odd?  0\nisnan(odd)?  1\nbig > max?   1\nquiet_NaN(): nan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g nan_inf.cpp -o nan_inf",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./nan_inf",
+     "out": "1.0 / 0.0 = inf\n0.0 / 0.0 = -nan\nodd == odd?  0\nisnan(odd)?  1\nbig > max?   1\nquiet_NaN(): nan\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1.0 / 0.0 = inf\n0.0 / 0.0 = -nan\nodd == odd?  0\nisnan(odd)?  1\nbig > max?   1\nquiet_NaN(): nan\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g nan_inf.cpp -o nan_inf",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./nan_inf",
+      "out": "1.0 / 0.0 = inf\n0.0 / 0.0 = -nan\nodd == odd?  0\nisnan(odd)?  1\nbig > max?   1\nquiet_NaN(): nan\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "nearly.cpp": {
+   "src": "#include <algorithm>\n#include <cmath>\n#include <iostream>\n#include <limits>\n\nbool nearly_equal(double x, double y, double rel = 1e-9) {\n    return std::abs(x - y) <= rel * std::max(std::abs(x), std::abs(y));\n}\n\nint main() {\n    std::cout << \"epsilon: \" << std::numeric_limits<double>::epsilon() << '\\n';\n    double total{0.0};\n    for (int i{0}; i < 10; ++i) {\n        total += 0.1;\n    }\n    std::cout << \"ten 0.1s == 1.0? \" << (total == 1.0) << '\\n';\n    std::cout << \"nearly 1.0?      \" << nearly_equal(total, 1.0) << '\\n';\n    std::cout << \"nearly 1.1?      \" << nearly_equal(total, 1.1) << '\\n';\n}\n",
+   "stdout": "epsilon: 2.22045e-16\nten 0.1s == 1.0? 0\nnearly 1.0?      1\nnearly 1.1?      0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g nearly.cpp -o nearly",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./nearly",
+     "out": "epsilon: 2.22045e-16\nten 0.1s == 1.0? 0\nnearly 1.0?      1\nnearly 1.1?      0\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "epsilon: 2.22045e-16\nten 0.1s == 1.0? 0\nnearly 1.0?      1\nnearly 1.1?      0\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g nearly.cpp -o nearly",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./nearly",
+      "out": "epsilon: 2.22045e-16\nten 0.1s == 1.0? 0\nnearly 1.0?      1\nnearly 1.1?      0\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "optional_tour.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n\nint main() {\n    std::optional<int> box;\n    std::cout << \"has_value: \" << box.has_value() << '\\n';\n    std::cout << \"value_or(0): \" << box.value_or(0) << '\\n';\n    box = 42;\n    std::cout << \"has_value: \" << box.has_value() << '\\n';\n    std::cout << \"*box: \" << *box << '\\n';\n    std::cout << \"value(): \" << box.value() << '\\n';\n    box = std::nullopt;\n    std::cout << \"after nullopt: \" << box.value_or(-1) << '\\n';\n}\n",
+   "stdout": "has_value: 0\nvalue_or(0): 0\nhas_value: 1\n*box: 42\nvalue(): 42\nafter nullopt: -1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g optional_tour.cpp -o optional_tour",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./optional_tour",
+     "out": "has_value: 0\nvalue_or(0): 0\nhas_value: 1\n*box: 42\nvalue(): 42\nafter nullopt: -1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "has_value: 0\nvalue_or(0): 0\nhas_value: 1\n*box: 42\nvalue(): 42\nafter nullopt: -1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g optional_tour.cpp -o optional_tour",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./optional_tour",
+      "out": "has_value: 0\nvalue_or(0): 0\nhas_value: 1\n*box: 42\nvalue(): 42\nafter nullopt: -1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "overflow_san.cpp": {
+   "src": "#include <iostream>\n#include <limits>\n\nint main() {\n    int score{std::numeric_limits<int>::max()};\n    std::cout << \"score = \" << score << std::endl;\n    score = score + 1;\n    std::cout << \"score + 1 = \" << score << '\\n';\n}\n",
+   "stdout": "score = 2147483647\n",
+   "stderr": "overflow_san.cpp:7:11: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\n    #0 0x55555555652c in main /home/you/cpp-ch20/overflow_san.cpp:7\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x5555555561e4 in _start (/home/you/cpp-ch20/overflow_san+0x21e4) (BuildId: 0d968a2680adc4e3e7b430a98699f3cf7cc0e1fb)\n\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer overflow_san.cpp -o overflow_san",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./overflow_san",
+     "out": "score = 2147483647\n",
+     "err": "overflow_san.cpp:7:11: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\n    #0 0x55555555652c in main /home/you/cpp-ch20/overflow_san.cpp:7\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x5555555561e4 in _start (/home/you/cpp-ch20/overflow_san+0x21e4) (BuildId: 0d968a2680adc4e3e7b430a98699f3cf7cc0e1fb)\n\n",
+     "exit": 1,
+     "merged": "score = 2147483647\noverflow_san.cpp:7:11: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\n    #0 0x55555555652c in main /home/you/cpp-ch20/overflow_san.cpp:7\n    #1 0x7ffff682a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 0x7ffff682a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 0x5555555561e4 in _start (/home/you/cpp-ch20/overflow_san+0x21e4) (BuildId: 0d968a2680adc4e3e7b430a98699f3cf7cc0e1fb)\n\n"
+    }
+   ]
+  },
+  "parsons_bits.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    unsigned int f{0};\n    f |= 1u << 1;\n    std::cout << std::format(\"a {:04b}\\n\", f);\n    f |= 1u << 3;\n    std::cout << std::format(\"b {:04b}\\n\", f);\n    f &= ~(1u << 1);\n    std::cout << std::format(\"c {:04b}\\n\", f);\n}\n",
+   "stdout": "a 0010\nb 1010\nc 1000\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_bits.cpp -o parsons_bits",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_bits",
+     "out": "a 0010\nb 1010\nc 1000\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "a 0010\nb 1010\nc 1000\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_bits.cpp -o parsons_bits",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_bits",
+      "out": "a 0010\nb 1010\nc 1000\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "parsons_variant.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nint main() {\n    std::variant<int, std::string> box{5};\n    std::cout << std::get<int>(box) << '\\n';\n    box = std::string{\"gear\"};\n    if (std::holds_alternative<std::string>(box)) {\n        std::cout << std::get<std::string>(box) << '\\n';\n    }\n    std::cout << box.index() << '\\n';\n}\n",
+   "stdout": "5\ngear\n1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g parsons_variant.cpp -o parsons_variant",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./parsons_variant",
+     "out": "5\ngear\n1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "5\ngear\n1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g parsons_variant.cpp -o parsons_variant",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./parsons_variant",
+      "out": "5\ngear\n1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "perms.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n\nnamespace perm {\nenum Flag : std::uint8_t {\n    read = 1 << 0,\n    write = 1 << 1,\n    run = 1 << 2,\n};\n}\n\nbool has(std::uint8_t set, perm::Flag f) {\n    return (set & f) != 0;\n}\n\nint main() {\n    std::uint8_t mine = perm::read | perm::write;\n    std::cout << \"can read:  \" << has(mine, perm::read) << '\\n';\n    std::cout << \"can run:   \" << has(mine, perm::run) << '\\n';\n    mine |= perm::run;\n    mine &= ~perm::write;\n    std::cout << \"can run:   \" << has(mine, perm::run) << '\\n';\n    std::cout << \"can write: \" << has(mine, perm::write) << '\\n';\n    std::cout << \"value:     \" << +mine << '\\n';\n}\n",
+   "stdout": "can read:  1\ncan run:   0\ncan run:   1\ncan write: 0\nvalue:     5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g perms.cpp -o perms",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./perms",
+     "out": "can read:  1\ncan run:   0\ncan run:   1\ncan write: 0\nvalue:     5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "can read:  1\ncan run:   0\ncan run:   1\ncan write: 0\nvalue:     5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g perms.cpp -o perms",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./perms",
+      "out": "can read:  1\ncan run:   0\ncan run:   1\ncan write: 0\nvalue:     5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "perms_class_bad.cpp": {
+   "src": "#include <cstdint>\n\nenum class Perm : std::uint8_t { read = 1, write = 2, run = 4 };\n\nint main() {\n    Perm mine{Perm::read | Perm::write};\n    return 0;\n}\n",
+   "stdout": "",
+   "stderr": "perms_class_bad.cpp: In function ‘int main()’:\nperms_class_bad.cpp:6:26: error: no match for ‘operator|’ (operand types are ‘Perm’ and ‘Perm’)\n    6 |     Perm mine{Perm::read | Perm::write};\n      |               ~~~~~~~~~~ ^ ~~~~~~~~~~~\n      |                     |            |\n      |                     Perm         Perm\nperms_class_bad.cpp:6:10: warning: unused variable ‘mine’ [-Wunused-variable]\n    6 |     Perm mine{Perm::read | Perm::write};\n      |          ^~~~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g perms_class_bad.cpp -o perms_class_bad",
+     "out": "",
+     "err": "perms_class_bad.cpp: In function ‘int main()’:\nperms_class_bad.cpp:6:26: error: no match for ‘operator|’ (operand types are ‘Perm’ and ‘Perm’)\n    6 |     Perm mine{Perm::read | Perm::write};\n      |               ~~~~~~~~~~ ^ ~~~~~~~~~~~\n      |                     |            |\n      |                     Perm         Perm\nperms_class_bad.cpp:6:10: warning: unused variable ‘mine’ [-Wunused-variable]\n    6 |     Perm mine{Perm::read | Perm::write};\n      |          ^~~~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "perms_class_bad.cpp:6:26: error: invalid operands to binary expression ('Perm' and 'Perm')\n    6 |     Perm mine{Perm::read | Perm::write};\n      |               ~~~~~~~~~~ ^ ~~~~~~~~~~~\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g perms_class_bad.cpp -o perms_class_bad",
+      "out": "",
+      "err": "perms_class_bad.cpp:6:26: error: invalid operands to binary expression ('Perm' and 'Perm')\n    6 |     Perm mine{Perm::read | Perm::write};\n      |               ~~~~~~~~~~ ^ ~~~~~~~~~~~\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "predict_float.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    double third{1.0 / 3.0};\n    std::cout << (0.1 + 0.2 == 0.3) << '\\n';\n    std::cout << (0.5 + 0.25 == 0.75) << '\\n';\n    std::cout << (third * 3.0 == 1.0) << '\\n';\n    std::cout << 7 / 2 << ' ' << 7 / 2.0 << '\\n';\n}\n",
+   "stdout": "0\n1\n1\n3 3.5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_float.cpp -o predict_float",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_float",
+     "out": "0\n1\n1\n3 3.5\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0\n1\n1\n3 3.5\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_float.cpp -o predict_float",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_float",
+      "out": "0\n1\n1\n3 3.5\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_mixed.cpp": {
+   "src": "#include <iostream>\n#include <utility>\n\nint main() {\n    int a{-2};\n    unsigned int b{3};\n    std::cout << (a < 5) << '\\n';\n    std::cout << (a < static_cast<int>(b)) << '\\n';\n    std::cout << (static_cast<unsigned int>(a) > b) << '\\n';\n    std::cout << std::cmp_greater(a, b) << '\\n';\n    std::cout << b - 4 << '\\n';\n}\n",
+   "stdout": "1\n1\n1\n0\n4294967295\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_mixed.cpp -o predict_mixed",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_mixed",
+     "out": "1\n1\n1\n0\n4294967295\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "1\n1\n1\n0\n4294967295\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_mixed.cpp -o predict_mixed",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_mixed",
+      "out": "1\n1\n1\n0\n4294967295\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_optional.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n#include <string>\n\nstd::optional<std::string> nickname(const std::string& name) {\n    if (name == \"Wren\") {\n        return \"Spanner\";\n    }\n    return {};\n}\n\nint main() {\n    std::cout << nickname(\"Wren\").value_or(\"none\") << '\\n';\n    std::cout << nickname(\"Ada\").value_or(\"none\") << '\\n';\n    std::optional<std::string> n{nickname(\"Ada\")};\n    n = \"Ace\";\n    std::cout << n.has_value() << ' ' << *n << '\\n';\n}\n",
+   "stdout": "Spanner\nnone\n1 Ace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_optional.cpp -o predict_optional",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_optional",
+     "out": "Spanner\nnone\n1 Ace\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "Spanner\nnone\n1 Ace\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_optional.cpp -o predict_optional",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_optional",
+      "out": "Spanner\nnone\n1 Ace\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_throw.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n#include <variant>\n\nint main() {\n    std::variant<int, double> size{9};\n    std::optional<int> spare{3};\n    std::cout << spare.value() << std::endl;\n    std::cout << std::get<double>(size) << std::endl;\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "3\n",
+   "stderr": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_throw.cpp -o predict_throw",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_throw",
+     "out": "3\n",
+     "err": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+     "exit": 134,
+     "merged": "3\nterminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n"
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "3\n",
+    "stderr": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_throw.cpp -o predict_throw",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_throw",
+      "out": "3\n",
+      "err": "terminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n",
+      "exit": 134,
+      "merged": "3\nterminate called after throwing an instance of 'std::bad_variant_access'\n  what():  std::get: wrong index for variant\nAborted\n"
+     }
+    ]
+   }
+  },
+  "predict_uint8.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n\nint main() {\n    std::uint8_t a{48};\n    std::uint8_t b{57};\n    std::cout << a << b << '\\n';\n    std::cout << a + 1 << '\\n';\n    std::cout << +b - a << '\\n';\n}\n",
+   "stdout": "09\n49\n9\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_uint8.cpp -o predict_uint8",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_uint8",
+     "out": "09\n49\n9\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "09\n49\n9\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_uint8.cpp -o predict_uint8",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_uint8",
+      "out": "09\n49\n9\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_variant.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nint main() {\n    std::variant<std::string, int, bool> v;\n    std::cout << v.index() << \" [\" << std::get<std::string>(v) << \"]\\n\";\n    v = 7;\n    std::cout << v.index() << '\\n';\n    v = true;\n    std::cout << v.index() << ' ' << std::holds_alternative<int>(v) << '\\n';\n    v = std::string{\"done\"};\n    std::cout << v.index() << ' ' << std::get<0>(v) << '\\n';\n}\n",
+   "stdout": "0 []\n1\n2 0\n0 done\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_variant.cpp -o predict_variant",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_variant",
+     "out": "0 []\n1\n2 0\n0 done\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0 []\n1\n2 0\n0 done\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_variant.cpp -o predict_variant",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_variant",
+      "out": "0 []\n1\n2 0\n0 done\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "predict_visit.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n#include <vector>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nint main() {\n    std::vector<Reading> log{7, std::string{\"hot\"}, 0.5, 3};\n    for (const Reading& r : log) {\n        std::visit(overloaded{\n            [](int n) { std::cout << \"I\" << n << ' '; },\n            [](double d) { std::cout << \"D\" << d << ' '; },\n            [](const std::string& s) { std::cout << \"S:\" << s << ' '; },\n        }, r);\n    }\n    std::cout << '\\n';\n}\n",
+   "stdout": "I7 S:hot D0.5 I3 \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g predict_visit.cpp -o predict_visit",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./predict_visit",
+     "out": "I7 S:hot D0.5 I3 \n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "I7 S:hot D0.5 I3 \n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g predict_visit.cpp -o predict_visit",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./predict_visit",
+      "out": "I7 S:hot D0.5 I3 \n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sign_compare.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    int temperature{-1};\n    unsigned int limit{1};\n    std::cout << \"-1 < 1u? \" << (temperature < limit) << '\\n';\n    std::cout << \"-1 as unsigned: \" << static_cast<unsigned int>(temperature) << '\\n';\n}\n",
+   "stdout": "-1 < 1u? 0\n-1 as unsigned: 4294967295\n",
+   "stderr": "sign_compare.cpp: In function ‘int main()’:\nsign_compare.cpp:6:46: warning: comparison of integer expressions of different signedness: ‘int’ and ‘unsigned int’ [-Wsign-compare]\n    6 |     std::cout << \"-1 < 1u? \" << (temperature < limit) << '\\n';\n      |                                  ~~~~~~~~~~~~^~~~~~~\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sign_compare.cpp -o sign_compare",
+     "out": "",
+     "err": "sign_compare.cpp: In function ‘int main()’:\nsign_compare.cpp:6:46: warning: comparison of integer expressions of different signedness: ‘int’ and ‘unsigned int’ [-Wsign-compare]\n    6 |     std::cout << \"-1 < 1u? \" << (temperature < limit) << '\\n';\n      |                                  ~~~~~~~~~~~~^~~~~~~\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./sign_compare",
+     "out": "-1 < 1u? 0\n-1 as unsigned: 4294967295\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "-1 < 1u? 0\n-1 as unsigned: 4294967295\n",
+    "stderr": "sign_compare.cpp:6:46: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     std::cout << \"-1 < 1u? \" << (temperature < limit) << '\\n';\n      |                                  ~~~~~~~~~~~ ^ ~~~~~\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sign_compare.cpp -o sign_compare",
+      "out": "",
+      "err": "sign_compare.cpp:6:46: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     std::cout << \"-1 < 1u? \" << (temperature < limit) << '\\n';\n      |                                  ~~~~~~~~~~~ ^ ~~~~~\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./sign_compare",
+      "out": "-1 < 1u? 0\n-1 as unsigned: 4294967295\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "sizes.cpp": {
+   "src": "#include <cstddef>\n#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::cout << std::format(\"{:<14}{} byte\\n\", \"char\", sizeof(char));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"short\", sizeof(short));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"int\", sizeof(int));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"long\", sizeof(long));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"long long\", sizeof(long long));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"std::size_t\", sizeof(std::size_t));\n    std::cout << std::format(\"{:<14}{} byte\\n\", \"std::uint8_t\", sizeof(std::uint8_t));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"std::int16_t\", sizeof(std::int16_t));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"std::int32_t\", sizeof(std::int32_t));\n    std::cout << std::format(\"{:<14}{} bytes\\n\", \"std::int64_t\", sizeof(std::int64_t));\n}\n",
+   "stdout": "char          1 byte\nshort         2 bytes\nint           4 bytes\nlong          8 bytes\nlong long     8 bytes\nstd::size_t   8 bytes\nstd::uint8_t  1 byte\nstd::int16_t  2 bytes\nstd::int32_t  4 bytes\nstd::int64_t  8 bytes\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g sizes.cpp -o sizes",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./sizes",
+     "out": "char          1 byte\nshort         2 bytes\nint           4 bytes\nlong          8 bytes\nlong long     8 bytes\nstd::size_t   8 bytes\nstd::uint8_t  1 byte\nstd::int16_t  2 bytes\nstd::int32_t  4 bytes\nstd::int64_t  8 bytes\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "char          1 byte\nshort         2 bytes\nint           4 bytes\nlong          8 bytes\nlong long     8 bytes\nstd::size_t   8 bytes\nstd::uint8_t  1 byte\nstd::int16_t  2 bytes\nstd::int32_t  4 bytes\nstd::int64_t  8 bytes\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g sizes.cpp -o sizes",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./sizes",
+      "out": "char          1 byte\nshort         2 bytes\nint           4 bytes\nlong          8 bytes\nlong long     8 bytes\nstd::size_t   8 bytes\nstd::uint8_t  1 byte\nstd::int16_t  2 bytes\nstd::int32_t  4 bytes\nstd::int64_t  8 bytes\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_deref.cpp": {
+   "src": "#include <iostream>\n#include <optional>\n#include <string>\n\nstd::optional<int> parse_digit(char c) {\n    if (c >= '0' && c <= '9') {\n        return c - '0';\n    }\n    return std::nullopt;\n}\n\nint main() {\n    std::string code{\"7x\"};\n    int first{parse_digit(code[0]).value_or(0)};\n    int second{*parse_digit(code[1])};\n    std::cout << first + second << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "/usr/include/c++/13/optional:479: constexpr _Tp& std::_Optional_base_impl<_Tp, _Dp>::_M_get() [with _Tp = int; _Dp = std::_Optional_base<int, true, true>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+   "exit": 134,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS spot_deref.cpp -o spot_deref",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_deref",
+     "out": "",
+     "err": "/usr/include/c++/13/optional:479: constexpr _Tp& std::_Optional_base_impl<_Tp, _Dp>::_M_get() [with _Tp = int; _Dp = std::_Optional_base<int, true, true>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+     "exit": 134
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/optional:479: _Tp &std::_Optional_base_impl<int, std::_Optional_base<int>>::_M_get() [_Tp = int, _Dp = std::_Optional_base<int>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+    "exit": 134,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g -D_GLIBCXX_ASSERTIONS spot_deref.cpp -o spot_deref",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_deref",
+      "out": "",
+      "err": "/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/optional:479: _Tp &std::_Optional_base_impl<int, std::_Optional_base<int>>::_M_get() [_Tp = int, _Dp = std::_Optional_base<int>]: Assertion 'this->_M_is_engaged()' failed.\nAborted\n",
+      "exit": 134
+     }
+    ]
+   }
+  },
+  "spot_float.cpp": {
+   "src": "#include <format>\n#include <iostream>\n\nint main() {\n    double tank{0.0};\n    for (int i{0}; i < 10; ++i) {\n        tank += 0.1;\n    }\n    if (tank == 1.0) {\n        std::cout << \"tank full\\n\";\n    } else {\n        std::cout << std::format(\"tank not full?! it holds {}\\n\", tank);\n    }\n}\n",
+   "stdout": "tank not full?! it holds 0.9999999999999999\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_float.cpp -o spot_float",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_float",
+     "out": "tank not full?! it holds 0.9999999999999999\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "tank not full?! it holds 0.9999999999999999\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_float.cpp -o spot_float",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_float",
+      "out": "tank not full?! it holds 0.9999999999999999\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "spot_visit.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](const std::string& s) { std::cout << \"note: \" << s << '\\n'; },\n    }, r);\n}\n\nint main() {\n    report(12);\n    report(2.5);\n    report(std::string{\"low oil\"});\n}\n",
+   "stdout": "count: 12 bolts\ncount: 2 bolts\nnote: low oil\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g spot_visit.cpp -o spot_visit",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./spot_visit",
+     "out": "count: 12 bolts\ncount: 2 bolts\nnote: low oil\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "count: 12 bolts\ncount: 2 bolts\nnote: low oil\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g spot_visit.cpp -o spot_visit",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./spot_visit",
+      "out": "count: 12 bolts\ncount: 2 bolts\nnote: low oil\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "switch_warn.cpp": {
+   "src": "#include <iostream>\n#include <string_view>\n\nenum class Light { off, dim, bright };\n\nstd::string_view to_string(Light l) {\n    switch (l) {\n        case Light::off: return \"off\";\n        case Light::dim: return \"dim\";\n    }\n    return \"?\";\n}\n\nint main() {\n    std::cout << to_string(Light::bright) << '\\n';\n}\n",
+   "stdout": "?\n",
+   "stderr": "switch_warn.cpp: In function ‘std::string_view to_string(Light)’:\nswitch_warn.cpp:7:12: warning: enumeration value ‘bright’ not handled in switch [-Wswitch]\n    7 |     switch (l) {\n      |            ^\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g switch_warn.cpp -o switch_warn",
+     "out": "",
+     "err": "switch_warn.cpp: In function ‘std::string_view to_string(Light)’:\nswitch_warn.cpp:7:12: warning: enumeration value ‘bright’ not handled in switch [-Wswitch]\n    7 |     switch (l) {\n      |            ^\n",
+     "exit": 0
+    },
+    {
+     "cmd": "./switch_warn",
+     "out": "?\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "?\n",
+    "stderr": "switch_warn.cpp:7:13: warning: enumeration value 'bright' not handled in switch [-Wswitch]\n    7 |     switch (l) {\n      |             ^\n1 warning generated.\n",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g switch_warn.cpp -o switch_warn",
+      "out": "",
+      "err": "switch_warn.cpp:7:13: warning: enumeration value 'bright' not handled in switch [-Wswitch]\n    7 |     switch (l) {\n      |             ^\n1 warning generated.\n",
+      "exit": 0
+     },
+     {
+      "cmd": "./switch_warn",
+      "out": "?\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_enum.cpp": {
+   "src": "#include <cstdint>\n#include <iostream>\n#include <string_view>\n\nenum class Level : std::uint8_t { calm = 10, busy = 20, frantic = 40 };\n\nstd::string_view name(Level l) {\n    switch (l) {\n        case Level::calm: return \"calm\";\n        case Level::busy: return \"busy\";\n        case Level::frantic: return \"frantic\";\n    }\n    return \"?\";\n}\n\nint main() {\n    for (Level l : {Level::calm, Level::busy, Level::frantic}) {\n        int n{static_cast<int>(l)};\n        std::cout << name(l) << ' ' << n << ' ' << n / 10 << '\\n';\n    }\n}\n",
+   "stdout": "calm 10 1\nbusy 20 2\nfrantic 40 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_enum.cpp -o trace_enum",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_enum",
+     "out": "calm 10 1\nbusy 20 2\nfrantic 40 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "calm 10 1\nbusy 20 2\nfrantic 40 4\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_enum.cpp -o trace_enum",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_enum",
+      "out": "calm 10 1\nbusy 20 2\nfrantic 40 4\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "trace_shift.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    unsigned int value{22};\n    for (int i{0}; i < 5; ++i) {\n        unsigned int mask{1u << i};\n        unsigned int bit{(value >> i) & 1u};\n        std::cout << i << ' ' << mask << ' ' << bit << '\\n';\n    }\n}\n",
+   "stdout": "0 1 0\n1 2 1\n2 4 1\n3 8 0\n4 16 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g trace_shift.cpp -o trace_shift",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./trace_shift",
+     "out": "0 1 0\n1 2 1\n2 4 1\n3 8 0\n4 16 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "0 1 0\n1 2 1\n2 4 1\n3 8 0\n4 16 1\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g trace_shift.cpp -o trace_shift",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./trace_shift",
+      "out": "0 1 0\n1 2 1\n2 4 1\n3 8 0\n4 16 1\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "uint8_char.cpp": {
+   "src": "#include <cstdint>\n#include <format>\n#include <iostream>\n\nint main() {\n    std::uint8_t level{65};\n    std::cout << \"cout:   \" << level << '\\n';\n    std::cout << \"plus:   \" << +level << '\\n';\n    std::cout << \"cast:   \" << static_cast<int>(level) << '\\n';\n    std::cout << std::format(\"format: {}\\n\", level);\n}\n",
+   "stdout": "cout:   A\nplus:   65\ncast:   65\nformat: 65\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g uint8_char.cpp -o uint8_char",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./uint8_char",
+     "out": "cout:   A\nplus:   65\ncast:   65\nformat: 65\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "cout:   A\nplus:   65\ncast:   65\nformat: 65\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g uint8_char.cpp -o uint8_char",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./uint8_char",
+      "out": "cout:   A\nplus:   65\ncast:   65\nformat: 65\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "variant_basics.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\nint main() {\n    std::variant<int, double, std::string> toy;\n    std::cout << \"index \" << toy.index() << \", int \" << std::get<int>(toy) << '\\n';\n    toy = 2.5;\n    std::cout << \"index \" << toy.index() << \", double \" << std::get<double>(toy) << '\\n';\n    toy = std::string{\"robot\"};\n    std::cout << \"index \" << toy.index() << \", string \" << std::get<std::string>(toy) << '\\n';\n    std::cout << \"holds a double? \" << std::holds_alternative<double>(toy) << '\\n';\n    std::cout << \"by number: \" << std::get<2>(toy) << '\\n';\n}\n",
+   "stdout": "index 0, int 0\nindex 1, double 2.5\nindex 2, string robot\nholds a double? 0\nby number: robot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g variant_basics.cpp -o variant_basics",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./variant_basics",
+     "out": "index 0, int 0\nindex 1, double 2.5\nindex 2, string robot\nholds a double? 0\nby number: robot\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "index 0, int 0\nindex 1, double 2.5\nindex 2, string robot\nholds a double? 0\nby number: robot\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g variant_basics.cpp -o variant_basics",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./variant_basics",
+      "out": "index 0, int 0\nindex 1, double 2.5\nindex 2, string robot\nholds a double? 0\nby number: robot\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "visit_all.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](double d) { std::cout << \"weight: \" << d << \" kg\\n\"; },\n        [](const std::string& s) { std::cout << \"note: \" << s << '\\n'; },\n    }, r);\n}\n\nint main() {\n    report(12);\n    report(2.5);\n    report(std::string{\"low oil\"});\n}\n",
+   "stdout": "count: 12 bolts\nweight: 2.5 kg\nnote: low oil\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g visit_all.cpp -o visit_all",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./visit_all",
+     "out": "count: 12 bolts\nweight: 2.5 kg\nnote: low oil\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "count: 12 bolts\nweight: 2.5 kg\nnote: low oil\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g visit_all.cpp -o visit_all",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./visit_all",
+      "out": "count: 12 bolts\nweight: 2.5 kg\nnote: low oil\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "visit_double.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](double d) { std::cout << \"weight: \" << d << \" kg\\n\"; },\n        [](const std::string& s) { std::cout << \"note: \" << s << '\\n'; },\n    }, r);\n}\n\nint main() {\n    std::cout << \"gauge says...\\n\";\n    report(2.5);\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "gauge says...\nweight: 2.5 kg\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g visit_double.cpp -o visit_double",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./visit_double",
+     "out": "gauge says...\nweight: 2.5 kg\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gauge says...\nweight: 2.5 kg\ndone\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g visit_double.cpp -o visit_double",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./visit_double",
+      "out": "gauge says...\nweight: 2.5 kg\ndone\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "visit_int.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](double d) { std::cout << \"weight: \" << d << \" kg\\n\"; },\n        [](const std::string& s) { std::cout << \"note: \" << s << '\\n'; },\n    }, r);\n}\n\nint main() {\n    std::cout << \"gauge says...\\n\";\n    report(12);\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "gauge says...\ncount: 12 bolts\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g visit_int.cpp -o visit_int",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./visit_int",
+     "out": "gauge says...\ncount: 12 bolts\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gauge says...\ncount: 12 bolts\ndone\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g visit_int.cpp -o visit_int",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./visit_int",
+      "out": "gauge says...\ncount: 12 bolts\ndone\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "visit_nostring.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](double d) { std::cout << \"weight: \" << d << \" kg\\n\"; },\n    }, r);\n}\n\nint main() {\n    report(12);\n}\n",
+   "stdout": "",
+   "stderr": "In file included from /usr/include/c++/13/bits/move.h:37,\n                 from /usr/include/c++/13/bits/exception_ptr.h:41,\n                 from /usr/include/c++/13/exception:164,\n                 from /usr/include/c++/13/ios:41,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from visit_nostring.cpp:1:\n/usr/include/c++/13/type_traits: In substitution of ‘template<class _Fn, class ... _Args> using std::invoke_result_t = typename std::invoke_result::type [with _Fn = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Args = {const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&}]’:\n/usr/include/c++/13/variant:1131:14:   required from ‘constexpr bool std::__detail::__variant::__check_visitor_results(std::index_sequence<_Idx ...>) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variant = const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&; long unsigned int ..._Idxs = {0, 1, 2}; std::index_sequence<_Idx ...> = std::integer_sequence<long unsigned int, 0, 1, 2>]’\n/usr/include/c++/13/variant:1868:44:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/type_traits:3073:11: error: no type named ‘type’ in ‘struct std::invoke_result<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>’\n 3073 |     using invoke_result_t = typename invoke_result<_Fn, _Args...>::type;\n      |           ^~~~~~~~~~~~~~~\nIn file included from visit_nostring.cpp:3:\n/usr/include/c++/13/variant: In instantiation of ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’:\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/variant:1868:44:   in ‘constexpr’ expansion of ‘std::__detail::__variant::__check_visitor_results<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&, 0, 1, 2>((std::make_index_sequence<3>(), std::make_index_sequence<3>()))’\n/usr/include/c++/13/variant:1867:26: error: ‘constexpr’ call flows off the end of the function\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/variant:1872:29: error: non-constant condition for static assertion\n 1872 |               static_assert(__visit_rettypes_match,\n      |                             ^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/variant: In instantiation of ‘static constexpr decltype(auto) std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<_Result_type (*)(_Visitor, _Variants ...)>, std::integer_sequence<long unsigned int, __indices ...> >::__visit_invoke(_Visitor&&, _Variants ...) [with _Result_type = std::__detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >&&; _Variants = {const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&}; long unsigned int ...__indices = {2}]’:\n/usr/include/c++/13/variant:1817:5:   required from ‘constexpr decltype(auto) std::__do_visit(_Visitor&&, _Variants&& ...) [with _Result_type = __detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}]’\n/usr/include/c++/13/variant:1878:34:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/variant:1060:31: error: no matching function for call to ‘__invoke(overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char>&)’\n 1060 |           return std::__invoke(std::forward<_Visitor>(__visitor),\n      |                  ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1061 |               __element_by_index_or_cookie<__indices>(\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1062 |                 std::forward<_Variants>(__vars))...);\n      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from /usr/include/c++/13/bits/refwrap.h:38,\n                 from /usr/include/c++/13/string:52,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44:\n/usr/include/c++/13/bits/invoke.h:90:5: note: candidate: ‘template<class _Callable, class ... _Args> constexpr typename std::__invoke_result<_Functor, _ArgTypes>::type std::__invoke(_Callable&&, _Args&& ...)’\n   90 |     __invoke(_Callable&& __fn, _Args&&... __args)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/invoke.h:90:5: note:   template argument deduction/substitution failed:\n/usr/include/c++/13/bits/invoke.h: In substitution of ‘template<class _Callable, class ... _Args> constexpr typename std::__invoke_result<_Functor, _ArgTypes>::type std::__invoke(_Callable&&, _Args&& ...) [with _Callable = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Args = {const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&}]’:\n/usr/include/c++/13/variant:1060:24:   required from ‘static constexpr decltype(auto) std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<_Result_type (*)(_Visitor, _Variants ...)>, std::integer_sequence<long unsigned int, __indices ...> >::__visit_invoke(_Visitor&&, _Variants ...) [with _Result_type = std::__detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >&&; _Variants = {const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&}; long unsigned int ...__indices = {2}]’\n/usr/include/c++/13/variant:1817:5:   required from ‘constexpr decltype(auto) std::__do_visit(_Visitor&&, _Variants&& ...) [with _Result_type = __detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}]’\n/usr/include/c++/13/variant:1878:34:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/bits/invoke.h:90:5: error: no type named ‘type’ in ‘struct std::__invoke_result<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>’\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g visit_nostring.cpp -o visit_nostring",
+     "out": "",
+     "err": "In file included from /usr/include/c++/13/bits/move.h:37,\n                 from /usr/include/c++/13/bits/exception_ptr.h:41,\n                 from /usr/include/c++/13/exception:164,\n                 from /usr/include/c++/13/ios:41,\n                 from /usr/include/c++/13/ostream:40,\n                 from /usr/include/c++/13/iostream:41,\n                 from visit_nostring.cpp:1:\n/usr/include/c++/13/type_traits: In substitution of ‘template<class _Fn, class ... _Args> using std::invoke_result_t = typename std::invoke_result::type [with _Fn = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Args = {const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&}]’:\n/usr/include/c++/13/variant:1131:14:   required from ‘constexpr bool std::__detail::__variant::__check_visitor_results(std::index_sequence<_Idx ...>) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variant = const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&; long unsigned int ..._Idxs = {0, 1, 2}; std::index_sequence<_Idx ...> = std::integer_sequence<long unsigned int, 0, 1, 2>]’\n/usr/include/c++/13/variant:1868:44:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/type_traits:3073:11: error: no type named ‘type’ in ‘struct std::invoke_result<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>’\n 3073 |     using invoke_result_t = typename invoke_result<_Fn, _Args...>::type;\n      |           ^~~~~~~~~~~~~~~\nIn file included from visit_nostring.cpp:3:\n/usr/include/c++/13/variant: In instantiation of ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’:\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/variant:1868:44:   in ‘constexpr’ expansion of ‘std::__detail::__variant::__check_visitor_results<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&, 0, 1, 2>((std::make_index_sequence<3>(), std::make_index_sequence<3>()))’\n/usr/include/c++/13/variant:1867:26: error: ‘constexpr’ call flows off the end of the function\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/variant:1872:29: error: non-constant condition for static assertion\n 1872 |               static_assert(__visit_rettypes_match,\n      |                             ^~~~~~~~~~~~~~~~~~~~~~\n/usr/include/c++/13/variant: In instantiation of ‘static constexpr decltype(auto) std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<_Result_type (*)(_Visitor, _Variants ...)>, std::integer_sequence<long unsigned int, __indices ...> >::__visit_invoke(_Visitor&&, _Variants ...) [with _Result_type = std::__detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >&&; _Variants = {const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&}; long unsigned int ...__indices = {2}]’:\n/usr/include/c++/13/variant:1817:5:   required from ‘constexpr decltype(auto) std::__do_visit(_Visitor&&, _Variants&& ...) [with _Result_type = __detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}]’\n/usr/include/c++/13/variant:1878:34:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/variant:1060:31: error: no matching function for call to ‘__invoke(overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char>&)’\n 1060 |           return std::__invoke(std::forward<_Visitor>(__visitor),\n      |                  ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1061 |               __element_by_index_or_cookie<__indices>(\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1062 |                 std::forward<_Variants>(__vars))...);\n      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from /usr/include/c++/13/bits/refwrap.h:38,\n                 from /usr/include/c++/13/string:52,\n                 from /usr/include/c++/13/bits/locale_classes.h:40,\n                 from /usr/include/c++/13/bits/ios_base.h:41,\n                 from /usr/include/c++/13/ios:44:\n/usr/include/c++/13/bits/invoke.h:90:5: note: candidate: ‘template<class _Callable, class ... _Args> constexpr typename std::__invoke_result<_Functor, _ArgTypes>::type std::__invoke(_Callable&&, _Args&& ...)’\n   90 |     __invoke(_Callable&& __fn, _Args&&... __args)\n      |     ^~~~~~~~\n/usr/include/c++/13/bits/invoke.h:90:5: note:   template argument deduction/substitution failed:\n/usr/include/c++/13/bits/invoke.h: In substitution of ‘template<class _Callable, class ... _Args> constexpr typename std::__invoke_result<_Functor, _ArgTypes>::type std::__invoke(_Callable&&, _Args&& ...) [with _Callable = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Args = {const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&}]’:\n/usr/include/c++/13/variant:1060:24:   required from ‘static constexpr decltype(auto) std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<_Result_type (*)(_Visitor, _Variants ...)>, std::integer_sequence<long unsigned int, __indices ...> >::__visit_invoke(_Visitor&&, _Variants ...) [with _Result_type = std::__detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >&&; _Variants = {const std::variant<int, double, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&}; long unsigned int ...__indices = {2}]’\n/usr/include/c++/13/variant:1817:5:   required from ‘constexpr decltype(auto) std::__do_visit(_Visitor&&, _Variants&& ...) [with _Result_type = __detail::__variant::__deduce_visit_result<void>; _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}]’\n/usr/include/c++/13/variant:1878:34:   required from ‘constexpr std::__detail::__variant::__visit_result_t<_Visitor, _Variants ...> std::visit(_Visitor&&, _Variants&& ...) [with _Visitor = overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >; _Variants = {const variant<int, double, __cxx11::basic_string<char, char_traits<char>, allocator<char> > >&}; __detail::__variant::__visit_result_t<_Visitor, _Variants ...> = void]’\nvisit_nostring.cpp:10:15:   required from here\n/usr/include/c++/13/bits/invoke.h:90:5: error: no type named ‘type’ in ‘struct std::__invoke_result<overloaded<report(const Reading&)::<lambda(int)>, report(const Reading&)::<lambda(double)> >, const std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>’\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "In file included from visit_nostring.cpp:1:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:40:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ios:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/exception:164:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/exception_ptr.h:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/move.h:37:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/type_traits:3073:5: error: no type named 'type' in 'std::invoke_result<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::basic_string<char> &>'\n 3073 |     using invoke_result_t = typename invoke_result<_Fn, _Args...>::type;\n      |     ^~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1132:2: note: in instantiation of template type alias 'invoke_result_t' requested here\n 1132 |         invoke_result_t<_Visitor, __get_t<_Idxs, _Variant>>...\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1868:6: note: in instantiation of function template specialization 'std::__detail::__variant::__check_visitor_results<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &, 0UL, 1UL, 2UL>' requested here\n 1868 |             __check_visitor_results<_Visitor, _Vp>(\n      |             ^\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\nIn file included from visit_nostring.cpp:3:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:44: error: constexpr variable '__visit_rettypes_match' must be initialized by a constant expression\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                                                   ^~~~~~~~~~~~~~~~~~~~~\n 1868 |             __check_visitor_results<_Visitor, _Vp>(\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1869 |               make_index_sequence<variant_size_v<remove_reference_t<_Vp>>>());\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\nIn file included from visit_nostring.cpp:3:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1870:18: error: constexpr if condition is not a constant expression\n 1870 |           if constexpr (!__visit_rettypes_match)\n      |                         ^~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1870:19: note: initializer of '__visit_rettypes_match' is not a constant expression\n 1870 |           if constexpr (!__visit_rettypes_match)\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:19: note: declared here\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1872:22: error: static assertion expression is not an integral constant expression\n 1872 |               static_assert(__visit_rettypes_match,\n      |                             ^~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1872:22: note: initializer of '__visit_rettypes_match' is not a constant expression\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:19: note: declared here\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1060:11: error: no matching function for call to '__invoke'\n 1060 |           return std::__invoke(std::forward<_Visitor>(__visitor),\n      |                  ^~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1817:5: note: in instantiation of member function 'std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<std::__detail::__variant::__deduce_visit_result<void> (*)(overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)> &&, const std::variant<int, double, std::basic_string<char>> &)>, std::integer_sequence<unsigned long, 2>>::__visit_invoke' requested here\n 1817 |                   _GLIBCXX_VISIT_CASE(2)\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1807:4: note: expanded from macro '_GLIBCXX_VISIT_CASE'\n 1807 |           __visit_invoke(std::forward<_Visitor>(__visitor),             \\\n      |           ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1878:18: note: in instantiation of function template specialization 'std::__do_visit<std::__detail::__variant::__deduce_visit_result<void>, overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n 1878 |             return std::__do_visit<_Tag>(\n      |                         ^\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/invoke.h:90:5: note: candidate template ignored: substitution failure [with _Callable = overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, _Args = <const std::basic_string<char> &>]: no type named 'type' in 'std::__invoke_result<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::basic_string<char> &>'\n   89 |     constexpr typename __invoke_result<_Callable, _Args...>::type\n      |                                                              ~~~~\n   90 |     __invoke(_Callable&& __fn, _Args&&... __args)\n      |     ^\n5 errors generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g visit_nostring.cpp -o visit_nostring",
+      "out": "",
+      "err": "In file included from visit_nostring.cpp:1:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/iostream:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ostream:40:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/ios:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/exception:164:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/exception_ptr.h:41:\nIn file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/move.h:37:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/type_traits:3073:5: error: no type named 'type' in 'std::invoke_result<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::basic_string<char> &>'\n 3073 |     using invoke_result_t = typename invoke_result<_Fn, _Args...>::type;\n      |     ^~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1132:2: note: in instantiation of template type alias 'invoke_result_t' requested here\n 1132 |         invoke_result_t<_Visitor, __get_t<_Idxs, _Variant>>...\n      |         ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1868:6: note: in instantiation of function template specialization 'std::__detail::__variant::__check_visitor_results<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &, 0UL, 1UL, 2UL>' requested here\n 1868 |             __check_visitor_results<_Visitor, _Vp>(\n      |             ^\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\nIn file included from visit_nostring.cpp:3:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:44: error: constexpr variable '__visit_rettypes_match' must be initialized by a constant expression\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                                                   ^~~~~~~~~~~~~~~~~~~~~\n 1868 |             __check_visitor_results<_Visitor, _Vp>(\n      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n 1869 |               make_index_sequence<variant_size_v<remove_reference_t<_Vp>>>());\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\nIn file included from visit_nostring.cpp:3:\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1870:18: error: constexpr if condition is not a constant expression\n 1870 |           if constexpr (!__visit_rettypes_match)\n      |                         ^~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1870:19: note: initializer of '__visit_rettypes_match' is not a constant expression\n 1870 |           if constexpr (!__visit_rettypes_match)\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:19: note: declared here\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1872:22: error: static assertion expression is not an integral constant expression\n 1872 |               static_assert(__visit_rettypes_match,\n      |                             ^~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1872:22: note: initializer of '__visit_rettypes_match' is not a constant expression\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1867:19: note: declared here\n 1867 |           constexpr bool __visit_rettypes_match = __detail::__variant::\n      |                          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1060:11: error: no matching function for call to '__invoke'\n 1060 |           return std::__invoke(std::forward<_Visitor>(__visitor),\n      |                  ^~~~~~~~~~~~~\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1817:5: note: in instantiation of member function 'std::__detail::__variant::__gen_vtable_impl<std::__detail::__variant::_Multi_array<std::__detail::__variant::__deduce_visit_result<void> (*)(overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)> &&, const std::variant<int, double, std::basic_string<char>> &)>, std::integer_sequence<unsigned long, 2>>::__visit_invoke' requested here\n 1817 |                   _GLIBCXX_VISIT_CASE(2)\n      |                   ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1807:4: note: expanded from macro '_GLIBCXX_VISIT_CASE'\n 1807 |           __visit_invoke(std::forward<_Visitor>(__visitor),             \\\n      |           ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/variant:1878:18: note: in instantiation of function template specialization 'std::__do_visit<std::__detail::__variant::__deduce_visit_result<void>, overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n 1878 |             return std::__do_visit<_Tag>(\n      |                         ^\nvisit_nostring.cpp:10:10: note: in instantiation of function template specialization 'std::visit<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::variant<int, double, std::basic_string<char>> &>' requested here\n   10 |     std::visit(overloaded{\n      |          ^\n/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/invoke.h:90:5: note: candidate template ignored: substitution failure [with _Callable = overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, _Args = <const std::basic_string<char> &>]: no type named 'type' in 'std::__invoke_result<overloaded<(lambda at visit_nostring.cpp:11:9), (lambda at visit_nostring.cpp:12:9)>, const std::basic_string<char> &>'\n   89 |     constexpr typename __invoke_result<_Callable, _Args...>::type\n      |                                                              ~~~~\n   90 |     __invoke(_Callable&& __fn, _Args&&... __args)\n      |     ^\n5 errors generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "visit_string.cpp": {
+   "src": "#include <iostream>\n#include <string>\n#include <variant>\n\ntemplate <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };\n\nusing Reading = std::variant<int, double, std::string>;\n\nvoid report(const Reading& r) {\n    std::visit(overloaded{\n        [](int n) { std::cout << \"count: \" << n << \" bolts\\n\"; },\n        [](double d) { std::cout << \"weight: \" << d << \" kg\\n\"; },\n        [](const std::string& s) { std::cout << \"note: \" << s << '\\n'; },\n    }, r);\n}\n\nint main() {\n    std::cout << \"gauge says...\\n\";\n    report(std::string{\"low oil\"});\n    std::cout << \"done\\n\";\n}\n",
+   "stdout": "gauge says...\nnote: low oil\ndone\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g visit_string.cpp -o visit_string",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./visit_string",
+     "out": "gauge says...\nnote: low oil\ndone\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "gauge says...\nnote: low oil\ndone\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g visit_string.cpp -o visit_string",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./visit_string",
+      "out": "gauge says...\nnote: low oil\ndone\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "wrap.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    unsigned int u = -1;\n    std::cout << \"u = \" << u << '\\n';\n    std::cout << \"u + 1 = \" << u + 1 << '\\n';\n    unsigned int stock{2};\n    unsigned int sold{3};\n    std::cout << \"stock - sold = \" << stock - sold << '\\n';\n}\n",
+   "stdout": "u = 4294967295\nu + 1 = 0\nstock - sold = 4294967295\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g wrap.cpp -o wrap",
+     "out": "",
+     "err": "",
+     "exit": 0
+    },
+    {
+     "cmd": "./wrap",
+     "out": "u = 4294967295\nu + 1 = 0\nstock - sold = 4294967295\n",
+     "err": "",
+     "exit": 0
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "u = 4294967295\nu + 1 = 0\nstock - sold = 4294967295\n",
+    "stderr": "",
+    "exit": 0,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g wrap.cpp -o wrap",
+      "out": "",
+      "err": "",
+      "exit": 0
+     },
+     {
+      "cmd": "./wrap",
+      "out": "u = 4294967295\nu + 1 = 0\nstock - sold = 4294967295\n",
+      "err": "",
+      "exit": 0
+     }
+    ]
+   }
+  },
+  "wrap_braces.cpp": {
+   "src": "#include <iostream>\n\nint main() {\n    unsigned int u{-1};\n    std::cout << \"u = \" << u << '\\n';\n}\n",
+   "stdout": "",
+   "stderr": "wrap_braces.cpp: In function ‘int main()’:\nwrap_braces.cpp:4:20: error: narrowing conversion of ‘-1’ from ‘int’ to ‘unsigned int’ [-Wnarrowing]\n    4 |     unsigned int u{-1};\n      |                    ^~\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "g++ -std=c++23 -Wall -Wextra -g wrap_braces.cpp -o wrap_braces",
+     "out": "",
+     "err": "wrap_braces.cpp: In function ‘int main()’:\nwrap_braces.cpp:4:20: error: narrowing conversion of ‘-1’ from ‘int’ to ‘unsigned int’ [-Wnarrowing]\n    4 |     unsigned int u{-1};\n      |                    ^~\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "clang++ 18.1 (-std=c++23)",
+    "stdout": "",
+    "stderr": "wrap_braces.cpp:4:20: error: constant expression evaluates to -1 which cannot be narrowed to type 'unsigned int' [-Wc++11-narrowing]\n    4 |     unsigned int u{-1};\n      |                    ^~\nwrap_braces.cpp:4:20: note: insert an explicit cast to silence this issue\n    4 |     unsigned int u{-1};\n      |                    ^~\n      |                    static_cast<unsigned int>( )\n1 error generated.\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "clang++ -std=c++23 -Wall -Wextra -g wrap_braces.cpp -o wrap_braces",
+      "out": "",
+      "err": "wrap_braces.cpp:4:20: error: constant expression evaluates to -1 which cannot be narrowed to type 'unsigned int' [-Wc++11-narrowing]\n    4 |     unsigned int u{-1};\n      |                    ^~\nwrap_braces.cpp:4:20: note: insert an explicit cast to silence this issue\n    4 |     unsigned int u{-1};\n      |                    ^~\n      |                    static_cast<unsigned int>( )\n1 error generated.\n",
+      "exit": 1
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

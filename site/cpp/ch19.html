@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Baked Before the Party</title>
+<meta name="description" content="Chapter 19 of the Pip &amp; Friends C++ book, a comic course: const correctness everywhere (variables, parameters, member functions, pointers to const and const pointers), constexpr variables and functions, constant expressions, consteval, static_assert with messages, a first look at if constexpr, the as-if rule, then auto and its rules (it drops top-level const and references), auto&amp; and const auto&amp;, decltype, using aliases, class template argument deduction, std::pair, std::tuple, std::tie, structured bindings and the std::vector&lt;bool&gt; surprise.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch19.css">
+<script defer src="../data/cpp-ch19.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch18.html">&larr; Ch 18</a><span aria-current="page">Ch 19 of 29</span><a href="ch20.html">Ch 20 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 19</p>
+    <h1 id="cover-h">BAKED BEFORE THE PARTY</h1>
+    <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello with her wrench.</p>
+    <p class="caption blurb">The workshop is throwing a party, and Wren has a rule for the kitchen: <b>anything that can be done before the guests arrive, gets done before the guests arrive</b>. In C++ that rule has names. <code>const</code> seals a box so nobody can change it. <code>constexpr</code> and <code>consteval</code> ask the Compiler to <b>bake</b> a value while building, so the running program just serves it. <code>static_assert</code> checks the cake before the party starts. Then the second half of the kitchen: <code>auto</code>, a label-maker that reads a box and prints its type (but peels off some stickers), nicknames for long types, and lunchboxes that pack two or three values together: <code>std::pair</code>, <code>std::tuple</code> and structured bindings. About 120 minutes, with 27 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Sealed boxes: const on variables, parameters, member functions and pointers</a></li>
+      <li><a href="#part-2">Baked before the party: constant expressions, constexpr variables and functions</a></li>
+      <li><a href="#part-3">Checked before the doors open: consteval, static_assert, if constexpr and the map of when things run</a></li>
+      <li><a href="#part-4">The label-maker: auto, auto&amp;, const auto&amp;, decltype and when not to use auto</a></li>
+      <li><a href="#part-5">Nicknames and lunchboxes: using aliases, CTAD, pair, tuple, tie and structured bindings</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · SEALED BOXES<small>const correctness: variables, parameters, member functions and pointers</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: a sealed box can't be opened">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="SEALED!" data-seed="1"></svg>
+    <p class="caption">Chapter 3 gave you the first tool: a <code>const</code> box is <b>sealed</b> the moment it's made. Wren writes the guest count on the cake order and seals it. Then, two lines later, somebody tries to change it.</p>
+    <span class="file-tab">sealed.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sealed.cpp"></pre>
+      <pre class="term" data-run="sealed.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>"Nothing runs until everything checks out." Line 4 sealed <code>guests</code>. Line 6 tries to write into it. I stop the build, so <b>no program is made</b> and not even the first line prints. A sealed box stays sealed.</p></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>Last line first:</b> the caret line points under the <code>=</code> of <code>guests = 13;</code>.</span></li>
+      <li><span><b>Where:</b> <code>sealed.cpp:6:12</code>, line 6, column 12, inside <code>int main()</code>.</span></li>
+      <li><span><b>What:</b> <samp>assignment of read-only variable</samp>. "Read-only" is the Compiler's word for <code>const</code>: you may read it, never write it.</span></li>
+      <li><span><b>The fix:</b> if the count really changes, it was never a constant: drop the <code>const</code>. If it doesn't, delete line 6. Usually the <code>const</code> is right and the write is the bug.</span></li>
+    </ol>
+    <p class="sr-only">Picture: the Compiler, a big checkpoint robot with a red beacon and its striped gate down.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 2: where const can go">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft"><b>Const correctness</b> means writing <code>const</code> on everything that shouldn't change, so the Compiler can hold you to it. There are four places it goes, and you have met each one already. This part puts them side by side.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 270" role="img" aria-label="Four sealed jars on a shelf, each with a label. Jar 1, a variable: const int guests. Jar 2, a parameter: const std::string&amp; name, drawn as a jar behind glass with a visitor badge. Jar 3, a member function: int degrees() const, drawn as an oven whose dial is locked. Jar 4, pointers: const int* and int* const, drawn as a sticky note. A banner reads: seal it unless it must change.">
+      <rect x="6" y="6" width="648" height="258" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M24 196 H636" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="40" y="90" width="110" height="104" rx="14" fill="#FFF6CC"/><rect x="34" y="72" width="122" height="22" rx="6" fill="#FF5A4E"/>
+        <rect x="200" y="90" width="110" height="104" rx="14" fill="#DDE8FF"/><rect x="194" y="72" width="122" height="22" rx="6" fill="#FF5A4E"/>
+        <rect x="360" y="90" width="110" height="104" rx="14" fill="#C9F2D9"/><rect x="354" y="72" width="122" height="22" rx="6" fill="#FF5A4E"/>
+        <rect x="520" y="90" width="110" height="104" rx="14" fill="#FFE1EC"/><rect x="514" y="72" width="122" height="22" rx="6" fill="#FF5A4E"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="95" y="40">VARIABLE</text><text x="255" y="40">PARAMETER</text><text x="415" y="40">MEMBER FN</text><text x="575" y="40">POINTER</text>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="95" y="134">const int</text><text x="95" y="154">guests</text>
+        <text x="255" y="134">const</text><text x="255" y="154">Guest&amp;</text>
+        <text x="415" y="134">degrees()</text><text x="415" y="154">const</text>
+        <text x="575" y="126">const int*</text><text x="575" y="146">or</text><text x="575" y="166">int* const</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="95" y="222">Chapter 3</text><text x="255" y="222">Chapter 8</text><text x="415" y="222">Chapter 12</text><text x="575" y="222">Chapter 13</text>
+        <text x="330" y="252" font-size="18">seal it unless it must change</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>My workshop rule: <b>seal it unless it must change</b>. Every sealed box is one less thing that can surprise me later. The C++ Core Guidelines say the same in their own words: make objects <b>immutable</b> (unchangeable) by default (rules Con.1 to Con.4).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a const reference parameter promises to only look">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Parameters are where <code>const</code> earns its keep. <code>print_list</code> (line 5) takes <code>const std::vector&lt;std::string&gt;&amp;</code>: Chapter 8's <b>visitor badge</b>, no copy and no touching. <code>add_guest</code> (line 11) must change the list, so its first parameter is a plain <code>&amp;</code>. The guest's name is only read, so it gets <code>const&amp;</code> too.</p>
+    <span class="file-tab">const_param.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="const_param.cpp"></pre>
+      <pre class="term" data-run="const_param.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read only the two first lines of each function and you already know who changes the list: <code>add_guest</code> can, <code>print_list</code> can't. The <code>const</code> is a promise written where everyone reads first. And if <code>print_list</code> ever tries to break it, the Compiler stops the build. Watch.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotconst-m" id="ex-spotconst"></div>
+  <script type="application/json" id="ex-spotconst-m">{"program": "spot_const.cpp", "bug": 8, "prompt": "<code>highest</code> should find the biggest score and leave the list alone. It doesn't even compile. Click the line the Compiler is right to refuse.", "explain": "Line 8 writes into <code>scores[0]</code>, but <code>scores</code> came in as <code>const std::vector&lt;int&gt;&amp;</code>: look, don't touch. The real mistake is a slip of the fingers: the line should be <code>best = s;</code>. Without the <code>const</code>, this would have compiled and quietly <b>returned 40</b> while scribbling over the caller's list. With it, a silent logic bug became a compile error. That's the whole point of const correctness."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 4: a const object can only call const member functions">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">The third place: <b>member functions</b>. Through a <code>const Oven&amp;</code>, C++ only lets you call member functions that promise not to change the oven. <code>degrees()</code> on line 6 never changes anything, but it never <b>said</b> so.</p>
+    <span class="file-tab">const_member_bad.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="const_member_bad.cpp"></pre>
+      <pre class="term wrap" data-run="const_member_bad.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>Where:</b> line 12, inside <code>show(const Oven&amp;)</code>, at the call <code>oven.degrees()</code>.</span></li>
+      <li><span><b>What:</b> <samp>passing ‘const Oven’ as ‘this’ argument discards qualifiers</samp>. Chapter 12 decoded it: calling a non-const member function on a const object would throw its <code>const</code> away. (<code>[-fpermissive]</code> is just the name of a switch you should never use to hide this.)</span></li>
+      <li><span><b>The note:</b> <samp>in call to ‘int Oven::degrees()’</samp>, line 6: the function that forgot its promise.</span></li>
+      <li><span><b>The fix:</b> write <code>const</code> after the parentheses: <code>int degrees() const</code>. The rule: <b>every member function that only looks is <code>const</code></b> (Core Guideline Con.2).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillconst-m" id="ex-fillconst"></div>
+  <script type="application/json" id="ex-fillconst-m">{"program": "fill_const.cpp", "prompt": "Make this oven const-correct: <code>degrees</code> only looks, <code>set</code> changes the oven, and <code>show</code> only looks at the oven it's given (without copying it).", "blanks": [{"line": 7, "text": "const"}, {"line": 13, "text": "const Oven&", "accept": ["const Oven &", "Oven const&", "Oven const &"]}], "explain": "<code>int degrees() const</code> promises not to change the oven, so it may be called through a <code>const Oven&amp;</code>. <code>set</code> stays non-const: changing the oven is its job. <code>show</code> takes <code>const Oven&amp;</code>: no copy, no changes. <code>main</code>'s <code>oven</code> isn't const, so <code>main</code> may still call <code>set</code> between the two looks: 180, then 200."}</script>
+
+  <section class="panel sketch" aria-label="Panel 5: two kinds of const pointer">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">The fourth place is the tricky one. A pointer is Chapter 13's <b>sticky note</b> with an address on it. A pointer has <b>two</b> things that could be sealed: the note itself (where it points) and the thing it points at. Where you write <code>const</code> decides which.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 300" role="img" aria-label="Left: a yellow sticky note labelled look with an arrow to a cake. A glass dome covers the cake, so the note may move to the pie next to it, shown by a dashed arrow, but nobody can change the cake through the note. Caption: const int* look, pointer to const: may move, may not change what it sees. Right: a sticky note labelled fork, nailed to the table, with an arrow to a cake and a hand cutting a slice. Caption: int* const fork, const pointer: stuck in place, may change the cake.">
+      <rect x="6" y="6" width="648" height="288" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M330 20 V280" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="30" y="40" width="96" height="70" fill="#FFD60A" transform="rotate(-4 78 75)"/>
+        <rect x="370" y="40" width="96" height="70" fill="#FFD60A"/>
+        <path d="M150 200 h80 v-30 q-40 -20 -80 0 z" fill="#FFE1EC"/>
+        <path d="M140 205 q50 -110 100 0" fill="#DDE8FF" fill-opacity="0.55"/>
+        <path d="M250 205 h60 v-24 q-30 -16 -60 0 z" fill="#E7C08A"/>
+        <path d="M490 200 h80 v-30 q-40 -20 -80 0 z" fill="#FFE1EC"/>
+        <path d="M580 150 l40 -40 l12 12 l-40 40 z" fill="#FFFFFF"/>
+      </g>
+      <circle cx="418" cy="48" r="7" fill="#111"/>
+      <g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round">
+        <path d="M100 112 C 120 150, 150 160, 180 168"/><path d="M168 158 l14 10 l-16 6"/>
+        <path d="M440 112 C 460 150, 490 160, 520 168"/><path d="M508 158 l14 10 l-16 6"/>
+      </g>
+      <path d="M110 112 C 170 120, 250 130, 278 172" stroke="#111" stroke-width="3" fill="none" stroke-dasharray="7 6"/>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle">
+        <text x="78" y="82">look</text><text x="418" y="86">fork</text>
+        <text x="168" y="246">const int* look</text><text x="500" y="246">int* const fork</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">
+        <text x="190" y="196">cake</text><text x="280" y="200">pie</text><text x="530" y="196">cake</text>
+        <text x="168" y="270">may move, may not change what it sees</text>
+        <text x="500" y="270">stuck in place, may change the cake</text>
+        <text x="236" y="60">glass dome:</text><text x="236" y="78">look, don't touch</text>
+        <text x="560" y="60">nailed to</text><text x="560" y="78">the table</text>
+      </g>
+    </svg></div>
+    <ul class="rtl" aria-label="const int* look, read right to left">
+      <li class="hot"><code>look</code><span>look is</span></li><li><code>*</code><span>a pointer to</span></li><li><code>int</code><span>an int</span></li><li class="hot"><code>const</code><span>that is sealed</span></li>
+    </ul>
+    <ul class="rtl" aria-label="int* const fork, read right to left">
+      <li class="hot"><code>fork</code><span>fork is</span></li><li class="hot"><code>const</code><span>a sealed</span></li><li><code>*</code><span>pointer to</span></li><li><code>int</code><span>an int</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The trick that never fails: <b>read it right to left</b>, starting at the name. <code>const</code> seals whatever is just to its <b>left</b> (or, at the very front, the thing just to its right). <code>const int*</code>: the <code>int</code> is sealed. <code>int* const</code>: the pointer is sealed. <code>const int* const</code>: both.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 6: both pointers, in memory" data-mem="mem-ptr" id="mem-ptr-box">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Step through both kinds. Each slot on <code>main</code>'s plate is a box on the stack (Chapter 13), and a pointer is drawn as an <code>&amp;name</code> cell with an arrow to the slot it points at. Watch which arrow moves, and which box changes.</p>
+    <span class="file-tab">ptr_const.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-ptr">{"program": "ptr_const.cpp", "steps": [
+      {"line": 4, "note": "<code>main</code> starts with an empty plate.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 6, "note": "Lines 4 and 5 make two plain ints: <code>cake</code> holds 8 and <code>pie</code> holds 6.", "output": [], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}]}], "heap": {}, "changed": ["cake", "pie"]},
+      {"line": 7, "note": "Line 6: <code>look</code> is a <code>const int*</code>, a note with cake's address. Through it, the cake is behind glass.", "output": [], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "cake", "refLabel": "&cake"}]}], "heap": {}, "changed": ["look"]},
+      {"line": 8, "note": "Line 7 follows the note and <b>reads</b>: 8. Reading is always allowed.", "output": ["look sees 8"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "cake", "refLabel": "&cake"}]}], "heap": {}},
+      {"line": 9, "note": "Line 8 <b>moves the note</b> to <code>pie</code>. The note itself isn't sealed, so that's fine: the arrow moves.", "output": ["look sees 8"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "pie", "refLabel": "&pie"}]}], "heap": {}, "changed": ["look"]},
+      {"line": 10, "note": "Line 9 reads through the moved note: 6.", "output": ["look sees 8", "look sees 6"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "pie", "refLabel": "&pie"}]}], "heap": {}},
+      {"line": 11, "note": "Line 10: <code>fork</code> is an <code>int* const</code>, nailed to <code>cake</code> for its whole life. It must be given its address right away.", "output": ["look sees 8", "look sees 6"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "8"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "pie", "refLabel": "&pie"}, {"n": "fork", "type": "int* const", "ref": "cake", "refLabel": "&cake"}]}], "heap": {}, "changed": ["fork"]},
+      {"line": 12, "note": "Line 11 <b>writes through</b> <code>fork</code>: the cake becomes 7. The pointed-at int isn't sealed, so that's allowed. The arrow didn't move; the box did change.", "output": ["look sees 8", "look sees 6"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "7"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "pie", "refLabel": "&pie"}, {"n": "fork", "type": "int* const", "ref": "cake", "refLabel": "&cake"}]}], "heap": {}, "changed": ["cake"]},
+      {"line": null, "note": "Line 12 prints the cake itself: 7. Two notes, two different seals: <code>look</code> may move but not write; <code>fork</code> may write but not move.", "output": ["look sees 8", "look sees 6", "cake is now 7"], "frames": [{"name": "main", "slots": [{"n": "cake", "type": "int", "val": "7"}, {"n": "pie", "type": "int", "val": "6"}, {"n": "look", "type": "const int*", "ref": "pie", "refLabel": "&pie"}, {"n": "fork", "type": "int* const", "ref": "cake", "refLabel": "&cake"}]}], "heap": {}}]}</script>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 7: breaking each seal">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="7"></svg>
+    <p class="caption">Now break each seal on purpose: first write through <code>look</code>, then move <code>fork</code>. Two different errors, and their wording tells you <b>which</b> seal you hit.</p>
+    <div class="pair2">
+      <div><p class="who">write through a const int*</p><span class="file-tab">ptr_write_bad.cpp</span><pre class="code" data-src="ptr_write_bad.cpp"></pre><pre class="term wrap" data-run="ptr_write_bad.cpp" data-exit></pre></div>
+      <div><p class="who">move an int* const</p><span class="file-tab">ptr_reseat_bad.cpp</span><pre class="code" data-src="ptr_reseat_bad.cpp"></pre><pre class="term wrap" data-run="ptr_reseat_bad.cpp" data-exit></pre></div>
+    </div>
+    <ol class="readlist" aria-label="Reading both messages like a detective">
+      <li><span><b>Writing through look:</b> <samp>read-only location ‘* look’</samp>. A <b>location</b> is the place the pointer leads to: <code>*look</code>, the cake behind glass.</span></li>
+      <li><span><b>Moving fork:</b> <samp>read-only variable ‘fork’</samp>. A <b>variable</b>: the note itself is sealed, so it can't be given a new address.</span></li>
+      <li><span><b>Your clue:</b> "location" means the seal is on what it points at; "variable" means the seal is on the pointer. Same words as panel 1, same detective method.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ptr-m" id="ex-ptr"></div>
+  <script type="application/json" id="ex-ptr-m">{"q": "A function walks along an array of scores with a pointer, moving it forward one score at a time, and must never change any score. Which declaration fits?", "options": [
+    {"t": "<code>const int* p{&amp;scores[0]};</code>", "correct": true, "why": "Right. Read it right to left: p is a pointer to an int that is sealed. The pointer may move (<code>++p</code>), but <code>*p = 0;</code> would be refused."},
+    {"t": "<code>int* const p{&amp;scores[0]};</code>", "why": "This seals the pointer, not the scores: <code>++p</code> would be refused (read-only variable), and <code>*p = 0;</code> would be allowed. The exact opposite of what's needed."},
+    {"t": "<code>const int* const p{&amp;scores[0]};</code>", "why": "Safe for the scores, but the pointer is sealed too, so it can never move to the next score."},
+    {"t": "<code>int* p{&amp;scores[0]};</code>", "why": "It can move, but nothing stops it from changing a score. The Compiler can only hold you to promises you write down."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · BAKED BEFORE THE PARTY<small>Constant expressions, constexpr variables, constexpr functions and the as-if rule</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 8: two times a value can be made">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="DING!" data-seed="8"></svg>
+    <p class="caption">Every C++ program lives through two times. <b>Compile time</b> is the kitchen before the party: the Compiler reads your code and builds the program file. <b>Run time</b> is the party itself: someone types <code>./slices</code> and the program does its work. A cake can be baked in either one. The guests eat the same cake, but only one of them makes them wait.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 300" role="img" aria-label="A timeline in two bands. Top band, COMPILE TIME, the kitchen: the Compiler robot takes a cake out of an oven; a sign says g++ builds the program. An arrow carries the finished cake into a box labelled the program file. Bottom band, RUN TIME, the party: guests at a table; one cake is already on the table and served at once, labelled constexpr: baked before. A second cake is still in a small oven at the party with a clock, labelled baked at the party: the guests wait.">
+      <rect x="6" y="6" width="648" height="288" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <rect x="18" y="18" width="624" height="120" rx="10" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+      <rect x="18" y="160" width="624" height="122" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="3"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="24" letter-spacing="1" fill="#111">
+        <text x="32" y="48">COMPILE TIME</text><text x="32" y="190">RUN TIME</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="32" y="70">the kitchen: g++ builds</text><text x="32" y="212">the party: ./slices runs</text>
+      </g>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="250" y="40" width="96" height="84" rx="8" fill="#FFFFFF"/><rect x="262" y="58" width="72" height="50" rx="4" fill="#2B2B2B"/>
+        <path d="M268 96 h60 v-16 q-30 -14 -60 0 z" fill="#FFE1EC"/>
+        <path d="M440 60 h120 v60 h-120 z" fill="#FFFFFF"/><path d="M440 60 l20 -16 h120 l-20 16" fill="#E7C08A"/><path d="M560 60 l20 -16 v60 l-20 16" fill="#D4A86E"/>
+        <path d="M470 100 h60 v-14 q-30 -12 -60 0 z" fill="#FFE1EC"/>
+        <rect x="250" y="226" width="130" height="14" fill="#E7C08A"/>
+        <path d="M280 224 h60 v-18 q-30 -14 -60 0 z" fill="#FFE1EC"/>
+        <rect x="470" y="196" width="80" height="62" rx="6" fill="#FFFFFF"/><rect x="480" y="208" width="60" height="36" rx="3" fill="#2B2B2B"/>
+        <circle cx="590" cy="214" r="18" fill="#FFFFFF"/>
+      </g>
+      <path d="M590 214 v-10 M590 214 h8" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round">
+        <path d="M350 82 H430"/><path d="M420 74 l12 8 l-12 8"/>
+        <path d="M500 126 C 500 160, 330 160, 312 196"/><path d="M304 186 l8 12 l8 -12"/>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">
+        <text x="500" y="38">the program file</text>
+        <text x="314" y="262">constexpr: baked before,</text><text x="314" y="280">served at once</text>
+        <text x="540" y="276">baked at the party: guests wait</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>constexpr</code> means "this can be worked out at compile time". The Compiler does the sums while building and writes the <b>answer</b> into the program file. At the party there's nothing left to do but serve it. My kitchen motto: <b>bake it before the party</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: constexpr variables and constant expressions">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">A <b>constant expression</b> is an expression the Compiler can work out completely while building: literals like <code>12</code>, other constants, and arithmetic on them. A <code>constexpr</code> variable must be given one. Line 7 multiplies two constexpr values, so it's a constant expression too. Line 8 shows why that matters: the size of a <code>std::array</code> must be known while building, and <code>slices</code> is.</p>
+    <span class="file-tab">bake.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="bake.cpp"></pre>
+      <pre class="term" data-run="bake.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A <code>constexpr</code> variable is <b>also</b> <code>const</code>: sealed, like panel 1. On top of that it's a promise that its value is known before the party, so it can go anywhere C++ demands a compile-time number: array sizes, <code>static_assert</code>, and (Chapter 26) template arguments.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: one constexpr function, used at both times">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Functions can be <code>constexpr</code> too (line 3). Such a function <b>may</b> run at compile time, when its arguments are known while building, and it <b>may</b> run at run time, like any function. Line 8 calls it with <code>10</code>: baked. Line 13 calls it with whatever the guest types: that can't be known in the kitchen.</p>
+    <span class="file-tab">slices.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="slices.cpp"></pre>
+      <pre class="term" data-run="slices.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>One recipe, two kitchens. Writing <code>constexpr</code> on a function doesn't <b>force</b> anything; it gives the Compiler <b>permission</b>. The <code>constexpr</code> on the <em>variable</em> in line 8 is the order: "this one must be baked now". Line 13's plain <code>int</code> gives no such order, and the 7 only exists at the party.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean walk-wide" aria-label="Panel 11: walk Wren through both calls" data-walk="walk-slices">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Walk Wren through the <b>run</b> of <code>slices.cpp</code>, the party itself. Watch what line 8 does at run time (almost nothing) and what line 13 does (a real trip into the function). The typed 7 shows up after the question, as it would in your terminal.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">slices.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-slices">{"program": "slices.cpp", "steps": [
+      {"line": 8, "output": [], "mood": "normal", "arms": "point", "note": "The party starts: <code>main</code> begins on line 7. But the kitchen work for line 8 was finished long ago, while <code>g++</code> was building."},
+      {"line": 9, "output": [], "mood": "happy", "arms": "point", "note": "Line 8 has nothing to calculate. <code>slices_for(10)</code> was worked out at compile time, and the number <b>24</b> was written into the program file. Wren doesn't visit line 4 at all."},
+      {"line": 10, "output": ["Baked before the party: 24"], "mood": "happy", "arms": "point", "note": "Line 9 serves the baked value."},
+      {"line": 11, "output": ["Baked before the party: 24"], "mood": "focus", "arms": "point", "note": "Line 10 makes <code>turned_up</code>, a plain <code>int</code> starting at 0. It isn't const: it will change."},
+      {"line": 12, "output": ["Baked before the party: 24", "How many guests came? "], "mood": "focus", "arms": "point", "note": "Line 11 asks the question. No newline, so the answer will be typed on the same line."},
+      {"line": 13, "output": ["Baked before the party: 24", "How many guests came? 7"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 12 waits at the party until someone types. They type <kbd>7</kbd>. Nobody in the kitchen could have known that."},
+      {"line": 4, "output": ["Baked before the party: 24", "How many guests came? 7"], "mood": "focus", "arms": "point", "note": "Line 13 calls <code>slices_for(turned_up)</code>. This time the function <b>really runs</b>, at the party: Wren jumps up to its body."},
+      {"line": 14, "output": ["Baked before the party: 24", "How many guests came? 7"], "mood": "happy", "arms": "point", "note": "Line 4: 7 &times; 2 + 4 = 18, handed back into <code>needed</code>. Same recipe as the kitchen used for 24, run later."},
+      {"line": null, "output": ["Baked before the party: 24", "How many guests came? 7", "Sliced at the party: 18"], "mood": "happy", "arms": "cheer", "mouth": "shout", "note": "Done. One <code>constexpr</code> function, two times: baked for 24, sliced at the party for 18."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-slices-m" id="ex-slices"></div>
+  <script type="application/json" id="ex-slices-m">{"program": "predict_slices.cpp", "prompt": "The same <code>slices_for</code> recipe (guests &times; 2 + 4), called three times. What are the three lines?", "hint": "Work out line 8 first: it's baked. Line 13 feeds the baked answer back into the recipe.", "explain": "Line 8 bakes <code>slices_for(3)</code> = 3 &times; 2 + 4 = <samp>10</samp> at compile time. Line 10 runs it at the party with <code>late</code>, 2: <samp>8</samp>. Line 13 passes <code>planned</code> (10) back in: 10 &times; 2 + 4 = <samp>24</samp>. Whether a call happens in the kitchen or at the party never changes the answer, only <em>when</em> it's worked out."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 12: asking the kitchen for something only the party knows">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="NOT YET!" data-seed="12"></svg>
+    <p class="caption">The classic constexpr mistake. <code>read()</code> asks the keyboard for a number. Line 10 orders the Compiler to bake <code>guests</code> from it, before anyone is there to type.</p>
+    <span class="file-tab">read_error.cpp</span>
+    <pre class="code" data-src="read_error.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="read_error.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="read_error.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>You asked me to bake <code>guests</code> in my kitchen. To do that I'd have to run <code>read()</code>, and <code>read()</code> isn't marked <code>constexpr</code>: it's an ordinary function, and it wants a keyboard. "Here's the problem, here's where, and here's a fix."</p></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>Where:</b> line 10, column 30: the opening parenthesis of the call <code>read()</code>.</span></li>
+      <li><span><b>What (g++):</b> <samp>call to non-‘constexpr’ function ‘int read()’</samp>. Inside a constant expression, only <code>constexpr</code> functions may be called.</span></li>
+      <li><span><b>What (clang):</b> <samp>constexpr variable ‘guests’ must be initialized by a constant expression</samp>, then the reason in a note. Two compilers, same rule, different words. (clang prints straight quotes; g++ here prints curly ones.)</span></li>
+      <li><span><b>The fix:</b> the value really depends on typing, so it can't be baked. Make it <code>const int guests{read()};</code>: sealed, but made at the party.</span></li>
+    </ol>
+    <p class="sr-only">Picture: the Compiler, its beacon red and its gate down.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 13: a plain variable is not a constant">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The same rule with no function at all. <code>guests</code> is an ordinary variable. It happens to hold 10 right now, but it <b>could</b> change before line 5, so the Compiler can't use it in a constant expression.</p>
+    <span class="file-tab">not_constant.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="not_constant.cpp"></pre>
+      <pre class="term" data-run="not_constant.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The note is the real clue: <samp>‘int guests’ is not const</samp>. The Compiler doesn't look at what a variable <em>holds</em>; it looks at what the variable <em>promises</em>. Make line 4 <code>constexpr int guests{10};</code> and line 5 compiles. <b>Only promises can be baked.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch tilt-r" aria-label="Panel 14: const or constexpr?">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">So what's the difference between <code>const</code> and <code>constexpr</code>? <code>const</code> means "sealed once it's made"; it may be made at the party. <code>constexpr</code> means "sealed <b>and</b> made in the kitchen". There's one old shortcut to know: a <code>const int</code> given a constant expression counts as a constant too (line 9).</p>
+    <span class="file-tab">const_or_constexpr.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="const_or_constexpr.cpp"></pre>
+      <pre class="term" data-run="const_or_constexpr.cpp" data-exit></pre>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">Line</th><th scope="col">Sealed?</th><th scope="col">Known while building?</th><th scope="col">Can size an array?</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>const int a{4};</code></th><td class="yes">yes</td><td class="yes">yes: 4 is a literal</td><td class="yes">yes (line 12)</td></tr>
+        <tr><th scope="row"><code>const int b{ask()};</code></th><td class="yes">yes</td><td class="no">no: <code>ask()</code> runs at the party</td><td class="no">no</td></tr>
+        <tr><th scope="row"><code>constexpr int c{a * 3};</code></th><td class="yes">yes</td><td class="yes">yes, guaranteed</td><td class="yes">yes (line 13)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Both <code>a</code> and <code>b</code> print fine, and both are sealed. Only one is a constant expression, and nothing on the line <code>const int</code> tells you which. That's why the guidelines say: if you mean "known while building", write <b><code>constexpr</code></b> and let the Compiler check it (Con.5). Use <code>const</code> for "sealed, but made at run time".</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-constexpr-m" id="ex-constexpr"></div>
+  <script type="application/json" id="ex-constexpr-m">{"q": "In this order: <code>constexpr int a{6};</code>, <code>int b{6};</code>, <code>const int c{b};</code>, <code>constexpr int d{a + 1};</code>. Which one of these may be used as the size of a <code>std::array</code>?", "options": [
+    {"t": "<code>d</code>", "correct": true, "why": "Right. <code>a</code> is constexpr, so <code>a + 1</code> is a constant expression, and <code>d</code> is constexpr: 7, known while building. (<code>a</code> would work too.)"},
+    {"t": "<code>b</code>", "why": "<code>b</code> is an ordinary variable that happens to hold 6. It promises nothing, so it isn't a constant expression (panel 13)."},
+    {"t": "<code>c</code>", "why": "<code>c</code> is sealed, but it was made from <code>b</code>, which isn't a constant. Sealed at the party is still the party (panel 14's <code>b</code>)."},
+    {"t": "None of them: array sizes must be literal numbers", "why": "Any constant expression works, including constexpr variables and constexpr function calls. Panel 9 sized an array with <code>slices</code>."}]}</script>
+
+  <div data-ex="predict" data-model="ex-err-m" id="ex-err"></div>
+  <script type="application/json" id="ex-err-m">{"program": "predict_error.cpp", "expect": "error", "answer": "not usable in a constant expression", "ask": "Two sealed ints size two arrays. Does it build? If not, what does g++ say about the value of the guilty variable? (Six words, starting with <i>not usable</i>.)", "prompt": "Panel 14's two kinds of const, side by side:", "hint": "Which of <code>a</code> and <code>b</code> could the Compiler work out in its kitchen?", "explain": "Line 11 is fine: <code>a</code> was given the literal 4. Line 12 isn't: <code>b</code> was made by calling <code>ask()</code>, an ordinary function, so the Compiler can't know it while building: <samp>the value of ‘b’ is not usable in a constant expression</samp>, with the note <samp>‘b’ was not initialized with a constant expression</samp>. The second error, about <code>size</code>, is just fallout: once line 12 failed, <code>col</code> isn't a proper array. Always fix the <b>first</b> error first."}</script>
+
+  <div data-ex="spot" data-model="ex-spotce-m" id="ex-spotce"></div>
+  <script type="application/json" id="ex-spotce-m">{"program": "spot_constexpr.cpp", "bug": 13, "prompt": "Wren wants both numbers baked before the party. The build fails. Click the line the Compiler refuses.", "explain": "Line 13 orders <code>candles</code> to be baked, but <code>candles_for</code> (line 3) is an ordinary function: <samp>call to non-‘constexpr’ function ‘int candles_for(int)’</samp>. Line 12 is fine because <code>cake_size</code> is <code>constexpr</code>. The best fix here is on line 3: add <code>constexpr</code> to <code>candles_for</code>, since it's simple arithmetic that could always be baked (Core Guideline F.4: if a function might be needed at compile time, declare it constexpr)."}</script>
+
+  <section class="panel clean" aria-label="Panel 15: a lookup table baked in the kitchen">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">constexpr functions can do real work: local variables, loops, <code>if</code>. <code>make_squares</code> (lines 4 to 10) fills a whole <code>std::array</code> with a loop, and line 12 bakes the result into <code>squares</code>. Line 13 checks it in the kitchen too (more about that in Part 3). At run time, <code>main</code> only reads a finished table.</p>
+    <span class="file-tab">table.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="table.cpp"></pre>
+      <pre class="term" data-run="table.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This is the everyday use: <b>lookup tables</b>. Prices, unit conversions, a times table, the days in each month. Work them out once while building, and every run starts with the answers already on the shelf. And there's no "magic number" list typed by hand that could contain a typo.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-table-m" id="ex-table"></div>
+  <script type="application/json" id="ex-table-m">{"program": "fill_table.cpp", "prompt": "Make the price list a table baked before the party. The <code>static_assert</code> on line 9 only compiles if <code>prices</code> is known while building. Fill in the two missing words.", "blanks": [{"line": 4, "text": "constexpr"}, {"line": 8, "text": "constexpr"}], "explain": "Line 8's <code>constexpr</code> orders the table to be baked, and that is only allowed because line 4's <code>constexpr</code> lets <code>price_in_cents</code> run in the kitchen. Leave out either one and the build fails: line 8 alone would be a call to a non-constexpr function (panel 12); line 4 alone would make an ordinary run-time array, and line 9's check could not read it."}</script>
+
+  <section class="panel sketch" aria-label="Panel 16: the as-if rule">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">A secret from the Professor's desk. Here's a plain function, <b>not</b> constexpr. We ask <code>g++</code> to show the machine instructions it makes for <code>main</code> (<code>-S</code> writes assembly, the human-readable form of machine code; the two <code>grep</code>s keep only <code>main</code>'s lines). First with no optimising (<code>-O0</code>), then optimising (<code>-O2</code>).</p>
+    <span class="file-tab">asif.cpp</span>
+    <pre class="code" data-src="asif.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">-O0: done at the party</p><pre class="term wrap" data-run="asif_O0.cpp" data-exit></pre></div>
+      <div><p class="who">-O2: quietly done in the kitchen</p><pre class="term wrap" data-run="asif.cpp" data-exit></pre></div>
+    </div>
+    <p class="caption soft"><b>How this run was really made:</b> <code>asif_O0.cpp</code> is a byte-for-byte copy of <code>asif.cpp</code>, kept under its own name so each build has its own record. <span class="parity" data-same-src="asif.cpp,asif_O0.cpp"></span></p>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>At <code>-O0</code>, <code>main</code> puts 10 in a <b>register</b> (one of the processor's own tiny storage boxes) and <code>call</code>s the function. (Ignore <code>endbr64</code>, the first instruction in both: it's a security marker this compiler puts at the start of functions.) At <code>-O2</code>, the call is gone: <code>movl $24, %eax</code> just loads the answer, 24. The optimiser may change anything, <b>as if</b> the program ran exactly as written, as long as nobody can tell the difference. That's the <b>as-if rule</b>. So why write <code>constexpr</code>? Because the optimiser's baking is a favour, not a promise. <code>constexpr</code> is a <b>guarantee</b>, checked even at <code>-O0</code>, and usable where C++ demands a constant.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · CHECKED BEFORE THE DOORS OPEN<small>consteval, static_assert with messages, tests at compile time, if constexpr, and a map of when each line runs</small></h2>
+
+  <section class="panel clean" aria-label="Panel 17: consteval, kitchen only">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Sometimes a recipe should <b>only</b> ever be made in the kitchen. C++20 added <code>consteval</code> for that (line 3). A consteval function is an <b>immediate function</b>: every call to it must be worked out at compile time, right where it's written. Both calls here use plain numbers, so both are baked.</p>
+    <span class="file-tab">consteval_ok.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="consteval_ok.cpp"></pre>
+      <pre class="term" data-run="consteval_ok.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Look at line 10: no <code>constexpr</code> variable, just a call inside a <code>std::cout</code> line. With a <code>constexpr</code> function, that call would be allowed to run at the party. With <code>consteval</code> it <b>must</b> be baked, so the program only ever contains the 12.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 18: a consteval function given a party value">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="TOO LATE!" data-seed="18"></svg>
+    <p class="caption">Now feed the kitchen-only recipe a number that's typed at the party. With <code>constexpr</code> this would have quietly run at run time. With <code>consteval</code> there is no run time.</p>
+    <span class="file-tab">consteval_bad.cpp</span>
+    <pre class="code" data-src="consteval_bad.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="consteval_bad.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="consteval_bad.cpp" data-alt data-exit></pre></div>
+    </div>
+    <ol class="readlist" aria-label="Reading both messages like a detective">
+      <li><span><b>g++</b> points at the argument: <samp>the value of ‘boxes’ is not usable in a constant expression</samp>, with panel 13's note: <code>boxes</code> is not const.</span></li>
+      <li><span><b>clang</b> names the rule outright: <samp>call to consteval function 'dozens' is not a constant expression</samp>. Here clang's wording is the friendlier one. When one compiler's message puzzles you, the other's often helps.</span></li>
+      <li><span><b>The fix:</b> if the function must also work on typed numbers, it shouldn't be <code>consteval</code>. Make it <code>constexpr</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-consteval-m" id="ex-consteval"></div>
+  <script type="application/json" id="ex-consteval-m">{"q": "Wren writes <code>to_cents(dollars)</code>. It fills a price table baked at compile time, <b>and</b> converts prices that customers type in at the till. How should it be declared?", "options": [
+    {"t": "<code>constexpr int to_cents(int dollars)</code>", "correct": true, "why": "Right. constexpr allows both: baked when its argument is known while building (the table), run normally when it isn't (the till)."},
+    {"t": "<code>consteval int to_cents(int dollars)</code>", "why": "consteval is kitchen only. The till's typed prices would give panel 18's error."},
+    {"t": "<code>int to_cents(int dollars)</code>", "why": "Fine at the till, but the table couldn't be baked: panel 12's call to a non-constexpr function."},
+    {"t": "<code>const int to_cents(int dollars)</code>", "why": "That <code>const</code> only seals the returned copy, which means nothing useful. It says nothing about <em>when</em> the function may run."}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 19: static_assert with a message">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Chapter 11 met <code>static_assert</code>: an alarm the Compiler checks while building. It takes a constant expression and, optionally, a message for whoever breaks it. This program insists on a 64-bit <code>int</code>.</p>
+    <span class="file-tab">need64.cpp</span>
+    <pre class="code" data-src="need64.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="need64.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="need64.cpp" data-alt data-exit></pre></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the message like a detective">
+      <li><span><b>What:</b> <samp>static assertion failed: need 64-bit int</samp>. Your own message, word for word: write messages that say what was <b>needed</b>.</span></li>
+      <li><span><b>Why:</b> the note <samp>the comparison reduces to ‘(4 == 8)’</samp> shows the values the Compiler worked out. <code>sizeof(int)</code> is 4 bytes on this machine.</span></li>
+      <li><span><b>Where:</b> line 3, outside any function. A static_assert can sit anywhere: at the top of a file, inside a function, inside a class.</span></li>
+      <li><span><b>The fix:</b> don't demand what the machine doesn't give. If you need 64 bits, ask for a type that has them: <code>std::int64_t</code> (Chapter 20).</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-sa-m" id="ex-sa"></div>
+  <script type="application/json" id="ex-sa-m">{"program": "predict_sa.cpp", "expect": "error", "answer": "static assertion failed: one plate per guest", "ask": "Does it build? If not, what does the first line of the error say after <i>error:</i>?", "prompt": "Wren counts the plates before the party:", "hint": "Is 6 &gt;= 8? A static_assert that fails prints its message.", "explain": "6 &gt;= 8 is false, so the build stops with <samp>static assertion failed: one plate per guest</samp>, and the note shows the worked-out values: <samp>the comparison reduces to ‘(6 &gt;= 8)’</samp>. No program is made, so <samp>Enough plates!</samp> never prints. A plate shortage found in the kitchen, not in front of the guests."}</script>
+
+  <section class="panel clean" aria-label="Panel 20: testing a recipe before the party">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Put the two ideas together: a <code>constexpr</code> function can be <b>tested</b> with <code>static_assert</code>. The tests run inside the Compiler, every single build, and cost nothing at run time. First: three tests that hold. Then: Wren misremembered one answer (line 8 says 5).</p>
+    <div class="pair2 stack">
+      <div><p class="who">tests that hold</p><span class="file-tab">checked.cpp</span><pre class="code" data-src="checked.cpp"></pre><pre class="term wrap" data-run="checked.cpp" data-exit></pre></div>
+      <div><p class="who">one wrong test</p><span class="file-tab">checked_bad.cpp</span><pre class="code" data-src="checked_bad.cpp"></pre><pre class="term wrap" data-run="checked_bad.cpp" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>No message on line 8? The Compiler still says exactly what broke: <samp>‘(6 == 5)’</samp>. The function gave 6, the test expected 5. Here the <b>test</b> was wrong, not the recipe; a failing test only tells you the two disagree, and you decide which one to fix. <b>Check the cake before the doors open.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-checks-m" id="ex-checks"></div>
+  <script type="application/json" id="ex-checks-m">{"program": "parsons_checks.cpp", "seed": 5, "pin": [1, 8], "prompt": "Put the lines in an order that builds and prints the goal output. A name must be declared before the line that uses it.", "explain": "The recipe <code>area</code> comes first, header before body. Then <code>tray</code> can be baked from it, and only then can the <code>static_assert</code> check <code>tray</code>. <code>main</code> serves the baked 12 and doubles it at run time: 24."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 21: the kitchen refuses undefined behaviour">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="OVERFLOW!" data-seed="21"></svg>
+    <p class="caption">A bonus of baking: the kitchen is <b>strict</b>. 13! is 6227020800, too big for an <code>int</code>. At run time, signed overflow is undefined behaviour, the thing Chapter 11 needed the Sanitizer's goggles to see. In the Compiler's kitchen, undefined behaviour simply isn't allowed: the build stops.</p>
+    <span class="file-tab">overflow_ce.cpp</span>
+    <pre class="code" data-src="overflow_ce.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="overflow_ce.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="overflow_ce.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Usually that's my job, and only for the runs you happen to try. Inside a constant expression, the Compiler checks every step itself. clang even names the value: <samp>6227020800 is outside the range of representable values of type 'int'</samp>, on line 6. A <code>static_assert</code> on a constexpr function tests for undefined behaviour <b>for free</b>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Sanitizer, in big green goggles, smiles: for once, the Compiler caught it first.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-fact-m" id="ex-fact"></div>
+  <script type="application/json" id="ex-fact-m">{"program": "trace_fact.cpp", "columns": ["i", "factorial(i)"], "given": [0], "prompt": "The constexpr <code>factorial</code> was tested in the kitchen (line 11). Now <code>main</code> calls it at the party, five times. Fill in each result.", "explain": "factorial(n) multiplies 1 &times; 2 &times; ... &times; n: <samp>1</samp>, <samp>2</samp>, <samp>6</samp>, <samp>24</samp>, <samp>120</samp>. These five calls run at the party, because <code>i</code> is an ordinary loop variable. Line 11 baked and checked <code>factorial(5)</code> while building, using the very same recipe."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: if constexpr, a first look">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">A preview. <code>if constexpr</code> (line 6) takes a constant expression and chooses its branch <b>while building</b>. The branch not taken is <b>discarded</b>: checked for mistakes, but left out of the program. Line 11 asks a question about this machine: are addresses 8 bytes?</p>
+    <span class="file-tab">if_constexpr.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="if_constexpr.cpp"></pre>
+      <pre class="term" data-run="if_constexpr.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"Quiet evening." is in the source, but is it in the program? Ask the program file itself. <code>grep -c</code> counts the lines of a file that contain a text: <samp>Balloons up</samp> is in there once; <samp>Quiet evening</samp> isn't there at all.</p></div>
+    </div>
+    <p class="who">searching the program file</p>
+    <pre class="term" data-run="if_constexpr_strings.cpp" data-exit></pre>
+    <p class="caption soft"><b>How this run was really made:</b> <code>if_constexpr_strings.cpp</code> is a byte-for-byte copy of <code>if_constexpr.cpp</code>, built under its own name so the search reads a fresh program file. The last line's exit code 1 is <code>grep</code>'s way of saying "not found". <span class="parity" data-same-src="if_constexpr.cpp,if_constexpr_strings.cpp"></span></p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Here an ordinary <code>if</code> would print the same thing. <code>if constexpr</code> shows its real power inside <b>templates</b>, code that works for many types, where a discarded branch may contain code that wouldn't compile for this type. This book stops at the preview.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 23: the map of when each line runs" data-map="map-when">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">The whole of Parts 2 and 3 in one map. Every line goes through the Compiler first. A line that <b>needs</b> its value while building (a <code>constexpr</code> variable, a <code>consteval</code> call, a <code>static_assert</code>, an array size) is baked, or stops the build. Everything else waits for the party. Each road is a real build and run. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapw-t mapw-d"><title id="mapw-t">Map: when does each line run?</title><desc id="mapw-d">Your source code goes to the Compiler. The Compiler asks: is this value needed while building? If yes, and it can be worked out, it is baked now, at compile time, and the answer is written into the program file. If yes, but it can't be worked out, the build stops with an error and there is no program. If no, it is left for the party. The program runs. A baked value is already inside and is just served; a value that needs typing is worked out at the party. Both end on the screen.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-when">{"seed": 19, "size": [690, 905], "start": [[345, 8], [345, 34]],
+      "states": [
+        {"id": "SRC", "x": 200, "y": 40, "w": 290, "h": 62, "label": "your source code", "sub": "a .cpp file"},
+        {"id": "CMP", "x": 200, "y": 150, "w": 290, "h": 62, "label": "the Compiler reads it", "sub": "`g++` builds"},
+        {"id": "Q", "x": 200, "y": 260, "w": 290, "h": 62, "label": "needed while building?", "sub": "constexpr, consteval..."},
+        {"id": "ERR", "x": 10, "y": 380, "w": 200, "h": 62, "label": "BUILD STOPS", "sub": "no program at all", "kind": "error"},
+        {"id": "BAKE", "x": 470, "y": 380, "w": 200, "h": 62, "label": "bake it now", "sub": "compile time"},
+        {"id": "PROG", "x": 200, "y": 500, "w": 290, "h": 62, "label": "the program file", "sub": "answers written in"},
+        {"id": "RUN", "x": 200, "y": 610, "w": 290, "h": 62, "label": "the party starts", "sub": "run time"},
+        {"id": "KNOWN", "x": 10, "y": 720, "w": 210, "h": 62, "label": "just serve it", "sub": "already baked"},
+        {"id": "CALC", "x": 470, "y": 720, "w": 200, "h": 62, "label": "work it out now", "sub": "with typed values"},
+        {"id": "OUT", "x": 200, "y": 830, "w": 290, "h": 62, "label": "on the screen", "sub": "the guests eat", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "SRC", "to": "CMP", "pts": [[345, 106], [345, 144]]},
+        {"id": "t1", "from": "CMP", "to": "Q", "pts": [[345, 216], [345, 254]]},
+        {"id": "qy", "from": "Q", "to": "BAKE", "pts": [[430, 326], [560, 374]], "label": "yes, and it can", "lx": 492, "ly": 334, "anchor": "start"},
+        {"id": "qx", "from": "Q", "to": "ERR", "pts": [[260, 326], [120, 374]], "label": "yes, but it can't", "lx": 196, "ly": 334, "anchor": "end", "bug": true},
+        {"id": "qn", "from": "Q", "to": "PROG", "pts": [[345, 326], [345, 494]], "label": "no: it can wait", "lx": 355, "ly": 420, "anchor": "start"},
+        {"id": "bp", "from": "BAKE", "to": "PROG", "pts": [[570, 446], [570, 531], [494, 531]], "label": "answer written in", "lx": 560, "ly": 476, "anchor": "end"},
+        {"id": "pr", "from": "PROG", "to": "RUN", "pts": [[345, 566], [345, 604]]},
+        {"id": "rk", "from": "RUN", "to": "KNOWN", "pts": [[260, 676], [120, 714]], "label": "baked value", "lx": 182, "ly": 690, "anchor": "end"},
+        {"id": "rc", "from": "RUN", "to": "CALC", "pts": [[430, 676], [570, 714]], "label": "needs typing", "lx": 508, "ly": 690, "anchor": "start"},
+        {"id": "ko", "from": "KNOWN", "to": "OUT", "pts": [[115, 786], [115, 861], [196, 861]]},
+        {"id": "co", "from": "CALC", "to": "OUT", "pts": [[570, 786], [570, 861], [494, 861]]}],
+      "paths": [
+        {"id": "bake", "label": "constexpr: baked", "program": "road_bake.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SRC"], "output": [], "mood": "focus", "note": "<code>road_bake.cpp</code>: line 8 is <code>constexpr int planned{slices_for(10)};</code>."},
+          {"on": ["CMP"], "via": ["t0"], "output": [], "note": "<code>g++ road_bake.cpp -o road_bake</code>: the kitchen opens. Nothing is running yet."},
+          {"on": ["Q"], "via": ["t1"], "output": [], "note": "<code>planned</code> is <code>constexpr</code>, so its value is needed <b>now</b>."},
+          {"on": ["BAKE"], "via": ["qy"], "output": [], "mood": "happy", "note": "<code>slices_for</code> is a constexpr function and 10 is a literal, so the Compiler runs the recipe itself: 10 &times; 2 + 4 = 24."},
+          {"on": ["PROG"], "via": ["bp"], "output": [], "mood": "happy", "note": "The program file gets the number 24, not the sum."},
+          {"on": ["RUN"], "via": ["pr"], "output": [], "note": "<code>./road_bake</code>: the party starts."},
+          {"on": ["KNOWN"], "via": ["rk"], "output": [], "mood": "happy", "note": "Line 8 has nothing to do: 24 is already there."},
+          {"on": ["OUT"], "via": ["ko"], "output": ["Cake ready: 24 slices"], "mood": "happy", "note": "Line 9 serves it. Zero waiting at the party."}]},
+        {"id": "party", "label": "typed at the party", "program": "road_party.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SRC"], "output": [], "mood": "focus", "note": "<code>road_party.cpp</code>: the same constexpr recipe, but line 11 is a plain <code>int needed{slices_for(guests)};</code>."},
+          {"on": ["CMP"], "via": ["t0"], "output": [], "note": "The Compiler reads every line, as always."},
+          {"on": ["Q"], "via": ["t1"], "output": [], "note": "Is <code>needed</code> needed while building? No: it's an ordinary variable, and <code>guests</code> will be typed later."},
+          {"on": ["PROG"], "via": ["qn"], "output": [], "note": "So the program file holds the recipe itself, ready to run."},
+          {"on": ["RUN"], "via": ["pr"], "output": ["How many guests came? 7"], "note": "<code>./road_party</code>. Line 9 asks, and the guest types <kbd>7</kbd>."},
+          {"on": ["CALC"], "via": ["rc"], "output": ["How many guests came? 7"], "mood": "focus", "note": "Line 11 runs <code>slices_for(7)</code> right now, at the party: 7 &times; 2 + 4 = 18."},
+          {"on": ["OUT"], "via": ["co"], "output": ["How many guests came? 7", "Slice it now: 18 slices"], "mood": "happy", "note": "Line 12 prints it. Same recipe as the baked road, different kitchen."}]},
+        {"id": "nonce", "label": "a non-constexpr call", "bug": true, "program": "read_error.cpp", "expect": {"exit": 1, "stderrContains": "call to non-"}, "steps": [
+          {"on": ["SRC"], "output": [], "mood": "focus", "note": "<code>read_error.cpp</code> from panel 12: <code>constexpr int guests{read()};</code>."},
+          {"on": ["CMP"], "via": ["t0"], "output": [], "note": "The Compiler reads it."},
+          {"on": ["Q"], "via": ["t1"], "output": [], "note": "<code>guests</code> is constexpr: needed now."},
+          {"on": ["ERR"], "via": ["qx"], "output": [], "error": "read_error.cpp:10:30: error: call to non-‘constexpr’ function ‘int read()’", "mood": "worried", "note": "But <code>read()</code> is an ordinary function that wants a keyboard. It can't be baked, so the build stops. There is no program file, and no party."}]},
+        {"id": "ceval", "label": "consteval, typed value", "bug": true, "program": "consteval_bad.cpp", "expect": {"exit": 1, "stderrContains": "not usable in a constant expression"}, "steps": [
+          {"on": ["SRC"], "output": [], "mood": "focus", "note": "<code>consteval_bad.cpp</code> from panel 18: <code>dozens(boxes)</code>, with <code>boxes</code> typed in."},
+          {"on": ["CMP"], "via": ["t0"], "output": [], "note": "The Compiler reads it."},
+          {"on": ["Q"], "via": ["t1"], "output": [], "note": "<code>dozens</code> is consteval: <b>every</b> call is needed while building, even inside a <code>std::cout</code> line."},
+          {"on": ["ERR"], "via": ["qx"], "output": [], "error": "consteval_bad.cpp:10:25: error: the value of ‘boxes’ is not usable in a constant expression", "mood": "worried", "note": "<code>boxes</code> only exists at the party. A kitchen-only recipe can't wait for it, so the build stops."}]}]}</script>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE LABEL-MAKER<small>auto and its rules, auto&amp; and const auto&amp;, decltype, the vector&lt;bool&gt; surprise, and when not to use auto</small></h2>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 24: auto is a label-maker">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Writing types out gets tiring: <code>std::map&lt;std::string, std::vector&lt;int&gt;&gt;::const_iterator</code>, anyone? <code>auto</code> lets the Compiler work out a variable's type from its starting value. This is called <b>type deduction</b>. Think of <code>auto</code> as a <b>label-maker</b>: it reads the box you give it and prints the label for you.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 300" role="img" aria-label="A box labelled ci carries three stickers: int, const and ampersand reference. It goes into a label-maker machine marked auto. Out comes a new box with a printed label that only says int; the const and reference stickers lie peeled off in a little tray. Under the tray: peeled off unless you ask. To the right, two smaller label-makers: auto ampersand keeps the reference sticker, const auto ampersand puts both stickers back.">
+      <rect x="6" y="6" width="648" height="288" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="26" y="96" width="120" height="90" rx="6" fill="#E7C08A"/>
+        <rect x="36" y="70" width="58" height="30" rx="5" fill="#FFF6CC" transform="rotate(-6 65 85)"/>
+        <rect x="80" y="62" width="70" height="30" rx="5" fill="#FFE1EC" transform="rotate(5 115 77)"/>
+        <rect x="40" y="150" width="40" height="28" rx="5" fill="#DDE8FF"/>
+        <rect x="200" y="80" width="170" height="120" rx="14" fill="#C9F2D9"/>
+        <rect x="222" y="104" width="126" height="40" rx="6" fill="#FFFFFF"/>
+        <path d="M370 150 h28" stroke-width="6"/>
+        <rect x="420" y="110" width="110" height="80" rx="6" fill="#E7C08A"/>
+        <rect x="440" y="96" width="70" height="28" rx="5" fill="#FFF6CC"/>
+        <path d="M222 218 h126 v26 h-126 z" fill="#FFFFFF"/>
+        <rect x="234" y="206" width="56" height="24" rx="5" fill="#FFE1EC" transform="rotate(-10 262 218)"/>
+        <rect x="296" y="208" width="34" height="24" rx="5" fill="#DDE8FF" transform="rotate(8 313 220)"/>
+      </g>
+      <g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round"><path d="M150 140 h40"/><path d="M180 132 l12 8 l-12 8"/></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="65" y="91" font-size="15" transform="rotate(-6 65 85)">int</text>
+        <text x="115" y="83" font-size="14" transform="rotate(5 115 77)">const</text>
+        <text x="60" y="170" font-size="16">&amp;</text>
+        <text x="86" y="134" font-size="20">ci</text>
+        <text x="285" y="132" font-size="26">auto</text>
+        <text x="475" y="116" font-size="15">int</text>
+        <text x="475" y="162" font-size="20">a</text>
+        <text x="262" y="223" font-size="14" transform="rotate(-10 262 218)">const</text>
+        <text x="313" y="225" font-size="15" transform="rotate(8 313 220)">&amp;</text>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="285" y="64">THE LABEL-MAKER</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle">
+        <text x="86" y="210">the box you give it</text>
+        <text x="285" y="268">peeled off unless you ask</text>
+        <text x="475" y="214">a brand-new box</text>
+        <text x="590" y="80" font-size="15">auto&amp;</text><text x="590" y="99" font-size="15">keeps the &amp;</text>
+        <text x="590" y="150" font-size="15">const auto&amp;</text><text x="590" y="169" font-size="15">puts both</text><text x="590" y="188" font-size="15">back</text>
+        <text x="590" y="230" font-size="15">const auto</text><text x="590" y="249" font-size="15">adds const</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The rule to remember: plain <code>auto</code> makes a <b>brand-new box</b>, a copy. So it peels off the <code>&amp;</code> sticker (a copy isn't a nickname for anything) and the outer <code>const</code> sticker (your copy is yours to change). Want them? Ask: <code>auto&amp;</code>, <code>const auto</code>, <code>const auto&amp;</code>. <b>auto reads the box, but peels the stickers.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: proving what auto picked">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">How can we <b>see</b> what <code>auto</code> picked? C++ has no portable way to print a type's name. Instead, each line 12 to 17 makes a claim and the Compiler checks it. <code>decltype(a)</code> means "the declared type of <code>a</code>", and <code>std::is_same_v&lt;X, Y&gt;</code> (from <code>&lt;type_traits&gt;</code>) is <code>true</code> only when X and Y are exactly the same type. If any claim were wrong, the build would stop, and nothing at all would print.</p>
+    <span class="file-tab">auto_basics.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="auto_basics.cpp"></pre>
+      <pre class="term" data-run="auto_basics.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Two surprises. <code>"hi"</code> on line 9 is a C-style text literal, so <code>d</code> is a <code>const char*</code>, a pointer to letters, not a <code>std::string</code>. Line 10 says <code>std::string</code> out loud to get one. And <code>5u</code> (line 11) is <code>unsigned int</code>: the <code>u</code> suffix matters. <code>auto</code> takes the literal's type <b>exactly</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 26: the label-maker machine" data-machine="m-auto">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Feed the label-maker. The boxes come from <code>label_maker.cpp</code>: <code>x</code> is an <code>int</code>, <code>ci</code> a <code>const int</code>, <code>r</code> an <code>int&amp;</code> naming <code>x</code>, and <code>cr</code> a <code>const int&amp;</code> naming <code>ci</code>. Every label is proved by a <code>static_assert</code> in that program and checked against its real output. The last chip claims that <code>auto</code> keeps <code>const</code>.</p>
+    <span class="file-tab">label_maker.cpp</span>
+    <pre class="code" data-src="label_maker.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-auto">{"label": "auto", "program": "label_maker.cpp", "examples": [
+      {"in": "auto a = ci;", "out": "int", "expectLine": "auto a = ci;   a is int", "outKind": "const peeled", "note": "<code>ci</code> is a <code>const int</code>. A plain <code>auto</code> makes a new box, a copy, and your copy isn't sealed: <code>int</code>. The outer (top-level) <code>const</code> is peeled off."},
+      {"in": "auto& b = ci;", "out": "const int&", "expectLine": "auto& b = ci;  b is const int&", "outKind": "const kept", "note": "With <code>&amp;</code>, <code>b</code> is a nickname for <code>ci</code> itself, not a copy. A nickname for a sealed box must stay sealed, so the <code>const</code> is kept: <code>const int&amp;</code>."},
+      {"in": "const auto c = x;", "out": "const int", "expectLine": "const auto c = x;  c is const int", "outKind": "const added", "note": "<code>x</code> is a plain <code>int</code>. You may always <b>add</b> stickers: <code>const auto</code> makes a sealed copy."},
+      {"in": "auto d = r;", "out": "int", "expectLine": "auto d = r;   d is int", "outKind": "& peeled", "note": "<code>r</code> is an <code>int&amp;</code>. Plain <code>auto</code> peels the reference: <code>d</code> is a separate <code>int</code> holding a copy of <code>x</code>'s value. Changing <code>d</code> never touches <code>x</code>."},
+      {"in": "auto& e = r;", "out": "int&", "expectLine": "auto& e = r;  e is int&", "outKind": "& kept", "note": "Ask for the <code>&amp;</code> and you get a nickname: <code>e</code> names <code>x</code>, just like <code>r</code> does."},
+      {"in": "auto f = cr;", "out": "int", "expectLine": "auto f = cr;  f is int", "outKind": "both peeled", "note": "<code>cr</code> is a <code>const int&amp;</code>. First the <code>&amp;</code> is peeled, which leaves a <code>const int</code>; then that outer <code>const</code> is peeled too. A plain, changeable <code>int</code>."},
+      {"in": "const auto& g = x;", "out": "const int&", "expectLine": "const auto& g = x;  g is const int&", "outKind": "look, don't touch", "note": "The visitor badge: a nickname for <code>x</code> that may only look. This is the type you'll write most often in loops."},
+      {"in": "decltype(ci) h", "out": "const int", "expectLine": "decltype(ci) h;  h is const int", "outKind": "nothing peeled", "note": "<code>decltype(name)</code> is not a label-maker: it copies the declared type <b>exactly</b>, stickers and all. <code>decltype(ci)</code> is <code>const int</code>."},
+      {"in": "claim: auto keeps const", "error": "static assertion failed: auto keeps const?", "program": "label_wrong.cpp", "note": "A program that claims <code>auto a = ci;</code> gives a <code>const int</code>. The Compiler checks the claim and refuses to build: the claim is false. The message is the one written on line 7 of <code>label_wrong.cpp</code>."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-deduce-m" id="ex-deduce"></div>
+  <script type="application/json" id="ex-deduce-m">{"q": "<code>const std::string title{\"Party\"};</code> then <code>auto t = title;</code>. What is <code>t</code>, and may you write <code>t += \"!\";</code>?", "options": [
+    {"t": "<code>std::string</code>, a copy: yes, and <code>title</code> stays \"Party\"", "correct": true, "why": "Right. Plain auto makes a new box and peels the outer const. <code>t</code> is your own copy to change, so <code>t += \"!\";</code> compiles; <code>title</code> is untouched."},
+    {"t": "<code>const std::string</code>: no, it's sealed like <code>title</code>", "why": "That's what <code>const auto t = title;</code> would give. Plain auto peels the outer const off."},
+    {"t": "<code>const std::string&amp;</code>, a nickname for <code>title</code>: no", "why": "That needs <code>const auto&amp;</code> (or <code>auto&amp;</code>, which keeps the const). Plain auto never makes a reference."},
+    {"t": "<code>std::string&amp;</code>: yes, and <code>title</code> becomes \"Party!\"", "why": "Then a sealed box could be changed through a nickname, which C++ never allows. And plain auto doesn't make references anyway."}]}</script>
+
+  <section class="panel clean tracer" aria-label="Panel 27: auto copies, auto&amp; names the real thing" data-tracer="tr-copy" id="tr-copy-box">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">The mistake <code>auto</code> makes easy, because it's <b>silent</b>. Line 6 looks like it grabs cell 0 of the vector. It grabs a <b>copy</b> of it. Step through and watch which box line 7 changes. (Cell 0 is drawn as its own box so arrows can reach it; really it sits inside the vector.)</p>
+    <span class="file-tab">auto_copy.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-copy-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-copy">{"program": "auto_copy.cpp", "steps": [
+      {"line": 5, "output": [], "frames": [{"name": "main()", "vars": []}], "objects": {}, "note": "<code>main</code> starts on line 4."},
+      {"line": 6, "output": [], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "1"}}, "changed": ["v"], "note": "Line 5 makes the vector 1, 2, 3."},
+      {"line": 7, "output": [], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "1"}, "i2": {"kind": "int", "label": "x's copy", "value": "1"}}, "changed": ["x"], "note": "Line 6: <code>auto x = v[0];</code>. The label-maker peels the <code>&amp;</code>: <code>x</code> is a brand-new <code>int</code> box holding a copy of 1."},
+      {"line": 8, "output": [], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "1"}, "i2": {"kind": "int", "label": "x's copy", "value": "9"}}, "changed": ["x"], "note": "Line 7 writes 9 into <code>x</code>: the copy. The vector's cell is still 1."},
+      {"line": 9, "output": ["after auto:  v[0] is 1"], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "1"}, "i2": {"kind": "int", "label": "x's copy", "value": "9"}}, "note": "Line 8 prints <code>v[0]</code>: still 1. No error, no warning that matters, just the wrong box."},
+      {"line": 10, "output": ["after auto:  v[0] is 1"], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}, {"n": "y", "ref": "i1"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "1"}, "i2": {"kind": "int", "label": "x's copy", "value": "9"}}, "changed": ["y"], "note": "Line 9: <code>auto&amp; y = v[0];</code>. With the <code>&amp;</code>, <code>y</code> is a nickname: its arrow goes to the <b>same</b> box the vector's cell 0 uses. No new box."},
+      {"line": 11, "output": ["after auto:  v[0] is 1"], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}, {"n": "y", "ref": "i1"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "9"}, "i2": {"kind": "int", "label": "x's copy", "value": "9"}}, "note": "Line 10 writes 9 through <code>y</code>, straight into the vector."},
+      {"line": null, "output": ["after auto:  v[0] is 1", "after auto&: v[0] is 9"], "frames": [{"name": "main()", "vars": [{"n": "v", "ref": "V1"}, {"n": "x", "ref": "i2"}, {"n": "y", "ref": "i1"}]}], "objects": {"V1": {"kind": "vector<int>", "items": [{"ref": "i1"}, {"val": "2"}, {"val": "3"}]}, "i1": {"kind": "int", "label": "v[0]", "value": "9"}, "i2": {"kind": "int", "label": "x's copy", "value": "9"}}, "note": "Line 11: now <code>v[0]</code> is 9. One character, <code>&amp;</code>, decided which box changed."}]}</script>
+    <p class="caption">The real build and run. g++ did leave one clue: <samp>variable ‘x’ set but not used</samp>. Line 7 gave <code>x</code> a value that nothing ever reads. A detective treats that warning as "you changed a copy and threw it away".</p>
+    <pre class="term wrap" data-run="auto_copy.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This is Chapter 8's nickname, now with a label-maker in front. When you want to change the real thing, say so: <b>want the real thing? Ask for the &amp;.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-auto-m" id="ex-auto"></div>
+  <script type="application/json" id="ex-auto-m">{"program": "predict_auto.cpp", "prompt": "One copy, one nickname, then both set to 0. What are the two lines?", "hint": "Draw the vector. Which of <code>a</code> and <code>b</code> has its own box?", "explain": "<code>a</code> is a copy of <code>v[1]</code>, so <code>a = 0;</code> leaves the vector's 6 alone. <code>b</code> is a nickname for <code>v[2]</code>, so <code>b = 0;</code> changes the vector: <samp>5 6 0</samp>. Then <code>a</code> and <code>b</code> are both 0: <samp>0 0</samp>. (<code>b</code> prints the vector's cell, which is now 0.)"}</script>
+
+  <div data-ex="spot" data-model="ex-spotauto-m" id="ex-spotauto"></div>
+  <script type="application/json" id="ex-spotauto-m">{"program": "spot_auto.cpp", "bug": 6, "prompt": "Everyone was promised 10 bonus points. The scores print unchanged, with no error. Click the line to fix.", "explain": "Line 6's <code>auto s</code> makes each <code>s</code> a <b>copy</b> of one score. Line 7 adds 10 to the copy, which is thrown away at the end of each lap. Fix: <code>for (auto&amp; s : scores)</code>. Line 7 looks guilty, but it does exactly what it says to the box it's given. g++ 13 stays silent here; clang 18 warns <samp>variable 's' set but not used</samp> (next panel)."}</script>
+
+  <section class="panel sketch" aria-label="Panel 28: three ways to walk a container">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">The three loops you'll write every day. Chapter 8 met the shapes; now you know what the label-maker does in each one.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>auto x<small>a copy each lap</small></h3><p>For small, cheap values you want to play with without touching the container: an <code>int</code>, a <code>double</code>. Changes vanish at the end of the lap.</p></div>
+      <div class="duo-card"><h3>auto&amp; x<small>the real thing</small></h3><p>When the loop's job is to <b>change</b> the items. If the container is const, <code>auto&amp;</code> keeps the const and the Compiler stops any change.</p></div>
+      <div class="duo-card"><h3>const auto&amp; x<small>look, don't touch</small></h3><p>The default for reading: no copies (a big <code>std::string</code> isn't copied each lap) and no accidental changes.</p></div>
+    </div>
+    <p class="caption soft">The spot exercise's program, built by both compilers. Only clang noticed that each <code>s</code> was changed and never read.</p>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3: no warning</p><pre class="term" data-run="spot_auto.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1: a clue</p><pre class="term" data-run="spot_auto.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Don't count on a warning: one compiler saw it, one didn't. Count on the habit. Reading? <code>const auto&amp;</code>. Changing? <code>auto&amp;</code>. A copy only when you <b>mean</b> a copy.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-constref-m" id="ex-constref"></div>
+  <script type="application/json" id="ex-constref-m">{"program": "fill_constref.cpp", "prompt": "Greet every guest without copying any names and without any chance of changing them. Fill in the loop variable's type.", "blanks": [{"line": 7, "text": "const auto&", "accept": ["const auto &", "auto const&", "auto const &", "const std::string&", "const std::string &"]}], "explain": "<code>const auto&amp;</code>: a look-only nickname for each name, no copies. Since <code>guests</code> is itself const, a plain <code>auto&amp;</code> would also compile (it keeps the const, as the machine showed), but <code>const auto&amp;</code> says your intent out loud. Line 10's <code>auto count</code> is fine: it's obvious the count comes from <code>size()</code>."}</script>
+
+  <div data-ex="trace" data-model="ex-autotrace-m" id="ex-autotrace"></div>
+  <script type="application/json" id="ex-autotrace-m">{"program": "trace_auto.cpp", "columns": ["i", "copy", "v[i]"], "given": [0], "prompt": "Each lap makes a copy of <code>v[i]</code> and a nickname for it, then changes both. Line 11 prints <code>i</code>, the copy, and the vector's cell. Fill in the table.", "explain": "The copy is multiplied by 10: <samp>10</samp>, <samp>20</samp>, <samp>30</samp>, and none of that reaches the vector. The nickname adds 1 to the real cell: <samp>2</samp>, <samp>3</samp>, <samp>4</samp>. Notice <code>copy</code> was taken <em>before</em> line 10 changed the cell, so it's 10 times the old value."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 29: the vector of bool surprise">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="29"></svg>
+    <p class="caption">One famous trap. To save memory, <code>std::vector&lt;bool&gt;</code> packs each <code>bool</code> into a single <b>bit</b>, and you can't make a nickname to one bit. So <code>lit[0]</code> doesn't give a <code>bool&amp;</code>; it gives a small stand-in object, a <b>proxy</b>, that remembers which bit it means. <code>auto</code> faithfully copies the proxy.</p>
+    <span class="file-tab">vecbool.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="vecbool.cpp"></pre>
+      <pre class="term" data-run="vecbool.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char" data-char="lamp" data-on="false"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The lamp says: </span>Line 7 looked like it saved my value, <code>true</code>. But <code>first</code> is a proxy still wired to bit 0. When line 10 switched bit 0 off, <code>first</code> went dark too: <samp>first: 0</samp>. Line 8 spelled out <code>bool</code>, so <code>second</code> is a real copy and kept its 1. Line 9 proves it: <code>first</code> is <b>not</b> a <code>bool</code>.</p></div>
+    </div>
+    <ol class="readlist" aria-label="What to remember">
+      <li><span><b>Only</b> <code>std::vector&lt;bool&gt;</code> does this. <code>std::vector&lt;int&gt;</code>, <code>std::vector&lt;char&gt;</code> and every other vector hand out real references.</span></li>
+      <li><span><b>The fix:</b> when you want the value, name the type: <code>bool first = lit[0];</code>.</span></li>
+      <li><span><b>No error, no warning:</b> both compilers build this silently. A <code>static_assert</code> with <code>std::is_same_v</code> is how you'd catch it.</span></li>
+    </ol>
+    <p class="sr-only">Picture: the lamp creature, switched off, looking surprised.</p>
+  </section>
+
+  <section class="panel sketch tilt-r" aria-label="Panel 30: when not to use auto">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft"><code>auto</code> takes its type from the <b>first</b> value, and only from the first value. Two programs where that bites. First: <code>auto total = 0;</code> makes an <code>int</code>, so every price is chopped to a whole number as it's added (2.5 + 1.25 + 4.75 = 8.5, but the int ends at 7, with no warning). Second: <code>auto i = 0</code> is an <code>int</code>, compared with <code>size()</code>'s unsigned type.</p>
+    <div class="pair2 stack">
+      <div><p class="who">silent: chopped to whole numbers</p><span class="file-tab">auto_trap.cpp</span><pre class="code" data-src="auto_trap.cpp"></pre><pre class="term wrap" data-run="auto_trap.cpp" data-exit></pre></div>
+      <div><p class="who">a warning: signed vs unsigned</p><span class="file-tab">auto_sign.cpp</span><pre class="code" data-src="auto_sign.cpp"></pre><pre class="term wrap" data-run="auto_sign.cpp" data-exit></pre></div>
+    </div>
+    <ul class="checklist" aria-label="When to use auto">
+      <li><span><b>Use auto</b> when the type is already on the line or is long and obvious: <code>auto it = ages.find("Ada");</code>, <code>auto p = std::make_unique&lt;Robot&gt;();</code>, <code>auto count = v.size();</code>.</span></li>
+      <li><span><b>Use auto</b> in range-for, always with the right sticker: <code>const auto&amp;</code> or <code>auto&amp;</code>.</span></li>
+      <li><span><b>Spell the type</b> when the exact type is the point: money (<code>double total{0.0};</code>), counters compared with sizes, and values from <code>std::vector&lt;bool&gt;</code>.</span></li>
+      <li><span><b>Spell the type</b> when a reader would have to hunt for it. Code is read far more often than it's written (Core Guideline ES.11 says use auto to avoid repeating type names, not to hide them).</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Two easy fixes for the first: <code>double total{0.0};</code>, or <code>auto total = 0.0;</code> with a decimal point. In the second, the loop works here, but the warning is a smell: use a range-for, or <code>std::size_t i</code>. Chapter 20 tells the whole signed-and-unsigned story.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · NICKNAMES AND LUNCHBOXES<small>using aliases, class template argument deduction, std::pair, std::tuple, std::tie and structured bindings</small></h2>
+
+  <section class="panel clean" aria-label="Panel 31: a nickname for a long type">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Back to that tiring type. A <b>type alias</b> gives a type a short nickname. <code>using Scores = std::vector&lt;int&gt;;</code> (line 6) means "wherever I write <code>Scores</code>, I mean <code>std::vector&lt;int&gt;</code>". Line 7 builds a bigger alias out of the smaller one. Line 8 is the old C way to say the same thing, <code>typedef</code>, written backwards.</p>
+    <span class="file-tab">alias.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="alias.cpp"></pre>
+      <pre class="term" data-run="alias.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>An alias is a nickname, not a new type: line 20 copies a <code>Scoreboard</code> straight into an <code>OldScoreboard</code>, because they're the very same type. Prefer <code>using</code>: it reads left to right like an assignment, name first (Core Guideline T.43). And the name can say what the type is <b>for</b>: <code>Scores</code> tells more than <code>std::vector&lt;int&gt;</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-alias-m" id="ex-alias"></div>
+  <script type="application/json" id="ex-alias-m">{"program": "fill_alias.cpp", "prompt": "The diner's orders are a <code>std::map&lt;std::string, std::vector&lt;std::string&gt;&gt;</code>. Give that type the nickname <code>Orders</code>, then use the nickname for <code>print</code>'s look-only parameter.", "blanks": [{"line": 6, "text": "using"}, {"line": 8, "text": "const Orders&", "accept": ["const Orders &", "Orders const&", "Orders const &"]}], "explain": "<code>using Orders = ...;</code> names the type once. After that, <code>print</code>'s parameter is just <code>const Orders&amp;</code> (look-only, no copy), and <code>main</code> writes <code>Orders orders{...}</code>. If the diner later stores orders differently, only line 6 changes."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: letting the Compiler read the template arguments">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Another kind of deduction. Since C++17, when you build a vector or a pair from starting values, you may leave out the part in angle brackets. The Compiler reads it from the values. That's <b>class template argument deduction</b>, <b>CTAD</b> for short. Lines 10 and 11 prove what it picked.</p>
+    <span class="file-tab">ctad.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="ctad.cpp"></pre>
+      <pre class="term" data-run="ctad.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 9 builds the <code>std::string</code> on purpose. Write just <code>"Ada"</code> and CTAD would make the first half a <code>const char*</code>, like panel 25's <code>d</code>. Handy, but CTAD has one famous trap. Before the next panel explains it: predict.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-five-m" id="ex-five"></div>
+  <script type="application/json" id="ex-five-m">{"program": "five.cpp", "prompt": "Four vectors, built with braces <code>{}</code> or parentheses <code>()</code>. For each one, how many items does it hold, and what is the first?", "hint": "Braces list the <b>items</b>. Parentheses give a <b>count</b> (and optionally the value to repeat).", "explain": "<code>std::vector a{5}</code>: braces list items, so one item, the 5 (CTAD makes it a <code>std::vector&lt;int&gt;</code>): <samp>a: 1 item(s), first 5</samp>. <code>b(5)</code>: parentheses give a count: five zeros. <code>c{5, 0}</code>: two items, 5 and 0. <code>d(5, 1)</code>: five copies of 1. Read <code>{}</code> as \"these items\" and <code>()</code> as \"this many\"."}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: braces or parentheses">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">The real run, and the rule behind it. A vector has a special constructor that takes a <b>list of items</b>, and braces always pick it first. Parentheses skip it and reach the "how many, of what" constructor.</p>
+    <pre class="term" data-run="five.cpp" data-exit></pre>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">You write</th><th scope="col">You get</th><th scope="col">Read it as</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>std::vector&lt;int&gt; v{5};</code></th><td>one item: 5</td><td>these items: 5</td></tr>
+        <tr><th scope="row"><code>std::vector&lt;int&gt; v(5);</code></th><td>five items: 0 0 0 0 0</td><td>this many: 5</td></tr>
+        <tr><th scope="row"><code>std::vector&lt;int&gt; v{5, 1};</code></th><td>two items: 5 1</td><td>these items: 5, 1</td></tr>
+        <tr><th scope="row"><code>std::vector&lt;int&gt; v(5, 1);</code></th><td>five items: 1 1 1 1 1</td><td>this many: 5, each 1</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>This book prefers braces everywhere (Chapter 3), and for most types they're right. Containers are the exception to know: when you mean "this many", use parentheses. No compiler warns either way; both lines are perfectly legal, they just mean different things.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean walk-wide" aria-label="Panel 34: walk Wren through a pair and a tuple" data-walk="walk-packed">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Lunchboxes. A <code>std::pair</code> (from <code>&lt;utility&gt;</code>) packs exactly <b>two</b> values, called <code>.first</code> and <code>.second</code>. A <code>std::tuple</code> (from <code>&lt;tuple&gt;</code>) packs any number, reached by position with <code>std::get</code>. Chapter 14's maps were full of pairs already. Walk through it.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">packed.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-packed">{"program": "packed.cpp", "steps": [
+      {"line": 7, "output": [], "mood": "normal", "arms": "point", "note": "<code>main</code> starts on line 6."},
+      {"line": 8, "output": [], "mood": "focus", "arms": "point", "note": "Line 7 packs a pair: a <code>std::string</code> and an <code>int</code>, in that order. The types go in the angle brackets, first then second."},
+      {"line": 9, "output": ["Ada is 36"], "mood": "happy", "arms": "point", "note": "Line 8 opens the lunchbox: <code>guest.first</code> is \"Ada\", <code>guest.second</code> is 36."},
+      {"line": 10, "output": ["Ada is 36"], "mood": "focus", "arms": "point", "note": "Line 9 packs a tuple of three: flavour, slices and price. A tuple has no member names, only positions 0, 1, 2."},
+      {"line": 11, "output": ["Ada is 36", "lemon, 8 slices"], "mood": "focus", "arms": "point", "note": "Line 10 reads by position with <code>std::get&lt;0&gt;</code> and <code>std::get&lt;1&gt;</code>. The position goes in angle brackets because it must be a constant expression: the Compiler checks it while building (panel 36 shows what happens with a bad one)."},
+      {"line": 12, "output": ["Ada is 36", "lemon, 8 slices"], "mood": "happy", "arms": "point", "note": "Line 11: <code>std::get</code> hands back a <b>reference</b>, so assigning to it changes the tuple. Two slices were eaten: 6."},
+      {"line": 13, "output": ["Ada is 36", "lemon, 8 slices"], "mood": "happy", "arms": "point", "note": "Line 12 is a <b>structured binding</b>: <code>auto [flavour, slices, price]</code> unpacks the tuple into three new names at once, in position order. Plain <code>auto</code>: they name parts of a copy."},
+      {"line": null, "output": ["Ada is 36", "lemon, 8 slices", "lemon: 6 slices, $12.5"], "mood": "happy", "arms": "cheer", "mouth": "shout", "note": "Line 13 uses the three names. Much easier to read than three <code>std::get</code>s."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: returning two answers at once">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Where lunchboxes shine: a function that must hand back <b>two</b> answers. <code>lowest_highest</code> returns a <code>std::pair&lt;int, int&gt;</code> (line 13 packs it with braces). Line 18 unpacks it into two <b>new</b> names with a structured binding. Lines 20 to 22 show the older way, <code>std::tie</code>, which unpacks into variables that <b>already exist</b>.</p>
+    <span class="file-tab">minmax.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="minmax.cpp"></pre>
+      <pre class="term" data-run="minmax.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>std::tie(low, high)</code> builds a little tuple of <b>references</b> to <code>low</code> and <code>high</code>; assigning the pair to it writes into both. Use a structured binding when you want new names (most of the time), <code>std::tie</code> when the variables are already there. Chapter 9's advice still stands too: a small struct with good names is often clearer still (panel 37).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: structured bindings with a map, and two errors">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Chapter 14 already used a structured binding to walk a map: each item of a <code>std::map</code> is a pair of key and value. With <code>const auto&amp;</code> in front, the two names look into the map itself, no copies.</p>
+    <span class="file-tab">bindings_map.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="bindings_map.cpp"></pre>
+      <pre class="term" data-run="bindings_map.cpp" data-exit></pre>
+    </div>
+    <p class="caption">Both of the tuple mistakes are caught while building. First: two names for a tuple of three. Second: <code>std::get&lt;3&gt;</code> on a tuple whose positions are 0, 1 and 2. The second message is long because the error is found deep inside the library; the line to read is the <samp>static assertion failed</samp>.</p>
+    <div class="pair2 stack">
+      <div><p class="who">too few names</p><span class="file-tab">binding_count_bad.cpp</span><pre class="code" data-src="binding_count_bad.cpp"></pre><pre class="term wrap" data-run="binding_count_bad.cpp" data-exit></pre></div>
+      <div><p class="who">a position that doesn't exist</p><span class="file-tab">tuple_get_bad.cpp</span><pre class="code" data-src="tuple_get_bad.cpp"></pre><pre class="term wrap small" data-run="tuple_get_bad.cpp" data-exit></pre></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the tuple errors like a detective">
+      <li><span><b>Too few names:</b> <samp>only 2 names provided for structured binding</samp>, and the note says the tuple <samp>decomposes into 3 elements</samp>. A binding needs exactly one name per part.</span></li>
+      <li><span><b>Bad position:</b> skip the <samp>In file included from</samp> lines (where the library's header came from). Find the first <samp>error:</samp>: <samp>static assertion failed: tuple index must be in range</samp>. The library guards <code>std::get</code> with a <code>static_assert</code>, the very tool from panel 19.</span></li>
+      <li><span><b>Then find your own file:</b> the line starting <samp>tuple_get_bad.cpp:7:29</samp> is where you called it. Library errors always end up pointing back at your line somewhere in the pile.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-bind-m" id="ex-bind"></div>
+  <script type="application/json" id="ex-bind-m">{"program": "parsons_bind.cpp", "seed": 4, "pin": [1, 2, 3, 5, 6, 13], "prompt": "Walk the map of slices eaten, keeping a running total. Put the lines in order so the output matches. (A <code>std::map</code> always walks in key order.)", "explain": "<code>total</code> must start at 0 <b>before</b> the loop. Inside, the total is updated first and then printed, which is why Ada's line already says 2. The final line comes after the loop's closing brace. The binding <code>const auto&amp; [name, count]</code> names the key and value of each pair, without copying."}</script>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 37: pair, tuple or struct?">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">So which lunchbox? Compare a tuple with a three-line struct holding the same cake. Line 14 asks for the price both ways.</p>
+    <span class="file-tab">named.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="named.cpp"></pre>
+      <pre class="term" data-run="named.cpp" data-exit></pre>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">Lunchbox</th><th scope="col">Good for</th><th scope="col">Watch out</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>std::pair</code></th><td>two values that obviously go together, for a moment: a key and value, a low and high</td><td><code>.first</code> and <code>.second</code> say nothing about what they hold</td></tr>
+        <tr><th scope="row"><code>std::tuple</code></th><td>a quick bundle inside one function, or generic code that doesn't know the names</td><td><code>std::get&lt;2&gt;</code>: which one was 2 again?</td></tr>
+        <tr><th scope="row"><code>struct</code></th><td>anything that lives longer, travels between functions, or is read by other people</td><td>three lines to write, once</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>c.price</code> explains itself; <code>std::get&lt;2&gt;(t)</code> needs a comment. And line 15 shows a struct can be unpacked with a structured binding too. So the struct gives up nothing. <b>Name the parts.</b> (Core Guideline F.21 agrees: to return several values, prefer returning a struct.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pts-m" id="ex-pts"></div>
+  <script type="application/json" id="ex-pts-m">{"q": "Wren's party planner keeps a list of guests. Each guest has a name, an age and a dietary note, and the list is passed to five different functions written by three people. What should one guest be?", "options": [
+    {"t": "A <code>struct Guest</code> with a name, an age and a diet", "correct": true, "why": "Right: <code>struct Guest { std::string name; int age; std::string diet; };</code>. Many functions and several people will read it: <code>g.diet</code> is clear everywhere, and a structured binding still works when a function wants the parts."},
+    {"t": "A <code>std::tuple&lt;std::string, int, std::string&gt;</code>", "why": "It works, but every reader must remember that position 2 is the diet and position 0 the name. With two strings, mixing them up even compiles."},
+    {"t": "A <code>std::pair&lt;std::string, int&gt;</code> per guest", "why": "A pair holds only two values, so the dietary note has nowhere to go."},
+    {"t": "Three separate vectors: names, ages and diets", "why": "Then one guest is spread over three containers that must stay in step. Sort one and the others are wrong."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 38: boss level">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="38"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The whole kitchen at once. For each one ask: is it sealed? Is it baked before the party, or made at it? Is this name a copy or a nickname? Which stickers did the label-maker peel?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. A baked number, a look-only nickname and a copy. What does the last line print?", "hint": "Work out <code>base</code> first. Then: which of <code>first</code> and <code>second</code> has its own box, and which one sees line 13's change?", "explain": "<code>base</code> is baked: twice(2) = 4, so <code>v</code> is 4, 5. <code>first</code> is a <code>const auto&amp;</code>: it may not change <code>v[0]</code>, but it <b>sees</b> every change made through <code>v</code>. <code>second</code> is a copy of 5. Line 13 runs <code>twice(5)</code> at the party: <code>v[0]</code> becomes 10, and <code>first</code> shows <samp>10</samp>. Line 14 zeroes only the copy: <samp>0</samp>. <code>v[1]</code> is untouched: <samp>5</samp>. \"Look, don't touch\" doesn't mean \"frozen\": someone else may still change the box."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 7, "prompt": "Boss 2. Everyone should get 10 bonus points. The map prints unchanged, with no error and no warning from g++. Click the line to fix.", "explain": "Line 7's <code>auto [name, score]</code> unpacks a <b>copy</b> of each map item, so line 8 adds 10 to a copy. It's the spot-the-bug from Part 4 wearing a structured binding. Fix: <code>for (auto&amp; [name, score] : points)</code>. Then <code>score</code> names the map's real value. (The key stays const even then: <code>name</code> is a <code>const std::string</code>, because changing a key would break the map's sorted order.)"}</script>
+
+  <div data-ex="parsons" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_parsons.cpp", "seed": 9, "pin": [1, 2, 13], "prompt": "Boss 3. Bake a table of doubling numbers before the party, check it, then print it at the party. (<code>1 &lt;&lt; i</code> means 1 doubled <code>i</code> times.) Put the lines in order.", "explain": "The recipe <code>make_doubles</code> comes first: its header, a zeroed array, a loop that fills it, the loop's brace, <code>return t;</code>, the function's brace. Then <code>doubles</code> is baked from it, and only then can the <code>static_assert</code> check <code>doubles[3]</code>. Last, <code>main</code> walks the finished table. <code>constexpr auto doubles</code> works because the label-maker reads the type from <code>make_doubles()</code>."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.cpp", "prompt": "Boss 4. A recipe that converts hours to minutes, usable in the kitchen and at the party, tested while building, then used on a list of bakes. Fill in the three gaps.", "blanks": [{"line": 6, "text": "constexpr"}, {"line": 10, "text": "static_assert"}, {"line": 14, "text": "[name, hours]", "accept": ["[name,hours]", "[ name, hours ]", "[ name,hours ]"]}], "explain": "<code>constexpr</code> lets <code>minutes</code> run at both times. <code>static_assert(minutes(2) == 120);</code> bakes a test into every build. The loop unpacks each pair with <code>const auto&amp; [name, hours]</code>, and calls <code>minutes(hours)</code> at the party, because the hours come from a run-time vector: 3 hours is <samp>180 min</samp>, 1 hour <samp>60 min</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.cpp", "columns": ["step", "a", "b"], "given": [0], "prompt": "Boss 5. Line 9 packs the pair <code>{b, a + b}</code> using the <b>old</b> values, then <code>std::tie</code> unpacks it into <code>a</code> and <code>b</code> at once. Fill in <code>a</code> and <code>b</code> after each step.", "explain": "Start: a = 0, b = 1. Each step the pair is built first from the old values, so nothing is overwritten too early: (1, 1), (1, 2), (2, 3), (3, 5), (5, 8). These are the Fibonacci numbers. Without the pair, <code>a = b; b = a + b;</code> would use the <em>new</em> <code>a</code> and go wrong."}</script>
+
+  <div data-ex="choice" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"q": "Boss 6. <code>const int limit{10};</code> then <code>auto p = &amp;limit;</code>. What type does the label-maker print for <code>p</code>?", "options": [
+    {"t": "<code>const int*</code>: the pointer may move; the int is sealed", "correct": true, "why": "Right. The label-maker only peels the <b>outer</b> const of the box it makes. Here the box is a pointer, and the pointer itself was never sealed. The const belongs to the int it points at, and that one is kept, or you could change <code>limit</code> through <code>p</code>."},
+    {"t": "<code>int*</code>: plain auto peels off every const", "why": "Then <code>*p = 11;</code> would change a sealed int. C++ never allows that. Only the outer (top-level) const is peeled."},
+    {"t": "<code>int* const</code>: the pointer itself is sealed", "why": "That seals the pointer. Nothing on the line asked for that; you'd write <code>auto* const p = &amp;limit;</code> (and you'd still get the const on the int: <code>const int* const</code>)."},
+    {"t": "<code>const int</code>: auto gives a copy of limit", "why": "<code>&amp;limit</code> is an address, so the copy is a copy of the <em>address</em>: a pointer. Pointers are never peeled off."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 39: what you learned">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">What you learned in Chapter 19</p>
+    <ul class="recap">
+      <li><b>SEAL IT UNLESS IT MUST CHANGE</b><code>const</code> on variables, on look-only parameters (<code>const T&amp;</code>) and on look-only member functions (<code>int degrees() const</code>). A const object can only call const member functions. Const turns silent slips into compile errors (panel 3's spot).</li>
+      <li><b>READ IT RIGHT TO LEFT</b><code>const int* p</code>: a pointer to a sealed int; it may move but not write. <code>int* const p</code>: a sealed pointer; it may write but not move. The errors say "read-only location" or "read-only variable".</li>
+      <li><b>BAKE IT BEFORE THE PARTY</b>A constant expression is worked out while building. <code>constexpr</code> variables must be given one; <code>constexpr</code> functions <em>may</em> run at compile time or at run time; <code>consteval</code> functions <em>must</em> run at compile time. Only promises can be baked: a plain variable or an ordinary function call stops the build.</li>
+      <li><b>CHECK THE CAKE BEFORE THE DOORS OPEN</b><code>static_assert(condition, "message")</code> checks while building, prints your message and the worked-out comparison. Test constexpr functions with it: free, every build, and undefined behaviour is refused in the kitchen.</li>
+      <li><b>AUTO READS THE BOX, BUT PEELS THE STICKERS</b>Plain <code>auto</code> makes a copy and drops the <code>&amp;</code> and the outer <code>const</code>. Want the real thing? Ask for the &amp;: <code>auto&amp;</code>, <code>const auto&amp;</code>. <code>decltype(x)</code> copies a type exactly. Beware <code>vector&lt;bool&gt;</code> proxies, <code>auto total = 0</code>, and <code>{5}</code> versus <code>(5)</code>.</li>
+      <li><b>NAME THE PARTS</b><code>using</code> gives long types short names. <code>std::pair</code> and <code>std::tuple</code> pack values; structured bindings unpack them into new names, <code>std::tie</code> into existing ones. For anything that lasts, a struct with good names beats positions.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Seal what shouldn't change, bake what can be baked, test it before the guests arrive, and always know whether you're holding a copy or the real thing. Measure twice, compile once!</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: next time, Gift Boxes, Clock Faces">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Coming up in Chapter 20: Gift Boxes, Clock Faces</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 180" role="img" aria-label="Teaser picture: an open gift box with a question mark floating above it, next to a clock face whose hand has gone past twelve and come round again.">
+        <path d="M40 80 h150 v86 h-150 z" fill="#FFE1EC" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M30 60 l160 -18 l6 26 l-160 18 z" fill="#FF5A4E" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M108 80 v86" stroke="#111" stroke-width="4"/>
+        <text x="115" y="44" font-family="Bangers, Impact, sans-serif" font-size="40" fill="#111" text-anchor="middle">?</text>
+        <circle cx="340" cy="94" r="70" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+        <text x="340" y="46" font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle">0</text><path d="M402 94 h-10 M340 156 v-10 M278 94 h10 M384 50 l-6 6 M296 138 l6 -6 M384 138 l-6 -6 M296 50 l6 6" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+        <path d="M340 94 L380 50" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+        <path d="M300 30 a74 74 0 0 1 80 -4" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 5"/>
+        <path d="M372 22 l10 4 l-8 8" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Today every box held exactly one known thing. Next time: a <b>gift box that might be empty</b> (<code>std::optional</code>), a box with a dial saying which of several toys is inside (<code>std::variant</code>), and why numbers on a computer behave like a <b>clock face</b>, wrapping round past the top. Bits, bytes and the floating-point surprises, too.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch18.html">← Ch 18 · Inspectors and Magnifiers</a><a class="next" href="ch20.html">Ch 20 · Gift Boxes, Clock Faces →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what the kitchen may do, top-level and low-level const, and the exact rules of auto</summary>
+    <div class="page-body">
+      <h3>What a constexpr function may contain</h3>
+      <p>C++11's first constexpr functions could hold a single <code>return</code> statement. C++14 allowed local variables, loops and <code>if</code>, which is why <code>make_squares</code> and <code>factorial</code> look like ordinary code. C++20 went further: <code>try</code> blocks, virtual functions, and even <code>new</code>/<code>delete</code>, as long as every allocation is given back before the constant evaluation ends; that's how <code>std::vector</code> and <code>std::string</code> can be used inside a constexpr function. What a constant evaluation may never do: read a variable that isn't a constant, call a non-constexpr function, or do anything with undefined behaviour, such as signed overflow (panel 21), reading past an array's end, or dividing by zero. Compilers also cap the amount of work one constant evaluation may do (g++ has switches like <code>-fconstexpr-ops-limit</code>), so an endless loop in the kitchen ends in a compile error, not a frozen build.</p>
+      <h3>Three related keywords</h3>
+      <ul>
+        <li><code>constexpr</code> on a <b>variable</b>: const, and initialised by a constant expression. On a <b>function</b>: may be evaluated at compile time.</li>
+        <li><code>consteval</code> (C++20), functions only: every call must produce a constant. Called an <b>immediate function</b>.</li>
+        <li><code>constinit</code> (C++20), for global and <code>static</code> variables: the starting value must be worked out at compile time, but the variable is <b>not</b> const and may change later. It guards against a problem Chapter 28 meets: globals whose start-up order between files is unpredictable.</li>
+      </ul>
+      <h3>Top-level and low-level const</h3>
+      <p>A <b>top-level</b> const seals the object itself: <code>const int ci</code>, or the pointer in <code>int* const p</code>. A <b>low-level</b> const seals something the object leads to: the int in <code>const int* p</code>, or the int named by <code>const int&amp; r</code>. <code>auto</code> drops top-level const, because the new variable is a separate copy and copying a sealed value into your own box is harmless. It keeps low-level const, because dropping it would let you change a sealed object through the copy (Boss 6). A reference is always "low-level": <code>auto&amp;</code> on a const object gives <code>const T&amp;</code>.</p>
+      <h3>The full auto rules, briefly</h3>
+      <ul>
+        <li><code>auto x = expr;</code> uses the same rules as a function template's by-value parameter: references and top-level const are dropped; arrays and functions turn into pointers.</li>
+        <li><code>auto&amp; x = expr;</code> keeps const; it can't bind to a temporary (<code>auto&amp; x = 5;</code> is an error). <code>const auto&amp; x = 5;</code> can.</li>
+        <li><code>auto x{1};</code> is an <code>int</code> (since C++17), but <code>auto y = {1, 2};</code> is a <code>std::initializer_list&lt;int&gt;</code>, a light read-only list. Another reason this book writes <code>auto x = 1;</code> when it uses auto.</li>
+        <li><code>decltype(name)</code> gives the declared type exactly. <code>decltype((name))</code>, with extra parentheses, treats it as an expression and gives a reference, <code>int&amp;</code>. A trap for experts, not for today.</li>
+      </ul>
+      <h3>How CTAD and structured bindings work</h3>
+      <p>CTAD uses the class's constructors (and helper rules the library writes, called deduction guides) to work out the template arguments: <code>std::pair p{1, 2.5};</code> is a <code>std::pair&lt;int, double&gt;</code>. A structured binding <code>auto [a, b] = t;</code> secretly makes one hidden copy of <code>t</code> and makes <code>a</code> and <code>b</code> names for its parts; with <code>auto&amp;</code> the hidden variable is a reference to <code>t</code>, so the names reach the real parts. That's why the <code>&amp;</code> on the binding matters in Boss 2.</p>
+      <h3>Why vector&lt;bool&gt; is different</h3>
+      <p>In 1998 the standard gave <code>std::vector&lt;bool&gt;</code> a space-saving special version: one bit per value instead of one byte. Its <code>operator[]</code> returns <code>std::vector&lt;bool&gt;::reference</code>, a small class that holds the address of a word and the position of a bit, and converts to <code>bool</code> when read. Most experts now consider that a mistake, but it can't be removed without breaking old programs. If you need real <code>bool</code>s, use <code>std::vector&lt;char&gt;</code>, <code>std::deque&lt;bool&gt;</code>, or for a fixed number of bits, <code>std::bitset</code> (Chapter 20).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Named constants instead of macros.</b> Old C code writes <code>#define MAX_GUESTS 40</code>, a text replacement with no type and no scope. Modern C++ writes <code>constexpr int max_guests{40};</code>: typed, scoped and visible in a debugger.</li>
+        <li><b>Lookup tables.</b> Checksums (CRC tables), colour palettes, sine tables in games and audio code, character-class tables in parsers: all are classic constexpr tables, built while compiling instead of at start-up.</li>
+        <li><b>Small devices.</b> On microcontrollers, a constexpr table can be placed in read-only flash memory instead of precious RAM, and nothing has to be computed when the device switches on.</li>
+        <li><b>Checks that travel with the code.</b> Libraries <code>static_assert</code> on the sizes of structs that are sent over a network or written to files, so a change in layout breaks the build instead of corrupting data. The standard library itself guards <code>std::get</code> with one (panel 36).</li>
+        <li><b>Compile-time format strings.</b> Chapter 18 showed <code>std::format("{} and {}", 1)</code> failing to compile: the format string is checked by a consteval constructor inside the library. That's this chapter's tool, used by the library authors.</li>
+        <li><b>Inserting into maps.</b> <code>auto [it, inserted] = ages.insert({"Ada", 36});</code> unpacks the <code>std::pair&lt;iterator, bool&gt;</code> that <code>insert</code> returns: where the item is, and whether it was new.</li>
+        <li><b>Aliases in big code bases.</b> Projects name their important types once, <code>using UserId = std::int64_t;</code>, so a later change touches one line, and readers see meaning instead of machinery.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A constexpr function always runs at compile time."</b> Only when its result is needed as a constant and its arguments are constants. Otherwise it's an ordinary function (panel 11). For "always", use consteval.</li>
+        <li><b>"const and constexpr are the same."</b> Both seal. Only constexpr guarantees the value is known while building (panel 14).</li>
+        <li><b>"If a variable holds a number that never changes, it's a constant expression."</b> The Compiler looks at promises, not at values (panel 13).</li>
+        <li><b>"constexpr makes my program faster."</b> It moves work from the party to the kitchen, which can help, but the optimiser often bakes plain code anyway (panel 16). constexpr is first of all a guarantee and a way to use values where C++ demands constants.</li>
+        <li><b>"const int* and int* const mean the same."</b> Read right to left: the first seals the int, the second seals the pointer (panel 5).</li>
+        <li><b>"A const reference means the value can't change."</b> It means <em>you</em> can't change it through that name. Someone else may (Boss 1).</li>
+        <li><b>"auto x = v[0]; gives me the element."</b> It gives you a copy. Ask for the &amp; (panel 27).</li>
+        <li><b>"auto keeps const."</b> Only low-level const. A plain <code>auto</code> copy of a <code>const int</code> is a changeable <code>int</code> (panel 26).</li>
+        <li><b>"auto is slower or makes code dynamic."</b> The type is fixed at compile time, exactly as if you'd written it. Nothing changes at run time.</li>
+        <li><b>"std::vector v{5}; makes five zeros."</b> It makes one 5. Parentheses mean "this many" (panel 33).</li>
+        <li><b>"A tuple is always better than a struct because it's shorter."</b> Shorter to write, slower to read. Name the parts (panel 37).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build exactly like the page</h3>
+      <p>Make a folder <code>cpp-ch19</code>, save <code>slices.cpp</code> from panel 10, and build: <code>g++ -std=c++23 -Wall -Wextra -g slices.cpp -o slices</code>, then <code>./slices</code>. Everything in this chapter needs at least C++20 (for <code>consteval</code>); <code>-std=c++20</code> works too. On Linux: <code>sudo apt install g++</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++</code> (Fedora). On macOS, install the command-line tools with <code>xcode-select --install</code>; there <code>g++</code> is Apple's clang, so your error messages will look like this page's clang terminals. On Windows with MinGW-w64 in PowerShell the build command is the same, then run <code>.\slices.exe</code>. With Microsoft's compiler, in a Developer Command Prompt: <code>cl /std:c++20 /W4 /EHsc slices.cpp</code>, then <code>slices.exe</code>.</p>
+      <h3>2. Watch the kitchen work</h3>
+      <p>Repeat panel 16 yourself: <code>g++ -std=c++23 -O2 -S asif.cpp -o asif.s</code> writes the assembly to a file. Open <code>asif.s</code> in an editor and find <code>main:</code>. Try <code>-O0</code>. Then make <code>slices_for</code> <code>constexpr</code>, write <code>constexpr int n{slices_for(10)};</code> in <code>main</code>, and look again at <code>-O0</code>. On Windows with MSVC, <code>cl /O2 /FA asif.cpp</code> writes a <code>.asm</code> listing. No install? Compiler Explorer (godbolt.org) shows the assembly next to your code as you type.</p>
+      <h3>3. Prove types with static_assert</h3>
+      <p>Copy <code>label_maker.cpp</code> and add your own claims: <code>auto* p = &amp;ci;</code>, <code>auto&amp;&amp; q = x;</code>, <code>auto s = std::string{"hi"} + "!";</code>. Guess each type, write <code>static_assert(std::is_same_v&lt;decltype(p), ...&gt;);</code>, build, and let the Compiler mark your guesses.</p>
+      <h3>4. Try these on purpose</h3>
+      <ol>
+        <li>In <code>fill_const.cpp</code>, remove the <code>const</code> after <code>degrees()</code>. Read both compilers' errors and find the note that points back at <code>degrees</code>.</li>
+        <li>In <code>table.cpp</code>, change the loop to <code>i &lt;= 6</code>, so it writes one cell past the end. What does the Compiler say? (In the kitchen, out-of-range writes are refused.)</li>
+        <li>Change <code>factorial(13)</code> in <code>overflow_ce.cpp</code> to <code>factorial(12)</code>. Then make <code>big</code> a plain <code>int</code> with 13 and build it with the sanitizer (<code>-fsanitize=address,undefined -fno-sanitize-recover=all</code>): the same mistake, caught at the party instead.</li>
+        <li>Turn <code>slices_for</code> into <code>consteval</code> and build <code>slices.cpp</code>. Which line breaks, and why does line 8 still work?</li>
+        <li>In <code>vecbool.cpp</code>, change <code>std::vector&lt;bool&gt;</code> to <code>std::vector&lt;int&gt;</code> (and fix the <code>static_assert</code>). What does <code>first</code> print now?</li>
+        <li>Write <code>std::pair p{"Ada", 36};</code> and prove with <code>static_assert</code> what CTAD picked for the first half.</li>
+      </ol>
+      <details><summary>Our runs of items 2, 3 and 4</summary>
+        <p class="who">item 2: <code>lab_past_end.cpp</code></p><pre class="term wrap small" data-run="lab_past_end.cpp" data-exit></pre>
+        <p class="who">item 3: <code>lab_overflow_party.cpp</code></p><pre class="term wrap small" data-run="lab_overflow_party.cpp" data-exit></pre>
+        <p class="who">item 4: <code>lab_slices_consteval.cpp</code></p><pre class="term wrap small" data-run="lab_slices_consteval.cpp" data-exit></pre>
+      </details>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>const correctness</dt><dd>Marking everything that shouldn't change as <code>const</code>, so the Compiler can enforce it.</dd>
+        <dt>immutable</dt><dd>Unchangeable after it's made.</dd>
+        <dt>read-only</dt><dd>The Compiler's word for const in error messages: may be read, never written.</dd>
+        <dt>const member function</dt><dd>A member function with <code>const</code> after its parameters; it promises not to change the object, so it may be called on const objects.</dd>
+        <dt>pointer to const</dt><dd><code>const int* p</code>: the pointer may move, but may not be used to change what it points at.</dd>
+        <dt>const pointer</dt><dd><code>int* const p</code>: the pointer can't be moved to another address, but may change what it points at.</dd>
+        <dt>top-level / low-level const</dt><dd>A const on the object itself, or on something the object points to or names.</dd>
+        <dt>compile time</dt><dd>While the Compiler is building the program ("the kitchen").</dd>
+        <dt>run time</dt><dd>While the built program is running ("the party").</dd>
+        <dt>constant expression</dt><dd>An expression the Compiler can work out completely at compile time.</dd>
+        <dt>constexpr</dt><dd>On a variable: const and known at compile time. On a function: may be evaluated at compile time.</dd>
+        <dt>consteval</dt><dd>C++20: a function whose every call must be evaluated at compile time (an immediate function).</dd>
+        <dt>static_assert</dt><dd>A check the Compiler makes while building; a false condition stops the build with your message.</dd>
+        <dt>if constexpr</dt><dd>An <code>if</code> whose condition is a constant expression; the branch not taken is discarded from the program.</dd>
+        <dt>as-if rule</dt><dd>The optimiser may change anything about how a program runs, as long as its visible behaviour stays the same.</dd>
+        <dt>assembly</dt><dd>A human-readable form of machine instructions, such as <code>movl $24, %eax</code>.</dd>
+        <dt>register</dt><dd>One of the processor's own tiny storage boxes, where it keeps the numbers it is working on right now (<code>%eax</code>, <code>%edi</code> in panel 16).</dd>
+        <dt>type deduction</dt><dd>The Compiler working out a type from a starting value (<code>auto</code>) or from constructor arguments (CTAD).</dd>
+        <dt>auto</dt><dd>"Work out this variable's type from its starting value." Drops references and top-level const.</dd>
+        <dt>decltype</dt><dd><code>decltype(x)</code> is the declared type of <code>x</code>, exactly.</dd>
+        <dt>std::is_same_v</dt><dd>From <code>&lt;type_traits&gt;</code>: <code>true</code> when two types are exactly the same.</dd>
+        <dt>proxy</dt><dd>A stand-in object that acts on behalf of another, like the bit reference <code>std::vector&lt;bool&gt;</code> hands out.</dd>
+        <dt>type alias</dt><dd>A second name for an existing type: <code>using Scores = std::vector&lt;int&gt;;</code> (or the older <code>typedef</code>).</dd>
+        <dt>CTAD</dt><dd>Class template argument deduction: <code>std::vector v{1, 2};</code> works out <code>&lt;int&gt;</code> by itself (C++17).</dd>
+        <dt>std::pair</dt><dd>Two values packed together, reached as <code>.first</code> and <code>.second</code>.</dd>
+        <dt>std::tuple</dt><dd>Any number of values packed together, reached by position with <code>std::get&lt;N&gt;</code>.</dd>
+        <dt>structured binding</dt><dd><code>auto [a, b] = thing;</code>: new names for the parts of a pair, tuple, struct or array (C++17).</dd>
+        <dt>std::tie</dt><dd>Makes a tuple of references to existing variables, so <code>std::tie(a, b) = pair;</code> unpacks into them.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>cppreference: <a href="https://en.cppreference.com/w/cpp/language/cv">const and volatile</a>, <a href="https://en.cppreference.com/w/cpp/language/constexpr">constexpr specifier</a>, <a href="https://en.cppreference.com/w/cpp/language/consteval">consteval specifier</a>, <a href="https://en.cppreference.com/w/cpp/language/constant_expression">constant expressions</a>, <a href="https://en.cppreference.com/w/cpp/language/static_assert">static_assert</a>, <a href="https://en.cppreference.com/w/cpp/language/if">if statement (including if constexpr)</a>, <a href="https://en.cppreference.com/w/cpp/language/as_if">the as-if rule</a></li>
+        <li>cppreference: <a href="https://en.cppreference.com/w/cpp/language/auto">placeholder type specifiers (auto)</a>, <a href="https://en.cppreference.com/w/cpp/language/decltype">decltype</a>, <a href="https://en.cppreference.com/w/cpp/language/type_alias">type alias</a>, <a href="https://en.cppreference.com/w/cpp/language/class_template_argument_deduction">class template argument deduction</a>, <a href="https://en.cppreference.com/w/cpp/utility/pair">std::pair</a>, <a href="https://en.cppreference.com/w/cpp/utility/tuple">std::tuple</a>, <a href="https://en.cppreference.com/w/cpp/utility/tuple/tie">std::tie</a>, <a href="https://en.cppreference.com/w/cpp/language/structured_binding">structured bindings</a>, <a href="https://en.cppreference.com/w/cpp/container/vector_bool">std::vector&lt;bool&gt;</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: Con.1 to Con.5 (constants and immutability), F.4 (constexpr functions), F.21 (returning several values), ES.11 (auto), T.43 (using over typedef)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/constexpr-functions/">learncpp.com F.1: Constexpr functions</a> and the rest of its chapter F, including consteval.</li>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/type-deduction-with-pointers-references-and-const/">learncpp.com 12.14: Type deduction with pointers, references, and const</a>, the full sticker rules with many examples.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, with cheat sheets on type deduction and the standard library.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to watch constexpr and the optimiser bake values into assembly.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch19</code>. There are 63 programs (three of them, <code>lab_*.cpp</code>, are the lab runs in the notebook). They were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page) and each was also built and run with clang++ 18.1 for comparison, except <code>lab_overflow_party.cpp</code>, a sanitizer build, because clang's sanitizer runtime isn't installed on this machine; both compilers use the same standard library here (libstdc++ 13). Every program that builds printed the same output under both compilers. 24 programs differ between the two: the assembly in panel 16 (clang's <code>main</code> has no <code>endbr64</code>, and at <code>-O0</code> its first five lines end before the <code>call</code>), the wording of every compile error (several shown side by side, labelled by compiler), clang's extra "set but not used" warning for the copying loop in panel 28, the wording of the two warnings in panels 27 and 30, and clang's "1 warning generated" line. g++ prints curly quotes in its messages because the capture runs in a UTF-8 locale; clang prints straight ones. The assembly in panel 16 comes from <code>g++ -S</code> runs piped through <code>grep</code>, exactly as the commands show; the clang++ comparison ran the same pipelines with <code>clang++</code>. Programs that read the keyboard were run with scripted typing in a pseudo-terminal, so their terminals show the typing as you would see it. Deduced types are never printed by guesswork: each one is proved by a <code>static_assert</code> in the program that prints its label, so a wrong label would have stopped the build. The walk-throughs, the memory pictures, the map and the machine are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (F.1 Constexpr functions, compile-time versus run-time evaluation and the non-constexpr-call error; 12.14 Type deduction with pointers, references, and const, top-level versus low-level const and the placement of const with auto); cppreference (const, constexpr, consteval, constant expressions, static_assert, if constexpr, the as-if rule, auto, decltype, type aliases, CTAD, pair, tuple, tie, structured bindings, <code>std::vector&lt;bool&gt;</code>); the C++ Core Guidelines rules Con.1 to Con.5, F.4, F.21, ES.11 and T.43, checked against the guidelines' source text; hacking C++'s beginner's guide; the C++ research map for this course (module rows I5 and I6); and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, the Compiler, the Sanitizer, the Professor and the lamp are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

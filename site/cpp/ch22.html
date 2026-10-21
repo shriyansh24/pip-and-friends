@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Key Cards, Moving Day</title>
+<meta name="description" content="Chapter 22 of the Pip &amp; Friends C++ book, a comic course: RAII and resource handles (files, locks and other resources, the constructor acquires and the destructor releases, cleanup on every exit including early returns and exceptions, std::fstream, unique_ptr with a custom deleter, std::scoped_lock, scope guards, destructors that must not throw), then move semantics (lvalues and rvalues, rvalue references, std::move as a cast, move constructors and move assignment, the moved-from state, noexcept moves and std::vector, copy elision and return std::move, std::move on const, sink parameters).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch22.css">
+<script defer src="../data/cpp-ch22.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch22.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch21.html">&larr; Ch 21</a><span aria-current="page">Ch 22 of 29</span><a href="ch23.html">Ch 23 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 22</p>
+    <h1 id="cover-h">KEY CARDS, MOVING DAY</h1>
+    <div class="scene">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char lg" data-char="concierge" data-mood="happy" data-arms="point" data-prop="card"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her stands Basil, a hotel concierge in a burgundy jacket with gold buttons and a pillbox hat, holding out a gold key card.</p>
+    <p class="caption blurb">Wren is spending a week at the <b>Hotel Ferrum</b>, and the concierge, Basil, runs the place with one rule: <b>the room is yours from check-in until check-out, whichever door you leave by</b>. In C++ that rule has a clumsy name, RAII, and it is the reason good C++ code almost never says "close", "unlock" or "delete". Then it's moving day. Copying a house brick by brick is slow, so C++ lets you <b>hand over the keys and the truck</b> instead: <code>std::move</code>, move constructors and the strange, empty house left behind. About 130 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Check-in, check-out: resources, and the key card that is the room (RAII)</a></li>
+      <li><a href="#part-2">Every exit leads to check-out: early returns, exceptions, and destructors that must not throw</a></li>
+      <li><a href="#part-3">A key card for every door: files, unique_ptr with a deleter, locks and scope guards</a></li>
+      <li><a href="#part-4">Moving day: lvalues, rvalues, T&amp;&amp; and what std::move really does</a></li>
+      <li><a href="#part-5">Writing the movers: move constructor, move assignment, noexcept, elision and sink parameters</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · CHECK-IN, CHECK-OUT<small>resources, and the key card that is the room</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: the hotel's one rule">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="DING!" data-seed="1"></svg>
+    <p class="caption">Wren rings the bell at the front desk. Basil slides a gold card across the counter. "Room 12. The card <b>is</b> the room: while you hold it, nobody else gets the room. And when you check out, by the front door, the fire escape or the laundry chute, the card comes back to me and the room is cleaned for the next guest. You never have to remember."</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 230" role="img" aria-label="A timeline of a hotel stay. On the left, a desk labelled CHECK IN hands over a gold key card for room 12. In the middle, three doors leave the room: FRONT DOOR, FIRE ESCAPE and LAUNDRY CHUTE. All three arrows lead to one desk on the right labelled CHECK OUT, where the card is handed back and the room is freed.">
+      <rect x="6" y="6" width="648" height="218" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="24" y="110" width="130" height="70" rx="8" fill="#C9F2D9"/>
+        <rect x="506" y="110" width="130" height="70" rx="8" fill="#FFE1EC"/>
+        <rect x="64" y="56" width="56" height="36" rx="6" fill="#FFC94A" transform="rotate(-10 92 74)"/>
+        <rect x="220" y="40" width="70" height="40" rx="6" fill="#DDE8FF"/>
+        <rect x="290" y="100" width="70" height="40" rx="6" fill="#DDE8FF"/>
+        <rect x="360" y="160" width="70" height="40" rx="6" fill="#DDE8FF"/>
+      </g>
+      <g fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round">
+        <path d="M156 140 C190 140 196 60 216 60"/><path d="M156 145 C220 145 250 120 286 120"/><path d="M156 150 C230 160 320 180 356 180"/>
+        <path d="M292 60 C420 60 470 120 500 135"/><path d="M362 120 C430 120 470 140 500 142"/><path d="M432 180 C470 180 480 160 500 150"/>
+        <path d="M492 128 l10 7 l-11 5 M492 137 l10 5 l-11 4 M491 146 l10 4 l-10 6"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="89" y="152">CHECK IN</text><text x="571" y="152">CHECK OUT</text>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="92" y="79" transform="rotate(-10 92 74)">12</text>
+        <text x="255" y="58">FRONT</text><text x="255" y="73">DOOR</text>
+        <text x="325" y="118">FIRE</text><text x="325" y="133">ESCAPE</text>
+        <text x="395" y="178">LAUNDRY</text><text x="395" y="193">CHUTE</text>
+        <text x="89" y="170">constructor</text><text x="571" y="170">destructor</text>
+      </g>
+      <text x="330" y="28" font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111" text-anchor="middle">whichever way you leave, the card comes back</text>
+    </svg></div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="happy" data-arms="point" data-prop="bell"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span>Every guest who checks in, checks out. <b>Every exit leads to check-out.</b> That's not a promise I make. It's how the building is built.</p></div>
+    </div>
+    <p class="sr-only">Picture: Basil the concierge rings his desk bell and points at the timeline.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 2: resources are more than memory">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">A <b>resource</b> is anything a program borrows from the computer and must give back. Chapter 13 met the first one: heap memory, borrowed with <code>new</code> and returned with <code>delete</code>. There are many more, and every one has its own "check in" and "check out" step.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 250" role="img" aria-label="A shelf of five borrowed things, each with a borrow word and a give-back word. Heap memory: new and delete. An open file: fopen and fclose. A lock, drawn as a padlock on a lift door: lock and unlock. A network connection, drawn as a telephone: connect and close. A database connection, drawn as a filing drawer: open and close. A banner says: the computer only has so many of each.">
+      <rect x="6" y="6" width="648" height="238" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M22 168 H638" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="34" y="96" width="96" height="70" rx="8" fill="#DDE8FF"/><path d="M34 120 h96 M34 144 h96 M66 96 v70 M98 96 v70" fill="none" stroke-width="2.5"/>
+        <path d="M168 76 h64 l20 20 v70 h-84 z" fill="#FFF6CC"/><path d="M232 76 v20 h20" fill="#EDEDED" stroke-width="3"/><path d="M182 112 h50 M182 128 h50 M182 144 h34" fill="none" stroke-width="3"/>
+        <rect x="292" y="70" width="72" height="96" rx="6" fill="#C9F2D9"/><path d="M328 70 v96" fill="none" stroke-width="3"/><rect x="312" y="104" width="32" height="26" rx="5" fill="#FFC94A"/><path d="M318 104 v-10 a10 10 0 0 1 20 0 v10" fill="none"/>
+        <path d="M400 150 q0 -50 46 -50 q46 0 46 50 z" fill="#FFE1EC"/><rect x="412" y="148" width="68" height="18" rx="5" fill="#FFE1EC"/><path d="M420 104 q26 -26 52 0" fill="none" stroke-width="7" stroke-linecap="round"/>
+        <rect x="528" y="84" width="96" height="82" rx="6" fill="#E7C08A"/><rect x="540" y="96" width="72" height="28" rx="4" fill="#FFF6CC"/><rect x="540" y="130" width="72" height="28" rx="4" fill="#FFF6CC"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="19" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="82" y="54">MEMORY</text><text x="210" y="54">A FILE</text><text x="328" y="54">A LOCK</text><text x="446" y="54">NETWORK</text><text x="576" y="54">DATABASE</text>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">
+        <text x="82" y="192">new</text><text x="82" y="210">delete</text>
+        <text x="210" y="192">fopen</text><text x="210" y="210">fclose</text>
+        <text x="328" y="192">lock</text><text x="328" y="210">unlock</text>
+        <text x="446" y="192">connect</text><text x="446" y="210">close</text>
+        <text x="576" y="192">open</text><text x="576" y="210">close</text>
+      </g>
+      <text x="330" y="234" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">the computer only has so many of each</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"<b>Every bolt you tighten, you loosen later.</b>" Forget to loosen it and nothing breaks today. But a program that forgets to close files runs out of them; one that forgets to unlock a lock leaves the next person waiting forever. These bugs don't crash. They just pile up.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: the skipped fclose">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">The old, manual way, in C style. <code>std::fopen</code> (from <code>&lt;cstdio&gt;</code>) opens a file and hands back a <code>FILE*</code>; <code>std::fclose</code> must give it back. <code>save_score</code> remembers to close on the happy path (line 27), but line 24 leaves early when the score is bad. The helper on lines 8 to 15 counts the files this program still holds: Linux lists them in <code>/proc/self/fd</code>, and four entries are always there (keyboard, screen, error screen, and the listing itself).</p>
+    <span class="file-tab">manual_files.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="manual_files.cpp"></pre>
+      <pre class="term" data-run="manual_files.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run like a detective">
+      <li><span><b>The Compiler said nothing.</b> No error, no warning. Leaving early is perfectly legal C++.</span></li>
+      <li><span><b>The program said nothing either:</b> exit code 0, and nothing on the error screen.</span></li>
+      <li><span><b>The only clue is the count:</b> <samp>files still open: 2</samp>. Ben's and Cy's files were opened on line 18 and never closed, because line 24 jumped over line 27.</span></li>
+      <li><span><b>Why it matters:</b> an operating system gives each program a limited number of open files (on Linux often 1024; <code>ulimit -n</code> shows yours). A server that leaks one file per bad request stops working after enough bad requests, days later, far from the bug.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak says: </span>Heh. Every <code>return</code> you add is one more place you have to remember the clean-up. Every exception, too. I love manual clean-up.</p></div>
+    </div>
+    <p class="sr-only">Picture: Sneak, the logic-bug critter, grins from behind the terminal.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotret-m" id="ex-spotret"></div>
+  <script type="application/json" id="ex-spotret-m">{"program": "spot_return.cpp", "bug": 12, "prompt": "The front desk counts rooms in use by hand: <code>check_in()</code> adds one, <code>check_out()</code> takes one away. After three stays, every guest has left, so the count should be 0. Click the line that makes it 1.", "explain": "Line 12 returns early for the 5-night guest, so line 15's <code>check_out()</code> never runs: one room is booked forever. The manual fix is to call <code>check_out()</code> before <b>every</b> <code>return</code>, and before every <code>throw</code>, and in every place a called function might throw from. The real fix is the rest of this chapter: make check-out happen automatically."}</script>
+
+  <section class="panel sketch" aria-label="Panel 4: the key card is the room">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">The fix is a class. Its <b>constructor</b> checks in (acquires the resource), and its <b>destructor</b> checks out (releases it). Chapter 12 showed that C++ runs a destructor automatically when an object's life ends, at the closing brace of its scope. So the clean-up happens exactly once, on every way out, without anyone remembering.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 220" role="img" aria-label="A class drawn as a key card holder. On its left edge, a green desk labelled constructor: check in, acquire. On its right edge, a pink desk labelled destructor: check out, release. Between them, a bar labelled the object's lifetime runs from the line where the object is made to the closing brace of its scope.">
+      <rect x="6" y="6" width="648" height="208" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="24" y="56" width="170" height="92" rx="10" fill="#C9F2D9"/>
+        <rect x="466" y="56" width="170" height="92" rx="10" fill="#FFE1EC"/>
+        <rect x="200" y="86" width="260" height="32" rx="16" fill="#FFF6CC"/>
+      </g>
+      <path d="M440 92 l16 10 l-16 10" fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="109" y="88">CONSTRUCTOR</text><text x="551" y="88">DESTRUCTOR</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="109" y="112">check in</text><text x="109" y="132">acquire</text>
+        <text x="551" y="112">check out</text><text x="551" y="132">release</text>
+        <text x="330" y="108">the object's lifetime</text>
+        <text x="109" y="180">KeyCard card{12};</text><text x="551" y="180">the closing brace }</text>
+      </g>
+      <text x="330" y="36" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111" text-anchor="middle">Resource Acquisition Is Initialization</text>
+      <text x="330" y="196" font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">the resource lives exactly as long as the object</text>
+    </svg></div>
+    <div class="duo">
+      <div class="duo-card"><h3>THE NAME<small>RAII</small></h3><p>"Resource Acquisition Is Initialization": getting the resource <em>is</em> making the object. It's a clumsy name for a simple idea, so many people say <b>scope-bound resource management</b>: the resource is bound to a scope.</p></div>
+      <div class="duo-card"><h3>THE RULE<small>Core Guideline R.1</small></h3><p>"Manage resources automatically using resource handles and RAII." A <b>resource handle</b> is the object that owns the resource, like a key card owns a room.</p></div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="normal" data-arms="point" data-prop="card"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span><b>The card is the room.</b> Hold the card, have the room. Lose the card, at the end of its scope, and the room is handed back. No separate "remember to check out" step exists at all.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: a key card class">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Here is the smallest key card. The constructor (lines 5 to 7) prints its check-in, and the destructor (lines 8 to 10) prints its check-out, so you can watch each object's whole life. <code>mine</code> lives in <code>main</code>'s scope; <code>pool</code> lives only inside the inner braces, lines 18 to 21.</p>
+    <span class="file-tab">key_card.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="key_card.cpp"></pre>
+      <pre class="term" data-run="key_card.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Nobody ever calls <code>~KeyCard()</code>. Read <code>main</code> again: no "check out" anywhere. The pool card checks out at line 21's brace, and my card at line 23's. The braces <em>are</em> the check-out desk.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean walk-wide" aria-label="Panel 6: walk Wren through the stay" data-walk="walk-keys">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Walk Wren through <code>key_card.cpp</code>, line by line. Watch where she jumps when an object is made (up to the constructor) and when a closing brace is reached (up to the destructor).</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">key_card.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-keys">{"program": "key_card.cpp", "steps": [
+      {"line": 16, "output": [], "mood": "normal", "arms": "point", "note": "<code>main</code> starts on line 15. Nothing is checked in yet."},
+      {"line": 17, "output": ["arrive at the hotel"], "mood": "happy", "arms": "point", "note": "Line 16 prints."},
+      {"line": 6, "output": ["arrive at the hotel"], "mood": "focus", "arms": "point", "note": "Line 17 makes <code>mine</code>, a KeyCard for room 12. Making an object runs its constructor, so Wren jumps up to line 5: <code>room_</code> is set to 12, and the body starts."},
+      {"line": 18, "output": ["arrive at the hotel", "check in: room 12"], "mood": "happy", "arms": "point", "note": "Line 6 prints the check-in. The constructor is done, and <code>mine</code> now holds room 12. Back to <code>main</code>."},
+      {"line": 19, "output": ["arrive at the hotel", "check in: room 12"], "mood": "normal", "arms": "point", "note": "Line 18 opens a new scope: a block of braces. Anything made inside lives only until its closing brace."},
+      {"line": 6, "output": ["arrive at the hotel", "check in: room 12"], "mood": "focus", "arms": "point", "note": "Line 19 makes <code>pool</code>, room 3. Up to the constructor again."},
+      {"line": 20, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3"], "mood": "happy", "arms": "point", "note": "Line 6 prints room 3's check-in. Now Wren holds two cards."},
+      {"line": 21, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim"], "mood": "happy", "arms": "point", "note": "Line 20: swim."},
+      {"line": 9, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 21 is a closing brace: <code>pool</code>'s scope ends here, so its life ends. C++ calls its destructor by itself. Wren jumps to line 9."},
+      {"line": 22, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim", "check out: room 3"], "mood": "happy", "arms": "point", "note": "Line 9 prints room 3's check-out. <code>pool</code> is gone. <code>mine</code> is not: its scope is still open."},
+      {"line": 23, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim", "check out: room 3", "dinner"], "mood": "happy", "arms": "point", "note": "Line 22: dinner, still holding room 12."},
+      {"line": 9, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim", "check out: room 3", "dinner"], "mood": "focus", "arms": "point", "note": "Line 23 is <code>main</code>'s closing brace. <code>mine</code>'s life ends, and its destructor runs."},
+      {"line": null, "output": ["arrive at the hotel", "check in: room 12", "check in: room 3", "swim", "check out: room 3", "dinner", "check out: room 12"], "mood": "happy", "arms": "cheer", "mouth": "shout", "note": "Room 12 checks out. Two check-ins, two check-outs, and not one line of <code>main</code> asked for them."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-nested-m" id="ex-nested"></div>
+  <script type="application/json" id="ex-nested-m">{"program": "predict_nested.cpp", "prompt": "Four cards, one inner block. Type the whole screen.", "hint": "A card checks out at the closing brace of the block it was made in. Two cards in the same block leave in the opposite order to how they came in.", "explain": "<code>a</code> checks in, then <code>b</code> and <code>c</code> inside the block, then <samp>lights off</samp>. At line 15's brace the block ends: <code>c</code> leaves first, then <code>b</code> (the newest one goes first). Then <code>d</code> is made, and at <code>main</code>'s brace <code>d</code> leaves before <code>a</code>: <samp>out 4</samp>, <samp>out 1</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 7: last in, first out">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Why newest first? Because a later object may depend on an earlier one. Think of a lift key (the lock) and the room on the top floor you reach with it: you leave the room before you hand back the lift key, never the other way round. So C++ destroys the objects of one scope in <b>reverse order of construction</b>, like taking plates off a pile.</p>
+    <div class="picscroll"><svg class="pic-mid pic-wide" viewBox="0 0 520 220" role="img" aria-label="A pile of three key cards on a spike, labelled 1, 2 and 3 from bottom to top. An arrow going down on the left says made in this order: 1, 2, 3. An arrow going up on the right says destroyed in this order: 3, 2, 1.">
+      <rect x="6" y="6" width="508" height="208" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M260 30 V190" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="190" y="146" width="140" height="36" rx="6" fill="#FFC94A"/>
+        <rect x="190" y="104" width="140" height="36" rx="6" fill="#DDE8FF"/>
+        <rect x="190" y="62" width="140" height="36" rx="6" fill="#C9F2D9"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle">
+        <text x="224" y="170">1</text><text x="224" y="128">2</text><text x="224" y="86">3</text>
+        <text x="296" y="170">a</text><text x="296" y="128">b</text><text x="296" y="86">c</text>
+      </g>
+      <g fill="none" stroke="#111" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M150 60 V176 M140 164 l10 12 l10 -12"/><path d="M370 176 V60 M360 72 l10 -12 l10 12"/>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="24" y="104">made</text><text x="24" y="124">1, 2, 3</text>
+        <text x="392" y="104">destroyed</text><text x="392" y="124">3, 2, 1</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="normal" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same rule as Chapter 15's unwinding, and the same rule for the members inside an object: built top to bottom, taken apart bottom to top. You'll lean on it when one handle needs another, like a file inside a locked folder.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"program": "trace_order.cpp", "columns": ["event", "room"], "given": [], "prompt": "Three nights. Every night gets a <code>bed</code> card; most nights also a <code>spa</code> card. Fill in every row the program prints, in order: <code>in</code> or <code>out</code>, then the room number. (<code>continue</code> jumps to the next night straight away.)", "explain": "The loop body is a scope, so its cards check out at its closing brace, every night. Night 1: <samp>in 101</samp>, <samp>in 1</samp>, then at the brace the spa leaves first: <samp>out 1</samp>, <samp>out 101</samp>. Night 2: <code>continue</code> leaves the body early, but that is just another exit: <samp>in 102</samp>, <samp>out 102</samp>, and the spa card was never made. Night 3 is like night 1 with 103 and 3."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · EVERY EXIT LEADS TO CHECK-OUT<small>early returns, exceptions, and destructors that must not throw</small></h2>
+
+  <section class="panel clean" aria-label="Panel 8: leaving early still checks out">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Back to panel 3's problem, with a key card. <code>stay</code> has three ways out: the early <code>return</code> on line 20, the <code>throw</code> on line 23, and the normal end at line 26. This program takes the early return (<code>stay(0)</code> on line 30).</p>
+    <span class="file-tab">road_return.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="road_return.cpp"></pre>
+      <pre class="term" data-run="road_return.cpp" data-exit></pre>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="happy" data-arms="down" data-prop="card"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span>Changed your mind? No problem. <code>return</code> leaves the function's scope, and <code>card</code> lives in that scope, so its destructor runs on the way out. You left by the side door, and I still got my card back.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 9: an exception still checks out">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="WHOOSH!" data-seed="9"></svg>
+    <p class="caption"><code>road_throw.cpp</code> is the same program with <code>stay(9)</code> on line 30. Nine nights is too many, so line 23 throws. Chapter 15 showed what happens next: the exception flies out of <code>stay</code> to the <code>catch</code> in <code>main</code>, and on its way it <b>unwinds</b> the stack, destroying every local object it passes.</p>
+    <span class="file-tab">road_throw.cpp (line 30: stay(9);)</span>
+    <pre class="term" data-run="road_throw.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>Fire drill! Look at the order: <samp>check out: room 12</samp> comes <b>before</b> <samp>caught</samp>. The room was handed back while the exception was still in the air, before anyone had caught it. Nobody is left locked in a room during my drills.</p></div>
+    </div>
+    <p class="sr-only">Picture: Ember the Fire Marshal, from Chapter 15, holds up a megaphone.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 10: the map of every way out" data-map="map-exits">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption soft">The whole stay as a map. Three programs, identical except for line 30: <code>road_normal.cpp</code> stays 2 nights, <code>road_return.cpp</code> 0, and <code>road_throw.cpp</code> 9. Pick a road and walk it. Every road passes through check-out.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapx-t mapx-d"><title id="mapx-t">Map: every way out of stay()</title><desc id="mapx-d">stay starts by checking in. If nights is 0 it returns early. If nights is more than 7 it throws. Otherwise it sleeps and reaches the end of the function. All three ways lead to check out, the destructor. After check out, a normal end and an early return go back to main and back home. A throw goes on to the catch in main first, then back home.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-exits">{"seed": 22, "size": [690, 720], "start": [[145, 14], [145, 64]],
+      "states": [
+        {"id": "IN", "x": 20, "y": 70, "w": 250, "h": 66, "label": "check in", "sub": "KeyCard card{12};"},
+        {"id": "Q", "x": 20, "y": 180, "w": 250, "h": 66, "label": "nights == 0 ?", "sub": "line 18"},
+        {"id": "T", "x": 20, "y": 290, "w": 250, "h": 66, "label": "nights > 7 ?", "sub": "line 22"},
+        {"id": "S", "x": 20, "y": 400, "w": 250, "h": 66, "label": "sleep", "sub": "line 25"},
+        {"id": "R", "x": 400, "y": 180, "w": 230, "h": 66, "label": "return early", "sub": "line 20"},
+        {"id": "X", "x": 400, "y": 290, "w": 230, "h": 66, "label": "throw", "sub": "line 23", "kind": "error"},
+        {"id": "OUT", "x": 20, "y": 510, "w": 250, "h": 66, "label": "check out", "sub": "~KeyCard() runs"},
+        {"id": "C", "x": 400, "y": 640, "w": 230, "h": 66, "label": "catch in main", "sub": "caught: ..."},
+        {"id": "H", "x": 20, "y": 640, "w": 250, "h": 66, "label": "back home", "sub": "line 34", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "IN", "to": "Q", "pts": [[145, 140], [145, 174]], "label": "", "lx": 0, "ly": 0, "anchor": "end"},
+        {"id": "t2", "from": "Q", "to": "T", "pts": [[145, 250], [145, 284]], "label": "no", "lx": 132, "ly": 272, "anchor": "end"},
+        {"id": "t3", "from": "T", "to": "S", "pts": [[145, 360], [145, 394]], "label": "no", "lx": 132, "ly": 382, "anchor": "end"},
+        {"id": "t4", "from": "S", "to": "OUT", "pts": [[145, 470], [145, 504]], "label": "end of stay", "lx": 132, "ly": 492, "anchor": "end"},
+        {"id": "t5", "from": "Q", "to": "R", "pts": [[272, 213], [394, 213]], "label": "yes", "lx": 333, "ly": 204, "anchor": "middle"},
+        {"id": "t6", "from": "T", "to": "X", "pts": [[272, 323], [394, 323]], "label": "yes", "lx": 333, "ly": 314, "anchor": "middle", "bug": true},
+        {"id": "t7", "from": "R", "to": "OUT", "pts": [[632, 213], [664, 213], [664, 552], [276, 552]], "label": "return", "lx": 470, "ly": 572, "anchor": "middle"},
+        {"id": "t8", "from": "X", "to": "OUT", "pts": [[515, 360], [515, 524], [276, 524]], "label": "unwinding", "lx": 395, "ly": 516, "anchor": "middle", "bug": true},
+        {"id": "t9", "from": "OUT", "to": "H", "pts": [[145, 580], [145, 634]], "label": "back to main", "lx": 132, "ly": 612, "anchor": "end"},
+        {"id": "t10", "from": "OUT", "to": "C", "pts": [[272, 566], [560, 566], [560, 634]], "label": "still flying", "lx": 572, "ly": 606, "anchor": "start", "bug": true},
+        {"id": "t11", "from": "C", "to": "H", "pts": [[398, 690], [276, 690]], "label": "after catch", "lx": 337, "ly": 682, "anchor": "middle"}],
+      "paths": [
+        {"id": "normal", "label": "2 nights", "program": "road_normal.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["IN"], "output": ["check in: room 12"], "mood": "happy", "note": "Line 30 calls <code>stay(2)</code>. Line 17 makes the card: check-in."},
+          {"on": ["Q"], "via": ["t1"], "output": ["check in: room 12"], "mood": "focus", "note": "Line 18: 2 isn't 0, so no early return."},
+          {"on": ["T"], "via": ["t2"], "output": ["check in: room 12"], "mood": "focus", "note": "Line 22: 2 isn't more than 7, so no throw."},
+          {"on": ["S"], "via": ["t3"], "output": ["check in: room 12", "sleeping 2 nights"], "mood": "happy", "note": "Line 25 prints."},
+          {"on": ["OUT"], "via": ["t4"], "output": ["check in: room 12", "sleeping 2 nights", "check out: room 12"], "mood": "happy", "note": "Line 26, the closing brace: the function's scope ends, and <code>card</code>'s destructor runs."},
+          {"on": ["H"], "via": ["t9"], "output": ["check in: room 12", "sleeping 2 nights", "check out: room 12", "back home"], "mood": "happy", "note": "Back in <code>main</code>. Nothing was thrown, so the <code>catch</code> is skipped, and line 34 prints."}]},
+        {"id": "early", "label": "0 nights", "program": "road_return.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["IN"], "output": ["check in: room 12"], "mood": "happy", "note": "<code>stay(0)</code>. Check-in, as always."},
+          {"on": ["Q"], "via": ["t1"], "output": ["check in: room 12"], "mood": "surprised", "note": "Line 18: nights is 0."},
+          {"on": ["R"], "via": ["t5"], "output": ["check in: room 12", "changed my mind, leaving early"], "mood": "focus", "note": "Lines 19 and 20: print, then <code>return</code>."},
+          {"on": ["OUT"], "via": ["t7"], "output": ["check in: room 12", "changed my mind, leaving early", "check out: room 12"], "mood": "happy", "note": "The <code>return</code> leaves the scope, and leaving a scope by any road destroys its objects. Check-out."},
+          {"on": ["H"], "via": ["t9"], "output": ["check in: room 12", "changed my mind, leaving early", "check out: room 12", "back home"], "mood": "happy", "note": "Back in <code>main</code>: line 34."}]},
+        {"id": "throw", "label": "9 nights", "bug": true, "program": "road_throw.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["IN"], "output": ["check in: room 12"], "mood": "happy", "note": "<code>stay(9)</code>. Check-in."},
+          {"on": ["Q"], "via": ["t1"], "output": ["check in: room 12"], "mood": "focus", "note": "9 isn't 0."},
+          {"on": ["T"], "via": ["t2"], "output": ["check in: room 12"], "mood": "worried", "note": "Line 22: 9 is more than 7."},
+          {"on": ["X"], "via": ["t6"], "output": ["check in: room 12"], "mood": "surprised", "note": "Line 23 throws a <code>std::runtime_error</code>. Line 25 never runs."},
+          {"on": ["OUT"], "via": ["t8"], "output": ["check in: room 12", "check out: room 12"], "mood": "focus", "note": "The exception leaves <code>stay</code>'s scope, unwinding it: <code>card</code> is destroyed on the way out. Check-out, before anyone has caught anything."},
+          {"on": ["C"], "via": ["t10"], "output": ["check in: room 12", "check out: room 12", "caught: too many nights"], "mood": "happy", "note": "The exception reaches the <code>catch</code> in <code>main</code> (line 31), which prints its message."},
+          {"on": ["H"], "via": ["t11"], "output": ["check in: room 12", "check out: room 12", "caught: too many nights", "back home"], "mood": "happy", "note": "After the handler, <code>main</code> carries on with line 34."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-exits-m" id="ex-exits"></div>
+  <script type="application/json" id="ex-exits-m">{"program": "predict_exits.cpp", "prompt": "A hotel tour with two stops. <code>tour(1)</code> returns early; <code>tour(2)</code> throws. Type the whole screen.", "hint": "Each call makes its own cards. Count how many cards each call has made before it leaves, then hand them back newest first.", "explain": "<code>tour(1)</code> makes <code>hall</code> and returns at line 13: <samp>in 1</samp>, <samp>out 1</samp>. <code>tour(2)</code> makes <code>hall</code> and <code>roof</code>, then throws: unwinding hands back <code>roof</code> then <code>hall</code> (<samp>out 2</samp>, <samp>out 1</samp>) <b>before</b> the catch prints <samp>caught storm</samp>. <samp>tour done</samp> never prints."}</script>
+
+  <section class="panel sketch" aria-label="Panel 11: manual clean-up versus RAII">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">Side by side. With manual clean-up, the "check out" code must be copied to every exit, and every new <code>return</code> or every function that starts throwing adds another place to forget. With RAII it's written <b>once</b>, in the destructor.</p>
+    <table class="ref-table">
+      <thead><tr><th scope="col">Way out of the scope</th><th scope="col">Manual: <code>check_in(); ... check_out();</code></th><th scope="col">RAII: <code>KeyCard card{12};</code></th></tr></thead>
+      <tbody>
+        <tr><td>reach the closing brace</td><td>✓ runs, if you wrote it</td><td>✓ destructor runs</td></tr>
+        <tr><td><code>return</code> early</td><td>✗ skipped, unless copied before this return</td><td>✓ destructor runs</td></tr>
+        <tr><td><code>break</code> / <code>continue</code> in a loop body</td><td>✗ skipped, unless copied again</td><td>✓ destructor runs</td></tr>
+        <tr><td>an exception, thrown here or deeper down</td><td>✗ skipped, unless wrapped in try/catch</td><td>✓ destructor runs while unwinding</td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Three Core Guidelines say this one idea. <b>P.8</b>: don't leak any resources. <b>E.6</b>: use RAII to prevent leaks, because exceptions make manual clean-up nearly impossible to get right. <b>R.1</b>: manage resources automatically. Many languages offer a <code>finally</code> block for clean-up; C++ has none, because destructors already do the job.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 12: a destructor that throws">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="KABOOM!" data-seed="12"></svg>
+    <p class="caption">One way to break the whole system: a destructor that throws. The minibar is checked when the room is handed back, and someone ate the peanuts. There's even a <code>try</code> and <code>catch</code> ready for it. (The two <code>std::endl</code>s push the text to the screen at once, so it's out before the crash.)</p>
+    <span class="file-tab">throwing_dtor.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="throwing_dtor.cpp"></pre>
+      <pre class="term wrap" data-run="throwing_dtor.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the messages like a detective">
+      <li><span><b>The Compiler warned first:</b> <samp>‘throw’ will always call ‘terminate’ [-Wterminate]</samp>, line 8, with the reason in the note: <samp>in C++11 destructors default to ‘noexcept’</samp>. <code>noexcept</code> is a promise that a function never throws; every destructor makes it unless you say otherwise.</span></li>
+      <li><span><b>The run:</b> <samp>enjoy your stay</samp>, then the brace at the start of line 16 destroys <code>bar</code>, the destructor prints, and line 8 throws.</span></li>
+      <li><span><b>Then the end:</b> <samp>terminate called after throwing an instance of 'std::runtime_error'</samp>. Breaking a <code>noexcept</code> promise calls <code>std::terminate</code>, which ends the program at once: <samp>Aborted</samp>, exit code 134.</span></li>
+      <li><span><b>What never happened:</b> no <samp>caught:</samp> and no <samp>goodbye</samp>. The <code>catch</code> on line 16 never got a chance.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>And it gets worse. Even with the promise removed (<code>~Minibar() noexcept(false)</code>), a destructor that throws <em>while another exception is already unwinding the stack</em> still calls <code>std::terminate</code>. Two alarms at once is one too many. That's why the rule has no exceptions: <b>destructors must not throw</b> (Core Guideline C.36 and E.16).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-dtor-m" id="ex-dtor"></div>
+  <script type="application/json" id="ex-dtor-m">{"q": "A destructor needs to do something that can fail, such as saving a file that might be full. What should it do with that failure?", "options": [
+    {"t": "Handle it inside the destructor, and offer a separate <code>close()</code> for callers who want the error", "correct": true, "why": "Right. The destructor stays a quiet, never-failing clean-up, so it is safe on every road, including unwinding. Callers who care call <code>close()</code> first, where an exception or an error code is fine. <code>std::fstream</code> works exactly like this: <code>close()</code> sets a failure flag you can check; the destructor just closes."},
+    {"t": "Throw an exception from the destructor, so that the caller's <code>catch</code> block can handle it", "why": "Panel 12: destructors are <code>noexcept</code> by default, so the throw goes straight to <code>std::terminate</code>. The <code>catch</code> never runs."},
+    {"t": "Mark the destructor <code>noexcept(false)</code> first, and then throw the exception as usual", "why": "Then it works only on the happy road. If the destructor runs while another exception is already unwinding, the program is still terminated. And containers like <code>std::vector</code> assume destructors never throw."},
+    {"t": "Call <code>std::exit</code> to stop the whole program cleanly before anything else goes wrong", "why": "Ending the whole program because one file failed to save is much worse than reporting it. And <code>std::exit</code> skips the destructors of every local object still alive, so other resources wouldn't be cleaned up either."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · A KEY CARD FOR EVERY DOOR<small>files, <code>unique_ptr</code> with a deleter, locks and scope guards</small></h2>
+
+  <section class="panel clean" aria-label="Panel 13: std::ofstream is a key card">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Good news: the standard library is full of key cards. Chapter 15's <code>std::ofstream</code> opens its file in its constructor and closes it in its destructor. Closing does more than give the file back: a stream collects what you write in a buffer in memory, and writes it to the file in big pieces. This program counts the lines in <code>diary.txt</code> twice: once while <code>diary</code> is still alive, once after line 22's brace.</p>
+    <span class="file-tab">flush_on_close.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="flush_on_close.cpp"></pre>
+      <pre class="term wrap" data-run="flush_on_close.cpp" data-exit></pre>
+    </div>
+    <p class="libnote"><b>THIS LIBRARY'S CHOICE:</b> the <samp>0</samp> comes from how much libstdc++ keeps in its buffer before writing. Another library, or a longer diary, could show some lines early. Only the <samp>3</samp> after the brace is guaranteed.</p>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="happy" data-arms="point" data-prop="card"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span>Like the porter who takes all your bags up in one trip when you check out. The destructor <b>flushes</b> (writes out whatever is waiting) and closes. You never wrote <code>diary.close()</code>, and you don't need to.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: a key card for a C file">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">What about C functions like <code>fopen</code>, that know nothing about destructors? Wrap them. Chapter 13's <code>std::unique_ptr</code> calls <code>delete</code> when it dies, but it can be told to call something else: a <b>deleter</b>. <code>CloseFile</code> (lines 15 to 20) is a tiny struct whose <code>operator()</code> (Chapter 21's call operator) closes a file. Line 21 names the result <code>FilePtr</code>. Same <code>save_score</code> as panel 3, same early return, no <code>fclose</code> anywhere in it.</p>
+    <span class="file-tab">raii_files.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="raii_files.cpp"></pre>
+      <pre class="term" data-run="raii_files.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>files still open: 0</samp>. Three files opened, three closed, including the two early returns. If <code>fopen</code> fails and gives <code>nullptr</code>, <code>unique_ptr</code> holds nothing and never calls the deleter, so <code>fclose(nullptr)</code> can't happen. <code>f.get()</code> lends the raw <code>FILE*</code> to C functions that need it.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillfile-m" id="ex-fillfile"></div>
+  <script type="application/json" id="ex-fillfile-m">{"program": "fill_file.cpp", "prompt": "Write your own key card for a C file instead of using <code>unique_ptr</code>. The constructor opens; fill in the name of the function that runs when a <code>File</code> dies, and the call that gives the file back.", "blanks": [{"line": 10, "text": "~File"}, {"line": 12, "text": "std::fclose", "accept": ["fclose"]}], "explain": "<code>~File()</code> is the destructor: a tilde and the class name. It checks for <code>nullptr</code> (the open might have failed) and calls <code>std::fclose(f_)</code>. Lines 16 and 17 delete copying, as Chapter 21 taught: two <code>File</code>s holding one <code>FILE*</code> would close it twice. The file is closed at line 27's brace, so line 28 sees all 8 bytes (<code>Ada</code>, a newline, <code>Ben</code>, a newline)."}</script>
+
+  <div data-ex="choice" data-model="ex-which-m" id="ex-which"></div>
+  <script type="application/json" id="ex-which-m">{"q": "Which one of these does <b>not</b> clean up after itself when it goes out of scope?", "options": [
+    {"t": "<code>auto f = std::fopen(\"a.txt\", \"w\");</code>", "correct": true, "why": "Right. <code>std::fopen</code> hands back a raw <code>FILE*</code>, which is just an address. When the pointer dies, nothing happens to the file it points at; someone must call <code>fclose</code> (panel 3). Wrap it as in panel 14."},
+    {"t": "<code>std::ofstream out{\"scores.txt\"};</code>", "why": "A stream is a key card: its destructor flushes and closes (panel 13)."},
+    {"t": "<code>std::vector&lt;double&gt; v(1000);</code>", "why": "A vector owns its heap block and gives it back in its destructor. So does <code>std::string</code>. That's why Chapter 8 never mentioned <code>delete</code>."},
+    {"t": "<code>auto p = std::make_unique&lt;int&gt;(5);</code>", "why": "<code>unique_ptr</code> is the key card for heap memory (Chapter 13): its destructor calls <code>delete</code>."},
+    {"t": "<code>std::string line(1000, 'x');</code>", "why": "A string owns its block of letters and gives it back in its destructor, exactly like a vector. A thousand <code>x</code>s, and never a <code>delete</code> to write."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 15: a lock guard, a first look">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">A <b>lock</b> (in C++, a <code>std::mutex</code> from <code>&lt;mutex&gt;</code>) makes sure only one part of a program uses something at a time, like a lift that takes one rider. Chapter 29 needs it for threads: several parts of one program running at the same moment. Today, only the key card: <code>std::scoped_lock</code> (line 8) locks in its constructor and unlocks in its destructor, on every road.</p>
+    <span class="file-tab">lock_preview.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="lock_preview.cpp"></pre>
+      <pre class="term" data-run="lock_preview.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>ride(-1)</code> returned early. Was the lift left locked? No: the guard unlocked at line 11's <code>return</code>. Line 22 proves it: <code>try_lock()</code> only succeeds on a lock nobody holds. With <code>lift.lock()</code> and <code>lift.unlock()</code> by hand, that early return would have left the lift locked for ever. The older <code>std::lock_guard</code> does the same job; <code>std::scoped_lock</code> (C++17) can also lock several mutexes at once.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 16: the guard that forgot its name">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <svg class="sfx tr" data-sfx="CLICK-CLACK" data-seed="16"></svg>
+    <p class="caption">A famous slip. A guard with no name, like <code>Guard{"door"};</code> on line 17, is a <b>temporary</b>: an object made for one statement only. It dies at the end of that statement, the semicolon. So it locks and unlocks <em>before</em> the work it was meant to protect. This little <code>Guard</code> prints instead of locking, so you can see it.</p>
+    <span class="file-tab">temp_guard.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="temp_guard.cpp"></pre>
+      <pre class="term" data-run="temp_guard.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run like a detective">
+      <li><span><b>No warning from g++.</b> Making a temporary is legal, so the Compiler is happy. The real <code>std::lock_guard&lt;std::mutex&gt;{lift};</code> is just as silent.</span></li>
+      <li><span><b>Compare the two blocks:</b> with a name, <samp>unlock door</samp> comes after the work. Without one, it comes straight after <samp>lock door</samp>, and the tidying happens unlocked.</span></li>
+      <li><span><b>The fix:</b> always give a guard a name: <code>Guard g{"door"};</code>, <code>std::scoped_lock key{lift};</code>. The name is what keeps it alive until the brace.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotguard-m" id="ex-spotguard"></div>
+  <script type="application/json" id="ex-spotguard-m">{"program": "spot_guard.cpp", "bug": 11, "prompt": "Every line in the hotel's log book should be written while the log book is locked. Read the screen: it isn't. Click the line to fix.", "explain": "Line 11 makes a nameless <code>Guard</code>. It is destroyed at its own semicolon, so <samp>unlock log book</samp> appears before each <samp>write:</samp>. Give it a name, <code>Guard g{\"log book\"};</code>, and it lives until line 13's brace, after the write."}</script>
+
+  <section class="panel clean" aria-label="Panel 17: a scope guard for one-off clean-up">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Sometimes the clean-up is a one-off job that doesn't deserve a whole class. A <b>scope guard</b> is a general key card: you give it any job, and it does that job when its scope ends. Line 6 gives it a <b>lambda</b>, a small unnamed function written in place: <code>[] { ... }</code>. <code>scope_exit</code> comes from <code>&lt;experimental/scope&gt;</code>: not in the C++ standard yet, but shipped with the library of g++ 13 (libstdc++), which this book uses.</p>
+    <span class="file-tab">scope_guard.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="scope_guard.cpp"></pre>
+      <pre class="term" data-run="scope_guard.cpp" data-exit></pre>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="happy" data-arms="wave" data-prop="none"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span>Room 13 doesn't exist, so the cleaner leaves early, and the sign still goes up. Whatever the road, the job runs at the brace. If your compiler's library has no <code>&lt;experimental/scope&gt;</code>, a ten-line class with a destructor that calls a stored function does the same (the notebook shows one).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-praii-m" id="ex-praii"></div>
+  <script type="application/json" id="ex-praii-m">{"program": "parsons_raii.cpp", "seed": 4, "pin": [1, 3, 4, 5, 6, 7, 9, 12, 15, 17], "prompt": "The braces are pinned. Put the five lines of <code>main</code> in the order that prints the goal output.", "explain": "<samp>arrive</samp> comes before any check-in, so it goes first. Room 7 must outlive the block (it checks out last), so <code>room</code> is made before the block. Inside: the spa card, then the sauna. The block's brace checks out room 2; then <samp>sleep</samp>; then <code>main</code>'s brace checks out room 7."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · MOVING DAY<small>lvalues, rvalues, <code>T&amp;&amp;</code> and what <code>std::move</code> really does</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 18: moving day">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="VROOM!" data-seed="18"></svg>
+    <p class="caption">End of the week, and Wren is moving into a new workshop. She could <b>copy</b> her old one: buy a second sofa, a second piano, forty more boxes of books, and build it all again. Or she could <b>move</b>: hand the new place the keys and the furniture truck. The old workshop is still standing afterwards, but it's empty.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 260" role="img" aria-label="Two scenes. Left, labelled COPY: two identical houses, each full of furniture, with a builder's crane over the second one and the words: build it all again, slow. Right, labelled MOVE: a furniture truck drives from an empty house, drawn with dashed windows and the word empty, to a new house, while a hand passes a key across. The words say: hand over the keys, fast.">
+      <rect x="6" y="6" width="648" height="248" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M330 20 V240" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M30 190 v-70 l45 -36 l45 36 v70 z" fill="#FFF6CC"/><path d="M170 190 v-70 l45 -36 l45 36 v70 z" fill="#FFF6CC"/>
+        <rect x="44" y="140" width="24" height="22" fill="#FFC94A"/><rect x="82" y="140" width="24" height="22" fill="#FFC94A"/>
+        <rect x="184" y="140" width="24" height="22" fill="#FFC94A"/><rect x="222" y="140" width="24" height="22" fill="#FFC94A"/>
+        <path d="M290 190 V60 H230 M290 60 l-14 -10" fill="none" stroke-width="5"/><path d="M234 60 v18" fill="none" stroke-width="3"/>
+        <path d="M350 190 v-70 l45 -36 l45 36 v70 z" fill="#FFFFFF" stroke-dasharray="7 5"/>
+        <rect x="364" y="140" width="24" height="22" fill="#FFFFFF" stroke-dasharray="5 4"/><rect x="402" y="140" width="24" height="22" fill="#FFFFFF" stroke-dasharray="5 4"/>
+        <path d="M530 190 v-70 l45 -36 l45 36 v70 z" fill="#C9F2D9"/>
+        <rect x="544" y="140" width="24" height="22" fill="#FFC94A"/><rect x="582" y="140" width="24" height="22" fill="#FFC94A"/>
+        <rect x="448" y="150" width="58" height="36" rx="4" fill="#DDE8FF"/><path d="M506 160 h14 l8 12 v14 h-22 z" fill="#DDE8FF"/>
+        <circle cx="464" cy="190" r="7" fill="#FFFFFF"/><circle cx="512" cy="190" r="7" fill="#FFFFFF"/>
+        <path d="M470 100 h40 l-6 -6 M510 100 l-6 6" fill="none" stroke-width="3.5" stroke-linecap="round"/>
+        <rect x="474" y="76" width="30" height="16" rx="4" fill="#FFC94A"/>
+      </g>
+      <path d="M20 200 H320 M340 200 H640" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="30" letter-spacing="2" fill="#111" text-anchor="middle">
+        <text x="165" y="46">COPY</text><text x="495" y="46">MOVE</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111" text-anchor="middle">
+        <text x="165" y="226">build it all again: slow</text><text x="495" y="226">hand over the keys: fast</text>
+        <text x="395" y="116">empty</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A <code>std::string</code> or a <code>std::vector</code> is exactly like my workshop: a small object on the stack holding the <b>keys</b> (a pointer) to a big block on the heap. Copying builds a second block. Moving just hands over the pointer. The furniture never moves at all.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: copy, then move, a string">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Both in one program. Line 8 copies <code>house</code>: two strings, two blocks of letters. Line 12 moves it: <code>std::move(house)</code> (from <code>&lt;utility&gt;</code>) says "I'm done with <code>house</code>; you may take its insides". <code>new_home</code> takes the letters without copying them. Then line 14 looks at what's left.</p>
+    <span class="file-tab">moving_day.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="moving_day.cpp"></pre>
+      <pre class="term" data-run="moving_day.cpp" data-exit></pre>
+    </div>
+    <p class="libnote"><b>THIS LIBRARY'S CHOICE:</b> the empty <samp>[]</samp> on the last line is what libstdc++ leaves in a moved-from string. The C++ standard only promises "valid but unspecified": some other library could leave something else. Panel 24 says what that means.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 20: lvalues and rvalues">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">How does C++ know when moving is safe? It looks at <em>what kind of thing</em> you hand over. The simple view: an <b>lvalue</b> has a name and lives on, like a house with a street address; you'll want it again, so it must be copied. An <b>rvalue</b> is a temporary, like a pop-up tent that's gone tonight; nobody can ever look at it again, so taking its insides is free.</p>
+    <div class="picscroll"><svg class="pic-wide" viewBox="0 0 660 230" role="img" aria-label="Left: a house with a street number plate, 12 Elm Street, labelled lvalue: has a name, lives on, examples house, v, name. Right: a pop-up tent with a clock showing night, labelled rvalue: a temporary, gone at the end of the statement, examples std::string{caravan}, house plus annex, make_house(), 7.">
+      <rect x="6" y="6" width="648" height="218" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <path d="M330 20 V210" stroke="#111" stroke-width="3" stroke-dasharray="8 6"/>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M40 150 v-60 l50 -40 l50 40 v60 z" fill="#FFF6CC"/><rect x="74" y="110" width="32" height="40" fill="#E7C08A"/>
+        <rect x="104" y="58" width="74" height="26" rx="4" fill="#DDE8FF"/>
+        <path d="M380 150 l60 -96 l60 96 z" fill="#FFE1EC"/><path d="M440 54 v96" fill="none" stroke-width="3"/>
+        <circle cx="560" cy="80" r="26" fill="#FFFFFF"/><path d="M560 80 v-16 M560 80 l10 8" fill="none" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">
+        <text x="141" y="76" text-anchor="middle">12 Elm</text>
+        <text x="40" y="182">house   v   name</text>
+        <text x="350" y="182">std::string{"caravan"}</text>
+        <text x="350" y="202">house + " annex"   7</text>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="26" letter-spacing="1" fill="#111">
+        <text x="190" y="120">LVALUE</text><text x="510" y="134">RVALUE</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">
+        <text x="190" y="140">has a name,</text><text x="190" y="158">lives on</text>
+        <text x="40" y="206">copy it: you'll use it again</text>
+      </g>
+      <text x="505" y="154" font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">gone tonight</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>The names are history: an <b>l</b>value could stand on the <b>l</b>eft of <code>=</code>, an <b>r</b>value only on the <b>r</b>ight. A quick test that works most of the time: if you can write <code>&amp;</code> in front of it and get an address, it's an lvalue. The full rules have five categories; the notebook lists them, and you won't need them today.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: rvalue references, T&amp;&amp;">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">C++11 added a second kind of reference just to tell the two apart. <code>const std::string&amp;</code> (Chapter 8's visitor badge) binds to anything. <code>std::string&amp;&amp;</code>, an <b>rvalue reference</b>, binds <b>only to rvalues</b>: things that are about to vanish. With both overloads written (lines 5 and 9), C++ picks the <code>&amp;&amp;</code> one for every rvalue.</p>
+    <span class="file-tab">overloads.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="overloads.cpp"></pre>
+      <pre class="term" data-run="overloads.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 17's <code>house</code> has a name: look only. Lines 18 to 20 are all temporaries: a string made on the spot, a function's returned value, the result of <code>+</code>. And line 21? <code>house</code> still has a name, but <code>std::move</code> turned it into "treat me as an rvalue". The <code>&amp;&amp;</code> parameter is a sign saying "<b>you may take it</b>".</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 22: an rvalue reference refuses a named house">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="22"></svg>
+    <p class="caption">What if you try to give an <code>&amp;&amp;</code> a named house directly? Line 5 asks for permission to take <code>house</code>, which still has a name and a future.</p>
+    <span class="file-tab">bind_bad.cpp</span>
+    <pre class="code" data-src="bind_bad.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="bind_bad.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="bind_bad.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>"Here's the problem, here's where, and here's a fix." <samp>cannot bind rvalue reference of type ‘std::string&amp;&amp;’ to lvalue of type ‘std::string’</samp>, line 5, column 26: the caret is under <code>house</code>. The <code>{aka ...}</code> parts just spell out what <code>std::string</code> really is. Fix: if you truly mean "take it", say so with <code>std::move(house)</code>. Usually you meant a plain <code>std::string&amp;</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler, a big checkpoint robot with a red beacon and its gate down.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-ovl-m" id="ex-ovl"></div>
+  <script type="application/json" id="ex-ovl-m">{"program": "predict_overload.cpp", "prompt": "Two overloads of <code>take</code>: one for anything (<code>const int&amp;</code>), one only for rvalues (<code>int&amp;&amp;</code>). Five calls. Type the screen.", "hint": "Has the argument got a name? Did <code>std::move</code> turn it into an rvalue? And careful with the last one: can a <code>const</code> thing be taken?", "explain": "<code>n</code> is an lvalue: <samp>look at 5</samp>. <code>7</code> and <code>n + 1</code> are temporaries: <samp>take 7</samp>, <samp>take 6</samp>. <code>std::move(n)</code> is an rvalue: <samp>take 5</samp>. The last one is the trap: <code>std::move(c)</code> gives a <code>const int&amp;&amp;</code>, and an <code>int&amp;&amp;</code> can't bind to something const (taking would change it). The <code>const int&amp;</code> overload accepts it: <samp>look at 9</samp>. Panel 31 meets the same trap with real moves."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: std::move moves nothing">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">The biggest surprise in this chapter: <b><code>std::move</code> doesn't move anything.</b> It's a <b>cast</b>, a type conversion, the same as writing <code>static_cast&lt;std::string&amp;&amp;&gt;(house)</code>. It only changes how C++ sees <code>house</code> for that one expression. The moving is done later by whoever receives it, if anyone. Line 7 receives it with nobody.</p>
+    <span class="file-tab">move_cast.cpp</span>
+    <pre class="code" data-src="move_cast.cpp"></pre>
+    <pre class="term wrap small" data-run="move_cast.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the warning like a detective">
+      <li><span><b>Skip the long middle.</b> The text between <samp>ignoring return value of</samp> and <samp>declared with attribute ‘nodiscard’</samp> is the full name of the <code>std::move</code> function template. Read the start and the end.</span></li>
+      <li><span><b>What it says:</b> you called a function marked <code>[[nodiscard]]</code> ("don't throw my result away") and threw its result away. The "In file included from" lines only show where <code>std::move</code> lives.</span></li>
+      <li><span><b>The proof:</b> the house still has all its furniture. A permission slip that nobody uses changes nothing.</span></li>
+    </ol>
+    <div class="scene flip">
+      <svg class="char sm" data-char="concierge" data-mood="normal" data-arms="point" data-prop="card"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Basil says: </span>Think of it as a signed note: "<b>the bearer may take my furniture</b>". Writing the note moves nothing. A move constructor that reads it does the moving. It should really have been called <code>std::may_take</code>, but here we are.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 24: the moved-from house">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">What's left in the old house? The standard library's promise for its own types: a moved-from object is <b>valid but unspecified</b>. <b>Valid</b>: it is still a proper string or vector, and every operation that needs nothing particular from its value works (your own classes should promise the same: Core Guideline C.64). <b>Unspecified</b>: you don't know what it holds. This vector came out empty with this library; don't count on it.</p>
+    <span class="file-tab">after_move.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="after_move.cpp"></pre>
+      <pre class="term" data-run="after_move.cpp" data-exit></pre>
+    </div>
+    <p class="libnote"><b>THIS LIBRARY'S CHOICE:</b> line 18's <samp>a: [ ]</samp>. Lines 20 to 24 are guaranteed: they give <code>a</code> a new value before reading it.</p>
+    <ul class="checklist">
+      <li><b>Safe:</b> give it a new value (<code>a = {7, 8};</code>), <code>clear()</code> it, let it be destroyed. The house is standing; you may refurnish it.</li>
+      <li><b>Safe but pointless:</b> asking <code>a.size()</code> or <code>a.empty()</code>. You'll get an honest answer, but not a predictable one.</li>
+      <li><b>A bug:</b> using its old value, as if nothing happened (<code>a[0]</code>, <code>a.back()</code>, printing it and trusting the result). Treat a moved-from object as <b>"don't read, only refill"</b>.</li>
+    </ul>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotmove-m" id="ex-spotmove"></div>
+  <script type="application/json" id="ex-spotmove-m">{"program": "spot_after_move.cpp", "bug": 10, "prompt": "The welcome message lost the guest's name. Click the line that uses a moved-from string.", "explain": "Line 9 moves <code>name</code> into the guest book: the book now owns the letters, and <code>name</code> is left valid but unspecified (empty, with this library). Line 10 then reads it as if nothing had happened. Fix it by printing the name <b>before</b> the move, or by reading it back from <code>guests.back()</code>. No compiler or sanitizer flags this: it's not undefined behaviour, just a logic bug. (clang-tidy, from Chapter 18, has a check for it, <code>bugprone-use-after-move</code>; it flags line 10 when run on this file, a run this page doesn't show.)"}</script>
+
+  <div data-ex="choice" data-model="ex-movedfrom-m" id="ex-movedfrom"></div>
+  <script type="application/json" id="ex-movedfrom-m">{"q": "<code>std::string b = std::move(a);</code> has just run. Which of these is guaranteed by the C++ standard?", "options": [
+    {"t": "You may assign <code>a</code> a new value and then use it normally", "correct": true, "why": "Right. A moved-from standard-library object is valid: assignment, <code>clear()</code> and destruction all work. After <code>a = \"fresh\";</code> it's an ordinary string again."},
+    {"t": "<code>a</code> is now empty", "why": "That's what this library did in panel 19, but the standard only says \"valid but unspecified\". Don't write code that depends on it."},
+    {"t": "<code>a</code> still holds its old text, because std::move only casts", "why": "<code>std::move</code> alone moves nothing (panel 23), but here its result was received by <code>b</code>'s move constructor, which took the letters."},
+    {"t": "<code>a</code> has been destroyed, so using it at all is an error", "why": "Moving never ends an object's life. <code>a</code> lives until its closing brace, and its destructor still runs there (Boss 1 shows a moved-from destructor printing)."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · WRITING THE MOVERS<small>move constructor, move assignment, <code>noexcept</code>, elision and sink parameters</small></h2>
+
+  <section class="panel clean" aria-label="Panel 25: a truck with a move constructor">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Now you write a mover yourself. A <code>Truck</code> owns a heap block of numbered boxes through a raw pointer, like Chapter 21's <code>Scores</code>, so it needs the rule of five. The <b>copy constructor</b> (line 11) packs a second block. The new <b>move constructor</b> (line 15) takes a <code>Truck&amp;&amp;</code>, copies the pointer and the size, and then <b>empties the old truck</b> (lines 16 and 17). Assignment is switched off for now (lines 20 and 21).</p>
+    <span class="file-tab">truck.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="truck.cpp"></pre>
+      <pre class="term" data-run="truck.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Lines 16 and 17 are the whole trick. If the old truck kept its pointer, <b>two</b> trucks would think they own one block, and both destructors would <code>delete[]</code> it: the double free from Chapter 21. Emptied, the old truck's destructor deletes <code>nullptr</code>, which does nothing. That's the last line: <samp>unload 0 boxes</samp>. Here, empty is <b>our class's promise</b>, not luck: we wrote it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 26: the keys change hands, in memory" data-mem="mem-truck" id="mem-truck-box">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Step through <code>main</code> and watch the heap. Each truck is drawn as its two members. The copy makes a <b>second block</b> (#2). The move makes <b>no block at all</b>: ticket #1 just changes hands from <code>a</code> to <code>c</code>.</p>
+    <span class="file-tab">truck.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-truck">{"program": "truck.cpp", "steps": [
+      {"line": 33, "note": "<code>main</code> starts on line 32: one empty plate, nothing on the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 34, "note": "Line 33 builds <code>a</code>. Its constructor borrows a block of 3 ints from the heap with <code>new int[3]</code> and numbers the boxes 1, 2, 3. <code>a.data_</code> holds ticket #1.", "output": ["  load 3 new boxes"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "3"}, {"n": "a.data_", "type": "int*", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes"}}, "changed": ["a.size_", "a.data_", "H1"]},
+      {"line": 35, "note": "Line 34 copies: <code>b</code>'s copy constructor borrows a <b>new</b> block (#2) and copies the three boxes into it. Two trucks, two blocks, nothing shared.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "3"}, {"n": "a.data_", "type": "int*", "ptr": "H1"}, {"n": "b.size_", "type": "int", "val": "3"}, {"n": "b.data_", "type": "int*", "ptr": "H2"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes"}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)"}}, "changed": ["b.size_", "b.data_", "H2"]},
+      {"line": 36, "note": "Line 35: <code>std::move(a)</code> makes <code>a</code> an rvalue, so the <b>move</b> constructor is picked. <code>c</code> takes ticket #1 and the size; then <code>a</code> is emptied: size 0, pointer <code>nullptr</code>. No new block, no boxes copied.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes", "  move: hand over the keys"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "0"}, {"n": "a.data_", "type": "int*", "val": "nullptr"}, {"n": "b.size_", "type": "int", "val": "3"}, {"n": "b.data_", "type": "int*", "ptr": "H2"}, {"n": "c.size_", "type": "int", "val": "3"}, {"n": "c.data_", "type": "int*", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes"}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)"}}, "changed": ["a.size_", "a.data_", "c.size_", "c.data_"]},
+      {"line": 37, "note": "Line 36 prints the three sizes. <code>a</code> is still a perfectly good Truck: an empty one.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes", "  move: hand over the keys", "a 0, b 3, c 3"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "0"}, {"n": "a.data_", "type": "int*", "val": "nullptr"}, {"n": "b.size_", "type": "int", "val": "3"}, {"n": "b.data_", "type": "int*", "ptr": "H2"}, {"n": "c.size_", "type": "int", "val": "3"}, {"n": "c.data_", "type": "int*", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes"}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)"}}},
+      {"line": 37, "note": "Line 37, <code>main</code>'s brace: the newest truck goes first. <code>c</code>'s destructor gives block #1 back.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes", "  move: hand over the keys", "a 0, b 3, c 3", "  unload 3 boxes"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "0"}, {"n": "a.data_", "type": "int*", "val": "nullptr"}, {"n": "b.size_", "type": "int", "val": "3"}, {"n": "b.data_", "type": "int*", "ptr": "H2"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes", "freed": true}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)"}}, "changed": ["H1"]},
+      {"line": 37, "note": "Then <code>b</code>: block #2 goes back.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes", "  move: hand over the keys", "a 0, b 3, c 3", "  unload 3 boxes", "  unload 3 boxes"], "frames": [{"name": "main", "slots": [{"n": "a.size_", "type": "int", "val": "0"}, {"n": "a.data_", "type": "int*", "val": "nullptr"}]}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes", "freed": true}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)", "freed": true}}, "changed": ["H2"]},
+      {"line": null, "note": "Last, the moved-from <code>a</code>. Its destructor still runs: moving never ends a life. It deletes <code>nullptr</code>, which does nothing. Two blocks borrowed, two given back, each exactly once.", "output": ["  load 3 new boxes", "  copy: pack 3 more boxes", "  move: hand over the keys", "a 0, b 3, c 3", "  unload 3 boxes", "  unload 3 boxes", "  unload 0 boxes"], "frames": [{"name": "main", "slots": []}], "heap": {"H1": {"cells": ["1", "2", "3"], "label": "3 boxes", "freed": true}, "H2": {"cells": ["1", "2", "3"], "label": "3 boxes (copy)", "freed": true}}}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillmove-m" id="ex-fillmove"></div>
+  <script type="application/json" id="ex-fillmove-m">{"program": "fill_move_ctor.cpp", "prompt": "Finish this move-only Truck's move constructor: the type of its parameter, and the value that leaves the old truck safely empty.", "blanks": [{"line": 7, "text": "Truck&&", "accept": ["Truck &&"]}, {"line": 9, "text": "nullptr"}], "explain": "A move constructor takes <code>Truck&amp;&amp;</code>: it is only ever handed things you're allowed to take. After stealing <code>other.data_</code>, it sets <code>other.data_ = nullptr;</code> so the old truck's destructor (line 14) deletes nothing. Forget it, and two destructors free one block (Boss 2 shows the Sanitizer catching exactly that)."}</script>
+
+  <section class="panel clean" aria-label="Panel 27: move assignment">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">The fifth special member: <b>move assignment</b>, <code>b = std::move(a);</code> on line 39. It differs from the move constructor in one way: <code>b</code> already owns a block. So line 15 gives <code>b</code>'s old block back <em>first</em>, then lines 16 to 19 take <code>a</code>'s and empty <code>a</code>. Line 14 guards against moving a truck into itself, and line 22 returns <code>*this</code>, as every assignment does (Chapter 21).</p>
+    <span class="file-tab">truck_assign.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="truck_assign.cpp"></pre>
+      <pre class="term wrap" data-run="truck_assign.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run like a detective">
+      <li><span><b>The warning:</b> <samp>moving ‘b’ of type ‘Truck’ to itself [-Wself-move]</samp>, line 41. g++ spotted the silly line, but it can't spot it when the two names are two references to one truck. That's why line 14 checks.</span></li>
+      <li><span><b>The run:</b> two loads, one move-assign, then <samp>a 0, b 3</samp>. <code>b</code>'s old 2-box block was given back by line 15 (it prints nothing).</span></li>
+      <li><span><b>Line 41 changed nothing:</b> <code>this == &amp;other</code>, so the <code>if</code> was skipped. Without line 14, line 15 would delete the very block lines 16 and 17 then take: a truck full of freed memory.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 28: the copy-or-move machine" data-machine="m-move">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Feed the machine a line of code and it tells you which constructor runs. The <code>Truck</code> in <code>copy_or_move.cpp</code> writes down which one ran; <code>report</code> prints it, or <samp>elided</samp> if neither did. <code>a</code> is a plain Truck, <code>spare</code> a <code>const</code> one; <code>make()</code> returns <code>Truck{}</code>, and <code>make_named()</code> returns a named local. The last chip tries to bind an <code>&amp;&amp;</code> to <code>a</code>.</p>
+    <span class="file-tab">copy_or_move.cpp</span>
+    <pre class="code" data-src="copy_or_move.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-move">{"label": "Truck t = ...", "program": "copy_or_move.cpp", "examples": [
+      {"in": "a", "out": "copy", "expectLine": "Truck t = a;  ->  copy", "outKind": "lvalue", "note": "<code>a</code> has a name and will be used again, so it must be copied. The copy constructor runs."},
+      {"in": "std::move(a)", "out": "move", "expectLine": "Truck t = std::move(a);  ->  move", "outKind": "rvalue", "note": "<code>std::move</code> gives permission, so the move constructor (with its <code>Truck&amp;&amp;</code>) is the better match."},
+      {"in": "make()", "out": "elided", "expectLine": "Truck t = make();  ->  elided", "outKind": "guaranteed", "note": "<code>make()</code> returns a temporary made on its <code>return</code> line. Since C++17 the temporary is built straight into <code>t</code>: no copy and no move, <b>guaranteed</b>. Chapter 21 called this copy elision."},
+      {"in": "Truck{}", "out": "elided", "expectLine": "Truck t = Truck{};  ->  elided", "outKind": "guaranteed", "note": "Same rule: a temporary of the same type used to initialise <code>t</code> simply <em>is</em> <code>t</code>."},
+      {"in": "make_named()", "out": "elided", "expectLine": "Truck t = make_named();  ->  elided", "outKind": "NRVO", "note": "<code>make_named</code> returns a <b>named</b> local, <code>t</code>. Here elision is allowed but not guaranteed (it's called NRVO, named return value optimisation). Both g++ and clang++ did it. If a compiler didn't, it would <b>move</b>, never copy: a returned local is treated as an rvalue."},
+      {"in": "std::move(spare)", "out": "copy", "expectLine": "Truck t = std::move(spare);  ->  copy", "outKind": "const: silent copy", "note": "<code>spare</code> is const. <code>std::move(spare)</code> is a <code>const Truck&amp;&amp;</code>, which the move constructor can't take (it would change <code>spare</code>). The copy constructor's <code>const Truck&amp;</code> can. A silent copy: panel 31."},
+      {"in": "Truck&& r = a;", "error": "cannot bind rvalue reference of type", "program": "bind_truck_bad.cpp", "note": "An <code>&amp;&amp;</code> refuses an lvalue, as in panel 22. <code>bind_truck_bad.cpp</code> tries it on its line 5, and the build stops."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-counts-m" id="ex-counts"></div>
+  <script type="application/json" id="ex-counts-m">{"program": "predict_counts.cpp", "prompt": "<code>Box</code> counts its copies and moves. <code>van.reserve(3)</code> makes room for three boxes up front, so the vector never has to grow. What does the last line print?", "hint": "Go line by line: lvalue or rvalue? <code>push_back</code> of a temporary moves the temporary into the vector. And what happens inside <code>make()</code>'s <code>return Box{};</code>?", "explain": "Line 18 <code>b = a</code>: copy 1. Line 19 <code>std::move(b)</code>: move 1. Line 21 just makes room. Line 22 <code>push_back(a)</code>: a named box, copy 2. Line 23 <code>push_back(std::move(c))</code>: move 2. Line 24 <code>push_back(make())</code>: <code>make</code>'s <code>Box{}</code> is elided into the temporary, then the temporary is moved into the vector: move 3. <samp>copies 2, moves 3</samp>. These counts are this toolchain's; without the <code>reserve</code>, growing would add more."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: noexcept, and why vector cares">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Why do all these move constructors say <code>noexcept</code>? Because of <code>std::vector</code>. When a vector runs out of room, it borrows a bigger block and must carry every element across. Moving is cheap, but if a move threw halfway, the elements already moved would be ruined, and the vector promised it never loses your data. So it moves <b>only when the move promises never to throw</b>. Otherwise it copies. (<code>emplace_back()</code> builds each item right inside the vector, so only the carrying across is counted.)</p>
+    <span class="file-tab">vector_grow.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="vector_grow.cpp"></pre>
+      <pre class="term wrap" data-run="vector_grow.cpp" data-exit></pre>
+    </div>
+    <p class="libnote"><b>THIS TOOLCHAIN:</b> 3 because libstdc++'s vector grows from room for 1 to 2 to 4 (carrying 1, then 2). The noexcept rule itself is standard; the exact counts are not.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same class, same moves, and <code>Unsure</code> got <b>copied</b> every time, just for missing one word. For a vector of big strings that's the difference between handing over keys and rebuilding houses. Rule (C.66): <b>make move operations <code>noexcept</code></b>. They almost never need to throw: they only shuffle pointers. And <code>reserve</code>, when you know the size, avoids the carrying entirely.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-grow-m" id="ex-grow"></div>
+  <script type="application/json" id="ex-grow-m">{"program": "trace_grow.cpp", "columns": ["size", "capacity", "moves so far"], "given": [0], "prompt": "Watch a vector grow on this toolchain. <code>capacity()</code> is how many items fit before it must move house. Each time it's full, libstdc++ <b>doubles</b> the room and moves every item across. Fill in the capacity and the running total of moves after each <code>emplace_back</code>.", "explain": "Capacity goes 1, 2, 4, 4, 8: it only changes when the vector is full. Moves happen only at those moments: going to 2 carries 1 item (total 1), going to 4 carries 2 (total 3), going to 8 carries 4 (total 7). Doubling means each item is carried only a few times on average. The doubling is libstdc++'s choice; Microsoft's library grows by half instead."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: return std::move(local) blocks elision">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">A move that makes things <em>worse</em>. First, <code>order_truck</code> returns its local <code>t</code> plainly: the compiler builds it straight into <code>mine</code> (NRVO). In the second program, the return line (line 13 there) becomes <code>return std::move(t);</code>, plus the <code>#include &lt;utility&gt;</code> that <code>std::move</code> needs. Now <code>t</code> is no longer "just a local name", the elision rule doesn't apply, and a real move happens.</p>
+    <div class="pair2 stack">
+      <div><span class="file-tab">return_local.cpp</span><pre class="code" data-src="return_local.cpp"></pre><pre class="term" data-run="return_local.cpp" data-exit></pre></div>
+      <div><span class="file-tab">return_move.cpp</span><pre class="code" data-src="return_move.cpp"></pre><pre class="term wrap" data-run="return_move.cpp" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="focus"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span><samp>moving a local object in a return statement prevents copy elision [-Wpessimizing-move]</samp>, with the fix: <samp>remove ‘std::move’ call</samp>. A <b>pessimisation</b> is the opposite of an optimisation. One extra <samp>move</samp> and one extra <samp>scrap</samp>. Rule (F.48): <b>return a local by name</b>. If elision can't happen, C++ moves it for you anyway.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler with its yellow beacon on: a warning, not an error.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-elide-m" id="ex-elide"></div>
+  <script type="application/json" id="ex-elide-m">{"q": "<code>Truck build() { return Truck{4}; }</code> and then <code>Truck t = build();</code>. Copy, move or neither?", "options": [
+    {"t": "No copy and no move: C++17 builds the temporary right into <code>t</code>", "correct": true, "why": "Right. Returning a temporary (a prvalue, the notebook explains the word) of the same type is guaranteed elision since C++17. It even works for a type with no copy and no move constructor at all."},
+    {"t": "A move, because the value that <code>build()</code> returns is an rvalue", "why": "Before C++17 a compiler was allowed to do a move here. Today the rules say there is only one object from the start: no temporary is ever made, so there's nothing to move from (panel 28's <code>make()</code>)."},
+    {"t": "A copy, because <code>t</code> is a named variable that lives on", "why": "Whether <code>t</code> has a name doesn't matter; what matters is the thing on the right. A function's returned temporary is never copied into a new variable of the same type."},
+    {"t": "It depends on whether you build with <code>-O2</code> or without it", "why": "Not for this one: guaranteed elision is a language rule, not an optimisation. (Named returns, NRVO, may depend on the compiler. g++ does them even without -O2.)"}]}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 31: std::move on a const object silently copies">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="SHHH..." data-seed="31"></svg>
+    <p class="caption">The quietest trap in move semantics. A <code>const</code> object can't be emptied, because emptying is changing. So <code>std::move</code> on a const object compiles, warns about nothing, and <b>copies</b>.</p>
+    <span class="file-tab">const_move.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="const_move.cpp"></pre>
+      <pre class="term" data-run="const_move.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run like a detective">
+      <li><span><b>Line 15 printed <samp>copy</samp>.</b> <code>std::move(spare)</code> is a <code>const Truck&amp;&amp;</code>. The move constructor wants a plain <code>Truck&amp;&amp;</code>, so it's out; the copy constructor's <code>const Truck&amp;</code> accepts anything.</span></li>
+      <li><span><b>Lines 18 to 21, with a real string:</b> <code>sign</code> is still full afterwards. Guaranteed this time, because it was copied, not moved.</span></li>
+      <li><span><b>No warning from g++ or clang++.</b> clang-tidy (Chapter 18) has a check for it, <code>performance-move-const-arg</code>, which flags lines 15 and 19 (a run this page doesn't show). The fix: don't make something <code>const</code> if you plan to move from it, and never write <code>std::move</code> on a <code>const</code> name or a <code>const&amp;</code> parameter.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: sink parameters, pass by value then move">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">A pattern you'll see everywhere. When a function <b>keeps</b> what it's given (stores it in a member), take the parameter <b>by value</b> and <code>std::move</code> it into place (line 12). Such a parameter is called a <b>sink</b>: things flow into it and stay. The caller then decides the price: a named truck is copied once, a temporary or a moved truck is never copied at all.</p>
+    <span class="file-tab">sink.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="sink.cpp"></pre>
+      <pre class="term" data-run="sink.cpp" data-exit></pre>
+    </div>
+    <table class="ref-table">
+      <thead><tr><th scope="col">Call</th><th scope="col">Into parameter <code>t</code></th><th scope="col">Into member <code>parked_</code></th></tr></thead>
+      <tbody>
+        <tr><td><code>Garage g1{mine};</code></td><td>copy (<code>mine</code> is kept)</td><td>move</td></tr>
+        <tr><td><code>Garage g2{Truck{}};</code></td><td>elided (built in place)</td><td>move</td></tr>
+        <tr><td><code>Garage g3{std::move(mine)};</code></td><td>move</td><td>move</td></tr>
+      </tbody>
+    </table>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>One extra move per call, which for strings and vectors is a few pointer copies. In exchange you write one constructor instead of two (<code>const Truck&amp;</code> and <code>Truck&amp;&amp;</code>). For parameters you only <em>read</em>, keep Chapter 8's <code>const&amp;</code>: by value would copy for nothing. Core Guidelines F.15 to F.18 have the full table.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-sink-m" id="ex-sink"></div>
+  <script type="application/json" id="ex-sink-m">{"program": "predict_sink.cpp", "prompt": "<code>Room::store</code> takes its <code>Bag</code> by value and moves it into its member with an <b>assignment</b> (line 17). <code>Bag</code> counts both copies (constructor or assignment) and moves (constructor or assignment). What does the last line print?", "hint": "Two steps per call: getting the argument into <code>b</code>, then <code>bag_ = std::move(b);</code>.", "explain": "<code>store(red)</code>: <code>red</code> is named, so <code>b</code> is a copy (copies 1), then move-assigned into <code>bag_</code> (moves 1). <code>store(Bag{})</code>: the temporary is built straight into <code>b</code> (elided), then move-assigned (moves 2). <samp>copies 1, moves 2</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: the rule of zero gets moves for free">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">Good news to end the hard part. Chapter 21's <b>rule of zero</b>: a class whose members already manage themselves needs no special members at all. The compiler then writes all five for you, and its move constructor moves each member, <code>noexcept</code> included. Line 12 proves it while compiling: <code>std::is_nothrow_move_constructible_v</code> (from <code>&lt;type_traits&gt;</code>) is <code>true</code> only if <code>Room</code> can be moved without throwing.</p>
+    <span class="file-tab">rule_zero_move.cpp</span>
+    <div class="side two">
+      <pre class="code" data-src="rule_zero_move.cpp"></pre>
+      <pre class="term" data-run="rule_zero_move.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Write a destructor, a copy or a move yourself only when your class holds a raw resource, like <code>Truck</code>'s pointer. And then write it once, in one small class, and build everything else from <code>std::string</code>, <code>std::vector</code>, <code>std::unique_ptr</code> and friends. Boss 6 shows how a single "harmless" destructor quietly switches the free moves off.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pmove-m" id="ex-pmove"></div>
+  <script type="application/json" id="ex-pmove-m">{"program": "parsons_move.cpp", "seed": 6, "pin": [1, 2, 4, 5, 6, 7, 8, 9, 11, 18], "prompt": "The tiny <code>Truck</code> is pinned. Put the six lines of <code>main</code> in the order that prints the goal output.", "explain": "Load first, then announce and copy, then announce and move. The copy must come before the move: after the move, <code>a</code> holds 0 boxes, and copying it would copy nothing. Last, print <code>a.boxes</code>: the moved truck is empty, which this class promises in its move constructor (<code>o.boxes = 0</code>)."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 34: boss level">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="34"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <div class="cast2"><svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg><svg class="char sm" data-char="concierge" data-mood="happy" data-arms="cheer" data-prop="none"></svg></div>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The whole hotel at once. For each one ask: when does each object's scope end? Which road out is taken? Lvalue or rvalue? Copy, move, or nothing at all? And who is left holding an empty truck?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren and Basil both raise their arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. A key card that can be handed over. Its move constructor takes the guest's name and writes <code>\"nobody\"</code> on the old card. Type the whole screen.", "hint": "A moved-from card is still a card: it checks out at its own brace, with whatever name is written on it then. And unwinding happens before the catch.", "explain": "<samp>in Ada</samp>; line 21 moves it: <samp>hand over Ada</samp>, and <code>r12</code> now says nobody. <samp>upgrade done</samp>, then line 23's brace checks out <code>r14</code>: <samp>out Ada</samp>. In the <code>try</code>: <samp>in Cy</samp>, the throw unwinds <code>r3</code> (<samp>out Cy</samp>) before the catch prints <samp>fire drill</samp>. Last, <code>main</code>'s brace destroys the moved-from <code>r12</code>: <samp>out nobody</samp>. Its destructor ran, as every destructor does. (Writing <code>\"nobody\"</code> on line 12 is safe: giving a moved-from string a new value is always allowed.)"}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 7, "prompt": "Boss 2. Built with the Sanitizer's goggles on (<code>-fsanitize=address,undefined</code>), this truck crashes as <code>main</code> ends. Click the line with the bug.", "explain": "Line 7's move constructor copies the pointer and the size, and then does nothing: <code>a</code> still holds the same block. At line 22's brace, <code>b</code>'s destructor frees it, then <code>a</code>'s destructor frees it again: <samp>attempting double-free</samp>, with the two <code>~Truck()</code> calls listed on line 11 and the block's birth in <code>Truck::Truck(int)</code> on line 6. The fix is panel 25's two lines in the body: <code>other.size_ = 0; other.data_ = nullptr;</code>. Without the goggles, this is undefined behaviour: it might crash, or seem fine for months."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.cpp", "prompt": "Boss 3. A key card that can be moved but never copied (one room, one card), stored in a vector. Fill in the word that lets the vector move cards safely, the way to forbid copying, and the call that hands <code>mine</code> over.", "blanks": [{"line": 8, "text": "noexcept"}, {"line": 10, "text": "= delete", "accept": ["=delete"]}, {"line": 26, "text": "std::move(mine)"}], "explain": "<code>noexcept</code> on the move constructor lets <code>std::vector</code> move cards when it grows (panel 29); here it can't fall back to copying anyway, since line 10 deletes the copy constructor (<code>= delete</code>, Chapter 21). <code>push_back(std::move(mine))</code> hands the card over: <code>mine</code> is left saying 0 and checks out nothing. The cards in the drawer check out when the vector is destroyed: <samp>check out 12</samp>, <samp>check out 14</samp>. A move-only key card is exactly what <code>std::unique_ptr</code> is."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.cpp", "columns": ["event", "truck"], "given": [], "prompt": "Boss 4. <code>pick</code> has two locals and returns one of them, so the compiler can't build both straight into <code>t</code>: no NRVO here. A moved truck's number becomes 0. Fill in every row.", "explain": "<samp>build 1</samp>, <samp>build 2</samp>. <code>return large;</code> can't be elided (which local to build in place wasn't known in advance), but a returned local is treated as an rvalue, so it's <b>moved</b>, not copied: <samp>move 2</samp>. Then <code>pick</code>'s scope ends, newest first: the emptied <code>large</code> (<samp>scrap 0</samp>), then <code>small</code> (<samp>scrap 1</samp>). Back in <code>main</code>: <samp>drive 2</samp>, and <samp>scrap 2</samp> at its brace. No <code>std::move</code> was needed on line 17."}</script>
+
+  <div data-ex="parsons" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_parsons.cpp", "seed": 11, "pin": [1, 2, 4, 5, 6, 7, 8, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28], "prompt": "Boss 5. A <code>Locker</code> owns one heap <code>int</code>. Put the six lines of its move assignment in a safe order.", "explain": "First the self-check, <code>if (this != &amp;other) {</code>. Inside it: <code>delete item_;</code> gives back the locker's <b>old</b> item before taking the new one, or it would be lost; <code>item_ = other.item_;</code> takes <code>other</code>'s pointer; then <code>other.item_ = nullptr;</code> empties <code>other</code>, so the item has exactly one owner. Close the <code>if</code>, and <code>return *this;</code>. Swap the delete and the take, and you'd delete the item you just took; leave out the <code>nullptr</code> line, and both lockers would delete it later."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"program": "boss_choice.cpp", "q": "Boss 6. <code>Song</code> has a <code>Truck</code> member and an empty destructor written \"just in case\". Nothing else. What does <code>Song b = std::move(a);</code> print?", "options": [
+    {"t": "<code>copy</code>: a declared destructor stops the compiler writing the moves", "correct": true, "why": "Right, and the real run prints exactly <samp>copy</samp>. A user-declared destructor (or copy operation) suppresses the implicitly generated moves, but the copy constructor is still generated, and a <code>const Song&amp;</code> accepts the rvalue. Your moves silently became copies. Delete the empty destructor (rule of zero), or write all five (rule of five)."},
+    {"t": "<code>move</code>: <code>std::move</code> always moves, whatever the class declares", "why": "<code>std::move</code> only casts (panel 23). Whether a move happens depends on whether a move constructor exists, and here the compiler didn't write one."},
+    {"t": "Nothing: the compiler elides the copy, so no constructor runs at all", "why": "Elision only applies to temporaries and returned locals. <code>std::move(a)</code> refers to the existing <code>a</code>, so some constructor must run."},
+    {"t": "It doesn't compile: <code>Song</code> has no move constructor to call", "why": "It does compile. With no move constructor declared at all, the copy constructor is chosen for rvalues too. Only a move constructor declared <code>= delete</code> would stop the build."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 35: what you learned">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">What you learned in Chapter 22</p>
+    <ul class="recap">
+      <li><b>EVERY BOLT YOU TIGHTEN, YOU LOOSEN LATER</b>A resource is anything borrowed that must be given back: memory, files, locks, connections. Manual clean-up is skipped by every early <code>return</code>, <code>break</code> and exception (panel 3).</li>
+      <li><b>THE CARD IS THE ROOM</b>RAII: the constructor acquires, the destructor releases, and the resource lives exactly as long as the object. Objects in one scope are destroyed newest first. The standard library's key cards: <code>std::string</code>, <code>std::vector</code>, <code>std::fstream</code>, <code>std::unique_ptr</code> (with a deleter for C resources), <code>std::scoped_lock</code>.</li>
+      <li><b>EVERY EXIT LEADS TO CHECK-OUT</b>Normal end, early return, <code>continue</code> or exception: the destructor runs, and during unwinding it runs before the <code>catch</code>. A guard must have a name, or it dies at the semicolon. Destructors must never throw: that calls <code>std::terminate</code>.</li>
+      <li><b>HAND OVER THE KEYS, NOT THE HOUSE</b>Moving steals a heap block instead of copying it. <code>T&amp;&amp;</code> binds only to rvalues (temporaries). <code>std::move</code> is only a cast, a permission slip; the move constructor or move assignment does the taking and must leave the old object empty but valid.</li>
+      <li><b>DON'T READ, ONLY REFILL</b>A moved-from standard object is valid but unspecified: assign, clear or destroy it, never trust its value. Moving a <code>const</code> object silently copies.</li>
+      <li><b>PROMISE, AND DON'T GET IN THE WAY</b>Mark moves <code>noexcept</code> so <code>std::vector</code> uses them. Return locals by name: <code>return std::move(local);</code> blocks elision. Take sink parameters by value and move them in. Best of all, write no special members (rule of zero).</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Tie every resource to an object, let the braces do the tidying, and hand over keys instead of rebuilding houses. "Close to the metal. Careful with the wrench."</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: next time, Shared Custody, Old Mailboxes">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">Coming up in Chapter 23: Shared Custody, Old Mailboxes</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 180" role="img" aria-label="Teaser picture: a floppy-eared dog with a sign-in sheet beside it showing three ticks, next to a row of five numbered mailboxes bolted to a wall.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M126 104 q16 -18 22 -34" fill="none"/>
+          <rect x="40" y="96" width="92" height="44" rx="22" fill="#E7C08A"/>
+          <path d="M52 134 v22 M74 136 v20 M100 136 v20 M120 134 v22" fill="none" stroke-width="7"/>
+          <circle cx="46" cy="84" r="26" fill="#E7C08A"/>
+          <path d="M30 66 q-14 4 -12 30 q8 4 14 -6 z M60 62 q14 2 16 26 q-8 6 -14 -4 z" fill="#B97A55"/>
+          <ellipse cx="34" cy="96" rx="7" ry="5" fill="#111"/>
+        </g>
+        <circle cx="40" cy="80" r="3.5" fill="#111"/><circle cx="54" cy="80" r="3.5" fill="#111"/>
+        <path d="M38 102 q6 5 12 0" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+        <rect x="166" y="40" width="60" height="80" rx="4" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+        <path d="M176 60 l5 5 l9 -10 M176 82 l5 5 l9 -10 M176 104 l5 5 l9 -10 M196 60 h22 M196 82 h22 M196 104 h22" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+        <path d="M250 136 H450" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" fill="#DDE8FF">
+          <rect x="256" y="86" width="36" height="46" rx="3"/><rect x="294" y="86" width="36" height="46" rx="3"/><rect x="332" y="86" width="36" height="46" rx="3"/><rect x="370" y="86" width="36" height="46" rx="3"/><rect x="408" y="86" width="36" height="46" rx="3"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111" text-anchor="middle">
+          <text x="274" y="118">0</text><text x="312" y="118">1</text><text x="350" y="118">2</text><text x="388" y="118">3</text><text x="426" y="118">4</text>
+        </g>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Today every room had exactly one key card, and handing it over left the old holder empty-handed. Next time: what if a pet has <b>several carers</b>? A sign-in sheet counts them (<code>std::shared_ptr</code>), a neighbour checks the pet still lives here before visiting (<code>std::weak_ptr</code>), and two carers who only list each other never let go. Then the oldest corner of C++: <b>rows of mailboxes</b> bolted to a wall, C arrays, raw pointers and <code>argv</code>.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch21.html">← Ch 21 · New Words, Spare Keys</a><a class="next" href="ch23.html">Ch 23 · Shared Custody, Old Mailboxes →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: value categories, what std::move is, what the compiler generates, and why vector checks noexcept</summary>
+    <div class="page-body">
+      <h3>The five value categories</h3>
+      <p>The comic used two words. The standard uses five, arranged as a small family tree. Every expression is either a <b>glvalue</b> ("generalised lvalue": it names an object that has an identity) or a <b>prvalue</b> ("pure rvalue": a value with no object yet, like <code>7</code>, <code>a + b</code> or <code>Truck{}</code>). Glvalues split into <b>lvalues</b> (named things, like <code>house</code>) and <b>xvalues</b> ("expiring": an object with an identity that you may take from, which is exactly what <code>std::move(house)</code> produces). Xvalues and prvalues together are the <b>rvalues</b>, and that's the group <code>T&amp;&amp;</code> binds to. One surprise: inside a function, a parameter declared <code>std::string&amp;&amp; s</code> is itself an lvalue, because it has a name. To pass it on as an rvalue you need <code>std::move(s)</code> again.</p>
+      <h3>What <code>std::move</code> really is</h3>
+      <p>In libstdc++ it's one line: a function template that returns <code>static_cast&lt;std::remove_reference_t&lt;T&gt;&amp;&amp;&gt;(t)</code>. No code runs, nothing is copied or cleared. It is marked <code>[[nodiscard]]</code> and <code>noexcept</code>, which is why panel 23 got a warning. Its cousin <code>std::forward</code> is used in templates that pass arguments on unchanged ("perfect forwarding"), which this book leaves for later reading.</p>
+      <h3>When the compiler writes the special members</h3>
+      <ul>
+        <li>The <b>move constructor and move assignment</b> are generated only if you declare none of these yourself: copy constructor, copy assignment, move assignment or constructor, destructor. That's Boss 6: an empty destructor switched the moves off.</li>
+        <li>The <b>copy</b> members are still generated in that case (an old rule kept for compatibility, now "deprecated"), unless you declare a move member: then the copies are deleted.</li>
+        <li>A generated move moves each member in declaration order, and is <code>noexcept</code> when all the members' moves are. A raw pointer member is just copied by it, which is why <code>Truck</code> needed its own.</li>
+        <li><code>= default</code> asks for the generated version explicitly; <code>= delete</code> forbids one. Both count as "declared".</li>
+      </ul>
+      <h3>Why <code>std::vector</code> checks <code>noexcept</code></h3>
+      <p><code>push_back</code> promises the <b>strong guarantee</b>: if it throws, the vector is exactly as before. When it grows, it uses <code>std::move_if_noexcept</code> on each element: a move if the move constructor is <code>noexcept</code> (or if there's no copy constructor at all, in which case it moves and gives up the guarantee), a copy otherwise. Copies leave the old block untouched, so a throw halfway can simply throw the new block away. Chapter 27 names these guarantees properly.</p>
+      <h3>Copy elision, exactly</h3>
+      <ul>
+        <li><b>Guaranteed (C++17):</b> initialising an object from a prvalue of the same type, including <code>return Truck{};</code> and <code>Truck t = Truck{};</code>. There's only one object from the start.</li>
+        <li><b>Allowed (NRVO):</b> <code>return t;</code> for a local <code>t</code> of the return type. g++ and clang do it whenever every <code>return</code> returns the same local. <code>-fno-elide-constructors</code> turns it off in g++, if you want to see the moves.</li>
+        <li><b>Implicit move:</b> where elision doesn't happen, <code>return t;</code> still treats <code>t</code> as an rvalue (Boss 4).</li>
+      </ul>
+      <h3>How unique_ptr stores a deleter</h3>
+      <p><code>std::unique_ptr&lt;FILE, CloseFile&gt;</code> keeps a <code>CloseFile</code> object inside it. Because <code>CloseFile</code> has no data, libstdc++ stores it in zero bytes, so the whole thing is still the size of one pointer. Writing <code>std::unique_ptr&lt;FILE, decltype(&amp;std::fclose)&gt;</code> also works on most compilers, but stores a function pointer (twice the size), and taking the address of a standard library function is not something the standard promises to support. The struct is the portable choice.</p>
+      <h3>A home-made scope guard</h3>
+      <p>Without <code>&lt;experimental/scope&gt;</code>, ten lines do it: <code>template &lt;typename F&gt; class ScopeExit { public: explicit ScopeExit(F f) : f_{std::move(f)} {} ~ScopeExit() { f_(); } ScopeExit(const ScopeExit&amp;) = delete; ScopeExit&amp; operator=(const ScopeExit&amp;) = delete; private: F f_; };</code>. Use it as <code>ScopeExit sign{[] { ... }};</code>. Real libraries add a <code>release()</code> function to cancel the job, and variants that run only on success or only on failure (<code>scope_success</code>, <code>scope_fail</code> in the same header).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Almost no <code>delete</code>, <code>close</code> or <code>unlock</code>.</b> In modern C++ code bases these words appear inside a handful of small handle classes and nowhere else. Code reviewers treat a bare <code>new</code> or <code>fopen</code> outside such a class as a bug waiting to happen.</li>
+        <li><b>Wrapping C libraries.</b> Operating-system and C library resources (sockets, database connections, graphics contexts, compression streams) come with "create" and "destroy" functions. Projects wrap each pair in a <code>unique_ptr</code> with a deleter, or a small move-only class like Boss 3's key card.</li>
+        <li><b>Locks.</b> Every serious multi-threaded C++ program locks through <code>std::scoped_lock</code>, <code>std::lock_guard</code> or <code>std::unique_lock</code> (Chapter 29), never with bare <code>lock()</code>/<code>unlock()</code> pairs.</li>
+        <li><b>Transactions.</b> Database libraries offer a transaction object whose destructor <b>rolls back</b> (undoes) unless <code>commit()</code> was called: an exception halfway leaves the data untouched. It's a scope guard with a cancel button.</li>
+        <li><b>Moves you get for free.</b> Returning a <code>std::vector</code> or <code>std::string</code> from a function costs nothing extra, thanks to elision and moves. Before C++11, people passed output parameters by reference to avoid copies; today, return by value (Core Guideline F.20).</li>
+        <li><b>Containers of move-only things.</b> <code>std::vector&lt;std::unique_ptr&lt;Shape&gt;&gt;</code> is everywhere (Chapter 24 uses it), and only works because vectors move their elements.</li>
+        <li><b>Sink constructors.</b> Classes that store strings take them by value and move them in: <code>explicit Guest(std::string name) : name_{std::move(name)} {}</code>. You'll see it in nearly every modern code base.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"RAII is about memory."</b> Memory is one resource of many: files, locks, connections, even "put the CLEAN sign up" (panel 17).</li>
+        <li><b>"I must call the destructor myself."</b> Never for ordinary objects: C++ calls it at the end of the scope (panel 5). Calling it by hand as well would destroy the object twice.</li>
+        <li><b>"Exceptions skip the clean-up."</b> They skip manual clean-up. Destructors run during unwinding, before the catch (panel 9).</li>
+        <li><b>"<code>Guard{m};</code> and <code>Guard g{m};</code> are the same."</b> The first is a temporary that dies at the semicolon (panel 16).</li>
+        <li><b>"A destructor may throw if it has to."</b> It calls <code>std::terminate</code> (panel 12).</li>
+        <li><b>"std::move moves."</b> It casts. The receiver moves, or nobody does (panel 23).</li>
+        <li><b>"A moved-from object is destroyed" or "is always empty."</b> It lives until its brace and its destructor still runs; standard types promise only "valid but unspecified" (panels 24 and 26).</li>
+        <li><b>"Adding std::move makes code faster."</b> On a <code>return</code> of a local it makes it slower (panel 30); on a <code>const</code> object it does nothing but copy (panel 31).</li>
+        <li><b>"noexcept is just documentation."</b> <code>std::vector</code> reads it and copies instead of moving without it (panel 29).</li>
+        <li><b>"An empty destructor is harmless."</b> It switches off the generated moves (Boss 6).</li>
+        <li><b>"Moving is always cheap."</b> Moving a <code>std::array&lt;int, 1000&gt;</code> copies all 1000 ints: there's no heap block to hand over. Moves are cheap for types that hold their contents elsewhere, like strings and vectors. (Very short strings are kept inside the string object itself, so moving them copies a few letters too.)</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build exactly like the page</h3>
+      <p>Make a folder <code>cpp-ch22</code>, save <code>key_card.cpp</code> from panel 5, and build: <code>g++ -std=c++23 -Wall -Wextra -g key_card.cpp -o key_card</code>, then <code>./key_card</code>. Everything in this chapter also builds with <code>-std=c++20</code>, and everything except panel 17's <code>scope_exit</code> (which libstdc++ only offers from C++20) builds with <code>-std=c++17</code>: <code>std::scoped_lock</code> and guaranteed elision both arrived in C++17. On Linux: <code>sudo apt install g++</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++</code> (Fedora). On macOS, install the command-line tools with <code>xcode-select --install</code>; there <code>g++</code> is Apple's clang with its own library (libc++), so the "this library's choice" lines may differ and <code>&lt;experimental/scope&gt;</code> may be missing (use the home-made guard from "Under the hood"). On Windows with MinGW-w64 in PowerShell the build command is the same, then <code>.\key_card.exe</code>. With Microsoft's compiler, in a Developer Command Prompt: <code>cl /std:c++20 /W4 /EHsc key_card.cpp</code>, then <code>key_card.exe</code>.</p>
+      <h3>2. Count open files</h3>
+      <p>Panels 3 and 14 count files through <code>/proc/self/fd</code>, which exists only on Linux (including WSL on Windows). On macOS run <code>lsof -p &lt;pid&gt;</code> in another terminal while the program waits for input (add a <code>std::cin.get();</code> before the end); on Windows, Resource Monitor's "Associated Handles" shows the same thing.</p>
+      <h3>3. Watch elision switch off</h3>
+      <p>Build <code>return_local.cpp</code> again with <code>g++ -std=c++23 -fno-elide-constructors return_local.cpp -o r</code>. The guaranteed C++17 elisions stay, but NRVO is gone: a <samp>move</samp> and an extra <samp>scrap</samp> appear. Try the same on <code>copy_or_move.cpp</code>: which lines change, and which don't?</p>
+      <h3>4. Put the goggles on</h3>
+      <p>Delete lines 16 and 17 from <code>truck.cpp</code> (the emptying) and build with <code>-fsanitize=address,undefined -g</code>. Read the double-free report like Boss 2. Then put the lines back and delete line 24 (<code>delete[] data_;</code>) instead: the Sanitizer's leak checker reports blocks that were never given back. (On macOS, leak checking needs <code>ASAN_OPTIONS=detect_leaks=1</code> and may not be supported; Linux has it on by default.) The macOS and Windows notes in this lab were not run for this book; the Linux steps were.</p>
+      <h3>5. Try these on purpose</h3>
+      <ol>
+        <li>In <code>vector_grow.cpp</code>, add <code>noexcept</code> to <code>Unsure</code>'s move constructor. What does the second line print now?</li>
+        <li>In <code>key_card.cpp</code>, add <code>[[nodiscard]]</code> before <code>explicit KeyCard(int room)</code>, then write <code>KeyCard{5};</code> in <code>main</code>. Which compilers warn about the nameless card?</li>
+        <li>Remove <code>const</code> from <code>spare</code> in <code>const_move.cpp</code>. What does line 15 print, and what happens to <code>sign</code> if you also remove its <code>const</code>?</li>
+        <li>Give <code>Room</code> in <code>rule_zero_move.cpp</code> an empty destructor <code>~Room() {}</code>. Does it still compile? Why (think of line 12)?</li>
+        <li>In <code>throwing_dtor.cpp</code>, catch the problem inside the destructor instead: wrap the <code>throw</code> in <code>try { ... } catch (...) { std::cout &lt;&lt; "logged\n"; }</code>. What prints now?</li>
+        <li>Write a <code>Timer</code> key card that prints how many milliseconds passed between its constructor and its destructor, using <code>&lt;chrono&gt;</code>. Put one at the top of a slow function.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>resource</dt><dd>Anything a program borrows that must be given back: heap memory, an open file, a lock, a network connection.</dd>
+        <dt>leak</dt><dd>A resource that was borrowed and never given back.</dd>
+        <dt>RAII</dt><dd>Resource Acquisition Is Initialization: the constructor acquires a resource and the destructor releases it, so the resource lives exactly as long as the object. Also called scope-bound resource management.</dd>
+        <dt>resource handle</dt><dd>An object that owns a resource and releases it in its destructor, such as <code>std::ofstream</code> or <code>std::unique_ptr</code>.</dd>
+        <dt>scope</dt><dd>The part of the code between a pair of braces where a name exists; local objects die at its closing brace.</dd>
+        <dt>reverse order of construction</dt><dd>The order in which C++ destroys the objects of one scope: newest first.</dd>
+        <dt>stack unwinding</dt><dd>Destroying the local objects of each scope an exception leaves, on its way to a matching catch.</dd>
+        <dt>flush</dt><dd>Write out the data a stream has collected in its buffer.</dd>
+        <dt>buffer</dt><dd>A block of memory where a stream collects data before writing it in one big piece.</dd>
+        <dt>deleter</dt><dd>The function object a <code>unique_ptr</code> calls instead of <code>delete</code>, for example one that calls <code>std::fclose</code>.</dd>
+        <dt>mutex / lock</dt><dd>An object that lets only one part of a program at a time pass; <code>std::mutex</code>.</dd>
+        <dt>lock guard</dt><dd>A key card for a mutex: <code>std::scoped_lock</code> or <code>std::lock_guard</code> locks in its constructor and unlocks in its destructor.</dd>
+        <dt>temporary</dt><dd>An unnamed object made for one statement; it is destroyed at the end of that statement.</dd>
+        <dt>scope guard</dt><dd>An object that runs a given job when its scope ends, such as <code>std::experimental::scope_exit</code>.</dd>
+        <dt>lambda</dt><dd>A small unnamed function written in place: <code>[] { ... }</code>.</dd>
+        <dt>noexcept</dt><dd>A promise that a function never throws. Breaking it calls <code>std::terminate</code>. Destructors are noexcept by default.</dd>
+        <dt>std::terminate</dt><dd>Ends the program at once (on this system with <samp>Aborted</samp> and exit code 134).</dd>
+        <dt>lvalue</dt><dd>An expression that names an object that lives on, like a variable: you can take its address.</dd>
+        <dt>rvalue</dt><dd>A temporary, or an object marked as "may be taken from" by <code>std::move</code>.</dd>
+        <dt>rvalue reference</dt><dd><code>T&amp;&amp;</code>: a reference that binds only to rvalues.</dd>
+        <dt>std::move</dt><dd>A cast to an rvalue reference: permission to take. It moves nothing by itself.</dd>
+        <dt>move constructor</dt><dd><code>T(T&amp;&amp; other)</code>: builds a new object by taking <code>other</code>'s insides, leaving <code>other</code> empty but valid.</dd>
+        <dt>move assignment</dt><dd><code>T&amp; operator=(T&amp;&amp; other)</code>: gives back the object's old resources, then takes <code>other</code>'s.</dd>
+        <dt>moved-from</dt><dd>An object whose insides were taken. Standard types leave it valid but unspecified.</dd>
+        <dt>valid but unspecified</dt><dd>Still a proper object that can be assigned, cleared or destroyed, but holding a value you can't rely on.</dd>
+        <dt>self-move</dt><dd>Moving an object into itself, <code>b = std::move(b);</code>.</dd>
+        <dt>copy elision</dt><dd>Building an object directly in its final place, so no copy or move happens. Guaranteed for returned temporaries since C++17.</dd>
+        <dt>NRVO</dt><dd>Named return value optimisation: eliding the copy or move when a function returns a named local.</dd>
+        <dt>pessimisation</dt><dd>A change meant to speed code up that slows it down, like <code>return std::move(local);</code>.</dd>
+        <dt>sink parameter</dt><dd>A parameter whose value the function keeps; take it by value and move it into place.</dd>
+        <dt>capacity</dt><dd>How many elements a vector has room for before it must borrow a bigger block.</dd>
+        <dt>emplace_back</dt><dd>Builds a new element directly inside a vector, from constructor arguments.</dd>
+        <dt>prvalue / xvalue / glvalue</dt><dd>The standard's finer value categories: a pure value with no object yet, an expiring object, and anything with an identity.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>cppreference: <a href="https://en.cppreference.com/w/cpp/language/raii">RAII</a>, <a href="https://en.cppreference.com/w/cpp/language/destructor">destructors</a>, <a href="https://en.cppreference.com/w/cpp/language/noexcept_spec">noexcept specifier</a>, <a href="https://en.cppreference.com/w/cpp/memory/unique_ptr">std::unique_ptr</a>, <a href="https://en.cppreference.com/w/cpp/thread/scoped_lock">std::scoped_lock</a>, <a href="https://en.cppreference.com/w/cpp/experimental/scope_exit">std::experimental::scope_exit</a>, <a href="https://en.cppreference.com/w/cpp/io/basic_ofstream">std::basic_ofstream</a></li>
+        <li>cppreference: <a href="https://en.cppreference.com/w/cpp/language/value_category">value categories</a>, <a href="https://en.cppreference.com/w/cpp/language/reference">references (including rvalue references)</a>, <a href="https://en.cppreference.com/w/cpp/utility/move">std::move</a>, <a href="https://en.cppreference.com/w/cpp/language/move_constructor">move constructors</a>, <a href="https://en.cppreference.com/w/cpp/language/move_assignment">move assignment</a>, <a href="https://en.cppreference.com/w/cpp/language/copy_elision">copy elision</a>, <a href="https://en.cppreference.com/w/cpp/utility/move_if_noexcept">std::move_if_noexcept</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: P.8, R.1, E.6, E.16, C.36, C.37 (resources and destructors); C.20, C.21 (rule of zero, rule of five); C.64, C.66 (move operations); ES.56 (when to write std::move); F.18, F.48 (parameters to move from, returning locals)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/move-constructors-and-move-assignment/">learncpp.com 22.3: Move constructors and move assignment</a>, with the surrounding lessons on rvalue references (22.2) and std::move (22.4).</li>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/destructors/">learncpp.com 15.4: Introduction to destructors</a>, which introduces RAII.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, with illustrated cheat sheets on special members and move semantics.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to try <code>-fno-elide-constructors</code> and watch moves appear.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch22</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page) and each was also built and run with clang++ 18.1 for comparison; both use the same standard library here (libstdc++ 13). Every program printed the same output and exit code under both compilers, except that Boss 2's sanitizer build ran with g++ only (clang's sanitizer runtime isn't installed here), so it has no clang++ run. The recorded differences are messages only: the wording of the two "cannot bind rvalue reference" errors (panel 22 shows both), the unused-<code>std::move</code> warning (panel 23), the pessimizing-move warning (panel 30), the throwing-destructor warning (clang++ says <samp>has a non-throwing exception specification but can still throw</samp>, panel 12) and the self-move warning (panel 27). g++ prints curly quotes in its messages because the capture runs in a UTF-8 locale; clang prints straight ones. Programs ran inside a fresh process namespace with address randomisation off, from their own folder as the working directory, so the files they write (<code>ada.txt</code>, <code>ben.txt</code>, <code>cy.txt</code>, <code>diary.txt</code>, <code>guests.txt</code>) are rewritten there on every run. Boss 2 was built with <code>-fsanitize=address,undefined -fno-sanitize-recover=all</code>, as its terminal shows; its report says <samp>==2==</samp> because that is the program's process id inside the namespace. Not shown in the command: the capture sets <code>ASAN_OPTIONS=<wbr>detect_leaks=1:<wbr>color=never</code> and <code>UBSAN_OPTIONS=<wbr>print_stacktrace=1:<wbr>color=never</code> for every run. Neither changes these reports: leak checking is on by default here, colour is off anyway when output isn't a terminal, and no report in this chapter comes from UBSan. Lines marked "this library's choice" or "this toolchain" are real output that another standard library may print differently; none is used as an exercise answer except panel 29's growth counts, which the trace exercise labels as libstdc++'s. The walk-through, the map, the stack-and-heap stepper and the machine are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (22.3 Move constructors and move assignment, for the order of copy, move and moved-from teaching, and its warnings about leaving the source valid, noexcept, self-assignment and implicitly generated moves); cppreference (RAII, with its mutex example of early-return and exception leaks and its list of resources; destructors; noexcept; value categories; references; std::move; move constructors and assignment; copy elision; unique_ptr; scoped_lock; experimental::scope_exit; move_if_noexcept); the C++ Core Guidelines rules listed in "Go deeper", checked against the guidelines' text; hacking C++'s beginner's guide; the C++ research map for this course (module rows I11 and I12); and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, Basil the concierge, the Compiler, Ember the Fire Marshal, Sneak, the Professor and every other character are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

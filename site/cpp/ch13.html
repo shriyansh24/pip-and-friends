@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sticky Notes, Library Cards</title>
+<meta name="description" content="Chapter 13 of the Pip &amp; Friends C++ book, a comic course: pointers as sticky notes (addresses, &amp;, *, nullptr, reseating, -&gt;, observers, dangling pointers), then owning heap objects with std::unique_ptr (make_unique, automatic clean-up, std::move, .get()), and why raw new and delete leak, with every sanitizer report read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch13.css">
+<script defer src="../data/cpp-ch13.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch12.html">&larr; Ch 12</a><span aria-current="page">Ch 13 of 29</span><a href="ch14.html">Ch 14 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 13</p>
+    <h1 id="cover-h">STICKY NOTES, LIBRARY CARDS</h1>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="pic-mid" viewBox="0 0 240 200" role="img" aria-label="A yellow sticky note with an address written on it, 12 Elm St, and an arrow from it to a small house; below, a library card with one name on it, tucked into a red book.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M14 18 H114 V96 L98 112 H14 Z" fill="#FFD60A"/><path d="M114 96 H98 V112" fill="#FFF6CC"/>
+          <path d="M150 80 L190 48 L230 80 V122 H150 Z" fill="#DDE8FF"/><rect x="180" y="96" width="20" height="26" fill="#FFFFFF"/>
+          <path d="M116 60 C 132 60, 136 80, 146 86" fill="none" stroke-width="3.5"/><path d="M138 86 L148 88 L144 78" fill="none" stroke-width="3.5"/>
+          <rect x="36" y="136" width="120" height="56" rx="6" fill="#FF5A4E"/><rect x="92" y="122" width="74" height="50" rx="4" fill="#FFFFFF"/>
+          <path d="M100 140 H156 M100 154 H140" stroke-width="3"/>
+        </g>
+        <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="17" fill="#111"><text x="24" y="50">12 Elm St</text><text x="24" y="78">&#x2192; house</text></g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her: a sticky note with a house address and an arrow to the house, and a library card tucked into a book.</p>
+    <p class="caption blurb">A <b>pointer</b> is a sticky note with an address on it. It isn't the house; it tells you where the house is. You can rewrite the note, leave it blank, or (careful!) keep it after the house has been knocked down. Then the <b>library</b>: things that live on the <b>heap</b> must be handed back when you're done, and <code>std::unique_ptr</code> is a borrower card that does the handing back for you. One book, one card, and when the card goes, the book goes home. About 120 minutes, with 24 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Sticky notes: addresses, &amp; and *</a></li>
+      <li><a href="#part-2">Rewrite it or rub it out: reseating and nullptr</a></li>
+      <li><a href="#part-3">Notes for whole houses: -&gt; and observers</a></li>
+      <li><a href="#part-4">Demolished houses: dangling pointers</a></li>
+      <li><a href="#part-5">The library card: the heap and std::unique_ptr</a></li>
+      <li><a href="#part-6">Why not just new and delete?</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · STICKY NOTES<small>Every box has an address, and a pointer is a note that holds one</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: every box lives at an address">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Think of your computer's memory as one very long street. Every box your program makes (every <code>int</code>, every <code>double</code>, every object) lives in a house on that street, and every house has a number: its <b>address</b>.</p>
+    <svg class="pic-mid" viewBox="0 0 420 220" role="img" aria-label="A street of three houses with numbers above their doors: 0x...d0, 0x...d4, 0x...d8. The middle house holds a box labelled score with 42 inside.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M6 172 H414" stroke-width="5"/>
+        <path d="M20 172 V100 L75 62 L130 100 V172 Z" fill="#DDE8FF"/><path d="M155 172 V100 L210 62 L265 100 V172 Z" fill="#FFF6CC"/><path d="M290 172 V100 L345 62 L400 100 V172 Z" fill="#DDE8FF"/>
+        <rect x="176" y="114" width="68" height="44" rx="5" fill="#FFFFFF"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle">
+        <text x="75" y="46">0x...d0</text><text x="210" y="46">0x...d4</text><text x="345" y="46">0x...d8</text>
+        <text x="210" y="145" font-size="24">42</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle"><text x="210" y="204">score lives here</text></g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Up to now we used a box by its <b>name</b>: <code>score</code>. But the machine doesn't think in names. It thinks in house numbers. Today we learn to write a house number on a sticky note, carry the note around, and follow it back to the house. <b>Close to the metal. Careful with the wrench.</b></p></div>
+    </div>
+    <p class="sr-only">Picture: Wren points at a street of numbered houses. One house holds the box score, with 42 inside.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: printing an address with &amp;">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Put <code>&amp;</code> in front of a name and you get that box's address. Line 7 prints it. (In a sentence about code, we read <code>&amp;score</code> out loud as "the address of score".)</p>
+    <span class="file-tab">address.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="address.cpp"></pre>
+      <pre class="term" data-run="address.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the address">
+      <li><span><b>0x</b> means "the next digits are <b>hexadecimal</b>": counting in sixteens, with the letters a to f standing for 10 to 15. Addresses are traditionally written this way.</span></li>
+      <li><span>This is <b>one possible run</b>. Your machine will almost certainly print a different number, and so may the next run on the same machine: most systems move a program's memory to a random spot each time it starts, to make attacks harder. This course's capture switches that off, which is the only reason it prints the same number twice here.</span></li>
+      <li><span>So an address is never an answer to remember or compare between runs. What matters is <b>what it lets you do</b>: find the box again.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 3: a pointer is a sticky note with an address">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Big idea: a <b>pointer</b> is a box whose job is to hold an address. Write <code>int* note{&amp;score};</code> and read it right to left: "<code>note</code> is a pointer to an <code>int</code>, starting at the address of <code>score</code>". The <code>*</code> after the type turns "an int" into "a note saying where an int lives". The type matters: an <code>int*</code> note may only point at <code>int</code> houses.</p>
+    <svg class="pic-mid" viewBox="0 0 440 340" role="img" aria-label="Top left: a sticky note labelled int-star note, with the address 0x...d4 written on it. A curved arrow labelled POINTS AT goes from the note down to the right, into a house labelled int score, holding 42, with 0x...d4 above its roof.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M14 14 H214 V130 L190 154 H14 Z" fill="#FFD60A"/><path d="M214 130 H190 V154" fill="#FFF6CC"/>
+        <path d="M250 296 V200 L330 150 L410 200 V296 Z" fill="#FFF6CC"/>
+        <rect x="285" y="222" width="90" height="56" rx="6" fill="#FFFFFF"/>
+        <path d="M218 84 C 300 84, 230 250, 270 250" fill="none"/><path d="M258 240 L274 250 L258 260" fill="none"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="30" y="56" font-size="24">int* note</text>
+        <text x="30" y="110" font-size="28">0x...d4</text>
+        <text x="330" y="138" font-size="20" text-anchor="middle">0x...d4</text>
+        <text x="330" y="260" font-size="28" text-anchor="middle">42</text>
+        <text x="330" y="326" font-size="22" text-anchor="middle">int score</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111"><text x="14" y="186">the note:</text><text x="14" y="212">holds an address</text></g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="26" letter-spacing="2" fill="#111"><text x="250" y="60">POINTS AT</text></g>
+    </svg>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>The note and the house are <b>two different boxes</b>. Throw the note away and the house is fine. Repaint the house and the note still says the same number. <b>The note is not the house.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: follow the note with *">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Having a note is only useful if you can <b>follow</b> it. Put <code>*</code> in front of a pointer and you're standing in the house it points at. Line 8 reads the house through the note. Line 9 writes into it. Following a pointer is called <b>dereferencing</b> it.</p>
+    <span class="file-tab">first_pointer.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="first_pointer.cpp"></pre>
+      <pre class="term" data-run="first_pointer.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Look at line 10: it prints <code>score</code> by its own name, and it says <b>50</b>. Nobody wrote <code>score = 50</code>! Line 9 walked to score's house using the note and changed what's inside. <code>note</code> means "the note". <code>*note</code> means "the house the note points at".</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-star-m" id="ex-star"></div>
+  <script type="application/json" id="ex-star-m">{"program": "star_quiz.cpp", "prompt": "One house, one note. Follow every change. What does it print?", "hint": "<code>*note</code> and <code>coins</code> are the same house. Line 7 makes it 3 + 4. Line 8 doubles the same house.", "explain": "There's only one box holding a number: <code>coins</code>. Line 7 goes through the note and makes it 7. Line 8 doubles it by name: 14. Line 9 reads the same house twice, once by name and once through the note: <samp>14 14</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 5: the two faces of * and &amp;">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">Confusing on purpose? A bit. C++ reuses <code>*</code> and <code>&amp;</code> for two jobs each. The trick: <b>next to a type</b> (when you make a new name) they describe the kind of box. <b>In an expression</b> (when you use a name) they do something.</p>
+    <div class="duo">
+      <div class="duo-card"><h3>NEXT TO A TYPE<small>int* p</small></h3><p>"p is a <b>pointer</b> to int": a note that holds an int's address.</p></div>
+      <div class="duo-card dashed"><h3>IN AN EXPRESSION<small>*p</small></h3><p>"<b>follow</b> p": the house p points at. Read it or write it.</p></div>
+      <div class="duo-card"><h3>NEXT TO A TYPE<small>int&amp; r</small></h3><p>"r is a <b>nickname</b> (a reference, Chapter 8) for an int": a second name glued to a box.</p></div>
+      <div class="duo-card dashed"><h3>IN AN EXPRESSION<small>&amp;x</small></h3><p>"the <b>address of</b> x": the house number, ready to write on a note.</p></div>
+    </div>
+    <p class="sr-only">Four cards. Solid border: next to a type, int-star p makes a pointer and int-ampersand r makes a nickname. Dashed border: in an expression, star p follows the pointer and ampersand x gives the address.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>And they undo each other: <code>&amp;</code> turns a house into a house number; <code>*</code> turns a house number back into the house. So <code>*&amp;score</code> is just <code>score</code>. <b>&amp; makes the note; * follows it.</b> (Spacing doesn't matter to the Compiler: <code>int* p</code>, <code>int *p</code> and <code>int * p</code> mean the same. This book glues the star to the type.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-write-m" id="ex-write"></div>
+  <script type="application/json" id="ex-write-m">{"q": "<code>int lives{3};</code> and <code>int* p{&amp;lives};</code>. What does <code>*p = 1;</code> do?", "options": [
+    {"t": "Makes <code>p</code> point at address 1", "why": "That would be <code>p = ...</code> with no star, and the Compiler wouldn't let you put a plain number in an <code>int*</code> anyway."},
+    {"t": "Puts 1 into <code>lives</code>", "correct": true, "why": "Right. <code>*p</code> is the house <code>p</code> points at, which is <code>lives</code>. Writing 1 there changes <code>lives</code>; <code>p</code> itself still holds the same address."},
+    {"t": "Makes a copy of <code>lives</code> and puts 1 in the copy", "why": "No copy is made. That's the whole point of a pointer: it reaches the original box."},
+    {"t": "Nothing: you can only read through a pointer, not write", "why": "An <code>int*</code> lets you read and write. (A <code>const int*</code> would only let you read; panel 10 has one.)"}]}</script>
+
+  <div data-ex="fill" data-model="ex-fillp-m" id="ex-fillp"></div>
+  <script type="application/json" id="ex-fillp-m">{"program": "fill_pointer.cpp", "prompt": "Make <code>note</code> hold the address of <code>lives</code>, then write 2 into <code>lives</code> <b>through the note</b>. The program must print 2.", "blanks": [{"line": 6, "text": "&lives", "accept": ["& lives"]}, {"line": 7, "text": "*note", "accept": ["* note"]}], "explain": "<code>&amp;lives</code> is the address of <code>lives</code>: exactly what an <code>int*</code> holds. <code>*note = 2;</code> follows the note and writes into the house. Writing <code>note = 2</code> without the star would try to change the <b>address</b>, and the Compiler would refuse: a plain number is not an address."}</script>
+
+  <section class="panel pop" aria-label="Panel 6: the Compiler checks the type on the note">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The type on the note is a promise about the house. Here's an <code>int</code>'s address on a note made for <code>double</code>s.</p>
+    <span class="file-tab">type_mismatch.cpp</span>
+    <pre class="code" data-src="type_mismatch.cpp"></pre>
+    <pre class="term" data-run="type_mismatch.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 4, column 18: <b>cannot convert 'int*' to 'double*'</b>. The little drawing under <code>&amp;score</code> even labels its type: <code>int*</code>. An <code>int</code> house and a <code>double</code> house are built differently inside, so a <code>double*</code> note would read the wrong shape. The warning after it is only because the program never uses <code>note</code>. <b>Here's the problem, here's where, and here's a fix:</b> <code>int* note{&amp;score};</code></p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · REWRITE IT OR RUB IT OUT<small>Reseating, pointers versus nicknames, <code>nullptr</code> and checking before you follow</small></h2>
+
+  <section class="panel clean tracer" aria-label="Panel 7: rewrite the note, then rub it out" data-tracer="tr-reseat" id="tr-reseat-box">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A sticky note can be rewritten. Step through <code>reseat.cpp</code> and watch the arrow out of <code>p</code>'s box: it moves from <code>a</code>'s box to <code>b</code>'s box, and then points at nothing. The boxes <code>a</code> and <code>b</code> never move.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-reseat-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-reseat">{"program": "reseat.cpp", "steps": [
+      {"line": 5, "output": [], "frames": [{"name": "main()", "vars": []}], "objects": {}, "note": "<code>main</code> starts. No boxes yet."},
+      {"line": 6, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}]}], "objects": {"A": {"kind": "int", "value": "7"}}, "changed": ["a"], "note": "Line 5 builds a house for <code>a</code> with 7 inside."},
+      {"line": 7, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "9"}}, "changed": ["b"], "note": "Line 6 builds a house for <code>b</code> with 9."},
+      {"line": 8, "output": [], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "9"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "A"}]}}, "changed": ["p"], "note": "Line 7 builds a <b>third</b> box: the note <code>p</code>. What's written on it is <code>a</code>'s address, drawn as an arrow to <code>a</code>'s box."},
+      {"line": 9, "output": ["7"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "9"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "A"}]}}, "note": "Line 8: <code>*p</code> follows the arrow to <code>a</code>'s box and prints 7."},
+      {"line": 10, "output": ["7"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "9"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "B"}]}}, "changed": ["p"], "note": "Line 9, <code>p = &amp;b;</code>, has <b>no star</b>, so it changes the note itself: rub out a's address, write b's. This is called <b>reseating</b> the pointer. <code>a</code> is untouched."},
+      {"line": 11, "output": ["7", "9"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "9"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "B"}]}}, "note": "Line 10: the same <code>*p</code> as line 8, but the note now says b's address, so it prints 9."},
+      {"line": 12, "output": ["7", "9"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "10"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "B"}]}}, "changed": ["b"], "note": "Line 11, <code>*p = 10;</code>, <b>has</b> a star: follow the note, write 10 in the house. That's <code>b</code>'s house now."},
+      {"line": 13, "output": ["7", "9", "7 10"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "10"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "ref": "B"}]}}, "note": "Line 12 prints both houses by name: <code>a</code> is still 7, <code>b</code> is 10."},
+      {"line": 14, "output": ["7", "9", "7 10"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "10"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "val": "nullptr"}]}}, "changed": ["p"], "note": "Line 13 rubs the note out: <code>nullptr</code> means \"this note points at nothing\". No arrow any more."},
+      {"line": null, "output": ["7", "9", "7 10", "blank"], "frames": [{"name": "main()", "vars": [{"n": "a", "ref": "A"}, {"n": "b", "ref": "B"}, {"n": "p", "ref": "P"}]}], "objects": {"A": {"kind": "int", "value": "7"}, "B": {"kind": "int", "value": "10"}, "P": {"kind": "pointer", "label": "int* · the note", "pairs": [{"k": "points at", "val": "nullptr"}]}}, "note": "Line 14 <b>compares</b> the note with <code>nullptr</code> (no star: it looks at the note, not a house). It's blank, so it prints <samp>blank</samp>. Checking is always safe. Following a blank note is not: panel 12."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-reseat-m" id="ex-reseat"></div>
+  <script type="application/json" id="ex-reseat-m">{"program": "predict_reseat.cpp", "prompt": "Two notes this time. Line 8 copies a <b>note</b>, not a house. Draw the boxes and arrows on paper, then predict.", "hint": "After line 8, <code>p</code> and <code>q</code> both say a's address. Line 9 rewrites only <code>p</code>. So which house does <code>*q</code> reach on line 10? And <code>*p</code> on line 11?", "explain": "Copying a pointer copies the address: <code>q</code> points at <code>a</code> too. Line 9 reseats only <code>p</code>, to <code>b</code>. Line 10 writes 5 into <code>a</code> through <code>q</code>. Line 11 reads <code>b</code> (2) and <code>a</code> (5) and writes 7 into <code>b</code>. So <samp>5 7</samp>. Two notes can point at the same house, and changing one note never changes the other."}</script>
+
+  <section class="panel clean" aria-label="Panel 8: a nickname is glued on, a note can be rewritten">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Chapter 8's <b>references</b> (nicknames) also reach the original box. So what's the difference? Try to "re-point" each one.</p>
+    <span class="file-tab">ref_vs_ptr.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="ref_vs_ptr.cpp"></pre>
+      <pre class="term" data-run="ref_vs_ptr.cpp"></pre>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th></th><th>Nickname <code>int&amp;</code></th><th>Sticky note <code>int*</code></th></tr></thead>
+      <tbody>
+        <tr><td>Point it somewhere else later?</td><td>No. <code>nick = b;</code> copies b's <b>value</b> into a (line 9).</td><td>Yes. <code>note = &amp;b;</code> rewrites the note (line 10).</td></tr>
+        <tr><td>Can it point at nothing?</td><td>No. It must be glued to a box from the start.</td><td>Yes: <code>nullptr</code>.</td></tr>
+        <tr><td>How you reach the box</td><td>Just the name: <code>nick</code></td><td>With a star: <code>*note</code></td></tr>
+        <tr><td>Is it a box of its own?</td><td>Think of it as just a second name.</td><td>Yes: a box holding an address.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>a=9</samp>: line 9 didn't re-glue the nickname, it copied 9 into a. <samp>b=20</samp>: the note moved to b, then wrote 20. A pointer is a reference you can <b>reseat</b> or leave <b>empty</b>. When you need neither, use a reference: it can't be blank, so it can't be followed into nowhere.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 9: nullptr, the blank note">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption soft"><code>nullptr</code> is the <b>null pointer</b>: a note that deliberately says "nowhere". It is a perfectly good value for a note to hold. Write <code>int* p{nullptr};</code> when you have no house to point at yet. What it is <b>not</b> is a house: there's nothing to follow.</p>
+    <div class="row two" style="align-items:center;justify-items:center">
+      <svg class="char" data-char="ghost" data-label="nullptr"></svg>
+      <ol class="checklist">
+        <li><span><b>Start blank, not random.</b> <code>int* p{nullptr};</code> or <code>int* p{&amp;x};</code>. Never just <code>int* p;</code> (panel 14).</span></li>
+        <li><span><b>Check before you follow.</b> <code>if (p != nullptr)</code>, or the short form <code>if (p)</code>: a pointer counts as true when it isn't null.</span></li>
+        <li><span><b>Say <code>nullptr</code>, not <code>0</code> or <code>NULL</code>.</b> Old code uses those. <code>nullptr</code> can only mean "a pointer to nothing", so it can't be mixed up with the number zero.</span></li>
+      </ol>
+    </div>
+    <p class="sr-only">Picture: the ghost, labelled nullptr: there is nothing here.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: a pointer that may be blank means maybe no answer">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Where does a blank note earn its keep? Answers that might not exist. <code>first_above</code> hands back the <b>address</b> of the first score above a limit, or <code>nullptr</code> when nobody is above it. <code>report</code> checks before it follows (line 16).</p>
+    <span class="file-tab">find_best.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="find_best.cpp"></pre>
+      <pre class="term" data-run="find_best.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 9 returns the address of the 72 <b>inside the vector</b>, not a copy. The <code>const</code> in <code>const int*</code> means "a note you may read through but not write through", so <code>report</code> can't change a score by accident. And <code>nullptr</code> is how "nobody" is said. (Chapter 20 meets <code>std::optional</code>, another way to say "maybe".)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-refptr-m" id="ex-refptr"></div>
+  <script type="application/json" id="ex-refptr-m">{"q": "You're writing <code>best_match(names, query)</code>. It should hand back the matching name from the vector <b>without copying it</b>, and there may be <b>no match at all</b>. Which return type fits?", "options": [
+    {"t": "<code>const std::string&amp;</code> (a nickname)", "why": "A nickname must be glued to a real box. With no match there's nothing to glue it to, so you'd have to invent a fake answer."},
+    {"t": "<code>const std::string*</code> (a note that may be <code>nullptr</code>)", "correct": true, "why": "Right. A pointer can say \"here it is\" (an address) or \"no match\" (<code>nullptr</code>), and the caller checks before following. Exactly what <code>first_above</code> did in panel 10."},
+    {"t": "<code>std::string</code> (a copy)", "why": "That copies the name, which the question rules out, and still needs a fake answer such as <code>\"\"</code> for \"no match\"."},
+    {"t": "<code>std::string*</code> pointing at a local variable inside <code>best_match</code>", "why": "The local is demolished when the function ends: a dangling note (Part 4)."}]}</script>
+
+  <section class="panel clean machine" aria-label="Panel 11: the follow machine" data-machine="m-deref">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">The star as a machine: feed it a note, out comes whatever is in the house. Every answer comes from a real run of <code>deref_machine.cpp</code>. The last chip feeds it a blank note (from <code>null_deref.cpp</code>, built with the Sanitizer's goggles on).</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-deref">{"label": "*p", "program": "deref_machine.cpp", "examples": [
+      {"in": "p = &a", "out": "7", "expectLine": "*p with p = &a gives 7", "outKind": "int", "note": "The note says a's address; the machine walks there and brings back 7."},
+      {"in": "p = &b", "out": "9", "expectLine": "*p with p = &b gives 9", "outKind": "int", "note": "Same machine, rewritten note: b's house, so 9."},
+      {"in": "p = &b, after *p = 11", "out": "11", "expectLine": "*p after *p = 11 gives 11", "outKind": "int", "note": "<code>*p = 11</code> wrote 11 into b's house through the note; following it again brings back 11."},
+      {"in": "p = nullptr", "error": "runtime error: load of null pointer of type 'int'", "program": "null_deref.cpp", "note": "A blank note has no house. The machine jams: there is nothing to load. The next panel reads the whole report."}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 12: following a blank note">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tr" data-sfx="THUD!" data-seed="12"></svg>
+    <p class="caption">Following <code>nullptr</code> is <b>undefined behaviour</b> (Chapter 11's dark room): the rules give it no meaning at all. On many computers it crashes, but nothing promises that. So this book never runs it without the goggles. Here it is under the safety-net build:</p>
+    <span class="file-tab">null_deref.cpp</span>
+    <pre class="code" data-src="null_deref.cpp"></pre>
+    <pre class="term wrap" data-run="null_deref.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the report like a detective">
+      <li><span><b>Where:</b> <code>null_deref.cpp:7:27</code>, line 7, column 27: the <code>*</code> in <code>*note</code>.</span></li>
+      <li><span><b>What:</b> <code>runtime error: load of null pointer of type 'int'</code>. "Load" means read: you tried to read an <code>int</code> from the blank note.</span></li>
+      <li><span><b>Who called:</b> <code>#0 ... in main null_deref.cpp:7</code>. The lines below it are the system starting your program; skip them. These numbered lines (the <b>call trail</b>) are there because the run command asks for them: <code>UBSAN_OPTIONS=print_stacktrace=1 ./null_deref</code> sets an option for UBSan for that one run. Type it exactly like that to get the same trail.</span></li>
+      <li><span><b>Proof it stopped in time:</b> line 6's message got out (<code>std::endl</code> flushed it), and nothing after it did. Exit code 1: the Sanitizer stopped the program.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>That one was my UBSan half: it checks every star for a null note before it's followed. Switch that check off and my ASan half still sees it, from the other side. Next panel.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" data-asan="rep-null" aria-label="Panel 13: AddressSanitizer's view of a null pointer">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The same program built with <code>-fno-sanitize=null</code> added (open "the whole terminal" below to see the full build command), which turns off UBSan's null check. Now the program really does try to read house number 0, and AddressSanitizer reports what happened. Press each part.</p>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <details><summary>The whole terminal: the build command (with -fno-sanitize=null) and the run</summary><pre class="term wrap" data-run="null_asan.cpp" data-exit></pre></details>
+    <script type="application/json" id="rep-null">{"program": "null_asan.cpp", "parts": [
+      {"title": "The accusation", "match": "SEGV on unknown address 0x000000000000", "note": "<b>SEGV</b> is short for <b>segmentation violation</b>: touching memory the program isn't allowed to touch. The address is <b>0x000000000000</b>, all zeros. That's what <code>nullptr</code> looks like inside the machine on this computer."},
+      {"title": "The evidence", "match": "The signal is caused by a READ memory access.", "note": "It was a <b>read</b>: line 7 tried to fetch an <code>int</code> to print."},
+      {"title": "The hint", "match": "Hint: address points to the zero page.", "note": "The <b>zero page</b> is the stretch of addresses around 0. Systems keep it off limits on purpose, so that following a null pointer is caught instead of reading something real. A hint like this almost always means \"you followed a null pointer\"."},
+      {"title": "The scene", "match": "null_asan.cpp:7", "note": "Frame <code>#0</code>: <code>main</code>, <code>null_asan.cpp</code>, line 7."},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer: SEGV", "note": "The one-line version: what, where, in which function. Then <samp>ABORTING</samp>, and exit code 1."}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Two different reports, one bug: "load of null pointer" and "SEGV on address 0". Recognise both. In the plain build, which we don't run, many systems would stop with <samp>Segmentation fault</samp> and exit code 139. "Many" isn't "all", and that's why it stays in the dark room.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotnull-m" id="ex-spotnull"></div>
+  <script type="application/json" id="ex-spotnull-m">{"program": "spot_null.cpp", "bug": 18, "prompt": "Built with the goggles on. <code>find_name</code> is correct: it returns <code>nullptr</code> when no name starts with the letter. Click the line that breaks the rule \"check before you follow\".", "explain": "No name starts with Z, so <code>hit</code> is <code>nullptr</code>, and line 18 follows it with <code>*hit</code> without checking. UBSan says <samp>reference binding to null pointer</samp> at line 18: the printing code was handed the house a blank note points at, and there is no house. Fix: <code>if (hit) { ... } else { std::cout &lt;&lt; \"no match\\n\"; }</code>. A function that <b>may</b> return <code>nullptr</code> hands its caller a duty: check."}</script>
+
+  <section class="panel pop" aria-label="Panel 14: the note nobody wrote on">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="14"></svg>
+    <p class="caption">Worse than a blank note: a note nobody wrote on. <code>int* note;</code> with no starting value holds whatever bits were lying in that spot of memory, an address of a random house, or of no house at all. Line 6 writes 5 there. This program is built but <b>never run</b>: running it is undefined behaviour.</p>
+    <span class="file-tab">uninit_ptr.cpp</span>
+    <pre class="code" data-src="uninit_ptr.cpp"></pre>
+    <pre class="term" data-run="uninit_ptr.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Only a <b>warning</b>, so I still build it, but read it: <b>'note' is used uninitialized</b> on line 6, and the <code>note:</code> line points back to where it was born, line 5, with no value. Writing 5 to a random address can overwrite another variable without a sound. Fix: start every pointer with an address or <code>nullptr</code>. <b>Measure twice, compile once.</b></p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · NOTES FOR WHOLE HOUSES<small>Pointers to structs and class objects, the arrow <code>-&gt;</code>, and pointers that only look</small></h2>
+
+  <section class="panel clean" aria-label="Panel 15: the arrow follows the note, then opens a drawer">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">A note can point at a whole struct (Chapter 9) or class object (Chapter 12). To reach one member you need two moves: follow the note, then pick the member. <code>(*q).x</code> does exactly that, and the brackets matter. Because that's clumsy, C++ has a shortcut that does both: the <b>arrow</b>, <code>q-&gt;x</code>.</p>
+    <span class="file-tab">arrow.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="arrow.cpp"></pre>
+      <pre class="term" data-run="arrow.cpp"></pre>
+    </div>
+    <svg class="pic-mid" viewBox="0 0 440 290" role="img" aria-label="Two steps. Step 1, follow: the note q with an arrow to the house home, which has two drawers, x holding 3 and y holding 4. Step 2, open x: an arrow down from the x drawer to the result, 3. Below: q-arrow-x does both steps, the same as star-q in brackets, dot x.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M14 30 H120 V96 L104 112 H14 Z" fill="#FFD60A"/>
+        <path d="M128 70 H200" fill="none"/><path d="M190 60 L202 70 L190 80" fill="none"/>
+        <path d="M214 150 V70 L314 18 L414 70 V150 Z" fill="#FFF6CC"/>
+        <rect x="236" y="84" width="74" height="48" rx="5" fill="#FFFFFF"/><rect x="320" y="84" width="74" height="48" rx="5" fill="#FFFFFF"/>
+        <path d="M273 138 V196" fill="none"/><path d="M263 186 L273 198 L283 186" fill="none"/>
+        <rect x="228" y="204" width="90" height="50" rx="6" fill="#C9F2D9"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111" text-anchor="middle">
+        <text x="66" y="80" font-size="26">q</text><text x="273" y="116" font-size="22">x 3</text><text x="357" y="116" font-size="22">y 4</text>
+        <text x="273" y="238" font-size="28">3</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111">
+        <text x="170" y="52" text-anchor="middle">1. follow</text><text x="292" y="176">2. open x</text>
+        <text x="14" y="160">q-&gt;x does both:</text><text x="14" y="186">(*q).x</text>
+      </g>
+    </svg>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The arrow even looks like what it does: it points through the note at the member. <b>Dot for a house, arrow for a note.</b> Line 14 writes through it, so line 15 sees <code>home.y</code> as 8.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 16: a dot on a note">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The classic slip: a dot on a pointer. A note has no drawer called <code>x</code>; only the house has. Both compilers on this machine, side by side:</p>
+    <span class="file-tab">dot_error.cpp</span>
+    <pre class="code" data-src="dot_error.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13</p><pre class="term wrap" data-run="dot_error.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18</p><pre class="term wrap" data-run="dot_error.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 12: you asked for member <b>x</b> in <b>q</b>, but q is of <b>pointer type 'Pt*'</b>. And then the best part: <b>maybe you meant to use '-&gt;'?</b> clang++ says the same thing in its own words and even draws the fix under the line. When an error message suggests a fix, try the fix first.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillarrow-m" id="ex-fillarrow"></div>
+  <script type="application/json" id="ex-fillarrow-m">{"program": "fill_arrow.cpp", "prompt": "<code>p</code> should point at <code>rex</code>, and line 14 should print the pet's name <b>through the pointer</b>. The output must be <samp>Rex is 4</samp>.", "blanks": [{"line": 12, "text": "&rex", "accept": ["& rex"]}, {"line": 14, "text": "p->name", "accept": ["(*p).name"]}], "explain": "<code>&amp;rex</code> is rex's address, which is what a <code>Pet*</code> holds. <code>p-&gt;name</code> follows the note and opens the <code>name</code> drawer (<code>(*p).name</code> is the long way round). Line 13 already used the arrow to make rex a year older, so <code>rex.age</code>, read with a dot because <code>rex</code> is the house itself, is 4."}</script>
+
+  <div data-ex="choice" data-model="ex-arrowq-m" id="ex-arrowq"></div>
+  <script type="application/json" id="ex-arrowq-m">{"q": "<code>Robot* q{&amp;bolt};</code> where <code>Robot</code> has a member function <code>charge()</code>. Which line charges bolt?", "options": [
+    {"t": "<code>q.charge();</code>", "why": "A dot on a note: the Compiler says <samp>request for member 'charge' in 'q', which is of pointer type 'Robot*'</samp> (panel 16)."},
+    {"t": "<code>*q.charge();</code>", "why": "Sneaky. The dot is done <b>before</b> the star, so this means <code>*(q.charge())</code>: the same error. That's why the long form needs brackets."},
+    {"t": "<code>q-&gt;charge();</code>", "correct": true, "why": "Right: follow the note to bolt, then call <code>charge()</code> on bolt. <code>(*q).charge();</code> also works, with the brackets."},
+    {"t": "<code>&amp;q-&gt;charge();</code>", "why": "The <code>&amp;</code> would ask for an address of whatever <code>charge()</code> returns, which is nothing (<code>void</code>): an error."}]}</script>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 17: an observer pointer only looks" data-mem="mem-obs" data-heap-label="the library" id="mem-obs-box">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Here's what plain pointers are for in modern C++: <b>observing</b>. <code>inspect</code> takes a <code>const Robot*</code>: "show me a robot, or <code>nullptr</code> if there's none on the bench". It looks, it never changes the robot (that's the <code>const</code>), and it is never in charge of throwing the robot away. Step through it: each function call gets its own plate on the <b>stack</b> (more about plates in Part 5), and a note is drawn as an <code>&amp;bolt</code> cell with an arrow to the slot it points at.</p>
+    <span class="file-tab">observer.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-obs">{"program": "observer.cpp", "steps": [
+      {"line": 26, "note": "<code>main</code> starts: one empty plate.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 27, "note": "Line 26 builds <code>bolt</code>, a Robot, right on main's plate: a plain local, owned by <code>main</code>.", "output": [], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}]}], "heap": {}, "changed": ["bolt"]},
+      {"line": 28, "note": "Line 27: <code>bench</code> is a note that starts blank.", "output": [], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "val": "nullptr"}]}], "heap": {}, "changed": ["bench"]},
+      {"line": 18, "note": "Line 28 calls <code>inspect(bench)</code>. A new plate goes on top, and the parameter <code>r</code> gets a <b>copy of the note</b>: blank too.", "output": [], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "val": "nullptr"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "val": "nullptr"}]}], "heap": {}, "changed": ["r"]},
+      {"line": 19, "note": "Line 18 checks the note before following it. It's blank, so the <code>if</code> is taken.", "output": [], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "val": "nullptr"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "val": "nullptr"}]}], "heap": {}},
+      {"line": 20, "note": "Line 19 prints the \"nobody here\" message.", "output": ["no robot on the bench"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "val": "nullptr"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "val": "nullptr"}]}], "heap": {}},
+      {"line": 29, "note": "Line 20 returns early. inspect's plate is cleared; its note <code>r</code> is gone, and nothing else is touched.", "output": ["no robot on the bench"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "val": "nullptr"}]}], "heap": {}},
+      {"line": 30, "note": "Line 29 writes bolt's address on the bench note: an arrow from one slot on the plate to another.", "output": ["no robot on the bench"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}], "heap": {}, "changed": ["bench"]},
+      {"line": 18, "note": "Line 30 calls <code>inspect</code> again. <code>r</code> is a copy of the note, so it points at <code>main</code>'s bolt too, from a different plate.", "output": ["no robot on the bench"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}, "changed": ["r"]},
+      {"line": 22, "note": "Line 18: not blank this time, so on to line 22.", "output": ["no robot on the bench"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": 23, "note": "Line 22 follows the note with <code>-&gt;</code> twice: name and battery.", "output": ["no robot on the bench", "Bolt at 35%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": 31, "note": "inspect ends, its plate goes, and <b>bolt is untouched</b>: an observer never cleans up what it looked at.", "output": ["no robot on the bench", "Bolt at 35%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 35%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": 32, "note": "Line 31: <code>bench-&gt;charge()</code> follows the note and changes bolt itself. <code>bench</code> is a plain <code>Robot*</code>, not <code>const</code>, so it may.", "output": ["no robot on the bench", "Bolt at 35%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 100%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}], "heap": {}, "changed": ["bolt"]},
+      {"line": 18, "note": "Line 32: a third look.", "output": ["no robot on the bench", "Bolt at 35%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 100%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}, "changed": ["r"]},
+      {"line": 22, "note": "Not blank.", "output": ["no robot on the bench", "Bolt at 35%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 100%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": 23, "note": "Line 22 prints the charged robot.", "output": ["no robot on the bench", "Bolt at 35%", "Bolt at 100%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 100%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}, {"name": "inspect", "slots": [{"n": "r", "type": "const Robot*", "ref": "main/bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": 33, "note": "Back in main.", "output": ["no robot on the bench", "Bolt at 35%", "Bolt at 100%"], "frames": [{"name": "main", "slots": [{"n": "bolt", "type": "Robot", "val": "Bolt, 100%"}, {"n": "bench", "type": "Robot*", "ref": "bolt", "refLabel": "&bolt"}]}], "heap": {}},
+      {"line": null, "note": "Line 33's <code>}</code> clears main's plate: <code>bolt</code> is destroyed because <b>main owned it</b>. The notes never owned anything; they just stop existing.", "output": ["no robot on the bench", "Bolt at 35%", "Bolt at 100%"], "frames": [], "heap": {}}]}</script>
+    <pre class="term" data-run="observer.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>bolt</code> lives in <code>main</code> and dies at the end of <code>main</code>, whoever points at it. <code>bench</code> and <code>r</code> are just notes. The C++ Core Guidelines put it plainly: a plain <code>T*</code> <b>does not own</b> what it points at (rule R.3). So the house rule is: <b>a plain pointer only looks; it never owns.</b> Owning something comes in Part 5.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pnull-m" id="ex-pnull"></div>
+  <script type="application/json" id="ex-pnull-m">{"program": "parsons_null.cpp", "seed": 7, "pin": [1, 2, 3, 4, 5, 6, 12], "alts": [[1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 12]], "prompt": "The two boxes are already made: <code>stock</code> and a shelf note that starts blank. Put the rest in order: the note gets stock's address, and one item is taken <b>only after checking</b> the note isn't blank. It must print the goal output.", "explain": "The note must get stock's address (line 7) before it is checked and followed: check first (line 8), then take one item through the note (line 9). Printing inside the <code>if</code> works too, because the note isn't blank here. Put the <code>if</code> before the <code>shelf =</code> line and it would find a blank note and skip the take: <samp>stock: 4</samp>."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · DEMOLISHED HOUSES<small>Dangling pointers: the note outlives the house</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 18: the house is gone but the note remains">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">A local variable's house is knocked down at the closing <code>}</code> of its block (Chapter 7's scope). The note doesn't know. It still says "12 Elm St", in neat handwriting, pointing at rubble. A pointer to something that no longer exists is called a <b>dangling pointer</b>.</p>
+    <svg class="pic-mid" viewBox="0 0 440 320" role="img" aria-label="Top left: the note says 12 Elm St, with an arrow down to the right. Bottom right: a pile of rubble where a house used to be, a dashed outline showing where it stood, and a sign: demolished at the closing brace. Caption: still says 12 Elm St.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M14 14 H214 V120 L190 144 H14 Z" fill="#FFD60A"/><path d="M214 120 H190 V144" fill="#FFF6CC"/>
+        <path d="M218 80 C 290 80, 230 220, 270 236" fill="none"/><path d="M256 230 L272 238 L260 250" fill="none"/>
+        <path d="M250 290 V200 L330 150 L410 200 V290" fill="none" stroke-dasharray="10 8" stroke-width="3"/>
+        <path d="M240 292 L266 262 L288 276 L312 248 L338 272 L362 254 L392 278 L424 292 Z" fill="#E8E2D4"/>
+        <path d="M280 286 l14 -10 M352 284 l10 -14 M320 286 l-8 -10" fill="none" stroke-width="3"/>
+        <rect x="300" y="14" width="126" height="62" rx="6" fill="#FFFFFF"/><path d="M363 76 V140" fill="none"/>
+      </g>
+      <g font-family="Shantell Sans, Comic Neue, cursive" font-weight="700" font-size="24" fill="#111"><text x="30" y="62">12 Elm St</text><text x="30" y="104">&#x2192; house</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="363" y="40">demolished</text><text x="363" y="64">at the }</text></g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="24" letter-spacing="2" fill="#111"><text x="14" y="196">STILL SAYS</text><text x="14" y="226">12 ELM ST</text></g>
+    </svg>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>And here's the nasty bit: checking for <code>nullptr</code> doesn't help. The note isn't blank. It holds a perfectly ordinary-looking address. Nothing about the note tells you the house is gone. <b>A note never knows the house is gone.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" data-asan="rep-scope" aria-label="Panel 19: stack-use-after-scope, caught">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption"><code>house</code> is born inside the inner block on line 7 and demolished at line 10's <code>}</code>. Line 11 follows the note anyway. Undefined behaviour again, so: goggles on.</p>
+    <span class="file-tab">dangle_scope.cpp</span>
+    <pre class="code" data-src="dangle_scope.cpp"></pre>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <script type="application/json" id="rep-scope">{"program": "dangle_scope.cpp", "fold": {"from": "Shadow bytes around the buggy address:", "to": "ABORTING", "label": "the shadow-byte map of memory around the bad address"}, "parts": [
+      {"title": "The accusation", "match": "ERROR: AddressSanitizer: stack-use-after-scope", "note": "<b>stack-use-after-scope</b>: using a local variable's memory after its scope (its block) ended. The <b>stack</b> is where local variables live; Part 5 draws it."},
+      {"title": "The evidence", "match": "READ of size 4", "note": "A read of 4 bytes: one <code>int</code>, the 12 that used to be there."},
+      {"title": "The scene", "match": "dangle_scope.cpp:11", "note": "Frame <code>#0</code>: <code>main</code>, line 11, the <code>*note</code> outside the block."},
+      {"title": "The victim", "match": "'house' (line 7)", "note": "The best line in the report: the bad address is <b>inside the variable <code>house</code>, born on line 7</b>. ASan even prints <samp>&lt;== Memory access at offset 32 is inside this variable</samp>."},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer: stack-use-after-scope", "note": "What, where, which function. The shadow map is folded; the exit code is 1. Note that <samp>inside: 12</samp> got out first, thanks to <code>std::endl</code>."}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Without me, this program might print 12 and look fine: the rubble hasn't been cleared yet. Or it might print anything else, depending on compiler and settings. Looking fine is the most dangerous thing undefined behaviour can do.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 20: returning the address of a local">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">The same mistake in a function: <code>make_house</code> builds a local and hands out its address. The house is demolished the moment the function ends, so the caller receives a dangling note. Build only; we don't run it.</p>
+    <span class="file-tab">dangle_return.cpp</span>
+    <pre class="code" data-src="dangle_return.cpp"></pre>
+    <pre class="term" data-run="dangle_return.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>I can see this one coming: <b>address of local variable 'house' returned</b>, with <code>[-Wreturn-local-addr]</code> naming the warning. Treat it as an error. Fix: return the <b>value</b> (<code>int make_house()</code> returning 12), or let the caller own the box and pass it in by reference. The notebook shows the surprising thing g++ does with this program under the goggles.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotdangle-m" id="ex-spotdangle"></div>
+  <script type="application/json" id="ex-spotdangle-m">{"program": "spot_dangle.cpp", "bug": 11, "prompt": "Built with the goggles on. <code>points</code> is born fresh on every trip round the loop. One line follows a note to a house that has already been demolished. Which?", "explain": "<code>points</code> lives inside the loop's <code>{ }</code>, so its house is knocked down at the end of every trip, including the last one. Lines 8 and 9 are fine: the house still stands. Line 11 runs after the loop, and the report says <samp>stack-use-after-scope</samp> at <samp>spot_dangle.cpp:11</samp>. Fix: keep the <b>value</b>, not the note: <code>int best{0};</code> and <code>best = points;</code>."}</script>
+
+  <div data-ex="trace" data-model="ex-traceptr-m" id="ex-traceptr"></div>
+  <script type="application/json" id="ex-traceptr-m">{"program": "trace_ptr.cpp", "columns": ["step", "a", "b", "*p"], "given": [0], "prompt": "One note, two houses. Each trip adds <code>step</code> to the house the note points at, then flips the note to the <b>other</b> house (line 10 compares addresses: is <code>p</code> pointing at <code>a</code>?). Each row is printed <b>after</b> the flip. Fill in the table.", "explain": "Start: a=1, b=5, note at a. Step 1: a becomes 2, flip to b, so <code>*p</code> is b: 5. Step 2: b becomes 7, flip to a: 2. Step 3: a becomes 5, flip to b: 7. Step 4: b becomes 11, flip to a: 5. Comparing two pointers with <code>==</code> asks \"same house?\", never \"same value inside?\"."}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: rules for safe notes">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">Notes are cheap and useful, and every bug in this part came from one of three ways a note can lie. Wren's rules for keeping them honest:</p>
+    <ol class="checklist">
+      <li><span><b>Every note holds a real address or <code>nullptr</code>.</b> Never leave one unwritten (panel 14).</span></li>
+      <li><span><b>Check before you follow</b> whenever <code>nullptr</code> is possible (panel 12).</span></li>
+      <li><span><b>A note must not outlive its house.</b> Don't return or keep the address of a local after its <code>}</code> (panels 19 and 20). The <code>nullptr</code> check can't save you here.</span></li>
+      <li><span><b>Notes only look.</b> A plain pointer never decides when a house is knocked down (panel 17).</span></li>
+      <li><span><b>Prefer a nickname</b> when the target always exists and never changes: a reference can't be blank and can't be reseated (panel 8).</span></li>
+      <li><span><b>Addresses are not data.</b> Never save, print or compare them as answers; they change between runs and machines (panel 2).</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>So far every house was built by its block and knocked down at its <code>}</code>. But what if I need a house that outlives the block that built it? That's a different part of town.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE LIBRARY CARD<small>The stack and the heap, <code>std::unique_ptr</code>, <code>std::move</code> and <code>.get()</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 22: two parts of town, the stack and the heap">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">A running program keeps its boxes in two parts of town. The <b>stack</b> is a pile of plates: each function call puts a plate on top with its local variables, and the plate is cleared away, every box on it gone, when the call ends. The <b>heap</b> (C++ also calls it the <b>free store</b>) is a library: you ask for a box, it stays out on loan for as long as you like, and it must be <b>handed back</b> when you're done.</p>
+    <div class="pics">
+      <figure>
+        <svg viewBox="0 0 280 230" role="img" aria-label="The stack: a pile of three plates, main at the bottom, then order, and the top plate labelled running now.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+            <ellipse cx="140" cy="190" rx="126" ry="24" fill="#FFFFFF"/><ellipse cx="140" cy="146" rx="126" ry="24" fill="#FFFFFF"/><ellipse cx="140" cy="102" rx="126" ry="24" fill="#DDE8FF"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle"><text x="140" y="197">main</text><text x="140" y="153">order</text><text x="140" y="109">running now</text></g>
+          <text x="140" y="44" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="32" letter-spacing="2" fill="#111">STACK</text>
+        </svg>
+        <figcaption>Plates: cleared at every <code>}</code>, automatically.</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 280 230" role="img" aria-label="The heap: library shelves full of books, with one gap where a book is out on loan, and a loan card numbered 1.">
+          <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+            <rect x="14" y="60" width="252" height="160" rx="6" fill="#F4F1EA"/>
+            <path d="M14 112 H266 M14 166 H266"/>
+            <g fill="#FF5A4E"><rect x="30" y="70" width="22" height="42"/><rect x="56" y="76" width="22" height="36"/><rect x="104" y="124" width="24" height="42"/><rect x="196" y="178" width="22" height="42"/></g>
+            <g fill="#7FB2FF"><rect x="82" y="70" width="20" height="42"/><rect x="132" y="128" width="22" height="38"/><rect x="222" y="182" width="22" height="38"/></g>
+            <rect x="160" y="120" width="24" height="46" fill="#FFFFFF" stroke-dasharray="6 5"/>
+            <rect x="186" y="10" width="80" height="44" rx="4" fill="#FFF6CC"/>
+          </g>
+          <text x="226" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111">#1</text>
+          <text x="80" y="44" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="32" letter-spacing="2" fill="#111">HEAP</text>
+        </svg>
+        <figcaption>A library: out on loan until handed back.</figcaption>
+      </figure>
+    </div>
+    <p><b>Why borrow from the heap at all?</b> Three reasons. (1) A box must <b>outlive the block that made it</b>, like a book ordered inside a function and read after it returns. (2) You don't know <b>how many</b> boxes until the program runs. That's why <code>std::vector</code> keeps its items on the heap (Chapter 11's reports said <samp>heap-buffer-overflow</samp>); the vector borrows and returns for you. (3) Later, in Chapter 24, a box whose <b>exact kind</b> is only decided while running.</p>
+  </section>
+
+  <section class="panel pop" data-play aria-label="Panel 23: one book, one borrower card">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Wren takes us to the library. The librarian, Mabel, runs a tight ship.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="librarian" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>Every book that leaves my library has <b>exactly one borrower card</b>. Whoever holds the card is responsible for bringing the book back. You can't photocopy a card. You <b>can</b> hand your card to someone else, and then it's their job. And if you drop the card on the way out of the building, my card is enchanted: the book flies home on its own.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>That enchanted card is <code>std::unique_ptr&lt;Book&gt;</code>, from the header <code>&lt;memory&gt;</code>. It's a pointer that <b>owns</b> its object: exactly one owner, can't be copied, can be <b>moved</b>, and when the card itself is destroyed, its destructor deletes the book. <b>One book, one card.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: Mabel the librarian, with a hair bun, a cardigan and a red book, points at the reader. Wren stands on the other side.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: a book on the heap, owned by a unique_ptr">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">A <code>Book</code> class whose constructor and destructor print (Chapter 12's trick), so you can see when a book is made and when it goes home. Line 18 borrows one from the heap with <code>std::make_unique&lt;Book&gt;("Dune")</code>: it builds a <code>Book</code> on the heap, passing "Dune" to the constructor, and gives back a <code>unique_ptr</code> holding it.</p>
+    <span class="file-tab">book_scope.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="book_scope.cpp"></pre>
+      <pre class="term" data-run="book_scope.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read the screen in order. <samp>[made Dune]</samp> on line 18. Line 19 uses the arrow on the card, just like a plain note. Then line 20's <code>}</code> ends the block, <code>card</code> is destroyed, and its destructor deletes the book: <samp>[returned Dune]</samp>, <b>before</b> "library closes". Nobody wrote "delete". <b>Every bolt you tighten, you loosen later</b>, and here the card loosens it for you.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: a book that outlives the function that made it">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Reason (1) from panel 22 in action. <code>order</code> makes a book and <b>returns the card</b>. Its own plate is cleared when it returns, but the book is on the heap, and the card now belongs to <code>main</code>. (<code>auto</code> on line 21 lets the Compiler write the long type <code>std::unique_ptr&lt;Book&gt;</code> for you.)</p>
+    <span class="file-tab">factory.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="factory.cpp"></pre>
+      <pre class="term" data-run="factory.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Compare panel 20: returning the address of a local gave a dangling note. Returning a <code>unique_ptr</code> hands over a card for a heap book that's still standing. The book goes home once, at the end of <code>main</code>, when <code>mine</code> is destroyed. A function that makes something and hands it over is often called a <b>factory</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 26: handing over the card, in memory" data-mem="mem-move" data-heap-label="the library" id="mem-move-box">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Handing the card on. <code>std::move(ada)</code> says "ada gives up her card". It comes from <code>&lt;utility&gt;</code>, so line 5 includes that header. (One library's <code>&lt;memory&gt;</code> may happen to bring <code>&lt;utility&gt;</code> along, but another's may not: include what you use.) Watch the stack's plates and the heap's blocks: the ticket number moves from <code>ada</code> to <code>ben</code>, and the book never moves at all.</p>
+    <span class="file-tab">move_card.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-move">{"program": "move_card.cpp", "steps": [
+      {"line": 16, "note": "<code>main</code> starts on line 15: one empty plate. Nothing on loan from the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 17, "note": "Line 16: <code>make_unique</code> builds a Book on the heap (its constructor prints <samp>[made Dune]</samp>). On the plate, <code>ada</code>'s card holds ticket #1: where the book is.", "output": ["  [made Dune]"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}, "changed": ["ada", "H1"]},
+      {"line": 18, "note": "Line 17: <code>ben</code> is a card with no book on it. A <code>unique_ptr</code> made with no object starts as <code>nullptr</code>.", "output": ["  [made Dune]"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "ptr": "H1"}, {"n": "ben", "type": "std::unique_ptr<Book>", "val": "nullptr"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}, "changed": ["ben"]},
+      {"line": 19, "note": "Line 18: a <code>unique_ptr</code> counts as false when it's empty, so <code>(ben ? ... : ...)</code> picks \"empty\".", "output": ["  [made Dune]", "ben: empty"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "ptr": "H1"}, {"n": "ben", "type": "std::unique_ptr<Book>", "val": "nullptr"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}},
+      {"line": 20, "note": "Line 19: <code>ben = std::move(ada);</code>. The ticket passes from ada to ben, and ada is left holding <code>nullptr</code>. The book stays exactly where it is on the heap. No copy, no new book, no <samp>[made]</samp>.", "output": ["  [made Dune]", "ben: empty"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "val": "nullptr"}, {"n": "ben", "type": "std::unique_ptr<Book>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}, "changed": ["ada", "ben"]},
+      {"line": 21, "note": "Line 20: ada's card is empty now. For <code>unique_ptr</code> that's a promise: a moved-from <code>unique_ptr</code> is always <code>nullptr</code>.", "output": ["  [made Dune]", "ben: empty", "ada: empty"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "val": "nullptr"}, {"n": "ben", "type": "std::unique_ptr<Book>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}},
+      {"line": 22, "note": "Line 21: <code>ben-&gt;title()</code> follows ticket #1 to the book.", "output": ["  [made Dune]", "ben: empty", "ada: empty", "ben: reading Dune"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "val": "nullptr"}, {"n": "ben", "type": "std::unique_ptr<Book>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}},
+      {"line": 23, "note": "Line 22 prints. The book is still out on loan.", "output": ["  [made Dune]", "ben: empty", "ada: empty", "ben: reading Dune", "end of main"], "frames": [{"name": "main", "slots": [{"n": "ada", "type": "std::unique_ptr<Book>", "val": "nullptr"}, {"n": "ben", "type": "std::unique_ptr<Book>", "ptr": "H1"}]}], "heap": {"H1": {"cells": [], "label": "Book"}}},
+      {"line": null, "note": "Line 23's <code>}</code>: main's plate is cleared. <code>ben</code>'s destructor deletes the book (<samp>[returned Dune]</samp>), and the block on the heap is freed. <code>ada</code>, empty, has nothing to return. One book, one return.", "output": ["  [made Dune]", "ben: empty", "ada: empty", "ben: reading Dune", "end of main", "  [returned Dune]"], "frames": [], "heap": {"H1": {"cells": [], "label": "Book", "freed": true}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-dtor-m" id="ex-dtor"></div>
+  <script type="application/json" id="ex-dtor-m">{"program": "dtor_predict.cpp", "prompt": "Each <code>[made]</code> and <code>[returned]</code> line comes from the Book's constructor and destructor, indented by two spaces. Which line returns each book? Predict the whole screen.", "hint": "B's card lives in the inner block: when does that block end? A's card is moved to <code>c</code> on line 22, which makes no new book. Who holds A at the very end?", "explain": "A is made, then B. B's card dies at the inner <code>}</code> (line 21), so <samp>[returned B]</samp> comes before \"end\". Line 22 moves A's card to <code>c</code>: no new book, no return. At main's <code>}</code>, <code>c</code> returns A, and the empty <code>a</code> returns nothing. Every book is returned exactly once."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 27: you can't photocopy a card">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="27"></svg>
+    <p class="caption">What if two cards held the same book? Both would try to return it: a double return. So <code>unique_ptr</code> simply can't be copied. The Compiler enforces it:</p>
+    <span class="file-tab">copy_error.cpp</span>
+    <pre class="code" data-src="copy_error.cpp"></pre>
+    <pre class="term wrap" data-run="copy_error.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>Where:</b> <code>copy_error.cpp:6:29</code>, the <code>{a}</code> that tries to make <code>b</code> from <code>a</code>.</span></li>
+      <li><span><b>What:</b> <code>use of deleted function</code>. The function it means is long: <code>unique_ptr(const unique_ptr&amp;)</code>, the <b>copy constructor</b>, the constructor that makes a new object as a copy of an existing one.</span></li>
+      <li><span><b>Decode the template words:</b> <code>[with _Tp = int; _Dp = std::default_delete&lt;int&gt;]</code> says what <code>_Tp</code> and <code>_Dp</code> stood for here: a card for an <code>int</code>, which returns it with plain <code>delete</code>.</span></li>
+      <li><span><b>The note:</b> line 522 of the library's <code>unique_ptr.h</code> says <code>unique_ptr(const unique_ptr&amp;) = delete;</code>. <code>= delete</code> means "this function exists only to be refused". The library's authors banned copying on purpose.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Long message, short meaning: <b>no photocopies</b>. If you meant to hand the card over, say so: <code>std::unique_ptr&lt;int&gt; b{std::move(a)};</code>. If you meant a second book, make one: <code>std::make_unique&lt;int&gt;(*a)</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotcopy-m" id="ex-spotcopy"></div>
+  <script type="application/json" id="ex-spotcopy-m">{"program": "spot_copy.cpp", "bug": 21, "prompt": "This doesn't compile. <code>donate</code> takes its card <b>by value</b>, so the caller has to hand one over. Click the line g++ complains about.", "explain": "Passing by value copies the argument into the parameter <code>b</code>, and cards can't be copied: <samp>use of deleted function</samp> at line 21, this time with <samp>_Tp = Book</samp>. Fix: <code>donate(std::move(card));</code>, which says out loud \"I'm giving my card away\". The next panel walks through exactly that."}</script>
+
+  <section class="panel clean" aria-label="Panel 28: walk through a donation" data-walk="walk-donate">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Which line returns the book? Walk Wren through <code>donate.cpp</code>, one line at a time, and watch for <samp>[returned Heidi]</samp>.</p>
+    <div class="walk full">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">donate.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-donate">{"program": "donate.cpp", "steps": [
+      {"line": 21, "output": [], "mood": "focus", "arms": "point", "note": "The program starts in <code>main</code>, line 20. Lines 6 to 18 only describe <code>Book</code> and <code>donate</code>."},
+      {"line": 22, "output": ["  [made Heidi]"], "mood": "happy", "arms": "point", "note": "Line 21 borrows a Book from the heap. Its constructor (line 8) prints <samp>[made Heidi]</samp>. <code>card</code> holds it."},
+      {"line": 17, "output": ["  [made Heidi]"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 22: <code>std::move(card)</code> hands the card to <code>donate</code>'s parameter <code>b</code>. Wren jumps into <code>donate</code>. From here on, <code>b</code> owns the book and <code>card</code> is empty."},
+      {"line": 18, "output": ["  [made Heidi]", "donating Heidi"], "mood": "normal", "arms": "point", "note": "Line 17 reads the title through <code>b</code>."},
+      {"line": 23, "output": ["  [made Heidi]", "donating Heidi", "  [returned Heidi]"], "mood": "surprised", "mouth": "o", "arms": "cheer", "note": "<b>Here!</b> Line 18's <code>}</code> ends <code>donate</code>. Its parameter <code>b</code> is destroyed, and b's destructor deletes the book: <samp>[returned Heidi]</samp>, printed <b>inside</b> <code>donate</code>, before main carries on."},
+      {"line": 24, "output": ["  [made Heidi]", "donating Heidi", "  [returned Heidi]", "back in main"], "mood": "normal", "arms": "point", "note": "Back in main, line 23."},
+      {"line": 25, "output": ["  [made Heidi]", "donating Heidi", "  [returned Heidi]", "back in main", "card: empty"], "mood": "happy", "arms": "point", "note": "Line 24 checks the card: empty, as promised after a move. (Checking is fine; following it would not be: panel 30.)"},
+      {"line": null, "output": ["  [made Heidi]", "donating Heidi", "  [returned Heidi]", "back in main", "card: empty"], "mood": "happy", "arms": "cheer", "note": "Line 25's <code>}</code>: <code>card</code> is destroyed, but it's empty, so there's nothing to return. One book, one card, one return, and the line that returned it was the end of <code>donate</code>."}]}</script>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillmove-m" id="ex-fillmove"></div>
+  <script type="application/json" id="ex-fillmove-m">{"program": "fill_move.cpp", "prompt": "Borrow a Book called Oz from the heap, then hand the card to <code>keep</code>. The book must be returned <b>inside</b> <code>keep</code>, before \"done\".", "blanks": [{"line": 20, "text": "std::make_unique<Book>"}, {"line": 21, "text": "std::move(card)", "accept": ["std::move( card )"]}], "explain": "<code>std::make_unique&lt;Book&gt;(\"Oz\")</code> builds the book on the heap and returns its card. <code>keep(std::move(card))</code> hands the card over, so <code>keep</code>'s parameter owns the book and returns it at line 17's <code>}</code>. Plain <code>keep(card)</code> would be panel 27's error."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: the owner lends a look with .get()">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Most functions don't want the card. They just want to <b>look</b> at the book. <code>card.get()</code> gives a plain pointer to the book (a note, Part 3's observer) while the card stays exactly where it is.</p>
+    <span class="file-tab">get_observer.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="get_observer.cpp"></pre>
+      <pre class="term" data-run="get_observer.cpp"></pre>
+    </div>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>The function wants to...</th><th>Parameter</th><th>Caller writes</th></tr></thead>
+      <tbody>
+        <tr><td>look, and a book is always there</td><td><code>const Book&amp;</code></td><td><code>peek(*card)</code></td></tr>
+        <tr><td>look, and maybe there's no book</td><td><code>const Book*</code></td><td><code>peek(card.get())</code> or <code>peek(nullptr)</code></td></tr>
+        <tr><td>take the book for good</td><td><code>std::unique_ptr&lt;Book&gt;</code></td><td><code>donate(std::move(card))</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="happy" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A reader in the reading room may look at the book all day. They don't get the card, and they don't bring the book back: that's still the card-holder's job. And they must finish reading before the card-holder takes it home (the Boss level has a reader who didn't).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="trace" data-model="ex-owner-m" id="ex-owner"></div>
+  <script type="application/json" id="ex-owner-m">{"program": "trace_owner.cpp", "columns": ["row", "a", "b"], "given": [0], "prompt": "Two cards for <code>int</code>s. <code>look</code> prints the number on the card's heap box, or <b>-</b> for an empty card. Fill in what <code>a</code> and <code>b</code> hold after each step.", "explain": "Row 1: a holds 1, b is empty. Row 2: the move hands 1 to b and empties a. Row 3: a borrows a new box holding 2. Row 4: <code>a = std::move(b)</code>. a already holds a box (the 2), so a takes b's 1, b is left empty, and the box a was holding (the 2) is <b>returned straight away</b> (deleted). Moving into a card that's holding something returns the old thing; no leak, no double return."}</script>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 30: reading from a card you gave away">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="EMPTY!" data-seed="30"></svg>
+    <p class="caption">After a move, the old card is <code>nullptr</code>. Following it is following a blank note: undefined behaviour. Goggles on:</p>
+    <span class="file-tab">after_move.cpp</span>
+    <pre class="code" data-src="after_move.cpp"></pre>
+    <pre class="term wrap" data-run="after_move.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the report like a detective">
+      <li><span><b>What:</b> <code>member access within null pointer of type 'const struct Book'</code>: reaching into a Book through a null pointer.</span></li>
+      <li><span><b>Where it noticed:</b> <code>after_move.cpp:10:40</code> is inside <code>title()</code>, reading <code>title_</code>. That's where the null was finally touched.</span></li>
+      <li><span><b>Who's to blame:</b> follow the call trail down (the run command asks for it with <code>UBSAN_OPTIONS=print_stacktrace=1</code>, as in panel 12). <code>#1 ... in main after_move.cpp:19</code>: line 19 called <code>ada-&gt;title()</code> on an empty card.</span></li>
+      <li><span><b>Fix:</b> after <code>std::move(x)</code>, treat <code>x</code> as empty. Use <code>ben</code>, or check <code>if (ada)</code> first.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-moved-m" id="ex-moved"></div>
+  <script type="application/json" id="ex-moved-m">{"q": "After <code>auto ben{std::move(ada)};</code> where <code>ada</code> was a <code>std::unique_ptr&lt;Book&gt;</code> holding a book, what is true?", "options": [
+    {"t": "<code>ada</code> and <code>ben</code> now both hold the same book", "why": "That would be two cards for one book: two returns. <code>unique_ptr</code> exists to make that impossible."},
+    {"t": "The book was copied, so <code>ada</code> and <code>ben</code> each hold one", "why": "No <samp>[made]</samp> line appears on a move (panel 26). The book never moves or copies; only the ticket moves."},
+    {"t": "<code>ben</code> holds the book and <code>ada</code> is <code>nullptr</code>", "correct": true, "why": "Right. <code>std::move</code> hands the card over, and a moved-from <code>unique_ptr</code> is guaranteed to be empty. Checking <code>if (ada)</code> is safe and gives false; following <code>ada</code> is not."},
+    {"t": "The book was returned, so <code>ada</code> and <code>ben</code> are both empty", "why": "Nothing is returned on a move. The book goes home when <code>ben</code> is destroyed."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · WHY NOT JUST NEW AND DELETE?<small>Raw <code>new</code> and <code>delete</code>, leaks, double frees, and choosing where a box should live</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 31: the old way, borrowing by hand">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption soft">Underneath, <code>make_unique</code> uses the old keywords. <code>new int{42}</code> borrows an <code>int</code> from the heap and gives back a plain pointer to it. <code>delete p;</code> hands it back. Older code and older courses do this by hand, everywhere. The trouble is that a plain pointer is only a note (panel 17): it doesn't know it's supposed to return anything. <b>You</b> must remember, exactly once, on every road out of the function.</p>
+    <div class="duo">
+      <div class="duo-card dashed"><h3>FORGET TO RETURN<small>a leak</small></h3><p>The note is gone, the book is still out. Nobody can ever return it. Do it in a loop and the program swells until the machine runs out of memory.</p></div>
+      <div class="duo-card dashed"><h3>RETURN IT TWICE<small>a double free</small></h3><p>The second <code>delete</code> hands back a book that's already on the shelf, or already lent to someone else. Undefined behaviour.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="librarian" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Mabel says: </span>A plain slip of paper with a shelf number on it isn't a borrower card. Nobody's name is on it, and it can't fly the book home. Let me show you what happens to my shelves.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 32: a leak, in memory" data-mem="mem-leak" data-heap-label="the library" id="mem-leak-box">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">A raw <code>new</code> with no <code>delete</code>. Step to the end and look at the heap after <code>main</code>'s plate is cleared.</p>
+    <span class="file-tab">leak.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-leak">{"program": "leak.cpp", "steps": [
+      {"line": 5, "note": "<code>main</code> starts: one empty plate, an empty heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 6, "note": "Line 5: <code>new int{42}</code> borrows one <code>int</code> from the heap. <code>p</code> is a <b>plain</b> pointer holding its ticket, #1.", "output": [], "frames": [{"name": "main", "slots": [{"n": "p", "type": "int*", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["42"], "label": "int"}}, "changed": ["p", "H1"]},
+      {"line": 7, "note": "Line 6 follows the note and prints 42.", "output": ["42"], "frames": [{"name": "main", "slots": [{"n": "p", "type": "int*", "ptr": "H1"}]}], "heap": {"H1": {"cells": ["42"], "label": "int"}}},
+      {"line": null, "note": "Line 7's <code>}</code>: main's plate is cleared and <code>p</code> is gone. A plain pointer has no destructor that returns anything, so block #1 is <b>still on loan</b>, with nobody left who knows its ticket number. That's a <b>memory leak</b>. LeakSanitizer checks for exactly this when the program ends: next panel.", "output": ["42"], "frames": [], "heap": {"H1": {"cells": ["42"], "label": "LEAKED int"}}, "changed": ["H1"]}]}</script>
+  </section>
+
+  <section class="panel clean" data-asan="rep-leak" aria-label="Panel 33: LeakSanitizer finds the lost book">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">With the goggles on, a third helper joins in: <b>LeakSanitizer</b>, which comes with AddressSanitizer on Linux. When the program ends, it searches memory for blocks that are still on loan and that nothing points at any more.</p>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <details><summary>The whole terminal: build, the program's own output (42), then the report</summary><pre class="term wrap" data-run="leak.cpp" data-exit></pre></details>
+    <script type="application/json" id="rep-leak">{"program": "leak.cpp", "parts": [
+      {"title": "The accusation", "match": "ERROR: LeakSanitizer: detected memory leaks", "note": "Not a crash: the program finished its work (42 was printed). The report comes at exit."},
+      {"title": "The lost block", "match": "Direct leak of 4 byte(s) in 1 object(s)", "note": "One object of 4 bytes: one <code>int</code>. <b>Direct</b> means nothing at all points at it any more."},
+      {"title": "Who borrowed it", "match": "in operator new", "note": "Frame <code>#0</code> is <code>operator new</code>, the library function behind the keyword <code>new</code>. Skip it: it's the librarian, not the borrower."},
+      {"title": "Where it was borrowed", "match": "leak.cpp:5", "note": "Frame <code>#1</code>: your file, <b>line 5</b>, the <code>new int{42}</code>. A leak report can't point at the missing <code>delete</code> (there's no line for something that isn't there), so it points at where the block was born. Then you ask: who should have returned this?"},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer: 4 byte(s) leaked in 1 allocation(s).", "note": "Bytes and blocks, in total. The exit code is 1, so a test script notices the leak even though the program printed the right answer."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-leakq-m" id="ex-leakq"></div>
+  <script type="application/json" id="ex-leakq-m">{"program": "predict_leak.cpp", "expect": "error", "answer": "8 byte(s) leaked in 2 allocation(s).", "ask": "Built with the goggles on, it prints 4, then LeakSanitizer reports. Copy the SUMMARY's ending in the same form as panel 33: <i>N byte(s) leaked in M allocation(s).</i>", "prompt": "Three raw <code>new</code>s, one <code>delete</code>. An <code>int</code> is 4 bytes on this machine.", "hint": "Which of a, b and c were handed back? The others are still on loan when <code>main</code> ends.", "explain": "Only <code>b</code> was deleted. <code>a</code> and <code>c</code> leak: 2 allocations of 4 bytes each, <samp>8 byte(s) leaked in 2 allocation(s).</samp> The full report lists each one separately, born on line 7 (<code>c</code>) and line 5 (<code>a</code>). With <code>auto a{std::make_unique&lt;int&gt;(1)};</code> and friends there would be nothing to forget."}</script>
+
+  <section class="panel clean" data-asan="rep-double" aria-label="Panel 34: returning the same book twice">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The other way to get it wrong. Line 7 returns the book. Line 8 returns it again.</p>
+    <span class="file-tab">double_delete.cpp</span>
+    <pre class="code" data-src="double_delete.cpp"></pre>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <script type="application/json" id="rep-double">{"program": "double_delete.cpp", "parts": [
+      {"title": "The accusation", "match": "attempting double-free", "note": "<b>double-free</b>: handing back memory that was already handed back. ASan caught it <b>before</b> the second return happened."},
+      {"title": "The scene", "match": "double_delete.cpp:8", "note": "Frame <code>#1</code> (under <code>operator delete</code>, the library's return desk): line 8, the second <code>delete</code>."},
+      {"title": "The block", "match": "is located 0 bytes inside of 4-byte region", "note": "One 4-byte block: the <code>int</code>."},
+      {"title": "First returned", "match": "double_delete.cpp:7", "after": "freed by thread T0 here:", "note": "Under <samp>freed by thread T0 here:</samp>, your line 7: the first, legitimate <code>delete</code>."},
+      {"title": "Where it was born", "match": "double_delete.cpp:5", "after": "previously allocated by thread T0 here:", "note": "And the <code>new</code> on line 5. Born on 5, returned on 7, returned again on 8: the whole story."},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer: double-free", "note": "The summary names the library's <code>operator delete</code>, not your file, because that's where the second return was stopped. The story lines above point at your code."}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>Without me, the C library might notice and stop you with <samp>free(): double free detected</samp> (that wording and exit code 134 are from this course's research notes; this page never runs a plain double free), or it might not notice at all and quietly hand the same book to two borrowers later. Don't rely on luck.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: the same job with a card">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">The fix for both: let a card do the returning. Same job as <code>leak.cpp</code>, built with the same goggles on.</p>
+    <span class="file-tab">raw_vs_unique.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="raw_vs_unique.cpp"></pre>
+      <pre class="term wrap" data-run="raw_vs_unique.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Exit code 0, and not a word from LeakSanitizer. The card can't forget (its destructor always runs), and it can't return twice (it can't be copied, and a moved-from card is empty). The Core Guidelines boil it down to: <b>don't write <code>new</code> and <code>delete</code> yourself</b> (R.11), use <code>make_unique</code> (R.23). <b>Cards, not slips.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: where should this box live?">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">With three tools in the box, which one? Ask the questions top to bottom and stop at the first yes-shaped answer.</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>PLAIN LOCAL<small><code>Robot bolt{...};</code></small></h3><p><b>Start here.</b> One object, used in this block (or handed back by value). Free, fast, and cleaned up at the <code>}</code>. Most objects are this.</p></div>
+      <div class="duo-card"><h3>MANY OBJECTS<small><code>std::vector&lt;Robot&gt;</code></small></h3><p><b>Many</b> objects, or a number you only learn while running. The vector borrows and returns heap space for you.</p></div>
+      <div class="duo-card"><h3>ONE OWNED OBJECT<small><code>std::unique_ptr&lt;Robot&gt;</code></small></h3><p><b>One</b> object that must <b>outlive</b> its block and stay at one address (because notes point at it), or that's handed from owner to owner. Later: objects whose exact kind is decided while running.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Notice what's missing: raw <code>new</code>. And a plain pointer is never on this list, because a plain pointer never owns anything. It only looks at an object that one of these three owns.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-level-m" id="ex-level-m-box"></div>
+  <script type="application/json" id="ex-level-m">{"q": "A game's <code>load_level()</code> builds one big <code>Level</code> object. The game keeps using it after <code>load_level()</code> returns, and three helpers hold <code>Level*</code> notes to it, so it must stay at one address. Only the game owns it. What should <code>load_level()</code> return?", "options": [
+    {"t": "<code>Level*</code>, the address of a local <code>Level</code>", "why": "The local is demolished when <code>load_level()</code> returns: every note would dangle (panel 20)."},
+    {"t": "<code>Level*</code> from <code>new Level{...}</code>", "why": "It works until somebody forgets the <code>delete</code>, or two people both do it: panels 33 and 34. A plain pointer doesn't say who returns it."},
+    {"t": "<code>std::unique_ptr&lt;Level&gt;</code> from <code>std::make_unique</code>", "correct": true, "why": "Right. One owner (the game holds the card), the Level sits still on the heap so the helpers' notes stay valid (they get <code>.get()</code>), and it's returned automatically when the game's card is destroyed."},
+    {"t": "<code>std::vector&lt;Level&gt;</code> with one item", "why": "A vector says \"many\", and if it ever grows it moves its items to a new block, which would leave the helpers' notes dangling (Chapter 11's heap-use-after-free)."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 37: boss level">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="37"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Notes and cards, all mixed up. For each one ask: is this a note or a card? Who holds the card right now? Is the house still standing? When does each book go home?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. Cards, a move into a function, a note made with <code>.get()</code>, and a card that gets a new book. Predict the whole screen, indents included.", "hint": "Line 23 hands X's card to <code>shelve</code>: when does <code>shelve</code> end? Line 25 gives <code>y</code> a new book: what happens to the book <code>y</code> was holding? (Make the new one first, then the old one goes.)", "explain": "X and Y are made. <code>shelve</code> takes X and returns it at its <code>}</code>. <code>look</code> still points at Y, which is alive, so <samp>looking at Y</samp> is fine. Line 25 makes Z first, then <code>y</code> drops Y: <samp>[returned Y]</samp>. At main's end <code>y</code> returns Z, and <code>x</code> is empty. From line 25 on, <code>look</code> is a dangling note; the program is only correct because it never follows it again."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 22, "prompt": "Boss 2. Built with the goggles on, it prints two lines and stops with <samp>heap-use-after-free</samp>. Click the line where a reader looks at a book that has already gone home. (After you check, read the report: its top frames are deep inside <code>std::string</code>; find the first frame in <b>your</b> <code>main</code>.)", "explain": "<samp>heap-use-after-free</samp>. Frames <code>#0</code> and <code>#1</code> are the library copying the title; <code>#2</code> is <code>title()</code> (line 10); <code>#3</code> is <b>main, line 22</b>. Under <samp>freed by thread T0 here:</samp> your line is 21: the block's <code>}</code>, where <code>card</code> returned the book. The note <code>look</code> came from <code>.get()</code> and outlived the card. A <code>.get()</code> note must not outlive its card."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.cpp", "seed": 3, "pin": [1, 2, 3], "prompt": "Boss 3. Build it: a factory that returns a card for a counter starting at 0, then <code>main</code> adds 3 through the card, hands the card to <code>d</code>, and reports.", "explain": "The factory must be written before <code>main</code> calls it. Inside <code>main</code>: get the card, add 3 through it, move it to <code>d</code>, then print. Move before the <code>*c = *c + 3</code> line and you'd be following an empty card."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.cpp", "columns": ["i", "v[i]", "*best", "note"], "given": [0, 1], "prompt": "Boss 4. <code>best</code> is a note pointing at the biggest number seen so far, <b>inside</b> the vector. Each row is printed after the check. The last column says whether the note moved to <code>v[i]</code> on that trip.", "explain": "best starts at the 4. i=1: 9 beats 4, the note moves (<samp>moved</samp>). i=2: 2 doesn't beat 9. i=3: 9 doesn't beat 9 (<code>&gt;</code> is strict), so the note stays on the <b>first</b> 9: <code>best == &amp;v[i]</code> compares houses, not values. i=4: 11 wins. Safe here because nothing is added to the vector while the note points into it."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.cpp", "prompt": "Boss 5. <code>greet</code> looks at a pet that may not exist. Fill the blanks: check for the blank note, read the name through the note, lend <code>greet</code> a look at rex without giving away the card, then pass \"no pet\".", "blanks": [{"line": 11, "text": "nullptr"}, {"line": 15, "text": "p->name", "accept": ["(*p).name"]}, {"line": 20, "text": "rex.get()"}, {"line": 21, "text": "nullptr"}], "explain": "An observer takes <code>const Pet*</code> and checks <code>p == nullptr</code> before following it with <code>-&gt;</code>. The owner keeps its card and lends a look with <code>rex.get()</code>. <code>greet(nullptr)</code> is allowed because the parameter is a note, and notes may be blank. (On line 19, <code>make_unique&lt;Pet&gt;(\"Rex\")</code> passes \"Rex\" straight to the struct's first member, a C++20 feature.)"}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Wren needs three things. (1) A temperature used only inside one function. (2) Every reading a sensor sends today; nobody knows how many. (3) One <code>Engine</code>, built inside <code>setup()</code>, that must live on after <code>setup()</code> returns, at one address, because gauges hold <code>Engine*</code> notes to it. Which choice fits all three?", "options": [
+    {"t": "(1) <code>double t</code> (2) <code>std::vector&lt;double&gt;</code> (3) <code>std::unique_ptr&lt;Engine&gt;</code>", "correct": true, "why": "Right. A plain local for the short-lived value; a vector for an unknown count; one owning card for the single object that must outlive its block and stay put, with the gauges given <code>.get()</code> notes."},
+    {"t": "(1) <code>std::unique_ptr&lt;double&gt;</code> (2) <code>std::vector&lt;double&gt;</code> (3) <code>std::unique_ptr&lt;Engine&gt;</code>", "why": "(1) works, but borrowing from the heap for a value that dies at the <code>}</code> anyway is extra work for nothing. Start with a plain local."},
+    {"t": "(1) <code>double t</code> (2) <code>double* readings</code> (3) <code>Engine* e{new Engine{}}</code>", "why": "A plain pointer owns nothing and holds one address, not a list; the raw <code>new</code> leaves the returning to luck (panels 33 and 34)."},
+    {"t": "(1) <code>double t</code> (2) <code>std::vector&lt;double&gt;</code> (3) <code>Engine* e</code> pointing at a local <code>Engine</code> in <code>setup()</code>", "why": "The local Engine is demolished when <code>setup()</code> returns, and every gauge's note dangles (panel 20)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 38: what you learned">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">What you learned in Chapter 13</p>
+    <ul class="recap">
+      <li><b>THE NOTE IS NOT THE HOUSE</b>A pointer (<code>int* p</code>) is a box holding an address. <code>&amp;x</code> makes the note; <code>*p</code> follows it to read or write the house; <code>p-&gt;m</code> follows it and opens a member. Without a star you change the note (reseat); with a star you change the house.</li>
+      <li><b>CHECK BEFORE YOU FOLLOW</b><code>nullptr</code> is the blank note. Start every pointer with an address or <code>nullptr</code>, and check <code>if (p)</code> whenever it may be blank. Following <code>nullptr</code> is undefined: <samp>load of null pointer</samp>, or ASan's <samp>SEGV on unknown address 0x000000000000</samp>.</li>
+      <li><b>A NOTE NEVER KNOWS THE HOUSE IS GONE</b>A dangling pointer outlives its object (<samp>stack-use-after-scope</samp>, <samp>heap-use-after-free</samp>), and a null check can't see it. Never keep the address of a local past its <code>}</code>.</li>
+      <li><b>A PLAIN POINTER ONLY LOOKS</b>Plain pointers observe; they never own or delete. Prefer a reference when the target always exists. Addresses change between runs: never treat them as data.</li>
+      <li><b>ONE BOOK, ONE CARD</b><code>std::make_unique&lt;T&gt;(...)</code> borrows from the heap; the <code>std::unique_ptr</code> returns it at its destructor. No copies (<samp>use of deleted function</samp>); hand over with <code>std::move</code>, after which the old card is empty; lend a look with <code>.get()</code>.</li>
+      <li><b>CARDS, NOT SLIPS</b>Raw <code>new</code>/<code>delete</code> leak (<samp>detected memory leaks</samp>) or free twice (<samp>attempting double-free</samp>). Choose a plain local first, a vector for many, a <code>unique_ptr</code> for one object that must outlive its block.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Notes for looking, cards for owning, and every book goes home exactly once. That's the whole of memory safety in one sentence, and most of C++'s scariest bugs are one of those three rules broken.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 39: next time, Coat Checks and Gadgets">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption soft">Coming up in Chapter 14: Coat Checks and Gadgets</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: a coat-check counter with numbered tickets 1, 2 and 3 on hooks, each hook holding a coat, next to a toolbox drawer full of gadgets labelled sort, find and count.">
+        <rect x="20" y="30" width="230" height="140" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+        <path d="M30 70 H240" stroke="#111" stroke-width="4"/>
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round"><path d="M60 72 l-18 70 h36 z" fill="#FF5A4E"/><path d="M135 72 l-18 70 h36 z" fill="#7FB2FF"/><path d="M210 72 l-18 70 h36 z" fill="#C9F2D9"/></g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="18" fill="#111" text-anchor="middle"><text x="60" y="58">1</text><text x="135" y="58">2</text><text x="210" y="58">3</text></g>
+        <rect x="280" y="60" width="160" height="100" rx="8" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+        <rect x="292" y="68" width="136" height="84" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="19" fill="#111" text-anchor="middle"><text x="360" y="92">sort()</text><text x="360" y="117">find()</text><text x="360" y="142">count()</text></g>
+        <text x="360" y="44" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="2" fill="#111">GADGETS</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>A vector finds things by position. What if I want to find a coat by its <b>ticket</b>? Next time: <b>maps</b> (hand over a key, get the value back) and <b>sets</b>, then the standard library's drawer of <b>gadgets</b>: sort, find, count, with small clip-on attachments called lambdas that tell them what to do. Before you carve your own spoon, check the drawer.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch12.html">← Ch 12 · The Bank Vault</a><a class="next" href="ch14.html">Ch 14 · Coat Checks and Gadgets →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what a pointer really is, what nullptr is, and what unique_ptr costs</summary>
+    <div class="page-body">
+      <h3>A pointer is just a number with a type</h3>
+      <p>On this machine (64-bit Linux) every pointer is the same size, whatever it points at. <code>sizeof</code> asks how many bytes a type takes:</p>
+      <span class="file-tab">sizes.cpp</span>
+      <pre class="code" data-src="sizes.cpp"></pre>
+      <pre class="term" data-run="sizes.cpp"></pre>
+      <p> The bits inside are the address. The <b>type</b> (<code>int*</code> versus <code>double*</code>) exists only for the Compiler: it decides how many bytes <code>*p</code> reads and how to interpret them, which is why panel 6's mismatch is refused.</p>
+      <h3>What "following" costs</h3>
+      <p>Following a pointer is one extra trip to memory: read the address, then read the house. That's cheap, but not free, which is one reason a plain local or a <code>vector</code> of objects is usually faster than many separate heap objects joined by pointers.</p>
+      <h3>nullptr and the zero page</h3>
+      <p><code>nullptr</code> is a keyword (since C++11) of its own type, <code>std::nullptr_t</code>, that turns into the null value of any pointer type. On common systems that value is the address 0, and the operating system keeps the first page of addresses unmapped, so following a null pointer usually stops the program with a segmentation fault. "Usually" is the catch: the rules call it undefined, and an optimiser may assume it never happens. That's why panels 12 and 13 show only sanitizer runs.</p>
+      <h3>What g++ does with a returned local address</h3>
+      <p>Panel 20's program, built with the goggles on, gives a surprise: not a stack report, but a <b>null</b> load. When g++ sees a function return the address of its own local, it warns and then, as its own choice, returns a null pointer instead, so the bug fails fast. Here is the real run:</p>
+      <pre class="term wrap tall" data-run="dangle_return_san.cpp" data-exit></pre>
+      <p>(Its run command asks UBSan for the call trail, as in panel 12.) Other compilers (and other g++ versions) may do something else; the program is undefined either way.</p>
+      <p>AddressSanitizer can also catch a note that outlives its function in general: <b>stack-use-after-return</b>. <code>dangle_uar.cpp</code> keeps the address of <code>make_house</code>'s local in a global note, so g++ can't swap in a null. On this machine g++ 13 reports it with no extra options:</p>
+      <span class="file-tab">dangle_uar.cpp</span>
+      <pre class="code" data-src="dangle_uar.cpp"></pre>
+      <pre class="term wrap tall" data-run="dangle_uar.cpp" data-exit></pre>
+      <p>That check can be switched off for one run with <code>ASAN_OPTIONS=detect_stack_use_after_return=0 ./dangle_uar</code>: then there is no report and the program reads the rubble as if nothing were wrong (checked in a scratch run for this page and not captured: it is undefined behaviour, so this book doesn't show what it prints). Chapter 24's lab finds the same with its own dangling lambda. Clang's AddressSanitizer documentation says the check is switched on by default on Linux. On another system, if a program like this shows no report, run it with <code>=1</code> instead, which switches the check on.</p>
+      <h3>unique_ptr costs nothing extra</h3>
+      <p>A <code>std::unique_ptr&lt;T&gt;</code> with the default deleter holds nothing but the address, so it is the same size as a plain <code>T*</code> (the last line of <code>sizes.cpp</code> above). All the safety is done by the Compiler: the copy constructor is <code>= delete</code>d (panel 27), the move constructor copies the address and sets the source to null, and the destructor calls <code>delete</code> if the pointer isn't null. <code>std::make_unique</code> (C++14) is just a tidy way to write <code>std::unique_ptr&lt;T&gt;(new T(...))</code> without ever showing <code>new</code>.</p>
+      <h3>How LeakSanitizer finds leaks</h3>
+      <p>At exit it pauses the program and scans every place a pointer could live (the stacks, global variables, CPU registers and the heap blocks themselves) for values that look like addresses of live heap blocks. Any block nobody points at is reported as a <b>direct</b> leak; a block reachable only from a leaked block is an <b>indirect</b> leak. It then makes the program exit with a failure code (panel 33's terminal shows exit code 1).</p>
+      <h3>Two compilers, two wordings</h3>
+      <p>clang++ 18's version of panel 27's copy error is shorter. Same meaning, different words:</p>
+      <pre class="term wrap" data-run="copy_error.cpp" data-alt data-exit></pre>
+      <p>And its version of panel 6's type mismatch: <samp>cannot initialize a variable of type 'double *' with an rvalue of type 'int *'</samp>. clang++ writes <code>double *</code> with a space; g++ writes <code>double*</code>. Same type.</p>
+      <pre class="term wrap" data-run="type_mismatch.cpp" data-alt data-exit></pre>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Ownership is the design.</b> In well-written modern C++, owners are almost always plain objects, containers or smart pointers, and plain <code>T*</code> or <code>T&amp;</code> mean "I'm only looking". The C++ Core Guidelines spell this out in rules R.3 (a raw pointer is non-owning), F.7 and F.22 (take <code>T*</code> or <code>T&amp;</code> when you don't take ownership), R.20 and R.21 (use <code>unique_ptr</code> for ownership).</li>
+        <li><b>Factories.</b> Functions that build an object and hand it over (panel 25) often return <code>std::unique_ptr</code>, especially when the caller will later decide what kind of object it is (Chapter 24).</li>
+        <li><b>Trees and linked structures.</b> A tree node that owns its children often holds <code>std::unique_ptr&lt;Node&gt;</code> members: deleting the root deletes everything below it, automatically.</li>
+        <li><b>Not just memory.</b> The same "card returns it" idea works for files, network connections and locks: a class whose destructor gives the thing back. C++ programmers call this <b>RAII</b> ("resource acquisition is initialisation"). <code>unique_ptr</code> can even be given a custom deleter, for example to close a C library's file handle.</li>
+        <li><b>Shared ownership.</b> Sometimes several owners really do need one object and the last one out turns off the lights. That's <code>std::shared_ptr</code>, in Chapter 23, and it costs more.</li>
+        <li><b>Legacy code.</b> Plenty of real code still has raw <code>new</code> and <code>delete</code>, and C libraries hand you pointers you must release with their own functions. Wrapping them in a <code>unique_ptr</code> as early as possible is a common clean-up job.</li>
+        <li><b>Leak checks in testing.</b> Many projects run their tests under AddressSanitizer with LeakSanitizer on, so a new leak turns a test red the day it's written.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A pointer is the object."</b> It's a note with the object's address. Copying the note never copies the house (Boss 1, panel 8's table).</li>
+        <li><b>"<code>p = &amp;b</code> changes what's in a."</b> No star, no house: it rewrites the note. <code>*p = ...</code> changes the house.</li>
+        <li><b>"<code>int* a, b;</code> makes two pointers."</b> It makes one <code>int*</code> (<code>a</code>) and one plain <code>int</code> (<code>b</code>): the star belongs to each name. Declare one pointer per line.</li>
+        <li><b>"If it's not null, it's safe."</b> A dangling pointer isn't null (panel 18).</li>
+        <li><b>"A null dereference always crashes."</b> Usually, not always. It's undefined.</li>
+        <li><b>"I'll compare addresses to see if two values are equal."</b> <code>p == q</code> asks "same house?". <code>*p == *q</code> asks "same contents?".</li>
+        <li><b>"The address I printed is where my variable lives."</b> For that run on that machine. Next run, maybe not (panel 2).</li>
+        <li><b>"Every pointer must be deleted."</b> Only what <code>new</code> made, exactly once, and in modern code you let a <code>unique_ptr</code> do it. Deleting a pointer to a local, or a <code>.get()</code> note, is a disaster.</li>
+        <li><b>"<code>std::move</code> moves the object."</b> It only marks the card as "may be handed over"; the handing over happens in the assignment or call, and the book itself never moves.</li>
+        <li><b>"After a move I can still use the old card."</b> You may check it or give it a new book; following it is a null dereference (panel 30).</li>
+        <li><b>"Smart pointers are slow."</b> <code>unique_ptr</code> costs the same as a raw pointer (Under the hood).</li>
+        <li><b>"Use the heap for big things."</b> Use it when lifetime or count demands it. A <code>vector</code> already puts its items on the heap for you.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Pointers</h3>
+      <p>Make a folder <code>cpp-ch13</code>, save <code>reseat.cpp</code>, and build it as the terminals show: <code>g++ -std=c++23 -Wall -Wextra -g reseat.cpp -o reseat</code>, then <code>./reseat</code> (Windows PowerShell: <code>.\reseat.exe</code>). Then run <code>address.cpp</code> three times. Do you get the same address each time? On most systems you won't, because of address randomisation.</p>
+      <h3>2. The goggles for this chapter</h3>
+      <ul>
+        <li><b>Linux:</b> <code>g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all leak.cpp -o leak</code> then <code>./leak</code>. LeakSanitizer is part of ASan here and on by default. Try <code>ASAN_OPTIONS=detect_leaks=0 ./leak</code> to switch it off and see the difference. For UBSan's reports, add the call trail the way this page's terminals do: <code>UBSAN_OPTIONS=print_stacktrace=1 ./after_move</code>. And build <code>dangle_uar.cpp</code> the same way to see stack-use-after-return (Under the hood); if your system shows no report for it, add <code>ASAN_OPTIONS=detect_stack_use_after_return=1</code>.</li>
+        <li><b>macOS:</b> Apple's clang supports <code>-fsanitize=address,undefined</code>, but LeakSanitizer isn't enabled by default there (and isn't supported on every version). Xcode's Instruments has a "Leaks" tool, and the command <code>leaks --atExit -- ./leak</code> reports leaks at exit.</li>
+        <li><b>Windows (MSVC):</b> <code>cl /std:c++20 /W4 /EHsc /Zi /fsanitize=address double_delete.cpp</code> gives AddressSanitizer, which catches the double free and dangling reads. MSVC's ASan has no LeakSanitizer; the debug C runtime's <code>_CrtDumpMemoryLeaks()</code> and Visual Studio's memory tools fill that gap.</li>
+        <li><b>Valgrind (Linux):</b> build without sanitizer flags, then <code>valgrind --leak-check=full ./leak</code>, another leak finder that needs no special build. (Not run for this page, so its report isn't shown.)</li>
+      </ul>
+      <h3>3. Try these on purpose</h3>
+      <ol>
+        <li>In <code>reseat.cpp</code>, add <code>std::cout &lt;&lt; (p == &amp;b) &lt;&lt; '\n';</code> after line 9. What does <code>1</code> mean?</li>
+        <li>Write <code>int* a, b;</code> and try <code>b = &amp;x;</code>. Read the Compiler's complaint: what type is <code>b</code> really?</li>
+        <li>In <code>find_best.cpp</code>, remove the <code>const</code> from <code>const int* found</code> in <code>report</code> only. What does the Compiler say, and why?</li>
+        <li>In <code>move_card.cpp</code>, add <code>ada = std::make_unique&lt;Book&gt;("Emma");</code> after line 20. How many <samp>[made]</samp> and <samp>[returned]</samp> lines now, and in what order?</li>
+        <li>Fix <code>leak.cpp</code> two ways: add <code>delete p;</code>, then instead switch to <code>make_unique</code>. Build both with the goggles. Which one could you still get wrong later?</li>
+        <li>In <code>boss_spot.cpp</code>, move the last line inside the block. Does the report go away?</li>
+      </ol>
+      <h3>4. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) runs any example here with <code>-fsanitize=address,undefined</code>, and its "Execute" option shows the reports. Python Tutor (pythontutor.com) can step through small C++ programs and draws pointers as arrows, much like panel 7.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>address</dt><dd>The number of the place in memory where a box lives; printed in hexadecimal, different between runs and machines.</dd>
+        <dt>&amp; (address-of)</dt><dd>In an expression, <code>&amp;x</code> gives x's address. (Next to a type, <code>int&amp;</code> means a reference.)</dd>
+        <dt>pointer</dt><dd>A box that holds an address. <code>int* p</code> is a pointer to an <code>int</code>.</dd>
+        <dt>pointer type</dt><dd>What the pointer may point at, such as <code>int*</code> or <code>Robot*</code>. An <code>int</code>'s address won't go into a <code>double*</code>.</dd>
+        <dt>dereference (*)</dt><dd>Following a pointer to the box it points at: <code>*p</code> reads or writes that box.</dd>
+        <dt>reseat</dt><dd>Making a pointer point somewhere else: <code>p = &amp;b;</code>. References can't be reseated.</dd>
+        <dt>nullptr / null pointer</dt><dd>The pointer value that points at nothing. Check for it before following a pointer that may hold it.</dd>
+        <dt>-&gt; (arrow)</dt><dd><code>p-&gt;m</code> follows the pointer and picks the member <code>m</code>; the same as <code>(*p).m</code>.</dd>
+        <dt>observer</dt><dd>A pointer (or reference) that looks at an object but doesn't own it and never deletes it.</dd>
+        <dt>own / owner</dt><dd>Being responsible for destroying an object and giving back its memory.</dd>
+        <dt>dangling pointer</dt><dd>A pointer to an object that no longer exists.</dd>
+        <dt>uninitialised pointer</dt><dd>A pointer created with no value; it holds a garbage address. Using it is undefined.</dd>
+        <dt>segmentation fault (SEGV)</dt><dd>The system stopping a program that touched memory it may not use; following a null pointer usually causes one.</dd>
+        <dt>stack</dt><dd>The memory for local variables: one plate per function call, cleared when the call (or block) ends.</dd>
+        <dt>heap / free store</dt><dd>Memory borrowed on request that stays until it is handed back.</dd>
+        <dt>std::unique_ptr&lt;T&gt;</dt><dd>A smart pointer from <code>&lt;memory&gt;</code> that owns exactly one heap object and deletes it in its destructor. Can be moved, not copied.</dd>
+        <dt>smart pointer</dt><dd>A class that acts like a pointer and also manages the object's lifetime.</dd>
+        <dt>std::make_unique&lt;T&gt;(...)</dt><dd>Builds a <code>T</code> on the heap with the given arguments and returns a <code>unique_ptr&lt;T&gt;</code> owning it.</dd>
+        <dt>std::move</dt><dd>Marks an object as one whose contents may be handed over; with a <code>unique_ptr</code>, the card moves and the old one becomes null.</dd>
+        <dt>.get()</dt><dd>Gives a plain, non-owning pointer to the object a <code>unique_ptr</code> owns.</dd>
+        <dt>copy constructor</dt><dd>The constructor that makes a new object as a copy of an existing one; <code>unique_ptr</code>'s is deleted.</dd>
+        <dt>= delete</dt><dd>Declares a function only so that any use of it is a compile error.</dd>
+        <dt>factory</dt><dd>A function that builds an object and hands it to its caller.</dd>
+        <dt>new / delete</dt><dd>The raw keywords to borrow from and give back to the heap. Avoid writing them yourself.</dd>
+        <dt>memory leak</dt><dd>Heap memory that is never given back, usually because nothing points at it any more.</dd>
+        <dt>double free</dt><dd>Giving back the same heap memory twice; undefined.</dd>
+        <dt>LeakSanitizer (LSan)</dt><dd>The part of AddressSanitizer that reports leaks when the program ends.</dd>
+        <dt>stack-use-after-scope</dt><dd>ASan's name for using a local variable after its block ended.</dd>
+        <dt>RAII</dt><dd>"Resource acquisition is initialisation": a class whose destructor gives back what its constructor took, like <code>unique_ptr</code>.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/language/pointer">cppreference: pointer declaration</a>, <a href="https://en.cppreference.com/w/cpp/language/nullptr">nullptr</a> and <a href="https://en.cppreference.com/w/cpp/language/operator_member_access">member access operators</a> (<code>*</code>, <code>&amp;</code>, <code>-&gt;</code>)</li>
+        <li><a href="https://en.cppreference.com/w/cpp/memory/unique_ptr">cppreference: std::unique_ptr</a> and <a href="https://en.cppreference.com/w/cpp/memory/unique_ptr/make_unique">std::make_unique</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/language/new">cppreference: new expression</a> and <a href="https://en.cppreference.com/w/cpp/language/delete">delete expression</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: ES.47 (use nullptr), ES.20 (always initialise), R.1 (manage resources with RAII), R.3 (a raw pointer is non-owning), F.22, R.11 (avoid new and delete), R.20, R.21 and R.23 (unique_ptr and make_unique)</li>
+        <li><a href="https://clang.llvm.org/docs/AddressSanitizer.html">Clang: AddressSanitizer</a> and <a href="https://clang.llvm.org/docs/LeakSanitizer.html">LeakSanitizer</a>; <a href="https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html">GCC manual: instrumentation options</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/cpp/cpp/smart-pointers-modern-cpp">Microsoft Learn: smart pointers (modern C++)</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp/pointers/null-pointers/">learncpp.com: null pointers</a> and the lessons around it on pointers and references, then <a href="https://learncpp.com/cpp-tutorial/stdunique_ptr/">std::unique_ptr</a>.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, whose pages on unique ownership and memory are short and very visual.</li>
+        <li><a href="https://exercism.org/tracks/cpp/concepts/pointers">Exercism C++: pointers</a>, with practice exercises run against tests.</li>
+        <li><a href="https://pythontutor.com/cpp.html">Python Tutor for C++</a>, which draws boxes and arrows for your own small programs.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch13</code> (46 programs). Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page; extra flags appear in each terminal) and each ordinary program was also built and run with clang++ 18.1 for comparison. Seven programs differ between the two: six compiler messages, which clang++ words differently (<code>dot_error.cpp</code> in panel 16 side by side; <code>copy_error.cpp</code> and <code>type_mismatch.cpp</code> in the notebook; <code>spot_copy.cpp</code>; and the warnings for the two compile-only programs, where clang++ says <samp>address of stack memory associated with local variable 'house' returned [-Wreturn-stack-address]</samp> for <code>dangle_return.cpp</code> and <samp>variable 'note' is uninitialized when used here [-Wuninitialized]</samp> for <code>uninit_ptr.cpp</code>), and the printed address in <code>address.cpp</code>, which is one possible run and is never used as an answer. Sanitizer builds (<code>-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer</code>, plus <code>-fno-sanitize=null</code> in panel 13) ran with g++ only, because clang++'s sanitizer runtime is not installed on this machine; they ran with address randomisation off inside a fresh process namespace, which is why every AddressSanitizer report says <code>==2==</code> and shows the same addresses each time. <b>How the sanitizer runs were made:</b> the capture tool runs every program with <code>ASAN_OPTIONS=detect_leaks=1:color=never</code> and <code>UBSAN_OPTIONS=print_stacktrace=1:color=never</code> set. The stack-trace option is the one that changes what you see: it adds the numbered <code>#0</code>, <code>#1</code> call-trail lines under a UBSan <samp>runtime error</samp>. So every terminal that shows a UBSan report (panels 12 and 30, the spot-the-bug in Part 2, and <code>dangle_return_san.cpp</code> in the notebook) writes that option in its displayed run command, and typing that command gives the same trail. Programs with undefined behaviour (null and dangling dereferences, an uninitialised pointer, double delete, use after move) were never run without a sanitizer: <code>uninit_ptr.cpp</code> and <code>dangle_return.cpp</code> are compile-only. The plain-build behaviour of a null dereference (<samp>Segmentation fault</samp>, exit 139) and of a double free (<samp>free(): double free detected in tcache 2</samp>, exit 134) comes from this course's research notes and is never shown as output. Version facts: <code>nullptr</code> is from C++11 and <code>std::make_unique</code> from C++14, as cppreference's pages for them say (fetched 2026-11-08). The tracer, the walk-through, the machine, the stack-and-heap pictures and the annotated reports are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (null pointers; std::unique_ptr), hacking C++'s beginner's guide (unique ownership before manual memory), Exercism's C++ pointers concept, cppreference (pointers, nullptr, member access, unique_ptr, make_unique, new and delete), the C++ Core Guidelines rules named in this course's plan (ES.47, R.1, R.3, R.11, R.20, R.21, R.23, F.22), the Clang and GCC sanitizer documentation, the C++ research map for this course (module rows B24 and B25), and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, the Compiler, Mabel the librarian, the Sanitizer and the ghost are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

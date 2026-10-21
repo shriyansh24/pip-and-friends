@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smoke Alarms, Dark Rooms</title>
+<meta name="description" content="Chapter 11 of the Pip &amp; Friends C++ book, a comic course: testing (expected versus actual, test functions, edge cases, assert, NDEBUG, static_assert, regression tests, coverage), then undefined behaviour and the tools that see it (warnings, AddressSanitizer, UndefinedBehaviorSanitizer, library assertions and .at()), with every report read like a detective.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch11.css">
+<script defer src="../data/cpp-ch11.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch11.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch10.html">&larr; Ch 10</a><span aria-current="page">Ch 11 of 29</span><a href="ch12.html">Ch 12 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 11</p>
+    <h1 id="cover-h">SMOKE ALARMS, DARK ROOMS</h1>
+    <div class="cover-pair">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char lg" data-char="sanitizer" data-mood="happy"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her stands the Sanitizer, a figure in a long green coat with big green night-vision goggles and a torch.</p>
+    <p class="caption blurb">"It worked when I tried it" is not the same as "it works". This chapter gives your programs a <b>safety net</b>. First, <b>tests</b>: checks with answers you already know, and <b>smoke alarms</b> (<code>assert</code>) that scream the moment something you assumed turns out false. Then the scariest room in C++: <b>undefined behaviour</b>, where no rules apply at all. You'll meet the Sanitizer, whose night-vision goggles show the furniture in the dark, and learn to read its reports like a detective. About 110 minutes, with 22 hands-on checks and a sorting game.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Expected versus actual: your first tests</a></li>
+      <li><a href="#part-2">The smoke alarm: assert, NDEBUG and static_assert</a></li>
+      <li><a href="#part-3">Good tests: edge cases, regression tests, coverage</a></li>
+      <li><a href="#part-4">The dark room: undefined behaviour</a></li>
+      <li><a href="#part-5">Night-vision goggles: sanitizers and the safety-net build</a></li>
+      <li><a href="#part-6">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · EXPECTED VERSUS ACTUAL<small>What a test is, and why "I tried it once" is not enough</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: Wren tries her new machine once">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Wren builds a new machine, <code>biggest</code>: give it a carton of numbers, it hands back the largest. She tries it once.</p>
+    <span class="file-tab">tried_once.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="tried_once.cpp"></pre>
+      <pre class="term" data-run="tried_once.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>9! Correct! Ship it! ... Hmm. Wait. I tried <b>one</b> carton. Does it work for <b>every</b> carton? A machine that's right once might just be lucky.</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren cheers, then pauses to think.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 2: a test weighs expected against actual">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Big idea: a <b>test</b> runs your code on an input whose right answer you <b>already know</b>. The answer you know is the <b>expected</b> value. What the code really returns is the <b>actual</b> value. Put them on the scales. Equal: the test <b>passes</b>. Different: it <b>fails</b>, and you've found a bug before anyone else did.</p>
+    <div class="pics big">
+      <svg viewBox="0 0 330 260" role="img" aria-label="A balance scale labelled PASS with a tick. Input 3, 9, 4: expected 9 on the left pan, actual 9 on the right pan. The beam is level.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" fill="none">
+          <path d="M165 72 V205 M125 222 H205 L165 196 Z" fill="#DDE8FF"/>
+          <path d="M70 72 H260"/>
+          <path d="M70 72 L44 130 M70 72 L96 130 M260 72 L234 130 M260 72 L286 130" stroke-width="3"/>
+          <path d="M30 130 Q70 182 110 130 Z M220 130 Q260 182 300 130 Z" fill="#FFF6CC"/>
+          <circle cx="165" cy="72" r="7" fill="#111"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111" text-anchor="middle"><text x="70" y="151">9</text><text x="260" y="151">9</text></g>
+        <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="70" y="198">expected</text><text x="260" y="198">actual</text><text x="165" y="250">input {3, 9, 4}</text></g>
+        <text x="165" y="42" font-family="Bangers, Impact, sans-serif" font-size="32" letter-spacing="2" text-anchor="middle" fill="#111">&#x2713; PASS</text>
+      </svg>
+      <svg viewBox="0 0 330 260" role="img" aria-label="A balance scale labelled FAIL with a cross. Input minus 5, minus 2, minus 8: expected minus 2 on the left pan, actual 0 on the right pan. The beam is tipped.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" fill="none">
+          <path d="M165 72 V205 M125 222 H205 L165 196 Z" fill="#DDE8FF"/>
+          <g transform="rotate(-11 165 72)">
+            <path d="M70 72 H260"/>
+            <path d="M70 72 L44 130 M70 72 L96 130 M260 72 L234 130 M260 72 L286 130" stroke-width="3"/>
+            <path d="M30 130 Q70 182 110 130 Z M220 130 Q260 182 300 130 Z" fill="#FFE1E1"/>
+            <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="24" fill="#111" stroke="none" text-anchor="middle"><text x="70" y="151">-2</text><text x="260" y="151">0</text></g>
+          </g>
+          <circle cx="165" cy="72" r="7" fill="#111"/>
+        </g>
+        <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="66" y="220">expected</text><text x="268" y="180">actual</text><text x="165" y="250">input {-5, -2, -8}</text></g>
+        <text x="165" y="38" font-family="Bangers, Impact, sans-serif" font-size="32" letter-spacing="2" text-anchor="middle" fill="#111">&#x2717; FAIL</text>
+      </svg>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>The key word is <b>already</b>. I work out the right answer with a pencil first, then ask the machine. If I let the machine tell me the answer, I'm not testing anything. <b>Know the answer, then ask the question.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: a check function runs three tests">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Writing "is it right?" by eye gets tiring. So Wren writes a tiny machine whose only job is to compare: <code>check(name, expected, actual)</code> on lines 15 to 22. It prints <b>PASS</b> when the two match and <b>FAIL</b> with both values when they don't. Lines 25 to 27 are three <b>test cases</b>: one input each, with the answer worked out by hand.</p>
+    <span class="file-tab">first_test.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="first_test.cpp"></pre>
+      <pre class="term" data-run="first_test.cpp"></pre>
+    </div>
+    <svg class="sfx tr" data-sfx="GOTCHA!" data-seed="3"></svg>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Two passes and one <b>FAIL</b>. For <code>{-5, -2, -8}</code> I expected -2 and the machine said 0. Zero isn't even in the carton! A good FAIL line tells you the input, what you expected and what you got. That's half the detective work done.</p></div>
+    </div>
+    <p class="sr-only">Picture: a GOTCHA burst. Wren points at the FAIL line, surprised.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: walk Wren through the failing test" data-walk="walk-neg">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Where does that 0 come from? Walk Wren through the failing case, one line at a time, and watch <code>best</code>.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">walk_negative.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-neg">{"program": "walk_negative.cpp", "steps": [
+      {"line": 15, "output": [], "mood": "focus", "arms": "point", "note": "The program starts in <code>main</code> on line 14. Lines 4 to 12 only build the machine."},
+      {"line": 16, "output": ["Expected: -2"], "mood": "normal", "arms": "point", "note": "Line 15 prints the answer worked out by hand: the biggest of -5, -2 and -8 is -2 (it's the one closest to zero)."},
+      {"line": 5, "output": ["Expected: -2"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 16 calls <code>biggest({-5, -2, -8})</code>. Wren jumps into the machine."},
+      {"line": 6, "output": ["Expected: -2"], "mood": "focus", "arms": "point", "note": "Line 5: <code>best</code> starts at <b>0</b>. Remember that number; it's the suspect."},
+      {"line": 7, "output": ["Expected: -2"], "mood": "focus", "arms": "point", "note": "Line 6: the first trip round the loop, <code>x</code> is -5."},
+      {"line": 6, "output": ["Expected: -2"], "mood": "worried", "mouth": "flat", "arms": "point", "note": "Line 7 asks: is -5 bigger than <code>best</code> (0)? No. Line 8 is skipped; <code>best</code> stays 0."},
+      {"line": 7, "output": ["Expected: -2"], "mood": "focus", "arms": "point", "note": "Line 6 again: next number, <code>x</code> is -2."},
+      {"line": 6, "output": ["Expected: -2"], "mood": "worried", "mouth": "frown", "arms": "point", "note": "Is -2 bigger than 0? No! The real winner is skipped, because it can never beat the made-up starting value."},
+      {"line": 7, "output": ["Expected: -2"], "mood": "focus", "arms": "point", "note": "Last number: <code>x</code> is -8."},
+      {"line": 11, "output": ["Expected: -2"], "mood": "worried", "mouth": "frown", "arms": "shrug", "note": "Is -8 bigger than 0? No. The loop is out of numbers."},
+      {"line": 16, "output": ["Expected: -2"], "mood": "worried", "mouth": "frown", "arms": "shrug", "note": "Line 11 returns <code>best</code>: still 0, a number that was never in the carton. Back to line 16."},
+      {"line": null, "output": ["Expected: -2", "Actual: 0"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 16 prints the actual value. Found it: <b>starting at 0 assumed some number would beat 0</b>. True for most cartons, false when every number is negative. The first test passed by luck."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-vowel-m" id="ex-vowel"></div>
+  <script type="application/json" id="ex-vowel-m">{"program": "vowel_tests.cpp", "prompt": "Three tests for a vowel counter. Each line prints PASS or FAIL, the word, then the <b>actual</b> count. What does it print?", "hint": "Look closely at line 7. Which letters does it compare against? Is <code>'A'</code> one of them?", "explain": "banana has 3 vowels and sky has none, so both pass. But line 7 only checks lowercase letters, and <code>'A'</code> is a different character from <code>'a'</code>. In Apple the machine counts just the e: actual 1, expected 2, so <samp>FAIL Apple 1</samp>. The test with a capital letter found the bug; the two easy tests never could."}</script>
+
+  <div data-ex="choice" data-model="ex-proves-m" id="ex-proves"></div>
+  <script type="application/json" id="ex-proves-m">{"q": "<code>biggest({3, 9, 4})</code> passed its test. What does that pass prove?", "options": [
+    {"t": "That <code>biggest</code> is correct for every carton of numbers", "why": "Panels 1 and 3 show a buggy <code>biggest</code> passing exactly this test."},
+    {"t": "That <code>biggest</code> gives the right answer for that one input", "correct": true, "why": "Right. A test is a sample, not a proof. Each passing test rules out one way to be wrong. Good test sets pick inputs that are most likely to expose mistakes, which is what Part 3 is about."},
+    {"t": "Nothing at all, because only a failing test ever tells you something", "why": "A pass does tell you something: this input works. It just can't speak for inputs nobody tried."},
+    {"t": "That the program never breaks C++'s rules, so it has no undefined behaviour", "why": "Tests check answers, not the rules underneath. Part 4 shows programs that print plausible answers while breaking the rules."}]}</script>
+
+  <div data-ex="parsons" data-model="ex-pcheck-m" id="ex-pcheck"></div>
+  <script type="application/json" id="ex-pcheck-m">{"program": "parsons_check.cpp", "seed": 11, "pin": [1, 2, 3, 4, 5], "prompt": "Build a tiny test program. The two <code>#include</code> lines and the <code>check</code> machine, which prints PASS or FAIL, are fixed in place. Add the <code>triple</code> machine being tested, and two test cases in <code>main</code>.", "explain": "Machines must be built before <code>main</code> uses them. Here <code>check</code> takes the test's name and a <code>bool</code>: the comparison <code>triple(2) == 6</code> is worked out first, and its true or false is handed in. The test cases run in the order of the goal output."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE SMOKE ALARM<small>assert, what NDEBUG does to it, and static_assert</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 5: a smoke alarm on the ceiling">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">A smoke alarm on the kitchen ceiling is silent while everything is fine, and screams the moment something is burning. <code>assert(condition);</code> is a smoke alarm for your code. You write down something you believe must be true at that spot. If it's true, nothing happens at all. If it's false, the program <b>stops immediately</b> and says exactly which belief broke, and where.</p>
+    <div class="pics"><svg viewBox="0 0 220 300" role="img" aria-label="A quiet smoke alarm on the ceiling. Label: all fine: silent."><path d="M0 10 H220 V26 H0 Z" fill="#E8E2D4"/><path d="M0 26 H220" stroke="#111" stroke-width="5"/><g transform="translate(0 0)">
+      
+      
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M60 26 H160 Q160 62 110 66 Q60 62 60 26 Z" fill="#FFFFFF"/><circle cx="110" cy="44" r="6" fill="#C9F2D9"/>
+        <path d="M280 26 H380 Q380 62 330 66 Q280 62 280 26 Z" fill="#FFFFFF"/><circle cx="330" cy="44" r="6" fill="#FF5A4E"/>
+        <path d="M262 52 q-14 14 0 28 M248 44 q-22 22 0 44 M398 52 q14 14 0 28 M412 44 q22 22 0 44" fill="none" stroke-width="3.5"/>
+        <path d="M318 214 q-16 -18 0 -36 q16 -18 0 -36 M342 214 q-16 -18 0 -36 q16 -18 0 -36" fill="none" stroke="#6B6B6B" stroke-width="5"/>
+        <path d="M300 236 q30 -24 60 0 Z" fill="#FFD60A"/>
+        <path d="M500 26 H600 Q600 54 550 58 Q500 54 500 26 Z" fill="#FFFFFF" stroke-dasharray="8 6"/>
+        <path d="M600 30 L630 74" fill="none"/>
+        <rect x="520" y="150" width="60" height="30" rx="4" fill="#C9F2D9"/><rect x="580" y="158" width="8" height="14" fill="#111"/>
+        <path d="M550 80 V140" fill="none" stroke-dasharray="6 6" stroke-width="3"/><path d="M542 130 l8 12 l8 -12" fill="none" stroke-width="3"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="30" letter-spacing="2" fill="#111" text-anchor="middle"><text x="330" y="118">BEEP!</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle"><text x="550" y="206">-DNDEBUG</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">
+        <text x="110" y="262">all fine:</text><text x="110" y="286">silent</text>
+        <text x="330" y="262">belief broken:</text><text x="330" y="286">it SCREAMS</text>
+        <text x="550" y="262">battery out: silent,</text><text x="550" y="286">even in smoke</text>
+      </g>
+    </g></svg><svg viewBox="0 0 220 300" role="img" aria-label="A smoke alarm with sound waves and the word BEEP above a curl of smoke. Label: belief broken: it screams."><path d="M0 10 H220 V26 H0 Z" fill="#E8E2D4"/><path d="M0 26 H220" stroke="#111" stroke-width="5"/><g transform="translate(-220 0)">
+      
+      
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M60 26 H160 Q160 62 110 66 Q60 62 60 26 Z" fill="#FFFFFF"/><circle cx="110" cy="44" r="6" fill="#C9F2D9"/>
+        <path d="M280 26 H380 Q380 62 330 66 Q280 62 280 26 Z" fill="#FFFFFF"/><circle cx="330" cy="44" r="6" fill="#FF5A4E"/>
+        <path d="M262 52 q-14 14 0 28 M248 44 q-22 22 0 44 M398 52 q14 14 0 28 M412 44 q22 22 0 44" fill="none" stroke-width="3.5"/>
+        <path d="M318 214 q-16 -18 0 -36 q16 -18 0 -36 M342 214 q-16 -18 0 -36 q16 -18 0 -36" fill="none" stroke="#6B6B6B" stroke-width="5"/>
+        <path d="M300 236 q30 -24 60 0 Z" fill="#FFD60A"/>
+        <path d="M500 26 H600 Q600 54 550 58 Q500 54 500 26 Z" fill="#FFFFFF" stroke-dasharray="8 6"/>
+        <path d="M600 30 L630 74" fill="none"/>
+        <rect x="520" y="150" width="60" height="30" rx="4" fill="#C9F2D9"/><rect x="580" y="158" width="8" height="14" fill="#111"/>
+        <path d="M550 80 V140" fill="none" stroke-dasharray="6 6" stroke-width="3"/><path d="M542 130 l8 12 l8 -12" fill="none" stroke-width="3"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="30" letter-spacing="2" fill="#111" text-anchor="middle"><text x="330" y="118">BEEP!</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle"><text x="550" y="206">-DNDEBUG</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">
+        <text x="110" y="262">all fine:</text><text x="110" y="286">silent</text>
+        <text x="330" y="262">belief broken:</text><text x="330" y="286">it SCREAMS</text>
+        <text x="550" y="262">battery out: silent,</text><text x="550" y="286">even in smoke</text>
+      </g>
+    </g></svg><svg viewBox="0 0 220 300" role="img" aria-label="A smoke alarm with its lid open and its battery lying below, the battery labelled -DNDEBUG. Label: battery out: silent, even in smoke."><path d="M0 10 H220 V26 H0 Z" fill="#E8E2D4"/><path d="M0 26 H220" stroke="#111" stroke-width="5"/><g transform="translate(-440 0)">
+      
+      
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M60 26 H160 Q160 62 110 66 Q60 62 60 26 Z" fill="#FFFFFF"/><circle cx="110" cy="44" r="6" fill="#C9F2D9"/>
+        <path d="M280 26 H380 Q380 62 330 66 Q280 62 280 26 Z" fill="#FFFFFF"/><circle cx="330" cy="44" r="6" fill="#FF5A4E"/>
+        <path d="M262 52 q-14 14 0 28 M248 44 q-22 22 0 44 M398 52 q14 14 0 28 M412 44 q22 22 0 44" fill="none" stroke-width="3.5"/>
+        <path d="M318 214 q-16 -18 0 -36 q16 -18 0 -36 M342 214 q-16 -18 0 -36 q16 -18 0 -36" fill="none" stroke="#6B6B6B" stroke-width="5"/>
+        <path d="M300 236 q30 -24 60 0 Z" fill="#FFD60A"/>
+        <path d="M500 26 H600 Q600 54 550 58 Q500 54 500 26 Z" fill="#FFFFFF" stroke-dasharray="8 6"/>
+        <path d="M600 30 L630 74" fill="none"/>
+        <rect x="520" y="150" width="60" height="30" rx="4" fill="#C9F2D9"/><rect x="580" y="158" width="8" height="14" fill="#111"/>
+        <path d="M550 80 V140" fill="none" stroke-dasharray="6 6" stroke-width="3"/><path d="M542 130 l8 12 l8 -12" fill="none" stroke-width="3"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="30" letter-spacing="2" fill="#111" text-anchor="middle"><text x="330" y="118">BEEP!</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle"><text x="550" y="206">-DNDEBUG</text></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">
+        <text x="110" y="262">all fine:</text><text x="110" y="286">silent</text>
+        <text x="330" y="262">belief broken:</text><text x="330" y="286">it SCREAMS</text>
+        <text x="550" y="262">battery out: silent,</text><text x="550" y="286">even in smoke</text>
+      </g>
+    </g></svg></div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>An alarm doesn't put out fires. It just makes sure you <b>notice</b> the fire straight away, right next to where it started, instead of three rooms later. <b>Silent when fine, loud when not.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: two asserts, one quiet and one loud">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption"><code>assert</code> lives in the header <code>&lt;cassert&gt;</code>. Line 8 claims 2 + 2 is 4: true, so nothing happens. Line 9 claims 2 + 2 is 5: false, so the alarm goes off.</p>
+    <span class="file-tab">alarm.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="alarm.cpp"></pre>
+      <pre class="term wrap" data-run="alarm.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the alarm like a detective">
+      <li><span><b>Who:</b> <code>alarm:</code>, the name of the program that stopped.</span></li>
+      <li><span><b>Where:</b> <code>alarm.cpp:9:</code>, the file and line of the alarm, then <code>int main()</code>, the function it's in.</span></li>
+      <li><span><b>What:</b> the exact condition you wrote, between a backtick and a quote: <code>`add(2, 2) == 5'</code>, then the verdict <code>failed.</code></span></li>
+      <li><span><b>Then:</b> <code>assert</code> calls <code>std::abort()</code>, which stops the program on the spot. <code>Aborted</code> is printed by the shell, not by your program, and the exit code is 134 (128 + signal 6, the abort signal), exactly like the crash in Chapter 10.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 7: guarding a machine's rule with assert">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Back to <code>biggest</code>. The fix for panel 4: start <code>best</code> at the <b>first</b> number, <code>v[0]</code>, so it's always a real number from the carton. But an empty carton has no <code>v[0]</code>! So line 6 writes the machine's rule down as an alarm: "the carton must not be empty". A rule a caller must keep before calling is a <b>precondition</b>.</p>
+    <span class="file-tab">guarded.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="guarded.cpp"></pre>
+      <pre class="term wrap" data-run="guarded.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>All negatives: -2, correct now. The empty carton trips the alarm <b>before</b> line 7 can read a number that isn't there. The alarm names the function, and <code>&amp;&amp; "a message"</code> sneaks a sentence into it: a string counts as "true", so it never changes the answer. (Line 17's <code>std::endl</code> flushes the -2 out before the crash, as in Chapter 10.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-swap-m" id="ex-swap"></div>
+  <script type="application/json" id="ex-swap-m">{"program": "spot_swap.cpp", "bug": 12, "prompt": "The alarm on line 5 goes off. But the alarm is only where the smoke was <b>noticed</b>. Click the line where the real mistake is.", "explain": "<code>percent(part, whole)</code> wants the part first and the whole second. Line 12 passes them the other way round, so <code>whole</code> is <code>correct</code>, which is 0, and the alarm on line 5 catches it before line 6 divides by zero. Fix: <code>percent(correct, questions)</code>. An assert tells you <b>which rule broke</b>; the detective work is finding who broke it. That's why the alarm prints the function name: <samp>int percent(int, int)</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 8: NDEBUG takes the battery out">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption soft">Here's the catch. If the name <code>NDEBUG</code> ("no debugging") is defined when <code>&lt;cassert&gt;</code> is included, every <code>assert</code> turns into nothing at all. The flag <code><span class="flagw">-DNDEBUG</span></code> on the command line defines it. Same <code>alarm.cpp</code>, built both ways:</p>
+    <div class="pair2">
+      <div><p class="who">Usual build</p><pre class="term wrap" data-run="alarm.cpp" data-exit></pre></div>
+      <div><p class="who">With -DNDEBUG</p><pre class="term wrap" data-run="alarm_off.cpp" data-exit></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="alarm.cpp,alarm_off.cpp"></span></p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Exit code 0, "success", and 2 + 2 still isn't 5! With the battery out, the alarm can't see smoke. Many projects build their finished, "release" version with <code><span class="flagw">-DNDEBUG</span></code> to save the tiny cost of checking. So asserts are for <b>catching your own mistakes while you build</b>, never for checking things that can go wrong in real use, like a user typing nonsense. Those need real error handling (Chapter 15).</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 9: work inside an assert vanishes with NDEBUG">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="POOF!" data-seed="9"></svg>
+    <p class="caption">The sneakiest assert mistake. Line 6 does two jobs at once: it uses up a ticket (<code><span class="flagw">--tickets</span></code>) <b>and</b> checks there was one. Watch what <code><span class="flagw">-DNDEBUG</span></code> does.</p>
+    <span class="file-tab">tickets.cpp</span>
+    <pre class="code" data-src="tickets.cpp"></pre>
+    <div class="pair2">
+      <div><p class="who">Usual build</p><pre class="term wrap" data-run="tickets.cpp"></pre></div>
+      <div><p class="who">With -DNDEBUG</p><pre class="term wrap" data-run="tickets_off.cpp"></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="tickets.cpp,tickets_off.cpp"></span></p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>With the alarm removed, the <b>whole line</b> disappears, the <code><span class="flagw">--tickets</span></code> with it. Same source, two different answers. The rule: <b>an assert only looks, it never does work.</b> Do the work on its own line, then check: <code><span class="flagw">--tickets;</span></code> then <code>assert(tickets &gt;= 0);</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: a POOF burst. Wren points at the two different outputs, unhappy.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 10: static_assert checks before the program exists">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Some facts are known before the program ever runs, like how many bytes an <code>int</code> takes. <code>static_assert(condition, "message");</code> is an alarm the <b>Compiler</b> checks while building. No header needed, and <code>NDEBUG</code> can't switch it off. If the fact is false, there is no program at all.</p>
+    <span class="file-tab">static_fail.cpp</span>
+    <pre class="code" data-src="static_fail.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="static_fail.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says</p><pre class="term" data-run="static_fail.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="stern"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 1: you said an <code>int</code> must be 8 bytes. On this machine it's 4, and my note even shows the sum I did: <samp>(4 == 8)</samp>. Your message comes first, so write one that says what you need. <b>Nothing runs until everything checks out.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: static_assert facts that hold">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">When the facts are true, <code>static_assert</code> costs nothing at all: it's checked during the build and leaves no trace in the program. <code>CHAR_BIT</code>, from <code>&lt;climits&gt;</code>, is the number of bits in a byte.</p>
+    <span class="file-tab">static_ok.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="static_ok.cpp"></pre>
+      <pre class="term" data-run="static_ok.cpp"></pre>
+    </div>
+    <div class="duo">
+      <div class="duo-card"><h3>assert<small>#include &lt;cassert&gt;</small></h3><ul><li>checked while the program <b>runs</b></li><li>can test anything: arguments, results, sizes of vectors</li><li>switched off by <code><span class="flagw">-DNDEBUG</span></code></li><li>failure: a message and <code>abort</code> (exit 134)</li></ul></div>
+      <div class="duo-card"><h3>static_assert<small>built into the language</small></h3><ul><li>checked while the program is <b>built</b></li><li>only facts known at build time: sizes of types, constants</li><li>never switched off</li><li>failure: a compile error, no program</li></ul></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-which-m" id="ex-which"></div>
+  <script type="application/json" id="ex-which-m">{"q": "A game stores its levels in a <code>std::vector</code>, and the function <code>play(level)</code> must never be given a level number past the end. That number is only known while the game runs. Which alarm fits?", "options": [
+    {"t": "<code>static_assert(level &lt; levels.size());</code> at the top of <code>play</code>", "why": "<code>static_assert</code> only accepts facts the Compiler can work out while building. A level number chosen during play isn't one of them, so this would not even compile."},
+    {"t": "<code>assert(level &lt; levels.size());</code> at the top of <code>play</code>", "correct": true, "why": "Right: a precondition checked while the program runs, at the door of the machine. (If the number could come from a player typing it, also check it with an <code>if</code>: asserts vanish under <code>-DNDEBUG</code>.)"},
+    {"t": "No alarm at all: a test for every level number will catch it", "why": "Tests help, but an alarm at the door catches every bad call, including ones no test thought of."},
+    {"t": "<code>assert(level++ &lt; levels.size());</code>, which also moves on to the next level", "why": "Work inside an assert (the <code>++</code>) disappears under <code>-DNDEBUG</code>, as panel 9 showed. An assert only looks."}]}</script>
+
+  <div data-ex="fill" data-model="ex-falarms-m" id="ex-falarms"></div>
+  <script type="application/json" id="ex-falarms-m">{"program": "fill_alarms.cpp", "prompt": "Fill in the header that <code>assert</code> needs, the build-time alarm on line 4, and the run-time alarm on line 11.", "blanks": [{"line": 1, "text": "cassert"}, {"line": 4, "text": "static_assert"}, {"line": 11, "text": "assert"}], "explain": "<code>assert</code> comes from <code>&lt;cassert&gt;</code>. Line 4 is about a type's size, known while building, so it's a <code>static_assert</code> with a message. Lines 11 and 12 test the <code>square</code> machine while the program runs, so they're plain <code>assert</code>s. Both hold, so all is quiet and line 13 prints."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · GOOD TESTS<small>Edge cases, the year 1900, test first, regression tests and coverage</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 12: bugs live at the edges">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Which inputs should you test? Picture every possible input as an island. In the middle are the <b>ordinary</b> inputs, and most code handles those. Bugs live on the beaches: the <b>edge cases</b>, the smallest, emptiest, most negative and largest inputs.</p>
+    <svg class="pic-mid" viewBox="0 0 460 360" role="img" aria-label="An island seen from above. The middle is labelled ordinary inputs, with the example 3, 9, 4. Around it is a sandy beach with four signs: top, empty, with empty braces; right, the largest int, 2147483647; bottom, negatives, minus 5, minus 2, minus 8; left, just one, with 5. Underneath: the beach is where bugs live.">
+      <path d="M20 180 C 18 66, 140 22, 230 28 C 336 22, 444 74, 440 180 C 444 286, 336 336, 230 332 C 132 338, 22 286, 20 180 Z" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+      <path d="M120 180 C 120 124, 178 106, 230 106 C 286 106, 340 124, 340 180 C 340 236, 286 254, 230 254 C 178 254, 120 236, 120 180 Z" fill="#C9F2D9" stroke="#111" stroke-width="3" stroke-dasharray="9 6"/>
+      <g fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"><path d="M14 30 q12 -8 24 0 q12 8 24 0 M396 22 q12 -8 24 0 q12 8 24 0 M400 340 q12 -8 24 0 M18 330 q12 -8 24 0"/></g>
+      <g stroke="#111" stroke-width="3" fill="#FFFFFF"><rect x="160" y="34" width="140" height="60" rx="8"/><rect x="318" y="150" width="136" height="62" rx="8"/><rect x="135" y="266" width="190" height="62" rx="8"/><rect x="6" y="150" width="112" height="62" rx="8"/></g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">
+        <text x="230" y="58">empty</text><text x="386" y="174">largest int</text><text x="230" y="290">negatives</text><text x="62" y="174">just one</text>
+        <text x="230" y="172">ordinary</text><text x="230" y="353">the beach: where bugs live</text>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="19" fill="#111" text-anchor="middle">
+        <text x="230" y="85">{}</text><text x="386" y="201">2147483647</text><text x="230" y="317">{-5, -2, -8}</text><text x="62" y="201">{5}</text><text x="230" y="202">{3, 9, 4}</text>
+      </g>
+    </svg>
+    <div class="duo">
+      <div class="duo-card"><h3>THE USUAL EDGES</h3><ul><li><b>Empty:</b> no items, an empty string.</li><li><b>One:</b> a single item; loops run once.</li><li><b>Negative and zero:</b> numbers below or at 0.</li><li><b>Biggest:</b> the largest value the type holds.</li></ul></div>
+      <div class="duo-card"><h3>AND ALSO</h3><ul><li>All items the same.</li><li>The answer is first, or last.</li><li>Special rules in the problem itself, like the leap year rule coming up.</li><li>Inputs the function promises <b>not</b> to accept: guard them with an assert instead of a test.</li></ul></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: six edge-case tests">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Six tests for the fixed <code>biggest</code>, one per edge. This time <code>check</code> keeps a tally: two counters outside every function, <code>passed</code> and <code>failed</code>, that any function can add to. It stays quiet on a pass and only speaks up on a failure, so a clean run is one short line. <code>std::numeric_limits&lt;int&gt;::max()</code>, from <code>&lt;limits&gt;</code>, is the largest <code>int</code>.</p>
+    <span class="file-tab">edge_tests.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="edge_tests.cpp"></pre>
+      <pre class="term" data-run="edge_tests.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Notice what is <b>not</b> tested: the empty carton. <code>biggest</code> promises nothing for it; its precondition alarm guards that door instead. Good tests cover every input a function <b>promises</b> to handle. This is what testing tools such as doctest and Catch2 do for you, with nicer reports. They come in a later chapter.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 14: the leap year tests all pass">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">A real rule with a trap in it. A year is a <b>leap year</b> (with a 29 February) if it divides by 4... except years that divide by 100, which aren't... except years that divide by 400, which are. Wren writes the short version and three alarms.</p>
+    <span class="file-tab">leap_v1.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="leap_v1.cpp"></pre>
+      <pre class="term" data-run="leap_v1.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>All three pass! 2000 divides by 400, and my machine says leap. Done!</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right think"><span class="sr-only">Sneak thinks: </span>Heh. 2000 divides by 4 too. Your tests never asked about a year that divides by 100 but <b>not</b> by 400...</p></div>
+      <svg class="char sm" data-char="sneak"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren cheers. Behind her, Sneak, the little logic-bug critter, grins.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 15: the test for 1900">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="BEEP!" data-seed="15"></svg>
+    <p class="caption">1900 divides by 100 and not by 400, so it was <b>not</b> a leap year. One more alarm, on line 12:</p>
+    <span class="file-tab">leap_1900.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="leap_1900.cpp"></pre>
+      <pre class="term wrap" data-run="leap_1900.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 12, <code>!is_leap(1900)</code> failed. My three tests passed for the wrong reason: every year I picked happened to fit the short rule. A test set is only as good as the inputs you dare to try. Hunt for the <b>exceptions</b> in a rule, and test each one.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: the fixed rule and its regression test">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">The full rule, checked from the most special case down: 400 first, then 100, then 4. Line 18 keeps the 1900 alarm <b>forever</b>, with a comment saying why.</p>
+    <span class="file-tab">leap_fixed.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="leap_fixed.cpp"></pre>
+      <pre class="term" data-run="leap_fixed.cpp"></pre>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 17: the is_leap machine" data-machine="m-leap">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Feed the fixed machine some years. Every answer comes from a real run of <code>leap_machine.cpp</code>; the last chip feeds 1900 to the <b>old</b> machine from panel 15.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-leap">{"label": "is_leap()", "program": "leap_machine.cpp", "examples": [
+      {"in": "2024", "out": "true", "expectLine": "is_leap(2024) gives true", "outKind": "bool", "note": "Not divisible by 400 or 100, but by 4: an ordinary leap year."},
+      {"in": "2023", "out": "false", "expectLine": "is_leap(2023) gives false", "outKind": "bool", "note": "Fails all three tests: an ordinary year."},
+      {"in": "1900", "out": "false", "expectLine": "is_leap(1900) gives false", "outKind": "bool", "note": "Divisible by 100 but not by 400: line 7 returns false. The trap from panel 15."},
+      {"in": "2000", "out": "true", "expectLine": "is_leap(2000) gives true", "outKind": "bool", "note": "Divisible by 400: line 4 says yes before the 100 rule is even asked."},
+      {"in": "2100", "out": "false", "expectLine": "is_leap(2100) gives false", "outKind": "bool", "note": "The next year that falls in the 1900 trap. Many of us will see it."},
+      {"in": "0", "out": "true", "expectLine": "is_leap(0) gives true", "outKind": "bool", "note": "0 divides by everything, so by 400 too. An edge case worth a test: is that what you wanted?"},
+      {"in": "1900, old machine", "error": "Assertion `!is_leap(1900)' failed.", "program": "leap_1900.cpp", "note": "The short rule <code>year % 4 == 0</code> says 1900 is a leap year, and the alarm on line 12 of panel 15 catches it."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-leaptab-m" id="ex-leaptab"></div>
+  <script type="application/json" id="ex-leaptab-m">{"program": "leap_table.cpp", "columns": ["year", "by4", "by100", "by400", "leap"], "given": [0, 1], "prompt": "A truth table for the leap rule. <code>std::cout</code> prints a <code>bool</code> as <b>1</b> (true) or <b>0</b> (false). The year and the divisible-by-4 column are filled in; fill in the rest of every row (the last column is <code>is_leap(y)</code>).", "explain": "Read the last column with the rule from the top: by400 is 1 means leap; otherwise by100 is 1 means not leap; otherwise by4 decides. Only 2024 and 2000 come out as 1. 1900 and 2100 have <code>1 1 0</code>: the trap row."}</script>
+
+  <div data-ex="fill" data-model="ex-leapfill-m" id="ex-leapfill"></div>
+  <script type="application/json" id="ex-leapfill-m">{"program": "leap_fill.cpp", "prompt": "Write the alarms the comments ask for: the 1900 trap (a year that must <b>not</b> be a leap year) and the year 2000 (the 400 exception).", "blanks": [{"line": 16, "text": "!"}, {"line": 16, "text": "1900"}, {"line": 17, "text": "2000"}], "explain": "1900 must <b>not</b> be a leap year, so the alarm checks <code>!is_leap(1900)</code>: the <code>!</code> turns false into true, and a quiet alarm means \"correct\". 2000 divides by 400, so <code>is_leap(2000)</code> must be true. In your own tests, 2100 (another trap year) and 2400 (another 400 year) would check the same two rules; these two are the classics."}</script>
+
+  <section class="panel sketch" aria-label="Panel 18: test first, then keep the test">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">Two habits professionals swear by. <b>Test first:</b> when you find a bug, write the test that catches it <b>before</b> you fix anything, and watch it fail. <b>Keep it:</b> after the fix, the test stays in the file for good. A test kept to stop an old bug coming back is a <b>regression test</b> (to regress means to slide backwards).</p>
+    <div class="pics four"><svg viewBox="0 0 160 170" role="img" aria-label="Step 1: write a test that fails, marked with a cross."><rect x="6" y="26" width="148" height="138" rx="14" fill="#FFE1E1" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M64 48 l32 32 M96 48 l-32 32" stroke-width="7"/></g><text x="20" y="22" font-family="Bangers, Impact, sans-serif" font-size="26" fill="#111">1</text><g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="80" y="124">write a test</text><text x="80" y="148">that FAILS</text></g></svg><svg viewBox="0 0 160 170" role="img" aria-label="Step 2: fix the code, with a wrench."><rect x="6" y="26" width="148" height="138" rx="14" fill="#FFF6CC" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M58 84 l40 -30 M92 46 a10 10 0 1 0 14 14" stroke-width="6"/></g><text x="20" y="22" font-family="Bangers, Impact, sans-serif" font-size="26" fill="#111">2</text><g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="80" y="124">fix the</text><text x="80" y="148">code</text></g></svg><svg viewBox="0 0 160 170" role="img" aria-label="Step 3: the test passes, marked with a tick."><rect x="6" y="26" width="148" height="138" rx="14" fill="#C9F2D9" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M58 64 l14 16 l28 -34" stroke-width="7"/></g><text x="20" y="22" font-family="Bangers, Impact, sans-serif" font-size="26" fill="#111">3</text><g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="80" y="124">the test</text><text x="80" y="148">PASSES</text></g></svg><svg viewBox="0 0 160 170" role="img" aria-label="Step 4: keep the test forever, drawn as a jar on a shelf labelled 1900."><rect x="6" y="26" width="148" height="138" rx="14" fill="#DDE8FF" stroke="#111" stroke-width="4"/><g stroke="#111" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="56" y="40" width="48" height="44" rx="6" fill="#FFFFFF"/><path d="M52 86 H108"/><text x="80" y="68" stroke="none" fill="#111" font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" text-anchor="middle">1900</text></g><text x="20" y="22" font-family="Bangers, Impact, sans-serif" font-size="26" fill="#111">4</text><g font-family="Comic Neue, sans-serif" font-weight="700" font-size="20" fill="#111" text-anchor="middle"><text x="80" y="124">keep it</text><text x="80" y="148">forever</text></g></svg></div><p class="caption soft" style="justify-self:center">Then the next bug: start again at 1.</p>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>Why watch it fail first? Because a test that has never failed might not test anything: maybe it calls the wrong function, or checks the wrong thing. Seeing it go from <b>FAIL</b> to <b>PASS</b> proves both the test and the fix. <b>Catch it once, keep the trap forever.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-regress-m" id="ex-regress"></div>
+  <script type="application/json" id="ex-regress-m">{"q": "Wren fixed the 1900 bug and every test passes. Her friend says: \"Delete the 1900 alarm now. The bug is fixed, so the test is useless.\" What's the best reply?", "options": [
+    {"t": "Agreed: a test is only useful for a bug that still exists right now", "why": "Code keeps changing. Someone may \"simplify\" <code>is_leap</code> next year and bring the bug straight back."},
+    {"t": "Keep it: it's a regression test, and it will shout if anyone brings the bug back", "correct": true, "why": "Right. Old bugs come back surprisingly often, usually when someone tidies the code. The 1900 alarm costs nothing while it's quiet."},
+    {"t": "Keep it, but turn it into a <code>static_assert</code> so it costs nothing", "why": "<code>is_leap</code> runs while the program runs (it isn't marked to work at build time; that's <code>constexpr</code>, a later chapter), so <code>static_assert</code> can't call it."},
+    {"t": "Delete it, and build with <code>-DNDEBUG</code> so no alarm can ever go off", "why": "That switches off every alarm, the useful ones too."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 19: coverage shows lines no test ran">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">How do you know which parts of your code your tests never touched? A <b>coverage</b> tool counts how many times each line ran. Build with <code><span class="flagw">--coverage</span></code>, run the program, then ask <code>gcov</code> (it comes with g++) for the counts. This program only tries 2024 and 2023.</p>
+    <span class="file-tab">coverage.cpp</span>
+    <pre class="term" data-run="coverage.cpp"></pre>
+    <p class="howmade"><b>How this run was really made:</b> in <code>~/cpp-ch11</code>, after the count files of any earlier run (<code>coverage.gcda</code>, <code>coverage.gcno</code>, <code>coverage.cpp.gcov</code>) were deleted, because <code>gcov</code> adds new counts to old ones. Then the four commands shown ran word for word.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>Read the left column: <samp>-</samp> means "not a line that runs", a number is how many times it ran, and <samp>#####</samp> means <b>never ran</b>. Lines 5 and 8, the 400 and 100 rules, were never tested, so they could hide any bug at all. Coverage tells you what you <b>didn't</b> test. It can't tell you your tests are good: a line can run and still give a wrong answer nobody checked.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE DARK ROOM<small>Undefined behaviour: what it is, its cousins, and why it can look fine</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 20: undefined behaviour is a dark room">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Tests check answers. But C++ has a deeper danger. The rules of C++ list some things you must <b>never</b> do, such as reading past the end of a vector. If a program does one of them, the rules say nothing at all about what happens next. That's called <b>undefined behaviour</b>, or <b>UB</b>. It's like walking around a dark room: some nights you cross it fine, some nights you break a toe, and it can be different every night.</p>
+    <div class="pics big">
+      <svg viewBox="0 0 330 300" role="img" aria-label="Without goggles: a dark room where only faint outlines show. Footprints wander across, and a star marks where someone stubbed a toe, with question marks. Label: without goggles, anything.">
+        <rect x="10" y="20" width="310" height="230" rx="10" fill="#2B2B2B" stroke="#111" stroke-width="4"/>
+        <g fill="none" stroke="#4A4A4A" stroke-width="3"><rect x="60" y="150" width="60" height="50" rx="4"/><rect x="190" y="70" width="90" height="40" rx="4"/><path d="M210 190 h50 v40"/></g>
+        <g fill="#FFFFFF"><ellipse cx="40" cy="232" rx="7" ry="11"/><ellipse cx="66" cy="214" rx="7" ry="11"/><ellipse cx="96" cy="226" rx="7" ry="11"/><ellipse cx="124" cy="204" rx="7" ry="11"/><ellipse cx="150" cy="214" rx="7" ry="11"/><ellipse cx="176" cy="192" rx="7" ry="11"/></g>
+        <polygon points="208,178 214,192 230,192 217,201 222,216 208,207 194,216 199,201 186,192 202,192" fill="#FFD60A" stroke="#111" stroke-width="2"/>
+        <g font-family="Bangers, Impact, sans-serif" font-size="32" fill="#FFFFFF"><text x="236" y="176">?!</text><text x="40" y="70">?</text><text x="140" y="110">?</text></g>
+        <text x="165" y="284" font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">without goggles: anything</text>
+      </svg>
+      <svg viewBox="0 0 330 300" role="img" aria-label="With the Sanitizer's goggles: the same room in bright green light, every piece of furniture outlined and labelled: a chair labelled scores[3] with a STOP sign beside it, a table labelled freed memory and a box labelled overflow.">
+        <rect x="10" y="20" width="310" height="230" rx="10" fill="#C9F2D9" stroke="#111" stroke-width="4"/>
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" fill="#FFFFFF"><rect x="40" y="150" width="70" height="50" rx="4"/><rect x="168" y="50" width="144" height="44" rx="4"/><rect x="190" y="180" width="110" height="44" rx="4"/></g>
+        <path d="M118 140 l14 -12 h20 l14 12 v20 l-14 12 h-20 l-14 -12 Z" fill="#FFE1E1" stroke="#111" stroke-width="3"/>
+        <text x="142" y="157" font-family="Bangers, Impact, sans-serif" font-size="16" fill="#111" text-anchor="middle">STOP</text>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="16" fill="#111" text-anchor="middle"><text x="75" y="226">scores[3]</text><text x="240" y="78">freed memory</text><text x="245" y="208">overflow</text></g>
+        <text x="165" y="284" font-family="Comic Neue, sans-serif" font-weight="700" font-size="21" fill="#111" text-anchor="middle">with the Sanitizer's goggles</text>
+      </svg>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>"Anything can happen" really means anything. It might crash. It might print a sensible-looking number. It might work perfectly today and fail tomorrow, on a friend's computer, or after a compiler upgrade. <b>No rules apply, not even "it crashes".</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 21: why the rules allow undefined behaviour">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Why would a language allow that? Speed. Checking every vector index and every addition for overflow costs time. So C++ makes a deal with you: <b>you</b> promise never to break these rules, and in return the Compiler may assume you never do and make your program as fast as it can.</p>
+    <div class="scene">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>That assumption is what makes UB so strange. The Compiler doesn't add a check that "does something bad"; it simply builds the program as if the bad case could never happen. If it does happen, the program is running on a promise that was broken, and the result can be <b>anything</b>. A different compiler, or the same one with <code><span class="flagw">-O2</span></code> (optimise for speed), may build a different program from the same broken promise.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>"Close to the metal. Careful with the wrench." The speed is real, and so is the danger. This book has a strict rule: we <b>never</b> show the output of a program with UB as if it meant something. We only show what the safety tools say about it.</p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 22: three kinds of not quite specified">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">UB has two milder cousins. Learn to tell all three apart:</p>
+    <div class="duo three">
+      <div class="duo-card"><h3>IMPLEMENTATION-DEFINED<small>each compiler chooses, and says so</small></h3><p>The rules leave a detail open, and each compiler must pick an answer and <b>document</b> it. How many bytes an <code>int</code> takes. Whether plain <code>char</code> can be negative. Safe to rely on for one compiler and machine; check it with <code>static_assert</code>.</p></div>
+      <div class="duo-card"><h3>UNSPECIFIED<small>the compiler chooses, quietly</small></h3><p>The rules allow a few outcomes, and the compiler may pick any of them without telling you. The order in which a function's arguments are worked out is the classic case. Your program must work whichever it picks.</p></div>
+      <div class="duo-card dashed"><h3>UNDEFINED<small>no rules at all</small></h3><p>The rules give no meaning to the program. Not one of a few answers: <b>anything</b>. Reading past the end of a vector, overflowing an <code>int</code>, dividing by zero, reading a variable nobody set.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: implementation-defined and unspecified, for real">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Both cousins are safe to run, so here they are. <code>sizes.cpp</code> prints implementation-defined facts about this machine (Microsoft documents <code>long</code> as 4 bytes on 64-bit Windows, not 8). <code>eval_order.cpp</code> calls <code>show(left(), right())</code>, and each argument prints its name when it's worked out.</p>
+    <span class="file-tab">sizes.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sizes.cpp"></pre>
+      <pre class="term" data-run="sizes.cpp"></pre>
+    </div>
+    <span class="file-tab">eval_order.cpp</span>
+    <pre class="code" data-src="eval_order.cpp"></pre>
+    <div class="pair2">
+      <div><p class="who">g++ 13.3</p><pre class="term wrap" data-run="eval_order.cpp"></pre></div>
+      <div><p class="who">clang++ 18.1</p><pre class="term wrap" data-run="eval_order.cpp" data-alt></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same source, two compilers, two orders: g++ worked out <code>right()</code> first, clang++ <code>left()</code>. <b>Both are correct</b>, because the order is unspecified. <code>show</code> still gets 1 and 2 either way. The lesson: never write code whose answer depends on which argument goes first.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" data-sort="sort-ub" aria-label="Panel 24: sorting game, ten snippets">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Sorting game. Put each snippet in a box: <b>undefined</b>, <b>implementation-defined</b>, or <b>fine</b> (the rules say exactly what happens, even if that's "stop with an error"). Assume <code>v</code> is <code>std::vector&lt;int&gt; v{1, 2, 3};</code>. None of these is ever run; it's about the rules.</p>
+    <ol class="sort-list"></ol>
+    <div class="sort-btns"><button type="button" class="btn btn-go sort-check">Check my sorting</button><button type="button" class="btn sort-show">Show the answers</button><button type="button" class="btn sort-reset">Start again</button></div>
+    <p class="sort-result" aria-live="polite">Sort all ten, then press Check. (This game keeps its own count; it isn't part of the chapter score.)</p>
+    <script type="application/json" id="sort-ub">{"cats": [{"id": "ub", "t": "Undefined"}, {"id": "impl", "t": "Implementation-defined"}, {"id": "fine", "t": "Fine"}], "items": [
+      {"code": "int x;\nstd::cout << x;", "ans": "ub", "why": "Reading a variable that was never given a value. It is not 0; there is no value to read."},
+      {"code": "std::cout << sizeof(long);", "ans": "impl", "why": "Every compiler must choose and document it: 8 on this Linux machine (panel 23's real run); Microsoft documents 4 for its compiler on Windows."},
+      {"code": "int big = 2147483647;\nbig = big + 1;", "ans": "ub", "why": "Signed integer overflow. The result doesn't fit in an <code>int</code>, and the rules give it no meaning."},
+      {"code": "unsigned int u = 0;\nu = u - 1;", "ans": "fine", "why": "Unsigned numbers are defined to wrap around, like a car's mileage counter: <code>u</code> becomes the largest <code>unsigned int</code>. Surprising, but defined."},
+      {"code": "int n = v[3];", "ans": "ub", "why": "<code>v</code> has cups 0, 1 and 2. <code>[ ]</code> doesn't check, so reading cup 3 is out of bounds."},
+      {"code": "int n = v.at(3);", "ans": "fine", "why": "<code>.at()</code> checks, and the rules say exactly what happens: it throws <code>std::out_of_range</code>, and uncaught that stops the program (exit 134). A defined stop, not a dark room."},
+      {"code": "int i = 1;\ni = i++ + i++;", "ans": "ub", "why": "Two changes to <code>i</code> in one expression with no order between them: unsequenced modification."},
+      {"code": "int q = -7 / 2;", "ans": "fine", "why": "The rules say integer division rounds toward zero: <code>q</code> is -3. (Panel 34's machine shows <code>share(-7, 2)</code> giving -3 in a real run.)"},
+      {"code": "int share = 10 / 0;", "ans": "ub", "why": "Integer division by zero has no meaning in the rules."},
+      {"code": "bool neg = std::numeric_limits<char>::is_signed;", "ans": "impl", "why": "Whether plain <code>char</code> can hold negative numbers is the compiler's documented choice: yes on this x86 machine (panel 23's real run prints 1); on many ARM systems it can't."}]}</script>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 25: the common furniture in the dark room">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">The furniture you'll bump into most, in this book and in real code:</p>
+    <div class="duo">
+      <div class="duo-card"><div class="pic"><svg class="char" data-char="tumble"></svg></div><h3>OUT OF BOUNDS<small>v[3] on a 3-item vector</small></h3><p>Reading or writing a cup that doesn't exist. Part 5's main case.</p></div>
+      <div class="duo-card"><div class="pic"><svg class="char" data-char="zilch"></svg></div><h3>DIVIDE BY ZERO<small>10 / 0 with ints</small></h3><p>Integer division or <code>%</code> by zero.</p></div>
+      <div class="duo-card"><div class="pic"><svg class="char" data-char="brick" data-label="+1" data-mood="o"></svg></div><h3>SIGNED OVERFLOW<small>2147483647 + 1</small></h3><p>An <code>int</code> result too big (or too small) to fit.</p></div>
+      <div class="duo-card"><div class="pic"><svg class="char" data-char="ghost"></svg></div><h3>NULL AND DANGLING<small>a name for something gone</small></h3><p>A reference to a vector item after the vector moved its items; using a pointer that points nowhere (Chapter 13).</p></div>
+      <div class="duo-card dashed"><h3>NEVER SET<small>int x; then reading x</small></h3><p>An uninitialised variable or field (Chapter 9's blank form).</p></div>
+      <div class="duo-card dashed"><h3>TWO CHANGES AT ONCE<small>i = i++ + i++;</small></h3><p>Changing one variable twice in one expression with no order between the changes.</p></div>
+    </div>
+    <p class="sr-only">Pictures: Tumble, the critter who falls off the end of a row; Zilch, the empty-plate critter for dividing by zero; a brick creature for an int, looking shocked; the ghost that stands for nothing there.</p>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 26: why UB can look like it works">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <svg class="sfx tr" data-sfx="HMM..." data-seed="26"></svg>
+    <p class="caption">The worst part: UB often <b>looks fine</b>. This course's research notes record what happened when an out-of-bounds read and an overflow were run without any safety tools: each printed an ordinary-looking number, with no error at all. A blank variable printed different numbers on different runs of the same program, a different number with clang++, and 0 with <code><span class="flagw">-O2</span></code>. We describe that in words and never show it as a result, because those numbers <b>mean nothing</b>.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>So a test can pass on a program with UB, by luck, today. That's why tests aren't enough on their own. We need tools that see the rules being broken, not just the answers coming out. First net: the Compiler's <b>warnings</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: warnings are the first net">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Some UB is visible in the source code itself. Line 5 changes <code>i</code> twice in one expression. This program is only <b>built</b>, with both compilers, and never run.</p>
+    <span class="file-tab">seq_warn.cpp</span>
+    <pre class="code" data-src="seq_warn.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="seq_warn.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says (same source, saved as seq_warn_clang.cpp)</p><pre class="term" data-run="seq_warn_clang.cpp" data-exit></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="seq_warn.cpp,seq_warn_clang.cpp"></span></p>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-label="g++" data-mood="focus" data-gate="up"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Only a <b>warning</b>, so my gate stays up and the program gets built (exit code 0). g++ says the operation "may be undefined" (it repeats itself four times; that's real). clang++ names the problem exactly: <samp>multiple unsequenced modifications</samp>. Treat warnings like these as errors. <code><span class="flagw">-Wall</span> <span class="flagw">-Wextra</span></code> on every build!</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: two compilers, two different holes">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">But warnings have holes. Here <code>total</code> is never given a starting value, then the loop adds to it. Built with both compilers, never run:</p>
+    <span class="file-tab">spot_uninit.cpp</span>
+    <pre class="code" data-src="spot_uninit.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++ 13.3 says</p><pre class="term" data-run="spot_uninit.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18.1 says (same source, saved as spot_uninit_clang.cpp)</p><pre class="term" data-run="spot_uninit_clang.cpp" data-exit></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="spot_uninit.cpp,spot_uninit_clang.cpp"></span></p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>g++ said nothing! clang++ caught it, and even suggests the fix: <samp>= 0</samp>. In Chapter 9 it was the other way round: g++ warned about a blank field and clang++ was silent. No warning doesn't mean no problem. <b>The fix is a habit, not a tool: give every variable a value when you make it.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ubmean-m" id="ex-ubmean"></div>
+  <script type="application/json" id="ex-ubmean-m">{"q": "Wren's friend says: \"My program reads <code>v[10]</code> on a 3-item vector, but it printed 0 and exited with code 0. So it's fine.\" What's true?", "options": [
+    {"t": "It's fine: exit code 0 means the program succeeded, so the 0 it printed is right", "why": "Exit code 0 only means the program reached the end. Undefined behaviour gives no promise about the exit code either."},
+    {"t": "Undefined behaviour: the 0 means nothing, and another run, compiler or flag could do anything", "correct": true, "why": "Right. The rules give that program no meaning, so no output from it can be trusted, not even one that looks sensible. Run it with the safety tools in Part 5 and they'll stop it at the bad read."},
+    {"t": "It's implementation-defined: g++ documents that a missing cup always reads as 0", "why": "No compiler documents that. Out-of-bounds access is fully undefined."},
+    {"t": "It's a compile error that g++ should have reported, so the build is broken", "why": "The Compiler can't know the index or the size in general, so it builds the program. The danger is at run time."}]}</script>
+
+  <div data-ex="spot" data-model="ex-uninit-m" id="ex-uninit"></div>
+  <script type="application/json" id="ex-uninit-m">{"program": "spot_uninit_clang.cpp", "bug": 6, "prompt": "clang++ warns about line 8, but where is the real mistake? Click the line to fix.", "explain": "The warning points at line 8, where the blank <code>total</code> is first <b>read</b>. The mistake is on line 6, where it was made without a value; clang++'s note points there and suggests <samp>= 0</samp>. Fix: <code>int total = 0;</code> (or <code>int total{};</code>). The Core Guidelines rule ES.20 says it in three words: always initialise an object."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · NIGHT-VISION GOGGLES<small>AddressSanitizer, UndefinedBehaviorSanitizer, library checks, <code>.at()</code> and the safety-net build</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 29: meet the Sanitizer">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Warnings read the source. A <b>sanitizer</b> watches the program <b>while it runs</b>. Add <code><span class="flagw">-fsanitize=address,undefined</span></code> when you build, and g++ adds a guard to every memory access and every risky sum. The program runs a little slower and uses more memory, and the moment it breaks a rule, it stops and writes a report.</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="sanitizer" data-mood="happy"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>I wear night-vision goggles. In the dark room I see every chair: <b>AddressSanitizer</b> (ASan) sees memory: reads past the end (<b>heap-buffer-overflow</b>), memory that was already given back (<b>heap-use-after-free</b>). <b>UndefinedBehaviorSanitizer</b> (UBSan) sees sums: overflow, dividing by zero. I don't guess. I stop you at the exact line, and I tell you what, where and why.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>Two more flags in this book's sanitizer builds: <code><span class="flagw">-fno-sanitize-recover=all</span></code> makes it stop at the <b>first</b> problem instead of carrying on into the dark, and <code><span class="flagw">-fno-omit-frame-pointer</span></code> keeps the "who called whom" trail tidy for the report.</p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+    </div>
+    <p class="sr-only">Picture: the Sanitizer, in a long green coat and big green goggles, holds up a torch.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: an off-by-one loop under the goggles">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">A classic: the loop on line 7 says <code>&lt;=</code> instead of <code>&lt;</code>, so <code>i</code> reaches 3, and line 8 reads <code>scores[3]</code>, a cup that doesn't exist. First the usual build: not a single warning. We don't run that one. Then the same source with the Sanitizer's goggles on:</p>
+    <span class="file-tab">oob.cpp</span>
+    <pre class="code" data-src="oob.cpp"></pre>
+    <p class="who">Usual build: silent</p>
+    <pre class="term wrap" data-run="oob_build.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> in a separate folder, <code>~/cpp-ch11/plain_build</code>, so this plain build can't replace the goggles build below. <code>oob_build.cpp</code>, an identical copy of <code>oob.cpp</code> (the badge checks it), was copied in there as <code>oob.cpp</code>, then the command shown ran word for word.</p>
+    <p><span class="parity" data-same-src="oob.cpp,oob_build.cpp"></span></p>
+    <p class="who">With the goggles on</p>
+    <pre class="term wrap tall" data-run="oob.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the sanitizer runs in this chapter use the settings <code>ASAN_OPTIONS=detect_leaks=1:color=never</code> and <code>UBSAN_OPTIONS=print_stacktrace=1:color=never</code> in the environment. <code>color=never</code> keeps colour codes out of the text; <code>print_stacktrace=1</code> is what makes UBSan reports (panels 33 and 34) end with the <code>#0</code>, <code>#1</code> trail of who called whom. Without it, UBSan prints only its first line. Type <code>export UBSAN_OPTIONS=print_stacktrace=1</code> before running to get the same.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Whoa, that's a wall of text. Don't panic: a sanitizer report is a police report, and it's always laid out the same way. You need about six lines of it. Next panel: read it like a detective. (The <samp>==2==</samp> is the program's process number; yours will differ. The <samp>0x5020...</samp> numbers are memory addresses, which you can mostly skip.)</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" data-asan="rep-oob" aria-label="Panel 31: reading the AddressSanitizer report like a detective">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The same report, with its six important lines numbered. Press each part.</p>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the six parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <script type="application/json" id="rep-oob">{"program": "oob.cpp", "fold": {"from": "Shadow bytes around the buggy address:", "to": "ABORTING", "label": "the shadow-byte map of memory around the bad address"}, "parts": [
+      {"title": "The accusation", "match": "ERROR: AddressSanitizer: heap-buffer-overflow", "note": "What kind of crime: a <b>heap-buffer-overflow</b>. The heap is where a vector keeps its items; overflow means past the end of the block it owns."},
+      {"title": "The evidence", "match": "READ of size 4", "note": "A <b>READ</b> (not a write) of <b>4 bytes</b>: one <code>int</code>. So the program tried to read one whole number from the wrong place."},
+      {"title": "The scene", "match": "oob.cpp:8", "note": "Frame <code>#0</code> is where it happened: <code>main</code>, in <code>oob.cpp</code>, <b>line 8</b>, <code>total += scores[i];</code>. The <code>#1</code>, <code>#2</code> and <code>#3</code> lines below are the system starting your program; skip them."},
+      {"title": "The block", "match": "is located 0 bytes after 12-byte region", "note": "The bad address is <b>0 bytes after</b> a <b>12-byte</b> block. 12 bytes is three 4-byte <code>int</code>s: the three scores. Zero bytes after the end means \"the very next one\": index 3, one past the last."},
+      {"title": "Where the block was born", "match": "oob.cpp:5", "after": "allocated by thread T0 here:", "note": "Under <samp>allocated by thread T0 here:</samp>, skip the <code>std::</code> lines from <code>/usr/include</code> (the vector's insides) and look for <b>your</b> file: <code>oob.cpp</code> line 5, where <code>scores</code> was made with three items."},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer", "note": "One line with everything: the crime, the file and line, and the function. If you only read one line, read this one. Then the shadow map (folded here) and <samp>ABORTING</samp>; the exit code is 1."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-dangle-m" id="ex-dangle"></div>
+  <script type="application/json" id="ex-dangle-m">{"program": "dangle.cpp", "expect": "error", "answer": "heap-use-after-free", "ask": "Built with the goggles on, which kind of error does AddressSanitizer report? (Its name, with dashes, like heap-buffer-overflow.)", "prompt": "<code>first</code> is a reference (Chapter 8's nickname) to cup 0 of the queue. Then line 7 adds a fourth item. A vector that is full moves all its items to a new, bigger block and gives the old block back. What does line 8 read?", "hint": "After line 7, the old 3-item block has been handed back (freed). <code>first</code> still names a cup in it. The error's name says what was used, and when.", "explain": "<samp>heap-use-after-free</samp>: line 8 uses memory after it was freed. The reference didn't move with the items; it still names the old block. The full report on the next panel even says who freed it: <code>push_back</code>, called on line 7."}</script>
+
+  <section class="panel clean" data-asan="rep-dangle" aria-label="Panel 32: a dangling reference, caught">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">The report for <code>dangle.cpp</code>. Same layout, one extra chapter in the story: <b>who gave the block back</b>.</p>
+    <span class="file-tab">dangle.cpp</span>
+    <pre class="code" data-src="dangle.cpp"></pre>
+    <div class="rep-keys" role="group" aria-label="Parts of the report"></div>
+    <div class="rep-text"></div>
+    <p class="narration"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: the parts</summary><ol class="rep-tv"></ol></details>
+    <details class="rep-more"><summary>The complete, unedited report</summary><pre class="rep-full"></pre></details>
+    <script type="application/json" id="rep-dangle">{"program": "dangle.cpp", "fold": {"from": "Shadow bytes around the buggy address:", "to": "ABORTING", "label": "the shadow-byte map of memory around the bad address"}, "parts": [
+      {"title": "The accusation", "match": "ERROR: AddressSanitizer: heap-use-after-free", "note": "Using heap memory <b>after it was freed</b>, that is, after it was given back."},
+      {"title": "The scene", "match": "dangle.cpp:8", "note": "Line 8 reads through <code>first</code>."},
+      {"title": "The block", "match": "is located 0 bytes inside of 12-byte region", "note": "The address is right at the start (<b>0 bytes inside</b>) of a 12-byte block: cup 0 of the old three-item block."},
+      {"title": "Who freed it", "match": "dangle.cpp:7", "after": "freed by thread T0 here:", "note": "Under <samp>freed by thread T0 here:</samp>, the <code>std::</code> lines show <code>push_back</code> moving house (<code>_M_realloc_insert</code>), and your line is <b>7</b>: <code>queue.push_back(4);</code>."},
+      {"title": "Where it was born", "match": "dangle.cpp:5", "after": "previously allocated by thread T0 here:", "note": "And it was first made on line 5. Born on 5, freed on 7, used on 8: the whole story in three line numbers."},
+      {"title": "The summary", "match": "SUMMARY: AddressSanitizer", "note": "The one-line version. The cure: don't keep a reference into a vector while the vector can grow. Keep the <b>index</b> (0) instead, and read <code>queue[0]</code> when you need it."}]}</script>
+  </section>
+
+  <div data-ex="spot" data-model="ex-last-m" id="ex-last-m-box"></div>
+  <script type="application/json" id="ex-last-m">{"program": "spot_last.cpp", "bug": 7, "prompt": "Built with the goggles on. Read the report's scene line, then click the guilty line.", "explain": "The report says <samp>READ of size 4</samp>, <samp>0 bytes after 12-byte region</samp>, scene <samp>spot_last.cpp:7</samp>. Three tickets live in cups 0, 1 and 2, so <code>tickets.size()</code> is 3, one <b>past</b> the last cup. The last item is <code>tickets[tickets.size() - 1]</code>, or simply <code>tickets.back()</code>. (Line 6 printed first because <code>std::endl</code> flushed it before the crash.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 33: UBSan catches an overflowing int">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">UBSan's half of the goggles. A score of 2147483600 gains 20 points a round. An <code>int</code> here can't go past 2147483647.</p>
+    <span class="file-tab">overflow.cpp</span>
+    <pre class="code" data-src="overflow.cpp"></pre>
+    <pre class="term wrap" data-run="overflow.cpp" data-exit></pre>
+    <p class="howmade"><b>How this run was really made:</b> the four <code>#</code> lines appear because of <code>UBSAN_OPTIONS=print_stacktrace=1</code> (panel 30's note).</p>
+    <ol class="readlist" aria-label="Reading the UBSan report">
+      <li><span><b>Where, first:</b> <code>overflow.cpp:6:16</code>, line 6, column 16: the <code>+=</code>.</span></li>
+      <li><span><b>What:</b> <code>runtime error: signed integer overflow</code>, with the actual numbers: <code>2147483640 + 20</code> doesn't fit in an <code>int</code>.</span></li>
+      <li><span><b>Who called:</b> the <code>#0</code> line is the same place again; lower lines are the system. Rounds 1 and 2 were fine and printed (<code>std::endl</code> flushed them); round 3 is where the rule broke.</span></li>
+      <li><span><b>The fix:</b> a bigger type (<code>long long</code> holds up to about 9 &times; 10<sup>18</sup>), or a check before adding.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-povf-m" id="ex-povf"></div>
+  <script type="application/json" id="ex-povf-m">{"program": "predict_ovf.cpp", "prompt": "Built with the goggles on, which stop at the first problem. What does the program print on its <b>normal output</b> before UBSan stops it? (Leave out the report itself.)", "hint": "The largest <code>int</code> here is 2147483647. Add 1 a day, starting from 2147483645. Which day can't be done?", "explain": "Day 1 reaches 2147483646 and day 2 reaches 2147483647, the largest <code>int</code>. Day 3 would need 2147483648, which doesn't fit, so UBSan stops the program on line 6 before anything else prints: <samp>signed integer overflow: 2147483647 + 1</samp>."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 34: the share machine, with the goggles on for zero" data-machine="m-share">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">A machine that shares sweets equally between kids (whole sweets only; leftovers stay in the bag). Ordinary inputs come from <code>share.cpp</code>. The last chip comes from <code>share_zero.cpp</code>, built with the goggles on.</p>
+    <span class="file-tab">share.cpp</span>
+    <pre class="code" data-src="share.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-share">{"label": "share()", "program": "share.cpp", "examples": [
+      {"in": "12, 3", "out": "4", "expectLine": "share(12, 3) gives 4", "outKind": "int", "note": "Twelve sweets, three kids: four each."},
+      {"in": "10, 4", "out": "2", "expectLine": "share(10, 4) gives 2", "outKind": "int", "note": "Whole-number division drops the remainder: 2 each, 2 left in the bag."},
+      {"in": "3, 5", "out": "0", "expectLine": "share(3, 5) gives 0", "outKind": "int", "note": "Fewer sweets than kids: nobody gets a whole one. An edge case, and defined."},
+      {"in": "-7, 2", "out": "-3", "expectLine": "share(-7, 2) gives -3", "outKind": "int", "note": "Division rounds toward zero, so -3.5 becomes -3. Defined by the rules."},
+      {"in": "12, 0", "error": "runtime error: division by zero", "program": "share_zero.cpp", "note": "Zero kids: dividing an <code>int</code> by zero is undefined. With the goggles on, UBSan stops at <code>share_zero.cpp:4</code> and its trail shows the caller, line 8. The cure is a precondition: <code>assert(kids &gt; 0);</code> at the top of <code>share</code>."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 35: one bug, five roads" data-map="map-net">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">One bug, five roads. The same off-by-one loop from panel 30, built five different ways. Every road is a real build. Pick a road and follow Wren.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapn-t mapn-d"><title id="mapn-t">Map: one off-by-one bug, five ways to build it</title><desc id="mapn-d">Start at the off-by-one loop. Road one: fix the loop, and it prints Total: 247. Otherwise keep the bug and build it. With the usual flags it builds silently and running it is a dark room where anything can happen. With the safety net, AddressSanitizer reports a heap-buffer-overflow. With library checks, an assertion inside the vector fails. With .at() instead of square brackets, a std::out_of_range exception stops the program.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-net">{"seed": 11, "size": [690, 610], "start": [[170, 14], [170, 64]],
+      "states": [
+        {"id": "S0", "x": 20, "y": 70, "w": 300, "h": 70, "label": "the off-by-one loop", "sub": "i <= scores.size()"},
+        {"id": "FIX", "x": 400, "y": 70, "w": 270, "h": 70, "label": "Total: 247", "sub": "fixed: i < scores.size()", "kind": "end"},
+        {"id": "HUB", "x": 20, "y": 210, "w": 300, "h": 70, "label": "build it", "sub": "with which flags?"},
+        {"id": "L1", "x": 20, "y": 370, "w": 300, "h": 70, "label": "dark room", "sub": "silent build; never run"},
+        {"id": "L2", "x": 370, "y": 370, "w": 300, "h": 70, "label": "heap-buffer-overflow", "sub": "ASan stops it", "kind": "error"},
+        {"id": "L3", "x": 20, "y": 520, "w": 300, "h": 70, "label": "Assertion failed", "sub": "inside std::vector", "kind": "error"},
+        {"id": "L4", "x": 370, "y": 520, "w": 300, "h": 70, "label": "std::out_of_range", "sub": "an exception stops it", "kind": "error"}
+      ],
+      "transitions": [
+        {"id": "t0", "from": "S0", "to": "HUB", "pts": [[170, 144], [170, 204]], "label": "keep the bug", "lx": 156, "ly": 180, "anchor": "end"},
+        {"id": "tf", "from": "S0", "to": "FIX", "pts": [[322, 105], [394, 105]], "label": "fix", "lx": 358, "ly": 96, "anchor": "middle"},
+        {"id": "h1", "from": "HUB", "to": "L1", "pts": [[90, 284], [90, 364]], "label": "usual flags", "lx": 100, "ly": 330, "anchor": "start", "bug": true},
+        {"id": "h2", "from": "HUB", "to": "L2", "pts": [[322, 258], [520, 258], [520, 364]], "label": "safety net", "lx": 420, "ly": 249, "anchor": "middle", "bug": true},
+        {"id": "h3", "from": "HUB", "to": "L3", "pts": [[250, 284], [250, 330], [345, 330], [345, 555], [326, 555]], "label": "library checks", "lx": 256, "ly": 322, "anchor": "start", "bug": true},
+        {"id": "h4", "from": "HUB", "to": "L4", "pts": [[322, 226], [680, 226], [680, 555], [676, 555]], "label": ".at()", "lx": 600, "ly": 217, "anchor": "middle", "bug": true}
+      ],
+      "paths": [
+        {"id": "plain", "label": "usual flags", "bug": true, "program": "oob_build.cpp", "expect": {"exit": 0}, "steps": [
+          {"on": ["S0"], "output": [], "mood": "focus", "note": "The loop runs <code>i</code> from 0 to 3, and <code>scores</code> has cups 0 to 2."},
+          {"on": ["HUB"], "via": ["t0"], "output": [], "note": "Keep the bug and build it with this book's usual flags, <code>-Wall -Wextra</code>."},
+          {"on": ["L1"], "via": ["h1"], "output": [], "mood": "worried", "note": "It builds: no error, not one warning, exit code 0. Running it would read <code>scores[3]</code> in the dark: the rules say nothing about what follows. We don't run it, so the screen stays empty."}]},
+        {"id": "asan", "label": "safety net", "bug": true, "program": "oob.cpp", "expect": {"exit": 1, "stderrContains": "ERROR: AddressSanitizer: heap-buffer-overflow"}, "steps": [
+          {"on": ["S0"], "output": [], "mood": "focus", "note": "The same loop."},
+          {"on": ["HUB"], "via": ["t0"], "output": [], "note": "Build with <code>-fsanitize=address,undefined</code>."},
+          {"on": ["L2"], "via": ["h2"], "output": [], "error": "ERROR: AddressSanitizer: heap-buffer-overflow", "note": "The goggles stop it at the bad read, line 8, with the full report from panel 31. Exit code 1."}]},
+        {"id": "lib", "label": "library checks", "bug": true, "program": "oob_lib.cpp", "expect": {"exit": 134, "stderrContains": "Assertion '__n < this->size()' failed."}, "steps": [
+          {"on": ["S0"], "output": [], "mood": "focus", "note": "The same loop, saved as <code>oob_lib.cpp</code>."},
+          {"on": ["HUB"], "via": ["t0"], "output": [], "note": "Build with <code>-D_GLIBCXX_ASSERTIONS</code>: it switches on alarms inside g++'s standard library."},
+          {"on": ["L3"], "via": ["h3"], "output": [], "error": "Assertion '__n < this->size()' failed.", "note": "The vector's own <code>operator[]</code> now checks its index, like an <code>assert</code> you didn't have to write: <code>__n</code> (the index, 3) must be less than the size. Exit code 134. It's cheap, but it only knows about the library's own containers."}]},
+        {"id": "at", "label": ".at() instead of [ ]", "bug": true, "program": "oob_at.cpp", "expect": {"exit": 134, "stderrContains": "terminate called after throwing an instance of 'std::out_of_range'"}, "steps": [
+          {"on": ["S0"], "output": [], "mood": "focus", "note": "The same loop, but line 8 says <code>scores.at(i)</code>."},
+          {"on": ["HUB"], "via": ["t0"], "output": [], "note": "The usual build. No special flags needed."},
+          {"on": ["L4"], "via": ["h4"], "output": [], "error": "terminate called after throwing an instance of 'std::out_of_range'", "note": "<code>.at()</code> always checks, in every build, with every compiler. A bad index throws <code>std::out_of_range</code>, which is defined behaviour; uncaught, it stops the program (exit 134). Chapter 15 shows how to catch it."}]},
+        {"id": "fix", "label": "fix the loop", "program": "oob_fixed.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["S0"], "output": [], "mood": "focus", "note": "The loop again."},
+          {"on": ["FIX"], "via": ["tf"], "output": ["Total: 247"], "mood": "happy", "note": "Change <code>&lt;=</code> to <code>&lt;</code>: <code>i</code> runs 0, 1, 2, and the total is 70 + 85 + 92 = 247. The tools found the bug; only you can fix it."}]}
+      ]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 36: library checks and .at(), side by side">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">The two non-sanitizer roads, in full. Same bug, two defined stops, both exit code 134:</p>
+    <div class="pair2 stack">
+      <div><p class="who">-D_GLIBCXX_ASSERTIONS (same source as oob.cpp)</p><pre class="term wrap" data-run="oob_lib.cpp" data-exit></pre></div>
+      <div><p class="who">.at() instead of [ ] (oob_at.cpp)</p><pre class="term wrap" data-run="oob_at.cpp" data-exit></pre></div>
+    </div>
+    <p><span class="parity" data-same-src="oob.cpp,oob_lib.cpp"></span></p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th>Net</th><th>Turn it on</th><th>Sees</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Warnings</td><td class="flag"><code><span class="flagw">-Wall</span> <span class="flagw">-Wextra</span></code></td><td>mistakes visible in the source: some blank variables, <code>i++ + i++</code></td><td>none</td></tr>
+        <tr><td>Library checks</td><td class="flag"><code><span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code></td><td>bad indexes into <code>vector</code>, <code>string</code> and friends</td><td>tiny</td></tr>
+        <tr><td><code>.at()</code></td><td class="flag">write <code>v.at(i)</code></td><td>a bad index, in every build</td><td>tiny</td></tr>
+        <tr><td>ASan</td><td class="flag"><code><span class="flagw">-fsanitize=address</span></code></td><td>reads and writes outside memory you own, freed memory</td><td>about twice as slow</td></tr>
+        <tr><td>UBSan</td><td class="flag"><code><span class="flagw">-fsanitize=undefined</span></code></td><td>overflow, divide by zero and other rule-breaking sums</td><td>small</td></tr>
+        <tr><td>Tests</td><td class="flag">write them</td><td>wrong answers</td><td>your time</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer" data-mood="normal"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>No single net catches everything. My goggles don't see blank variables (that needs a different tool, MemorySanitizer, which g++ doesn't have), and I only see the code paths your program actually runs. Layer the nets: warnings, then library checks, then me, then tests.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fat-m" id="ex-fat"></div>
+  <script type="application/json" id="ex-fat-m">{"program": "fill_at.cpp", "prompt": "Make the off-by-one loop correct, and make line 8 check its index anyway, in every build.", "blanks": [{"line": 7, "text": "<"}, {"line": 8, "text": "at(i)", "accept": ["at( i )"]}], "explain": "<code>i &lt; scores.size()</code> stops at the last real cup, 2. <code>scores.at(i)</code> checks every index and throws <code>std::out_of_range</code> instead of reading in the dark, so if a later edit brings the bug back, you hear about it. Belt and braces: 247."}</script>
+
+  <section class="panel sketch" aria-label="Panel 37: the safety-net build, from now on">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption soft">From this chapter on, build every practice program this way while you work on it. This is the <b>safety-net build</b>:</p>
+    <div class="flagline" aria-label="The safety-net build command, piece by piece">
+      <span>g++</span><span>-std=c++23</span><span class="warn">-Wall</span><span class="warn">-Wextra</span><span>-g</span><span class="net">-fsanitize=address,undefined</span><span class="lib">-D_GLIBCXX_ASSERTIONS</span><span>prog.cpp</span><span>-o prog</span>
+    </div>
+    <p class="caption soft">Cream: warnings. Mint: the Sanitizer's goggles. Blue: the library's own alarms. A correct program runs exactly as usual under all of them; here is one, built with every net (and this book's two extra sanitizer flags from panel 29):</p>
+    <span class="file-tab">safety_ok.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="safety_ok.cpp"></pre>
+      <pre class="term wrap" data-run="safety_ok.cpp" data-exit></pre>
+    </div>
+    <ul class="checklist">
+      <li><b>While you build and test:</b> the safety-net build, every time. Read every warning. A sanitizer report is a gift: it found the bug for you.</li>
+      <li><b>Before you share it:</b> run your tests under the safety net too.</li>
+      <li><b>For a fast finished version:</b> build without the sanitizers, often with <code><span class="flagw">-O2</span></code>. Keep the tests, and remember: the bugs the goggles saw are still bugs without them.</li>
+      <li><b>Another tool to know:</b> <b>Valgrind</b> (Linux) runs an unchanged program inside a checker, slowly, and can also report reads of blank variables. The Professor's lab page shows the command.</li>
+    </ul>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Wren says: </span>"Measure twice, compile once." Turning the lights on costs a little speed. Walking around in the dark costs toes. <b>Lights on while you work.</b></p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tool-m" id="ex-tool"></div>
+  <script type="application/json" id="ex-tool-m">{"q": "A program sometimes reads <code>v[i]</code> with <code>i</code> equal to <code>v.size()</code>. Which net is <b>guaranteed</b> to notice it in a normal, unflagged build on any compiler?", "options": [
+    {"t": "Building with <code>-Wall -Wextra</code> to switch on every warning", "why": "Panel 30: the usual build said nothing. The Compiler usually can't know <code>i</code> or the size."},
+    {"t": "Building with <code>-fsanitize=address</code> (AddressSanitizer)", "why": "It sees it, but only in a build with that flag, and only on compilers that have sanitizers."},
+    {"t": "Writing <code>v.at(i)</code> instead of <code>v[i]</code>", "correct": true, "why": "Right. <code>.at()</code> checks every time, in every build, on every compiler, and throws <code>std::out_of_range</code>. Use it when an index might come from outside, like user input."},
+    {"t": "A test that calls the function once and happens to pass", "why": "A passing test tells you nothing about a read in the dark; panel 26 explains why it might pass by luck."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 38: boss level">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="38"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Alarms and goggles, all mixed up. For each one ask: is the alarm's battery in? Does the alarm only look? Which line did the report name, and which line is really wrong? Is the test right, or the code?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_ndebug.cpp", "prompt": "Boss 1. This program is built <b>with <code>-DNDEBUG</code></b>. What does it print?", "hint": "With the battery out, what is left of line 8? Which lines still run?", "explain": "Under <code>-DNDEBUG</code> the whole of line 8 vanishes, <code>++popped</code> included, so <code>popped</code> stays 0. Line 9 is ordinary code and still runs: the stack drops from 3 items to 2. <samp>2 left, popped 0</samp>. A usual build would say <samp>popped 1</samp>. An assert only looks."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 7, "prompt": "Boss 2. Built with the goggles on. The report's scene is line 8. Click the line that is really wrong.", "explain": "Line 8 is where the bad read <b>happens</b> (<code>laps[4]</code>, <samp>0 bytes after 16-byte region</samp>: four 4-byte ints). But line 8 is innocent; it reads whatever index it's given. Line 7 lets <code>i</code> reach <code>laps.size()</code>, 4. Fix line 7: <code>i &lt; laps.size()</code>. Panel 37's <code>safety_ok.cpp</code> is the fixed program."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "leap_parsons.cpp", "seed": 5, "pin": [1, 2], "alts": [{"order": [1, 2, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12], "program": "leap_parsons_alt.cpp"}], "prompt": "Boss 3. Rebuild the leap-year machine with its rules in the right order, and two regression alarms: 1900 is not a leap year, 2000 is. (The includes are fixed in place.)", "explain": "The order of the three rules is the whole trick: 400 first (2000 is a leap year), then 100 (1900 isn't), then 4. Swap the first two and the 2000 alarm goes off, because 2000 would be called an ordinary year. The two alarms may come in either order, but both come before the print, so the message only appears if they stayed quiet."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "clamp_trace.cpp", "columns": ["input", "expected", "actual", "verdict"], "given": [0, 1], "prompt": "Boss 4. A table of tests for <code>clamp_score</code>, which squeezes a score into 0 to 100. The inputs and expected values are given. Work out the actual value and the verdict for each row.", "explain": "-7 is squeezed up to 0, 250 down to 100, and 50, 100 and 0 pass straight through. The last row FAILs: the code says 0, the test expected 1. But 0 is the right answer! Here <b>the test is wrong</b>, not the code. When a test fails, check both sides of the scales."}</script>
+
+  <div data-ex="predict" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_factorial.cpp", "expect": "error", "answer": "signed integer overflow", "ask": "Built with the goggles on, line 12 prints 120. Then which runtime error does UBSan report? (Its words, like division by zero.)", "prompt": "Boss 5. <code>factorial(n)</code> multiplies 1 &times; 2 &times; ... &times; n. 12! is 479001600, which fits in an <code>int</code>. 13! is 6227020800.", "hint": "The largest <code>int</code> here is 2147483647. Is 6227020800 bigger?", "explain": "<samp>signed integer overflow: 479001600 * 13 cannot be represented in type 'int'</samp>, at line 6 inside <code>factorial</code>, called from line 13. The fix is a bigger type: <code>long long</code> holds 13! easily (and everything up to 20!)."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Which of these four is <b>defined</b> behaviour (the rules say exactly what happens)? Assume <code>std::vector&lt;int&gt; v{1, 2, 3};</code>.", "options": [
+    {"t": "<code>int&amp; r = v[0]; v.push_back(9); std::cout &lt;&lt; r;</code>", "why": "The push may move every item to a new block; <code>r</code> then names freed memory (panel 32)."},
+    {"t": "<code>int big = 2147483647; big += 1;</code>", "why": "Signed overflow: undefined."},
+    {"t": "<code>unsigned int u = 0; u -= 1;</code>", "correct": true, "why": "Right. Unsigned arithmetic is defined to wrap around: <code>u</code> becomes the largest <code>unsigned int</code>. Surprising, often a bug, but defined (and the sanitizers say nothing)."},
+    {"t": "<code>int total; total += v[0];</code>", "why": "<code>total</code> was never set, so reading it is undefined."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 39: what you learned">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">What you learned in Chapter 11</p>
+    <ul class="recap">
+      <li><b>KNOW THE ANSWER, THEN ASK THE QUESTION</b>A test runs code on an input whose right answer you worked out first, and compares expected with actual. A pass proves one input; pick inputs that could break it. A failing test can mean the code is wrong, or the test.</li>
+      <li><b>BUGS LIVE AT THE EDGES</b>Test empty, one, negative, zero and the largest value, plus the exceptions in the problem's own rules (1900!). Coverage shows lines no test ever ran.</li>
+      <li><b>SILENT WHEN FINE, LOUD WHEN NOT</b><code>assert(cond)</code> stops the program with the file, line, function and condition (exit 134). <code><span class="flagw">-DNDEBUG</span></code> takes its battery out, so an assert only looks, never works. <code>static_assert</code> checks build-time facts and can't be switched off.</li>
+      <li><b>CATCH IT ONCE, KEEP THE TRAP FOREVER</b>Write the failing test first, fix, watch it pass, and keep it as a regression test.</li>
+      <li><b>NO RULES APPLY, NOT EVEN "IT CRASHES"</b>Undefined behaviour (out of bounds, signed overflow, divide by zero, blank variables, dangling references, two changes at once) can look fine. Implementation-defined: documented per compiler. Unspecified: the compiler picks quietly.</li>
+      <li><b>LIGHTS ON WHILE YOU WORK</b>The safety-net build (panel 37): warnings, both sanitizers and the library's own checks, every time. Read reports like a detective: accusation, evidence, scene, block, birth, summary. Prefer <code>.at()</code> for indexes from outside.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Alarms on the ceiling, goggles on my head, traps that never leave the shelf. Now my workshop is safe enough to build something big.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 40: next time, The Bank Vault">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Coming up in Chapter 12: The Bank Vault</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 212" role="img" aria-label="Teaser picture: a round bank-vault door with a spoked wheel and a keyhole, labelled PRIVATE, next to a teller window labelled deposit and withdraw.">
+        <circle cx="110" cy="95" r="78" fill="#D9D9D9" stroke="#111" stroke-width="5"/>
+        <circle cx="110" cy="95" r="54" fill="#F3F3F3" stroke="#111" stroke-width="4"/>
+        <g stroke="#111" stroke-width="6" stroke-linecap="round"><path d="M110 55 V135 M70 95 H150 M82 67 L138 123 M138 67 L82 123"/></g>
+        <circle cx="110" cy="95" r="12" fill="#FFD60A" stroke="#111" stroke-width="4"/>
+        <rect x="44" y="178" width="132" height="30" rx="4" fill="#FFF6CC" stroke="#111" stroke-width="3"/>
+        <text x="110" y="201" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111">PRIVATE</text>
+        <rect x="236" y="20" width="210" height="170" rx="10" fill="#DDE8FF" stroke="#111" stroke-width="4"/>
+        <rect x="254" y="40" width="174" height="80" rx="6" fill="#FFFFFF" stroke="#111" stroke-width="3"/>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="22" fill="#111" text-anchor="middle"><text x="341" y="74">deposit()</text><text x="341" y="104">withdraw()</text></g>
+        <text x="341" y="164" text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="28" letter-spacing="2" fill="#111">TELLER</text>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Asserts guard a machine's door. What if a whole <b>type</b> could guard its own data? Next time: <b>classes</b>. The money sits in a locked vault (private), and the only way in is the teller window (member functions), where every request is checked against the rules. A balance can never go below zero, because the class won't let it.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch10.html">← Ch 10 · Menus and Pause Buttons</a><a class="next" href="ch12.html">Ch 12 · The Bank Vault →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how assert vanishes, how the goggles see, and why UB changes with -O2</summary>
+    <div class="page-body">
+      <h3>assert is a macro</h3>
+      <p><code>assert</code> is not a function. It's a <b>macro</b>: a piece of text the preprocessor (Chapter 10's <code>#include</code> helper) swaps in before compiling. Roughly: if <code>NDEBUG</code> is defined, <code>assert(anything)</code> becomes <code>((void)0)</code>, which does nothing; otherwise it becomes "if the condition is false, print the message and call <code>std::abort()</code>". That's why the condition's own text appears in the message (the macro turns it into a string), and why work inside it disappears entirely under <code><span class="flagw">-DNDEBUG</span></code>: the code is never even compiled. It also means <code>NDEBUG</code> must be defined <b>before</b> <code>&lt;cassert&gt;</code> is included, which the <code><span class="flagw">-D</span></code> flag guarantees.</p>
+      <h3>How AddressSanitizer sees the furniture</h3>
+      <p>ASan keeps a secret second map of memory, the <b>shadow memory</b>: one shadow byte for every 8 bytes of your program's memory, saying how many of those 8 bytes you may touch. Around every block it hands out, it leaves a few bytes of poisoned "no entry" space, called <b>redzones</b>. Every read and write in your program is compiled with a tiny check of the shadow first. In panel 31's folded map, <code>00</code> means "all 8 bytes are yours", <code>[04]</code> marks the bad address's group, where only the first 4 bytes are yours (12 bytes = 8 + 4), and <code>fa</code> is a heap redzone. Freed blocks are poisoned too (<code>fd</code>) and kept out of use for a while, which is how <code><span class="flagw">heap-use-after-free</span></code> is caught.</p>
+      <p><b>A blind spot.</b> ASan only checks code that was compiled with it, and this machine's standard library (libstdc++) wasn't. A <code>std::string</code> also keeps short text in a small buffer inside the string object itself, so a read a few letters past the end can stay inside memory ASan thinks is fine. Some misuse of <code>std::string</code> therefore goes unreported. <code><span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code> and <code>.at()</code> (panel 36) check string indexes too. (This gap comes from the sanitizer and library documentation and from Chapter 8's notes; no program on this page shows it, because a run that ASan misses would be undefined behaviour shown as output.)</p>
+      <h3>How UBSan sees sums</h3>
+      <p>UBSan wraps each risky operation in a check: before <code>a + b</code> on <code>int</code>s, "would this overflow?"; before <code>a / b</code>, "is <code>b</code> zero?". Most checks are cheap, which is why UBSan is often left on in testing for good.</p>
+      <h3>Why UB changes between builds</h3>
+      <p>An optimiser is allowed to assume UB never happens. Given <code>for (int i = start; i &lt;= end; ++i)</code>, it may assume <code>i</code> never overflows, so the loop must end, and it builds faster code on that basis. If the assumption is broken, the faster code does whatever it does. Different compilers, versions and <code><span class="flagw">-O</span></code> levels make different assumptions, so the same broken program can behave differently under each. Experts call the most surprising cases "time travel": because the compiler reasons about the whole function, code <b>before</b> the UB can be affected too.</p>
+      <h3>Unsigned numbers are different</h3>
+      <p>Unsigned types never overflow in the UB sense: arithmetic on them is defined to wrap around modulo 2<sup>N</sup> (for a 32-bit <code>unsigned int</code>, 2<sup>32</sup>). That's why <code>0u - 1</code> is 4294967295 and why <code>v.size() - 1</code> on an empty vector is a huge number (Chapter 9). The sanitizers don't report it, because it isn't against the rules; it's just usually a bug.</p>
+      <h3>Two compilers, one library</h3>
+      <p>On this machine clang++ uses g++'s standard library (libstdc++), so <code><span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code> works with both; only the wording of the message differs. Here is clang++'s run of the same program:</p>
+      <pre class="term wrap" data-run="oob_lib.cpp" data-alt data-exit></pre>
+      <p>clang++ also prints types with a space before <code>&amp;</code>: its alarm for <code>guarded.cpp</code> names <samp>int biggest(const std::vector&lt;int&gt; &amp;)</samp>. Same meaning.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Test frameworks.</b> Real projects use a framework such as doctest, Catch2 or GoogleTest: each test gets a name, failures show expected and actual side by side, and one command runs thousands of tests. It's the <code>check</code> function from panel 13, grown up. This book meets one in a later chapter.</li>
+        <li><b>Continuous integration.</b> Many teams make a server build and test every change automatically, often once with sanitizers and once with optimisation, and refuse to accept a change that turns any test red.</li>
+        <li><b>Fuzzing.</b> A fuzzer feeds a program millions of random or mutated inputs under ASan and UBSan, hunting for edge cases nobody thought of. Big browser and operating-system projects run fuzzers all day.</li>
+        <li><b>Hardened libraries.</b> Library checks like <code>_GLIBCXX_ASSERTIONS</code> are cheap enough that some Linux distributions build their packages with them switched on. libc++ (used by Apple's clang) has a similar "hardening mode", and Microsoft's library checks indexes in debug builds.</li>
+        <li><b>Asserts in release builds.</b> Some projects keep certain asserts on even in finished programs, because stopping loudly is safer than carrying on with broken data. Others write their own always-on check macros.</li>
+        <li><b>Calendars really are hard.</b> Real date code relies on well-tested libraries (C++20's <code>&lt;chrono&gt;</code> has calendar types) rather than hand-written rules.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"It printed the right answer, so it works."</b> For that input, on that day. Test the edges; build with the safety net.</li>
+        <li><b>"All tests pass, so there are no bugs."</b> The leap-year tests passed with a bug inside (panel 14).</li>
+        <li><b>"Asserts check user input."</b> They vanish with <code><span class="flagw">-DNDEBUG</span></code>. User input needs real checks.</li>
+        <li><b>"<code>assert(x = 5)</code> checks x is 5."</b> One <code>=</code> assigns. Use <code>==</code>, and keep work out of asserts.</li>
+        <li><b>"UB means the program crashes."</b> It means anything, including working, or printing a believable wrong number.</li>
+        <li><b>"Exit code 0 means no UB."</b> UB promises nothing, not even an exit code.</li>
+        <li><b>"Implementation-defined is the same as undefined."</b> Implementation-defined is documented and safe on one compiler; undefined is never safe.</li>
+        <li><b>"No warnings means no UB."</b> Panels 28 and 30: two compilers, two different holes, and an off-by-one loop with no warning at all.</li>
+        <li><b>"The sanitizer said nothing, so the program is correct."</b> It only checks the paths that ran, and it doesn't check answers or blank variables.</li>
+        <li><b>"The report's line number is the bug."</b> It's where the rule broke. The cause may be a line earlier (Boss 2) or in a caller.</li>
+        <li><b>"Unsigned numbers are safe."</b> They're defined, not safe: 0 &minus; 1 is over four billion.</li>
+        <li><b>"I'll add the safety net later."</b> The longer you wait, the more places a bug could hide. Lights on from the start.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Asserts and NDEBUG</h3>
+      <p>Make a folder <code><span class="flagw">cpp-ch11</span></code>, save <code>alarm.cpp</code>, and build it as the terminal shows: <code>g++ <span class="flagw">-std=c++23</span> <span class="flagw">-Wall</span> <span class="flagw">-Wextra</span> <span class="flagw">-g</span> alarm.cpp <span class="flagw">-o</span> alarm</code>, then <code>./alarm</code> (Windows PowerShell: <code>.\alarm.exe</code>). Then add <code><span class="flagw">-DNDEBUG</span></code> and run it again. With Microsoft's compiler: <code>cl /std:c++20 /W4 /EHsc alarm.cpp</code>, and <code>/DNDEBUG</code> to switch asserts off. Visual Studio's "Release" configuration defines <code>NDEBUG</code> for you, which surprises many people. (Microsoft's compiler was not run for this course.)</p>
+      <h3>2. The safety-net build</h3>
+      <ul>
+        <li><b>Linux (g++ or clang++):</b> <code>g++ <span class="flagw">-std=c++23</span> <span class="flagw">-Wall</span> <span class="flagw">-Wextra</span> <span class="flagw">-g</span> <span class="flagw">-fsanitize=address,undefined</span> <span class="flagw">-D_GLIBCXX_ASSERTIONS</span> oob.cpp <span class="flagw">-o</span> oob</code>, then <code>./oob</code>. On some distributions clang++ needs its sanitizer runtime package installed first; on this course's machine it isn't, which is why every report here comes from g++.</li>
+        <li><b>macOS:</b> Apple's clang (also called <code>g++</code> there) supports <code><span class="flagw">-fsanitize=address,undefined</span></code>. Its library is libc++, so <code><span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code> does nothing; recent versions offer <code>-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST</code> instead. Reports look the same, with different addresses and paths.</li>
+        <li><b>Windows (MSVC):</b> <code>cl /std:c++20 /W4 /EHsc /Zi /fsanitize=address oob.cpp</code> gives AddressSanitizer. MSVC has no UndefinedBehaviorSanitizer; its debug builds (<code>/MDd</code>) check vector indexes instead.</li>
+        <li><b>Not run here:</b> the macOS and Windows notes come from Apple's, LLVM's and Microsoft's documentation (Go deeper); only the Linux g++ commands were run for this page.</li>
+      </ul>
+      <h3>3. Try these on purpose</h3>
+      <ol>
+        <li>In <code>tickets.cpp</code>, move the work out of the assert (<code><span class="flagw">--tickets;</span></code> then <code>assert(tickets &gt;= 0);</code>) and build with and without <code><span class="flagw">-DNDEBUG</span></code>. Same answer now?</li>
+        <li>Change <code>is_leap</code> in <code>leap_fixed.cpp</code> so the 100 rule comes before the 400 rule. Which alarm goes off?</li>
+        <li>Build <code>oob.cpp</code> with <code><span class="flagw">-fsanitize=address</span></code> only, then <code><span class="flagw">-fsanitize=undefined</span></code> only. Which one sees the bad read?</li>
+        <li>Build <code>overflow.cpp</code> under the safety net <b>without</b> <code><span class="flagw">-fno-sanitize-recover=all</span></code>. UBSan reports, then lets the program carry on into the dark, so the rounds after the report mean nothing.</li>
+        <li>Add <code>show(2400);</code> and <code>show(-4);</code> to <code>leap_machine.cpp</code>. Work out the answers first, then run it.</li>
+        <li>Coverage: add tests for 1900 and 2000 to <code>coverage.cpp</code>, rebuild, delete <code>coverage.gcda</code> (it adds up counts across runs), run and re-run <code>gcov</code>. Do the <code>#####</code> marks go away? On macOS, use <code><span class="flagw">llvm-cov</span> gcov</code> instead of <code>gcov</code>.</li>
+      </ol>
+      <h3>4. Valgrind (Linux)</h3>
+      <p>Valgrind runs an ordinary build (no sanitizer flags) inside a checker: <code>g++ <span class="flagw">-std=c++23</span> <span class="flagw">-g</span> oob.cpp <span class="flagw">-o</span> oob</code> then <code>valgrind ./oob</code>. It's roughly 10 to 50 times slower than normal and needs no special flags, and also reports decisions based on blank variables. Don't combine it with an ASan build. It isn't available for recent macOS or for Windows. (Valgrind was not run for this page, so no Valgrind output is shown.)</p>
+      <h3>5. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) can run programs with <code><span class="flagw">-fsanitize=address,undefined</span></code> in the browser for many compilers: paste <code>oob.cpp</code>, add the flags, and switch on its option to run the program.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>test</dt><dd>Running code on an input whose right answer you already know, and comparing.</dd>
+        <dt>test case</dt><dd>One input with its expected answer.</dd>
+        <dt>expected / actual</dt><dd>The answer you worked out by hand / the answer the code really gave.</dd>
+        <dt>pass / fail</dt><dd>Expected and actual match / don't match.</dd>
+        <dt>edge case</dt><dd>An input at the limits: empty, one item, negative, zero, the largest value, or an exception in the problem's rules.</dd>
+        <dt>assert</dt><dd>A run-time check from <code>&lt;cassert&gt;</code>: does nothing if true; if false, prints the file, line, function and condition, then aborts (exit 134 here).</dd>
+        <dt>precondition</dt><dd>A rule a caller must keep before calling a function, such as "the carton is not empty".</dd>
+        <dt>NDEBUG</dt><dd>A name that, when defined (<code><span class="flagw">-DNDEBUG</span></code>), turns every <code>assert</code> into nothing.</dd>
+        <dt>static_assert</dt><dd>A check the Compiler makes while building; a false condition is a compile error. Not affected by <code>NDEBUG</code>.</dd>
+        <dt>test-first</dt><dd>Writing the test that shows a bug (and watching it fail) before fixing the bug.</dd>
+        <dt>regression test</dt><dd>A test kept forever so that a fixed bug can't come back unnoticed.</dd>
+        <dt>code coverage</dt><dd>A count of which lines (or branches) ran during the tests; <code>gcov</code> reports it for g++ builds made with <code><span class="flagw">--coverage</span></code>.</dd>
+        <dt>undefined behaviour (UB)</dt><dd>Something the rules forbid and give no meaning; after it, anything can happen.</dd>
+        <dt>implementation-defined</dt><dd>A detail each compiler must choose and document, such as <code>sizeof(int)</code>.</dd>
+        <dt>unspecified</dt><dd>A detail where the rules allow several outcomes and the compiler may pick any without saying, such as the order arguments are worked out.</dd>
+        <dt>signed integer overflow</dt><dd>A result too big or too small for a signed type like <code>int</code>; undefined.</dd>
+        <dt>dangling reference</dt><dd>A reference to something that no longer exists, such as a vector cup after the vector moved its items.</dd>
+        <dt>unsequenced modification</dt><dd>Changing one variable twice in a single expression with no order between the changes.</dd>
+        <dt>sanitizer</dt><dd>A build option that adds checks to a program so it reports rule-breaking while it runs.</dd>
+        <dt>AddressSanitizer (ASan)</dt><dd><code><span class="flagw">-fsanitize=address</span></code>: catches bad memory reads and writes, such as heap-buffer-overflow and heap-use-after-free.</dd>
+        <dt>UndefinedBehaviorSanitizer (UBSan)</dt><dd><code><span class="flagw">-fsanitize=undefined</span></code>: catches overflow, division by zero and other undefined operations.</dd>
+        <dt>heap</dt><dd>The memory area where a vector (and other growable things) keep their items.</dd>
+        <dt>heap-buffer-overflow</dt><dd>Reading or writing past the end (or before the start) of a block on the heap.</dd>
+        <dt>heap-use-after-free</dt><dd>Using heap memory after it was given back.</dd>
+        <dt>stack trace</dt><dd>The numbered <code>#0</code>, <code>#1</code>... lines: where it happened, then who called that, and so on.</dd>
+        <dt>_GLIBCXX_ASSERTIONS</dt><dd>A flag that switches on cheap checks inside g++'s standard library, such as vector indexes.</dd>
+        <dt>safety-net build</dt><dd>This book's habit: <code><span class="flagw">-Wall</span> <span class="flagw">-Wextra</span> <span class="flagw">-g</span> <span class="flagw">-fsanitize=address,undefined</span> <span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code>.</dd>
+        <dt>Valgrind</dt><dd>A Linux tool that runs an unchanged program inside a slow memory checker.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/error/assert">cppreference: assert</a> and <a href="https://en.cppreference.com/w/cpp/language/static_assert">static_assert declaration</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/language/ub">cppreference: undefined behavior</a> (with implementation-defined and unspecified behaviour) and <a href="https://en.cppreference.com/w/cpp/language/eval_order">order of evaluation</a></li>
+        <li><a href="https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html">GCC manual: instrumentation options</a> (<code><span class="flagw">-fsanitize=address</span></code>, <code><span class="flagw">-fsanitize=undefined</span></code>, <code><span class="flagw">-fno-sanitize-recover</span></code>) and <a href="https://gcc.gnu.org/onlinedocs/gcc/Gcov.html">gcov</a></li>
+        <li><a href="https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_macros.html">libstdc++ manual: macros</a> (<code>_GLIBCXX_ASSERTIONS</code>)</li>
+        <li><a href="https://clang.llvm.org/docs/AddressSanitizer.html">Clang: AddressSanitizer</a> and <a href="https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html">UndefinedBehaviorSanitizer</a>, with the full lists of what each detects</li>
+        <li><a href="https://learn.microsoft.com/en-us/cpp/sanitizers/asan">Microsoft Learn: AddressSanitizer in MSVC</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: I.5 (state preconditions), I.6 (prefer <code>Expects()</code> for preconditions), E.7 (state your preconditions), ES.20 (always initialise), ES.43 (no undefined order of evaluation), ES.103 and ES.105 (don't overflow, don't divide by zero)</li>
+        <li><a href="https://valgrind.org/docs/manual/quick-start.html">Valgrind quick start</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/uninitialized-variables-and-undefined-behavior/">learncpp.com: uninitialized variables and undefined behavior</a>, and its lesson on <a href="https://www.learncpp.com/cpp-tutorial/assert-and-static_assert/">assert and static_assert</a>.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, whose Diagnostics chapter has short visual pages on warnings, tests, AddressSanitizer, UBSan and valgrind.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to run any example here with the sanitizer flags on many compilers.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code><span class="flagw">/home/you/cpp-ch11</span></code>. Programs were built with g++ 13.3 (<code><span class="flagw">-std=c++23</span> <span class="flagw">-Wall</span> <span class="flagw">-Wextra</span> <span class="flagw">-g</span></code>, shown on the page; extra flags such as <code><span class="flagw">-DNDEBUG</span></code> and <code><span class="flagw">-D_GLIBCXX_ASSERTIONS</span></code> appear in each terminal) and every one of the 47 programs except the sanitizer builds was built and run a second time with clang++ 18.1 for comparison, with <code>g++</code> swapped for <code>clang++</code> in each command. 7 runs differ: the order of evaluating arguments (panel 23, unspecified, shown side by side), the wording of the <code>static_assert</code> error (panel 10), the warnings in panels 27 and 28 (clang++'s are shown from copies built with clang++ directly), the wording of assertion messages (<code>guarded.cpp</code> and <code>oob_lib.cpp</code>, notebook), and the coverage build in panel 19, which clang++ can't link on this machine because its coverage runtime isn't installed. Sanitizer builds (<code><span class="flagw">-fsanitize=address,undefined</span> <span class="flagw">-fno-sanitize-recover=all</span> <span class="flagw">-fno-omit-frame-pointer</span></code>) ran with g++ only, because clang++'s sanitizer runtime is not installed on this machine (a clang++ <code><span class="flagw">-fsanitize=address</span></code> build fails to link); they ran with address randomisation off inside a fresh process namespace, which is why every report says <code>==2==</code> and shows the same addresses each time. Programs with undefined behaviour were never run without a sanitizer: the builds in panels 27, 28 and 30 and the map's "usual flags" road are compile-only (identical copies, checked by a badge, are used where one source is built two ways), and the plain-run behaviour in panel 26 is described in words from this course's research notes (its C++ research map), never shown as output. Aborts and uncaught exceptions are defined stops, recorded with exit code 134. The walk-through, the machines, the map and the annotated reports are teaching models; each checks itself against those runs and says so. The sorting game in panel 24 runs no code.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (assert and static_assert; uninitialized variables and undefined behaviour), hacking C++'s Diagnostics lessons (where sanitizers sit in a beginner path), cppreference (assert, static_assert, undefined behaviour, order of evaluation), the GCC and Clang sanitizer documentation, the C++ Core Guidelines rules named in this course's plan (E.7, I.5, I.6, ES.20, ES.43, ES.103 to ES.105), the C++ research map for this course (module rows B21 and B22), and the g++ 13.3, clang++ 18.1 and gcov diagnostics themselves, recorded above.</p>
+  <p>Wren, the Compiler, the Professor, the Sanitizer and the critters (Sneak, Tumble, Zilch, the brick and the ghost) are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; if your system asks for reduced motion, movement stops and only short fades remain.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1232 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Signposts and Sticky Printers</title>
+<meta name="description" content="Chapter 27 of the Pip &amp; Friends C++ book, a comic course: designing error handling (std::optional, std::expected, error codes, exceptions and assertions; your own exception families, catch order and rethrowing; noexcept and the exception-safety guarantees), then streams in depth (sticky manipulators, stream state flags, mixing &gt;&gt; and getline, binary files) and std::filesystem.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch27.css">
+<script defer src="../data/cpp-ch27.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch26.html">&larr; Ch 26</a><span aria-current="page">Ch 27 of 29</span><a href="ch28.html">Ch 28 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 27</p>
+    <h1 id="cover-h">SIGNPOSTS AND STICKY PRINTERS</h1>
+    <div class="row two" style="align-items:end;justify-items:center">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="pic-mid" viewBox="0 0 280 220" role="img" aria-label="A road signpost with two arms, one saying value and one saying error, standing next to a desk printer whose settings dial is stuck on BOLD, printing a page of bold lines.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M60 210 V40" fill="none" stroke-width="7"/>
+          <path d="M60 46 H130 L148 62 L130 78 H60 Z" fill="#C9F2D9"/>
+          <path d="M60 96 H-6 L-20 112 L-6 128 H60 Z" fill="#FFE1E1" transform="translate(26 0)"/>
+          <rect x="150" y="120" width="120" height="70" rx="10" fill="#DDE8FF"/>
+          <path d="M166 120 V86 H254 V120" fill="#FFFFFF"/>
+          <path d="M166 190 V206 H254 V190" fill="#FFFFFF"/>
+          <path d="M178 98 H242 M178 108 H232" fill="none" stroke-width="5"/>
+          <circle cx="248" cy="152" r="13" fill="#FFD60A"/><path d="M248 152 L256 142" fill="none" stroke-width="3.5"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+          <text x="70" y="68" font-size="17">value</text>
+          <text x="32" y="118" font-size="17">error</text>
+          <text x="172" y="160" font-size="17">BOLD</text>
+        </g>
+      </svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves hello. Next to her: a signpost pointing two ways, value and error, and a printer stuck on BOLD.</p>
+    <p class="caption blurb">Chapter 15 taught you to pull the fire alarm. Today you learn when <b>not</b> to: some trouble deserves a quiet <b>signpost</b> on the normal road (<code>std::optional</code>, <code>std::expected</code>, error codes), some an <b>emergency exit</b> (exceptions), and some a <b>factory test</b> before the car ever ships (assertions). You'll build your own family of alarms, pass an alarm on without spoiling it, and learn what <code>noexcept</code> really promises. Then the printer half: stream settings that <b>stick</b> until you change them back, the four warning lamps on every stream, the leftover newline that eats a name, binary files, and the <code>std::filesystem</code> toolbox. About 130 minutes, with 25 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Signposts on the road: choosing how to report trouble</a></li>
+      <li><a href="#part-2">Your own alarms: families, catch order and rethrowing</a></li>
+      <li><a href="#part-3">Promises and guarantees: noexcept and exception safety</a></li>
+      <li><a href="#part-4">Sticky printers: manipulators that stay on</a></li>
+      <li><a href="#part-5">Stream health: four lamps, leftovers and binary files</a></li>
+      <li><a href="#part-6">The filing cabinet: std::filesystem</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · SIGNPOSTS ON THE ROAD<small>optional, expected, error codes, exceptions and assertions: which one, when?</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: not every problem is a fire">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Wren is driving the workshop van to a job. Along the way: a road that's closed today, a flat tyre, and a van that left the factory with a loose brake cable. Three problems. Would you deal with all three the same way?</p>
+    <div class="scene">
+      <svg class="char" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>A closed road is <b>normal</b>: a sign tells me, I take the other road, no drama. A flat tyre means I <b>can't finish the trip</b>: I pull into the emergency lane and someone else takes over. And a loose brake cable? That should have been caught <b>at the factory</b>, before the van was ever sold. Code has the same three kinds of trouble.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Ember says: </span>And only one of those is my job. If you pull my alarm every time a road is closed, I'll never get any sleep. <b>Not every problem is a fire.</b></p></div>
+      <svg class="char" data-char="marshal" data-mood="happy" data-arms="stop"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren points ahead, thinking. Ember the fire marshal holds up a hand: stop.</p>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 2: four tools on the road">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Big idea: C++ gives you several ways to report trouble. Each one fits a different kind of problem.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 250" role="img" aria-label="A road from left to right. On the road: a green signpost labelled optional and expected, meaning take the other road. A small dashboard lamp labelled error code. An exit ramp off the road with a red sign labelled exception, leading to a fire marshal's badge. At the far left, before the road starts, a factory with a checklist labelled assert.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M110 170 H650 M110 214 H650" fill="none"/>
+        <path d="M150 192 H180 M220 192 H250 M290 192 H320 M360 192 H390 M430 192 H460" fill="none" stroke-width="3"/>
+        <path d="M10 214 V120 L40 100 V120 L70 100 V120 L100 100 V214 Z" fill="#DDE8FF"/>
+        <rect x="28" y="140" width="50" height="58" rx="4" fill="#FFFFFF"/>
+        <path d="M36 156 l6 6 l10 -12 M36 180 l6 6 l10 -12" fill="none" stroke-width="3"/>
+        <path d="M210 170 V70" fill="none" stroke-width="6"/>
+        <path d="M210 66 H312 L332 96 L312 126 H210 Z" fill="#C9F2D9"/>
+        <circle cx="390" cy="110" r="20" fill="#FFD60A"/><path d="M380 110 h20 M390 100 v20" fill="none" stroke-width="3"/>
+        <path d="M390 130 V170" fill="none"/>
+        <path d="M480 170 Q540 150 600 60" fill="none" stroke-width="5"/>
+        <path d="M510 170 Q570 150 630 60" fill="none" stroke-width="5"/>
+        <rect x="520" y="86" width="56" height="34" rx="4" fill="#FF5A4E"/>
+        <path d="M600 18 h50 v24 q0 18 -25 26 q-25 -8 -25 -26 z" fill="#FFD60A"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="218" y="90" font-size="16">optional</text>
+        <text x="218" y="114" font-size="16">expected</text>
+        <text x="345" y="80" font-size="16">error code</text>
+        <text x="432" y="108" font-size="16">exception</text>
+        <text x="16" y="240" font-size="15">assert</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="218" y="160">a signpost</text>
+        <text x="400" y="160">a lamp</text>
+        <text x="540" y="200">emergency exit</text>
+        <text x="110" y="240">tested at the factory</text>
+      </g>
+    </svg></div>
+    <div class="cards4">
+      <div class="card4"><p class="where">SIGNPOST</p><code class="big">std::optional / std::expected</code><p>The answer itself says "there's a value" or "there isn't (and here's why)". The caller looks at the sign on the very next line. Normal, expected trouble.</p></div>
+      <div class="card4 dotted"><p class="where">DASHBOARD LAMP</p><code class="big">an error code</code><p>A small number or code handed back next to the result, the old C way. Cheap, but easy to drive past without looking.</p></div>
+      <div class="card4 dashed"><p class="where">EMERGENCY EXIT</p><code class="big">throw</code><p>The function can't do its job and the caller can't just carry on. Ember takes over, somewhere further up (Chapter 15).</p></div>
+      <div class="card4 cream"><p class="where">FACTORY TEST</p><code class="big">assert(...)</code><p>Checks for <b>programmer</b> mistakes while you build and test. Not for bad user input: that's not a bug in your code.</p></div>
+    </div>
+    <p class="sr-only">Four cards. Signpost: optional and expected, for expected trouble the caller checks at once. Dashboard lamp, dotted border: an error code, cheap but easy to ignore. Emergency exit, dashed border: throw, when the job can't be done. Factory test, cream: assert, for programmer mistakes during testing.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: optional says no, but not why">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">A job everyone needs: turn typed text into an age. Chapter 20's <code>std::optional</code> is a box that's either full or empty. <code>parse_age</code> hands back an empty box (<code>std::nullopt</code>) for anything it can't accept.</p>
+    <span class="file-tab">age_optional.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="age_optional.cpp"></pre>
+      <pre class="term" data-run="age_optional.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Four times <samp>no age</samp>. Was it letters? Empty? Too big? The box can only say "empty". For a lookup ("is there a part in bin 7?") that's plenty. For checking what a person typed, they deserve to hear <b>what</b> was wrong.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: expected carries the reason">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">C++23 added <code>std::expected&lt;T, E&gt;</code> (header <code>&lt;expected&gt;</code>): a box that holds <b>either</b> the value you wanted (a <code>T</code>) <b>or</b> an error explaining why not (an <code>E</code>). Here <code>T</code> is <code>int</code> and <code>E</code> is <code>std::string</code>. To hand back an error, wrap it in <code>std::unexpected{...}</code> (lines 6, 7, 10 and 14). A plain <code>return age;</code> (line 15) hands back the value.</p>
+    <span class="file-tab">age_expected.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="age_expected.cpp"></pre>
+      <pre class="term" data-run="age_expected.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the code">
+      <li><span><b>Line 21</b>: <code>if (age)</code> asks "is there a value?", exactly like an optional.</span></li>
+      <li><span><b>Line 22</b>: <code>*age</code> opens the box and takes the value out.</span></li>
+      <li><span><b>Line 24</b>: <code>age.error()</code> takes out the reason instead. Only call it when there's no value.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Same signpost, but now it has <b>two arms</b>: one says "value this way", the other says "error, and here's why". Nothing is thrown, nothing jumps anywhere: the reason travels back on the normal road, as part of the return value. <b>Signposts for the expected, alarms for the exceptional.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 5: the parse_age machine" data-machine="m-age">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Feed the machine some text and see which arm of the signpost comes out. Every answer is a real line from <code>age_expected.cpp</code>.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-age">{"label": "parse_age", "program": "age_expected.cpp", "examples": [
+      {"in": "\"36\"", "out": "36", "expectLine": "\"36\" -> 36", "outKind": "value (int)", "note": "Only digits, three or fewer, not above 150: the value arm. <code>if (age)</code> is true and <code>*age</code> is 36."},
+      {"in": "\"abc\"", "out": "error: not a number", "expectLine": "\"abc\" -> error: not a number", "outKind": "unexpected (string)", "note": "Line 9 meets <code>a</code>, which isn't a digit, so line 10 hands back <code>std::unexpected{\"not a number\"}</code>."},
+      {"in": "\"-4\"", "out": "error: not a number", "expectLine": "\"-4\" -> error: not a number", "outKind": "unexpected (string)", "note": "A minus sign isn't a digit either. The message could be friendlier (\"ages can't be negative\"): with <code>expected</code> you choose the words."},
+      {"in": "\"\"", "out": "error: empty", "expectLine": "\"\" -> error: empty", "outKind": "unexpected (string)", "note": "Nothing typed at all. Line 6 catches it first."},
+      {"in": "\"200\"", "out": "error: too old", "expectLine": "\"200\" -> error: too old", "outKind": "unexpected (string)", "note": "A perfectly good number, but not a sensible age. Line 14."}]}</script>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 6: clang has never heard of expected">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="6"></svg>
+    <p class="caption">One catch: <code>std::expected</code> is new, and not every toolchain has it yet. Here's the very same file built with this machine's second compiler, clang++ 18.1. It uses the same standard library as g++ (libstdc++ 13), but that library only switches <code>expected</code> on for compilers it knows can handle it.</p>
+    <span class="file-tab">age_expected.cpp · clang++ 18.1</span>
+    <pre class="term wrap tall" data-run="age_expected.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="clang++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Read only the <b>first</b> error: line 5, <samp>no template named 'expected' in namespace 'std'</samp>. Everything after it is fallout: once I don't know what <code>expected</code> is, <code>unexpected</code> makes no sense either. Nothing runs until everything checks out. So on this page, every <code>expected</code> program is <b>g++ only</b>. Newer clang with newer libraries, and Microsoft's compiler, list it as supported (not run for this book).</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler robot with a red beacon and its gate down, labelled clang++.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fillexp-m" id="ex-fillexp"></div>
+  <script type="application/json" id="ex-fillexp-m">{"program": "fill_expected.cpp", "prompt": "A machine's speed dial goes from 0 to 9. Finish <code>parse_speed</code> and its caller: wrap each error so it travels back as an error, ask whether there's a value, and read the reason.", "blanks": [{"line": 6, "text": "std::unexpected", "accept": ["unexpected"]}, {"line": 15, "text": "has_value()"}, {"line": 18, "text": "error()"}], "explain": "<code>std::unexpected{\"no speed given\"}</code> turns a message into the error arm of the <code>expected</code>; without the wrapper the build stops: <samp>could not convert ‘\"no speed given\"’ from ‘const char [15]’</samp> to the <code>expected</code> (the notebook shows the whole message). <code>speed.has_value()</code> is the long way to write <code>if (speed)</code>. <code>speed.error()</code> reads the reason. Real run: <samp>speed 3</samp>, <samp>refused: max speed is 9</samp>, <samp>refused: no speed given</samp>. (g++ only, as panel 6 showed.)"}</script>
+
+  <section class="panel clean" aria-label="Panel 7: error codes, the dashboard lamp">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The oldest way: hand back an <b>error code</b>, a small value that says "fine" or names the problem. C++17's <code>std::from_chars</code> (header <code>&lt;charconv&gt;</code>) works like that. It never throws. It writes the number into <code>value</code> and returns two things (unpacked on line 9): where it stopped reading, <code>ptr</code>, and an error code, <code>ec</code>. <code>std::errc{}</code> means "no error".</p>
+    <span class="file-tab">errc_demo.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="errc_demo.cpp"></pre>
+      <pre class="term" data-run="errc_demo.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Compare it with Chapter 15's <code>std::stoi</code>, which threw <code>invalid_argument</code> and <code>out_of_range</code>. Same two problems here, but reported as lamps: <code>std::errc::<wbr>invalid_argument</code> and <code>std::errc::<wbr>result_out_of_range</code>. Line 15 turns the code into words. No <code>try</code> needed. Fast, and fine in a tight loop. The danger: <b>a lamp only helps if you look at it.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-errc-m" id="ex-errc"></div>
+  <script type="application/json" id="ex-errc-m">{"program": "predict_errc.cpp", "prompt": "<code>read_or</code> uses <code>std::from_chars</code> and hands back <code>fallback</code> whenever the lamp is on. Predict the four lines.", "hint": "<code>from_chars</code> reads digits (and a leading minus sign) for as long as it can, then stops. The lamp only lights if <b>no</b> number could be read at the very start.", "explain": "<samp>15</samp>: read fine. <samp>-1</samp>: <code>\"abc\"</code> has no digits at the start, so the lamp says <code>invalid_argument</code> and the fallback comes back. <samp>7</samp>: it reads 7 and stops at the space with <b>no error</b>; the rest is just left over (<code>ptr</code> points at it, and checking <code>ptr</code> is how you'd notice). <samp>-3</samp>: a minus sign is allowed. Unlike <code>std::stoi</code>, a leading <code>+</code> or spaces would <b>not</b> be."}</script>
+
+  <section class="panel pop" aria-label="Panel 8: an ignored lamp, and nodiscard">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="IGNORED!" data-seed="8"></svg>
+    <p class="caption"><code>refill</code> returns <code>false</code> when the tank would overflow. Line 11 never looks. But this function's author put <code>[[nodiscard]]</code> in front of it (line 3): an <b>attribute</b>, a note to the compiler, meaning "don't throw my answer away".</p>
+    <span class="file-tab">nodiscard.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="nodiscard.cpp"></pre>
+      <pre class="term wrap" data-run="nodiscard.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Line 11, column 11: <b>ignoring return value</b> of <code>refill</code>, declared with attribute <code>nodiscard</code>. The note points at line 3, where the promise was made. It's only a warning, so I built it, and the program printed <samp>45 litres</samp>: the refill never happened, and nobody noticed. Put <code>[[nodiscard]]</code> on any function whose answer <b>must</b> be checked. The same goes for functions that return an error code or an <code>expected</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler, beacon yellow, explaining the warning.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: assert, the factory test">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Some things should simply <b>never</b> happen if the program is written correctly. A <b>precondition</b> is what must be true before a function starts: here, <code>slot</code> must be a real position in the table. Nobody types a slot number; only another piece of <b>our</b> code calls <code>torque_for</code>. So a bad slot is a bug, and Chapter 11's <code>assert</code> is the factory test that catches it.</p>
+    <span class="file-tab">assert_pre.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="assert_pre.cpp"></pre>
+      <pre class="term wrap" data-run="assert_pre.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the terminal like a detective">
+      <li><span><b>The message names everything</b>: the program, the file and line (<code>assert_pre.cpp:7</code>), the function, and the exact condition that was false.</span></li>
+      <li><span><b>Then abort</b>: exit code 134 and the shell's <samp>Aborted</samp>. No <code>catch</code> can stop an assert, on purpose. A bug isn't something to recover from; it's something to fix.</span></li>
+      <li><span><b>Factory only</b>: building with <code>-DNDEBUG</code> (common for release builds) removes every assert, as Chapter 11 showed. So never use <code>assert</code> to check what users type, and never put work that must happen inside one.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Its partner is the <b>invariant</b>: something that must stay true about an object for its whole life, like Chapter 12's thermostat target between 10 and 30. Constructors check it on the way in (throwing if they must); asserts can double-check it while you test. <b>Test at the factory, not on the motorway.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 10: contracts, a feature still in the workshop">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption soft">A peek at the future, for context only (nothing to type today).</p>
+    <div class="scene">
+      <svg class="char" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>For years, people have wanted preconditions written <b>on the function itself</b>, where callers and tools can see them, rather than hidden inside it as an <code>assert</code>. The committee that writes C++ designed exactly that, called <b>contracts</b>, for C++26: a function could say <code>pre(slot &gt;= 0)</code> or <code>post(r: r &gt; 0)</code> in its declaration, and <code>contract_assert(...)</code> would replace <code>assert</code> in the body.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">The Professor says: </span>It has been a long argument. The committee finished its C++26 draft and sent it to the national standards bodies for their vote; a committee paper from July 2026 (P4238R0) asked them to vote no because of contracts. As of November 2026 the draft is <b>not an official ISO standard yet</b>, so <b>C++23 is still the current standard</b>. (News reports say the vote failed in October; this book found no official ISO or committee page confirming that, so treat it as unconfirmed.) Neither compiler on this machine understands contracts anyway (the notebook shows both refusing a <code>pre</code>). Until they arrive, <code>assert</code> plus clear comments (Core Guidelines I.5 to I.8) do the job.</p></div>
+      <svg class="char sm" data-char="mechanic" data-mood="normal" data-arms="down"></svg>
+    </div>
+    <p class="sr-only">Picture: the Professor explains, and Wren listens.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 11: which tool for which trouble">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">Pin this above your bench. Ask two questions: <b>whose mistake is it?</b> and <b>can the very next line deal with it?</b></p>
+    <div class="vswrap"><table class="ref-table vs wide">
+      <thead><tr><th>Trouble</th><th>Tool</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>"Is there a part in bin 7?" Maybe not.</td><td><code>std::optional</code></td><td>"Nothing" is a normal answer, and no reason is needed.</td></tr>
+        <tr><td>Checking what someone typed, or one line of a file</td><td><code>std::expected</code> (or a bool and a message)</td><td>Expected trouble, the caller handles it straight away, and the reason matters.</td></tr>
+        <tr><td>A hot loop parsing millions of numbers</td><td>error code (<code>std::from_chars</code>)</td><td>Cheap, no allocation. Mark your own with <code>[[nodiscard]]</code>.</td></tr>
+        <tr><td>A constructor given impossible values; a file that must exist; out of memory</td><td><code>throw</code></td><td>The job can't be done, and the caller may be several floors up (E.2).</td></tr>
+        <tr><td>Our own code broke a precondition or an invariant</td><td><code>assert</code></td><td>It's a bug: stop loudly while testing, then fix the code.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>Many real projects pick <b>one main style</b> and stick to it, so nobody has to guess. The Core Guidelines' default for C++ is exceptions for errors (E.1 to E.3), with optional and expected for results that are allowed to be missing. Whatever you choose, never make failure look like success, like Chapter 15's drawer -1.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pick-m" id="ex-pick"></div>
+  <script type="application/json" id="ex-pick-m">{"q": "A settings screen asks for a volume from 0 to 10, and the person types <kbd>loud</kbd>. The screen should show a message right under the box and let them try again. Which tool fits <code>parse_volume</code> best?", "options": [
+    {"t": "Return <code>std::expected&lt;int, std::string&gt;</code>", "correct": true, "why": "Right. Bad input is expected here, the very next line (the screen) deals with it, and the message matters. The reason travels back on the normal road."},
+    {"t": "<code>assert(is_number(text))</code>", "why": "A typo isn't a bug in your program, and asserts vanish under <code>-DNDEBUG</code>. Asserts are factory tests for <b>programmer</b> mistakes (panel 9)."},
+    {"t": "Throw a <code>std::runtime_error</code> and catch it in <code>main</code>", "why": "It would work, but it's an emergency exit for something completely ordinary, and catching it in <code>main</code> is far from the box that needs the message. Not every problem is a fire."},
+    {"t": "Return <code>std::optional&lt;int&gt;</code>", "why": "Close, but an empty optional can't say <b>what</b> was wrong, so the screen can't show a helpful message (panel 3)."}]}</script>
+
+  <div data-ex="choice" data-model="ex-assert-m" id="ex-assert"></div>
+  <script type="application/json" id="ex-assert-m">{"q": "Inside <code>Tank::drain(int litres)</code>, which check belongs in an <code>assert</code>?", "options": [
+    {"t": "That the litres typed by the customer are a number", "why": "User input can always be wrong. That needs a real check that stays in release builds (a signpost or an exception)."},
+    {"t": "That the settings file <code>tank.cfg</code> exists on disk", "why": "Files go missing on perfectly correct programs. That's a run-time error to report, not a bug."},
+    {"t": "That the level stays between 0 and the capacity", "correct": true, "why": "Right: that's the class invariant. If the class's own code is correct, this can never be false. An assert checks it while you test and tells you exactly where your logic slipped."},
+    {"t": "That the network connection to the depot is up", "why": "The network failing isn't your program's bug. Report it; don't assert it."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · YOUR OWN ALARMS<small>Exception families built on <code>std::exception</code>, catch order, and passing an alarm on with <code>throw;</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 12: a family of workshop alarms">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption soft">Chapter 15's alarms were all the standard library's. A bigger program usually grows its <b>own</b> family, built on the standard ones with inheritance (Chapter 24), so callers can catch exactly the trouble they know how to fix.</p>
+    <ul class="tree" aria-label="The family tree of this chapter's exceptions">
+      <li><span class="tnode top"><code>std::exception</code><small>has what()</small></span>
+        <ul>
+          <li><span class="tnode"><code>std::runtime_error</code><small>stores the message for you</small></span>
+            <ul>
+              <li><span class="tnode mine"><code>WorkshopError</code><small>ours: any workshop trouble</small></span>
+                <ul>
+                  <li><span class="tnode mine"><code>PartMissing</code><small>ours: also remembers the bin number</small></span></li>
+                  <li><span class="tnode mine"><code>ToolBroken</code><small>ours</small></span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>Dashed boxes are yours. Build them on <code>std::runtime_error</code> (or <code>std::logic_error</code>), never from scratch, and two good things happen: <code>catch (const std::exception&amp;)</code> still catches them, and you get <code>what()</code> for free (Core Guideline E.14: purpose-made exception types). <b>Know your family tree.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: the family in code">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Line 7, <code>using std::runtime_error::runtime_error;</code>, means "build me exactly like a <code>runtime_error</code>, from a message". <code>PartMissing</code> writes its own constructor instead (lines 12 to 15), so it can build the message <b>and</b> keep the bin number for whoever catches it.</p>
+    <span class="file-tab">custom_tree.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="custom_tree.cpp"></pre>
+      <pre class="term" data-run="custom_tree.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>Job 1</b>: a <code>PartMissing</code> meets the most specific handler first (line 37), which can use <code>e.bin()</code>: a fix only it knows about.</span></li>
+      <li><span><b>Job 2</b>: a <code>ToolBroken</code> isn't a <code>PartMissing</code>, but it <b>is</b> a <code>WorkshopError</code>: line 40.</span></li>
+      <li><span><b>Job 3</b>: a plain <code>runtime_error</code> isn't in our family at all, so only the parent net, line 43, catches it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 14: the general handler steals the alarm">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="GRAB!" data-seed="14"></svg>
+    <p class="caption">Chapter 15's rule, now with your own types: handlers are tried <b>top to bottom</b>, and the first match wins. Here the general <code>WorkshopError</code> handler comes first.</p>
+    <span class="file-tab">order_bad.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="order_bad.cpp"></pre>
+      <pre class="term wrap" data-run="order_bad.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="focus" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Read it like a detective. The warning sits on line 16, the handler that can <b>never</b> run: <samp>exception of type ‘PartMissing’ will be caught by earlier handler</samp>. The note points at the culprit, line 14: <samp>for type ‘WorkshopError’</samp>. A <code>PartMissing</code> <b>is</b> a <code>WorkshopError</code>, so line 14 grabs it, and the reorder handler is dead code. Fix: <b>children before parents.</b></p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"program": "spot_order.cpp", "bug": 20, "prompt": "Damaged boxes should get a refund, but box 2 prints <samp>problem: box 2 is dented</samp>. g++ warns about one handler, but the cause is a different line. Click the line that causes the problem.", "explain": "Line 20's <code>catch (const std::exception&amp; e)</code> comes first, and a <code>Damaged</code> is a <code>ShipError</code>, which is a <code>runtime_error</code>, which is a <code>std::exception</code>. So line 20 answers, and line 22 can never run. g++ puts its warning on line 22 (<samp>will be caught by earlier handler</samp>) and its note on line 20 (<samp>for type ‘std::exception’</samp>): the note points at the cause. Fix: move the <code>Damaged</code> handler above the <code>std::exception</code> one."}</script>
+
+  <section class="panel sketch" aria-label="Panel 15: passing the alarm on">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">Sometimes a function wants to <b>notice</b> an alarm without dealing with it: write it in the log, then let someone further up decide. That's <b>rethrowing</b>. Inside a handler, a bare <code>throw;</code> sends the <b>very same</b> exception on its way.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 210" role="img" aria-label="Two scenes. Left, labelled throw semicolon: a hand passes on the original red PartMissing card, untouched, with a note pinned to it. Right, labelled throw e semicolon: a photocopier takes the card in and prints a plain grey card labelled WorkshopError; the PartMissing details are gone.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="30" y="60" width="150" height="96" rx="8" fill="#FFE1E1"/>
+        <path d="M190 108 H262" fill="none" stroke-width="5"/><path d="M250 96 L264 108 L250 120" fill="none" stroke-width="5"/>
+        <rect x="160" y="40" width="44" height="30" rx="3" fill="#FFF6CC" transform="rotate(10 182 55)"/>
+        <rect x="370" y="50" width="120" height="110" rx="8" fill="#DDE8FF"/>
+        <rect x="384" y="64" width="92" height="22" rx="3" fill="#FFFFFF"/>
+        <rect x="340" y="120" width="40" height="30" rx="3" fill="#FFE1E1"/>
+        <path d="M496 108 H540" fill="none" stroke-width="5"/><path d="M528 96 L542 108 L528 120" fill="none" stroke-width="5"/>
+        <rect x="548" y="66" width="104" height="84" rx="8" fill="#F3F3F3" stroke-dasharray="9 6"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="105" y="102" font-size="16" text-anchor="middle">PartMissing</text>
+        <text x="105" y="128" font-size="14" text-anchor="middle">"no bolt"</text>
+        <text x="600" y="100" font-size="15" text-anchor="middle">Workshop</text>
+        <text x="600" y="119" font-size="15" text-anchor="middle">Error</text>
+        <text x="600" y="139" font-size="15" text-anchor="middle">"no bolt"</text>
+        <text x="130" y="196" font-size="19" text-anchor="middle">throw;</text>
+        <text x="500" y="196" font-size="19" text-anchor="middle">throw e;</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">
+        <text x="214" y="30" text-anchor="middle">logged</text>
+        <text x="430" y="40" text-anchor="middle">photocopier</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span><code>throw;</code> hands on the original card. <code>throw e;</code> looks almost the same, but it <b>throws a new copy</b> of <code>e</code>, and <code>e</code> is only a <code>WorkshopError&amp;</code>, so the copy is a plain <code>WorkshopError</code>: Chapter 15's <b>slicing</b> again. The message survives; the real kind doesn't. <b>Pass the card on; don't photocopy it.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 16: four roads through repair and main" data-map="map-route">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption soft">The whole picture as a map. <code>main</code> calls <code>repair</code>, which calls <code>inspect</code>. <code>repair</code> catches <code>WorkshopError</code>, logs it and rethrows; <code>main</code> has a handler for <code>PartMissing</code> and a parent net. Four nearly identical programs; each road is checked against its real run.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapr-t mapr-d"><title id="mapr-t">Map: where an alarm from inspect ends up</title><desc id="mapr-d">main's try calls repair, which calls inspect. If inspect returns, repair prints all good and main carries on. If inspect throws a PartMissing, repair's catch logs it and rethrows it with throw; and main's PartMissing handler answers. If inspect throws a plain runtime_error, repair's handler doesn't match, and main's std::exception handler answers. If repair rethrows with throw e; the copy is only a WorkshopError, and main's std::exception handler answers instead. Every road ends with main carrying on.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-route">{"seed": 27, "size": [690, 560], "start": [[160, 14], [160, 54]],
+      "states": [
+        {"id": "M", "x": 20, "y": 60, "w": 280, "h": 66, "label": "main: try", "sub": "calls repair(kind)"},
+        {"id": "I", "x": 20, "y": 190, "w": 280, "h": 66, "label": "inspect(kind)", "sub": "kind 1, 2: throw"},
+        {"id": "R", "x": 390, "y": 190, "w": 280, "h": 66, "label": "repair's catch", "sub": "WorkshopError&: log"},
+        {"id": "G", "x": 20, "y": 330, "w": 200, "h": 66, "label": "all good", "sub": "nothing thrown"},
+        {"id": "E", "x": 245, "y": 330, "w": 200, "h": 66, "label": "exception&", "sub": "main: report"},
+        {"id": "P", "x": 470, "y": 330, "w": 200, "h": 66, "label": "PartMissing&", "sub": "main: reorder"},
+        {"id": "A", "x": 20, "y": 470, "w": 650, "h": 66, "label": "main: carry on", "sub": "after the try", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "M", "to": "I", "pts": [[160, 130], [160, 184]], "label": "call", "lx": 148, "ly": 162, "anchor": "end"},
+        {"id": "t2", "from": "I", "to": "G", "pts": [[90, 260], [90, 324]], "label": "returns", "lx": 80, "ly": 298, "anchor": "end"},
+        {"id": "t4", "from": "I", "to": "R", "pts": [[302, 223], [384, 223]], "label": "throw", "lx": 343, "ly": 212, "anchor": "middle", "bug": true},
+        {"id": "t6", "from": "I", "to": "E", "pts": [[250, 260], [320, 324]], "label": "no match", "lx": 268, "ly": 302, "anchor": "end", "bug": true},
+        {"id": "t7", "from": "R", "to": "E", "pts": [[440, 260], [400, 324]], "label": "throw e;", "lx": 404, "ly": 296, "anchor": "end", "bug": true},
+        {"id": "t5", "from": "R", "to": "P", "pts": [[580, 260], [580, 324]], "label": "throw;", "lx": 592, "ly": 298, "anchor": "start"},
+        {"id": "tg", "from": "G", "to": "A", "pts": [[120, 400], [120, 464]], "label": "done", "lx": 108, "ly": 438, "anchor": "end"},
+        {"id": "te", "from": "E", "to": "A", "pts": [[345, 400], [345, 464]], "label": "handled", "lx": 333, "ly": 438, "anchor": "end"},
+        {"id": "tp", "from": "P", "to": "A", "pts": [[570, 400], [570, 464]], "label": "handled", "lx": 558, "ly": 438, "anchor": "end"}],
+      "paths": [
+        {"id": "ok", "label": "kind 0", "program": "route_ok.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": [], "mood": "focus", "note": "<code>main</code> enters its <code>try</code> and calls <code>repair(0)</code>, which calls <code>inspect(0)</code> inside its own <code>try</code>."},
+          {"on": ["I"], "via": ["t1"], "output": ["inspect: kind 0"], "note": "<code>inspect</code> prints, and kind 0 throws nothing."},
+          {"on": ["G"], "via": ["t2"], "output": ["inspect: kind 0", "repair: all good"], "note": "Back in <code>repair</code>, line 20 runs. Its handler is skipped: handlers only run when something was thrown."},
+          {"on": ["A"], "via": ["tg"], "output": ["inspect: kind 0", "repair: all good", "main: carry on"], "mood": "happy", "note": "<code>repair</code> returns normally, <code>main</code>'s handlers are skipped too, and line 35 runs."}]},
+        {"id": "part", "label": "kind 1, throw;", "program": "route_part.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": [], "mood": "focus", "note": "Same start, with <code>repair(1)</code>."},
+          {"on": ["I"], "via": ["t1"], "output": ["inspect: kind 1"], "mood": "worried", "note": "Line 13 throws a <code>PartMissing{\"no bolt\"}</code>."},
+          {"on": ["R"], "via": ["t4"], "output": ["inspect: kind 1", "repair: noted 'no bolt'"], "note": "Line 20 is skipped. A <code>PartMissing</code> is a <code>WorkshopError</code>, so <code>repair</code>'s handler matches and logs it (line 22). Then line 23: <code>throw;</code> sends the <b>same</b> exception on."},
+          {"on": ["P"], "via": ["t5"], "output": ["inspect: kind 1", "repair: noted 'no bolt'", "main: reorder (no bolt)"], "note": "It's still a real <code>PartMissing</code>, so <code>main</code>'s first handler (line 30) answers."},
+          {"on": ["A"], "via": ["tp"], "output": ["inspect: kind 1", "repair: noted 'no bolt'", "main: reorder (no bolt)", "main: carry on"], "mood": "happy", "note": "Handled. Line 35 runs. One alarm, noticed twice, fixed once."}]},
+        {"id": "power", "label": "kind 2", "program": "route_power.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": [], "mood": "focus", "note": "Now <code>repair(2)</code>."},
+          {"on": ["I"], "via": ["t1"], "output": ["inspect: kind 2"], "mood": "worried", "note": "Line 14 throws a plain <code>std::runtime_error{\"power cut\"}</code>: not in the workshop family."},
+          {"on": ["E"], "via": ["t6"], "output": ["inspect: kind 2", "main: report (power cut)"], "note": "<code>repair</code>'s handler only takes <code>WorkshopError</code>, so the alarm passes straight through: no log line. <code>main</code>'s <code>PartMissing</code> handler doesn't match either; the parent net on line 32 does."},
+          {"on": ["A"], "via": ["te"], "output": ["inspect: kind 2", "main: report (power cut)", "main: carry on"], "mood": "happy", "note": "Handled by the net. Line 35."}]},
+        {"id": "copy", "label": "kind 1, throw e;", "bug": true, "program": "route_copy.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["M"], "output": [], "mood": "focus", "note": "<code>repair(1)</code> again. The only change in this program: line 23 says <code>throw e;</code>."},
+          {"on": ["I"], "via": ["t1"], "output": ["inspect: kind 1"], "mood": "worried", "note": "A <code>PartMissing</code> is thrown, as before."},
+          {"on": ["R"], "via": ["t4"], "output": ["inspect: kind 1", "repair: noted 'no bolt'"], "note": "Logged, as before. Then <code>throw e;</code> makes a <b>new</b> exception by copying <code>e</code>. The copy's type is the type <code>e</code> was declared with: <code>WorkshopError</code>."},
+          {"on": ["E"], "via": ["t7"], "output": ["inspect: kind 1", "repair: noted 'no bolt'", "main: report (no bolt)"], "mood": "worried", "mouth": "frown", "note": "The copy isn't a <code>PartMissing</code> any more, so line 30 doesn't match, and the parent net reports it. Same message, wrong handler: the reorder never happens."},
+          {"on": ["A"], "via": ["te"], "output": ["inspect: kind 1", "repair: noted 'no bolt'", "main: report (no bolt)", "main: carry on"], "note": "No crash, no warning, just quietly the wrong fix. That's what makes <code>throw e;</code> sneaky."}]}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: one word apart">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The two programs from the map's second and fourth roads, side by side. They differ only on line 23. The code shown is <code>route_part.cpp</code>.</p>
+    <span class="file-tab">route_part.cpp</span>
+    <pre class="code" data-src="route_part.cpp"></pre>
+    <div class="pair2">
+      <div><p class="who">LINE 23: <code>throw;</code></p><pre class="term wrap" data-run="route_part.cpp"></pre></div>
+      <div><p class="who">LINE 23: <code>throw e;</code></p><pre class="term wrap" data-run="route_copy.cpp"></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Neither compiler warns about <code>throw e;</code>, so this one is on you. And only <b>rethrow inside a handler</b>: a bare <code>throw;</code> with no exception being handled calls <code>std::terminate</code> (the notebook's <code>bare_throw.cpp</code> shows it).</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-rethrow-m" id="ex-rethrow"></div>
+  <script type="application/json" id="ex-rethrow-m">{"program": "predict_rethrow.cpp", "prompt": "<code>drive</code> always throws a <code>TankEmpty</code>, catches it as a <code>FuelError</code>, logs it, and rethrows: with <code>throw;</code> on the first loop trip, with <code>throw e;</code> on the second. Predict all four lines.", "hint": "Which handler in <code>main</code> matches a real <code>TankEmpty</code>? What is the type of a copy made from a <code>const FuelError&amp;</code>?", "explain": "Trip 1: <code>throw;</code> passes on the original <code>TankEmpty</code>, so <samp>main: call the tow truck</samp>. Trip 2: <code>throw e;</code> throws a fresh copy of type <code>FuelError</code> (the declared type of <code>e</code>), so the <code>TankEmpty</code> handler is skipped: <samp>main: some fuel problem</samp>. Both trips log first."}</script>
+
+  <div data-ex="parsons" data-model="ex-pzre-m" id="ex-pzre"></div>
+  <script type="application/json" id="ex-pzre-m">{"program": "pz_rethrow.cpp", "seed": 6, "pin": [1, 2, 3, 4, 11, 15], "prompt": "Build a <code>main</code> with two nets: an inner one that notices the <code>out_of_range</code> and passes it on, and an outer one that catches anything standard.", "explain": "The outer <code>try {</code> opens first; the inner <code>try {</code> sits inside it and wraps <code>fetch();</code>. The inner handler for <code>out_of_range</code> prints, then <code>throw;</code> passes the same exception outwards. Its <code>}</code> closes the inner handler, and the outer handler for <code>std::exception</code> follows. Real run: <samp>inner saw shelf 9</samp>, <samp>outer got shelf 9</samp>."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · PROMISES AND GUARANTEES<small>noexcept, what happens when it's broken, and the four exception-safety guarantees</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 18: noexcept is a sign on the door">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">Writing <code>noexcept</code> after a function's parameters is a <b>promise</b>: "no exception will ever come out of this door". Chapter 22 met it on move constructors, where <code>std::vector</code> reads the promise to decide whether moving is safe. The compiler <b>trusts</b> the promise. It doesn't check it.</p>
+    <div class="picscroll"><svg class="fig pic-wide pic-mid" viewBox="0 0 440 230" role="img" aria-label="A door labelled gauge() with a sign reading NO ALARMS BEYOND THIS DOOR, noexcept. Behind the door an alarm bell rings anyway. Instead of a marshal, a big red OFF switch labelled std::terminate shuts down the whole building.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="40" y="40" width="130" height="180" rx="6" fill="#DDE8FF"/>
+        <circle cx="150" cy="132" r="7" fill="#FFD60A"/>
+        <rect x="28" y="10" width="154" height="44" rx="6" fill="#FFF6CC"/>
+        <circle cx="236" cy="96" r="22" fill="#FF5A4E"/><circle cx="236" cy="96" r="6" fill="#111"/>
+        <path d="M206 72 l-10 -8 M266 72 l10 -8 M202 100 h-12 M270 100 h12" fill="none" stroke-width="3.5"/>
+        <rect x="318" y="70" width="96" height="130" rx="10" fill="#F3F3F3"/>
+        <rect x="346" y="96" width="40" height="64" rx="6" fill="#FF5A4E"/>
+        <path d="M366 112 V144" fill="none" stroke-width="6"/>
+        <path d="M262 120 Q300 150 340 140" fill="none" stroke-width="3.5" stroke-dasharray="8 6"/><path d="M328 132 L342 140 L328 150" fill="none" stroke-width="3.5"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="105" y="38" font-size="16" text-anchor="middle">noexcept</text>
+        <text x="105" y="110" font-size="17" text-anchor="middle">gauge()</text>
+        <text x="366" y="190" font-size="13" text-anchor="middle">terminate</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="236" y="150" text-anchor="middle">alarm</text>
+        <text x="366" y="62" text-anchor="middle">OFF switch</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="marshal" data-mood="worried" data-mouth="flat" data-arms="stop"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Ember says: </span>So what if an alarm goes off behind that door anyway? I'm not even called. The promise was broken, so the C++ rules say: <code>std::terminate</code>, straight away. <b>A broken promise switches off the whole building.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 19: the catch never gets a chance">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="CLICK. OFF." data-seed="19"></svg>
+    <p class="caption">Look carefully: <code>main</code> <b>does</b> have a <code>try</code> and a <code>catch</code> for <code>std::exception</code>, and a <code>runtime_error</code> is one. Watch what happens to the second reading.</p>
+    <span class="file-tab">noexcept_throw.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="noexcept_throw.cpp"></pre>
+      <pre class="term wrap" data-run="noexcept_throw.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the terminal like a detective">
+      <li><span><b>The warning came first</b>, at build time: line 5, <samp>‘throw’ will always call ‘terminate’ [-Wterminate]</samp>. g++ spotted a <code>throw</code> written directly inside a <code>noexcept</code> function, with no <code>try</code> around it.</span></li>
+      <li><span><b>Line 11 worked</b>: <samp>reading: 40</samp>.</span></li>
+      <li><span><b>Line 13 broke the promise</b>: <samp>terminate called after throwing an instance of 'std::runtime_error'</samp>, exit 134. <b>No <samp>caught:</samp> line.</b> The handler on line 15 was right there and was never asked.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>clang++ warns too, in its own words (<samp>'gauge' has a non-throwing exception specification but can still throw</samp>); the notebook shows it. But neither compiler can warn when the throw happens <b>deeper down</b>, inside a function that <code>gauge</code> calls. Promise <code>noexcept</code> only when you're sure, like moves, swaps and destructors (Core Guidelines F.6, C.66, C.85).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: asking whether something promised">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption"><code>noexcept</code> has a second job: <code>noexcept(expression)</code> is a <b>question</b> you can ask the compiler. Is this expression promised not to throw? The expression inside is never run: line 17 proves <code>push_back</code> on line 15 never happened.</p>
+    <span class="file-tab">noexcept_ask.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="noexcept_ask.cpp"></pre>
+      <pre class="term" data-run="noexcept_ask.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>size()</code> and <code>clear()</code> can't fail, and the library says so. <code>push_back</code> might have to borrow more memory and run out, so no promise. And <code>twice</code> can't possibly throw, but nobody <b>wrote</b> the promise, so the answer is <samp>false</samp>. The question checks promises, not code. This is exactly how <code>std::vector</code> asked about your move constructors in Chapter 22.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-noexc-m" id="ex-noexc"></div>
+  <script type="application/json" id="ex-noexc-m">{"program": "predict_noexcept.cpp", "expect": "error", "answer": "std::out_of_range", "ask": "The first line prints 13. Then the program is terminated, even though <code>main</code> has a matching <code>catch</code>. Which exception kind does the <samp>terminate called after throwing an instance of '...'</samp> line name? (Write it with <code>std::</code>.)", "prompt": "<code>pick</code> promises <code>noexcept</code>, then calls <code>.at()</code>, which checks the position. This time there's no <code>throw</code> written in <code>pick</code> at all, so g++ gives no warning.", "hint": "What does <code>.at()</code> throw for a position past the end (Chapter 15's family tree)? Does it matter that the throw happens inside a library function?", "explain": "<code>sizes.at(5)</code> throws <code>std::out_of_range</code> (<samp>vector::_M_range_check: __n (which is 5) &gt;= this-&gt;size() (which is 3)</samp>). It tries to leave <code>pick</code>, which promised <code>noexcept</code>, so <code>std::terminate</code> runs at once and the <code>catch</code> on line 14 is never consulted. No warning this time: the compiler can't see a throw inside <code>.at()</code>. That's why a <code>noexcept</code> promise must be one you can really keep."}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: the four exception-safety guarantees">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft">When an exception flies out of a function halfway through, what state is everything left in? There are four possible answers. Every function gives one of them, whether its author thought about it or not.</p>
+    <div class="cards4">
+      <div class="card4"><p class="where">NO-THROW</p><p class="mark">nothing can go wrong</p><p>The function always succeeds; marked <code>noexcept</code>. Destructors, <code>swap</code>, moves. These are the building blocks of the other guarantees.</p></div>
+      <div class="card4"><p class="where">STRONG</p><p class="mark">all or nothing</p><p>If it throws, everything is <b>exactly</b> as before, as if it was never called. Like a bank transfer: both accounts change, or neither does.</p></div>
+      <div class="card4 dashed"><p class="where">BASIC</p><p class="mark">valid, but changed</p><p>If it throws, nothing leaks and every object still works, but values may have changed partway. The minimum every function should give.</p></div>
+      <div class="card4 dotted"><p class="where">NONE</p><p class="mark">anything goes</p><p>A throw can leave leaks or broken objects behind. Never acceptable in code others will use.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>These names come from work by David Abrahams for the C++ standard library in the 1990s, and the library documents its functions with them. Chapter 22 already met one: <code>push_back</code> gives the <b>strong</b> guarantee. Next: the same function written to give basic, then strong.</p></div>
+    </div>
+    <p class="sr-only">Four cards: no-throw, always succeeds; strong, all or nothing; basic (dashed), valid but changed; none (dotted), anything goes.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: half a job, the basic guarantee">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption"><code>add_pair</code> puts two parts on the shelf. It checks the second name only <b>after</b> the first part is already on (line 9, then line 10). Line 6 gives the vector type a short name, <code>Parts</code> (Chapter 19's <code>using</code>), and the two names arrive as copies.</p>
+    <span class="file-tab">guarantee_basic.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="guarantee_basic.cpp"></pre>
+      <pre class="term" data-run="guarantee_basic.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><samp>refused</samp>, and yet the shelf has a <samp>nut</samp> on it! Nothing leaked and the vector is perfectly usable, so that's the <b>basic</b> guarantee. But the caller was told "refused" and got half a job. Sometimes that's fine. When it isn't, there's a classic trick.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean tracer wide-code" aria-label="Panel 23: work on a draft, then swap" data-tracer="tr-strong" id="tr-strong-box">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption"><b>Copy, change, swap.</b> Do all the risky work on a <b>draft</b> copy (line 9). Only when everything has worked, swap the draft with the real shelf (line 13). <code>swap</code> just exchanges the two vectors' insides and can't fail. Step through two calls: one that throws, one that doesn't.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-strong-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-strong">{"program": "guarantee_strong.cpp", "steps": [{"line": 17, "output": [], "frames": [{"name": "main()", "vars": []}], "objects": {}, "note": "<code>main</code> starts on line 16."}, {"line": 19, "output": [], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}}, "changed": ["shelf"], "note": "Line 17: the shelf holds one bolt. Line 18 enters the <code>try</code>."}, {"line": 9, "output": [], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S1"}, {"n": "b", "ref": "S2"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S1": {"kind": "string", "value": "\"nut\""}, "S2": {"kind": "string", "value": "\"\""}}, "changed": ["shelf", "a", "b"], "note": "Line 19 calls <code>add_pair</code>. Its <code>shelf</code> is a <b>reference</b>: a second name tag on the very same vector. <code>a</code> and <code>b</code> are its own copies of the names: <code>\"nut\"</code> and an empty string."}, {"line": 10, "output": [], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S1"}, {"n": "b", "ref": "S2"}, {"n": "draft", "ref": "V2"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S1": {"kind": "string", "value": "\"nut\""}, "S2": {"kind": "string", "value": "\"\""}, "V2": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}]}}, "changed": ["draft"], "note": "Line 9 copies the shelf into a brand-new vector, <code>draft</code>. Copying might throw (out of memory), but if it does, the real shelf is untouched."}, {"line": 11, "output": [], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S1"}, {"n": "b", "ref": "S2"}, {"n": "draft", "ref": "V2"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S1": {"kind": "string", "value": "\"nut\""}, "S2": {"kind": "string", "value": "\"\""}, "V2": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}]}}, "note": "Line 10 adds the nut to the <b>draft</b> only. The shelf still has one bolt."}, {"line": 21, "output": [], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}}, "note": "<b>Line 11 throws</b>: <code>b</code> is empty. Unwinding clears <code>add_pair</code>'s plate, and <code>draft</code>, nut and all, is destroyed on the way out (so are its copies <code>a</code> and <code>b</code>). The shelf never saw the nut. The alarm lands in line 20's handler."}, {"line": 23, "output": ["refused: no name"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}}, "note": "Line 21 prints the refusal."}, {"line": 24, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}}, "note": "Line 23: <samp>1 part(s)</samp>. Exactly as before the call: the <b>strong</b> guarantee."}, {"line": 9, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}}, "changed": ["a", "b"], "note": "Line 24 tries again, with a real second name this time."}, {"line": 10, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}, {"n": "draft", "ref": "V3"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}, "V3": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}]}}, "changed": ["draft"], "note": "Line 9: a fresh draft."}, {"line": 11, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}, {"n": "draft", "ref": "V3"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}, "V3": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}]}}, "note": "Line 10: nut onto the draft."}, {"line": 12, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}, {"n": "draft", "ref": "V3"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}, "V3": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}]}}, "note": "Line 11: <code>b</code> isn't empty, so no throw."}, {"line": 13, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}, {"n": "draft", "ref": "V3"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}, "V3": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}, {"val": "\"washer\""}]}}, "note": "Line 12: the washer joins the draft. All the risky work is done."}, {"line": 14, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}, {"name": "add_pair()", "vars": [{"n": "shelf", "ref": "V1"}, {"n": "a", "ref": "S3"}, {"n": "b", "ref": "S4"}, {"n": "draft", "ref": "V3"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}, {"val": "\"washer\""}]}, "S3": {"kind": "string", "value": "\"nut\""}, "S4": {"kind": "string", "value": "\"washer\""}, "V3": {"kind": "vector", "label": "Parts · draft", "items": [{"val": "\"bolt\""}]}}, "changed": ["shelf"], "note": "Line 13: <code>shelf.swap(draft)</code>. The two vectors trade contents in one step that can't throw: the shelf now has three parts, and the draft holds the old single bolt. This is the <b>commit</b>."}, {"line": 25, "output": ["refused: no name", "shelf has 1 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}, {"val": "\"washer\""}]}}, "note": "Line 14: <code>add_pair</code> ends, and <code>draft</code> (now holding the old contents) is destroyed."}, {"line": null, "output": ["refused: no name", "shelf has 1 part(s)", "shelf has 3 part(s)"], "frames": [{"name": "main()", "vars": [{"n": "shelf", "ref": "V1"}]}], "objects": {"V1": {"kind": "vector", "label": "Parts · the shelf", "items": [{"val": "\"bolt\""}, {"val": "\"nut\""}, {"val": "\"washer\""}]}}, "note": "Line 25: <samp>3 part(s)</samp>. All or nothing, both times. The price: a full copy on every call. Strong safety isn't free, so offer it where callers need it."}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-guar-m" id="ex-guar"></div>
+  <script type="application/json" id="ex-guar-m">{"program": "trace_guarantee.cpp", "columns": ["call", "result", "size"], "given": [0], "prompt": "One shared vector <code>v</code>, four calls. <code>add_basic</code> pushes first and checks later; <code>add_strong</code> works on a draft and swaps. Each call tries to add <code>\"x\"</code> and then the second name (an empty name throws). Fill in whether each call threw and the size of <code>v</code> afterwards.", "explain": "1: basic with <code>\"nut\"</code>: ok, 2 items. 2: strong with an empty name: threw, and the draft is thrown away, so still 2. 3: basic with an empty name: threw, but <code>\"x\"</code> was already pushed: 3 (half a job). 4: strong with <code>\"pin\"</code>: ok, 3 + 2 = 5."}</script>
+
+  <div data-ex="choice" data-model="ex-guarq-m" id="ex-guarq"></div>
+  <script type="application/json" id="ex-guarq-m">{"q": "<code>transfer(from, to, amount)</code> takes money out of one account and puts it into another. If putting it in throws, what's the right promise, and how do you get it?", "options": [
+    {"t": "Basic: the accounts still work, so it's fine if the money vanished", "why": "Valid objects, but money disappeared. For a transfer, half a job is a disaster."},
+    {"t": "Strong: compute both balances first, then commit without throwing", "correct": true, "why": "Right. Computing the new balances is the risky part. Do everything that can fail before touching the real accounts, then make the change in steps that can't fail. Either both accounts change or neither does."},
+    {"t": "No-throw: mark it <code>noexcept</code>, so the throw can't happen", "why": "<code>noexcept</code> doesn't stop the throw, it turns it into <code>std::terminate</code> (panel 19). A promise only helps if it's true."},
+    {"t": "None needed: catch everything inside with <code>catch (...)</code>", "why": "That hides the failure: the caller thinks the money moved. Swallowing errors is the -1 whisper all over again."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · STICKY PRINTERS<small>Manipulators: setprecision, fixed, hex and friends stay on; setw lasts for one item</small></h2>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 24: a printer that remembers">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Chapter 5 met <code>std::format</code>, and Chapter 6 used it to line numbers up in a table. The older way, still everywhere in real code, is to send <b>manipulators</b> into the stream (header <code>&lt;iomanip&gt;</code>): <code>std::cout &lt;&lt; std::setprecision(3) &lt;&lt; x</code>. A manipulator prints nothing. It changes the stream's <b>settings</b>.</p>
+    <div class="picscroll"><svg class="fig pic-wide pic-mid" viewBox="0 0 460 230" role="img" aria-label="An office printer with a control panel. Its dial has been turned to BOLD. Three pages come out, one after another, and all three are printed in bold, because the dial stays where it was set. A label on the printer reads: stays until you change it.">
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="30" y="80" width="230" height="110" rx="14" fill="#DDE8FF"/>
+        <path d="M60 80 V30 H230 V80" fill="#FFFFFF"/>
+        <circle cx="216" cy="130" r="22" fill="#FFD60A"/><path d="M216 130 L232 116" fill="none" stroke-width="4"/>
+        <rect x="50" y="110" width="110" height="40" rx="6" fill="#FFFFFF"/>
+        <rect x="290" y="40" width="140" height="44" rx="4" fill="#FFFFFF"/>
+        <rect x="290" y="96" width="140" height="44" rx="4" fill="#FFFFFF"/>
+        <rect x="290" y="152" width="140" height="44" rx="4" fill="#FFFFFF"/>
+        <path d="M264 120 H284" fill="none"/><path d="M274 112 L286 120 L274 128" fill="none"/>
+        <rect x="40" y="196" width="210" height="30" rx="3" fill="#FFF6CC" transform="rotate(-3 145 211)"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" fill="#111">
+        <text x="105" y="136" font-size="17" text-anchor="middle">BOLD</text>
+        <text x="360" y="68" font-size="17" text-anchor="middle">page 1</text>
+        <text x="360" y="124" font-size="17" text-anchor="middle">page 2</text>
+        <text x="360" y="180" font-size="17" text-anchor="middle">page 3</text>
+      </g>
+      <text x="145" y="217" font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111" text-anchor="middle" transform="rotate(-3 145 211)">stays until you change it</text>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Turn the office printer to <b>bold</b> for one heading, forget to turn it back, and the whole report comes out bold. <code>std::cout</code> is that printer. <b>Settings stick until you change them back.</b> Well, all except one. Let's find it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: walk the sticky printer" data-walk="walk-sticky">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Follow Wren through <code>sticky.cpp</code>, one line at a time, and keep track of the printer's settings in your head (the notes say them out loud).</p>
+    <div class="walk full">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">sticky.cpp</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-sticky">{"program": "sticky.cpp", "steps": [
+      {"line": 5, "output": [], "mood": "normal", "arms": "point", "note": "<code>main</code> starts. Factory settings: precision 6, general notation, decimal, width 0."},
+      {"line": 6, "output": [], "mood": "normal", "arms": "point", "note": "Line 5: <code>pi</code> holds 3.14159265."},
+      {"line": 7, "output": ["3.14159"], "mood": "focus", "arms": "point", "note": "Line 6: precision 6 means six <b>significant digits</b> in general notation: <samp>3.14159</samp>."},
+      {"line": 8, "output": ["3.14159", "3.14"], "mood": "focus", "arms": "point", "note": "Line 7: <code>std::setprecision(3)</code> turns the dial to 3. Three significant digits: <samp>3.14</samp>. Settings now: precision <b>3</b>."},
+      {"line": 9, "output": ["3.14159", "3.14", "3.14"], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 8 has no manipulator at all, and still prints <samp>3.14</samp>. The dial stayed on 3. <b>Sticky.</b>"},
+      {"line": 10, "output": ["3.14159", "3.14", "3.14", "3.142"], "mood": "focus", "arms": "point", "note": "Line 9: <code>std::fixed</code> switches to fixed notation, where precision means digits <b>after the point</b>: <samp>3.142</samp>. Settings: fixed, precision 3."},
+      {"line": 11, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500"], "mood": "worried", "mouth": "flat", "arms": "point", "note": "Line 10: a different number, still fixed with 3 decimals: <samp>2.500</samp>. Both settings stuck."},
+      {"line": 12, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500", "ff"], "mood": "focus", "arms": "point", "note": "Line 11: <code>std::hex</code> prints whole numbers in base 16. 255 is <samp>ff</samp>. Settings: fixed, precision 3, <b>hex</b>."},
+      {"line": 13, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500", "ff", "a"], "mood": "surprised", "mouth": "o", "arms": "shrug", "note": "Line 12: a plain 10 prints as <samp>a</samp>, because hex stuck too. Ten in base 16 is <code>a</code>. Imagine that was a bolt count."},
+      {"line": 14, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500", "ff", "a", "10"], "mood": "happy", "arms": "point", "note": "Line 13: <code>std::dec</code> switches back to decimal. You have to turn the dial back yourself."},
+      {"line": 15, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500", "ff", "a", "10", "[    42]"], "mood": "focus", "arms": "point", "note": "Line 14: <code>std::setw(6)</code> sets the width: the next item takes up at least 6 places, padded on the left: <samp>[    42]</samp>."},
+      {"line": null, "output": ["3.14159", "3.14", "3.14", "3.142", "2.500", "ff", "a", "10", "[    42]", "[42]"], "mood": "happy", "arms": "cheer", "note": "Line 15: <samp>[42]</samp>, no padding. <code>setw</code> is the <b>one-shot</b> setting: the width goes back to 0 after the next item is printed. Everything else stuck."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 26: which settings stick">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">The settings strip. Solid cards stay on until you change them. The dashed card lasts for one item.</p>
+    <ul class="settings" aria-label="Stream settings">
+      <li><p class="k"><code>std::setprecision(n)</code></p><span>sticks · back with the old value</span></li>
+      <li><p class="k"><code>std::fixed</code> / <code>std::scientific</code></p><span>sticks · back with <code>std::defaultfloat</code></span></li>
+      <li><p class="k"><code>std::hex</code> / <code>std::oct</code></p><span>sticks · back with <code>std::dec</code></span></li>
+      <li><p class="k"><code>std::left</code> / <code>std::right</code></p><span>sticks</span></li>
+      <li><p class="k"><code>std::setfill('0')</code></p><span>sticks · back with <code>setfill(' ')</code></span></li>
+      <li><p class="k"><code>std::boolalpha</code></p><span>sticks · back with <code>std::noboolalpha</code></span></li>
+      <li class="once"><p class="k"><code>std::setw(n)</code></p><span>ONE item only, then width 0</span></li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Why would <code>setw</code> be different? Because a width almost never makes sense for two things in a row. Everything else is a <b>mode</b>, and modes are meant to last. That's handy inside one function and a trap across functions, as the next panel shows.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 27: the budget that grew digits">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="WHAT?!" data-seed="27"></svg>
+    <p class="caption">A real kind of bug: one helper function changes a setting, and a <b>completely different</b> part of the program pays for it. Watch the budget on lines 9 and 11: same number, same code.</p>
+    <span class="file-tab">precision_bug.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="precision_bug.cpp"></pre>
+      <pre class="term" data-run="precision_bug.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 9 prints <samp>1e+10</samp>: with 6 significant digits, ten billion is shown in scientific style. Then <code>show_ratio</code> turned the precision dial to 17 and left it there. Line 11 now prints <samp>10000000000</samp>, and <samp>rate: 0.29999999999999999</samp> shows the tiny error in how a double stores 0.3 (Chapter 20). Nobody asked for any of that. No error, no warning: <b>a setting leaked</b>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: put the dial back, or don't touch it">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Two fixes. <b>Put the dial back</b>: <code>std::cout.precision(17)</code> sets the new precision and <b>returns the old one</b>, so line 5 saves it and line 7 restores it. Or <b>don't touch the dial</b>: <code>std::format</code> (line 11) takes its settings from the format string, <code>{:.17}</code>, and never changes the stream.</p>
+    <span class="file-tab">precision_fix.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="precision_fix.cpp"></pre>
+      <pre class="term" data-run="precision_fix.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Three budgets, three <samp>1e+10</samp>. The rule for helpers: <b>leave the printer the way you found it.</b> It's the same habit as every bolt you tighten, you loosen later. (To save <b>every</b> setting at once, the notebook shows <code>copyfmt</code>.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-hex-m" id="ex-hex"></div>
+  <script type="application/json" id="ex-hex-m">{"program": "predict_hex.cpp", "prompt": "Four lines, two manipulators. Use the settings strip from panel 26. Predict every line exactly, including spaces.", "hint": "Which of <code>std::hex</code> and <code>std::setw(4)</code> is still on for the next line? 12 in base 16 is a single digit.", "explain": "<samp>code: ff</samp>. Then hex <b>sticks</b>, so 12 prints as <samp>c</samp>: a bolt count nobody can read. <code>setw(4)</code> pads the next item to 4 places: <samp>width: [   7]</samp> (three spaces). Then the width is back to 0: <samp>again: [7]</samp>. The 7 is the same in hex and decimal."}</script>
+
+  <div data-ex="spot" data-model="ex-prec-m" id="ex-prec"></div>
+  <script type="application/json" id="ex-prec-m">{"program": "spot_precision.cpp", "bug": 5, "prompt": "The oven reading is right, but then the price 3.999 prints as <samp>4.0</samp> and the weight 0.07 as <samp>0.1</samp>. Click the line that causes it.", "explain": "Line 5 switches <code>std::cout</code> to fixed notation with one decimal and never switches back, so every later number is rounded to one decimal: 3.999 becomes <samp>4.0</samp>, 0.07 becomes <samp>0.1</samp>. Fix: save the old settings and restore them before <code>print_temp</code> returns, or print the temperature with <code>std::format(\"oven: {:.1f} C\\n\", t)</code>, which leaves the stream alone."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: a tidy table">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Where stickiness <b>helps</b>: a table. Line 15 sets fixed with 2 decimals once, for every price. Each row then uses <code>std::left</code> for the name column and <code>std::right</code> for the numbers, with a fresh <code>setw</code> before <b>each</b> item, because <code>setw</code> lasts for one item only.</p>
+    <span class="file-tab">table.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="table.cpp"></pre>
+      <pre class="term" data-run="table.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Names start at the left edge of their 8 places; numbers end at the right edge of theirs, so the decimal points line up. Notice line 18 switches back to <code>std::right</code>: left is sticky too, and without that the numbers would hug the left. With <code>std::format</code> the same row would be <code>"{:&lt;8}{:&gt;5}{:&gt;8.2f}"</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-table-m" id="ex-table"></div>
+  <script type="application/json" id="ex-table-m">{"program": "fill_table.cpp", "prompt": "A tool-hours table: names left-aligned in 7 places, hours right-aligned in 6 places with one decimal. Fill in the alignment for each column and the precision that every row shares.", "blanks": [{"line": 6, "text": "std::left", "accept": ["left"]}, {"line": 7, "text": "std::right", "accept": ["right"]}, {"line": 11, "text": "std::setprecision(1)", "accept": ["setprecision(1)"]}], "explain": "<code>std::left</code> before the name, <code>std::right</code> before the hours (left would otherwise stick for the number too). <code>std::fixed &lt;&lt; std::setprecision(1)</code> is set once in <code>main</code> and sticks for every row: <samp>2.4</samp>, <samp>10.0</samp>, <samp>0.5</samp>. Each <code>setw</code> is written again in every row, because it only lasts for one item."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · STREAM HEALTH<small>The four state lamps, recovering, the leftover newline, unformatted reads and binary files</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 30: four lamps on every stream">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption soft">Chapter 15 met the fail flag. Every stream (<code>std::cin</code>, files, string streams) actually has a little dashboard of <b>state flags</b>, and four questions you can ask about them.</p>
+    <div class="cards4">
+      <div class="card4"><p class="where"><code>good()</code></p><p class="mark">all clear</p><p>True only when <b>none</b> of the three problem flags is up. Note: not the opposite of <code>fail()</code>.</p></div>
+      <div class="card4 cream"><p class="where"><code>eof()</code></p><p class="mark">end of input reached</p><p>A read ran into the end. Not a look-ahead: it goes up <b>after</b> touching the end (Chapter 15's last-word-twice bug).</p></div>
+      <div class="card4 dashed"><p class="where"><code>fail()</code></p><p class="mark">a read went wrong</p><p>A read couldn't produce a value: letters where a number was wanted, or nothing left. While it's up, every read is refused. Also true when bad is up.</p></div>
+      <div class="card4 dotted"><p class="where"><code>bad()</code></p><p class="mark">the stream is broken</p><p>Something failed underneath: a disk error, a lost device. Rare, and usually not fixable by your program.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>if (in)</code> and <code>while (in &gt;&gt; x)</code> ask "is <code>fail()</code> false?". That's why reading in the condition works so well. Let's watch the lamps change.</p></div>
+    </div>
+    <p class="sr-only">Four cards: good, all clear; eof (cream), a read hit the end; fail (dashed), a read went wrong; bad (dotted), the stream is broken.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: watching the lamps">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">A string stream holding <code>"12 abc"</code>, read twice into an <code>int</code>, with the lamps printed after each step (<code>1</code> means true). Printing <code>bool</code>s without <code>std::boolalpha</code> gives 1 and 0.</p>
+    <span class="file-tab">flags.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="flags.cpp"></pre>
+      <pre class="term" data-run="flags.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b>Reading 12</b> works. It stops at the space, so the end hasn't been touched: still all clear.</span></li>
+      <li><span><b>Reading abc</b> into an <code>int</code> fails: <samp>fail=1</samp>, <samp>good=0</samp>. And <code>n</code> became <samp>0</samp>, not -1 and not 12: a failed number read stores 0 (a fix to the standard, LWG issue 696; very old libraries left the variable unchanged).</span></li>
+      <li><span><b><code>clear()</code></b> lowers every flag. The letters <code>abc</code> are still waiting in the stream, though; clearing doesn't remove them.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-flags-m" id="ex-flags"></div>
+  <script type="application/json" id="ex-flags-m">{"program": "trace_flags.cpp", "columns": ["step", "n", "good", "eof", "fail"], "given": [0], "prompt": "The stream holds <code>\"5 6\"</code>, with nothing after the 6. Three reads into <code>n</code> (which starts at -1). After each read the program prints the step, <code>n</code>, and the <code>good</code>, <code>eof</code> and <code>fail</code> lamps as 1 or 0. Fill in the rows.", "explain": "Step 1 reads 5 and stops at the space: <samp>1 5 1 0 0</samp>. Step 2 reads 6 and, looking for more digits, runs into the end: the read <b>worked</b> (fail 0) but eof is up, so good is 0: <samp>2 6 0 1 0</samp>. Step 3 has nothing to read: fail goes up, and <code>n</code> keeps 6, because the read gave up before it even started: <samp>3 6 0 1 1</samp>. So <code>good()</code> can be false after a perfectly good read."}</script>
+
+  <section class="panel clean" aria-label="Panel 32: skip the junk and keep going">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Recovering in a loop. Line 10 tries a number. If that fails, line 13 asks <b>why</b>: the end (stop), or junk (clear the flag, read the junk as a word to throw it away, carry on).</p>
+    <span class="file-tab">recover.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="recover.cpp"></pre>
+      <pre class="term" data-run="recover.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The order matters twice. Check <code>eof()</code> <b>before</b> treating a failure as junk, or the loop would try to skip junk at the end forever. And <code>clear()</code> <b>before</b> reading the junk, because a stream with fail up refuses every read, even into a string. Chapter 15 used <code>ignore</code> to bin a whole line; here a word is binned, so the 9 after <code>x</code> still counts.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" aria-label="Panel 33: the name that vanished">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <svg class="sfx tr" data-sfx="SKIPPED!" data-seed="33"></svg>
+    <p class="caption">The classic. Ask for a number with <code>&gt;&gt;</code>, then a whole line with <code>getline</code>. The person typed <kbd>36</kbd> and Enter, and was about to type <kbd>Wren Hale</kbd>. The terminal shows what really happened.</p>
+    <span class="file-tab">mix_bug.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="mix_bug.cpp"></pre>
+      <pre class="term" data-run="mix_bug.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>It never waited for the name! The name is empty, <samp>[]</samp>, and the program finished before anyone could type it. No error, no flag. Something was already sitting in the input. What?</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 34: the leftover newline">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">Look at the input as a queue of characters. Pressing Enter adds a newline character, drawn here as ⏎.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 200" role="img" aria-label="A conveyor belt of character boxes: 3, 6, newline, W, r, e, n, space, H, a, l, e, newline. A bracket under 3 and 6 is labelled taken by cin >> age, which stops before the newline. A bracket under the first newline alone is labelled getline reads up to here: an empty line. In a second row, std::ws is shown sweeping the newline away first.">
+      <g stroke="#111" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="10" y="40" width="40" height="40" rx="5" fill="#C9F2D9"/><rect x="54" y="40" width="40" height="40" rx="5" fill="#C9F2D9"/>
+        <rect x="98" y="40" width="40" height="40" rx="5" fill="#FFE1E1"/>
+        <rect x="142" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="186" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="230" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="274" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="318" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="362" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="406" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="450" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="494" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/><rect x="538" y="40" width="40" height="40" rx="5" fill="#FFFFFF"/>
+        <path d="M12 92 V100 H92 V92" fill="none"/>
+        <path d="M100 92 V100 H136 V92" fill="none"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="20" fill="#111" text-anchor="middle">
+        <text x="30" y="68">3</text><text x="74" y="68">6</text><text x="118" y="68">⏎</text>
+        <text x="162" y="68">W</text><text x="206" y="68">r</text><text x="250" y="68">e</text><text x="294" y="68">n</text><text x="338" y="68">·</text><text x="382" y="68">H</text><text x="426" y="68">a</text><text x="470" y="68">l</text><text x="514" y="68">e</text><text x="558" y="68">⏎</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="17" fill="#111">
+        <text x="10" y="124">cin &gt;&gt; age takes 36,</text>
+        <text x="10" y="146">and stops before ⏎</text>
+        <text x="230" y="124">getline reads up to the first ⏎:</text>
+        <text x="230" y="146">an empty line. Done!</text>
+        <text x="10" y="186">fix: std::getline(std::cin &gt;&gt; std::ws, name) sweeps ⏎ (and spaces) away first</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>&gt;&gt;</code> skips spaces <b>before</b> an item and leaves everything after it. <code>getline</code> skips nothing: it reads up to the next ⏎ and throws that ⏎ away. So <code>getline</code> found the leftover ⏎ at once and handed back an empty line. <code>std::ws</code> is a manipulator for <b>input</b>: it eats whitespace. <b>Sweep the leftover newline.</b></p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: swept">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">The fix, on line 10 only: <code>std::getline(std::cin &gt;&gt; std::ws, name)</code>. Same typing as before.</p>
+    <span class="file-tab">mix_fixed.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="mix_fixed.cpp"></pre>
+      <pre class="term" data-run="mix_fixed.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The other classic fix is Chapter 15's <code>std::cin.ignore(<wbr>std::numeric_limits&lt;<wbr>std::streamsize&gt;::max(), <wbr>'\n')</code> right after the <code>&gt;&gt;</code>: bin the rest of the number's line. <code>std::ws</code> is shorter, but it also eats a deliberately empty line. Or avoid mixing altogether: read every answer with <code>getline</code> and convert it yourself.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-mix-m" id="ex-mix"></div>
+  <script type="application/json" id="ex-mix-m">{"program": "fill_mix.cpp", "prompt": "A garage log asks for a bay number with <code>&gt;&gt;</code>, then a note with <code>getline</code>. Someone types <kbd>4</kbd>, then <kbd>leaking oil</kbd>. Fill in the line that reads the note so it doesn't come back empty.", "blanks": [{"line": 10, "text": "std::ws", "accept": ["ws"]}], "explain": "<code>std::getline(std::cin &gt;&gt; std::ws, note)</code>: <code>std::cin &gt;&gt; std::ws</code> first eats the ⏎ left behind by <code>std::cin &gt;&gt; bay</code>, then <code>getline</code> reads the whole note, spaces included. Real screen: <samp>bay 4: leaking oil</samp>. Without <code>std::ws</code> the note would be empty, as in panel 33."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: formatted and unformatted reads">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption"><code>&gt;&gt;</code> is a <b>formatted</b> read: it skips whitespace and turns characters into a value (an <code>int</code>, a word...). <b>Unformatted</b> reads take characters exactly as they are: <code>get(c)</code> (one character, spaces and ⏎ included), <code>getline</code>, and <code>read</code> (a block of bytes, next panel). Same text, two ways:</p>
+    <span class="file-tab">unformatted.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="unformatted.cpp"></pre>
+      <pre class="term" data-run="unformatted.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>"a b&nbsp;&nbsp;c\n"</code> is 7 characters: 3 letters, 3 spaces and a newline. <code>&gt;&gt;</code> into a <code>char</code> saw only the 3 letters; <code>get</code> saw all 7. Counting characters, copying a file exactly, reading a file's raw bytes: that's unformatted work.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 37: a binary file and its bytes">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">So far every file was <b>text</b>: numbers written as digit characters. A <b>binary</b> file stores a value's raw bytes, exactly as they sit in memory. Line 11 opens the file with <code>std::ios::binary</code>; line 12 hands <code>write</code> the bytes of three 4-byte integers. Then the program reads them back one byte at a time and prints each byte in hex (two digits each, thanks to <code>setw(2)</code> and <code>setfill('0')</code>).</p>
+    <span class="file-tab">binary.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="binary.cpp"></pre>
+      <pre class="term" data-run="binary.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the bytes">
+      <li><span><b>12 bytes</b>: three <code>std::int32_t</code>s of 4 bytes each, whatever their values.</span></li>
+      <li><span><b>1 is stored as <samp>01 00 00 00</samp></b>: smallest byte first. That's called <b>little-endian</b>, the order this machine's x86-64 processor uses. 256 is <samp>00 01 00 00</samp>. And -1 is all ones: <samp>ff ff ff ff</samp>.</span></li>
+      <li><span><b><code>reinterpret_cast&lt;const char*&gt;</code></b> says "treat this memory as plain bytes". It's one of the few honest uses of that cast. Lines 27 to 30 rewind and <code>read</code> the 12 bytes straight back into three integers.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="worried" data-mouth="flat" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Binary files are compact and fast, but they're tied to the machine: a processor that stores the biggest byte first (big-endian) would read <samp>01 00 00 00</samp> as 16777216. Real file formats write down their byte order. Also note line 31: <code>std::dec</code>, because line 22's <code>std::hex</code> stuck.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-bytes-m" id="ex-bytes"></div>
+  <script type="application/json" id="ex-bytes-m">{"program": "predict_bytes.cpp", "prompt": "The same three <code>std::int32_t</code> values, 7, 1000000 and 42, written twice: as text with spaces and a final newline, and as raw bytes. Predict both file sizes in bytes.", "hint": "Text: count every digit, space and the newline. Binary: how many bytes does one <code>std::int32_t</code> take?", "explain": "Text: <code>7 1000000 42\\n</code> is 1 + 1 + 7 + 1 + 2 + 1 = <samp>13</samp> bytes. Binary: 3 × 4 = <samp>12</samp> bytes, no matter how many digits the numbers have. Big numbers favour binary; small ones (like 7 alone: 2 text bytes against 4) favour text."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · THE FILING CABINET<small><code>std::filesystem</code>: paths, <code>exists</code>, <code>file_size</code>, <code>directory_iterator</code>, <code>create_directories</code>, and two ways to fail</small></h2>
+
+  <section class="panel clean machine" aria-label="Panel 38: taking a path apart" data-machine="m-path">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">C++17's <code>&lt;filesystem&gt;</code> is a toolbox for files and folders. Everything lives in <code>std::filesystem</code>, so programs usually write <code>namespace fs = std::filesystem;</code> once, as a short nickname. Its first tool is <code>fs::path</code>: not just a string, but a path that knows its parts. Here is <code>fs::path p{"garage/logs/oil.txt"}</code> on the bench; every answer is a real line of <code>path_parts.cpp</code>.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-path">{"label": "fs::path", "program": "path_parts.cpp", "examples": [
+      {"in": "p.filename()", "out": "oil.txt", "expectLine": "p.filename() -> oil.txt", "outKind": "path", "note": "The last part: the file's own name."},
+      {"in": "p.stem()", "out": "oil", "expectLine": "p.stem() -> oil", "outKind": "path", "note": "The file name without its extension."},
+      {"in": "p.extension()", "out": ".txt", "expectLine": "p.extension() -> .txt", "outKind": "path", "note": "The extension <b>includes the dot</b>. Compare with <code>\".txt\"</code>, not <code>\"txt\"</code>."},
+      {"in": "p.parent_path()", "out": "garage/logs", "expectLine": "p.parent_path() -> garage/logs", "outKind": "path", "note": "Everything before the last part: the folder it's in."},
+      {"in": "\"garage\" / \"tools\" / \"wrench.cfg\"", "out": "garage/tools/wrench.cfg", "expectLine": "garage / tools / wrench.cfg -> garage/tools/wrench.cfg", "outKind": "path", "note": "The <code>/</code> operator joins path pieces with the right separator for the system (on Windows, a backslash). Line 12 starts from <code>fs::path{\"garage\"}</code>, because two plain strings can't be divided."},
+      {"in": "std::cout << p.filename()", "out": "printed directly: \"oil.txt\"", "expectLine": "printed directly: \"oil.txt\"", "outKind": "quoted!", "note": "Surprise: sending a <code>path</code> straight to a stream prints it <b>in quotes</b>, so paths with spaces stay readable. Use <code>.string()</code> (as lines 8 to 13 do) when you want the bare text."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: a tour of the shed">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">The program builds its own little folder tree, <code>shed</code>, each time it runs: <code>remove_all</code> (line 11) deletes any old one, <code>create_directories</code> (line 12) makes <code>shed/bolts/small</code> with every folder on the way, and three files are written. Then it asks questions and lists what's inside with <code>directory_iterator</code>.</p>
+    <span class="file-tab">fs_tour.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="fs_tour.cpp"></pre>
+      <pre class="term" data-run="fs_tour.cpp"></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the run">
+      <li><span><b><code>fs::exists</code></b> answers yes or no, and never throws for a missing file.</span></li>
+      <li><span><b><code>fs::file_size</code></b>: 16 bytes, because <code>"bolt\nnut\nwasher\n"</code> is 13 letters and 3 newlines.</span></li>
+      <li><span><b>Line 26</b> visits each entry in <code>shed</code> (not inside <code>bolts</code>: for that there's <code>recursive_directory_iterator</code>). Each entry knows its path and whether it's a directory. <code>directory_iterator</code> is an <b>input</b> bookmark (Chapter 25): one pass only, and the notebook's <code>dir_kind.cpp</code> asks the library to prove it.</span></li>
+      <li><span><b>Line 31 sorts.</b> The order a directory hands out its entries is <b>unspecified</b>: it depends on the file system, and can differ between machines and runs. Sort before you print or compare.</span></li>
+    </ol>
+    <p class="libnote"><b>CAREFUL:</b> <code>remove_all</code> deletes a whole folder tree, with no undo and no recycle bin. This demo only ever deletes the <code>shed</code> folder it made itself, next to the program.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-listtxt-m" id="ex-listtxt"></div>
+  <script type="application/json" id="ex-listtxt-m">{"program": "fill_listtxt.cpp", "prompt": "The program makes an <code>inbox</code> folder with four files, then lists only the <code>.txt</code> ones, sorted. Fill in the folder walker and the extension test.", "blanks": [{"line": 18, "text": "fs::directory_iterator", "accept": ["std::filesystem::directory_iterator", "directory_iterator"]}, {"line": 19, "text": "extension()"}, {"line": 19, "text": "\".txt\""}], "explain": "<code>fs::directory_iterator{\"inbox\"}</code> visits every entry once. <code>entry.path().extension()</code> gives the extension <b>with</b> its dot, so it's compared with <code>\".txt\"</code>. Sorting makes the order dependable. Real run: <samp>brakes.txt</samp>, <samp>tyres.txt</samp>."}</script>
+
+  <section class="panel pop alarm" aria-label="Panel 40: file_size of a file that isn't there">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="40"></svg>
+    <p class="caption">Chapter 15's file streams failed <b>silently</b>. The filesystem tools are the opposite: most of them <b>throw</b> when something goes wrong. Asking for the size of a file that doesn't exist:</p>
+    <span class="file-tab">fs_throw.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="fs_throw.cpp"></pre>
+      <pre class="term wrap" data-run="fs_throw.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="Reading the terminal like a detective">
+      <li><span><b>The kind</b>: <samp>std::filesystem::__cxx11::filesystem_error</samp>. The <code>__cxx11</code> part is a detail of how libstdc++ names things inside; in your code it's just <code>std::filesystem::filesystem_error</code>.</span></li>
+      <li><span><b>The message</b>: what was being tried (<samp>cannot get file size</samp>), what the system said (<samp>No such file or directory</samp>), and the path <b>as you wrote it</b>, in brackets: <samp>[nope.txt]</samp>.</span></li>
+      <li><span><b>Exit 134</b>: nobody caught it, so terminate and the shell's <samp>Aborted</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 41: two ways to ask">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">Almost every filesystem function comes <b>twice</b>. Without extra arguments, it throws a <code>filesystem_error</code> (lines 8 to 14 catch one). Give it a <code>std::error_code</code> as the last argument and it <b>never throws</b>: it lights the lamp instead (lines 16 to 23). Part 1's choice, built right into the library.</p>
+    <span class="file-tab">fs_two_ways.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="fs_two_ways.cpp"></pre>
+      <pre class="term wrap" data-run="fs_two_ways.cpp"></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The caught exception carries the same code and the path (<code>e.code()</code>, <code>e.path1()</code>). In the lamp version, look at <samp>n holds</samp>: on failure <code>file_size</code> returns the biggest possible <code>std::uintmax_t</code>, a nonsense size. Only trust <code>n</code> if <code>ec</code> is clear. Use the throwing version when a missing file means the job can't be done; use <code>error_code</code> when missing files are normal, like checking a list of maybe-files.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spotfs-m" id="ex-spotfs"></div>
+  <script type="application/json" id="ex-spotfs-m">{"program": "spot_fs.cpp", "bug": 8, "prompt": "A size report for three files. One of them, <code>gone.txt</code>, doesn't exist, and the report dies halfway: the third file is never measured. Click the line that should have been written differently.", "explain": "Line 8 uses the <b>throwing</b> <code>file_size</code>. For <code>gone.txt</code> it throws <code>filesystem_error</code>, nobody catches it, and the program aborts (exit 134) before reaching <code>spot_fs.cpp</code>. In a report where missing files are expected, use the <code>error_code</code> version: <code>std::error_code ec; auto size{std::filesystem::file_size(name, ec)};</code> then print <code>ec.message()</code> when <code>ec</code> is set (Boss 3 does exactly that). Or wrap line 8 in a <code>try</code> inside the loop."}</script>
+
+  <div data-ex="choice" data-model="ex-ec-m" id="ex-ec"></div>
+  <script type="application/json" id="ex-ec-m">{"q": "A backup tool must copy <code>settings.ini</code>, which is required, and may also copy any of 500 optional plugin files, most of which usually don't exist. Which versions of the filesystem calls fit?", "options": [
+    {"t": "Throwing calls for <code>settings.ini</code>; <code>std::error_code</code> calls for the plugins", "correct": true, "why": "Right: the throwing calls caught once near the top, the plugin lamps checked one by one. A missing required file means the job can't be done: an exception, reported clearly. A missing optional file is normal: a lamp you check and move past, with no exception for each of the hundreds of misses."},
+    {"t": "<code>std::error_code</code> everywhere, ignoring the codes to keep it short", "why": "An unchecked lamp is no check at all. The backup could \"succeed\" without its settings."},
+    {"t": "Throwing calls for every file, with no <code>try</code> anywhere", "why": "The first missing plugin would terminate the whole backup (panel 40)."},
+    {"t": "Check <code>fs::exists</code> first, then use the throwing calls without a <code>try</code>", "why": "Better, but a file can vanish between the check and the use (another program deletes it). The <code>error_code</code> or <code>try</code> version handles that gap too."}]}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 42: boss level">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="42"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="mechanic" data-mood="focus" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Signposts, alarms and printers, all mixed up. For every alarm ask: which handler matches first, and is it still the real kind? For every printout ask: which settings are still on from before?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren raises both arms, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. A gauge family: <code>TooHot</code> is a kind of <code>GaugeError</code>. Three temperatures, two handlers, and one sticky setting hiding in a handler. Predict all three lines.", "hint": "Which handler does each throw land in? In the <code>TooHot</code> handler, the temperature is printed <b>before</b> <code>std::hex</code>. What is still switched on when the third trip prints <code>-5</code>?", "explain": "<samp>50 ok</samp>. 120 throws <code>TooHot</code>: the first handler prints <samp>120 too hot code </samp>, then switches to hex for 255: <samp>ff</samp>. Hex sticks, so on the third trip the <code>GaugeError</code> handler prints -5 in hex. A negative <code>int</code> in hex shows its raw 32-bit pattern: <samp>fffffffb sensor fault</samp>. Two lessons in one line: leaked settings, and children-before-parents handled correctly."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 21, "prompt": "Boss 2. A bad line in a file should be fixed and retried, but the program gives up. No compiler warns. Click the line that causes it.", "explain": "Line 21: <code>throw e;</code> throws a <b>copy</b> of <code>e</code>, whose declared type is <code>LoadError</code>, so the <code>BadLine</code> part (and its <code>line</code> number) is sliced away. <code>main</code>'s <code>BadLine</code> handler can't match, and <samp>give up: bad line 4</samp> comes from the parent handler. Fix: a bare <code>throw;</code> passes on the original <code>BadLine</code>, and the output becomes <samp>fix line 4 and retry</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.cpp", "seed": 3, "pin": [1, 2, 3, 4, 6, 16], "alts": [{"order": [1, 2, 3, 4, 5, 6, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16], "program": "boss_parsons_alt.cpp"}], "prompt": "Boss 3. A size report that never throws: for each name, ask for the size with an <code>error_code</code>; if the lamp is on, report it and move to the next name; otherwise print the size.", "explain": "The <code>error_code</code> must exist before the call that fills it. Making a fresh one inside the loop is the habit that keeps one name's lamp from leaking into the next; creating it once, just before the loop, gives the same run here, so that order is accepted too. The <code>if (ec)</code> check comes straight after the call, and its <code>continue;</code> skips the size line for a missing file. The size is printed only after the check has passed. Real run: <samp>list.txt: 9 bytes</samp>, <samp>gone.txt: No such file or directory</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.cpp", "columns": ["word", "result", "total"], "given": [0], "prompt": "Boss 4. A strict number reader: each word gets its own string stream, and counts only if a number was read <b>and</b> the word's stream then reached its end. Words: <code>3 k 8x 5 -2</code>. Fill in each result and the running total.", "explain": "<samp>3</samp>: read 3, and reading it touched the end: added, total 3. <samp>k</samp>: no number: skipped. <samp>8x</samp>: the number 8 is read, but <code>x</code> is left, so <code>eof()</code> is false: skipped. This is how to stop <code>\"8x\"</code> sneaking through (Chapter 15's <code>stoi</code> would have accepted it). <samp>5</samp>: added, 8. <samp>-2</samp>: added, 6."}</script>
+
+  <div data-ex="fill" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_fill.cpp", "prompt": "Boss 5. <code>label_all</code> must give the <b>strong</b> guarantee: if any tool has no name, the vector is left exactly as it was. Fill in the copy, and the commit.", "blanks": [{"line": 9, "text": "draft{tools}", "accept": ["draft(tools)", "draft = tools"]}, {"line": 14, "text": "tools.swap(draft)", "accept": ["std::swap(tools, draft)", "swap(tools, draft)"]}], "explain": "Copy, change, swap: <code>Tools draft{tools};</code> makes the copy, the loop labels the draft (and may throw halfway), and <code>tools.swap(draft);</code> commits only after every tool succeeded. Real run: <samp>refused: no name</samp>, then <samp>[saw][][drill]</samp>, untouched, even though <code>saw</code> had already been labelled in the draft. After removing the empty name: <samp>[W-saw][W-drill]</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Wren's <code>load_prices(folder)</code> reads every <code>.csv</code> file in a folder. The folder must exist; individual lines may have typos; and the function's prices are later printed by other code. Which design is best?", "options": [
+    {"t": "Throw your own <code>PricesError</code> if the folder is missing; parse each line into a <code>std::expected</code> and skip bad ones; print with <code>std::format</code>; sort the file names", "correct": true, "why": "Right. A missing required folder: the job can't be done, so an exception from your own family. A typo on one line: expected, handled right there. <code>std::format</code> leaves <code>std::cout</code>'s settings alone for the other code, and sorting gives a dependable file order."},
+    {"t": "<code>assert(fs::exists(folder))</code>; <code>std::stoi</code> on every line with no <code>try</code>; set <code>std::fixed</code> and <code>std::setprecision(2)</code> on <code>std::cout</code> at the start", "why": "A missing folder isn't a bug (and the assert vanishes under <code>-DNDEBUG</code>); one typo terminates everything; and the precision leaks into everyone else's output."},
+    {"t": "Return an empty vector for a missing folder, a bad line or any other problem, with no message, and let the callers work out what went wrong", "why": "\"No prices\" and \"the folder is missing\" look identical. Failure dressed up as success."},
+    {"t": "Mark <code>load_prices</code> <code>noexcept</code> so callers know it's safe, read each line with <code>std::stoi</code>, and print with <code>std::cout</code>'s current settings", "why": "File and parsing work can fail. A false <code>noexcept</code> turns the first missing folder, or the first typo that makes <code>std::stoi</code> throw, into <code>std::terminate</code> (panel 19). And the prices print with whatever settings someone else left on."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 43: what you learned">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">What you learned in Chapter 27</p>
+    <ul class="recap">
+      <li><b>NOT EVERY PROBLEM IS A FIRE</b>Expected trouble gets a signpost: <code>std::optional</code> when no reason is needed, <code>std::expected&lt;T, E&gt;</code> (C++23, g++ only here) when it is, error codes like <code>std::from_chars</code>'s in hot loops (mark yours <code>[[nodiscard]]</code>). Throw when the job can't be done. Assert only your own preconditions and invariants.</li>
+      <li><b>KNOW YOUR FAMILY TREE</b>Build your exceptions on <code>std::runtime_error</code>. Handlers are tried top to bottom: children before parents, or g++ warns <samp>will be caught by earlier handler</samp>.</li>
+      <li><b>PASS THE CARD ON; DON'T PHOTOCOPY IT</b>Inside a handler, <code>throw;</code> rethrows the original. <code>throw e;</code> throws a sliced copy, silently.</li>
+      <li><b>A BROKEN PROMISE SWITCHES OFF THE BUILDING</b>An exception leaving a <code>noexcept</code> function calls <code>std::terminate</code>, even with a matching <code>catch</code> outside. Strong guarantee: copy, change, swap.</li>
+      <li><b>SETTINGS STICK UNTIL YOU CHANGE THEM BACK</b><code>setprecision</code>, <code>fixed</code>, <code>hex</code>, <code>left</code>, <code>setfill</code> stay on; <code>setw</code> lasts for one item. Restore what you change, or use <code>std::format</code>.</li>
+      <li><b>SWEEP THE LEFTOVER NEWLINE</b>After <code>&gt;&gt;</code>, use <code>std::getline(std::cin &gt;&gt; std::ws, s)</code>. Four lamps: good, eof, fail, bad. Filesystem calls throw, unless you pass a <code>std::error_code</code>; sort directory listings.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Chapter 15 taught your programs to fail. This one taught them to fail <b>on purpose, in the right way</b>, and to leave the printer as they found it. That's the difference between a program that works and a program other people can build on.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 44: next time, A City of Addresses">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption soft">Coming up in Chapter 28: A City of Addresses</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 190" role="img" aria-label="Teaser picture: a small city map with three neighbourhoods. Each neighbourhood has a local street sign reading helper, and one big city-wide signpost in the middle reads main.">
+        <g stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <rect x="14" y="20" width="132" height="150" rx="10" fill="#DDE8FF"/>
+          <rect x="164" y="20" width="132" height="150" rx="10" fill="#C9F2D9"/>
+          <rect x="314" y="20" width="132" height="150" rx="10" fill="#FFF6CC"/>
+          <path d="M14 96 H446" fill="none" stroke-width="7" stroke-dasharray="14 10"/>
+          <rect x="30" y="40" width="80" height="26" rx="4" fill="#FFFFFF"/>
+          <rect x="180" y="126" width="80" height="26" rx="4" fill="#FFFFFF"/>
+          <rect x="350" y="40" width="80" height="26" rx="4" fill="#FFFFFF"/>
+          <rect x="196" y="78" width="68" height="36" rx="6" fill="#FFD60A"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111" text-anchor="middle">
+          <text x="70" y="59">helper</text><text x="220" y="144">helper</text><text x="390" y="58">helper</text>
+          <text x="230" y="101">main</text>
+        </g>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Three files, each with its own little <code>helper</code>. Are those three different helpers, or one helper defined three times? Next time the program becomes a city: some names are local street names, some are city-wide addresses that must be unique, and the Linker, now a city planner, checks every address before anyone moves in. We'll build libraries, read mangled names, and find out why <code>import std;</code> doesn't work here yet.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch26.html">← Ch 26 · Cookie Cutters and Bouncers</a><a class="next" href="ch28.html">Ch 28 · A City of Addresses →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what expected holds, how noexcept ends things, what a stream's settings really are</summary>
+    <div class="page-body">
+      <h3>What a <code>std::expected</code> holds</h3>
+      <p>An <code>expected&lt;int, std::string&gt;</code> holds <b>either</b> an <code>int</code> <b>or</b> a <code>std::string</code>, in the same storage, plus a flag saying which. It never holds both and never borrows memory from the heap for itself. <code>*e</code> on an error is undefined (no check), just like <code>*</code> on an empty optional; <code>e.value()</code> checks, and throws <code>std::bad_expected_access</code> if there's no value. <code>e.value_or(0)</code> gives a fallback. In C++23 there are also <code>and_then</code>, <code>transform</code> and <code>or_else</code> for chaining steps that each might fail.</p>
+      <h3>Why clang can't see expected here</h3>
+      <p>libstdc++ 13's <code>&lt;expected&gt;</code> switches itself on only when the compiler reports full C++20 concepts support through a feature-test macro. clang++ 18 reports an older value of that macro, so the header defines nothing and clang reports <samp>no template named 'expected'</samp> (panel 6). Here is that macro, printed by each compiler; this machine's <code>&lt;expected&gt;</code> header asks for <code>__cpp_concepts &gt;= 202002L</code>:</p>
+      <span class="file-tab">concepts_macro.cpp</span>
+      <pre class="code" data-src="concepts_macro.cpp"></pre>
+      <pre class="term" data-run="concepts_macro.cpp" data-exit></pre>
+      <pre class="term" data-run="concepts_macro.cpp" data-alt data-exit></pre>
+      <p>cppreference lists <code>expected</code> in clang's own library, libc++, from version 16 (not run for this book).</p>
+      <h3>Four more claims, checked</h3>
+      <p>Without <code>std::unexpected</code>, a message can't become the error arm (the exercise after panel 6):</p>
+      <span class="file-tab">no_unexpected.cpp</span>
+      <pre class="code" data-src="no_unexpected.cpp"></pre>
+      <pre class="term wrap" data-run="no_unexpected.cpp" data-exit></pre>
+      <p>A bare <code>throw;</code> with no exception being handled (panel 17). The <code>catch (...)</code> never gets a chance: there is nothing to catch, so <code>std::terminate</code> runs.</p>
+      <span class="file-tab">bare_throw.cpp</span>
+      <pre class="code" data-src="bare_throw.cpp"></pre>
+      <pre class="term wrap" data-run="bare_throw.cpp" data-exit></pre>
+      <p>Contracts (panel 10): neither compiler here knows <code>pre</code>. g++ first, then clang++:</p>
+      <span class="file-tab">contracts.cpp</span>
+      <pre class="code" data-src="contracts.cpp"></pre>
+      <pre class="term wrap" data-run="contracts.cpp" data-exit></pre>
+      <pre class="term wrap" data-run="contracts.cpp" data-alt data-exit></pre>
+      <p>And <code>directory_iterator</code>'s kind of bookmark (panel 39), asked with the standard's iterator concepts:</p>
+      <span class="file-tab">dir_kind.cpp</span>
+      <pre class="code" data-src="dir_kind.cpp"></pre>
+      <pre class="term" data-run="dir_kind.cpp" data-exit></pre>
+      <h3>Two compilers, two noexcept warnings</h3>
+      <p>g++ calls it <code>-Wterminate</code>; clang++ calls the same situation <code>-Wexceptions</code>. The run is identical, because both use the same library:</p>
+      <pre class="term wrap" data-run="noexcept_throw.cpp" data-alt data-exit></pre>
+      <p>Both compilers also warn about handlers in the wrong order. clang++ names the types as they're written in the handler, with <code>const</code> and <code>&amp;</code>:</p>
+      <pre class="term wrap" data-run="order_bad.cpp" data-alt></pre>
+      <p>And clang's wording for an ignored <code>[[nodiscard]]</code> result:</p>
+      <pre class="term wrap" data-run="nodiscard.cpp" data-alt></pre>
+      <h3>What happens when noexcept is broken</h3>
+      <p>The rules say <code>std::terminate</code> is called, and it is <b>implementation-defined</b> whether any stack unwinding happens first. In practice g++ compiles a <code>noexcept</code> function so the exception search simply stops at its edge. That's also why <code>noexcept</code> can make code a little smaller: the compiler doesn't have to prepare to unwind through such functions.</p>
+      <h3>Where the guarantees come from</h3>
+      <p>The basic, strong and no-throw guarantees were described by David Abrahams in the late 1990s while the first C++ standard library was being specified, and the standard still uses the ideas. <code>std::vector::push_back</code> gives the strong guarantee (when the element's move can't throw or it can be copied); destructors and <code>swap</code> of standard containers give no-throw. Core Guideline E.12 says to use <code>noexcept</code> when exiting a function because of a throw is impossible or unacceptable.</p>
+      <h3>A stream's settings are just numbers</h3>
+      <p>Every stream stores its formatting <b>flags</b> (fixed, hex, left, boolalpha...) as bits in one value, plus a precision, a width and a fill character. Manipulators are tiny functions that change those. <code>std::cout.flags()</code> returns all the flags, so a helper can save them with <code>auto f{std::cout.flags()};</code> and restore them with <code>std::cout.flags(f);</code>. To save absolutely everything, including fill and precision, make a spare stream to hold them: <code>std::ios saved{nullptr}; saved.copyfmt(std::cout); ... std::cout.copyfmt(saved);</code>.</p>
+      <h3>Width resets, but only for most things</h3>
+      <p>The width goes back to 0 after each formatted item that uses it (numbers, strings, characters). Manipulators themselves don't print, so <code>std::setw(6) &lt;&lt; std::left</code> still applies the width to the next real item.</p>
+      <h3>Stream state as bits</h3>
+      <p>The flags behind panel 30 are <code>std::ios::goodbit</code> (zero), <code>eofbit</code>, <code>failbit</code> and <code>badbit</code>, stored together; <code>rdstate()</code> returns them. <code>clear()</code> sets them all to goodbit; <code>setstate(failbit)</code> raises one. <code>in.exceptions(std::ios::badbit)</code> makes the stream throw <code>std::ios_base::failure</code> when that flag goes up: sensible for badbit, awkward for eofbit and failbit, which go up during normal reading.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>One style per project.</b> Large code bases write down their error policy. Some (many games, embedded systems, and historically Google's style guide) compile with <code>-fno-exceptions</code> and use return values; others use exceptions throughout. <code>std::expected</code> gives the return-value style a standard shape, and libraries such as tl::expected offered the same before C++23.</li>
+        <li><b>Exception families at library edges.</b> A library usually throws its own family (for example a JSON library's <code>parse_error</code>, <code>type_error</code> and <code>out_of_range</code>, all built on one base), so users can catch "anything from this library" or one specific problem.</li>
+        <li><b>Rethrow to add context.</b> Servers often catch, log the request id, and <code>throw;</code>. C++11's <code>std::throw_with_nested</code> wraps the original inside a new exception with more context, and <code>std::rethrow_if_nested</code> unwraps it.</li>
+        <li><b>noexcept on moves and swaps.</b> Containers check it (Chapter 22), so a class without <code>noexcept</code> moves gets copied when a vector grows.</li>
+        <li><b>Formatting.</b> New code prefers <code>std::format</code> (and <code>std::print</code> in C++23, not available on this toolchain) because it never changes stream state. Manipulators are still everywhere in older code and in code that writes to files and string streams.</li>
+        <li><b>Binary formats.</b> Images, audio, save games and network messages are binary, always with a written specification of sizes and byte order. Real code reads them field by field, rather than dumping whole structs, because padding and byte order differ between machines.</li>
+        <li><b>std::filesystem.</b> Build tools, installers and backup programs walk folders with <code>recursive_directory_iterator</code>, create output folders with <code>create_directories</code>, and use the <code>error_code</code> overloads for "maybe there" files.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"Exceptions are always better than return values"</b> (or the other way round). Each fits a different kind of trouble (panel 11).</li>
+        <li><b>"assert checks user input."</b> It checks your own code, and vanishes with <code>-DNDEBUG</code>.</li>
+        <li><b>"noexcept stops exceptions."</b> It turns them into <code>std::terminate</code>.</li>
+        <li><b>"The compiler checks that a noexcept function can't throw."</b> It warns only about a <code>throw</code> written directly inside (panel 19), never about calls (the predict after panel 20).</li>
+        <li><b>"<code>throw e;</code> and <code>throw;</code> are the same."</b> <code>throw e;</code> copies and slices.</li>
+        <li><b>"The compiler picks the best-matching handler."</b> It picks the first one that matches.</li>
+        <li><b>"setprecision applies to the next number."</b> It applies until changed. Only <code>setw</code> is one-shot.</li>
+        <li><b>"<code>good()</code> is the opposite of <code>fail()</code>."</b> After reading the last number, <code>good()</code> is false (eof) while <code>fail()</code> is still false.</li>
+        <li><b>"<code>clear()</code> removes the bad input."</b> It only resets the flags.</li>
+        <li><b>"<code>getline</code> after <code>&gt;&gt;</code> is broken."</b> It works exactly as specified; the newline was still there.</li>
+        <li><b>"A binary file looks the same on every computer."</b> Byte order and type sizes can differ.</li>
+        <li><b>"directory_iterator lists files alphabetically."</b> Its order is unspecified.</li>
+        <li><b>"<code>p.extension()</code> is <code>txt</code>."</b> It's <code>.txt</code>, dot included.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Build and run</h3>
+      <p>Only the g++ and clang++ runs the terminals show were run for this book. The other systems, versions and messages below are pointers to try on your own machine, not captured runs.</p>
+      <p>Make a folder <code>cpp-ch27</code>, save <code>custom_tree.cpp</code>, then <code>g++ -std=c++23 -Wall -Wextra -g custom_tree.cpp -o custom_tree</code> and <code>./custom_tree</code>.</p>
+      <ul>
+        <li><b>Linux:</b> <code>sudo apt install g++</code> (Debian, Ubuntu) or <code>sudo dnf install gcc-c++</code> (Fedora). For <code>std::expected</code> you need g++ 12 or newer with <code>-std=c++23</code>; <code>g++ --version</code> tells you.</li>
+        <li><b>macOS:</b> <code>xcode-select --install</code> gives you Apple's <code>clang++</code> with libc++, which has <code>std::expected</code> in recent versions: <code>clang++ -std=c++23 age_expected.cpp -o age_expected</code>. Uncaught exceptions there print <samp>libc++abi: terminating due to uncaught exception of type ...</samp>, and the <code>what()</code> texts of library exceptions are worded differently.</li>
+        <li><b>Windows:</b> with MSYS2's MinGW g++ everything here works the same. With Visual Studio: <code>cl /std:c++latest /EHsc /W4 age_expected.cpp</code>. Paths print with backslashes, and <code>fs::path</code>'s <code>/</code> joins with <code>\</code>. Windows text files end lines with two characters (carriage return, newline), so text-mode file sizes differ from Linux; <code>std::ios::binary</code> files don't.</li>
+      </ul>
+      <h3>2. Watch a setting leak</h3>
+      <p>In <code>precision_bug.cpp</code>, add <code>std::cout &lt;&lt; std::boolalpha;</code> inside <code>show_ratio</code> and print a <code>bool</code> in <code>main</code> afterwards. Then fix it with <code>auto f{std::cout.flags()};</code> at the start of <code>show_ratio</code> and <code>std::cout.flags(f);</code> at the end.</p>
+      <h3>3. Type the mixed-input bug yourself</h3>
+      <p>Build <code>mix_bug.cpp</code> and type <kbd>36</kbd> Enter. Then try typing <kbd>36 Wren Hale</kbd> on <b>one</b> line: what does the name become now, and why? Feed it from a file too: <code>printf '36\nWren Hale\n' | ./mix_bug</code> (PowerShell: <code>"36`nWren Hale" | .\mix_bug.exe</code>).</p>
+      <h3>4. Look at a binary file</h3>
+      <p>Run <code>binary</code>, then <code>xxd readings.bin</code> or <code>od -A d -t x1 readings.bin</code> (Linux and macOS) or <code>Format-Hex readings.bin</code> (PowerShell). The bytes match the program's own dump.</p>
+      <h3>5. Try these on purpose</h3>
+      <ol>
+        <li>In <code>noexcept_throw.cpp</code>, change <code>noexcept</code> to <code>noexcept(false)</code>. Which line appears now?</li>
+        <li>In <code>route_part.cpp</code>, move the <code>throw;</code> out of the handler, to the end of <code>repair</code>. Read the run.</li>
+        <li>In <code>fs_tour.cpp</code>, print the names <b>before</b> sorting, several times, and on another computer if you can.</li>
+        <li>Make <code>age_expected.cpp</code> print <code>age.value()</code> on an error and read the exception's name.</li>
+        <li>Replace <code>std::ws</code> in <code>mix_fixed.cpp</code> with an <code>ignore</code> call (Chapter 15) and check that both work.</li>
+      </ol>
+      <h3>6. No install?</h3>
+      <p>Compiler Explorer (godbolt.org) runs all of these with a choice of compilers and libraries; pick an x86-64 gcc 13 or newer for <code>std::expected</code>. Its sandbox lets programs create files in the current folder, so the filesystem demos work too.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>std::expected&lt;T, E&gt;</dt><dd>C++23: a return value that holds either a <code>T</code> (success) or an <code>E</code> (the error); <code>has_value()</code>, <code>*</code>, <code>value()</code>, <code>error()</code>.</dd>
+        <dt>std::unexpected</dt><dd>The wrapper that marks a value as the error arm of an <code>expected</code>: <code>return std::unexpected{"empty"};</code>.</dd>
+        <dt>error code</dt><dd>A small value returned to report success or which problem happened; <code>std::errc</code> and <code>std::error_code</code> in the standard library.</dd>
+        <dt>std::from_chars</dt><dd>C++17 number parser in <code>&lt;charconv&gt;</code>; never throws, reports through an <code>std::errc</code>.</dd>
+        <dt>[[nodiscard]]</dt><dd>An attribute asking the compiler to warn if a function's result is ignored.</dd>
+        <dt>attribute</dt><dd>A note to the compiler in double square brackets, such as <code>[[nodiscard]]</code>.</dd>
+        <dt>precondition</dt><dd>What must be true before a function runs, for it to work.</dd>
+        <dt>postcondition</dt><dd>What a function promises is true when it returns.</dd>
+        <dt>invariant</dt><dd>A rule about an object that must hold for its whole life.</dd>
+        <dt>contracts</dt><dd>A planned C++26 feature (<code>pre</code>, <code>post</code>, <code>contract_assert</code>) for writing preconditions and postconditions on functions; not yet in an approved standard or on this toolchain.</dd>
+        <dt>exception hierarchy</dt><dd>A family of exception classes built on each other with inheritance, rooted at <code>std::exception</code>.</dd>
+        <dt>rethrow</dt><dd><code>throw;</code> inside a handler: send the same exception on, unchanged.</dd>
+        <dt>noexcept</dt><dd>A promise that no exception leaves a function; breaking it calls <code>std::terminate</code>. As <code>noexcept(expr)</code>, a compile-time question.</dd>
+        <dt>exception-safety guarantees</dt><dd>No-throw (always succeeds), strong (all or nothing), basic (valid but maybe changed), none.</dd>
+        <dt>copy-and-swap</dt><dd>Getting the strong guarantee: do the work on a copy, then swap it in with an operation that can't throw.</dd>
+        <dt>manipulator</dt><dd>Something sent into a stream that changes its settings instead of printing: <code>std::setprecision</code>, <code>std::fixed</code>, <code>std::hex</code>, <code>std::setw</code>, <code>std::ws</code>.</dd>
+        <dt>sticky setting</dt><dd>A stream setting that stays on until changed; all of them except the width.</dd>
+        <dt>&lt;iomanip&gt;</dt><dd>The header for manipulators that take an argument (<code>setw</code>, <code>setprecision</code>, <code>setfill</code>).</dd>
+        <dt>state flags</dt><dd>A stream's eof, fail and bad bits; asked with <code>good()</code>, <code>eof()</code>, <code>fail()</code>, <code>bad()</code>.</dd>
+        <dt>std::ws</dt><dd>An input manipulator that skips whitespace, including leftover newlines.</dd>
+        <dt>formatted / unformatted I/O</dt><dd><code>&gt;&gt;</code> and <code>&lt;&lt;</code> convert values and (for input) skip whitespace; <code>get</code>, <code>getline</code>, <code>read</code>, <code>write</code> move characters or bytes as they are.</dd>
+        <dt>binary file</dt><dd>A file holding raw bytes rather than text; open with <code>std::ios::binary</code>.</dd>
+        <dt>little-endian</dt><dd>Storing a number's smallest byte first, as x86-64 processors do.</dd>
+        <dt>std::filesystem</dt><dd>C++17 library for paths, files and folders, in <code>&lt;filesystem&gt;</code>.</dd>
+        <dt>fs::path</dt><dd>A path that knows its parts: <code>filename()</code>, <code>stem()</code>, <code>extension()</code>, <code>parent_path()</code>, joined with <code>/</code>.</dd>
+        <dt>directory_iterator</dt><dd>Visits each entry of one folder, in unspecified order.</dd>
+        <dt>filesystem_error</dt><dd>The exception the throwing filesystem functions raise; has <code>code()</code> and <code>path1()</code>.</dd>
+        <dt>std::error_code</dt><dd>An error value with <code>message()</code>; passing one to a filesystem function makes it report instead of throwing.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://en.cppreference.com/w/cpp/utility/expected">cppreference: std::expected</a> and <a href="https://en.cppreference.com/w/cpp/utility/from_chars">std::from_chars</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/language/noexcept_spec">cppreference: noexcept specifier</a>, <a href="https://en.cppreference.com/w/cpp/language/noexcept">noexcept operator</a> and <a href="https://en.cppreference.com/w/cpp/language/exceptions">exceptions (with the safety guarantees)</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/io/manip">cppreference: input/output manipulators</a>, <a href="https://en.cppreference.com/w/cpp/io/manip/setw">std::setw</a> and <a href="https://en.cppreference.com/w/cpp/io/ios_base/iostate">stream state flags</a></li>
+        <li><a href="https://en.cppreference.com/w/cpp/filesystem">cppreference: the filesystem library</a> and <a href="https://en.cppreference.com/w/cpp/filesystem/file_size">file_size</a></li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: E.1 to E.31 (error handling), I.5 to I.8 (preconditions and postconditions), F.6 (noexcept), C.66 and C.85 (noexcept moves and swaps)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/exception-specifications-and-noexcept/">learncpp.com 27.9: exception specifications and noexcept</a>, with its own list of the safety guarantees, plus its chapter 28 on input and output.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, whose pages on streams and on error handling have clear diagrams.</li>
+        <li><a href="https://isocpp.org/wiki/faq/exceptions">isocpp.org FAQ: exceptions and error handling</a>.</li>
+        <li><a href="https://learn.microsoft.com/en-us/cpp/standard-library/using-insertion-operators-and-controlling-format">Microsoft Learn: using insertion operators and controlling format</a>.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch27</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, as each terminal shows) and each of the 55 programs was also built and run with clang++ 18.1 for comparison. Ten differ between the two: the <code>std::expected</code> programs (<code>age_expected.cpp</code>, <code>fill_expected.cpp</code>, <code>no_unexpected.cpp</code>) don't compile with clang++ 18 here (panel 6); <code>concepts_macro.cpp</code> prints a different number on purpose (the notebook shows both); clang words its warnings and errors differently for <code>contracts.cpp</code>, <code>nodiscard.cpp</code>, <code>noexcept_throw.cpp</code>, <code>order_bad.cpp</code> and <code>spot_order.cpp</code> (some shown in the notebook); and its failed-assert message in <code>assert_pre.cpp</code> spaces the function's parameter types differently (<code>std::vector&lt;int&gt; &amp;</code>). Every other output and exit code was the same. Both compilers use the same standard library (libstdc++ 13), which is why the <code>what()</code> texts match; other libraries word them differently. Programs ran inside a fresh process namespace with address randomisation off, from their own folder as the working directory; keyboard input came from recorded files and is shown as typed. The filesystem programs create and reset their own folders (<code>shed</code>, <code>inbox</code>) and files (<code>readings.bin</code>, <code>v.txt</code>, <code>v.bin</code>) on every run; <code>list.txt</code> sits in the folder, and <code>nope.txt</code> and <code>gone.txt</code> do not exist there. Directory listings are sorted by the programs. g++ prints curly quotes in this UTF-8 terminal. The map, the walk-through, the memory tracer and the machines are teaching models; each checks itself against those runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com lesson 27.9 (exception specifications and noexcept, and its list of exception-safety guarantees), cppreference (std::expected, std::from_chars, noexcept, std::setw and the manipulators, stream state, the filesystem library), the C++ Core Guidelines (E.1 to E.31, I.5 to I.8, F.6, C.66, C.85), Microsoft Learn's page on controlling stream format, the course's C++ research map (module rows I21 and I22, its C++26 status notes drawn from Andreas Fertig's blog, WG21 paper P4238R0 and Wikipedia's C++26 page, and its feature table for this toolchain), and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above. The C++26 status in panel 10 was checked on 2026-11-08 against WG21 paper P4238R0, "Returning C++26 for the Evaluation It Skipped" (open-std.org, 2026-07-30), which asks the national bodies to vote no on the C++26 DIS ballot over contracts. No primary source (isocpp.org, open-std.org or iso.org) for the ballot's result was found; Andreas Fertig's blog post "C++26 DIS failed, how does C++ survive?" and news reports say it was disapproved on 23 October 2026, which the page marks as unconfirmed. Version facts were checked the same day on cppreference: <code>std::expected</code> is C++23 (libstdc++ 12, libc++ 16), <code>std::from_chars</code> and <code>&lt;filesystem&gt;</code> are C++17 (and <code>from_chars</code> accepts no leading <code>+</code> or spaces), <code>std::throw_with_nested</code> is C++11, <code>std::print</code> is C++23, and the stored 0 after a failed number read comes from defect report LWG 696.</p>
+  <p>Wren, Ember the fire marshal, the Professor and the Compiler are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

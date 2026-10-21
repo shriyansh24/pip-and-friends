@@ -1,0 +1,1275 @@
+<!doctype html>
+<html lang="en" data-book="cpp">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inspectors and Magnifiers</title>
+<meta name="description" content="Chapter 18 of the Pip &amp; Friends C++ book, a comic course: an inspection lane for your code (a warnings policy with -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror, clang-format, clang-tidy, the sanitizer matrix, _GLIBCXX_ASSERTIONS, Valgrind, Compiler Explorer, static versus dynamic analysis), then text in depth: std::string_view and its dangling danger, std::format specs and compile-time checked format strings, std::from_chars and std::to_chars, cctype and unsigned char, and why a std::string stores bytes, not letters (UTF-8).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/cpp-ch18.css">
+<script defer src="../data/cpp-ch18.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-memory.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/cpp-ch18.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>C++ book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch17.html">&larr; Ch 17</a><span aria-current="page">Ch 18 of 29</span><a href="ch19.html">Ch 19 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">C++ · CHAPTER 18</p>
+    <h1 id="cover-h">INSPECTORS AND MAGNIFIERS</h1>
+    <div class="scene">
+      <svg class="char lg" data-char="mechanic" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char lg" data-char="pike" data-mood="happy" data-arms="point" data-prop="magnifier"></svg>
+    </div>
+    <p class="sr-only">Picture: Wren, the mechanic in orange coveralls, waves. Next to her stands Inspector Pike in a yellow high-visibility tabard and a peaked cap, pointing a big magnifying glass at the reader.</p>
+    <p class="caption blurb">Your program compiles. It runs. It prints a number. Is it <b>right</b>? A car that starts isn't a car that's safe to drive, so cars go through an <b>inspection lane</b>: a wash, a mirror check, a checklist, and a run on a rolling road. Code has the very same lane, and today Wren drives through it with <b>Inspector Pike</b>. Then we pick up a <b>magnifying glass</b> and look hard at text: views that don't own their page, a label printer called <code>std::format</code>, quick number parsing, and the surprise that <code>"é"</code> is <b>two</b> bytes. About 130 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The inspection lane: a clean build isn't a right build, and a warnings policy</a></li>
+      <li><a href="#part-2">The car wash and the checklist: clang-format and clang-tidy</a></li>
+      <li><a href="#part-3">The rolling road: sanitizers, library assertions, Valgrind, and which tool catches what</a></li>
+      <li><a href="#part-4">The magnifying glass: std::string_view, and the page that burned</a></li>
+      <li><a href="#part-5">The label printer: std::format specs, checked format strings, from_chars and to_chars</a></li>
+      <li><a href="#part-6">Bytes, not letters: UTF-8, cctype and unsigned char</a></li>
+      <li><a href="#part-7">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE INSPECTION LANE<small>A clean build isn't a right build; the mirrors, and a warnings policy</small></h2>
+
+  <section class="panel pop" aria-label="Panel 1: a car that starts">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <p class="caption">Wren's tyre gauge program averages four tyre pressures (in psi, pounds per square inch). 30, 32, 31 and 32 add up to 125, and 125 ÷ 4 is <b>31.25</b>. She builds it with the book's usual command, <code>g++ -std=c++23 -Wall -Wextra -g</code>. Not a single warning.</p>
+    <span class="file-tab">quiet.cpp</span>
+    <pre class="code" data-src="quiet.cpp"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>No errors, no warnings, so it's done. Right?</p></div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="down"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Inspector Pike says: </span>Inspector Pike, code inspection lane. A car that <b>starts</b> isn't a car that's <b>safe</b>. Before you run it: what will it print?</p></div>
+    </div>
+    <p class="sr-only">Picture: Wren points proudly at her code. Inspector Pike, clipboard in hand, squints at it.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-quiet-m" id="ex-quiet"></div>
+  <script type="application/json" id="ex-quiet-m">{"program": "quiet.cpp", "prompt": "Type exactly what <code>quiet.cpp</code> prints.", "hint": "Look at the types on line 9. <code>total</code> is an <code>int</code>, and <code>psi.size()</code> is a whole number too (a <code>std::size_t</code>). What does whole-number division do with the .25?", "explain": "<samp>average: 31</samp>. Line 9 divides two <b>whole numbers</b>, so the division happens in whole numbers first: 125 / 4 is 31, remainder thrown away. Only then is the 31 turned into a <code>double</code> for the return. The compiler had no complaint, because this is perfectly legal C++. It's just not what Wren meant."}</script>
+
+  <section class="panel clean" aria-label="Panel 2: the run">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Here's the real run. The build line is silent, and the answer is wrong.</p>
+    <pre class="term wrap" data-run="quiet.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="stern" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>The Compiler checks that your code is <b>legal</b> C++. It doesn't know what you <b>meant</b>. A clean build isn't a right build. That's why there's a whole lane of inspectors, and the Compiler is only the first one.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch tilt-l" aria-label="Panel 3: the inspection lane">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Big idea: the <b>inspection lane</b>. Each station looks for a different kind of trouble. The first three only <b>read</b> your code without running it: that's <b>static analysis</b>. The last two <b>watch it run</b>: that's <b>dynamic analysis</b>. Static tools see every line but have to guess about values; dynamic tools see real values, but only on the roads the run actually took.</p>
+    <svg class="pic-wide" viewBox="0 0 660 350" role="img" aria-label="An inspection lane drawn as a road with five stations, left to right. Station 1, car wash: clang-format, which fixes the layout. Station 2, mirrors: compiler warnings. Station 3, checklist: clang-tidy, which checks for known bad patterns. These three are under a bracket labelled static: reads the code. Station 4, rolling road: sanitizers, which watch the program run. Station 5, stethoscope: Valgrind, which runs an unchanged program inside a checker. These two are under a bracket labelled dynamic: watches it run. A small car drives along the road.">
+      <rect x="6" y="6" width="648" height="338" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <rect x="20" y="214" width="620" height="44" fill="#E6E6E6" stroke="#111" stroke-width="3"/>
+      <path d="M30 236 h600" stroke="#111" stroke-width="3" stroke-dasharray="16 14"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="20" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="76" y="30">1 · CAR</text><text x="76" y="52">WASH</text><text x="200" y="30">2 ·</text><text x="200" y="52">MIRRORS</text><text x="326" y="30">3 ·</text><text x="326" y="52">CHECKLIST</text><text x="456" y="30">4 · ROLLING</text><text x="456" y="52">ROAD</text><text x="588" y="30">5 · STETHO-</text><text x="588" y="52">SCOPE</text>
+      </g>
+      <!-- 1 car wash: brushes and bubbles -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="34" y="70" width="84" height="120" rx="8" fill="#DDE8FF"/>
+        <rect x="48" y="96" width="16" height="70" rx="6" fill="#FFD60A"/><rect x="88" y="96" width="16" height="70" rx="6" fill="#FFD60A"/>
+        <circle cx="76" cy="84" r="6" fill="#FFFFFF" stroke-width="3"/><circle cx="64" cy="180" r="5" fill="#FFFFFF" stroke-width="3"/><circle cx="96" cy="178" r="7" fill="#FFFFFF" stroke-width="3"/>
+      </g>
+      <!-- 2 mirrors -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M200 190 v-60" />
+        <ellipse cx="200" cy="106" rx="40" ry="30" fill="#EAF6FF"/>
+        <path d="M176 96 q14 -14 34 -10" fill="none" stroke="#FFFFFF" stroke-width="5"/>
+        <path d="M188 112 l8 8 l16 -18" fill="none" stroke-width="4"/>
+      </g>
+      <!-- 3 checklist -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <rect x="286" y="66" width="80" height="124" rx="8" fill="#C8955E"/>
+        <rect x="296" y="80" width="60" height="100" fill="#FFFFFF" stroke-width="3"/>
+        <rect x="310" y="58" width="32" height="16" rx="4" fill="#B8BEC8" stroke-width="3"/>
+        <path d="M302 96 l5 5 l9 -11 M302 124 l5 5 l9 -11 M302 154 l12 12 M314 154 l-12 12" fill="none" stroke-width="3"/>
+        <path d="M322 98 h26 M322 126 h26 M322 160 h20" stroke-width="3"/>
+      </g>
+      <!-- 4 rolling road: two rollers and a dial -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <circle cx="436" cy="178" r="11" fill="#B8BEC8"/><circle cx="476" cy="178" r="11" fill="#B8BEC8"/>
+        <path d="M428 92 a28 28 0 0 1 56 0 z" fill="#FFFFFF"/>
+        <path d="M456 92 l14 -14" stroke-width="5" stroke-linecap="round"/>
+        <rect x="436" y="98" width="40" height="62" fill="#DDE8FF"/>
+        <path d="M444 112 h24 M444 126 h24 M444 140 h16" stroke-width="3"/>
+      </g>
+      <!-- 5 stethoscope -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round" fill="none">
+        <path d="M566 70 v40 q0 30 22 30 q22 0 22 -30 v-40"/>
+        <path d="M588 140 v20 q0 22 22 22"/>
+        <circle cx="618" cy="182" r="12" fill="#FFD60A"/>
+        <circle cx="566" cy="66" r="5" fill="#111"/><circle cx="610" cy="66" r="5" fill="#111"/>
+      </g>
+      <!-- tool names -->
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="14" fill="#111" text-anchor="middle">
+        <text x="76" y="206">clang-format</text><text x="200" y="206">-Wall ...</text><text x="326" y="206">clang-tidy</text><text x="456" y="206">-fsanitize</text><text x="588" y="206">valgrind</text>
+      </g>
+      <!-- car -->
+      <g stroke="#111" stroke-width="3.5" stroke-linejoin="round">
+        <path d="M150 246 h70 l14 -16 h34 l14 16 h12 v12 h-144 z" fill="#FF5A4E"/>
+        <circle cx="176" cy="260" r="9" fill="#2B2B2B"/><circle cx="270" cy="260" r="9" fill="#2B2B2B"/>
+      </g>
+      <!-- brackets -->
+      <g stroke="#111" stroke-width="4" fill="none">
+        <path d="M30 280 v12 h358 v-12"/><path d="M404 280 v12 h236 v-12"/>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="18" fill="#111" text-anchor="middle">
+        <text x="209" y="318">STATIC: reads the code, never runs it</text>
+        <text x="522" y="318">DYNAMIC: watches it run</text>
+      </g>
+    </svg>
+    <ol class="lane-key" aria-hidden="true">
+      <li><b>Car wash</b> <code>clang-format</code>: layout</li>
+      <li><b>Mirrors</b> <code>-Wall ...</code>: compiler warnings</li>
+      <li><b>Checklist</b> <code>clang-tidy</code>: known bad patterns</li>
+      <li><b>Rolling road</b> <code>-fsanitize</code>: checks while it runs</li>
+      <li><b>Stethoscope</b> <code>valgrind</code>: an unchanged program, watched</li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="happy" data-arms="point" data-prop="clipboard"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>No single station catches everything. That's not a weakness; it's the plan. Each one is cheap, and together they catch most of what a human misses. The C++ Core Guidelines say it too: use tools wherever you can (rule CP.9 says it about code with threads).</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: turn up the mirrors">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption"><b>Station 2: the mirrors.</b> <code>-Wall</code> doesn't mean "all warnings". It's a popular set; plenty of useful warnings are switched off until you ask. Same program, three more flags at the end: <code>-Wpedantic -Wshadow -Wconversion</code>.</p>
+    <p class="parity" data-same-src="quiet.cpp,quiet_mirrors.cpp"></p>
+    <pre class="term wrap" data-run="quiet_mirrors.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the warning like a detective">
+      <li><span><b>Last part first:</b> <code>[-Wconversion]</code> is the flag that switched this warning on. Every g++ warning ends with its flag, so you always know which mirror saw it.</span></li>
+      <li><span><b>Where:</b> line 9, column 18. The squiggle runs under the whole division.</span></li>
+      <li><span><b>What:</b> "conversion from <code>long unsigned int</code> to <code>double</code> may change value". The result of the division is a <b>whole</b> number being turned into a <code>double</code>. That's a hint, not the whole story: the warning is about the conversion, not the lost .25. Station 3 will name the real problem.</span></li>
+      <li><span><b>And still:</b> a warning doesn't stop the build. The program ran and printed 31 again.</span></li>
+    </ol>
+    <p class="caption">The second compiler sees it differently. clang++ 18, same flags:</p>
+    <pre class="term wrap" data-run="quiet_mirrors.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>clang++ spotted something else on the same line: my <code>int total</code> gets turned into an <b>unsigned</b> number before the division. If the total were ever negative, it would become a gigantic positive number. Two compilers, two pairs of eyes.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 5: a warnings policy">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption soft">A <b>warnings policy</b> is the set of warning flags a team agrees to build with, every time. Here is a strong one for g++ and clang++. Tap each flag.</p>
+    <div class="anatomy" data-anatomy>
+      <p class="anat-line flags" aria-hidden="true"><span class="part" data-p="all">-Wall</span> <span class="part" data-p="extra">-Wextra</span> <span class="part" data-p="ped">-Wpedantic</span> <span class="part" data-p="shadow">-Wshadow</span> <span class="part" data-p="conv">-Wconversion</span> <span class="part" data-p="err">-Werror</span></p>
+      <ul class="anat-keys" aria-label="Tap a flag of the warnings policy">
+        <li><button type="button" data-part="all" aria-pressed="false"><b>-Wall</b>"Warnings: all"... except it isn't all. A well-tested set that almost never fires on correct code: unused variables, missing <code>return</code>, comparing signed and unsigned numbers, and many more.</button></li>
+        <li><button type="button" data-part="extra" aria-pressed="false"><b>-Wextra</b>More of the same: unused parameters, comparisons that are always true, and other likely mistakes that <code>-Wall</code> leaves out.</button></li>
+        <li><button type="button" data-part="ped" aria-pressed="false"><b>-Wpedantic</b>"Stick to standard C++." Warns when you use a compiler's private extras, such as variable-length arrays (panel 9), so your code builds on other compilers too.</button></li>
+        <li><button type="button" data-part="shadow" aria-pressed="false"><b>-Wshadow</b>Warns when an inner variable has the same name as an outer one and hides it (panel 6).</button></li>
+        <li><button type="button" data-part="conv" aria-pressed="false"><b>-Wconversion</b>Warns when a value is silently converted to a type that might not hold it: <code>double</code> to <code>int</code>, big to small, and (with clang, or g++'s <code>-Wsign-conversion</code>) signed to unsigned. Noisy at first, valuable for numbers code.</button></li>
+        <li><button type="button" data-part="err" aria-pressed="false"><b>-Werror</b>Turns every warning into an <b>error</b>: the build fails and no program is made (panel 8). It makes the policy a rule instead of a suggestion.</button></li>
+      </ul>
+      <p class="sr-only" aria-live="polite"></p>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Most teams put this list in their build system once (Chapter 17's <code>target_compile_options</code>) so nobody has to remember it. A common habit: <code>-Werror</code> on the build server, so nothing with a warning is ever merged, but not on your own laptop while you experiment. Microsoft's compiler spells it differently: <code>/W4 /WX</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 6: the counter that never counts">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Wren counts low tyres (under 25 psi). Two of the four are low. Built with the usual flags: silent.</p>
+    <span class="file-tab">shadow.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="shadow.cpp"></pre>
+      <pre class="term wrap" data-run="shadow.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Sneak says: </span>Hee hee. Two low tyres found, and the total says 0. The loop <b>did</b> count... just not into the counter you print!</p></div>
+    </div>
+    <p class="sr-only">Picture: Sneak, the logic-bug critter, grins.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-shadow-m" id="ex-shadow"></div>
+  <script type="application/json" id="ex-shadow-m">{"program": "shadow.cpp", "bug": 9, "prompt": "Two tyres are low, yet the program says <samp>low tyres: 0</samp>. Click the line that causes it.", "explain": "Line 9 makes a <b>brand-new</b> variable that happens to be called <code>low</code>, living only inside the <code>if</code>'s braces. It <b>shadows</b> (hides) the outer <code>low</code> from line 6, so line 10 adds 1 to the inner one, which is thrown away at the closing brace. The outer <code>low</code> never changes. Wren meant line 10 alone: delete line 9."}</script>
+
+  <section class="panel clean" aria-label="Panel 7: the shadow mirror">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Add one mirror, <code>-Wshadow</code>, and g++ points straight at it.</p>
+    <p class="parity" data-same-src="shadow.cpp,shadow_mirrors.cpp"></p>
+    <pre class="term wrap" data-run="shadow_mirrors.cpp" data-exit></pre>
+    <p class="caption">And clang++ 18? It didn't even need <code>-Wshadow</code>. Its plain <code>-Wall</code> run of <code>shadow.cpp</code> noticed that the inner <code>low</code> is changed but never read:</p>
+    <pre class="term wrap" data-run="shadow.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>Read the g++ message bottom-up: the <code>note:</code> shows where the <b>first</b> <code>low</code> was made (line 6), the warning shows the <b>second</b> (line 9). Both warnings were right; neither stopped the build. Wren still got a program that prints 0. Which brings us to the last flag.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop alarm" data-play aria-label="Panel 8: -Werror shuts the gate">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="GATE DOWN!" data-seed="8"></svg>
+    <p class="caption">Same file again, with <code>-Wshadow -Werror</code>. Now the warning is an <b>error</b>. The build fails, so there's no program to run, wrong or otherwise.</p>
+    <p class="parity" data-same-src="shadow.cpp,shadow_werror.cpp"></p>
+    <pre class="term wrap" data-run="shadow_werror.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble shout"><span class="sr-only">The Compiler says: </span>Nothing runs until everything checks out. You asked me to treat warnings as errors: <code>[-Werror=shadow]</code>, and the last line, "all warnings being treated as errors", says why I stopped.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Compiler robot, red beacon on, gate down.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: pedantic means portable">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">One more mirror. Line 5 makes an array whose size is a <b>variable</b>. Standard C++ doesn't allow that (an array's size must be known when compiling), but g++ quietly accepts it as an extra of its own, called a <b>variable-length array</b>.</p>
+    <span class="file-tab">vla.cpp</span>
+    <pre class="code" data-src="vla.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">g++, usual flags: silent</p><pre class="term wrap" data-run="vla.cpp" data-exit></pre></div>
+      <div><p class="who">g++ with -Wpedantic</p><p class="parity" data-same-src="vla.cpp,vla_pedantic.cpp"></p><pre class="term wrap" data-run="vla_pedantic.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ 18, usual flags</p><pre class="term wrap" data-run="vla.cpp" data-alt data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Microsoft's compiler refuses variable-length arrays outright, so code like this builds on Linux and breaks on Windows. <code>-Wpedantic</code> catches it before your friend on Windows does. The standard fix is a <code>std::vector&lt;int&gt; psi(count);</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fixavg-m" id="ex-fixavg"></div>
+  <script type="application/json" id="ex-fixavg-m">{"program": "fixed_average.cpp", "prompt": "Fix the tyre average so it prints <samp>31.25</samp> and builds under the strict policy <code>-Wpedantic -Wshadow -Wconversion -Werror</code>. Fill in the same conversion twice on line 9.", "blanks": [{"line": 9, "text": "static_cast<double>(total)", "accept": ["static_cast<double> (total)"]}, {"line": 9, "text": "static_cast<double>(psi.size())", "accept": ["static_cast<double> (psi.size())"]}], "explain": "Turn <b>both</b> numbers into <code>double</code> <b>before</b> dividing, so the division keeps its fraction: 125.0 / 4.0 = 31.25. Writing the conversions out with <code>static_cast</code> also tells <code>-Wconversion</code> \"I meant this\", so the strict build with <code>-Werror</code> passes. The real build line is in the answer's run: it compiled with every flag and printed <samp>average: 31.25</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-werror-m" id="ex-werror"></div>
+  <script type="application/json" id="ex-werror-m">{"q": "What does adding <code>-Werror</code> to a build change?", "options": [
+    {"t": "Every warning becomes an error: any warning fails the build", "correct": true, "why": "Right. Panel 8: the same shadow warning, now <code>[-Werror=shadow]</code>, and no program. It doesn't add any new checks; it makes the existing ones strict."},
+    {"t": "It switches on every warning that the compiler has", "why": "No: it adds no warnings at all. You still choose which warnings with <code>-Wall</code>, <code>-Wshadow</code> and friends; <code>-Werror</code> only decides what happens when one fires."},
+    {"t": "The program stops with an error message when something goes wrong", "why": "That's the sanitizers' job (Part 3). <code>-Werror</code> works entirely at build time, before anything runs."},
+    {"t": "It hides the warnings so that the build output is shorter", "why": "The opposite: the warnings are still printed, as errors, and the build stops."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · THE CAR WASH AND THE CHECKLIST<small>clang-format for layout, clang-tidy for known bad patterns</small></h2>
+
+  <section class="panel clean" aria-label="Panel 10: the car wash">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption"><b>Station 1: the car wash.</b> <code>messy.cpp</code> compiles, but nobody wants to read it. <code>clang-format</code> rewrites the <b>layout</b> (spaces, line breaks, braces, indentation) and never the meaning. Its style comes from a small file called <code>.clang-format</code> in the folder (or any folder above it).</p>
+    <div class="pair2 stack">
+      <div><span class="file-tab">messy.cpp</span><pre class="code" data-src="messy.cpp"></pre></div>
+      <div><span class="file-tab">wash/.clang-format</span><pre class="code" data-src="wash/.clang-format"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="messy.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>Plain <code>clang-format messy.cpp</code> prints the washed file and leaves the original alone. The style file says: start from the LLVM style, but indent by 4 spaces. Other ready-made styles include Google, Chromium, Mozilla, WebKit and Microsoft. Let the car wash argue about spaces, so people don't have to.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: washing in place, and the check on the build server">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Two more switches teams use every day. <code>--dry-run --Werror</code> changes nothing and fails (exit 1) if the file isn't washed: build servers run it to reject badly laid-out code. <code>-i</code> ("in place") rewrites the file itself. One terminal session, top to bottom:</p>
+    <span class="file-tab">almost.cpp</span>
+    <pre class="code" data-src="almost.cpp"></pre>
+    <pre class="term wrap" data-run="almost.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="What happened in the session">
+      <li><span><b>Check:</b> two errors at line 5, columns 12 and 13: the missing spaces either side of <code>&lt;</code>. Exit 1, so a build server would stop here.</span></li>
+      <li><span><b>Wash:</b> <code>clang-format -i</code> prints nothing; it just rewrites the file.</span></li>
+      <li><span><b>Check again:</b> silent, exit 0. And <code>sed -n 5p</code> (print line 5) shows the washed line: <code>if (psi &lt; 31) {</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 12: the mechanic's checklist">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption"><b>Station 3: the checklist.</b> <code>clang-tidy</code> reads your code like a compiler does, then walks down a list of hundreds of <b>checks</b>: patterns that are legal but old-fashioned, risky or plain wrong. You choose which checks to run in a <code>.clang-tidy</code> file. Wren's turns everything off (<code>-*</code>), then switches on the whole <code>bugprone-</code> family and three single checks:</p>
+    <span class="file-tab">tidy/.clang-tidy</span>
+    <pre class="code" data-src="tidy/.clang-tidy"></pre>
+    <span class="file-tab">nullp.cpp</span>
+    <pre class="code" data-src="nullp.cpp"></pre>
+    <pre class="term wrap small" data-run="nullp.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading clang-tidy like a detective">
+      <li><span><b>The command:</b> clang-tidy needs to know how the file would be compiled. Everything after the <code>--</code> is passed to the compiler inside it, here just <code>-std=c++23</code>. (Big projects hand it a <code>compile_commands.json</code> file instead, which CMake writes for you.)</span></li>
+      <li><span><b>The warning:</b> same layout as the compiler's: file, line, column, message, and the check's name in brackets, <code>[modernize-use-nullptr]</code>. clang-tidy prints the <b>full</b> path of the file.</span></li>
+      <li><span><b>The fix-it line:</b> under the caret, <code>nullptr</code> is the suggested replacement. <code>NULL</code> and <code>0</code> are old C ways of saying "no address"; <code>nullptr</code> (Chapter 13) can only ever mean a pointer.</span></li>
+      <li><span><b>"13591 warnings generated":</b> that's how many things the checks noticed <b>inside the library headers</b> that <code>&lt;iostream&gt;</code> pulls in. They aren't your code, so <code>--quiet</code> mode hides them and prints only the count.</span></li>
+      <li><span><b><code>--fix</code>:</b> applies every fix-it to the file ("applied 2 of 2 suggested fixes"), and <code>sed</code> shows the result.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: three kinds of check in one run">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Check names start with a <b>family</b>. Here are the three Wren uses most, then one file that trips all three.</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">Family</th><th scope="col">Looks for</th><th scope="col">Example check</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>modernize-</code></th><td>Old ways that newer C++ does better</td><td><code>modernize-use-nullptr</code>, <code>modernize-loop-convert</code> (use a range-based <code>for</code>)</td></tr>
+        <tr><th scope="row"><code>bugprone-</code></th><td>Code that is legal but very often a bug</td><td><code>bugprone-integer-division</code>, <code>bugprone-use-after-move</code></td></tr>
+        <tr><th scope="row"><code>cppcoreguidelines-</code></th><td>Rules from the C++ Core Guidelines</td><td><code>cppcoreguidelines-init-variables</code> (give every variable a starting value)</td></tr>
+      </tbody>
+    </table></div>
+    <span class="file-tab">checklist.cpp</span>
+    <pre class="code" data-src="checklist.cpp"></pre>
+    <pre class="term wrap small" data-run="checklist.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Line 6 has no starting value (it's safe here only because line 7 fixes it right away). Line 8 is a counting loop that could be <code>for (int p : psi)</code>. And line 11 divides two whole numbers into a <code>double</code>: the same bug as my tyre average! There are other families too, such as <code>performance-</code>, <code>readability-</code> and <code>cert-</code>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: the opening mystery, named">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">So back to panel 1. The mirrors gave a vague hint about a conversion. What does the checklist say about <code>quiet.cpp</code> (copied as <code>tidy_average.cpp</code>)?</p>
+    <p class="parity" data-same-src="quiet.cpp,tidy_average.cpp"></p>
+    <pre class="term wrap small" data-run="tidy_average.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="happy" data-arms="cheer" data-prop="clipboard"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>"Result of integer division used in a floating point context": that's the bug, by name, with a caret on line 9. Warnings know the <b>language</b>; clang-tidy also knows the <b>mistakes people keep making</b>. The fix is the one you filled in after panel 9.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 15: the job that vanished">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Wren files a finished job in the <code>done</code> list. <code>std::move</code> (Chapter 13) hands the string's letters over instead of copying them. Then she prints the next job...</p>
+    <span class="file-tab">moved.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="moved.cpp"></pre>
+      <pre class="term wrap" data-run="moved.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"next up:" and then... nothing. No warning, no crash. A moved-from string is still a valid string, but the standard doesn't promise what's left in it. Here it happens to be empty.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-moved-m" id="ex-moved"></div>
+  <script type="application/json" id="ex-moved-m">{"program": "moved.cpp", "bug": 11, "prompt": "Click the line that uses a string after its contents were handed away.", "explain": "Line 9 moved <code>job</code>'s letters into the vector. Line 11 then reads <code>job</code> as if nothing had happened. It's legal (a moved-from string may be printed), but it's almost never what you mean. Print <code>done[0]</code> instead, or give <code>job</code> a new value before using it again."}</script>
+
+  <section class="panel clean" aria-label="Panel 16: the checklist catches the move">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Same file, through the checklist:</p>
+    <p class="parity" data-same-src="moved.cpp,moved_tidy.cpp"></p>
+    <pre class="term wrap small" data-run="moved_tidy.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>A warning <b>and</b> a <code>note:</code> pointing back to the scene of the move, line 9. clang-tidy follows the order of statements, which the plain compiler warnings don't do for this. Moved-from objects are a classic bug that only a checklist like this catches before you run.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-family-m" id="ex-family"></div>
+  <script type="application/json" id="ex-family-m">{"q": "clang-tidy reports <code>warning: use a trailing return type for this function [modernize-use-trailing-return-type]</code> on <code>int main()</code>. What kind of finding is it?", "options": [
+    {"t": "A suggestion of a newer style; the code isn't wrong", "correct": true, "why": "Right. <code>modernize-</code> checks suggest newer spellings. This particular one (writing <code>auto main() -&gt; int</code>) is a matter of taste, and many teams switch it off in <code>.clang-tidy</code>, which is exactly why Wren's file picks its checks instead of turning everything on."},
+    {"t": "A bug that will make the program misbehave when run", "why": "That's what <code>bugprone-</code> checks are for. A <code>modernize-</code> finding means \"there's a newer way\", not \"this is broken\"."},
+    {"t": "A compile error: the program can't be built until it's fixed", "why": "clang-tidy never stops your build on its own; it prints warnings. (A team can choose to treat them as errors with <code>--warnings-as-errors</code>, like <code>-Werror</code>.)"},
+    {"t": "A rule taken from the C++ Core Guidelines", "why": "Those checks start with <code>cppcoreguidelines-</code>. The family name always tells you where a check comes from."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE ROLLING ROAD<small>Dynamic analysis: the sanitizer matrix, library assertions, Valgrind, and which tool catches what</small></h2>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 17: silence everywhere">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <svg class="sfx tr" data-sfx="SILENCE..." data-seed="17"></svg>
+    <p class="caption">A new tyre program. Look at line 7: <code>&lt;=</code> where <code>&lt;</code> belongs, so the loop reads <code>psi[4]</code>, one box past the end of a 4-box vector. That's <b>undefined behaviour</b> (Chapter 3): C++ promises nothing about what happens. Wren sends it past every static station first.</p>
+    <span class="file-tab">overrun.cpp</span>
+    <pre class="code" data-src="overrun.cpp"></pre>
+    <div class="pair2 stack">
+      <div><p class="who">the mirrors: the whole warnings policy (build only)</p><pre class="term wrap" data-run="overrun.cpp" data-exit></pre></div>
+      <div><p class="who">the checklist: clang-tidy</p><p class="parity" data-same-src="overrun.cpp,overrun_tidy.cpp"></p><pre class="term wrap" data-run="overrun_tidy.cpp" data-exit></pre></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="surprised" data-mouth="o" data-arms="down"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>Not a peep. Every flag, every check: silent. Neither tool runs the loop, so neither knows that <code>i</code> reaches 4. A clean build doesn't mean no undefined behaviour. We don't run this one plain, because a plain run of undefined behaviour proves nothing: it might print anything. We put it on the rolling road.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 18: AddressSanitizer on the rolling road">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption"><b>Station 4: the rolling road.</b> The same source, built with the sanitizers from Chapter 3: <code>-fsanitize=address,undefined</code>. The compiler adds a check before every memory access, then the program runs for real.</p>
+    <p class="parity" data-same-src="overrun.cpp,overrun_san.cpp"></p>
+    <pre class="term wrap small tall" data-run="overrun_san.cpp" data-exit tabindex="0"></pre>
+    <ol class="readlist" aria-label="Reading the report like a detective">
+      <li><span><b>The headline:</b> <code>heap-buffer-overflow</code>: something read past the end of a block on the heap (Chapter 13's library). <code>READ of size 4</code>: one <code>int</code>.</span></li>
+      <li><span><b>Where, in your code:</b> frame <code>#0 ... in main /home/you/cpp-ch18/overrun_san.cpp:8</code>, the <code>total += psi[i]</code> line.</span></li>
+      <li><span><b>Whose block:</b> "0 bytes after 16-byte region": the vector's 4 ints are 16 bytes, and the read landed right after them. "allocated by thread T0 here" shows the vector being made on line 5.</span></li>
+      <li><span><b>The fine print:</b> <code>==2==</code> is the program's process id, and the <code>0x...</code> addresses differ on other machines. The "shadow bytes" map at the end is ASan's own bookkeeping; you can skip it.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 19: the sanitizer matrix">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption soft">There are several sanitizers, and they don't all fit in one build. This is the <b>sanitizer matrix</b>: which to switch on together.</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">Sanitizer</th><th scope="col">Finds</th><th scope="col">Build it with</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">ASan (AddressSanitizer)</th><td>Reading or writing outside a block, using memory after it was freed, freeing twice</td><td rowspan="3" class="yes">✓ together, one build:<br><code>-fsanitize=address,undefined</code><br>(LSan comes with ASan on Linux)</td></tr>
+        <tr><th scope="row">UBSan (UndefinedBehaviorSanitizer)</th><td>Signed overflow, dividing by zero, bad shifts, misaligned pointers and more</td></tr>
+        <tr><th scope="row">LSan (LeakSanitizer)</th><td>Memory never given back when the program ends</td></tr>
+        <tr><th scope="row">TSan (ThreadSanitizer)</th><td>Data races between threads (Chapter 29)</td><td class="no">✗ on its own: <code>-fsanitize=thread</code>, a separate build</td></tr>
+        <tr><th scope="row">MSan (MemorySanitizer)</th><td>Reading memory that was never given a value</td><td class="no">✗ clang only, on its own: <code>-fsanitize=memory</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>My goggles cost something: a sanitized program typically runs about two times slower and uses more memory. So build a <b>second</b> version with me on, for tests and bug hunts, and ship the normal one. Add <code>-g</code> so my reports name your lines, and <code>-fno-sanitize-recover=all</code> so I stop at the first problem instead of carrying on.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Sanitizer, wearing night-vision goggles.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 20: UBSan and the odometer">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">UBSan's turn. An odometer stored in an <code>int</code>, which on this machine tops out at 2147483647. Day 1 fits. Day 2 doesn't.</p>
+    <span class="file-tab">odometer.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="odometer.cpp"></pre>
+      <pre class="term wrap small" data-run="odometer.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"runtime error: signed integer overflow: 2147483400 + 400 cannot be represented in type 'int'", at line 6, column 15. Day 1 worked, but its line never reached the screen: it was still waiting in <code>std::cout</code>'s buffer when UBSan stopped the program (in a terminal, where <code>std::cout</code> sends each line as it ends, you'd see it). Day 2 never got to print a nonsense number. Fix: a bigger type, <code>long long miles</code>. (The <code>'</code> marks in <code>2'147'483'000</code> are just digit separators, for your eyes.)</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-predsan-m" id="ex-predsan"></div>
+  <script type="application/json" id="ex-predsan-m">{"program": "predict_san.cpp", "expect": "error", "answer": "heap-use-after-free", "ask": "Built with <code>-fsanitize=address,undefined</code>, line 6 would print <samp>front left</samp> in a terminal (in the run below it's lost in <code>std::cout</code>'s buffer when ASan stops the program, as in panel 20). Then which error does AddressSanitizer report? (Its name, with dashes, like heap-buffer-overflow.)", "prompt": "<code>tag</code> points at a string made with <code>new</code> on the heap. Line 7 gives it back.", "hint": "After line 7 the block is freed, but <code>tag</code> still holds its address. What is line 8 doing with freed memory?", "explain": "<samp>heap-use-after-free</samp>: line 8 asks a string that no longer exists for its size. The full report names three lines: the read (line 8), the <code>delete</code> that freed it (line 7) and the <code>new</code> that made it (line 5). Use a plain <code>std::string</code> (or a <code>unique_ptr</code>) and this can't happen."}</script>
+
+  <section class="panel pop" aria-label="Panel 21: two real tool errors">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Two mistakes people make with the matrix. These aren't bugs in a program: the tools themselves refuse.</p>
+    <div class="pair2 stack">
+      <div><p class="who">ASan and TSan in one build</p><pre class="term wrap" data-run="mix_tsan.cpp" data-exit></pre></div>
+      <div><p class="who">clang++ with sanitizers, on this machine</p><pre class="term wrap small" data-run="clang_san.cpp" data-exit></pre></div>
+    </div>
+    <ol class="readlist" aria-label="Reading the two errors">
+      <li><span><b>Top:</b> <code>cc1plus</code> is the part of g++ that compiles C++. ThreadSanitizer and AddressSanitizer both rearrange memory in their own way, so they can't share one program. Build twice instead.</span></li>
+      <li><span><b>Bottom:</b> clang++ compiled the file, then the Linker (<code>/usr/bin/ld</code>) couldn't find clang's sanitizer <b>runtime libraries</b>, the <code>libclang_rt...a</code> files: they aren't installed on this machine. Usually that's a missing package (on Ubuntu, the <code>libclang-rt-18-dev</code> package provides them). So in this book, every sanitizer build uses g++.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tsan-m" id="ex-tsan"></div>
+  <script type="application/json" id="ex-tsan-m">{"q": "A team wants their test suite to look for memory errors, undefined behaviour <b>and</b> data races between threads. What's the right set of builds?", "options": [
+    {"t": "Two builds: <code>-fsanitize=address,undefined</code>, then <code>-fsanitize=thread</code>", "correct": true, "why": "Right. ASan and UBSan share a build; TSan needs its own (panel 21's error). Run the tests on both."},
+    {"t": "One build with all three: <code>-fsanitize=address,undefined,thread</code>", "why": "g++ refuses: <samp>‘-fsanitize=thread’ is incompatible with ‘-fsanitize=address’</samp>. clang++ refuses too, in its own words: <samp>invalid argument '-fsanitize=address' not allowed with '-fsanitize=thread'</samp>."},
+    {"t": "One build with every warning on: <code>-Wall -Wextra -Werror</code>", "why": "Warnings read the code; they don't run it. Panel 17's overrun passed every warning."},
+    {"t": "A single sanitized build with only <code>-fsanitize=thread</code>", "why": "That finds data races, but not overflows, use-after-free or signed overflow. Half the job."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 22: the library's own seatbelt">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">A cheaper check, with no sanitizer at all. <code>-D_GLIBCXX_ASSERTIONS</code> (Chapter 11's safety net) switches on checks <b>inside libstdc++</b>, the standard library g++ and clang++ use here: <code>operator[]</code> checks its index, <code>front()</code> checks for an empty vector, and so on. It costs very little, so some Linux distributions build whole systems with it.</p>
+    <p class="parity" data-same-src="overrun.cpp,overrun_assert.cpp"></p>
+    <pre class="term wrap small" data-run="overrun_assert.cpp" data-exit></pre>
+    <p class="caption">The same flag with clang++ (which uses the same libstdc++ here) stops at the same check; only the header's path and the function's spelling differ:</p>
+    <pre class="term wrap small" data-run="overrun_assert.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Read the end first: <code>Assertion '__n &lt; this-&gt;size()' failed.</code> In the library's own words: the index <code>__n</code> must be smaller than the size. Exit 134 is the abort, and <code>Aborted</code> is the shell's line. It doesn't say which line of <b>my</b> code (that's what ASan or a debugger adds), but it stops at the first bad index instead of reading garbage.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 23: Valgrind, the stethoscope">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption"><b>Station 5: the stethoscope.</b> Valgrind's <b>Memcheck</b> tool runs an <b>ordinary</b> program (no special build, just <code>-g</code> for line numbers) inside a simulated computer that watches every memory access. This program reads one gauge too many (line 6 again says <code>&lt;=</code>) and forgets to give back <code>spare</code>.</p>
+    <span class="file-tab">gauges.cpp</span>
+    <pre class="code" data-src="gauges.cpp"></pre>
+    <pre class="term wrap small tall" data-run="gauges.cpp" data-exit tabindex="0"></pre>
+    <ol class="readlist" aria-label="Reading Valgrind like a detective">
+      <li><span><b>Every Valgrind line starts with <code>==1==</code>:</b> the process id. (In the capture's fresh process space the program is process 1; on your machine it will be a bigger number.) Lines without it, like <samp>gauges read</samp>, are the program's own output.</span></li>
+      <li><span><b>"Invalid read of size 4 at ... main (gauges.cpp:7)":</b> the bad read, then "0 bytes after a block of size 12 alloc'd" (3 ints) made at line 4.</span></li>
+      <li><span><b>"16 bytes in 1 blocks are definitely lost":</b> the leak, made at line 11 (4 ints). <code>--leak-check=full</code> asks for that detail.</span></li>
+      <li><span><b>"ERROR SUMMARY: 2 errors from 2 contexts":</b> the count. Note the exit code is still 0: add <code>--error-exitcode=1</code> to make a build server notice.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="point" data-prop="magnifier"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>Valgrind is slow (often 10 to 50 times slower) but needs no rebuild, so it can even check programs you didn't compile. Sanitizers are faster and catch more kinds of bugs (Valgrind can't see overflows of arrays on the stack). Valgrind runs on Linux and some other Unix systems; not on Windows, and not on recent Macs.</p></div>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 24: map of the inspection lane" data-map="map-lane">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">The whole lane as a map. Three cars drive through it. Each road is checked against the real run at the station where it ends, and the notes point to the captured runs that back the stations it passes. Pick a road.</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapl-t mapl-d"><title id="mapl-t">Map: the code inspection lane</title><desc id="mapl-d">Start with your .cpp file. Then the car wash, clang-format. Then the mirrors, warnings with -Werror: a warning leads to build stopped. If clean, the checklist, clang-tidy. Then the rolling road, a run built with ASan and UBSan: a report leads to report, stop. No reports leads to passed.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Wren is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-lane">{"seed": 24, "size": [690, 640], "start": [[345, 4], [345, 24]],
+      "states": [
+        {"id": "SRC", "x": 225, "y": 30, "w": 240, "h": 62, "label": "your .cpp file", "sub": "ready for inspection"},
+        {"id": "WASH", "x": 225, "y": 130, "w": 240, "h": 62, "label": "car wash", "sub": "`clang-format`"},
+        {"id": "MIR", "x": 225, "y": 230, "w": 240, "h": 62, "label": "mirrors", "sub": "warnings, `-Werror`"},
+        {"id": "TIDY", "x": 225, "y": 330, "w": 240, "h": 62, "label": "checklist", "sub": "`clang-tidy`"},
+        {"id": "ROAD", "x": 225, "y": 430, "w": 240, "h": 62, "label": "rolling road", "sub": "ASan + UBSan run"},
+        {"id": "PASS", "x": 225, "y": 556, "w": 240, "h": 62, "label": "passed!", "sub": "build the normal one", "kind": "end"},
+        {"id": "STOPW", "x": 10, "y": 230, "w": 180, "h": 62, "label": "build stopped", "sub": "no program made", "kind": "error"},
+        {"id": "STOPR", "x": 10, "y": 430, "w": 180, "h": 62, "label": "report: stop!", "sub": "first bug found", "kind": "error"}],
+      "transitions": [
+        {"id": "t1", "from": "SRC", "to": "WASH", "pts": [[345, 96], [345, 124]]},
+        {"id": "t2", "from": "WASH", "to": "MIR", "pts": [[345, 196], [345, 224]]},
+        {"id": "t3", "from": "MIR", "to": "TIDY", "pts": [[345, 296], [345, 324]], "label": "no warnings", "lx": 355, "ly": 316, "anchor": "start"},
+        {"id": "t4", "from": "TIDY", "to": "ROAD", "pts": [[345, 396], [345, 424]], "label": "no findings", "lx": 355, "ly": 416, "anchor": "start"},
+        {"id": "t5", "from": "ROAD", "to": "PASS", "pts": [[345, 496], [345, 550]], "label": "no reports", "lx": 355, "ly": 528, "anchor": "start"},
+        {"id": "mw", "from": "MIR", "to": "STOPW", "pts": [[221, 261], [194, 261]], "label": "a warning", "lx": 150, "ly": 220, "anchor": "middle", "bug": true},
+        {"id": "rr", "from": "ROAD", "to": "STOPR", "pts": [[221, 461], [194, 461]], "label": "a report", "lx": 150, "ly": 420, "anchor": "middle", "bug": true}],
+      "paths": [
+        {"id": "clean", "label": "a clean car", "program": "lane_clean.cpp", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SRC"], "output": [], "mood": "happy", "note": "<code>lane_clean.cpp</code>: the tyre total done right, with a range-based <code>for</code>, no indexes at all."},
+          {"on": ["WASH"], "via": ["t1"], "output": [], "note": "The car wash fixes layout only. This file is already tidy; washing never changes what a program does."},
+          {"on": ["MIR"], "via": ["t2"], "output": [], "note": "Built with <code>-Wall -Wextra</code>: no warnings (the sanitized build line in the real run shows it)."},
+          {"on": ["TIDY"], "via": ["t3"], "output": [], "note": "clang-tidy with Wren's checklist: nothing but the header count (<code>lane_tidy.cpp</code>, a copy, panel 25's footnote)."},
+          {"on": ["ROAD"], "via": ["t4"], "output": ["total: 125"], "note": "Built with <code>-fsanitize=address,undefined</code> and run: it prints <samp>total: 125</samp>, and the Sanitizer stays silent."},
+          {"on": ["PASS"], "via": ["t5"], "output": ["total: 125"], "mood": "happy", "note": "Passed every station. Now the normal build ships, and the sanitized one stays for testing."}]},
+        {"id": "shadow", "label": "a shadowed counter", "bug": true, "program": "shadow_werror.cpp", "expect": {"exit": 1, "stderrContains": "shadows a previous local [-Werror=shadow]"}, "steps": [
+          {"on": ["SRC"], "output": [], "note": "Panel 6's low-tyre counter, with its second <code>int low</code> on line 9."},
+          {"on": ["WASH"], "via": ["t1"], "output": [], "note": "Layout isn't its problem: the car wash waves it through."},
+          {"on": ["MIR"], "via": ["t2"], "output": [], "mood": "focus", "note": "Built with <code>-Wshadow -Werror</code>. The shadow mirror sees line 9..."},
+          {"on": ["STOPW"], "via": ["mw"], "output": [], "error": "error: declaration of ‘low’ shadows a previous local [-Werror=shadow]", "mood": "surprised", "note": "...and <code>-Werror</code> makes it an error. The build stops with exit 1: no program, so no wrong answer can ever reach anyone."}]},
+        {"id": "overrun", "label": "one step too far", "bug": true, "program": "overrun_san.cpp", "expect": {"exit": 1, "stderrContains": "heap-buffer-overflow"}, "steps": [
+          {"on": ["SRC"], "output": [], "note": "Panel 17's loop with <code>&lt;=</code>."},
+          {"on": ["WASH"], "via": ["t1"], "output": [], "note": "Perfectly laid out. Through."},
+          {"on": ["MIR"], "via": ["t2"], "output": [], "note": "The whole warnings policy: silent (<code>overrun.cpp</code>, panel 17)."},
+          {"on": ["TIDY"], "via": ["t3"], "output": [], "note": "The checklist: silent too (<code>overrun_tidy.cpp</code>, panel 17). Static tools don't run the loop."},
+          {"on": ["ROAD"], "via": ["t4"], "output": [], "mood": "focus", "note": "On the rolling road the loop really runs, and <code>i</code> really reaches 4..."},
+          {"on": ["STOPR"], "via": ["rr"], "output": [], "error": "ERROR: AddressSanitizer: heap-buffer-overflow", "mood": "surprised", "note": "...and ASan stops it at line 8, before <samp>total:</samp> is printed. Only a dynamic tool could catch this one."}]}]}</script>
+  </section>
+
+  <section class="panel clean toolgrid" aria-label="Panel 25: which inspector catches it?" data-toolgrid="tg-eight">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Eight bugs from this chapter. For each one, which station catches it? Choose a tool on each card; the card then shows the line that the real tool printed for that very bug. (This game isn't scored: it's for practice.)</p>
+    <ul class="tg-cards"></ul>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="tg-eight">{"tools": [{"id": "warn", "t": "warnings"}, {"id": "tidy", "t": "clang-tidy"}, {"id": "asan", "t": "ASan + UBSan"}, {"id": "assert", "t": "_GLIBCXX_ASSERTIONS"}, {"id": "valgrind", "t": "Valgrind"}],
+      "items": [
+        {"bug": "<code>return total / psi.size();</code> into a <code>double</code>: whole-number division loses the .25", "answers": ["tidy"], "program": "tidy_average.cpp", "find": "bugprone-integer-division", "why": "clang-tidy names it exactly. <code>-Wconversion</code> only hinted at a conversion; nothing at run time can tell a 31 from a 31.25 you didn't want."},
+        {"bug": "<code>int low = 0;</code> inside the loop hides the outer <code>low</code>", "answers": ["warn"], "program": "shadow_mirrors.cpp", "find": "[-Wshadow]", "why": "A compiler warning, <code>-Wshadow</code> (and clang's plain <code>-Wall</code> noticed the inner one is never read)."},
+        {"bug": "<code>for (... i &lt;= psi.size() ...)</code> reads one past the end of a vector", "answers": ["asan", "assert"], "program": "overrun_san.cpp", "find": "heap-buffer-overflow", "why": "Both dynamic checks catch it: ASan with a full report, <code>_GLIBCXX_ASSERTIONS</code> with the library's assertion (panel 22). Static tools stayed silent (panel 17)."},
+        {"bug": "An <code>int</code> odometer passes 2147483647", "answers": ["asan"], "program": "odometer.cpp", "find": "signed integer overflow", "why": "UBSan, the <code>undefined</code> half of <code>-fsanitize=address,undefined</code>, catches signed overflow while the program runs."},
+        {"bug": "Printing <code>job</code> after <code>std::move(job)</code>", "answers": ["tidy"], "program": "moved_tidy.cpp", "find": "bugprone-use-after-move", "why": "It's legal, so no sanitizer complains (the run printed an empty string). clang-tidy's <code>bugprone-use-after-move</code> follows the order of statements."},
+        {"bug": "<code>new int[4]</code> that is never <code>delete[]</code>d", "answers": ["valgrind", "asan"], "program": "gauges.cpp", "find": "definitely lost", "why": "A leak only shows when the program ends. Valgrind's leak check reports it; so does LeakSanitizer, which comes with ASan on Linux (Chapter 13)."},
+        {"bug": "<code>int* spare = NULL;</code>", "answers": ["tidy"], "program": "nullp.cpp", "find": "modernize-use-nullptr", "why": "Not a crash, just the old C way: <code>modernize-use-nullptr</code>, and <code>--fix</code> rewrites it."},
+        {"bug": "<code>int psi[count];</code> with a variable <code>count</code>", "answers": ["warn"], "program": "vla_pedantic.cpp", "find": "[-Wvla]", "why": "<code>-Wpedantic</code> reports the non-standard variable-length array (clang warns even without it)."}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="happy" data-arms="point" data-prop="clipboard"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>The pattern: patterns in the <b>text</b> (names, conversions, old spellings, moves) are for the static stations. Things that depend on <b>values at run time</b> (which index, how big a number, when memory was freed) are for the dynamic ones. Footnote for the map: <code>lane_tidy.cpp</code> is a copy of the clean car, and clang-tidy found nothing in it.</p></div>
+    </div>
+    <p class="parity" data-same-src="lane_clean.cpp,lane_tidy.cpp"></p>
+    <pre class="term wrap small" data-run="lane_tidy.cpp" data-exit></pre>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 26: the showroom, Compiler Explorer">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption soft">One more tool, for comparing: <b>Compiler Explorer</b> (<code>godbolt.org</code>), a free website. Paste code, pick compilers from a long list (many versions of GCC, Clang and Microsoft's MSVC), and see each one's warnings, errors, output, and even the machine instructions it made, side by side. This chapter's second-compiler terminals are the same idea on one machine:</p>
+    <ul class="checklist">
+      <li>Panel 4: clang++ added a <code>-Wsign-conversion</code> warning that g++ only gives when asked.</li>
+      <li>Panel 7: clang++'s plain <code>-Wall</code> noticed the shadowed counter was never read.</li>
+      <li>Panel 9: clang++ warns about variable-length arrays by default.</li>
+      <li>Part 4 and Part 5: clang++ catches a dangling view that g++ 13 misses, and explains a format mistake in fewer lines.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>Before I ask "is this a compiler bug?", I try two compilers on Compiler Explorer. If they disagree, one of them is telling me something. If they agree, the bug is almost always mine. Measure twice, compile once!</p></div>
+    </div>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE MAGNIFYING GLASS<small><code>std::string_view</code>: a cheap, non-owning view, and the page that burned</small></h2>
+
+  <section class="panel sketch tilt-r" aria-label="Panel 27: a magnifying glass over someone else's page">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Big idea: a <code>std::string</code> <b>owns</b> its letters: it keeps them on a page (a heap block), and tears up the page when it's destroyed. A <code>std::string_view</code> (from <code>&lt;string_view&gt;</code>) owns <b>nothing</b>. It's a <b>magnifying glass</b> held over part of someone else's page: just "where the first letter is" and "how many letters". Copying the glass is cheap; it's two numbers. But if the owner burns the page, the glass shows nothing useful.</p>
+    <div class="picscroll"><svg class="fig pic-wide" viewBox="0 0 660 300" role="img" aria-label="Left: a sheet of paper labelled std::string order, owner, with the words brake pads, front left written on it. A magnifying glass labelled std::string_view hovers over the words front left; its handle has a tag with two fields: start, pointing at the letter f, and length 10. Right: the same sheet on fire and turning to ash, labelled after the owner is destroyed. The magnifying glass is still in the same place, now over ashes, with a question mark: the view still holds start and length, but the letters are gone.">
+      <rect x="6" y="6" width="648" height="288" rx="12" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+      <g font-family="Bangers, Impact, sans-serif" font-size="22" letter-spacing="1" fill="#111" text-anchor="middle">
+        <text x="168" y="38">THE OWNER'S PAGE</text><text x="494" y="38">AFTER THE OWNER IS GONE</text>
+      </g>
+      <path d="M330 52 v226" stroke="#111" stroke-width="3" stroke-dasharray="10 8"/>
+      <!-- left page -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M30 70 h240 l20 20 v150 h-260 z" fill="#FFF6CC"/>
+        <path d="M270 70 v20 h20" fill="#E7C08A" stroke-width="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="17" fill="#111">
+        <text x="44" y="124">brake pads, front left</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="44" y="90">std::string order (owner)</text>
+      </g>
+      <!-- glass over "front left" -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <ellipse cx="218" cy="119" rx="60" ry="22" fill="none"/>
+        <ellipse cx="218" cy="119" rx="54" ry="17" fill="none" stroke="#7FB2FF" stroke-width="3"/>
+        <path d="M212 141 l-20 56" stroke-width="10" stroke-linecap="round"/>
+        <path d="M212 141 l-20 56" stroke="#C8955E" stroke-width="5" stroke-linecap="round"/>
+        <rect x="70" y="196" width="170" height="38" rx="6" fill="#DDE8FF" stroke-width="3"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">
+        <text x="78" y="221">start: f   len: 10</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">
+        <text x="40" y="262">std::string_view: owns nothing</text>
+      </g>
+      <!-- right: burnt page -->
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <path d="M356 70 h80 l10 14 l12 -10 l14 16 l16 -12 l12 14 l14 -8 l12 12 h20 v150 h-260 z" fill="#E6E6E6" stroke-dasharray="9 6"/>
+        <path d="M420 150 q10 -30 0 -50 q22 18 18 50 q14 -10 12 -30 q18 26 4 46 z" fill="#FF5A4E"/>
+        <path d="M430 150 q4 -14 0 -24 q10 10 8 24 z" fill="#FFD60A"/>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="16" fill="#111">
+        <text x="370" y="96">freed!</text>
+      </g>
+      <g stroke="#111" stroke-width="4" stroke-linejoin="round">
+        <ellipse cx="546" cy="120" rx="62" ry="30" fill="#EAF6FF" fill-opacity="0.55"/>
+        <path d="M540 150 l-22 52" stroke-width="10" stroke-linecap="round"/>
+        <path d="M540 150 l-22 52" stroke="#C8955E" stroke-width="5" stroke-linecap="round"/>
+        <rect x="396" y="196" width="170" height="38" rx="6" fill="#DDE8FF" stroke-width="3"/>
+      </g>
+      <g font-family="Bangers, Impact, sans-serif" font-size="40" fill="#111" text-anchor="middle"><text x="546" y="134">?</text></g>
+      <g font-family="JetBrains Mono, monospace" font-weight="800" font-size="15" fill="#111">
+        <text x="404" y="221">start: ?   len: 10</text>
+      </g>
+      <g font-family="Comic Neue, sans-serif" font-weight="700" font-size="15" fill="#111">
+        <text x="360" y="262">a dangling view: reading it is UB</text>
+      </g>
+    </svg></div>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="point" data-prop="magnifier"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>A view is a <b>look</b>, never a <b>keep</b>. The glass is only as good as the page under it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: views in action">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Why bother? Because a <code>std::string_view</code> parameter (line 5) accepts a <code>std::string</code>, a <code>"literal"</code> or another view, and <b>copies no letters</b>. Cutting a piece off a view, with <code>substr</code> or <code>remove_prefix</code>, just moves the glass.</p>
+    <span class="file-tab">sv_basics.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sv_basics.cpp"></pre>
+      <pre class="term wrap" data-run="sv_basics.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="What each call did">
+      <li><span><b>Line 11:</b> a <code>std::string</code> becomes a view of all 22 letters. No copy.</span></li>
+      <li><span><b>Line 12:</b> a string literal becomes a view straight onto the literal, which lives for the whole program. A <code>const std::string&amp;</code> parameter would have had to build a temporary <code>std::string</code> here.</span></li>
+      <li><span><b>Line 14:</b> <code>view.substr(0, 10)</code> is a <b>new view</b> of the first 10 letters. (On a <code>std::string</code>, <code>substr</code> makes a new string, with its own copy.)</span></li>
+      <li><span><b>Line 15:</b> <code>remove_prefix(12)</code> slides the start of the glass 12 letters to the right. The last line proves the owner's text never changed: a view can't change the page.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-svpred-m" id="ex-svpred"></div>
+  <script type="application/json" id="ex-svpred-m">{"program": "sv_predict.cpp", "prompt": "<code>part</code> is a view of the literal <code>\"spark plug\"</code> (10 characters: s is at index 0, the space at index 5). What do the four lines print?", "hint": "<code>substr(6)</code> means \"from index 6 to the end\". <code>remove_suffix(5)</code> slides the <b>end</b> of the glass 5 characters to the left. <code>find</code> gives the index of the first match.", "explain": "<samp>plug</samp> (index 6 to the end), <samp>spark</samp> (5 characters from index 0), then <code>remove_suffix(5)</code> shrinks the view to <samp>spark</samp>, size <samp>5</samp>, and the first <code>'a'</code> in <code>spark</code> is at index <samp>2</samp>. None of these made a copy of a single letter."}</script>
+
+  <div data-ex="trace" data-model="ex-split-m" id="ex-split"></div>
+  <script type="application/json" id="ex-split-m">{"program": "sv_split.cpp", "columns": ["item", "item size", "letters left in list"], "given": [0], "prompt": "A comma splitter made only of views. Each lap cuts the first item off <code>list</code>. Fill in each item's size and how many characters are left in <code>list</code> after the cut (line 14 prints them).", "explain": "Lap 1: the comma is at index 3, so <code>item</code> is <samp>oil</samp> (3) and <code>remove_prefix(4)</code> drops <code>oil,</code>, leaving <code>tyres,wipers</code>: 12. Lap 2: <samp>tyres</samp> (5), leaving <code>wipers</code>: 6. Lap 3: no comma (<code>find</code> returns <code>npos</code>), so <code>substr(0, npos)</code> is all of <samp>wipers</samp> (6) and the whole rest is removed: 0, and the loop ends. Three items, zero copies."}</script>
+
+  <section class="panel clean tracer memhs" aria-label="Panel 29: the page burns, in memory" data-mem="mem-dangle" id="mem-dangle-box">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Now the trap. <code>make_label()</code> returns a <code>std::string</code> <b>by value</b>: a <b>temporary</b> with no name. Line 10 points a view at it. Step through and watch the heap: a temporary lives only until the end of the statement that made it, the <code>;</code> at the end of line 10.</p>
+    <span class="file-tab">sv_temp.cpp</span>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem-wrap"><svg class="mem-svg" role="img" aria-label="Stack and heap diagram. The text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Stack</th><th>Heap</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="mem-dangle">{"program": "sv_temp.cpp", "steps": [
+      {"line": 10, "note": "<code>main</code> starts on line 9: one empty plate on the stack, nothing on the heap.", "output": [], "frames": [{"name": "main", "slots": []}], "heap": {}},
+      {"line": 6, "note": "Line 10 must first call <code>make_label()</code>. A new plate goes on top.", "output": [], "frames": [{"name": "main", "slots": []}, {"name": "make_label", "slots": []}], "heap": {}},
+      {"line": 10, "note": "Line 6 builds the returned <code>std::string</code>. Its 31 characters are too many to fit inside the string object itself, so they go on a heap page (ticket #1). The function returns, and the string lands in <code>main</code> as a <b>temporary</b>: an object with no name.", "output": [], "frames": [{"name": "main", "slots": [{"n": "(temporary)", "type": "std::string", "ptr": "H1", "len": 31, "cap": 31}]}], "heap": {"H1": {"cells": ["s", "p", "a", "r", "k", " ", "p", "…"], "label": "the label's 31 characters"}}, "changed": ["(temporary)", "H1"]},
+      {"line": 10, "note": "Still line 10: <code>label</code> becomes a view of the temporary: a start (ticket #1) and a length (31). Two fields, no letters of its own.", "output": [], "frames": [{"name": "main", "slots": [{"n": "(temporary)", "type": "std::string", "ptr": "H1", "len": 31, "cap": 31}, {"n": "label", "type": "std::string_view", "ptr": "H1", "len": 31}]}], "heap": {"H1": {"cells": ["s", "p", "a", "r", "k", " ", "p", "…"], "label": "the label's 31 characters"}}, "changed": ["label"]},
+      {"line": 11, "note": "The <code>;</code> ends the statement, and the temporary is destroyed. Its destructor gives the heap page back: <b>freed</b>. <code>label</code> still holds ticket #1 and the length 31. It has no idea. Nothing on the screen yet, and no warning from g++ either.", "output": [], "frames": [{"name": "main", "slots": [{"n": "label", "type": "std::string_view", "ptr": "H1", "len": 31}]}], "heap": {"H1": {"cells": ["s", "p", "a", "r", "k", " ", "p", "…"], "label": "the label's 31 characters", "freed": true}}, "changed": ["H1"]},
+      {"line": null, "note": "Line 11 tries to print 31 characters from a freed page. That's undefined behaviour. Built with <code>-fsanitize=address</code>, the run stops right here with <samp>heap-use-after-free</samp>, so the screen stays empty. The next panel shows the report.", "output": [], "frames": [{"name": "main", "slots": [{"n": "label", "type": "std::string_view", "ptr": "H1", "len": 31}]}], "heap": {"H1": {"cells": ["s", "p", "a", "r", "k", " ", "p", "…"], "label": "the label's 31 characters", "freed": true}}}]}</script>
+  </section>
+
+  <section class="panel pop alarm shake-me" data-play aria-label="Panel 30: the burned page, in the report">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="FWOOSH!" data-seed="30"></svg>
+    <p class="caption">First the mirrors. One terminal, two compilers, both with <code>-Wall -Wextra -Wpedantic</code>, build only:</p>
+    <p class="parity" data-same-src="sv_temp.cpp,sv_quiet.cpp"></p>
+    <pre class="term wrap small" data-run="sv_quiet.cpp" data-exit></pre>
+    <p class="caption">g++ 13 says nothing. clang++ 18 warns: "object backing the pointer will be destroyed at the end of the full-expression" (a full-expression is the whole statement, up to its <code>;</code>). Now the rolling road:</p>
+    <pre class="term wrap small tall" data-run="sv_temp.cpp" data-exit tabindex="0"></pre>
+    <ol class="readlist" aria-label="Reading the report like a detective">
+      <li><span><b>Headline:</b> <code>heap-use-after-free</code>, <code>READ of size 31</code>: all 31 characters, from a freed block.</span></li>
+      <li><span><b>The read:</b> <code>main ... sv_temp.cpp:11</code>, the print.</span></li>
+      <li><span><b>"freed by thread T0 here":</b> look for your file: <code>main ... sv_temp.cpp:10</code>, under <code>~basic_string()</code>, the temporary's destructor, at the end of line 10.</span></li>
+      <li><span><b>"previously allocated":</b> <code>make_label ... sv_temp.cpp:6</code>. All three lines of the story, in one report.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sanitizer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Sanitizer says: </span>A plain run of this might even print the right label, by luck, today. That's what makes it dangerous: luck runs out on another day, another compiler, another computer. My report is the only honest output.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Sanitizer, wearing night-vision goggles.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 31: keep the owner alive">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">The fix: give the page an <b>owner with a name</b> that lives as long as you need it. Line 10 keeps the label in a <code>std::string</code>; line 11 holds a glass over part of it. Both live to the end of <code>main</code>.</p>
+    <span class="file-tab">sv_kept.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sv_kept.cpp"></pre>
+      <pre class="term wrap" data-run="sv_kept.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The rule of thumb: a <code>string_view</code> is great as a <b>function parameter</b> (the caller's string outlives the call) and dangerous as a <b>variable you keep</b> or a <b>return value</b>. Three more ways to burn the page: returning a view of a local string, viewing a string that's then changed (it may move its letters to a bigger page), and viewing a <code>"text"s</code> temporary.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-svlocal-m" id="ex-svlocal"></div>
+  <script type="application/json" id="ex-svlocal-m">{"program": "sv_local.cpp", "bug": 7, "prompt": "Built with the sanitizers, this stops with <samp>heap-use-after-free</samp>, and g++ didn't warn (look at the build line in the answer's run). Click the line that hands out a glass over a page that's about to burn.", "explain": "Line 7 returns a view into <code>copy</code>, a <b>local</b> string made on line 6. When the function returns, <code>copy</code> is destroyed and its page freed; the caller gets a view of ashes, and line 11 reads them. Fixes: return a <code>std::string</code> (a copy that the caller owns), or skip the copy entirely and return <code>line.substr(0, line.find(' '))</code>: a view into the <b>caller's</b> text, which is still alive while line 11 prints it."}</script>
+
+  <section class="panel sketch" aria-label="Panel 32: string or string_view?">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">When to use which. The C++ Core Guidelines put it in two rules: <b>SL.str.1</b> "Use <code>std::string</code> to own character sequences" and <b>SL.str.2</b> "Use <code>std::string_view</code> ... to refer to character sequences".</p>
+    <div class="vswrap"><table class="vs ref-table">
+      <thead><tr><th scope="col">You want to...</th><th scope="col">Use</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">read some text in a function, and not keep it</th><td class="yes"><code>std::string_view</code> parameter</td></tr>
+        <tr><th scope="row">keep the text: store it in an object, a vector, a map</th><td><code>std::string</code></td></tr>
+        <tr><th scope="row">return text you built inside the function</th><td><code>std::string</code> (never a view of a local)</td></tr>
+        <tr><th scope="row">change the caller's text</th><td><code>std::string&amp;</code></td></tr>
+        <tr><th scope="row">pass text to an old C function that needs a <code>'\0'</code> at the end</th><td><code>const std::string&amp;</code> and <code>.c_str()</code>: a view of part of a string has no <code>'\0'</code> after it</td></tr>
+      </tbody>
+    </table></div>
+    <p class="caption soft">And the two <b>literal suffixes</b> from <code>std::literals</code> (Core Guideline <b>SL.str.12</b>: "Use the <code>s</code> suffix for string literals meant to be standard-library strings"): <code>"oil"s</code> is a <code>std::string</code>, <code>"oil"sv</code> is a <code>std::string_view</code>, and plain <code>"oil"</code> with <code>auto</code> is a <code>const char*</code>, a bare pointer.</p>
+    <span class="file-tab">sv_sizes.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="sv_sizes.cpp"></pre>
+      <pre class="term wrap" data-run="sv_sizes.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>On this machine a pointer is 8 bytes, a <code>std::string</code> object is 32 (a pointer, a length, and room for short text inside it), and a view is 16: exactly a pointer and a length. Other libraries use other sizes. Line 13 shows why <code>s</code> exists: two plain literals can't be added with <code>+</code>, but a <code>std::string</code> and a literal can.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-param-m" id="ex-param"></div>
+  <script type="application/json" id="ex-param-m">{"q": "A <code>Garage</code> class has <code>void add_customer(??? name)</code>, which stores the name in a <code>std::vector&lt;std::string&gt;</code> member. Wren wants to store a <b>view</b> to save copying: <code>std::vector&lt;std::string_view&gt;</code>. Good idea?", "options": [
+    {"t": "No: it would keep glasses over pages it doesn't own", "correct": true, "why": "Right. The caller's string may be a temporary or a local that's gone long before the garage reads the name: a vector of dangling views. Storing means owning. (The parameter can still be a <code>std::string_view</code>; the member must be <code>std::string</code>, which copies the letters once.)"},
+    {"t": "Yes: views are always faster, so use them everywhere", "why": "Faster to copy, yes, but a view is only safe while its owner lives. A stored view outlives the call, and that's exactly panel 29's trap."},
+    {"t": "Yes, as long as every caller passes a string literal", "why": "Literals do live forever, so it would work... until someone passes a <code>std::string</code> they read from the keyboard. A class can't rely on every caller being careful."},
+    {"t": "No, because a string_view can't be stored in a vector", "why": "It can; that's what makes the mistake so easy. The problem is lifetime, not the vector."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE LABEL PRINTER<small><code>std::format</code> specs, format strings checked while compiling, <code>from_chars</code> and <code>to_chars</code></small></h2>
+
+  <section class="panel sketch" aria-label="Panel 33: the parts of a format spec">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">You met <code>std::format</code> (from <code>&lt;format&gt;</code>, C++20) as a way to glue values into text: every <code>{}</code> is a slot. Inside the braces, after a colon, goes a <b>format spec</b>: instructions for the label printer. They always come in this order. Tap each part of <code>{:*&gt;8.2f}</code>.</p>
+    <div class="anatomy" data-anatomy>
+      <p class="anat-line" aria-hidden="true"><span class="part" data-p="open">{:</span><span class="part" data-p="fill">*</span><span class="part" data-p="align">&gt;</span><span class="part" data-p="width">8</span><span class="part" data-p="prec">.2</span><span class="part" data-p="type">f</span><span class="part" data-p="close">}</span></p>
+      <ul class="anat-keys" aria-label="Tap a part of the format spec">
+        <li><button type="button" data-part="open" aria-pressed="false"><b>{:</b>The slot opens. A number before the colon picks an argument by position, <code>{1:...}</code>; with none, slots take the arguments in order. Want a real brace in the text? Write <code>{{</code> or <code>}}</code>.</button></li>
+        <li><button type="button" data-part="fill" aria-pressed="false"><b>*</b>The <b>fill</b> character for the empty space. Default: a space. It only counts when it's followed by an alignment sign.</button></li>
+        <li><button type="button" data-part="align" aria-pressed="false"><b>&gt;</b>The <b>alignment</b>: <code>&lt;</code> left, <code>&gt;</code> right, <code>^</code> centre. Default: numbers go right, text goes left.</button></li>
+        <li><button type="button" data-part="width" aria-pressed="false"><b>8</b>The minimum <b>width</b>, in characters. A longer value is never cut; it just pushes past. A <code>0</code> in front (<code>08</code>) pads a number with zeros instead.</button></li>
+        <li><button type="button" data-part="prec" aria-pressed="false"><b>.2</b>The <b>precision</b>. For <code>f</code>, digits after the decimal point (rounded); for text, the most characters to print.</button></li>
+        <li><button type="button" data-part="type" aria-pressed="false"><b>f</b>The <b>type</b>: <code>f</code> fixed-point, <code>e</code> scientific, <code>d</code> decimal, <code>x</code> hex, <code>b</code> binary, <code>s</code> text. Add <code>#</code> before the width for a <code>0x</code> or <code>0b</code> prefix, and <code>+</code> to always show a sign.</button></li>
+        <li><button type="button" data-part="close" aria-pressed="false"><b>}</b>The slot closes. The whole spec is read <b>while compiling</b>, so a broken spec is a compile error (panel 36).</button></li>
+      </ul>
+      <p class="sr-only" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: a receipt that lines up">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Width and alignment make columns. Each line uses the same three specs, so the columns line up whatever the values: <code>{:&lt;14}</code> for the part, <code>{:&gt;3}</code> for the quantity, <code>{:&gt;9.2f}</code> for the price. Line 9 prints 26 dashes by centring an <b>empty</b> string with <code>-</code> as the fill.</p>
+    <span class="file-tab">receipt.cpp</span>
+    <pre class="code" data-src="receipt.cpp"></pre>
+    <pre class="term wrap" data-run="receipt.cpp" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>12.999 printed as <b>13.00</b>: <code>.2f</code> rounds, it doesn't chop. The total line is 14 + 12.999 + 14.5 = 41.499, which rounds to 41.50. For money in real programs, people count whole cents in an integer to avoid these surprises.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 35: the label printer machine" data-machine="m-format">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Feed the label printer: a value and a spec go in, a label comes out. Every answer comes from a real run of <code>format_machine.cpp</code>, which prints one line per spec, with brackets so you can see the spaces. The last chip jams it.</p>
+    <span class="file-tab">format_machine.cpp</span>
+    <pre class="code" data-src="format_machine.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-format">{"label": "std::format", "program": "format_machine.cpp", "examples": [
+      {"in": "{:>8.2f} with 3.14159", "out": "[    3.14]", "expectLine": "{:>8.2f} 3.14159 -> [    3.14]", "outKind": "str", "note": "Right-aligned in 8 characters, 2 digits after the point. Four spaces of padding, then <code>3.14</code>."},
+      {"in": "{:<8} with \"bolt\"", "out": "[bolt    ]", "expectLine": "{:<8} \"bolt\" -> [bolt    ]", "outKind": "str", "note": "Left-aligned in 8: the text first, then 4 spaces."},
+      {"in": "{:^8} with \"bolt\"", "out": "[  bolt  ]", "expectLine": "{:^8} \"bolt\" -> [  bolt  ]", "outKind": "str", "note": "Centred: 2 spaces each side."},
+      {"in": "{:*^9} with \"nut\"", "out": "[***nut***]", "expectLine": "{:*^9} \"nut\" -> [***nut***]", "outKind": "str", "note": "Centred with <code>*</code> as the fill: 6 stars, 3 each side."},
+      {"in": "{:08.3f} with 3.14159", "out": "[0003.142]", "expectLine": "{:08.3f} 3.14159 -> [0003.142]", "outKind": "str", "note": "Width 8 padded with zeros, 3 digits after the point (rounded: 3.14159 becomes 3.142)."},
+      {"in": "{:x} with 255", "out": "[ff]", "expectLine": "{:x} 255 -> [ff]", "outKind": "str", "note": "Hexadecimal, base 16: 255 is <code>ff</code>."},
+      {"in": "{:#x} with 255", "out": "[0xff]", "expectLine": "{:#x} 255 -> [0xff]", "outKind": "str", "note": "The <code>#</code> adds the <code>0x</code> prefix, the way C++ code writes hex."},
+      {"in": "{:b} with 5", "out": "[101]", "expectLine": "{:b} 5 -> [101]", "outKind": "str", "note": "Binary: 5 is 4 + 1, so <code>101</code>."},
+      {"in": "{:+} with 7", "out": "[+7]", "expectLine": "{:+} 7 -> [+7]", "outKind": "str", "note": "Always show the sign, even for positive numbers."},
+      {"in": "{:.1e} with 299792.458", "out": "[3.0e+05]", "expectLine": "{:.1e} 299792.458 -> [3.0e+05]", "outKind": "str", "note": "Scientific notation with 1 digit after the point: 3.0 × 10<sup>5</sup>."},
+      {"in": "{:d} with the text \"Wren\", spec chosen at run time", "error": "format error: failed to parse format-spec", "program": "format_bad.cpp", "note": "<code>d</code> is for whole numbers, not text. Normally the Compiler would refuse, but <code>format_bad.cpp</code> picks its spec at <b>run time</b> with <code>std::vformat</code>, so the check can only happen then: it throws <code>std::format_error</code>, nobody catches it, and the program aborts (exit 134)."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-predfmt-m" id="ex-predfmt"></div>
+  <script type="application/json" id="ex-predfmt-m">{"program": "predict_format.cpp", "prompt": "Six labels, each in brackets so the spaces show. Type all six lines.", "hint": "<code>&gt;</code> right, <code>&lt;</code> left, <code>^</code> centre; a leading <code>0</code> pads with zeros; <code>.2f</code> rounds to 2 places; 26 in hex is 16 + 10. With an odd number of spare characters, centring puts the extra one on the right.", "explain": "<samp>[   42]</samp> right in 5; <samp>[42   ]</samp> left in 5; <samp>[00042]</samp> zero-padded; <samp>[0.67]</samp> (0.666... rounds up); <samp>[1a]</samp> (26 = 1×16 + 10, and 10 is <code>a</code>); <samp>[##ok###]</samp>: 5 spare characters, 2 on the left and 3 on the right."}</script>
+
+  <div data-ex="fill" data-model="ex-fillfmt-m" id="ex-fillfmt"></div>
+  <script type="application/json" id="ex-fillfmt-m">{"program": "fill_format.cpp", "prompt": "Fill in the three specs so the program prints a price right-aligned in 8 with 2 decimals, a part name left-aligned in 6, and a hex number with its <code>0x</code> prefix. Each blank is the spec inside the braces, without the colon.", "blanks": [{"line": 5, "text": ">8.2f"}, {"line": 6, "text": "<6"}, {"line": 7, "text": "#x"}], "explain": "<code>{:&gt;8.2f}</code> gives <samp>[   13.00]</samp> (12.999 rounds up), <code>{:&lt;6}</code> gives <samp>[nut   ]</samp>, and <code>{:#x}</code> turns 48879 into <samp>[0xbeef]</samp>: hex digits that happen to spell a word."}</script>
+
+  <section class="panel pop" aria-label="Panel 36: the Compiler checks your format string">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Two slots, one value. With C's old <code>printf</code>, the same mistake compiles (at most with a warning) and is undefined behaviour at run time. With <code>std::format</code>, the format string is <b>checked while compiling</b> (C++20 made it so), and the build fails.</p>
+    <span class="file-tab">fewargs.cpp</span>
+    <pre class="code" data-src="fewargs.cpp"></pre>
+    <pre class="term wrap small" data-run="fewargs.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the g++ error like a detective">
+      <li><span><b>Find the one <code>error:</code> line:</b> "call to non-<code>constexpr</code> function <code>__invalid_arg_id_in_format_string()</code>". Decoded: while checking the string at compile time, the library reached a slot with <b>no argument</b> for it ("invalid argument id") and called a function on purpose that can't run at compile time, just to make the build fail.</span></li>
+      <li><span><b>Find your own file:</b> <code>fewargs.cpp:5:29</code>, the format string on line 5. Everything else points into the library (<code>/usr/include/c++/13/format</code>).</span></li>
+      <li><span><b>The fix:</b> one argument per <code>{}</code>: <code>std::format("{} and {}\n", 1, 2)</code>.</span></li>
+    </ol>
+    <p class="caption">clang++ 18 says it more directly, pointing a caret at the string:</p>
+    <pre class="term wrap small" data-run="fewargs.cpp" data-alt data-exit></pre>
+    <div class="scene">
+      <svg class="char lg" data-char="compiler" data-mood="stern" data-label="g++"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Compiler says: </span>Here's the problem, here's where. My message is long because the check lives deep inside the library, but it's still a gift: this bug can never reach a user. Chapter 19 shows how code can run while compiling, which is how I do this.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-fewargs-m" id="ex-fewargs"></div>
+  <script type="application/json" id="ex-fewargs-m">{"program": "spot_format.cpp", "bug": 9, "prompt": "A new tyre report. The build fails with the same long message about <code>__invalid_arg_id_in_format_string</code>. Count slots and arguments: click the line it's about.", "explain": "Line 9: three <code>{}</code> slots, but only two arguments, <code>front</code> and <code>average</code> (<code>back</code> was forgotten). In the real message, the line that points inside <code>main</code> is <code>spot_format.cpp:9:29</code>; the other lines name the <code>#include</code> on line 1 or the library itself. In a long compiler message, hunt for your own file name and a line inside your code first."}</script>
+
+  <section class="panel clean" aria-label="Panel 37: no printer for vectors yet">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Can the label printer print a whole <code>std::vector</code>? In the C++23 standard, yes. In <b>this</b> library, libstdc++ 13, not yet: range formatting arrived in libstdc++ 15 (GCC 15).</p>
+    <span class="file-tab">fmt_vector.cpp</span>
+    <pre class="code" data-src="fmt_vector.cpp"></pre>
+    <pre class="term wrap small tall" data-run="fmt_vector.cpp" data-exit tabindex="0"></pre>
+    <p class="caption">"static assertion failed: std::formatter must be specialized for each type being formatted" means: nobody taught <code>std::format</code> how to print this type. Until your library can, build the text yourself:</p>
+    <span class="file-tab">fmt_loop.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="fmt_loop.cpp"></pre>
+      <pre class="term wrap" data-run="fmt_loop.cpp" data-exit></pre>
+    </div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 38: std::print, not here yet">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">A C++23 sidebar. <code>std::print</code> and <code>std::println</code> (from <code>&lt;print&gt;</code>) take the same format strings and write straight to the screen, with no <code>std::cout</code> and no <code>std::format</code> in between; <code>println</code> adds the newline for you. They need libstdc++ 14 (GCC 14) or newer, libc++ 17 (partly; fully from 18), or Microsoft's compiler from Visual Studio 2022 17.7. This machine has GCC 13, so this book uses <code>std::cout</code> and <code>std::format</code>.</p>
+    <div class="notrun">
+      <span class="stamp">NOT RUN: NEEDS GCC 14+</span>
+      <span class="file-tab">print_sidebar.cpp</span>
+      <pre class="code" data-src="print_sidebar.cpp"></pre>
+      <p class="caption">What it really does on this machine, with both compilers:</p>
+      <div class="pair2">
+        <pre class="term wrap small" data-run="print_sidebar.cpp" data-exit></pre>
+        <pre class="term wrap small" data-run="print_sidebar.cpp" data-alt data-exit></pre>
+      </div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>"No such file or directory" for a header from the standard is the classic sign that a library is <b>older</b> than the feature. Check a feature table (cppreference has one for every standard) before you blame your code.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: from_chars, the fast parser">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">The other direction: text to numbers. <code>std::from_chars</code> (from <code>&lt;charconv&gt;</code>, C++17) reads a number from a range of characters and reports two things: where it <b>stopped</b> (a pointer, <code>next</code>) and an error code (<code>err</code>, a <code>std::errc</code>). It never throws, never allocates, and doesn't care about the computer's language settings. Here it adds up <code>"12,7,3"</code>:</p>
+    <span class="file-tab">parse.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="parse.cpp"></pre>
+      <pre class="term wrap" data-run="parse.cpp" data-exit></pre>
+    </div>
+    <ol class="readlist" aria-label="How the parse loop works">
+      <li><span><b>Lines 7 and 8:</b> <code>pos</code> and <code>end</code> are pointers to the first character and one past the last, the range <code>from_chars</code> reads.</span></li>
+      <li><span><b>Line 12:</b> reads digits from <code>pos</code> until it meets something that isn't one (the comma), puts the number in <code>value</code>, and returns <code>next</code>, pointing at the comma. <code>auto [next, err]</code> unpacks the two results at once.</span></li>
+      <li><span><b>Line 13:</b> <code>std::errc{}</code> means "no error". Anything else means no number could be read.</span></li>
+      <li><span><b>Line 18:</b> skip the comma and go round. 12 + 7 + 3 = 22.</span></li>
+    </ol>
+    <p class="caption">And the reverse, <code>std::to_chars</code>, writes a number's digits into a buffer you provide, in any base from 2 to 36:</p>
+    <span class="file-tab">tochars.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="tochars.cpp"></pre>
+      <pre class="term wrap" data-run="tochars.cpp" data-exit></pre>
+    </div>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 40: the parser machine" data-machine="m-parse">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">Feed the parser machine some text. It shows what <code>from_chars</code> read into an <code>int</code>, and what's left after it. Every answer is a line of the real run of <code>parse_machine.cpp</code>.</p>
+    <span class="file-tab">parse_machine.cpp</span>
+    <pre class="code" data-src="parse_machine.cpp"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-parse">{"label": "std::from_chars", "program": "parse_machine.cpp", "examples": [
+      {"in": "\"42\"", "out": "42, rest \"\"", "expectLine": "\"42\" -> 42, rest \"\"", "outKind": "int", "note": "All of it is a number. Nothing is left."},
+      {"in": "\"-7\"", "out": "-7, rest \"\"", "expectLine": "\"-7\" -> -7, rest \"\"", "outKind": "int", "note": "A minus sign is fine for a signed type like <code>int</code>."},
+      {"in": "\"12abc\"", "out": "12, rest \"abc\"", "expectLine": "\"12abc\" -> 12, rest \"abc\"", "outKind": "int", "note": "It reads <code>12</code> and stops at the <code>a</code>, without an error. That's how <code>parse.cpp</code> finds its commas. If the whole text must be a number, check that the stop pointer reached the end."},
+      {"in": "\"abc\"", "out": "invalid_argument", "expectLine": "\"abc\" -> invalid_argument", "outKind": "str", "note": "Not even one digit: <code>std::errc::invalid_argument</code>, and <code>value</code> is left untouched."},
+      {"in": "\" 5\"", "out": "invalid_argument", "expectLine": "\" 5\" -> invalid_argument", "outKind": "str", "note": "Unlike <code>std::cin &gt;&gt;</code> and <code>std::stoi</code>, <code>from_chars</code> doesn't skip spaces. Trim them yourself (a <code>string_view</code> and <code>remove_prefix</code> are perfect)."},
+      {"in": "\"+5\"", "out": "invalid_argument", "expectLine": "\"+5\" -> invalid_argument", "outKind": "str", "note": "A surprise: a leading <code>+</code> is not accepted either. Only a minus."},
+      {"in": "\"99999999999\"", "out": "result_out_of_range", "expectLine": "\"99999999999\" -> result_out_of_range", "outKind": "str", "note": "Eleven nines don't fit in an <code>int</code> (the most is 2147483647 here): <code>std::errc::result_out_of_range</code>. No overflow, no undefined behaviour, just a clear answer."}]}</script>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-parse-m" id="ex-parse"></div>
+  <script type="application/json" id="ex-parse-m">{"program": "parsons_parse.cpp", "pin": [1, 2, 3, 4, 5, 6, 7], "prompt": "Put the lines in order: read a number with <code>from_chars</code>, refuse with exit 1 if there isn't one, and otherwise print it doubled.", "explain": "Parse first (it needs <code>text</code> and <code>value</code>, which are already there), then check <code>err</code> before trusting <code>value</code>, with the early <code>return 1;</code> inside the <code>if</code>. Only after the check is it safe to print <samp>500</samp>."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BYTES, NOT LETTERS<small>UTF-8, <code>size()</code> counts bytes, <code>&lt;cctype&gt;</code> and <code>unsigned char</code>, <code>char8_t</code></small></h2>
+
+  <section class="panel sketch bytes" aria-label="Panel 41: the byte train" data-bytes="bt-words">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">Big idea: a <code>std::string</code> is a train of <b>bytes</b> (<code>char</code>s), not of letters. Text is stored in an <b>encoding</b> that turns each character into bytes; nearly everything today uses <b>UTF-8</b>, which this book's source files use too. In UTF-8 the plain English letters, digits and punctuation take <b>one</b> byte each, but <code>é</code> takes two, <code>€</code> three, and an emoji four. Pick a word to see its carriages.</p>
+    <div class="bt-words" role="group" aria-label="Choose a word"></div>
+    <div class="bt-stage"></div>
+    <p class="bt-key" aria-hidden="true"><span><i class="one"></i>a 1-byte character</span><span><i class="lead"></i>first byte of a longer one</span><span><i class="cont"></i>a "more" byte (starts with bits 10)</span></p>
+    <p class="bt-say"></p>
+    <span class="parity"></span>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every word's bytes</summary><ul class="bt-text"></ul></details>
+    <script type="application/json" id="bt-words">{"program": "letters.cpp", "start": 1, "words": [
+      {"w": "bolt", "line": "bolt: 4 bytes, 4 code points", "note": "Plain English letters: one byte each, so bytes and characters agree."},
+      {"w": "café", "line": "café: 5 bytes, 4 code points", "hexProgram": "bytes.cpp", "hexLine": "63 61 66 c3 a9", "note": "<code>é</code> is the two bytes <code>c3 a9</code>. The yellow carriage says \"a 2-byte character starts here\"; the dashed one says \"I belong to the one before\"."},
+      {"w": "€5", "line": "€5: 4 bytes, 2 code points", "note": "The euro sign takes three bytes, <code>e2 82 ac</code>; the 5 takes one."},
+      {"w": "🔧", "line": "🔧: 4 bytes, 1 code points", "note": "One wrench emoji, four bytes. (The program's \"1 code points\" is its own grammar, printed by a simple loop.)"}]}</script>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>A <b>code point</b> is one numbered character in the Unicode list: <code>é</code> is number 233, written U+00E9. UTF-8 is the recipe that turns that number into bytes. What a reader sees as one "letter" can even be several code points (an <code>e</code> followed by a separate accent mark, or a family emoji), so "how many letters?" is a deeper question than it looks.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 42: size() counts bytes">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">The real bytes of <code>"café"</code>. Line 10 prints each one in hex with <code>{:02x}</code> (2 digits, zero-padded), after turning it into an <code>unsigned char</code>. Line 14 prints the same bytes as plain <code>int</code>s, without that step.</p>
+    <span class="file-tab">bytes.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="bytes.cpp"></pre>
+      <pre class="term wrap" data-run="bytes.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span><code>size</code> 5 for a 4-letter word. And look at the last line: <code>-61 -87</code>! On this machine a plain <code>char</code> is <b>signed</b>, so bytes from 128 to 255 (like <code>c3</code> = 195) come out <b>negative</b> (195 − 256 = −61). On some other machines (many ARM ones) <code>char</code> is unsigned. That's why line 9 says <code>unsigned char</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-predbytes-m" id="ex-predbytes"></div>
+  <script type="application/json" id="ex-predbytes-m">{"program": "predict_bytes.cpp", "prompt": "The source file is UTF-8. What do the two lines print?", "hint": "Count bytes, not letters. <code>e</code>: 1. <code>é</code>: panel 41. <code>€</code>: panel 41. <code>ï</code> is an accented letter like <code>é</code>.", "explain": "<samp>1 2 3</samp>: <code>e</code> is one byte, <code>é</code> two, <code>€</code> three. <samp>6</samp>: <code>naïve</code> has 5 letters, but <code>ï</code> takes two bytes, so 4 + 2 = 6. <code>.size()</code> and <code>.length()</code> both count <b>bytes</b>."}</script>
+
+  <section class="panel clean" aria-label="Panel 43: cctype needs unsigned char">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">The <code>&lt;cctype&gt;</code> functions (<code>std::toupper</code>, <code>std::isalpha</code>, <code>std::isdigit</code>, <code>std::isspace</code>...) come from C. Their rule: the value you pass must fit in an <code>unsigned char</code> (or be the special <code>EOF</code>). Pass a negative <code>char</code>, like é's −61, and the behaviour is <b>undefined</b>. So every call casts first, as lines 8 and 13 do.</p>
+    <span class="file-tab">upper.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="upper.cpp"></pre>
+      <pre class="term wrap" data-run="upper.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="pike" data-mood="focus" data-arms="point" data-prop="magnifier"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span><b>CAFé CRèME</b>: the casts kept it safe, but <code>toupper</code> still works one <b>byte</b> at a time, and in the standard "C" setting it only knows the 26 English letters. The é and è bytes went through unchanged, and <code>isalpha</code> counted 7 letters, not 9. Real upper-casing of any language needs a Unicode library such as ICU.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-uchar-m" id="ex-uchar"></div>
+  <script type="application/json" id="ex-uchar-m">{"q": "Why does <code>upper.cpp</code> write <code>std::toupper(static_cast&lt;unsigned char&gt;(c))</code> instead of just <code>std::toupper(c)</code>?", "options": [
+    {"t": "A negative <code>char</code> is undefined behaviour for cctype functions", "correct": true, "why": "Right: any negative value other than <code>EOF</code> is. On this machine <code>char</code> is signed, so é's bytes are −61 and −87 (panel 42). The cast turns them into 195 and 169, which the function is allowed to receive."},
+    {"t": "The cast makes <code>toupper</code> understand accented letters", "why": "It doesn't: the output is still <samp>CAFé CRèME</samp>. The cast is about safety, not about Unicode."},
+    {"t": "Without the cast, <code>std::toupper(c)</code> wouldn't compile", "why": "It takes an <code>int</code>, and <code>std::toupper(c)</code> compiles without a word. That's what makes the mistake easy: nothing warns you."},
+    {"t": "The cast makes the loop over the string run faster", "why": "A cast between <code>char</code> types costs nothing at run time either way. It's purely about which value arrives."}]}</script>
+
+  <div data-ex="trace" data-model="ex-btrace-m" id="ex-btrace"></div>
+  <script type="application/json" id="ex-btrace-m">{"program": "bytes_trace.cpp", "columns": ["index", "byte (hex)", "start or more"], "given": [0], "prompt": "Walk the bytes of <code>\"né!\"</code> one by one. Line 9 says a byte <b>starts</b> a character unless its top two bits are <code>10</code> (that test is <code>(byte &amp; 0xC0) != 0x80</code>). Fill in each byte and its kind.", "explain": "<code>n</code> is <samp>6e</samp> (start). <code>é</code> is <samp>c3</samp> (start of a 2-byte character) then <samp>a9</samp> (more). <code>!</code> is <samp>21</samp> (start). Four bytes, three characters: count the starts and you've counted code points. That's exactly how <code>letters.cpp</code> works."}</script>
+
+  <section class="panel clean" aria-label="Panel 44: counting code points">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">Counting characters instead of bytes: count every byte that <b>isn't</b> a "more" byte (line 9). This is the program the byte train checked itself against.</p>
+    <span class="file-tab">letters.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="letters.cpp"></pre>
+      <pre class="term wrap" data-run="letters.cpp" data-exit></pre>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>The danger follows: <code>substr</code>, indexes and <code>size</code> all work in bytes, so <code>word.substr(0, 4)</code> on <code>"café"</code> would cut é in half and leave a broken byte at the end. If text may contain more than plain English, cut it at character boundaries, or let a Unicode library do it.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 45: char8_t, the UTF-8 type that cout won't print">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption">C++20 added a type just for UTF-8 bytes, <code>char8_t</code>, with <code>u8"..."</code> literals and <code>std::u8string</code>. It makes the encoding part of the type. One catch: <code>std::cout</code> refuses it.</p>
+    <span class="file-tab">u8_cout.cpp</span>
+    <pre class="code" data-src="u8_cout.cpp"></pre>
+    <pre class="term wrap small" data-run="u8_cout.cpp" data-exit></pre>
+    <ol class="readlist" aria-label="Reading the error like a detective">
+      <li><span><b>"use of deleted function ... operator&lt;&lt;(..., const char8_t*)":</b> the standard library <b>does</b> have an <code>&lt;&lt;</code> for <code>char8_t</code> text, and it's marked <code>= delete</code> (the <code>note:</code> shows the line in <code>ostream</code>). Deleted on purpose, so the mistake is caught here instead of printing something odd.</span></li>
+      <li><span><b>The workaround</b> today: copy the bytes into an ordinary <code>std::string</code>, as below. Many projects simply keep using <code>std::string</code> for UTF-8, as this book does.</span></li>
+    </ol>
+    <span class="file-tab">u8_ok.cpp</span>
+    <div class="side">
+      <pre class="code" data-src="u8_ok.cpp"></pre>
+      <pre class="term wrap" data-run="u8_ok.cpp" data-exit></pre>
+    </div>
+  </section>
+
+  <div data-ex="spot" data-model="ex-u8-m" id="ex-u8"></div>
+  <script type="application/json" id="ex-u8-m">{"program": "spot_u8.cpp", "bug": 8, "prompt": "Another program, four lines of output. The build fails with \"use of deleted function\". Click the line that asks <code>std::cout</code> for something deleted.", "explain": "Line 8 sends a <code>u8\"...\"</code> literal (an array of <code>const char8_t</code>) to <code>std::cout</code>, and the real message points at <code>spot_u8.cpp:8:18</code>. Since C++20 that <code>&lt;&lt;</code> exists only to be refused. Line 7's euro sign is fine: a plain literal is just bytes, and the source is UTF-8. Drop the <code>u8</code> prefix, or copy the bytes into a <code>std::string</code> as <code>u8_ok.cpp</code> does."}</script>
+
+  <!-- =================== PART 7 =================== -->
+  <h2 class="part-h" id="part-7">PART 7 · BOSS LEVEL<small>Six harder checks, then the recap</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 46: boss level">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="46"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char pop-me" data-char="pike" data-mood="focus" data-arms="cheer" data-prop="magnifier"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Inspector Pike says: </span>The full lane. For each one ask: is this about the text, or about values at run time? Who owns the page under this glass? Bytes or letters? What does each part of the spec do?</p></div>
+    </div>
+    <p class="sr-only">Picture: Inspector Pike raises a magnifying glass, ready. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.cpp", "prompt": "Boss 1. Views and specs together. What are the two lines?", "hint": "<code>name</code> is everything before the colon, <code>rest</code> everything after it. <code>{:_&lt;8}</code> fills with underscores. <code>.1f</code> rounds.", "explain": "The colon is at index 4, so <code>name</code> is <code>tyre</code> and <code>rest</code> is <code>32.456</code>, 6 characters: <samp>  tyre|6</samp> (right-aligned in 6). Then <samp>tyre____|32.5</samp>: left-aligned in 8 with <code>_</code> as the fill, and 32.456 rounded to one decimal."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.cpp", "bug": 8, "prompt": "Boss 2. Built with the sanitizers, this stops with <samp>heap-use-after-free</samp> on line 9. But line 9 isn't the mistake. Click the line that burns the page under the glass.", "explain": "Line 7 holds a glass over the first 5 letters of <code>note</code>. Line 8 makes <code>note</code> much longer, too long for its page, so the string moves its letters to a bigger page and frees the old one. <code>first</code> still points at the old page; line 9 reads ashes. (The report's \"freed by\" section points to line 8.) Changing a string can invalidate every view of it. Make the view after the last change, or keep a copy: <code>std::string first = note.substr(0, 5);</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.cpp", "pin": [1, 2, 3, 4, 5, 6, 7], "prompt": "Boss 3. Add up <code>\"30 32 31\"</code> using only a view and <code>from_chars</code>: read a number, add it, slide the view past it, then past the space.", "explain": "Each lap: <code>from_chars</code> reads a number and returns <code>next</code>, where it stopped; add the value; <code>remove_prefix(next - list.data())</code> slides the glass past the digits (the pointer difference is how many characters were read); then, if anything is left, skip the one space. After three laps the view is empty: <samp>total: 93</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.cpp", "prompt": "Boss 4. Print every byte of <code>\"née\"</code> as two hex digits. Fill in the spec and the safe type to convert each <code>char</code> to.", "blanks": [{"line": 8, "text": "{:02x}"}, {"line": 8, "text": "unsigned char"}], "explain": "<code>{:02x}</code> gives 2 hex digits with a leading zero when needed, and <code>unsigned char</code> turns é's negative <code>char</code>s into 195 and 169 before formatting. (Formatting a signed −61 with <code>x</code> would print <code>-3d</code>.) Result: <samp>6e c3 a9 65</samp>: four bytes for three letters."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.cpp", "columns": ["n", "hex", "binary"], "given": [0], "prompt": "Boss 5. <code>n</code> starts at 7 and is multiplied by 3 while it's at most 70. Each lap prints <code>n</code> in decimal, hex and binary.", "explain": "7 is <samp>7</samp> in hex and <samp>111</samp> in binary (4 + 2 + 1). 21 is <samp>15</samp> in hex (1×16 + 5) and <samp>10101</samp> (16 + 4 + 1). 63 is <samp>3f</samp> (3×16 + 15) and <samp>111111</samp>. Then 189 is more than 70, so the loop stops."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A string_view outlives the string it views, as in panel 29. Which station of the lane reliably stops it <b>on this machine</b>?", "options": [
+    {"t": "The rolling road: a g++ build with -fsanitize=address", "correct": true, "why": "Right: <samp>heap-use-after-free</samp>, with the read, the free and the allocation all named (panel 30). It catches every version of this bug that actually runs."},
+    {"t": "The mirrors: g++ 13 with -Wall -Wextra -Wpedantic", "why": "g++ 13 said nothing (panel 30's terminal). clang++ 18 did warn for the temporary case, but g++ didn't warn about the local-string version either (the exercise after panel 31)."},
+    {"t": "The car wash: clang-format", "why": "The car wash only changes layout. It never looks at what code means."},
+    {"t": "A plain run: if it prints the right label, the code is fine", "why": "That's the trap. Undefined behaviour can print the right answer by luck; only the sanitizer's report is evidence."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 47: what you learned">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <p class="caption">What you learned in Chapter 18</p>
+    <ul class="recap">
+      <li><b>A CLEAN BUILD ISN'T A RIGHT BUILD</b>The Compiler checks that code is legal, not that it's what you meant. Run the whole <b>inspection lane</b>: <b>static</b> stations read the code (clang-format, warnings, clang-tidy); <b>dynamic</b> ones watch it run (sanitizers, library assertions, Valgrind). Each catches what the others miss.</li>
+      <li><b>-WALL ISN'T ALL</b>A warnings policy: <code>-Wall -Wextra -Wpedantic -Wshadow -Wconversion</code>, plus <code>-Werror</code> on the build server so a warning shuts the gate. Every warning names its flag in brackets.</li>
+      <li><b>LET THE CAR WASH ARGUE ABOUT SPACES</b><code>clang-format</code> for layout (<code>-i</code> to rewrite, <code>--dry-run --Werror</code> to check); <code>clang-tidy</code> for known bad patterns, by family: <code>modernize-</code>, <code>bugprone-</code>, <code>cppcoreguidelines-</code>, with <code>--fix</code>.</li>
+      <li><b>ASAN AND UBSAN RIDE TOGETHER; TSAN RIDES ALONE</b><code>-fsanitize=address,undefined</code> in one build, <code>-fsanitize=thread</code> in another. <code>-D_GLIBCXX_ASSERTIONS</code> is a cheap seatbelt; Valgrind checks an unchanged program, slowly. Here, sanitizer builds use g++.</li>
+      <li><b>A VIEW IS A LOOK, NEVER A KEEP</b><code>std::string_view</code> is a pointer and a length over someone else's page: perfect for parameters, dangerous to store or return. A view of a temporary, a local, or a string that then changes dangles, and g++ 13 says nothing: ASan says <code>heap-use-after-free</code>.</li>
+      <li><b>BYTES, NOT LETTERS</b><code>std::format</code> specs go fill, align, width, precision, type (<code>{:*&gt;8.2f}</code>) and are checked while compiling; <code>from_chars</code> parses fast and reports where it stopped. A <code>std::string</code> holds UTF-8 bytes: <code>"é"</code> has size 2, and <code>&lt;cctype&gt;</code> wants <code>unsigned char</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="mechanic" data-mood="happy" data-arms="cheer" data-prop="none"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Wren says: </span>My tyre program now goes through the lane every time I build. It's not that I don't trust myself. It's that I trust myself <b>and</b> five inspectors more than myself alone.</p></div>
+    </div>
+    <div class="score"><span data-score></span></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 48: next time, Baked Before the Party">
+    <span class="panel-no" aria-hidden="true">48</span>
+    <p class="caption soft">Coming up in Chapter 19: Baked Before the Party</p>
+    <div class="teaser">
+      <svg class="badge" viewBox="0 0 460 180" role="img" aria-label="Teaser picture: a round layered cake with three candles on a stand, next to a party banner with three flags.">
+        <path d="M60 160 h160" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+        <path d="M90 160 l10 -12 h80 l10 12" fill="#DDE8FF" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="80" y="100" width="120" height="48" rx="8" fill="#FFF6CC" stroke="#111" stroke-width="4"/>
+        <rect x="92" y="66" width="96" height="36" rx="8" fill="#FFE1E1" stroke="#111" stroke-width="4"/>
+        <path d="M80 118 q15 10 30 0 q15 10 30 0 q15 10 30 0 q15 10 30 0" fill="none" stroke="#111" stroke-width="3"/>
+        <g stroke="#111" stroke-width="3"><rect x="112" y="44" width="8" height="22" fill="#7FB2FF"/><rect x="136" y="44" width="8" height="22" fill="#7FB2FF"/><rect x="160" y="44" width="8" height="22" fill="#7FB2FF"/></g>
+        <g fill="#FFD60A" stroke="#111" stroke-width="2.5"><path d="M116 42 q-6 -8 0 -16 q6 8 0 16 z"/><path d="M140 42 q-6 -8 0 -16 q6 8 0 16 z"/><path d="M164 42 q-6 -8 0 -16 q6 8 0 16 z"/></g>
+        <path d="M260 40 q90 30 180 0" fill="none" stroke="#111" stroke-width="3"/>
+        <g stroke="#111" stroke-width="3" stroke-linejoin="round"><path d="M280 46 l12 40 l14 -34 z" fill="#FF5A4E"/><path d="M336 54 l10 40 l16 -38 z" fill="#C9F2D9"/><path d="M394 50 l12 40 l14 -36 z" fill="#FFD60A"/></g>
+      </svg>
+      <div class="scene">
+        <svg class="char sm" data-char="mechanic" data-mood="focus" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Wren thinks: </span>Today the Compiler checked a format string <b>while compiling</b>, before the program ever ran. How can code run before the party starts? Next time: <code>const</code> everywhere, <code>constexpr</code> and <code>consteval</code> functions that are baked at compile time, <code>static_assert</code>, and what <code>auto</code> really peels off a type. The cake is baked before the guests arrive.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch17.html">← Ch 17 · Head Chefs and Examiners</a><a class="next" href="ch19.html">Ch 19 · Baked Before the Party →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how sanitizers and Valgrind see bugs, how std::format checks at compile time, and how UTF-8 is built</summary>
+    <div class="page-body">
+      <h3>How AddressSanitizer works</h3>
+      <p>ASan keeps a <b>shadow memory</b>: for every 8 bytes of your program's memory, one shadow byte says how many of them may be used. The compiler inserts a quick shadow check before every load and store. <code>new</code> and <code>malloc</code> are replaced so that every block gets poisoned <b>redzones</b> on both sides (that's how "0 bytes after 16-byte region" is spotted), and freed blocks go into a <b>quarantine</b> instead of being reused at once (that's how "use after free" is spotted, and why a freed block shows <code>fd</code> in the shadow map). The cost: more memory, and the ASan documentation gives a typical slowdown of about 2×. A use after free can slip through if so much memory has been freed since that the block left quarantine.</p>
+      <h3>How UBSan works</h3>
+      <p>UBSan adds a small check at each operation that <b>could</b> be undefined: every signed <code>+</code>, <code>-</code> and <code>*</code>, every division, every shift, some casts. If the check fails it prints <code>runtime error:</code> and, with <code>-fno-sanitize-recover=all</code>, stops. It doesn't track memory, which is why ASan and UBSan complement each other so well.</p>
+      <h3>How Valgrind works</h3>
+      <p>Valgrind doesn't need a rebuild because it never runs your machine code directly. It translates it, a little at a time, into its own instructions with checks added, then runs those on a simulated processor. Memcheck tracks whether every byte is addressable and whether it has been given a value ("Conditional jump or move depends on uninitialised value(s)" is its famous message). Simulating everything is why it's 10 to 50 times slower. It only knows about heap blocks, so an overrun of a local array on the stack goes unnoticed.</p>
+      <h3>Static analysis can't be perfect</h3>
+      <p>A static tool would have to predict every value a program might ever see, which is impossible in general (computer science proves no program can decide every such question about all other programs). So static tools <b>approximate</b>: they either miss some bugs (false negatives) or report some correct code (false positives). Dynamic tools never report a bug that didn't happen, but only see the roads your test runs actually took. That's the real reason for a lane with both kinds.</p>
+      <h3>How <code>std::format</code> checks its string while compiling</h3>
+      <p><code>std::format</code>'s first parameter isn't a plain string; it's a <code>std::format_string&lt;Args...&gt;</code> whose constructor is <code>consteval</code>: it <b>must</b> run while compiling. It walks the string, counts the slots and checks each spec against each argument's type. On a problem it calls a function that isn't allowed at compile time, and that failure is the error you saw. When the string is only known at run time, use <code>std::vformat</code>, which checks at run time and throws <code>std::format_error</code> (the label printer's jam). Chapter 19 explains <code>consteval</code>.</p>
+      <h3>How UTF-8 is built</h3>
+      <p>UTF-8 splits a code point's number into bits and spreads them over 1 to 4 bytes. One byte: <code>0xxxxxxx</code> (the 128 ASCII characters, unchanged). Two bytes: <code>110xxxxx 10xxxxxx</code>. Three: <code>1110xxxx</code> + two <code>10</code> bytes. Four: <code>11110xxx</code> + three. So é, U+00E9 = binary 000 1110 1001, becomes <code>110 00011</code> <code>10 101001</code> = <code>c3 a9</code>. Every "more" byte starts with <code>10</code>, which is why <code>(byte &amp; 0xC0) != 0x80</code> finds character starts, and why you can always find the start of a character from the middle of a text.</p>
+      <h3>Why string_view has no <code>'\0'</code></h3>
+      <p>C strings end with a zero byte. A view of the middle of a string can't add one without changing the owner's page, so a <code>string_view</code> is just pointer + length. Passing <code>view.data()</code> to a C function that expects a zero at the end may read past your text. Convert to <code>std::string</code> first when you need <code>.c_str()</code>.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Build servers run the lane.</b> Continuous integration (CI) systems build every change with <code>-Werror</code>, run <code>clang-format --dry-run --Werror</code> and clang-tidy, and run the tests under ASan+UBSan and TSan builds before a change may be merged.</li>
+        <li><b>Fuzzing.</b> Fuzzers such as libFuzzer and AFL++ feed millions of random inputs into a sanitized build. The sanitizer turns silent memory errors into crashes the fuzzer can notice. Google's OSS-Fuzz project runs this for open-source code continuously.</li>
+        <li><b>Hardened libraries in production.</b> Some Linux distributions compile their packages with <code>-D_GLIBCXX_ASSERTIONS</code>, because the checks are cheap enough to leave on. Newer libc++ versions have a similar "hardening mode".</li>
+        <li><b>Editors run the checklist live.</b> The <code>clangd</code> language server shows clang-tidy findings as you type in VS Code, Vim, Emacs and others, and many editors run clang-format when you save.</li>
+        <li><b>string_view in libraries.</b> Parsers (JSON, configuration files, network protocols) cut their input into views instead of copying, which is a big part of why they are fast. They keep the input buffer alive for as long as the views are used.</li>
+        <li><b>from_chars in fast parsers.</b> JSON and CSV libraries use <code>from_chars</code> because it ignores the computer's language settings (a German setting writes 3,5 for 3.5) and never allocates.</li>
+        <li><b>UTF-8 everywhere.</b> The web, Linux, macOS and modern Windows programs all use UTF-8 widely. With Microsoft's compiler, add <code>/utf-8</code> so source files and string literals are read and stored as UTF-8.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"No warnings means no bugs."</b> Panels 1 and 17: both built clean. One was wrong, one was undefined behaviour.</li>
+        <li><b>"<code>-Wall</code> turns on all warnings."</b> It's a set. <code>-Wextra</code>, <code>-Wshadow</code>, <code>-Wconversion</code> and <code>-Wpedantic</code> are all off without asking.</li>
+        <li><b>"Sanitizers can all go in one build."</b> ASan and UBSan, yes; TSan never with ASan (panel 21).</li>
+        <li><b>"If the sanitized run is quiet, the program has no bugs."</b> It had no bugs <b>on that run</b>. Other inputs take other roads.</li>
+        <li><b>"clang-format might break my code."</b> It changes whitespace and layout (and optionally sorts <code>#include</code>s), never meaning. Sorting includes can, rarely, matter for headers that depend on order.</li>
+        <li><b>"A string_view is a lightweight string."</b> It's a lightweight <b>look</b> at someone else's string. It owns nothing.</li>
+        <li><b>"Returning a string_view is always faster."</b> Only if what it views outlives the call. A view of a local is a view of ashes.</li>
+        <li><b>"<code>.size()</code> counts letters."</b> It counts bytes (<code>char</code>s). <code>"café"</code> is 5.</li>
+        <li><b>"<code>std::toupper(c)</code> is fine on any char."</b> Not for negative <code>char</code>s: cast to <code>unsigned char</code> first. And it still won't upper-case é.</li>
+        <li><b>"std::format with a wrong spec crashes at run time."</b> With a literal format string it fails to <b>compile</b>. Only <code>std::vformat</code> with a run-time string throws.</li>
+        <li><b>"<code>from_chars</code> is like <code>stoi</code>."</b> It skips no spaces, accepts no <code>+</code>, throws nothing, and tells you where it stopped.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Install the inspectors</h3>
+      <p><b>Linux (Debian, Ubuntu):</b> <code>sudo apt install g++ clang clang-tidy clang-format valgrind</code>, plus <code>libclang-rt-18-dev</code> (or the version matching your clang) if you want clang's sanitizers. <b>Fedora:</b> <code>sudo dnf install gcc-c++ clang clang-tools-extra valgrind libasan libubsan</code>. <b>macOS:</b> <code>xcode-select --install</code> gives Apple clang with ASan and UBSan working (<code>-fsanitize=address,undefined</code>) but no clang-tidy; get it with Homebrew, <code>brew install llvm</code> (it includes clang-format and clang-tidy). Valgrind doesn't support recent macOS. <b>Windows:</b> with MSYS2's MinGW-w64, <code>pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-clang-tools-extra</code>. Visual Studio ships clang-format and supports ASan with <code>/fsanitize=address</code>; its warning levels are <code>/W4</code> (and <code>/WX</code> for "warnings are errors").</p>
+      <h3>2. The lane, by hand</h3>
+      <p>In a folder <code>cpp-ch18</code>, save <code>quiet.cpp</code>, <code>shadow.cpp</code> and <code>overrun.cpp</code>. Then:</p>
+      <ol>
+        <li><code>g++ -std=c++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -g shadow.cpp -o shadow</code>, then add <code>-Werror</code> and build again.</li>
+        <li>Save the <code>.clang-tidy</code> file from panel 12 in the folder, then <code>clang-tidy --quiet quiet.cpp -- -std=c++23</code>.</li>
+        <li><code>g++ -std=c++23 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all overrun.cpp -o overrun_san</code>, then <code>./overrun_san</code>.</li>
+        <li><code>g++ -std=c++23 -g -D_GLIBCXX_ASSERTIONS overrun.cpp -o overrun_lib</code>, then <code>./overrun_lib</code>.</li>
+        <li>On Linux: <code>g++ -std=c++23 -g gauges.cpp -o gauges</code> and <code>valgrind --leak-check=full ./gauges</code>.</li>
+      </ol>
+      <p>Your process ids and addresses will differ from the page. With Apple clang, the library assertions don't apply (it uses libc++); try <code>-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST</code> on a recent version instead.</p>
+      <h3>3. Text</h3>
+      <p>Run <code>bytes.cpp</code> and <code>letters.cpp</code>. On Windows, the console may show <code>cafÃ©</code> instead of <code>café</code>: the bytes are right, but the console is reading them in an old encoding. Run <code>chcp 65001</code> first (or use Windows Terminal), and compile with <code>/utf-8</code> on MSVC. On an ARM computer where <code>char</code> is unsigned (many Linux ARM systems, though not Apple's), line 14 of <code>bytes.cpp</code> prints <code>195 169</code> instead of <code>-61 -87</code>.</p>
+      <h3>4. Try these on purpose</h3>
+      <ol>
+        <li>In <code>sv_temp.cpp</code>, make the label short, like <code>"plug"</code>. Build with the sanitizers. Does ASan still complain? (Short strings live <b>inside</b> the string object, not on the heap, so the report changes: look for <code>stack-use-after-scope</code>, or nothing at all. Either way it's still undefined behaviour.)</li>
+        <li>Write <code>std::format("{:d}", "Wren")</code> with a literal format string. Is it a compile error or a run-time throw?</li>
+        <li>Add <code>performance-*</code> to the <code>.clang-tidy</code> file and pass a <code>std::string</code> by value into a function that only reads it. What does clang-tidy suggest?</li>
+        <li>Make <code>parse.cpp</code> read <code>"12, 7, 3"</code> (with spaces). What breaks, and how would <code>remove_prefix</code> fix it?</li>
+        <li>Count the code points of a family emoji such as 👨‍👩‍👧 with <code>letters.cpp</code>. Why isn't it 1?</li>
+      </ol>
+      <h3>5. No install?</h3>
+      <p>Compiler Explorer (<code>godbolt.org</code>) has g++ and clang++ in many versions, runs programs, supports <code>-fsanitize=address,undefined</code>, and can run clang-tidy as a "tool" on the code. Try <code>#include &lt;print&gt;</code> with GCC 14 there.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>static analysis</dt><dd>Checking a program by reading its code, without running it: compiler warnings, clang-tidy.</dd>
+        <dt>dynamic analysis</dt><dd>Checking a program while it runs: sanitizers, library assertions, Valgrind.</dd>
+        <dt>warnings policy</dt><dd>The warning flags a team always builds with, such as <code>-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Werror</code>.</dd>
+        <dt>-Werror</dt><dd>A flag that turns every warning into an error, so the build fails.</dd>
+        <dt>shadowing</dt><dd>An inner variable with the same name as an outer one, hiding it inside its braces.</dd>
+        <dt>variable-length array (VLA)</dt><dd>An array whose size is a run-time variable: allowed in C, not in standard C++; g++ accepts it as an extension.</dd>
+        <dt>clang-format</dt><dd>A tool that rewrites code layout to a chosen style, set in a <code>.clang-format</code> file.</dd>
+        <dt>clang-tidy</dt><dd>A tool that checks code for known bad patterns ("checks"), chosen in a <code>.clang-tidy</code> file, and can apply fixes with <code>--fix</code>.</dd>
+        <dt>check family</dt><dd>The prefix of a clang-tidy check's name: <code>modernize-</code>, <code>bugprone-</code>, <code>cppcoreguidelines-</code> and more.</dd>
+        <dt>fix-it</dt><dd>A suggested replacement printed under a warning, which a tool can apply automatically.</dd>
+        <dt>sanitizer</dt><dd>A compiler option that adds run-time checks for one kind of bug: ASan (memory), UBSan (undefined behaviour), LSan (leaks), TSan (data races), MSan (uninitialised reads).</dd>
+        <dt>sanitizer matrix</dt><dd>Which sanitizers can share a build: ASan + UBSan together, TSan and MSan each alone.</dd>
+        <dt>_GLIBCXX_ASSERTIONS</dt><dd>A macro that switches on cheap checks inside libstdc++, such as vector index checks.</dd>
+        <dt>Valgrind / Memcheck</dt><dd>A tool that runs an unchanged program on a simulated processor; Memcheck reports bad memory accesses and leaks.</dd>
+        <dt>Compiler Explorer</dt><dd>A website (godbolt.org) that compiles code with many compilers side by side.</dd>
+        <dt>std::string_view</dt><dd>A non-owning view of characters: a pointer and a length, from <code>&lt;string_view&gt;</code>.</dd>
+        <dt>dangling</dt><dd>Describes a view, pointer or reference whose target has been destroyed. Using it is undefined behaviour.</dd>
+        <dt>temporary</dt><dd>An unnamed object, such as a function's returned value, destroyed at the end of the full statement that made it.</dd>
+        <dt>literal suffix</dt><dd>Letters after a literal that change its type: <code>"oil"s</code> is a <code>std::string</code>, <code>"oil"sv</code> a <code>std::string_view</code>.</dd>
+        <dt>format spec</dt><dd>The instructions after the colon in a <code>std::format</code> slot: fill, align, sign, <code>#</code>, width, precision, type.</dd>
+        <dt>std::vformat</dt><dd>The version of <code>std::format</code> for format strings known only at run time; it throws <code>std::format_error</code> on a bad spec.</dd>
+        <dt>std::from_chars / std::to_chars</dt><dd>Fast conversions between text and numbers, from <code>&lt;charconv&gt;</code>; they report errors with <code>std::errc</code> and never throw.</dd>
+        <dt>encoding</dt><dd>A recipe for storing characters as bytes.</dd>
+        <dt>UTF-8</dt><dd>The most common encoding: 1 byte for ASCII characters, 2 to 4 bytes for everything else.</dd>
+        <dt>code point</dt><dd>A character's number in Unicode, such as U+00E9 for é.</dd>
+        <dt>char8_t / std::u8string</dt><dd>C++20's types for UTF-8 bytes, written with <code>u8"..."</code>; <code>std::cout</code> refuses them.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>GCC: <a href="https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html">Options to request or suppress warnings</a> and <a href="https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html">instrumentation options (sanitizers)</a>; libstdc++: <a href="https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_macros.html">macros, including _GLIBCXX_ASSERTIONS</a></li>
+        <li>Clang: <a href="https://clang.llvm.org/docs/AddressSanitizer.html">AddressSanitizer</a>, <a href="https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html">UndefinedBehaviorSanitizer</a>, <a href="https://clang.llvm.org/docs/ClangFormat.html">ClangFormat</a>, <a href="https://clang.llvm.org/extra/clang-tidy/">clang-tidy</a> and its <a href="https://clang.llvm.org/extra/clang-tidy/checks/list.html">list of checks</a></li>
+        <li><a href="https://valgrind.org/docs/manual/mc-manual.html">Valgrind Memcheck manual</a></li>
+        <li>cppreference: <a href="https://en.cppreference.com/w/cpp/string/basic_string_view">std::basic_string_view</a>, <a href="https://en.cppreference.com/w/cpp/utility/format/spec">standard format specification</a>, <a href="https://en.cppreference.com/w/cpp/utility/from_chars">std::from_chars</a>, <a href="https://en.cppreference.com/w/cpp/string/byte/toupper">std::toupper</a> (with its unsigned char note)</li>
+        <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines">C++ Core Guidelines</a>: SL.str.1, SL.str.2, SL.str.12, CP.9 (use tools to validate concurrent code)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/stdstring_view-part-2/">learncpp.com 5.9: std::string_view (part 2)</a>: dangling views, temporaries, returning views, and how modifying a string invalidates views.</li>
+        <li><a href="https://www.learncpp.com/cpp-tutorial/configuring-your-compiler-warning-and-error-levels/">learncpp.com 0.11: Configuring your compiler: warning and error levels</a>.</li>
+        <li><a href="https://hackingcpp.com/cpp/beginners_guide.html">hacking C++: beginner's guide</a>, with pages on diagnostics tools and strings.</li>
+        <li><a href="https://godbolt.org/">Compiler Explorer</a>, to compare compilers, try GCC 14's <code>&lt;print&gt;</code>, and run clang-tidy in the browser.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every terminal in this comic comes from a real run, captured on 2026-11-08 in <code>/home/you/cpp-ch18</code>. Programs were built with g++ 13.3 (<code>-std=c++23 -Wall -Wextra -g</code>, shown on the page, plus any extra flags shown in each command) and each was also built and run with clang++ 18.1 for comparison, except sanitizer builds (clang's sanitizer runtime isn't installed here, as panel 21 shows). The tool transcripts are real runs of clang-tidy 18.1.3, clang-format 18.1.3 and Valgrind 3.22.0; clang-tidy prints full paths such as <code>/home/you/cpp-ch18/tidy/</code>. Tool sessions first copy the program file into the <code>wash</code> or <code>tidy</code> folder, next to its style or check file; that <code>cp</code> step is shown in each terminal. Recorded version differences (16 programs), several shown side by side: the warnings for <code>quiet_mirrors.cpp</code>, <code>shadow.cpp</code>, <code>shadow_mirrors.cpp</code>, <code>shadow_werror.cpp</code>, <code>vla.cpp</code>, <code>vla_pedantic.cpp</code> and <code>sv_quiet.cpp</code> (whose two commands both become clang++ on the comparison run, so both warn); the wording of the errors for <code>fewargs.cpp</code>, <code>spot_format.cpp</code>, <code>fmt_vector.cpp</code>, <code>u8_cout.cpp</code>, <code>spot_u8.cpp</code> and <code>print_sidebar.cpp</code>; clang++'s own refusal to mix sanitizers in <code>mix_tsan.cpp</code> (<samp>invalid argument '-fsanitize=address' not allowed with '-fsanitize=thread'</samp>); the header path in <code>overrun_assert.cpp</code>'s assertion; and, for <code>gauges.cpp</code>, only the code addresses in Valgrind's report of the clang++-built program. Undefined behaviour is shown only through sanitizer and Valgrind reports, never as ordinary output; sanitizer reports show the process id as <code>==2==</code> and Valgrind's as <code>==1==</code>, because runs happen in a fresh process space with address randomisation off, so addresses differ on other machines. The memory stepper, the map, the two machines, the byte train and the "which inspector" cards are teaching models; each checks itself against these runs and says so. The byte train computes bytes with the browser's own UTF-8 encoder and checks every count against <code>letters.cpp</code>.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): learncpp.com (5.9 std::string_view part 2: dangling views, temporaries, returned views, modification invalidating views, parameters; 0.11 warning and error levels); cppreference (<code>basic_string_view</code>, the standard format specification, <code>from_chars</code>, <code>to_chars</code>, <code>toupper</code>, C++23 library support tables); the C++ Core Guidelines rules SL.str.1, SL.str.2, SL.str.12 and CP.9; the Clang documentation for AddressSanitizer, UndefinedBehaviorSanitizer, ClangFormat and clang-tidy's check list; the GCC manual's warning and instrumentation options and the libstdc++ macros page; the Valgrind Memcheck manual; hacking C++'s beginner's guide; roadmap.sh's C++ roadmap (debuggers, compilers and tools); the C++ research map for this course (module rows I3 and I4); and the g++ 13.3 and clang++ 18.1 diagnostics themselves, recorded above.</p>
+  <p>Wren, Inspector Pike, the Compiler, the Sanitizer, the Professor and Sneak are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
