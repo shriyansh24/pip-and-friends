@@ -1,0 +1,1216 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch4",
+  "versionDifferences": [
+   "boss_error.js",
+   "immut_strict.js",
+   "length_call.js",
+   "multiline_bad.js",
+   "not_array.js",
+   "quote_bad.js",
+   "repeat_bad.js",
+   "spot_length.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): boss_error.js, immut_strict.js, length_call.js, multiline_bad.js, not_array.js, quote_bad.js, repeat_bad.js, spot_length.js."
+ },
+ "programs": {
+  "at.js": {
+   "src": "const word = \"hello\";\nconsole.log(word[-1]);\nconsole.log(word.at(-1));\nconsole.log(word.at(-2));\nconsole.log(word.at(0));\nconsole.log(word.at(9));\n",
+   "stdout": "undefined\no\nl\nh\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node at.js",
+     "out": "undefined\no\nl\nh\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "beads_index.js": {
+   "src": "const s = \"necklace\";\nconsole.log(s[0]);\nconsole.log(s[3]);\nconsole.log(s[7]);\nconsole.log(s[s.length - 1]);\nconsole.log(s[8]);\nconsole.log(s[-1]);\nconsole.log(s.at(-1));\nconsole.log(s.at(-3));\nconsole.log(s.at(0));\n",
+   "stdout": "n\nk\ne\ne\nundefined\nundefined\ne\na\nn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node beads_index.js",
+     "out": "n\nk\ne\ne\nundefined\nundefined\ne\na\nn\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "beads_search.js": {
+   "src": "const s = \"banana\";\nconsole.log(s.indexOf(\"a\"));\nconsole.log(s.lastIndexOf(\"a\"));\nconsole.log(s.indexOf(\"na\"));\nconsole.log(s.lastIndexOf(\"na\"));\nconsole.log(s.indexOf(\"b\"));\nconsole.log(s.indexOf(\"B\"));\nconsole.log(s.includes(\"nan\"));\nconsole.log(s.startsWith(\"ban\"));\nconsole.log(s.endsWith(\"ana\"));\n",
+   "stdout": "1\n5\n2\n4\n0\n-1\ntrue\ntrue\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node beads_search.js",
+     "out": "1\n5\n2\n4\n0\n-1\ntrue\ntrue\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "beads_slice.js": {
+   "src": "const s = \"necklace\";\nconsole.log(s.slice(0, 4));\nconsole.log(s.slice(4, 8));\nconsole.log(s.slice(4));\nconsole.log(s.slice(-4));\nconsole.log(s.slice(2, 5));\nconsole.log(s.slice(1, -1));\nconsole.log(s.slice(3, 3));\nconsole.log(s.slice(5, 2));\nconsole.log(s.substring(2, 5));\nconsole.log(s.substring(5, 2));\nconsole.log(s.substring(-4));\n",
+   "stdout": "neck\nlace\nlace\nlace\nckl\necklac\n\n\nckl\nckl\nnecklace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node beads_slice.js",
+     "out": "neck\nlace\nlace\nlace\nckl\necklac\n\n\nckl\nckl\nnecklace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_error.js": {
+   "src": "const s = \"kit\";\nconsole.log(s.toUpperCase());\ns.push(\"!\");\nconsole.log(s);\n",
+   "stdout": "KIT\n",
+   "stderr": "file:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node boss_error.js",
+     "out": "KIT\n",
+     "err": "file:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "KIT\nfile:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "KIT\n",
+    "stderr": "file:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node boss_error.js",
+      "out": "KIT\n",
+      "err": "file:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "KIT\nfile:///home/you/javascript-ch4/boss_error.js:3\ns.push(\"!\");\n  ^\n\nTypeError: s.push is not a function\n    at file:///home/you/javascript-ch4/boss_error.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "boss_fill.js": {
+   "src": "const first = \"ada\";\nconst last = \"lovelace\";\nconst initials = first[0].toUpperCase() + \".\" + last[0].toUpperCase() + \".\";\nconsole.log(initials);\nconsole.log(`${first.length + last.length} letters`);\n",
+   "stdout": "A.L.\n11 letters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_fill.js",
+     "out": "A.L.\n11 letters\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.js": {
+   "src": "const raw = \" hamlet,ophelia \";\nconst names = raw.trim().split(\",\");\nconst loud = names.join(\" & \").toUpperCase();\nconsole.log(loud);\nconsole.log(\"=\".repeat(loud.length));\n",
+   "stdout": "HAMLET & OPHELIA\n================\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parsons.js",
+     "out": "HAMLET & OPHELIA\n================\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.js": {
+   "src": "const s = \"Stage Left\";\nconsole.log(s.toLowerCase().indexOf(\"left\"));\nconsole.log(s.slice(-4).toUpperCase());\nconsole.log(s.split(\" \").join(\"_\"));\nconsole.log(`${s[0]}${s.at(-1)}`.repeat(2));\n",
+   "stdout": "6\nLEFT\nStage_Left\nStSt\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_predict.js",
+     "out": "6\nLEFT\nStage_Left\nStSt\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.js": {
+   "src": "const word = \"encore\";\nconst first = word[0];\nconst last = word[word.length];\nconsole.log(`${first}...${last}`);\n",
+   "stdout": "e...undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_spot.js",
+     "out": "e...undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.js": {
+   "src": "const s = \"Romeo\";\nconsole.log(\"s[0]\", s[0]);\nconsole.log(\"s.at(-1)\", s.at(-1));\nconsole.log(\"s.length\", s.length);\nconsole.log(\"s[5]\", s[5]);\nconsole.log('s.indexOf(\"o\")', s.indexOf(\"o\"));\nconsole.log('s.lastIndexOf(\"o\")', s.lastIndexOf(\"o\"));\nconsole.log(\"s.slice(1,3)\", s.slice(1, 3));\nconsole.log('\"R\"<\"r\"', \"R\" < \"r\");\n",
+   "stdout": "s[0] R\ns.at(-1) o\ns.length 5\ns[5] undefined\ns.indexOf(\"o\") 1\ns.lastIndexOf(\"o\") 4\ns.slice(1,3) om\n\"R\"<\"r\" true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_trace.js",
+     "out": "s[0] R\ns.at(-1) o\ns.length 5\ns[5] undefined\ns.indexOf(\"o\") 1\ns.lastIndexOf(\"o\") 4\ns.slice(1,3) om\n\"R\"<\"r\" true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "braces_trap.js": {
+   "src": "const name = \"Ada\";\nconsole.log(\"Hi ${name}!\");\nconsole.log('Hi ${name}!');\nconsole.log(`Hi ${name}!`);\n",
+   "stdout": "Hi ${name}!\nHi ${name}!\nHi Ada!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node braces_trap.js",
+     "out": "Hi ${name}!\nHi ${name}!\nHi Ada!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "case_convert.js": {
+   "src": "const sign = \"Quiet Please\";\nconsole.log(sign.toUpperCase());\nconsole.log(sign.toLowerCase());\nconsole.log(sign);\nconsole.log(\"KIT\" === \"kit\");\nconsole.log(\"KIT\".toLowerCase() === \"kit\");\n",
+   "stdout": "QUIET PLEASE\nquiet please\nQuiet Please\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node case_convert.js",
+     "out": "QUIET PLEASE\nquiet please\nQuiet Please\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "chain.js": {
+   "src": "const raw = \"  Ada LOVELACE \";\nconst slug = raw.trim().toLowerCase().split(\" \").join(\"-\");\nconsole.log(slug);\nconsole.log(raw);\n",
+   "stdout": "ada-lovelace\n  Ada LOVELACE \n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node chain.js",
+     "out": "ada-lovelace\n  Ada LOVELACE \n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "chain_steps.js": {
+   "src": "let s = \"  Ada LOVELACE \";\ns = s.trim();\nconsole.log(`[${s}]`);\ns = s.toLowerCase();\nconsole.log(`[${s}]`);\nconst parts = s.split(\" \");\nconsole.log(parts);\ns = parts.join(\"-\");\nconsole.log(`[${s}]`);\n",
+   "stdout": "[Ada LOVELACE]\n[ada lovelace]\n[ 'ada', 'lovelace' ]\n[ada-lovelace]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node chain_steps.js",
+     "out": "[Ada LOVELACE]\n[ada lovelace]\n[ 'ada', 'lovelace' ]\n[ada-lovelace]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "checks.js": {
+   "src": "const file = \"Ticket-0042.PDF\";\nconsole.log(file.includes(\"0042\"));\nconsole.log(file.startsWith(\"Ticket\"));\nconsole.log(file.startsWith(\"ticket\"));\nconsole.log(file.endsWith(\".pdf\"));\nconsole.log(file.toLowerCase().endsWith(\".pdf\"));\n",
+   "stdout": "true\ntrue\nfalse\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node checks.js",
+     "out": "true\ntrue\nfalse\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "choice_quotes.js": {
+   "src": "console.log(`She said \"Don't stop\"`);\n",
+   "stdout": "She said \"Don't stop\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node choice_quotes.js",
+     "out": "She said \"Don't stop\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "codes.js": {
+   "src": "console.log(\"0\".charCodeAt(0));\nconsole.log(\"9\".charCodeAt(0));\nconsole.log(\"A\".charCodeAt(0));\nconsole.log(\"Z\".charCodeAt(0));\nconsole.log(\"a\".charCodeAt(0));\nconsole.log(\"z\".charCodeAt(0));\n",
+   "stdout": "48\n57\n65\n90\n97\n122\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node codes.js",
+     "out": "48\n57\n65\n90\n97\n122\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "compare.js": {
+   "src": "console.log(\"apple\" < \"banana\");\nconsole.log(\"apple\" < \"apricot\");\nconsole.log(\"10\" < \"9\");\nconsole.log(\"Z\" < \"a\");\nconsole.log(\"Zoe\" < \"adam\");\nconsole.log(10 < 9);\n",
+   "stdout": "true\ntrue\ntrue\ntrue\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node compare.js",
+     "out": "true\ntrue\ntrue\ntrue\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "concat.js": {
+   "src": "const first = \"Ada\";\nconst last = \"Lovelace\";\nconsole.log(first + last);\nconsole.log(first + \" \" + last);\nconsole.log(\"Seat \" + 7);\nconsole.log(\"Row \" + (3 + 4));\n",
+   "stdout": "AdaLovelace\nAda Lovelace\nSeat 7\nRow 7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node concat.js",
+     "out": "AdaLovelace\nAda Lovelace\nSeat 7\nRow 7\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "emoji.js": {
+   "src": "console.log(\"hi\".length);\nconsole.log(\"😀\".length);\nconsole.log(\"hi😀\".length);\nconsole.log(\"😀\");\n",
+   "stdout": "2\n2\n4\n😀\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node emoji.js",
+     "out": "2\n2\n4\n😀\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "escapes.js": {
+   "src": "console.log('Kit\\'s turn');\nconsole.log(\"Say \\\"go\\\"\");\nconsole.log(\"C:\\\\shows\\\\tonight\");\nconsole.log(\"Act 1\\nAct 2\");\nconsole.log(\"Name:\\tKit\");\n",
+   "stdout": "Kit's turn\nSay \"go\"\nC:\\shows\\tonight\nAct 1\nAct 2\nName:\tKit\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node escapes.js",
+     "out": "Kit's turn\nSay \"go\"\nC:\\shows\\tonight\nAct 1\nAct 2\nName:\tKit\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_escape.js": {
+   "src": "console.log(\"Kit says \\\"Places!\\\"\");\nconsole.log('It\\'s showtime');\nconsole.log(\"Top\\nBottom\");\n",
+   "stdout": "Kit says \"Places!\"\nIt's showtime\nTop\nBottom\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_escape.js",
+     "out": "Kit says \"Places!\"\nIt's showtime\nTop\nBottom\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_split.js": {
+   "src": "const time = \"19:30\";\nconst pieces = time.split(\":\");\nconsole.log(pieces);\nconsole.log(pieces.join(\" h \"));\n",
+   "stdout": "[ '19', '30' ]\n19 h 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_split.js",
+     "out": "[ '19', '30' ]\n19 h 30\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_template.js": {
+   "src": "const name = \"Ada\";\nconst row = 3;\nconst seat = 12;\nconsole.log(`Welcome, ${name}!`);\nconsole.log(`Row ${row}`);\nconsole.log(`Seat ${seat}`);\nconsole.log(`Next seat: ${seat + 1}`);\n",
+   "stdout": "Welcome, Ada!\nRow 3\nSeat 12\nNext seat: 13\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_template.js",
+     "out": "Welcome, Ada!\nRow 3\nSeat 12\nNext seat: 13\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "forgot_assign.js": {
+   "src": "let name = \"kit\";\nname.toUpperCase();\nconsole.log(\"Welcome, \" + name);\n",
+   "stdout": "Welcome, kit\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node forgot_assign.js",
+     "out": "Welcome, kit\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "immut_sloppy.cjs": {
+   "src": "const s = \"hello\";\ns[0] = \"H\";\nconsole.log(s);\n",
+   "stdout": "hello\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node immut_sloppy.cjs",
+     "out": "hello\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "immut_strict.js": {
+   "src": "const s = \"hello\";\ns[0] = \"H\";\nconsole.log(s);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch4/immut_strict.js:2\ns[0] = \"H\";\n     ^\n\nTypeError: Cannot assign to read only property '0' of string 'hello'\n    at file:///home/you/javascript-ch4/immut_strict.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node immut_strict.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch4/immut_strict.js:2\ns[0] = \"H\";\n     ^\n\nTypeError: Cannot assign to read only property '0' of string 'hello'\n    at file:///home/you/javascript-ch4/immut_strict.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch4/immut_strict.js:2\ns[0] = \"H\";\n     ^\n\nTypeError: Cannot assign to read only property '0' of string 'hello'\n    at file:///home/you/javascript-ch4/immut_strict.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node immut_strict.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch4/immut_strict.js:2\ns[0] = \"H\";\n     ^\n\nTypeError: Cannot assign to read only property '0' of string 'hello'\n    at file:///home/you/javascript-ch4/immut_strict.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "index.js": {
+   "src": "const word = \"hello\";\nconsole.log(word.length);\nconsole.log(word[0]);\nconsole.log(word[1]);\nconsole.log(word[4]);\nconsole.log(word[word.length - 1]);\nconsole.log(word[5]);\n",
+   "stdout": "5\nh\ne\no\no\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node index.js",
+     "out": "5\nh\ne\no\no\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "join.js": {
+   "src": "const names = [\"Ada\", \"Grace\", \"Alan\"];\nconsole.log(names.join(\", \"));\nconsole.log(names.join(\" & \"));\nconsole.log(names.join(\"\"));\nconsole.log(names.join());\n",
+   "stdout": "Ada, Grace, Alan\nAda & Grace & Alan\nAdaGraceAlan\nAda,Grace,Alan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node join.js",
+     "out": "Ada, Grace, Alan\nAda & Grace & Alan\nAdaGraceAlan\nAda,Grace,Alan\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "join_machine.js": {
+   "src": "console.log([\"Ada\", \"Grace\"].join(\" & \"));\nconsole.log([\"10\", \"30\"].join(\":\"));\nconsole.log([\"a\", \"b\", \"c\"].join(\"-\"));\nconsole.log([\"K\", \"i\", \"t\"].join(\"\"));\nconsole.log([\"x\", \"y\"].join());\n",
+   "stdout": "Ada & Grace\n10:30\na-b-c\nKit\nx,y\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node join_machine.js",
+     "out": "Ada & Grace\n10:30\na-b-c\nKit\nx,y\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "lab_slug.js": {
+   "src": "const raw = \"  Grace   HOPPER \";\nconst slug = raw.trim().toLowerCase().split(\" \").join(\"-\");\nconsole.log(slug);\nconsole.log(raw.length, slug.length);\n",
+   "stdout": "grace---hopper\n17 14\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node lab_slug.js",
+     "out": "grace---hopper\n17 14\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "length_call.js": {
+   "src": "const s = \"abc\";\nconsole.log(s.length());\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch4/length_call.js:2\nconsole.log(s.length());\n              ^\n\nTypeError: s.length is not a function\n    at file:///home/you/javascript-ch4/length_call.js:2:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node length_call.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch4/length_call.js:2\nconsole.log(s.length());\n              ^\n\nTypeError: s.length is not a function\n    at file:///home/you/javascript-ch4/length_call.js:2:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch4/length_call.js:2\nconsole.log(s.length());\n              ^\n\nTypeError: s.length is not a function\n    at file:///home/you/javascript-ch4/length_call.js:2:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node length_call.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch4/length_call.js:2\nconsole.log(s.length());\n              ^\n\nTypeError: s.length is not a function\n    at file:///home/you/javascript-ch4/length_call.js:2:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "locale.js": {
+   "src": "console.log(\"a\".localeCompare(\"b\", \"en\"));\nconsole.log(\"b\".localeCompare(\"a\", \"en\"));\nconsole.log(\"a\".localeCompare(\"a\", \"en\"));\nconsole.log(\"Z\".localeCompare(\"a\", \"en\"));\nconsole.log(\"Zoe\".localeCompare(\"adam\", \"en\"));\nconsole.log(\"10\".localeCompare(\"9\", \"en\", { numeric: true }));\n",
+   "stdout": "-1\n1\n0\n1\n1\n1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node locale.js",
+     "out": "-1\n1\n0\n1\n1\n1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "multiline.js": {
+   "src": "const poster = `HAMLET\n  tonight, 7pm\n  seats from $5`;\nconsole.log(poster);\nconsole.log(poster.length);\n",
+   "stdout": "HAMLET\n  tonight, 7pm\n  seats from $5\n37\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node multiline.js",
+     "out": "HAMLET\n  tonight, 7pm\n  seats from $5\n37\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "multiline_bad.js": {
+   "src": "const poster = \"HAMLET\ntonight, 7pm\";\nconsole.log(poster);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch4/multiline_bad.js:1\nconst poster = \"HAMLET\n               ^^^^^^^\n\nSyntaxError: Invalid or unexpected token\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node multiline_bad.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch4/multiline_bad.js:1\nconst poster = \"HAMLET\n               ^^^^^^^\n\nSyntaxError: Invalid or unexpected token\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch4/multiline_bad.js:1\nconst poster = \"HAMLET\n               ^^^^^^^\n\nSyntaxError: Invalid or unexpected token\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node multiline_bad.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch4/multiline_bad.js:1\nconst poster = \"HAMLET\n               ^^^^^^^\n\nSyntaxError: Invalid or unexpected token\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "new_necklace.js": {
+   "src": "let cue = \"go\";\nconst shout = cue.toUpperCase();\nconsole.log(cue, shout);\ncue = cue + \"!\";\nconsole.log(cue);\n",
+   "stdout": "go GO\ngo!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node new_necklace.js",
+     "out": "go GO\ngo!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "not_array.js": {
+   "src": "const s = \"abc\";\nconsole.log(s.length);\ns.map((ch) => ch.toUpperCase());\n",
+   "stdout": "3\n",
+   "stderr": "file:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node not_array.js",
+     "out": "3\n",
+     "err": "file:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "3\nfile:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "3\n",
+    "stderr": "file:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node not_array.js",
+      "out": "3\n",
+      "err": "file:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "3\nfile:///home/you/javascript-ch4/not_array.js:3\ns.map((ch) => ch.toUpperCase());\n  ^\n\nTypeError: s.map is not a function\n    at file:///home/you/javascript-ch4/not_array.js:3:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "off_end.js": {
+   "src": "const show = \"Hamlet\";\nconsole.log(show.length);\nconsole.log(show[6]);\nconsole.log(typeof show[6]);\nconsole.log(show[show.length - 1]);\n",
+   "stdout": "6\nundefined\nundefined\nt\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node off_end.js",
+     "out": "6\nundefined\nundefined\nt\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "pad.js": {
+   "src": "console.log(\"7\".padStart(3, \"0\"));\nconsole.log(\"42\".padStart(3, \"0\"));\nconsole.log(\"Ada\".padEnd(8, \".\") + \"A1\");\nconsole.log(\"Grace\".padEnd(8, \".\") + \"B12\");\nconsole.log(\"5\".padStart(4));\nconsole.log(\"toolong\".padStart(3, \"0\"));\n",
+   "stdout": "007\n042\nAda.....A1\nGrace...B12\n   5\ntoolong\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node pad.js",
+     "out": "007\n042\nAda.....A1\nGrace...B12\n   5\ntoolong\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_chain.js": {
+   "src": "const raw = \"  Ada LOVELACE \";\nconst tidy = raw.trim();\nconst lower = tidy.toLowerCase();\nconst parts = lower.split(\" \");\nconst slug = parts.join(\"-\");\nconsole.log(slug);\n",
+   "stdout": "ada-lovelace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_chain.js",
+     "out": "ada-lovelace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_swap.js": {
+   "src": "const date = \"2026/11/07\";\nconst parts = date.split(\"/\");\nconst fixed = parts.join(\"-\");\nconsole.log(fixed);\nconsole.log(`${parts.length} parts`);\n",
+   "stdout": "2026-11-07\n3 parts\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_swap.js",
+     "out": "2026-11-07\n3 parts\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_ticket.js": {
+   "src": "const show = \"Hamlet\";\nconst loud = show.toUpperCase();\nconst ticket = `TICKET: ${loud}`;\nconsole.log(ticket);\nconsole.log(`${ticket.length} characters`);\n",
+   "stdout": "TICKET: HAMLET\n14 characters\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_ticket.js",
+     "out": "TICKET: HAMLET\n14 characters\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_chain.js": {
+   "src": "const s = \" Kit \";\nconsole.log(s.trim().toUpperCase());\nconsole.log(s.trim().length);\nconsole.log(\"ha\".repeat(2).toUpperCase());\nconsole.log(\"a,b\".split(\",\").join(\" + \"));\n",
+   "stdout": "KIT\n3\nHAHA\na + b\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_chain.js",
+     "out": "KIT\n3\nHAHA\na + b\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_compare.js": {
+   "src": "console.log(\"cat\" < \"dog\");\nconsole.log(\"Cat\" < \"cat\");\nconsole.log(\"2\" < \"10\");\nconsole.log(2 < 10);\n",
+   "stdout": "true\ntrue\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_compare.js",
+     "out": "true\ntrue\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_concat.js": {
+   "src": "console.log(\"Row \" + 3 + 4);\nconsole.log(3 + 4 + \" seats\");\nconsole.log(\"\" + 1 + 2);\n",
+   "stdout": "Row 34\n7 seats\n12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_concat.js",
+     "out": "Row 34\n7 seats\n12\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_escape.js": {
+   "src": "console.log(\"C:\\note\\new\");\nconsole.log(\"a\\\\b\");\n",
+   "stdout": "C:\note\new\na\\b\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_escape.js",
+     "out": "C:\note\new\na\\b\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_index.js": {
+   "src": "console.log(\"abc\".length);\nconsole.log(\"abc\"[0]);\nconsole.log(\"abc\"[3]);\nconsole.log(\"abc\".at(-1));\n",
+   "stdout": "3\na\nundefined\nc\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_index.js",
+     "out": "3\na\nundefined\nc\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_slice.js": {
+   "src": "const s = \"Hamlet\";\nconsole.log(s.slice(0, 3));\nconsole.log(s.slice(3));\nconsole.log(s.slice(-2));\nconsole.log(s.slice(1, 2));\n",
+   "stdout": "Ham\nlet\net\na\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_slice.js",
+     "out": "Ham\nlet\net\na\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_template.js": {
+   "src": "const n = 2;\nconsole.log(`2+2=${2 + 2}`);\nconsole.log(`${n}${n}`);\nconsole.log(`n + 1 = ${n + 1}`);\nconsole.log(\"${n}\");\n",
+   "stdout": "2+2=4\n22\nn + 1 = 3\n${n}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_template.js",
+     "out": "2+2=4\n22\nn + 1 = 3\n${n}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "quote_bad.js": {
+   "src": "const cue = 'Kit's turn';\nconsole.log(cue);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch4/quote_bad.js:1\nconst cue = 'Kit's turn';\n                 ^\n\nSyntaxError: Unexpected identifier 's'\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node quote_bad.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch4/quote_bad.js:1\nconst cue = 'Kit's turn';\n                 ^\n\nSyntaxError: Unexpected identifier 's'\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch4/quote_bad.js:1\nconst cue = 'Kit's turn';\n                 ^\n\nSyntaxError: Unexpected identifier 's'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node quote_bad.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch4/quote_bad.js:1\nconst cue = 'Kit's turn';\n                 ^\n\nSyntaxError: Unexpected identifier 's'\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "quote_fixed.js": {
+   "src": "const cue1 = \"Kit's turn\";\nconst cue2 = 'Kit\\'s turn';\nconst cue3 = `Kit's turn`;\nconsole.log(cue1);\nconsole.log(cue2);\nconsole.log(cue3);\n",
+   "stdout": "Kit's turn\nKit's turn\nKit's turn\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node quote_fixed.js",
+     "out": "Kit's turn\nKit's turn\nKit's turn\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "quotes.js": {
+   "src": "console.log(\"Kit's clipboard\");\nconsole.log('The sign says \"QUIET\"');\nconsole.log(`Kit's sign says \"QUIET\"`);\nconsole.log(\"same text\" === 'same text');\n",
+   "stdout": "Kit's clipboard\nThe sign says \"QUIET\"\nKit's sign says \"QUIET\"\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node quotes.js",
+     "out": "Kit's clipboard\nThe sign says \"QUIET\"\nKit's sign says \"QUIET\"\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "rebuild.js": {
+   "src": "let s = \"hello\";\ns = \"H\" + s.slice(1);\nconsole.log(s);\n",
+   "stdout": "Hello\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node rebuild.js",
+     "out": "Hello\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "repeat.js": {
+   "src": "console.log(\"ha\".repeat(3));\nconsole.log(\"-\".repeat(12));\nconsole.log(\"[\" + \"ab\".repeat(0) + \"]\");\nconsole.log(\"=\".repeat(2.9));\n",
+   "stdout": "hahaha\n------------\n[]\n==\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node repeat.js",
+     "out": "hahaha\n------------\n[]\n==\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "repeat_bad.js": {
+   "src": "console.log(\"Start\");\nconsole.log(\"abc\".repeat(-1));\nconsole.log(\"End\");\n",
+   "stdout": "Start\n",
+   "stderr": "file:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node repeat_bad.js",
+     "out": "Start\n",
+     "err": "file:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Start\nfile:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Start\n",
+    "stderr": "file:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node repeat_bad.js",
+      "out": "Start\n",
+      "err": "file:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Start\nfile:///home/you/javascript-ch4/repeat_bad.js:2\nconsole.log(\"abc\".repeat(-1));\n                  ^\n\nRangeError: Invalid count value: -1\n    at String.repeat (<anonymous>)\n    at file:///home/you/javascript-ch4/repeat_bad.js:2:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "repeat_machine.js": {
+   "src": "console.log(\"ha\".repeat(3));\nconsole.log(\"-\".repeat(5));\nconsole.log(\"[\" + \"x\".repeat(0) + \"]\");\n",
+   "stdout": "hahaha\n-----\n[]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node repeat_machine.js",
+     "out": "hahaha\n-----\n[]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "replace.js": {
+   "src": "const line = \"boo boo boo\";\nconsole.log(line.replace(\"boo\", \"BRAVO\"));\nconsole.log(line.replaceAll(\"boo\", \"BRAVO\"));\nconsole.log(line.replace(\"xyz\", \"BRAVO\"));\nconsole.log(line);\n",
+   "stdout": "BRAVO boo boo\nBRAVO BRAVO BRAVO\nboo boo boo\nboo boo boo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node replace.js",
+     "out": "BRAVO boo boo\nBRAVO BRAVO BRAVO\nboo boo boo\nboo boo boo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "replace_machine.js": {
+   "src": "console.log(\"a-b-c\".replace(\"-\", \"+\"));\nconsole.log(\"a-b-c\".replaceAll(\"-\", \"+\"));\nconsole.log(\"cat\".replace(\"c\", \"h\"));\nconsole.log(\"Go Go Go\".replaceAll(\"Go\", \"Run\"));\nconsole.log(\"Hello\".replace(\"hello\", \"Bye\"));\n",
+   "stdout": "a+b-c\na+b+c\nhat\nRun Run Run\nHello\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node replace_machine.js",
+     "out": "a+b-c\na+b+c\nhat\nRun Run Run\nHello\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "search.js": {
+   "src": "const line = \"to be or not to be\";\nconsole.log(line.indexOf(\"be\"));\nconsole.log(line.lastIndexOf(\"be\"));\nconsole.log(line.indexOf(\"to\"));\nconsole.log(line.indexOf(\"TO\"));\nconsole.log(line.indexOf(\"xyz\"));\n",
+   "stdout": "3\n16\n0\n-1\n-1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node search.js",
+     "out": "3\n16\n0\n-1\n-1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slice.js": {
+   "src": "const word = \"necklace\";\nconsole.log(word.slice(0, 4));\nconsole.log(word.slice(4));\nconsole.log(word.slice(-4));\nconsole.log(word.slice(1, -1));\nconsole.log(word);\n",
+   "stdout": "neck\nlace\nlace\necklac\nnecklace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node slice.js",
+     "out": "neck\nlace\nlace\necklac\nnecklace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slice_vs_substring.js": {
+   "src": "const s = \"scissors\";\nconsole.log(`[${s.slice(1, 4)}] [${s.substring(1, 4)}]`);\nconsole.log(`[${s.slice(4, 1)}] [${s.substring(4, 1)}]`);\nconsole.log(`[${s.slice(-3)}] [${s.substring(-3)}]`);\n",
+   "stdout": "[cis] [cis]\n[] [cis]\n[ors] [scissors]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node slice_vs_substring.js",
+     "out": "[cis] [cis]\n[] [cis]\n[ors] [scissors]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "split.js": {
+   "src": "const cast = \"Ada,Grace,Alan\";\nconsole.log(cast.split(\",\"));\nconsole.log(cast.split(\",\").length);\nconsole.log(\"to be or not\".split(\" \"));\nconsole.log(\"Kit\".split(\"\"));\nconsole.log(\"no commas here\".split(\",\"));\n",
+   "stdout": "[ 'Ada', 'Grace', 'Alan' ]\n3\n[ 'to', 'be', 'or', 'not' ]\n[ 'K', 'i', 't' ]\n[ 'no commas here' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node split.js",
+     "out": "[ 'Ada', 'Grace', 'Alan' ]\n3\n[ 'to', 'be', 'or', 'not' ]\n[ 'K', 'i', 't' ]\n[ 'no commas here' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "split_machine.js": {
+   "src": "console.log(\"Ada,Grace,Alan\".split(\",\"));\nconsole.log(\"10:30:15\".split(\":\"));\nconsole.log(\"one two\".split(\" \"));\nconsole.log(\"Kit\".split(\"\"));\nconsole.log(\"plain\".split(\",\"));\n",
+   "stdout": "[ 'Ada', 'Grace', 'Alan' ]\n[ '10', '30', '15' ]\n[ 'one', 'two' ]\n[ 'K', 'i', 't' ]\n[ 'plain' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node split_machine.js",
+     "out": "[ 'Ada', 'Grace', 'Alan' ]\n[ '10', '30', '15' ]\n[ 'one', 'two' ]\n[ 'K', 'i', 't' ]\n[ 'plain' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_braces.js": {
+   "src": "const show = \"Hamlet\";\nconst time = \"7pm\";\nconsole.log(`Tonight: ${show}`);\nconsole.log(\"Doors open at ${time}\");\nconsole.log(`Enjoy ${show}!`);\n",
+   "stdout": "Tonight: Hamlet\nDoors open at ${time}\nEnjoy Hamlet!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_braces.js",
+     "out": "Tonight: Hamlet\nDoors open at ${time}\nEnjoy Hamlet!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_indexof.js": {
+   "src": "const title = \"Act 1: The Storm\";\nif (title.indexOf(\"Act\")) {\n  console.log(\"This is an act title\");\n} else {\n  console.log(\"Not an act title\");\n}\n",
+   "stdout": "Not an act title\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_indexof.js",
+     "out": "Not an act title\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_length.js": {
+   "src": "const show = \"Hamlet\";\nconsole.log(show.toUpperCase());\nconsole.log(show.length());\nconsole.log(show.at(-1));\n",
+   "stdout": "HAMLET\n",
+   "stderr": "file:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node spot_length.js",
+     "out": "HAMLET\n",
+     "err": "file:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "HAMLET\nfile:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "HAMLET\n",
+    "stderr": "file:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node spot_length.js",
+      "out": "HAMLET\n",
+      "err": "file:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "HAMLET\nfile:///home/you/javascript-ch4/spot_length.js:3\nconsole.log(show.length());\n                 ^\n\nTypeError: show.length is not a function\n    at file:///home/you/javascript-ch4/spot_length.js:3:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "spot_replace.js": {
+   "src": "const draft = \"Romeo loves Juliet. Romeo sings.\";\nconst fixed = draft.replace(\"Romeo\", \"Tybalt\");\nconsole.log(fixed);\n",
+   "stdout": "Tybalt loves Juliet. Romeo sings.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_replace.js",
+     "out": "Tybalt loves Juliet. Romeo sings.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "string_machine.js": {
+   "src": "console.log(String(42));\nconsole.log(String(3.5));\nconsole.log(String(true));\nconsole.log(String(null));\nconsole.log(String(undefined));\nconsole.log(String(42) + String(8));\nconsole.log(typeof String(42));\n",
+   "stdout": "42\n3.5\ntrue\nnull\nundefined\n428\nstring\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node string_machine.js",
+     "out": "42\n3.5\ntrue\nnull\nundefined\n428\nstring\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "template.js": {
+   "src": "const name = \"Ada\";\nconst seat = 7;\nconsole.log(`Hi ${name}, you're in seat ${seat}.`);\nconsole.log(`Next seat: ${seat + 1}`);\nconsole.log(`Loud: ${name.toUpperCase()}`);\nconsole.log(`2+2=${2 + 2}`);\n",
+   "stdout": "Hi Ada, you're in seat 7.\nNext seat: 8\nLoud: ADA\n2+2=4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node template.js",
+     "out": "Hi Ada, you're in seat 7.\nNext seat: 8\nLoud: ADA\n2+2=4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_checks.js": {
+   "src": "const s = \"Hamlet.txt\";\nconsole.log('includes(\"let\")', s.includes(\"let\"));\nconsole.log('includes(\"LET\")', s.includes(\"LET\"));\nconsole.log('startsWith(\"Ham\")', s.startsWith(\"Ham\"));\nconsole.log('endsWith(\".txt\")', s.endsWith(\".txt\"));\nconsole.log('indexOf(\"t\")', s.indexOf(\"t\"));\nconsole.log('lastIndexOf(\"t\")', s.lastIndexOf(\"t\"));\nconsole.log('indexOf(\"z\")', s.indexOf(\"z\"));\n",
+   "stdout": "includes(\"let\") true\nincludes(\"LET\") false\nstartsWith(\"Ham\") true\nendsWith(\".txt\") true\nindexOf(\"t\") 5\nlastIndexOf(\"t\") 9\nindexOf(\"z\") -1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_checks.js",
+     "out": "includes(\"let\") true\nincludes(\"LET\") false\nstartsWith(\"Ham\") true\nendsWith(\".txt\") true\nindexOf(\"t\") 5\nlastIndexOf(\"t\") 9\nindexOf(\"z\") -1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_tidy.js": {
+   "src": "const s = \" kit \";\nconsole.log(\"s.length\", s.length);\nconsole.log(\"s.trim().length\", s.trim().length);\nconsole.log(\"s.trimStart().length\", s.trimStart().length);\nconsole.log(\"s.trimEnd().length\", s.trimEnd().length);\nconsole.log('\"9\".padStart(3,\"0\")', \"9\".padStart(3, \"0\"));\nconsole.log('\"ab\".padEnd(5,\"*\")', \"ab\".padEnd(5, \"*\"));\n",
+   "stdout": "s.length 5\ns.trim().length 3\ns.trimStart().length 4\ns.trimEnd().length 4\n\"9\".padStart(3,\"0\") 009\n\"ab\".padEnd(5,\"*\") ab***\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_tidy.js",
+     "out": "s.length 5\ns.trim().length 3\ns.trimStart().length 4\ns.trimEnd().length 4\n\"9\".padStart(3,\"0\") 009\n\"ab\".padEnd(5,\"*\") ab***\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trap_apple.js": {
+   "src": "const fruit = \"apple\";\nconst pos = fruit.indexOf(\"a\");\nconsole.log(\"position:\", pos);\nif (pos) {\n  console.log(\"has an a\");\n} else {\n  console.log(\"no a\");\n}\n",
+   "stdout": "position: 0\nno a\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trap_apple.js",
+     "out": "position: 0\nno a\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trap_banana.js": {
+   "src": "const fruit = \"banana\";\nconst pos = fruit.indexOf(\"a\");\nconsole.log(\"position:\", pos);\nif (pos) {\n  console.log(\"has an a\");\n} else {\n  console.log(\"no a\");\n}\n",
+   "stdout": "position: 1\nhas an a\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trap_banana.js",
+     "out": "position: 1\nhas an a\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trap_fixed.js": {
+   "src": "console.log(\"apple\".includes(\"a\"));\nconsole.log(\"banana\".includes(\"a\"));\nconsole.log(\"kiwi\".includes(\"a\"));\nconsole.log(\"kiwi\".indexOf(\"a\") !== -1);\n",
+   "stdout": "true\ntrue\nfalse\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trap_fixed.js",
+     "out": "true\ntrue\nfalse\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trap_kiwi.js": {
+   "src": "const fruit = \"kiwi\";\nconst pos = fruit.indexOf(\"a\");\nconsole.log(\"position:\", pos);\nif (pos) {\n  console.log(\"has an a\");\n} else {\n  console.log(\"no a\");\n}\n",
+   "stdout": "position: -1\nhas an a\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trap_kiwi.js",
+     "out": "position: -1\nhas an a\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trim.js": {
+   "src": "const typed = \"   Ada   \";\nconsole.log(\"[\" + typed + \"]\");\nconsole.log(\"[\" + typed.trim() + \"]\");\nconsole.log(\"[\" + typed.trimStart() + \"]\");\nconsole.log(\"[\" + typed.trimEnd() + \"]\");\nconsole.log(typed.length, typed.trim().length);\n",
+   "stdout": "[   Ada   ]\n[Ada]\n[Ada   ]\n[   Ada]\n9 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trim.js",
+     "out": "[   Ada   ]\n[Ada]\n[Ada   ]\n[   Ada]\n9 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
