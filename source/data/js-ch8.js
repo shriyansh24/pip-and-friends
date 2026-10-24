@@ -1,0 +1,1132 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch8",
+  "versionDifferences": [
+   "block_leak.js",
+   "fill_loop_const.js",
+   "forgot_let.js",
+   "look_none.js",
+   "loop_scope.js",
+   "predict_inward.js",
+   "predict_tdz.js",
+   "redeclare.js",
+   "spot_total.js",
+   "tdz.js",
+   "tdz_block.js",
+   "tdz_time_bad.js",
+   "tdz_typeof.js",
+   "v_arrow_early.js",
+   "v_let_block.js",
+   "v_let_early.js",
+   "var_function.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): block_leak.js, fill_loop_const.js, forgot_let.js, look_none.js, loop_scope.js, predict_inward.js, predict_tdz.js, redeclare.js, spot_total.js, tdz.js, tdz_block.js, tdz_time_bad.js, tdz_typeof.js, v_arrow_early.js, v_let_block.js, v_let_early.js, var_function.js."
+ },
+ "programs": {
+  "block_fix.js": {
+   "src": "const age = 30;\nlet ticket;\nif (age >= 18) {\n  ticket = \"adult\";\n  console.log(\"Inside:\", ticket);\n}\nconsole.log(\"Outside:\", ticket);\n",
+   "stdout": "Inside: adult\nOutside: adult\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node block_fix.js",
+     "out": "Inside: adult\nOutside: adult\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "block_leak.js": {
+   "src": "const age = 30;\nif (age >= 18) {\n  const ticket = \"adult\";\n  console.log(\"Inside:\", ticket);\n}\nconsole.log(\"Outside:\", ticket);\n",
+   "stdout": "Inside: adult\n",
+   "stderr": "file:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node block_leak.js",
+     "out": "Inside: adult\n",
+     "err": "file:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Inside: adult\nfile:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Inside: adult\n",
+    "stderr": "file:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node block_leak.js",
+      "out": "Inside: adult\n",
+      "err": "file:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Inside: adult\nfile:///home/you/javascript-ch8/block_leak.js:6\nconsole.log(\"Outside:\", ticket);\n                        ^\n\nReferenceError: ticket is not defined\n    at file:///home/you/javascript-ch8/block_leak.js:6:25\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "boss_fill.js": {
+   "src": "let mood = \"calm\";\nfunction rehearse() {\n  let mood = \"nervous\";\n  console.log(\"rehearsal:\", mood);\n}\nfunction premiere() {\n  mood = \"thrilled\";\n}\nrehearse();\nconsole.log(\"after rehearsal:\", mood);\npremiere();\nconsole.log(\"after the premiere:\", mood);\n",
+   "stdout": "rehearsal: nervous\nafter rehearsal: calm\nafter the premiere: thrilled\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_fill.js",
+     "out": "rehearsal: nervous\nafter rehearsal: calm\nafter the premiere: thrilled\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_mix.js": {
+   "src": "let act = 1;\nvar scene = \"A\";\n\nfunction play() {\n  console.log(scene);\n  var scene = \"B\";\n  let act = 2;\n  if (act === 2) {\n    let act = 3;\n    scene = \"C\";\n  }\n  console.log(act, scene);\n}\n\nplay();\nconsole.log(act, scene);\n",
+   "stdout": "undefined\n2 C\n1 A\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_mix.js",
+     "out": "undefined\n2 C\n1 A\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.js": {
+   "src": "let count = 10;\nif (count > 5) {\n  let count = 1;\n  count = count + 1;\n  console.log(\"inside:\", count);\n}\nconsole.log(\"outside:\", count);\n",
+   "stdout": "inside: 2\noutside: 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parsons.js",
+     "out": "inside: 2\noutside: 10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.js": {
+   "src": "console.log(\"Calling rows...\");\nlet delay = 0;\nfor (var row = 1; row <= 3; row++) {\n  delay = delay + 10;\n  setTimeout(() => console.log(\"Row\", row, \"please board\"), delay);\n}\n",
+   "stdout": "Calling rows...\nRow 4 please board\nRow 4 please board\nRow 4 please board\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_spot.js",
+     "out": "Calling rows...\nRow 4 please board\nRow 4 please board\nRow 4 please board\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot_fixed.js": {
+   "src": "console.log(\"Calling rows...\");\nlet delay = 0;\nfor (let row = 1; row <= 3; row++) {\n  delay = delay + 10;\n  setTimeout(() => console.log(\"Row\", row, \"please board\"), delay);\n}\n",
+   "stdout": "Calling rows...\nRow 1 please board\nRow 2 please board\nRow 3 please board\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_spot_fixed.js",
+     "out": "Calling rows...\nRow 1 please board\nRow 2 please board\nRow 3 please board\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.js": {
+   "src": "var kept = 0;\nfor (let lap = 1; lap <= 4; lap++) {\n  let fresh = 0;\n  kept = kept + lap;\n  fresh = fresh + lap;\n  console.log(lap, kept, fresh);\n}\n",
+   "stdout": "1 1 1\n2 3 2\n3 6 3\n4 10 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_trace.js",
+     "out": "1 1 1\n2 3 2\n3 6 3\n4 10 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_hoist.js": {
+   "src": "console.log(price(3));\n\nfunction price(n) {\n  return n * 12;\n}\n",
+   "stdout": "36\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_hoist.js",
+     "out": "36\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_loop.js": {
+   "src": "for (let lap = 1; lap <= 3; lap++) {\n  setTimeout(() => console.log(\"Lap\", lap), 0);\n}\n",
+   "stdout": "Lap 1\nLap 2\nLap 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_loop.js",
+     "out": "Lap 1\nLap 2\nLap 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_loop_const.js": {
+   "src": "for (const lap = 1; lap <= 3; lap++) {\n  setTimeout(() => console.log(\"Lap\", lap), 0);\n}\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/fill_loop_const.js:1\nfor (const lap = 1; lap <= 3; lap++) {\n                                 ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch8/fill_loop_const.js:1:34\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node fill_loop_const.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/fill_loop_const.js:1\nfor (const lap = 1; lap <= 3; lap++) {\n                                 ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch8/fill_loop_const.js:1:34\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/fill_loop_const.js:1\nfor (const lap = 1; lap <= 3; lap++) {\n                                 ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch8/fill_loop_const.js:1:34\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node fill_loop_const.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/fill_loop_const.js:1\nfor (const lap = 1; lap <= 3; lap++) {\n                                 ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch8/fill_loop_const.js:1:34\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "fill_loop_var.js": {
+   "src": "for (var lap = 1; lap <= 3; lap++) {\n  setTimeout(() => console.log(\"Lap\", lap), 0);\n}\n",
+   "stdout": "Lap 4\nLap 4\nLap 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_loop_var.js",
+     "out": "Lap 4\nLap 4\nLap 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_scope.js": {
+   "src": "const hour = 19;\nlet message;\nif (hour >= 19) {\n  message = \"Doors open\";\n} else {\n  message = \"Doors closed\";\n}\nconsole.log(message);\n",
+   "stdout": "Doors open\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_scope.js",
+     "out": "Doors open\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_scope_let.js": {
+   "src": "const hour = 19;\nlet message;\nif (hour >= 19) {\n  let message = \"Doors open\";\n} else {\n  let message = \"Doors closed\";\n}\nconsole.log(message);\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_scope_let.js",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "forgot_let.cjs": {
+   "src": "function setScore() {\n  score = 10;\n}\n\nsetScore();\nconsole.log(score);\n",
+   "stdout": "10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node forgot_let.cjs",
+     "out": "10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "forgot_let.js": {
+   "src": "function setScore() {\n  score = 10;\n}\n\nsetScore();\nconsole.log(score);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/forgot_let.js:2\n  score = 10;\n        ^\n\nReferenceError: score is not defined\n    at setScore (file:///home/you/javascript-ch8/forgot_let.js:2:9)\n    at file:///home/you/javascript-ch8/forgot_let.js:5:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node forgot_let.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/forgot_let.js:2\n  score = 10;\n        ^\n\nReferenceError: score is not defined\n    at setScore (file:///home/you/javascript-ch8/forgot_let.js:2:9)\n    at file:///home/you/javascript-ch8/forgot_let.js:5:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/forgot_let.js:2\n  score = 10;\n        ^\n\nReferenceError: score is not defined\n    at setScore (file:///home/you/javascript-ch8/forgot_let.js:2:9)\n    at file:///home/you/javascript-ch8/forgot_let.js:5:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node forgot_let.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/forgot_let.js:2\n  score = 10;\n        ^\n\nReferenceError: score is not defined\n    at setScore (file:///home/you/javascript-ch8/forgot_let.js:2:9)\n    at file:///home/you/javascript-ch8/forgot_let.js:5:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "global_prop.html": {
+   "src": "<!doctype html>\n<title>var and the global object</title>\n<script>\n  var usher = \"Sam\";\n  let seat = \"B7\";\n  console.log(\"classic script, window.usher:\", window.usher);\n  console.log(\"classic script, window.seat:\", window.seat);\n</script>\n<script type=\"module\">\n  var crew = \"Kit\";\n  console.log(\"module script, window.crew:\", window.crew);\n</script>\n",
+   "stdout": "classic script, window.usher: Sam\nclassic script, window.seat: undefined\nmodule script, window.crew: undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open global_prop.html in a browser (console shown)",
+     "out": "classic script, window.usher: Sam\nclassic script, window.seat: undefined\nmodule script, window.crew: undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "hoist_fn.js": {
+   "src": "console.log(welcome(\"Ada\"));\nconsole.log(welcome(\"Grace\"));\n\nfunction welcome(name) {\n  return \"Welcome, \" + name + \"!\";\n}\n",
+   "stdout": "Welcome, Ada!\nWelcome, Grace!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node hoist_fn.js",
+     "out": "Welcome, Ada!\nWelcome, Grace!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "let_loop.js": {
+   "src": "for (let i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\nconsole.log(\"Loop finished.\");\n",
+   "stdout": "Loop finished.\n0\n1\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node let_loop.js",
+     "out": "Loop finished.\n0\n1\n2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "let_twice.html": {
+   "src": "<!doctype html>\n<title>Two classic scripts, one let</title>\n<script>\n  let total = 10;\n  console.log(\"first script, total:\", total);\n</script>\n<script>\n  let total = 20;\n  console.log(\"second script, total:\", total);\n</script>\n<script>\n  console.log(\"third script, total:\", total);\n</script>\n",
+   "stdout": "first script, total: 10\nthird script, total: 10\n",
+   "stderr": "Uncaught SyntaxError: Identifier 'total' has already been declared\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open let_twice.html in a browser (console shown)",
+     "out": "first script, total: 10\nthird script, total: 10\n",
+     "err": "Uncaught SyntaxError: Identifier 'total' has already been declared\n",
+     "exit": 1,
+     "merged": "first script, total: 10\nUncaught SyntaxError: Identifier 'total' has already been declared\nthird script, total: 10\n"
+    }
+   ]
+  },
+  "look_block.js": {
+   "src": "const hat = \"lobby hat\";\n\nfunction scene(cue) {\n  const hat = \"dressing-room hat\";\n  if (cue === \"go\") {\n    const hat = \"cupboard hat\";\n    console.log(\"Kit finds the \" + hat);\n  }\n}\n\nscene(\"go\");\n",
+   "stdout": "Kit finds the cupboard hat\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node look_block.js",
+     "out": "Kit finds the cupboard hat\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "look_function.js": {
+   "src": "const hat = \"lobby hat\";\n\nfunction scene(cue) {\n  const hat = \"dressing-room hat\";\n  if (cue === \"go\") {\n    // no hat in the cupboard\n    console.log(\"Kit finds the \" + hat);\n  }\n}\n\nscene(\"go\");\n",
+   "stdout": "Kit finds the dressing-room hat\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node look_function.js",
+     "out": "Kit finds the dressing-room hat\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "look_global.js": {
+   "src": "const hat = \"lobby hat\";\n\nfunction scene(cue) {\n  // no hat in the dressing room\n  if (cue === \"go\") {\n    // no hat in the cupboard\n    console.log(\"Kit finds the \" + hat);\n  }\n}\n\nscene(\"go\");\n",
+   "stdout": "Kit finds the lobby hat\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node look_global.js",
+     "out": "Kit finds the lobby hat\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "look_none.js": {
+   "src": "// no hat in the lobby\n\nfunction scene(cue) {\n  // no hat in the dressing room\n  if (cue === \"go\") {\n    // no hat in the cupboard\n    console.log(\"Kit finds the \" + hat);\n  }\n}\n\nscene(\"go\");\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/look_none.js:7\n    console.log(\"Kit finds the \" + hat);\n                                   ^\n\nReferenceError: hat is not defined\n    at scene (file:///home/you/javascript-ch8/look_none.js:7:36)\n    at file:///home/you/javascript-ch8/look_none.js:11:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node look_none.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/look_none.js:7\n    console.log(\"Kit finds the \" + hat);\n                                   ^\n\nReferenceError: hat is not defined\n    at scene (file:///home/you/javascript-ch8/look_none.js:7:36)\n    at file:///home/you/javascript-ch8/look_none.js:11:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/look_none.js:7\n    console.log(\"Kit finds the \" + hat);\n                                   ^\n\nReferenceError: hat is not defined\n    at scene (file:///home/you/javascript-ch8/look_none.js:7:36)\n    at file:///home/you/javascript-ch8/look_none.js:11:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node look_none.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/look_none.js:7\n    console.log(\"Kit finds the \" + hat);\n                                   ^\n\nReferenceError: hat is not defined\n    at scene (file:///home/you/javascript-ch8/look_none.js:7:36)\n    at file:///home/you/javascript-ch8/look_none.js:11:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "loop_scope.js": {
+   "src": "for (let lap = 1; lap <= 3; lap++) {\n  console.log(\"Lap\", lap);\n}\nconsole.log(\"Laps done:\", lap);\n",
+   "stdout": "Lap 1\nLap 2\nLap 3\n",
+   "stderr": "file:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node loop_scope.js",
+     "out": "Lap 1\nLap 2\nLap 3\n",
+     "err": "file:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Lap 1\nLap 2\nLap 3\nfile:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Lap 1\nLap 2\nLap 3\n",
+    "stderr": "file:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node loop_scope.js",
+      "out": "Lap 1\nLap 2\nLap 3\n",
+      "err": "file:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Lap 1\nLap 2\nLap 3\nfile:///home/you/javascript-ch8/loop_scope.js:4\nconsole.log(\"Laps done:\", lap);\n                          ^\n\nReferenceError: lap is not defined\n    at file:///home/you/javascript-ch8/loop_scope.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "parsons_light.js": {
+   "src": "let light = \"dim\";\nif (light === \"dim\") {\n  let light = \"spotlight\";\n  console.log(\"inside:\", light);\n}\nconsole.log(\"outside:\", light);\n",
+   "stdout": "inside: spotlight\noutside: dim\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_light.js",
+     "out": "inside: spotlight\noutside: dim\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_encore.js": {
+   "src": "console.log(encore(1));\nconsole.log(encore(2) + encore(3));\n\nfunction encore(n) {\n  return n * 2;\n}\n",
+   "stdout": "2\n10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_encore.js",
+     "out": "2\n10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_inward.js": {
+   "src": "function soundBooth() {\n  const volume = 11;\n  console.log(\"Booth volume:\", volume);\n}\n\nsoundBooth();\nconsole.log(\"Lobby volume:\", volume);\n",
+   "stdout": "Booth volume: 11\n",
+   "stderr": "file:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node predict_inward.js",
+     "out": "Booth volume: 11\n",
+     "err": "file:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Booth volume: 11\nfile:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Booth volume: 11\n",
+    "stderr": "file:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node predict_inward.js",
+      "out": "Booth volume: 11\n",
+      "err": "file:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Booth volume: 11\nfile:///home/you/javascript-ch8/predict_inward.js:7\nconsole.log(\"Lobby volume:\", volume);\n                             ^\n\nReferenceError: volume is not defined\n    at file:///home/you/javascript-ch8/predict_inward.js:7:30\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "predict_lookup.js": {
+   "src": "const a = \"lobby a\";\nconst b = \"lobby b\";\n\nfunction room() {\n  const b = \"room b\";\n  const c = \"room c\";\n  if (b === \"room b\") {\n    const c = \"cupboard c\";\n    console.log(a, b, c);\n  }\n  console.log(a, b, c);\n}\n\nroom();\nconsole.log(a, b);\n",
+   "stdout": "lobby a room b cupboard c\nlobby a room b room c\nlobby a lobby b\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_lookup.js",
+     "out": "lobby a room b cupboard c\nlobby a room b room c\nlobby a lobby b\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_loop.js": {
+   "src": "for (var seat = 1; seat <= 3; seat++) {\n  setTimeout(() => console.log(\"Seat\", seat), 0);\n}\nconsole.log(\"Tickets printed\");\n",
+   "stdout": "Tickets printed\nSeat 4\nSeat 4\nSeat 4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_loop.js",
+     "out": "Tickets printed\nSeat 4\nSeat 4\nSeat 4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_shadow.js": {
+   "src": "let score = 0;\n\nfunction addPoint() {\n  score = score + 1;\n}\n\nfunction addBonus() {\n  let score = 100;\n  score = score + 1;\n  console.log(\"bonus room:\", score);\n}\n\naddPoint();\naddPoint();\naddBonus();\nconsole.log(\"lobby:\", score);\n",
+   "stdout": "bonus room: 101\nlobby: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_shadow.js",
+     "out": "bonus room: 101\nlobby: 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_tdz.js": {
+   "src": "const price = 12;\n\nfunction total(n) {\n  return n * price + fee;\n}\n\nconsole.log(total(2));\nconst fee = 3;\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/predict_tdz.js:4\n  return n * price + fee;\n                     ^\n\nReferenceError: Cannot access 'fee' before initialization\n    at total (file:///home/you/javascript-ch8/predict_tdz.js:4:22)\n    at file:///home/you/javascript-ch8/predict_tdz.js:7:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node predict_tdz.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/predict_tdz.js:4\n  return n * price + fee;\n                     ^\n\nReferenceError: Cannot access 'fee' before initialization\n    at total (file:///home/you/javascript-ch8/predict_tdz.js:4:22)\n    at file:///home/you/javascript-ch8/predict_tdz.js:7:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/predict_tdz.js:4\n  return n * price + fee;\n                     ^\n\nReferenceError: Cannot access 'fee' before initialization\n    at total (file:///home/you/javascript-ch8/predict_tdz.js:4:22)\n    at file:///home/you/javascript-ch8/predict_tdz.js:7:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node predict_tdz.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/predict_tdz.js:4\n  return n * price + fee;\n                     ^\n\nReferenceError: Cannot access 'fee' before initialization\n    at total (file:///home/you/javascript-ch8/predict_tdz.js:4:22)\n    at file:///home/you/javascript-ch8/predict_tdz.js:7:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "predict_tdz_swapped.js": {
+   "src": "const price = 12;\n\nfunction total(n) {\n  return n * price + fee;\n}\n\nconst fee = 3;\nconsole.log(total(2));\n",
+   "stdout": "27\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_tdz_swapped.js",
+     "out": "27\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_var.js": {
+   "src": "console.log(price(2));\nconsole.log(band);\nvar band = \"The Cues\";\nconsole.log(band);\n\nfunction price(tickets) {\n  return tickets * 12;\n}\n",
+   "stdout": "24\nundefined\nThe Cues\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_var.js",
+     "out": "24\nundefined\nThe Cues\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "redeclare.js": {
+   "src": "console.log(\"Is anyone there?\");\nlet seat = \"A1\";\nlet seat = \"B7\";\nconsole.log(seat);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/redeclare.js:3\nlet seat = \"B7\";\n    ^\n\nSyntaxError: Identifier 'seat' has already been declared\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node redeclare.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/redeclare.js:3\nlet seat = \"B7\";\n    ^\n\nSyntaxError: Identifier 'seat' has already been declared\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/redeclare.js:3\nlet seat = \"B7\";\n    ^\n\nSyntaxError: Identifier 'seat' has already been declared\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node redeclare.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/redeclare.js:3\nlet seat = \"B7\";\n    ^\n\nSyntaxError: Identifier 'seat' has already been declared\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "rooms.js": {
+   "src": "const show = \"Hamlet\";\n\nfunction dressingRoom() {\n  const costume = \"cape\";\n  if (costume === \"cape\") {\n    const prop = \"skull\";\n    console.log(show, costume, prop);\n  }\n  console.log(show, costume);\n}\n\ndressingRoom();\nconsole.log(show);\n",
+   "stdout": "Hamlet cape skull\nHamlet cape\nHamlet\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node rooms.js",
+     "out": "Hamlet cape skull\nHamlet cape\nHamlet\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "setup.js": {
+   "src": "console.log(greet(\"Kit\"));\nconsole.log(usher);\nvar usher = \"Sam\";\nlet seat = \"B7\";\nconsole.log(usher, seat);\n\nfunction greet(name) {\n  return \"Hello, \" + name;\n}\n",
+   "stdout": "Hello, Kit\nundefined\nSam B7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node setup.js",
+     "out": "Hello, Kit\nundefined\nSam B7\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shadow.js": {
+   "src": "let x = \"lobby\";\n\nfunction stage() {\n  let x = \"stage\";\n  if (x === \"stage\") {\n    let x = \"trapdoor\";\n    console.log(\"block sees:\", x);\n  }\n  console.log(\"function sees:\", x);\n}\n\nstage();\nconsole.log(\"global sees:\", x);\n",
+   "stdout": "block sees: trapdoor\nfunction sees: stage\nglobal sees: lobby\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shadow.js",
+     "out": "block sees: trapdoor\nfunction sees: stage\nglobal sees: lobby\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_shadow.js": {
+   "src": "let sold = 0;\nfunction sell(n) {\n  let sold = n;\n  console.log(\"Sold\", n);\n}\nsell(3);\nsell(2);\nconsole.log(\"Total sold:\", sold);\n",
+   "stdout": "Sold 3\nSold 2\nTotal sold: 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_shadow.js",
+     "out": "Sold 3\nSold 2\nTotal sold: 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_total.js": {
+   "src": "let total = 0;\nfunction addTicket(price) {\n  let total = total + price;\n  return total;\n}\nconsole.log(addTicket(12));\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/spot_total.js:3\n  let total = total + price;\n              ^\n\nReferenceError: Cannot access 'total' before initialization\n    at addTicket (file:///home/you/javascript-ch8/spot_total.js:3:15)\n    at file:///home/you/javascript-ch8/spot_total.js:6:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node spot_total.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/spot_total.js:3\n  let total = total + price;\n              ^\n\nReferenceError: Cannot access 'total' before initialization\n    at addTicket (file:///home/you/javascript-ch8/spot_total.js:3:15)\n    at file:///home/you/javascript-ch8/spot_total.js:6:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/spot_total.js:3\n  let total = total + price;\n              ^\n\nReferenceError: Cannot access 'total' before initialization\n    at addTicket (file:///home/you/javascript-ch8/spot_total.js:3:15)\n    at file:///home/you/javascript-ch8/spot_total.js:6:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node spot_total.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/spot_total.js:3\n  let total = total + price;\n              ^\n\nReferenceError: Cannot access 'total' before initialization\n    at addTicket (file:///home/you/javascript-ch8/spot_total.js:3:15)\n    at file:///home/you/javascript-ch8/spot_total.js:6:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "spot_var.js": {
+   "src": "var guest = \"Ada\";\nif (guest === \"Ada\") {\n  var guest = \"Grace\";\n  console.log(\"Backstage pass:\", guest);\n}\nconsole.log(\"Front row:\", guest);\n",
+   "stdout": "Backstage pass: Grace\nFront row: Grace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_var.js",
+     "out": "Backstage pass: Grace\nFront row: Grace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_var_let.js": {
+   "src": "var guest = \"Ada\";\nif (guest === \"Ada\") {\n  let guest = \"Grace\";\n  console.log(\"Backstage pass:\", guest);\n}\nconsole.log(\"Front row:\", guest);\n",
+   "stdout": "Backstage pass: Grace\nFront row: Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_var_let.js",
+     "out": "Backstage pass: Grace\nFront row: Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tdz.js": {
+   "src": "console.log(\"Setting up the seats...\");\nconsole.log(seat);\nlet seat = \"B7\";\nconsole.log(\"Your seat:\", seat);\n",
+   "stdout": "Setting up the seats...\n",
+   "stderr": "file:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node tdz.js",
+     "out": "Setting up the seats...\n",
+     "err": "file:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Setting up the seats...\nfile:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Setting up the seats...\n",
+    "stderr": "file:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node tdz.js",
+      "out": "Setting up the seats...\n",
+      "err": "file:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Setting up the seats...\nfile:///home/you/javascript-ch8/tdz.js:2\nconsole.log(seat);\n            ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "tdz_block.js": {
+   "src": "let seat = \"A1\";\nif (seat === \"A1\") {\n  console.log(\"Checking seat\", seat);\n  let seat = \"B7\";\n}\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/tdz_block.js:3\n  console.log(\"Checking seat\", seat);\n                               ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_block.js:3:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node tdz_block.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/tdz_block.js:3\n  console.log(\"Checking seat\", seat);\n                               ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_block.js:3:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/tdz_block.js:3\n  console.log(\"Checking seat\", seat);\n                               ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_block.js:3:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node tdz_block.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/tdz_block.js:3\n  console.log(\"Checking seat\", seat);\n                               ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_block.js:3:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "tdz_time.js": {
+   "src": "function announce() {\n  return \"Tonight: \" + show;\n}\n\nconst show = \"Hamlet\";\nconsole.log(announce());\n",
+   "stdout": "Tonight: Hamlet\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node tdz_time.js",
+     "out": "Tonight: Hamlet\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tdz_time_bad.js": {
+   "src": "function announce() {\n  return \"Tonight: \" + show;\n}\n\nconsole.log(announce());\nconst show = \"Hamlet\";\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/tdz_time_bad.js:2\n  return \"Tonight: \" + show;\n                       ^\n\nReferenceError: Cannot access 'show' before initialization\n    at announce (file:///home/you/javascript-ch8/tdz_time_bad.js:2:24)\n    at file:///home/you/javascript-ch8/tdz_time_bad.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node tdz_time_bad.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/tdz_time_bad.js:2\n  return \"Tonight: \" + show;\n                       ^\n\nReferenceError: Cannot access 'show' before initialization\n    at announce (file:///home/you/javascript-ch8/tdz_time_bad.js:2:24)\n    at file:///home/you/javascript-ch8/tdz_time_bad.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/tdz_time_bad.js:2\n  return \"Tonight: \" + show;\n                       ^\n\nReferenceError: Cannot access 'show' before initialization\n    at announce (file:///home/you/javascript-ch8/tdz_time_bad.js:2:24)\n    at file:///home/you/javascript-ch8/tdz_time_bad.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node tdz_time_bad.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/tdz_time_bad.js:2\n  return \"Tonight: \" + show;\n                       ^\n\nReferenceError: Cannot access 'show' before initialization\n    at announce (file:///home/you/javascript-ch8/tdz_time_bad.js:2:24)\n    at file:///home/you/javascript-ch8/tdz_time_bad.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "tdz_typeof.js": {
+   "src": "console.log(typeof nobody);\nconsole.log(typeof seat);\nlet seat = \"B7\";\n",
+   "stdout": "undefined\n",
+   "stderr": "file:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node tdz_typeof.js",
+     "out": "undefined\n",
+     "err": "file:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "undefined\nfile:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "undefined\n",
+    "stderr": "file:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node tdz_typeof.js",
+      "out": "undefined\n",
+      "err": "file:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "undefined\nfile:///home/you/javascript-ch8/tdz_typeof.js:2\nconsole.log(typeof seat);\n        ^\n\nReferenceError: Cannot access 'seat' before initialization\n    at file:///home/you/javascript-ch8/tdz_typeof.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "trace_shadow.js": {
+   "src": "const n = 100;\nlet total = 0;\nfor (let i = 1; i <= 4; i++) {\n  const n = i * 10;\n  total = total + n;\n  console.log(i, n, total);\n}\n",
+   "stdout": "1 10 10\n2 20 30\n3 30 60\n4 40 100\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_shadow.js",
+     "out": "1 10 10\n2 20 30\n3 30 60\n4 40 100\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v_arrow_early.js": {
+   "src": "console.log(d());\nconst d = () => 5;\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/v_arrow_early.js:1\nconsole.log(d());\n            ^\n\nReferenceError: Cannot access 'd' before initialization\n    at file:///home/you/javascript-ch8/v_arrow_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node v_arrow_early.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/v_arrow_early.js:1\nconsole.log(d());\n            ^\n\nReferenceError: Cannot access 'd' before initialization\n    at file:///home/you/javascript-ch8/v_arrow_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/v_arrow_early.js:1\nconsole.log(d());\n            ^\n\nReferenceError: Cannot access 'd' before initialization\n    at file:///home/you/javascript-ch8/v_arrow_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node v_arrow_early.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/v_arrow_early.js:1\nconsole.log(d());\n            ^\n\nReferenceError: Cannot access 'd' before initialization\n    at file:///home/you/javascript-ch8/v_arrow_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "v_fn_early.js": {
+   "src": "console.log(c());\nfunction c() { return 5; }\n",
+   "stdout": "5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node v_fn_early.js",
+     "out": "5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v_let_block.js": {
+   "src": "if (true) { let e = 5; }\nconsole.log(e);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/v_let_block.js:2\nconsole.log(e);\n            ^\n\nReferenceError: e is not defined\n    at file:///home/you/javascript-ch8/v_let_block.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node v_let_block.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/v_let_block.js:2\nconsole.log(e);\n            ^\n\nReferenceError: e is not defined\n    at file:///home/you/javascript-ch8/v_let_block.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/v_let_block.js:2\nconsole.log(e);\n            ^\n\nReferenceError: e is not defined\n    at file:///home/you/javascript-ch8/v_let_block.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node v_let_block.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/v_let_block.js:2\nconsole.log(e);\n            ^\n\nReferenceError: e is not defined\n    at file:///home/you/javascript-ch8/v_let_block.js:2:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "v_let_early.js": {
+   "src": "console.log(a);\nlet a = 5;\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch8/v_let_early.js:1\nconsole.log(a);\n            ^\n\nReferenceError: Cannot access 'a' before initialization\n    at file:///home/you/javascript-ch8/v_let_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node v_let_early.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch8/v_let_early.js:1\nconsole.log(a);\n            ^\n\nReferenceError: Cannot access 'a' before initialization\n    at file:///home/you/javascript-ch8/v_let_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch8/v_let_early.js:1\nconsole.log(a);\n            ^\n\nReferenceError: Cannot access 'a' before initialization\n    at file:///home/you/javascript-ch8/v_let_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node v_let_early.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch8/v_let_early.js:1\nconsole.log(a);\n            ^\n\nReferenceError: Cannot access 'a' before initialization\n    at file:///home/you/javascript-ch8/v_let_early.js:1:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "v_let_empty.js": {
+   "src": "let k;\nconsole.log(k);\nk = 5;\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node v_let_empty.js",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v_shadow.js": {
+   "src": "let g = 1;\nfunction h() { let g = 5; }\nh();\nconsole.log(g);\n",
+   "stdout": "1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node v_shadow.js",
+     "out": "1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v_var_block.js": {
+   "src": "if (true) { var f = 5; }\nconsole.log(f);\n",
+   "stdout": "5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node v_var_block.js",
+     "out": "5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "v_var_early.js": {
+   "src": "console.log(b);\nvar b = 5;\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node v_var_early.js",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "var_block.js": {
+   "src": "if (true) {\n  var leaked = \"I got out!\";\n  let kept = \"I stayed in\";\n}\nconsole.log(leaked);\nconsole.log(typeof kept);\n",
+   "stdout": "I got out!\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node var_block.js",
+     "out": "I got out!\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "var_function.js": {
+   "src": "function backstage() {\n  var secret = \"trapdoor\";\n  console.log(\"Backstage:\", secret);\n}\n\nbackstage();\nconsole.log(\"Lobby:\", secret);\n",
+   "stdout": "Backstage: trapdoor\n",
+   "stderr": "file:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node var_function.js",
+     "out": "Backstage: trapdoor\n",
+     "err": "file:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Backstage: trapdoor\nfile:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Backstage: trapdoor\n",
+    "stderr": "file:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node var_function.js",
+      "out": "Backstage: trapdoor\n",
+      "err": "file:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Backstage: trapdoor\nfile:///home/you/javascript-ch8/var_function.js:7\nconsole.log(\"Lobby:\", secret);\n                      ^\n\nReferenceError: secret is not defined\n    at file:///home/you/javascript-ch8/var_function.js:7:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "var_loop.js": {
+   "src": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\nconsole.log(\"Loop finished. i is now\", i);\n",
+   "stdout": "Loop finished. i is now 3\n3\n3\n3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node var_loop.js",
+     "out": "Loop finished. i is now 3\n3\n3\n3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "var_redeclare.js": {
+   "src": "var guest = \"Ada\";\nconsole.log(guest);\nvar guest = \"Grace\";\nconsole.log(guest);\n",
+   "stdout": "Ada\nGrace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node var_redeclare.js",
+     "out": "Ada\nGrace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
