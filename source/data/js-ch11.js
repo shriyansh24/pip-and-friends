@@ -1,0 +1,1238 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch11",
+  "versionDifferences": [
+   "badge_crash.js",
+   "boss_spot.js",
+   "crew_undef.js",
+   "deep_crash.js",
+   "half_knock.js",
+   "inside_bad.js",
+   "knock_calls.js",
+   "knock_rude.js",
+   "lost.js",
+   "not_iterable.js",
+   "null_literal.js",
+   "overuse_dots.js",
+   "rest_last.js",
+   "swap_asi.js",
+   "who_arrow.js",
+   "who_detached.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): badge_crash.js, boss_spot.js, crew_undef.js, deep_crash.js, half_knock.js, inside_bad.js, knock_calls.js, knock_rude.js, lost.js, not_iterable.js, null_literal.js, overuse_dots.js, rest_last.js, swap_asi.js, who_arrow.js, who_detached.js."
+ },
+ "programs": {
+  "arrow_method.cjs": {
+   "src": "const kit = {\n  name: \"Kit\",\n  regular() {\n    return this;\n  },\n  arrow: () => this,\n};\nconsole.log(kit.regular() === kit);\nconsole.log(kit.arrow());\nconsole.log(this);\n",
+   "stdout": "true\n{}\n{}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node arrow_method.cjs",
+     "out": "true\n{}\n{}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "arrow_method.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  regular() {\n    return this;\n  },\n  arrow: () => this,\n};\nconsole.log(kit.regular() === kit);\nconsole.log(kit.arrow());\nconsole.log(this);\n",
+   "stdout": "true\nundefined\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node arrow_method.js",
+     "out": "true\nundefined\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "assign_ops.js": {
+   "src": "const show = { title: \"Hamlet\", seats: 0, poster: null, sponsor: \"Acme\" };\nshow.poster ??= \"poster.png\";\nshow.seats ??= 100;\nconsole.log(show.poster, show.seats);\nshow.title ||= \"Untitled\";\nshow.seats ||= 100;\nconsole.log(show.title, show.seats);\nshow.sponsor &&= show.sponsor.toUpperCase();\nshow.poster &&= null;\nconsole.log(show.sponsor, show.poster);\n",
+   "stdout": "poster.png 0\nHamlet 100\nACME null\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node assign_ops.js",
+     "out": "poster.png 0\nHamlet 100\nACME null\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "badge_crash.js": {
+   "src": "function badge({ name, role = \"crew\" }) {\n  return `${name} (${role})`;\n}\nconsole.log(badge({ name: \"Kit\" }));\nconsole.log(badge());\n",
+   "stdout": "Kit (crew)\n",
+   "stderr": "file:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node badge_crash.js",
+     "out": "Kit (crew)\n",
+     "err": "file:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Kit (crew)\nfile:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Kit (crew)\n",
+    "stderr": "file:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node badge_crash.js",
+      "out": "Kit (crew)\n",
+      "err": "file:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Kit (crew)\nfile:///home/you/javascript-ch11/badge_crash.js:1\nfunction badge({ name, role = \"crew\" }) {\n                 ^\n\nTypeError: Cannot destructure property 'name' of 'undefined' as it is undefined.\n    at badge (file:///home/you/javascript-ch11/badge_crash.js:1:18)\n    at file:///home/you/javascript-ch11/badge_crash.js:5:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "badge_safe.js": {
+   "src": "function badge({ name = \"guest\", role = \"crew\" } = {}) {\n  return `${name} (${role})`;\n}\nconsole.log(badge({ name: \"Kit\" }));\nconsole.log(badge());\n",
+   "stdout": "Kit (crew)\nguest (crew)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node badge_safe.js",
+     "out": "Kit (crew)\nguest (crew)\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_fill.js": {
+   "src": "const stage = {\n  name: \"Main stage\",\n  acts: [\"Ada\", \"Bo\"],\n  list() {\n    this.acts.forEach((act) => console.log(`${this.name}: ${act}`));\n  },\n};\nstage.list();\n",
+   "stdout": "Main stage: Ada\nMain stage: Bo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_fill.js",
+     "out": "Main stage: Ada\nMain stage: Bo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_mix.js": {
+   "src": "const show = { title: \"Oz\", cast: [\"Dot\", \"Leo\", \"Tin\"], tour: null };\nconst { title, cast: [lead, ...others], budget = 500 } = show;\nconst city = show.tour?.city ?? \"home\";\nconsole.log(title, lead, others.length, budget);\nconsole.log(city);\nconsole.log([...others, lead].join(\"-\"));\n",
+   "stdout": "Oz Dot 2 500\nhome\nLeo-Tin-Dot\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_mix.js",
+     "out": "Oz Dot 2 500\nhome\nLeo-Tin-Dot\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.js": {
+   "src": "const plan = (city, ...acts) => {\n  const [first, ...rest] = acts;\n  return { city, first, more: rest.length };\n};\nconst { city, first, more } = plan(\"Rome\", \"clown\", \"mime\", \"band\");\nconsole.log(`${city}: ${first} first, then ${more} more`);\n",
+   "stdout": "Rome: clown first, then 2 more\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parsons.js",
+     "out": "Rome: clown first, then 2 more\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.js": {
+   "src": "const counter = {\n  count: 0,\n  add() {\n    this.count = this.count + 1;\n  },\n};\ncounter.add();\n[1, 2, 3].forEach(counter.add);\nconsole.log(counter.count);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/boss_spot.js:4\n    this.count = this.count + 1;\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'count')\n    at add (file:///home/you/javascript-ch11/boss_spot.js:4:23)\n    at Array.forEach (<anonymous>)\n    at file:///home/you/javascript-ch11/boss_spot.js:8:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node boss_spot.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/boss_spot.js:4\n    this.count = this.count + 1;\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'count')\n    at add (file:///home/you/javascript-ch11/boss_spot.js:4:23)\n    at Array.forEach (<anonymous>)\n    at file:///home/you/javascript-ch11/boss_spot.js:8:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/boss_spot.js:4\n    this.count = this.count + 1;\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'count')\n    at add (file:///home/you/javascript-ch11/boss_spot.js:4:23)\n    at Array.forEach (<anonymous>)\n    at file:///home/you/javascript-ch11/boss_spot.js:8:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node boss_spot.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/boss_spot.js:4\n    this.count = this.count + 1;\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'count')\n    at add (file:///home/you/javascript-ch11/boss_spot.js:4:23)\n    at Array.forEach (<anonymous>)\n    at file:///home/you/javascript-ch11/boss_spot.js:8:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "boss_trace.js": {
+   "src": "const guests = [\n  { name: \"Ada\", seat: \"A1\", vip: true },\n  { name: \"Bo\" },\n  { name: \"Cy\", seat: \"C3\", vip: false },\n];\nfor (const { name, seat = \"none\", vip = false } of guests) {\n  const badge = vip ? \"VIP\" : \"guest\";\n  console.log(name, seat, badge);\n}\n",
+   "stdout": "Ada A1 VIP\nBo none guest\nCy C3 guest\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_trace.js",
+     "out": "Ada A1 VIP\nBo none guest\nCy C3 guest\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "crew_undef.js": {
+   "src": "const crew = undefined;\nconst { boss } = crew;\nconsole.log(boss);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/crew_undef.js:2\nconst { boss } = crew;\n        ^\n\nTypeError: Cannot destructure property 'boss' of 'crew' as it is undefined.\n    at file:///home/you/javascript-ch11/crew_undef.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node crew_undef.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/crew_undef.js:2\nconst { boss } = crew;\n        ^\n\nTypeError: Cannot destructure property 'boss' of 'crew' as it is undefined.\n    at file:///home/you/javascript-ch11/crew_undef.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/crew_undef.js:2\nconst { boss } = crew;\n        ^\n\nTypeError: Cannot destructure property 'boss' of 'crew' as it is undefined.\n    at file:///home/you/javascript-ch11/crew_undef.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node crew_undef.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/crew_undef.js:2\nconst { boss } = crew;\n        ^\n\nTypeError: Cannot destructure property 'boss' of 'crew' as it is undefined.\n    at file:///home/you/javascript-ch11/crew_undef.js:2:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "deep_crash.js": {
+   "src": "const users = [\n  { name: \"Ada\", address: { city: \"Lima\" } },\n  { name: \"Bo\" },\n];\nfor (const user of users) {\n  console.log(user.name, \"lives in\", user.address.city);\n}\n",
+   "stdout": "Ada lives in Lima\n",
+   "stderr": "file:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node deep_crash.js",
+     "out": "Ada lives in Lima\n",
+     "err": "file:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Ada lives in Lima\nfile:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Ada lives in Lima\n",
+    "stderr": "file:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node deep_crash.js",
+      "out": "Ada lives in Lima\n",
+      "err": "file:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Ada lives in Lima\nfile:///home/you/javascript-ch11/deep_crash.js:6\n  console.log(user.name, \"lives in\", user.address.city);\n                                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/deep_crash.js:6:51\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "fill_nullish.js": {
+   "src": "const prefs = { volume: 0, theme: \"\" };\nconst volume = prefs.volume ?? 5;\nconst theme = prefs.theme || \"light\";\nconsole.log(\"volume:\", volume);\nconsole.log(\"theme:\", theme);\n",
+   "stdout": "volume: 0\ntheme: light\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_nullish.js",
+     "out": "volume: 0\ntheme: light\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_params.js": {
+   "src": "function seatLabel({ row, seat = 1 }) {\n  return `Row ${row}, seat ${seat}`;\n}\nconsole.log(seatLabel({ row: \"C\", seat: 7 }));\nconsole.log(seatLabel({ row: \"F\" }));\n",
+   "stdout": "Row C, seat 7\nRow F, seat 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_params.js",
+     "out": "Row C, seat 7\nRow F, seat 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_swap.js": {
+   "src": "let onStage = \"Cy\";\nlet inWings = \"Dee\";\n[onStage, inWings] = [inWings, onStage];\nconsole.log(\"on stage:\", onStage);\nconsole.log(\"in the wings:\", inWings);\n",
+   "stdout": "on stage: Dee\nin the wings: Cy\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_swap.js",
+     "out": "on stage: Dee\nin the wings: Cy\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "half_knock.js": {
+   "src": "const user = { name: \"Bo\" };\nconsole.log(user?.address.city);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/half_knock.js:2\nconsole.log(user?.address.city);\n                         ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/half_knock.js:2:26\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node half_knock.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/half_knock.js:2\nconsole.log(user?.address.city);\n                         ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/half_knock.js:2:26\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/half_knock.js:2\nconsole.log(user?.address.city);\n                         ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/half_knock.js:2:26\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node half_knock.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/half_knock.js:2\nconsole.log(user?.address.city);\n                         ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/half_knock.js:2:26\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "inside_bad.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  crew: [\"Ada\", \"Bo\"],\n  thank() {\n    this.crew.forEach(function (member) {\n      console.log(`${this.name} thanks ${member}`);\n    });\n  },\n};\nkit.thank();\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/inside_bad.js:6\n      console.log(`${this.name} thanks ${member}`);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch11/inside_bad.js:6:27\n    at Array.forEach (<anonymous>)\n    at Object.thank (file:///home/you/javascript-ch11/inside_bad.js:5:15)\n    at file:///home/you/javascript-ch11/inside_bad.js:10:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node inside_bad.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/inside_bad.js:6\n      console.log(`${this.name} thanks ${member}`);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch11/inside_bad.js:6:27\n    at Array.forEach (<anonymous>)\n    at Object.thank (file:///home/you/javascript-ch11/inside_bad.js:5:15)\n    at file:///home/you/javascript-ch11/inside_bad.js:10:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/inside_bad.js:6\n      console.log(`${this.name} thanks ${member}`);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch11/inside_bad.js:6:27\n    at Array.forEach (<anonymous>)\n    at Object.thank (file:///home/you/javascript-ch11/inside_bad.js:5:15)\n    at file:///home/you/javascript-ch11/inside_bad.js:10:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node inside_bad.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/inside_bad.js:6\n      console.log(`${this.name} thanks ${member}`);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch11/inside_bad.js:6:27\n    at Array.forEach (<anonymous>)\n    at Object.thank (file:///home/you/javascript-ch11/inside_bad.js:5:15)\n    at file:///home/you/javascript-ch11/inside_bad.js:10:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "inside_good.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  crew: [\"Ada\", \"Bo\"],\n  thank() {\n    this.crew.forEach((member) => {\n      console.log(`${this.name} thanks ${member}`);\n    });\n  },\n};\nkit.thank();\n",
+   "stdout": "Kit thanks Ada\nKit thanks Bo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node inside_good.js",
+     "out": "Kit thanks Ada\nKit thanks Bo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock.js": {
+   "src": "const users = [\n  { name: \"Ada\", address: { city: \"Lima\" } },\n  { name: \"Bo\" },\n  null,\n];\nfor (const user of users) {\n  const city = user?.address?.city ?? \"unknown\";\n  console.log(user?.name, \"->\", city);\n}\n",
+   "stdout": "Ada -> Lima\nBo -> unknown\nundefined -> unknown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node knock.js",
+     "out": "Ada -> Lima\nBo -> unknown\nundefined -> unknown\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock_ada.js": {
+   "src": "const user = { name: \"Ada\", address: { city: \"Lima\" } };\nconst city = user?.address?.city ?? \"unknown\";\nconsole.log(city);\n",
+   "stdout": "Lima\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node knock_ada.js",
+     "out": "Lima\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock_bo.js": {
+   "src": "const user = { name: \"Bo\" };\nconst city = user?.address?.city ?? \"unknown\";\nconsole.log(city);\n",
+   "stdout": "unknown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node knock_bo.js",
+     "out": "unknown\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock_calls.js": {
+   "src": "const show = {\n  title: \"Macbeth\",\n  cast: [\"Ada\", \"Bo\"],\n  bow() { return \"everyone bows\"; },\n};\nconsole.log(show.bow?.());\nconsole.log(show.encore?.());\nconsole.log(show.cast?.[1]);\nconsole.log(show.crew?.[0]);\nconsole.log(show.encore());\n",
+   "stdout": "everyone bows\nundefined\nBo\nundefined\n",
+   "stderr": "file:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node knock_calls.js",
+     "out": "everyone bows\nundefined\nBo\nundefined\n",
+     "err": "file:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "everyone bows\nundefined\nBo\nundefined\nfile:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "everyone bows\nundefined\nBo\nundefined\n",
+    "stderr": "file:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node knock_calls.js",
+      "out": "everyone bows\nundefined\nBo\nundefined\n",
+      "err": "file:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "everyone bows\nundefined\nBo\nundefined\nfile:///home/you/javascript-ch11/knock_calls.js:10\nconsole.log(show.encore());\n                 ^\n\nTypeError: show.encore is not a function\n    at file:///home/you/javascript-ch11/knock_calls.js:10:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "knock_cy.js": {
+   "src": "const user = { name: \"Cy\", address: {} };\nconst city = user?.address?.city ?? \"unknown\";\nconsole.log(city);\n",
+   "stdout": "unknown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node knock_cy.js",
+     "out": "unknown\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock_null.js": {
+   "src": "const user = null;\nconst city = user?.address?.city ?? \"unknown\";\nconsole.log(city);\n",
+   "stdout": "unknown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node knock_null.js",
+     "out": "unknown\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "knock_rude.js": {
+   "src": "const user = { name: \"Bo\" };\nconst city = user.address.city ?? \"unknown\";\nconsole.log(city);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/knock_rude.js:2\nconst city = user.address.city ?? \"unknown\";\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/knock_rude.js:2:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node knock_rude.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/knock_rude.js:2\nconst city = user.address.city ?? \"unknown\";\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/knock_rude.js:2:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/knock_rude.js:2\nconst city = user.address.city ?? \"unknown\";\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/knock_rude.js:2:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node knock_rude.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/knock_rude.js:2\nconst city = user.address.city ?? \"unknown\";\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/knock_rude.js:2:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "lab_clone.js": {
+   "src": "const tour = { city: \"Oslo\", crew: [\"Ada\", \"Bo\"] };\nconst copy = structuredClone(tour);\ncopy.city = \"Rome\";\ncopy.crew.push(\"Cy\");\nconsole.log(tour.city, tour.crew);\nconsole.log(copy.city, copy.crew);\n",
+   "stdout": "Oslo [ 'Ada', 'Bo' ]\nRome [ 'Ada', 'Bo', 'Cy' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node lab_clone.js",
+     "out": "Oslo [ 'Ada', 'Bo' ]\nRome [ 'Ada', 'Bo', 'Cy' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "lab_default.js": {
+   "src": "const [lead, understudy = \"Kit\"] = [\"Ada\", null];\nconsole.log(\"null kept:\", lead, understudy);\nconst [lead2, understudy2 = \"Kit\"] = [\"Ada\", undefined];\nconsole.log(\"undefined replaced:\", lead2, understudy2);\n",
+   "stdout": "null kept: Ada null\nundefined replaced: Ada Kit\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node lab_default.js",
+     "out": "null kept: Ada null\nundefined replaced: Ada Kit\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "lost.js": {
+   "src": "const user = {\n  name: \"Ada\",\n  hi() {\n    return `Hi, I'm ${this.name}`;\n  },\n};\nconsole.log(user.hi());\nconst hi = user.hi;\nconsole.log(hi());\n",
+   "stdout": "Hi, I'm Ada\n",
+   "stderr": "file:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node lost.js",
+     "out": "Hi, I'm Ada\n",
+     "err": "file:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Hi, I'm Ada\nfile:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Hi, I'm Ada\n",
+    "stderr": "file:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node lost.js",
+      "out": "Hi, I'm Ada\n",
+      "err": "file:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Hi, I'm Ada\nfile:///home/you/javascript-ch11/lost.js:4\n    return `Hi, I'm ${this.name}`;\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at hi (file:///home/you/javascript-ch11/lost.js:4:28)\n    at file:///home/you/javascript-ch11/lost.js:9:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "method.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  job: \"stage manager\",\n  intro() {\n    return `Hi, I'm ${this.name}, the ${this.job}.`;\n  },\n};\nconsole.log(kit.intro());\nconsole.log(typeof kit.intro);\n",
+   "stdout": "Hi, I'm Kit, the stage manager.\nfunction\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node method.js",
+     "out": "Hi, I'm Kit, the stage manager.\nfunction\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "nested.js": {
+   "src": "const venue = {\n  title: \"The Globe\",\n  address: { city: \"London\", street: \"Bankside\" },\n  seats: [120, 340, 80],\n};\nconst { title, address: { city }, seats: [front] } = venue;\nconsole.log(title, \"in\", city);\nconsole.log(\"front section seats:\", front);\nconsole.log(typeof address);\n",
+   "stdout": "The Globe in London\nfront section seats: 120\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node nested.js",
+     "out": "The Globe in London\nfront section seats: 120\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "not_iterable.js": {
+   "src": "const lineup = null;\nconst [star] = lineup;\nconsole.log(star);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/not_iterable.js:2\nconst [star] = lineup;\n               ^\n\nTypeError: lineup is not iterable\n    at file:///home/you/javascript-ch11/not_iterable.js:2:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node not_iterable.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/not_iterable.js:2\nconst [star] = lineup;\n               ^\n\nTypeError: lineup is not iterable\n    at file:///home/you/javascript-ch11/not_iterable.js:2:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/not_iterable.js:2\nconst [star] = lineup;\n               ^\n\nTypeError: lineup is not iterable\n    at file:///home/you/javascript-ch11/not_iterable.js:2:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node not_iterable.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/not_iterable.js:2\nconst [star] = lineup;\n               ^\n\nTypeError: lineup is not iterable\n    at file:///home/you/javascript-ch11/not_iterable.js:2:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "null_literal.js": {
+   "src": "const [star] = null;\nconsole.log(star);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/null_literal.js:1\nconst [star] = null;\n               ^\n\nTypeError: null is not iterable\n    at file:///home/you/javascript-ch11/null_literal.js:1:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node null_literal.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/null_literal.js:1\nconst [star] = null;\n               ^\n\nTypeError: null is not iterable\n    at file:///home/you/javascript-ch11/null_literal.js:1:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/null_literal.js:1\nconst [star] = null;\n               ^\n\nTypeError: null is not iterable\n    at file:///home/you/javascript-ch11/null_literal.js:1:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node null_literal.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/null_literal.js:1\nconst [star] = null;\n               ^\n\nTypeError: null is not iterable\n    at file:///home/you/javascript-ch11/null_literal.js:1:16\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "obj_unpack.js": {
+   "src": "const actor = { name: \"Ada\", role: \"Juliet\", lines: 112 };\nconst { role, name } = actor;\nconsole.log(name, \"plays\", role);\nconst { age } = actor;\nconsole.log(\"age:\", age);\n",
+   "stdout": "Ada plays Juliet\nage: undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node obj_unpack.js",
+     "out": "Ada plays Juliet\nage: undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "old_way.js": {
+   "src": "const trunk = [\"wig\", \"cape\", \"sword\"];\nconst hat = trunk[0];\nconst coat = trunk[1];\nconst prop = trunk[2];\nconsole.log(hat, coat, prop);\n",
+   "stdout": "wig cape sword\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node old_way.js",
+     "out": "wig cape sword\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "or_vs_nullish.js": {
+   "src": "const settings = { volume: 0, title: \"\", lights: null };\nconsole.log(\"volume ||\", settings.volume || 50);\nconsole.log(\"volume ??\", settings.volume ?? 50);\nconsole.log(\"title  ||\", `[${settings.title || \"Untitled\"}]`);\nconsole.log(\"title  ??\", `[${settings.title ?? \"Untitled\"}]`);\nconsole.log(\"lights ??\", settings.lights ?? \"house lights\");\n",
+   "stdout": "volume || 50\nvolume ?? 0\ntitle  || [Untitled]\ntitle  ?? []\nlights ?? house lights\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node or_vs_nullish.js",
+     "out": "volume || 50\nvolume ?? 0\ntitle  || [Untitled]\ntitle  ?? []\nlights ?? house lights\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "overuse.js": {
+   "src": "const users = [\n  { name: \"Ada\", address: { city: \"Lima\" } },\n  { name: \"Bo\", address: { city: \"Oslo\" } },\n];\nfor (const user of users) {\n  console.log(user?.adress?.city ?? \"unknown\");\n}\n",
+   "stdout": "unknown\nunknown\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node overuse.js",
+     "out": "unknown\nunknown\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "overuse_dots.js": {
+   "src": "const users = [\n  { name: \"Ada\", address: { city: \"Lima\" } },\n  { name: \"Bo\", address: { city: \"Oslo\" } },\n];\nfor (const user of users) {\n  console.log(user.adress.city);\n}\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/overuse_dots.js:6\n  console.log(user.adress.city);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/overuse_dots.js:6:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node overuse_dots.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/overuse_dots.js:6\n  console.log(user.adress.city);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/overuse_dots.js:6:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/overuse_dots.js:6\n  console.log(user.adress.city);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/overuse_dots.js:6:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node overuse_dots.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/overuse_dots.js:6\n  console.log(user.adress.city);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'city')\n    at file:///home/you/javascript-ch11/overuse_dots.js:6:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "params.js": {
+   "src": "function badge({ name, role = \"crew\" }) {\n  return `${name} (${role})`;\n}\nconsole.log(badge({ name: \"Ada\", role: \"lead\" }));\nconsole.log(badge({ name: \"Kit\" }));\n\nfunction poster([first, second]) {\n  return `Starring ${first} and ${second}`;\n}\nconsole.log(poster([\"Ada\", \"Bo\", \"Cy\"]));\n",
+   "stdout": "Ada (lead)\nKit (crew)\nStarring Ada and Bo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node params.js",
+     "out": "Ada (lead)\nKit (crew)\nStarring Ada and Bo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_unpack.js": {
+   "src": "const tour = { show: \"Hamlet\", stops: [\"Oslo\", \"Rome\", \"Lima\"] };\nconst { show, stops } = tour;\nconst [first, ...rest] = stops;\nconsole.log(`${show} opens in ${first}`);\nconsole.log(`then ${rest.join(\" and \")}`);\n",
+   "stdout": "Hamlet opens in Oslo\nthen Rome and Lima\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_unpack.js",
+     "out": "Hamlet opens in Oslo\nthen Rome and Lima\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_knock.js": {
+   "src": "const guests = [\n  { name: \"Ada\", seat: { row: \"A\", number: 3 } },\n  { name: \"Bo\", seat: null },\n  { name: \"Cy\", seat: { row: \"C\" } },\n];\nfor (const g of guests) {\n  console.log(g.name, g.seat?.row ?? \"?\", g.seat?.number ?? 0);\n}\n",
+   "stdout": "Ada A 3\nBo ? 0\nCy C 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_knock.js",
+     "out": "Ada A 3\nBo ? 0\nCy C 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_merge.js": {
+   "src": "const base = { seat: \"B4\", snack: \"popcorn\" };\nconst upgrade = { seat: \"A1\" };\nconst ticket = { ...base, ...upgrade, drink: \"juice\" };\nconst oops = { ...upgrade, ...base };\nconsole.log(ticket.seat, ticket.snack, ticket.drink);\nconsole.log(oops.seat);\n",
+   "stdout": "A1 popcorn juice\nB4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_merge.js",
+     "out": "A1 popcorn juice\nB4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_shallow.js": {
+   "src": "const original = [1, [2, 3]];\nconst copy = [...original];\ncopy[0] = 100;\ncopy[1][0] = 200;\nconsole.log(original);\nconsole.log(copy);\n",
+   "stdout": "[ 1, [ 200, 3 ] ]\n[ 100, [ 200, 3 ] ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_shallow.js",
+     "out": "[ 1, [ 200, 3 ] ]\n[ 100, [ 200, 3 ] ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_six.js": {
+   "src": "function who() {\n  return this?.name ?? \"nobody\";\n}\nconst ada = { name: \"Ada\", who, arrow: () => this?.name ?? \"nobody\" };\nconst bo = { name: \"Bo\", who: ada.who };\nconst team = { name: \"Crew\", lead: ada };\nconst loose = ada.who;\nconsole.log(ada.who());\nconsole.log(bo.who());\nconsole.log(loose());\nconsole.log(ada.arrow());\nconsole.log(team.lead.who());\nconsole.log([\"x\"].map(ada.who)[0]);\n",
+   "stdout": "Ada\nBo\nnobody\nnobody\nAda\nnobody\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_six.js",
+     "out": "Ada\nBo\nnobody\nnobody\nAda\nnobody\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_slots.js": {
+   "src": "const lights = [\"red\", \"blue\"];\nconst [one, , three = \"white\"] = lights;\nconst [, second] = lights;\nconsole.log(one, three);\nconsole.log(second);\n",
+   "stdout": "red white\nblue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_slots.js",
+     "out": "red white\nblue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_who.js": {
+   "src": "function shout() {\n  return `${this.name.toUpperCase()}!`;\n}\nconst cy = { name: \"Cy\", shout };\nconst dee = { name: \"Dee\", shout, friend: cy };\nconsole.log(dee.shout());\nconsole.log(dee.friend.shout());\nconsole.log(cy.shout() === dee.friend.shout());\n",
+   "stdout": "DEE!\nCY!\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_who.js",
+     "out": "DEE!\nCY!\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "rename_default.js": {
+   "src": "const actor = { name: \"Bo\", role: \"Romeo\" };\nconst { name: actorName, mood = \"nervous\" } = actor;\nconsole.log(actorName, \"is\", mood);\nconst { role: part = \"extra\", lines = 0 } = actor;\nconsole.log(part, lines);\n",
+   "stdout": "Bo is nervous\nRomeo 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node rename_default.js",
+     "out": "Bo is nervous\nRomeo 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "rest_destructure.js": {
+   "src": "const lineup = [\"Ada\", \"Bo\", \"Cy\", \"Dee\"];\nconst [star, ...chorus] = lineup;\nconsole.log(\"star:\", star);\nconsole.log(\"chorus:\", chorus);\n\nconst actor = { name: \"Bo\", role: \"Romeo\", lines: 98 };\nconst { name, ...details } = actor;\nconsole.log(name, details);\n",
+   "stdout": "star: Ada\nchorus: [ 'Bo', 'Cy', 'Dee' ]\nBo { role: 'Romeo', lines: 98 }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node rest_destructure.js",
+     "out": "star: Ada\nchorus: [ 'Bo', 'Cy', 'Dee' ]\nBo { role: 'Romeo', lines: 98 }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "rest_last.js": {
+   "src": "const lineup = [\"Ada\", \"Bo\", \"Cy\"];\nconst [...others, last] = lineup;\nconsole.log(last);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/rest_last.js:2\nconst [...others, last] = lineup;\n       ^^^^^^^^^\n\nSyntaxError: Rest element must be last element\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node rest_last.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/rest_last.js:2\nconst [...others, last] = lineup;\n       ^^^^^^^^^\n\nSyntaxError: Rest element must be last element\n    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:94:18)\n    at #translate (node:internal/modules/esm/loader:441:20)\n    at afterLoad (node:internal/modules/esm/loader:509:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)\n    at afterResolve (node:internal/modules/esm/loader:614:52)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)\n    at node:internal/modules/esm/loader:639:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:582:22)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/rest_last.js:2\nconst [...others, last] = lineup;\n       ^^^^^^^^^\n\nSyntaxError: Rest element must be last element\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node rest_last.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/rest_last.js:2\nconst [...others, last] = lineup;\n       ^^^^^^^^^\n\nSyntaxError: Rest element must be last element\n    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)\n    at #translate (node:internal/modules/esm/loader:559:20)\n    at afterLoad (node:internal/modules/esm/loader:612:29)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:25)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "rest_params.js": {
+   "src": "function total(...prices) {\n  console.log(\"got\", prices.length, \"prices:\", prices);\n  return prices.reduce((sum, p) => sum + p, 0);\n}\nconsole.log(total(5, 10));\nconsole.log(total(2, 4, 6, 8));\nconsole.log(total());\n\nfunction welcome(host, ...guests) {\n  console.log(`${host} welcomes ${guests.join(\", \")}`);\n}\nwelcome(\"Kit\", \"Ada\", \"Bo\", \"Cy\");\n",
+   "stdout": "got 2 prices: [ 5, 10 ]\n15\ngot 4 prices: [ 2, 4, 6, 8 ]\n20\ngot 0 prices: []\n0\nKit welcomes Ada, Bo, Cy\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node rest_params.js",
+     "out": "got 2 prices: [ 5, 10 ]\n15\ngot 4 prices: [ 2, 4, 6, 8 ]\n20\ngot 0 prices: []\n0\nKit welcomes Ada, Bo, Cy\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shallow.js": {
+   "src": "const tour = { city: \"Oslo\", crew: [\"Ada\", \"Bo\"] };\nconst copy = { ...tour };\ncopy.city = \"Rome\";\ncopy.crew.push(\"Cy\");\nconsole.log(tour.city, tour.crew);\nconsole.log(copy.city, copy.crew);\n",
+   "stdout": "Oslo [ 'Ada', 'Bo', 'Cy' ]\nRome [ 'Ada', 'Bo', 'Cy' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shallow.js",
+     "out": "Oslo [ 'Ada', 'Bo', 'Cy' ]\nRome [ 'Ada', 'Bo', 'Cy' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shared.js": {
+   "src": "function intro() {\n  return `My name is ${this.name}.`;\n}\nconst ada = { name: \"Ada\", intro };\nconst bo = { name: \"Bo\", intro };\nconsole.log(ada.intro());\nconsole.log(bo.intro());\nconsole.log(ada.intro === bo.intro);\n",
+   "stdout": "My name is Ada.\nMy name is Bo.\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shared.js",
+     "out": "My name is Ada.\nMy name is Bo.\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slots.js": {
+   "src": "const trunk = [\"wig\", \"cape\", \"sword\", \"lute\"];\n\nconst [first, , third] = trunk;\nconsole.log(\"skip one:\", first, third);\n\nconst [a, b] = trunk;\nconsole.log(\"only two:\", a, b);\n\nconst [w, x, y, z, extra] = trunk;\nconsole.log(\"one too many:\", extra);\n\nconst [lead, understudy = \"Kit\"] = [\"Ada\"];\nconsole.log(\"default:\", lead, understudy);\n",
+   "stdout": "skip one: wig sword\nonly two: wig cape\none too many: undefined\ndefault: Ada Kit\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node slots.js",
+     "out": "skip one: wig sword\nonly two: wig cape\none too many: undefined\ndefault: Ada Kit\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_name.js": {
+   "src": "const ada = {\n  name: \"Ada\",\n  intro() {\n    return `My name is ${ada.name}.`;\n  },\n};\nconst bo = { name: \"Bo\", intro: ada.intro };\nconsole.log(ada.intro());\nconsole.log(bo.intro());\n",
+   "stdout": "My name is Ada.\nMy name is Ada.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_name.js",
+     "out": "My name is Ada.\nMy name is Ada.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_ticket.js": {
+   "src": "function ticket({ seat, price = 10 }) {\n  return `Seat ${seat}: ${price} dollars`;\n}\nconsole.log(ticket({ seat: \"A1\", price: 12 }));\nconsole.log(ticket(\"B2\"));\n",
+   "stdout": "Seat A1: 12 dollars\nSeat undefined: 10 dollars\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_ticket.js",
+     "out": "Seat A1: 12 dollars\nSeat undefined: 10 dollars\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_timer.js": {
+   "src": "const desk = {\n  opens: \"7pm\",\n  announce() {\n    console.log(`Doors open at ${this.opens}`);\n  },\n};\ndesk.announce();\nsetTimeout(desk.announce, 20);\n",
+   "stdout": "Doors open at 7pm\nDoors open at undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_timer.js",
+     "out": "Doors open at 7pm\nDoors open at undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spread_arrays.js": {
+   "src": "const act1 = [\"Ada\", \"Bo\"];\nconst act2 = [\"Cy\", \"Dee\"];\nconst everyone = [...act1, ...act2, \"Kit\"];\nconsole.log(everyone);\nconsole.log([...\"KIT\"]);\nconst scores = [7, 9, 4];\nconsole.log(Math.max(...scores));\nconsole.log(Math.max(scores));\n",
+   "stdout": "[ 'Ada', 'Bo', 'Cy', 'Dee', 'Kit' ]\n[ 'K', 'I', 'T' ]\n9\nNaN\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spread_arrays.js",
+     "out": "[ 'Ada', 'Bo', 'Cy', 'Dee', 'Kit' ]\n[ 'K', 'I', 'T' ]\n9\nNaN\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spread_objects.js": {
+   "src": "const defaults = { lights: \"warm\", volume: 5, curtain: \"red\" };\nconst tonight = { volume: 8, smoke: true };\nconst settings = { ...defaults, ...tonight };\nconsole.log(settings);\nconst backwards = { ...tonight, ...defaults };\nconsole.log(backwards.volume);\n",
+   "stdout": "{ lights: 'warm', volume: 8, curtain: 'red', smoke: true }\n5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spread_objects.js",
+     "out": "{ lights: 'warm', volume: 8, curtain: 'red', smoke: true }\n5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "swap.js": {
+   "src": "let left = \"Ada\";\nlet right = \"Bo\";\nconsole.log(\"before:\", left, right);\n[left, right] = [right, left];\nconsole.log(\"after:\", left, right);\n",
+   "stdout": "before: Ada Bo\nafter: Bo Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node swap.js",
+     "out": "before: Ada Bo\nafter: Bo Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "swap_asi.js": {
+   "src": "let left = \"Ada\"\nlet right = \"Bo\"\n[left, right] = [right, left]\nconsole.log(left, right)\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/swap_asi.js:3\n[left, right] = [right, left]\n       ^\n\nReferenceError: Cannot access 'right' before initialization\n    at file:///home/you/javascript-ch11/swap_asi.js:3:8\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node swap_asi.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/swap_asi.js:3\n[left, right] = [right, left]\n       ^\n\nReferenceError: Cannot access 'right' before initialization\n    at file:///home/you/javascript-ch11/swap_asi.js:3:8\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/swap_asi.js:3\n[left, right] = [right, left]\n       ^\n\nReferenceError: Cannot access 'right' before initialization\n    at file:///home/you/javascript-ch11/swap_asi.js:3:8\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node swap_asi.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/swap_asi.js:3\n[left, right] = [right, left]\n       ^\n\nReferenceError: Cannot access 'right' before initialization\n    at file:///home/you/javascript-ch11/swap_asi.js:3:8\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "timer_fixed.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  cue() {\n    console.log(`${this.name}: stand by... GO!`);\n  },\n};\nsetTimeout(() => kit.cue(), 10);\nsetTimeout(kit.cue.bind(kit), 20);\n",
+   "stdout": "Kit: stand by... GO!\nKit: stand by... GO!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node timer_fixed.js",
+     "out": "Kit: stand by... GO!\nKit: stand by... GO!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "timer_lost.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  cue() {\n    console.log(`${this.name}: stand by... GO!`);\n  },\n};\nkit.cue();\nsetTimeout(kit.cue, 10);\n",
+   "stdout": "Kit: stand by... GO!\nundefined: stand by... GO!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node timer_lost.js",
+     "out": "Kit: stand by... GO!\nundefined: stand by... GO!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "timer_peek.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  cue() {\n    console.log(\"this is:\", this.constructor.name);\n  },\n};\nkit.cue();\nsetTimeout(kit.cue, 10);\n",
+   "stdout": "this is: Object\nthis is: Timeout\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node timer_peek.js",
+     "out": "this is: Object\nthis is: Timeout\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_assign.js": {
+   "src": "const show = (v) => (v === \"\" ? '\"\"' : String(v));\nfor (const start of [null, 0, \"\", \"Kit\"]) {\n  let a = start;\n  let b = start;\n  let c = start;\n  a ??= \"X\";\n  b ||= \"X\";\n  c &&= \"X\";\n  console.log(show(start), show(a), show(b), show(c));\n}\n",
+   "stdout": "null X X null\n0 0 X 0\n\"\" \"\" X \"\"\nKit Kit Kit X\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_assign.js",
+     "out": "null X X null\n0 0 X 0\n\"\" \"\" X \"\"\nKit Kit Kit X\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_rest.js": {
+   "src": "function split(first, ...more) {\n  return [first, more.length];\n}\nconst calls = [[\"a\"], [\"a\", \"b\"], [\"a\", \"b\", \"c\"], []];\nfor (const args of calls) {\n  const [first, extra] = split(...args);\n  console.log(args.length, first, extra);\n}\n",
+   "stdout": "1 a 0\n2 a 1\n3 a 2\n0 undefined 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_rest.js",
+     "out": "1 a 0\n2 a 1\n3 a 2\n0 undefined 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "unpack.js": {
+   "src": "const trunk = [\"wig\", \"cape\", \"sword\"];\nconst [hat, coat, prop] = trunk;\nconsole.log(hat, coat, prop);\n",
+   "stdout": "wig cape sword\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node unpack.js",
+     "out": "wig cape sword\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "who.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  who() {\n    return this.name;\n  },\n};\nconst ada = { name: \"Ada\", who: kit.who };\nconsole.log(kit.who());\nconsole.log(ada.who());\nconsole.log(kit[\"who\"]());\n",
+   "stdout": "Kit\nAda\nKit\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node who.js",
+     "out": "Kit\nAda\nKit\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "who_arrow.cjs": {
+   "src": "const kit = {\n  name: \"Kit\",\n  arrowWho: () => this.name,\n};\nconsole.log(kit.arrowWho());\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node who_arrow.cjs",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "who_arrow.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  arrowWho: () => this.name,\n};\nconsole.log(kit.arrowWho());\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/who_arrow.js:3\n  arrowWho: () => this.name,\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at Object.arrowWho (file:///home/you/javascript-ch11/who_arrow.js:3:24)\n    at file:///home/you/javascript-ch11/who_arrow.js:5:17\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node who_arrow.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/who_arrow.js:3\n  arrowWho: () => this.name,\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at Object.arrowWho (file:///home/you/javascript-ch11/who_arrow.js:3:24)\n    at file:///home/you/javascript-ch11/who_arrow.js:5:17\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/who_arrow.js:3\n  arrowWho: () => this.name,\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at Object.arrowWho (file:///home/you/javascript-ch11/who_arrow.js:3:24)\n    at file:///home/you/javascript-ch11/who_arrow.js:5:17\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node who_arrow.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/who_arrow.js:3\n  arrowWho: () => this.name,\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at Object.arrowWho (file:///home/you/javascript-ch11/who_arrow.js:3:24)\n    at file:///home/you/javascript-ch11/who_arrow.js:5:17\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "who_detached.js": {
+   "src": "const kit = {\n  name: \"Kit\",\n  who() {\n    return this.name;\n  },\n};\nconst f = kit.who;\nconsole.log(f());\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch11/who_detached.js:4\n    return this.name;\n                ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at who (file:///home/you/javascript-ch11/who_detached.js:4:17)\n    at file:///home/you/javascript-ch11/who_detached.js:8:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node who_detached.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch11/who_detached.js:4\n    return this.name;\n                ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at who (file:///home/you/javascript-ch11/who_detached.js:4:17)\n    at file:///home/you/javascript-ch11/who_detached.js:8:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch11/who_detached.js:4\n    return this.name;\n                ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at who (file:///home/you/javascript-ch11/who_detached.js:4:17)\n    at file:///home/you/javascript-ch11/who_detached.js:8:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node who_detached.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch11/who_detached.js:4\n    return this.name;\n                ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at who (file:///home/you/javascript-ch11/who_detached.js:4:17)\n    at file:///home/you/javascript-ch11/who_detached.js:8:13\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
