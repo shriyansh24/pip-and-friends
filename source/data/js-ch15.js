@@ -1,0 +1,912 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch15",
+  "versionDifferences": [
+   "document.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): document.js."
+ },
+ "programs": {
+  "a11y.html": {
+   "src": "<!doctype html>\n<button id=\"real\">Ring (a real button)</button>\n<div id=\"fake\">Ring (a div)</div>\n<p id=\"status\" aria-live=\"polite\"></p>\n<script>\n  function ring(event) {\n    document.querySelector(\"#status\").textContent = \"The usher is on the way.\";\n    console.log(event.currentTarget.id, \"rang, from a\", event.type, \"event\");\n  }\n  document.querySelector(\"#real\").addEventListener(\"click\", ring);\n  document.querySelector(\"#fake\").addEventListener(\"click\", ring);\n  document.addEventListener(\"keydown\", (event) => {\n    const where = document.activeElement.id || document.activeElement.tagName;\n    console.log(event.key, \"pressed; focus is on:\", where);\n  });\n</script>\n",
+   "stdout": "fake rang, from a click event\nEnter pressed; focus is on: BODY\nEnter pressed; focus is on: real\nreal rang, from a click event\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open a11y.html in a browser (console shown)",
+     "out": "fake rang, from a click event\nEnter pressed; focus is on: BODY\nEnter pressed; focus is on: real\nreal rang, from a click event\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bell_walk.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring for the usher</button>\n<script>\n  const bell = document.querySelector(\"#bell\");\n  function ring() {\n    console.log(\"Ding dong!\");\n  }\n  bell.addEventListener(\"click\", ring);\n  console.log(\"Wired up. Waiting...\");\n</script>\n",
+   "stdout": "Wired up. Waiting...\nDing dong!\nDing dong!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open bell_walk.html in a browser (console shown)",
+     "out": "Wired up. Waiting...\nDing dong!\nDing dong!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_fill.html": {
+   "src": "<!doctype html>\n<ul id=\"props\">\n  <li>skull <button class=\"drop\">Drop</button></li>\n  <li>sword <button class=\"drop\">Drop</button></li>\n  <li>crown <button class=\"drop\">Drop</button></li>\n</ul>\n<script>\n  const props = document.querySelector(\"#props\");\n  props.addEventListener(\"click\", (event) => {\n    if (event.target.matches(\".drop\")) {\n      event.target.parentNode.remove();\n      console.log(\"props left:\", props.children.length);\n    }\n  });\n</script>\n",
+   "stdout": "props left: 2\nprops left: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open boss_fill.html in a browser (console shown)",
+     "out": "props left: 2\nprops left: 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.html": {
+   "src": "<!doctype html>\n<form id=\"board\"><input id=\"name\" aria-label=\"Name\"><button>Add</button></form>\n<ul id=\"list\"><li>Ada</li></ul>\n<script>\n  const input = document.querySelector(\"#name\");\n  const list = document.querySelector(\"#list\");\n  document.querySelector(\"#board\").addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    const li = document.createElement(\"li\");\n    li.textContent = input.value.trim();\n    console.log(\"new card:\", li.textContent, \"| cards:\", list.children.length);\n    list.append(li);\n    console.log(\"cards:\", list.children.length);\n  });\n</script>\n",
+   "stdout": "new card: Grace | cards: 1\ncards: 2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open boss_parsons.html in a browser (console shown)",
+     "out": "new card: Grace | cards: 1\ncards: 2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_predict.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li>Ada</li>\n  <li>Grace</li>\n</ul>\n<script>\n  const cast = document.querySelector(\"#cast\");\n  document.querySelector(\"li\").addEventListener(\"click\", () => console.log(\"direct\"));\n  cast.addEventListener(\"click\", (event) => console.log(\"ul heard\", event.target.textContent));\n  cast.innerHTML += \"<li>Alan</li>\";\n  console.log(cast.children.length);\n</script>\n",
+   "stdout": "3\nul heard Ada\nul heard Alan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open boss_predict.html in a browser (console shown)",
+     "out": "3\nul heard Ada\nul heard Alan\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li>Ada</li>\n  <li>Grace</li>\n</ul>\n<script>\n  const cast = document.querySelector(\"#cast\");\n  cast.addEventListener(\"click\", (event) => {\n    console.log(\"click reached the ul\");\n    if (event.currentTarget.matches(\"li\")) {\n      console.log(\"Bow:\", event.target.textContent);\n    }\n  });\n</script>\n",
+   "stdout": "click reached the ul\nclick reached the ul\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open boss_spot.html in a browser (console shown)",
+     "out": "click reached the ul\nclick reached the ul\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.html": {
+   "src": "<!doctype html>\n<style>\n  #theatre { width: 360px; height: 260px; padding: 10px; }\n  #row { width: 340px; height: 90px; text-align: left; }\n  #seat { width: 90px; height: 40px; }\n</style>\n<div id=\"theatre\">\n  <div id=\"row\">\n    <button id=\"seat\">Seat 7</button>\n  </div>\n</div>\n<script>\n  const heard = { theatre: 0, row: 0, seat: 0 };\n  function count(event) {\n    const id = event.currentTarget.id;\n    heard[id] = heard[id] + 1;\n    console.log(id, heard[id]);\n  }\n  for (const id of [\"seat\", \"row\", \"theatre\"]) {\n    document.querySelector(\"#\" + id).addEventListener(\"click\", count);\n  }\n</script>\n",
+   "stdout": "seat 1\nrow 1\ntheatre 1\nrow 2\ntheatre 2\nseat 2\nrow 3\ntheatre 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open boss_trace.html in a browser (console shown)",
+     "out": "seat 1\nrow 1\ntheatre 1\nrow 2\ntheatre 2\nseat 2\nrow 3\ntheatre 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bubble_row.html": {
+   "src": "<!doctype html>\n<style>\n  #theatre { width: 360px; height: 260px; padding: 10px; }\n  #row { width: 340px; height: 90px; text-align: left; }\n  #seat { width: 90px; height: 40px; }\n</style>\n<div id=\"theatre\">\n  <div id=\"row\">\n    <button id=\"seat\">Seat 7</button>\n  </div>\n</div>\n<script>\n  function heard(event) {\n    console.log(event.currentTarget.id, \"heard it (clicked:\", event.target.id + \")\");\n  }\n  document.querySelector(\"#seat\").addEventListener(\"click\", heard);\n  document.querySelector(\"#row\").addEventListener(\"click\", heard);\n  document.querySelector(\"#theatre\").addEventListener(\"click\", heard);\n</script>\n",
+   "stdout": "row heard it (clicked: row)\ntheatre heard it (clicked: row)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open bubble_row.html in a browser (console shown)",
+     "out": "row heard it (clicked: row)\ntheatre heard it (clicked: row)\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bubble_seat.html": {
+   "src": "<!doctype html>\n<style>\n  #theatre { width: 360px; height: 260px; padding: 10px; }\n  #row { width: 340px; height: 90px; text-align: left; }\n  #seat { width: 90px; height: 40px; }\n</style>\n<div id=\"theatre\">\n  <div id=\"row\">\n    <button id=\"seat\">Seat 7</button>\n  </div>\n</div>\n<script>\n  function heard(event) {\n    console.log(event.currentTarget.id, \"heard it (clicked:\", event.target.id + \")\");\n  }\n  document.querySelector(\"#seat\").addEventListener(\"click\", heard);\n  document.querySelector(\"#row\").addEventListener(\"click\", heard);\n  document.querySelector(\"#theatre\").addEventListener(\"click\", heard);\n</script>\n",
+   "stdout": "seat heard it (clicked: seat)\nrow heard it (clicked: seat)\ntheatre heard it (clicked: seat)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open bubble_seat.html in a browser (console shown)",
+     "out": "seat heard it (clicked: seat)\nrow heard it (clicked: seat)\ntheatre heard it (clicked: seat)\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "bubble_theatre.html": {
+   "src": "<!doctype html>\n<style>\n  #theatre { width: 360px; height: 260px; padding: 10px; }\n  #row { width: 340px; height: 90px; text-align: left; }\n  #seat { width: 90px; height: 40px; }\n</style>\n<div id=\"theatre\">\n  <div id=\"row\">\n    <button id=\"seat\">Seat 7</button>\n  </div>\n</div>\n<script>\n  function heard(event) {\n    console.log(event.currentTarget.id, \"heard it (clicked:\", event.target.id + \")\");\n  }\n  document.querySelector(\"#seat\").addEventListener(\"click\", heard);\n  document.querySelector(\"#row\").addEventListener(\"click\", heard);\n  document.querySelector(\"#theatre\").addEventListener(\"click\", heard);\n</script>\n",
+   "stdout": "theatre heard it (clicked: theatre)\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open bubble_theatre.html in a browser (console shown)",
+     "out": "theatre heard it (clicked: theatre)\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "build_list.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li>Ada</li>\n</ul>\n<script>\n  const list = document.querySelector(\"#cast\");\n  const li = document.createElement(\"li\");\n  li.textContent = \"Grace\";\n  console.log(list.children.length, li.isConnected);\n  list.append(li);\n  console.log(list.children.length, li.isConnected);\n  li.remove();\n  console.log(list.children.length, li.isConnected, li.textContent);\n</script>\n",
+   "stdout": "1 false\n2 true\n1 false Grace\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open build_list.html in a browser (console shown)",
+     "out": "1 false\n2 true\n1 false Grace\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "called.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring for the usher</button>\n<script>\n  const bell = document.querySelector(\"#bell\");\n  function ring() {\n    console.log(\"Ding dong!\");\n  }\n  bell.addEventListener(\"click\", ring());\n  console.log(\"Wired up. Waiting...\");\n</script>\n",
+   "stdout": "Ding dong!\nWired up. Waiting...\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open called.html in a browser (console shown)",
+     "out": "Ding dong!\nWired up. Waiting...\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "classes.html": {
+   "src": "<!doctype html>\n<style>\n  .lit { background: gold; }\n  .dim { opacity: 0.5; }\n</style>\n<p id=\"spot\" class=\"stage\">Spotlight</p>\n<script>\n  const spot = document.querySelector(\"#spot\");\n  console.log(spot.className);\n  spot.classList.add(\"lit\");\n  console.log(spot.className);\n  spot.classList.remove(\"stage\");\n  console.log(spot.className);\n  spot.classList.toggle(\"dim\");\n  console.log(spot.className);\n  spot.classList.toggle(\"dim\");\n  console.log(spot.className, spot.classList.contains(\"dim\"));\n\n  spot.style.color = \"crimson\";\n  spot.style.fontSize = \"2rem\";\n  console.log(spot.getAttribute(\"style\"));\n</script>\n",
+   "stdout": "stage\nstage lit\nlit\nlit dim\nlit false\ncolor: crimson; font-size: 2rem;\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open classes.html in a browser (console shown)",
+     "out": "stage\nstage lit\nlit\nlit dim\nlit false\ncolor: crimson; font-size: 2rem;\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "delegation.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li>Ada</li>\n  <li>Grace</li>\n</ul>\n<button id=\"add\">Add Alan</button>\n<script>\n  const cast = document.querySelector(\"#cast\");\n\n  // A: one listener on each li that exists right now\n  document.querySelectorAll(\"#cast li\").forEach((li) => {\n    li.addEventListener(\"click\", () => console.log(\"A, on the li:\", li.textContent));\n  });\n\n  // B: one listener on the parent, for every li, now or later\n  cast.addEventListener(\"click\", (event) => {\n    if (event.target.matches(\"li\")) {\n      console.log(\"B, on the ul:\", event.target.textContent);\n    }\n  });\n\n  document.querySelector(\"#add\").addEventListener(\"click\", () => {\n    const li = document.createElement(\"li\");\n    li.textContent = \"Alan\";\n    cast.append(li);\n  });\n</script>\n",
+   "stdout": "A, on the li: Ada\nB, on the ul: Ada\nB, on the ul: Alan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open delegation.html in a browser (console shown)",
+     "out": "A, on the li: Ada\nB, on the ul: Ada\nB, on the ul: Alan\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "document.js": {
+   "src": "const title = document.querySelector(\"h1\");\nconsole.log(title.textContent);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch15/document.js:1\nconst title = document.querySelector(\"h1\");\n              ^\n\nReferenceError: document is not defined\n    at file:///home/you/javascript-ch15/document.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node document.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch15/document.js:1\nconst title = document.querySelector(\"h1\");\n              ^\n\nReferenceError: document is not defined\n    at file:///home/you/javascript-ch15/document.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch15/document.js:1\nconst title = document.querySelector(\"h1\");\n              ^\n\nReferenceError: document is not defined\n    at file:///home/you/javascript-ch15/document.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node document.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch15/document.js:1\nconst title = document.querySelector(\"h1\");\n              ^\n\nReferenceError: document is not defined\n    at file:///home/you/javascript-ch15/document.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "event_obj.html": {
+   "src": "<!doctype html>\n<button id=\"bell\" style=\"width: 320px; height: 80px; text-align: left\"><b>Ring</b></button>\n<input id=\"name\" aria-label=\"Your name\">\n<script>\n  const bell = document.querySelector(\"#bell\");\n  bell.addEventListener(\"click\", (event) => {\n    console.log(event.type, event.target.tagName, event.currentTarget.tagName);\n  });\n  const name = document.querySelector(\"#name\");\n  name.addEventListener(\"keydown\", (event) => {\n    console.log(event.type, event.key);\n  });\n</script>\n",
+   "stdout": "click B BUTTON\nclick BUTTON BUTTON\nkeydown a\nkeydown Enter\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open event_obj.html in a browser (console shown)",
+     "out": "click B BUTTON\nclick BUTTON BUTTON\nkeydown a\nkeydown Enter\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_array.html": {
+   "src": "<!doctype html>\n<ul><li>skull</li><li>sword</li><li>crown</li></ul>\n<script>\n  const items = document.querySelectorAll(\"li\");\n  const props = Array.from(items).map((li) => li.textContent.toUpperCase());\n  console.log(props.join(\" + \"));\n</script>\n",
+   "stdout": "SKULL + SWORD + CROWN\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open fill_array.html in a browser (console shown)",
+     "out": "SKULL + SWORD + CROWN\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_delegate.html": {
+   "src": "<!doctype html>\n<ul id=\"props\">\n  <li>skull</li>\n  <li>sword</li>\n</ul>\n<script>\n  const props = document.querySelector(\"#props\");\n  props.addEventListener(\"click\", (event) => {\n    if (event.target.matches(\"li\")) {\n      event.target.classList.toggle(\"packed\");\n      console.log(event.target.textContent, \"packed?\", event.target.classList.contains(\"packed\"));\n    }\n  });\n  const crown = document.createElement(\"li\");\n  crown.textContent = \"crown\";\n  props.append(crown);\n</script>\n",
+   "stdout": "crown packed? true\nskull packed? true\ncrown packed? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open fill_delegate.html in a browser (console shown)",
+     "out": "crown packed? true\nskull packed? true\ncrown packed? false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_prevent.html": {
+   "src": "<!doctype html>\n<form id=\"search\">\n  <input id=\"q\" name=\"q\" aria-label=\"Search the programme\">\n  <button>Search</button>\n</form>\n<script>\n  console.log(\"loaded:\", location.search || \"(no query)\");\n  document.querySelector(\"#search\").addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    console.log(\"searching for\", document.querySelector(\"#q\").value);\n  });\n</script>\n",
+   "stdout": "loaded: (no query)\nsearching for ghost\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open fill_prevent.html in a browser (console shown)",
+     "out": "loaded: (no query)\nsearching for ghost\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "find.html": {
+   "src": "<!doctype html>\n<h1 id=\"title\">Tonight: Hamlet</h1>\n<ul id=\"cast\">\n  <li class=\"lead\">Ada</li>\n  <li>Grace</li>\n  <li>Alan</li>\n</ul>\n<script>\n  const title = document.getElementById(\"title\");\n  console.log(title.textContent);\n\n  const first = document.querySelector(\"li\");\n  console.log(first.textContent);\n\n  const lead = document.querySelector(\".lead\");\n  console.log(lead === first);\n\n  const everyone = document.querySelectorAll(\"#cast li\");\n  console.log(everyone.length);\n  everyone.forEach((li) => console.log(\"-\", li.textContent));\n\n  console.log(document.querySelector(\"#titel\"));\n</script>\n",
+   "stdout": "Tonight: Hamlet\nAda\ntrue\n3\n- Ada\n- Grace\n- Alan\nnull\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open find.html in a browser (console shown)",
+     "out": "Tonight: Hamlet\nAda\ntrue\n3\n- Ada\n- Grace\n- Alan\nnull\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "guestbook.html": {
+   "src": "<!doctype html>\n<input id=\"name\" aria-label=\"Your name\">\n<button id=\"unsafe\">Sign with innerHTML</button>\n<button id=\"safe\">Sign with textContent</button>\n<p id=\"sign1\"></p>\n<p id=\"sign2\"></p>\n<script>\n  const input = document.querySelector(\"#name\");\n  document.querySelector(\"#unsafe\").addEventListener(\"click\", () => {\n    document.querySelector(\"#sign1\").innerHTML = \"Welcome, \" + input.value;\n    console.log(\"innerHTML sign: elements inside =\", document.querySelector(\"#sign1\").children.length);\n  });\n  document.querySelector(\"#safe\").addEventListener(\"click\", () => {\n    document.querySelector(\"#sign2\").textContent = \"Welcome, \" + input.value;\n    console.log(\"textContent sign: elements inside =\", document.querySelector(\"#sign2\").children.length);\n    console.log(\"it shows:\", document.querySelector(\"#sign2\").textContent);\n  });\n</script>\n",
+   "stdout": "innerHTML sign: elements inside = 1\nA stranger ran code on your page!\ntextContent sign: elements inside = 0\nit shows: Welcome, <img src=\"nope.png\" onerror=\"console.log('A stranger ran code on your page!')\">\n",
+   "stderr": "Failed to load resource: net::ERR_FILE_NOT_FOUND\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open guestbook.html in a browser (console shown)",
+     "out": "innerHTML sign: elements inside = 1\nA stranger ran code on your page!\ntextContent sign: elements inside = 0\nit shows: Welcome, <img src=\"nope.png\" onerror=\"console.log('A stranger ran code on your page!')\">\n",
+     "err": "Failed to load resource: net::ERR_FILE_NOT_FOUND\n",
+     "exit": 0,
+     "merged": "innerHTML sign: elements inside = 1\nFailed to load resource: net::ERR_FILE_NOT_FOUND\nA stranger ran code on your page!\ntextContent sign: elements inside = 0\nit shows: Welcome, <img src=\"nope.png\" onerror=\"console.log('A stranger ran code on your page!')\">\n"
+    }
+   ]
+  },
+  "head_script.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Lobby</title>\n  <script>\n    const bell = document.querySelector(\"#bell\");\n    console.log(\"bell is:\", bell);\n    bell.addEventListener(\"click\", () => console.log(\"Ding dong!\"));\n  </script>\n</head>\n<body>\n  <button id=\"bell\">Ring for the usher</button>\n</body>\n</html>\n",
+   "stdout": "bell is: null\n",
+   "stderr": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open head_script.html in a browser (console shown)",
+     "out": "bell is: null\n",
+     "err": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')\n",
+     "exit": 1,
+     "merged": "bell is: null\nUncaught TypeError: Cannot read properties of null (reading 'addEventListener')\n"
+    }
+   ]
+  },
+  "lobby.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Tonight at the Lantern</title>\n  <script src=\"js/lobby.js\" defer></script>\n</head>\n<body>\n  <h1 id=\"title\">Tonight: Hamlet</h1>\n  <p class=\"note\">Doors open at <b>7 pm</b>.</p>\n  <ul id=\"cast\">\n    <li class=\"lead\">Ada</li>\n    <li>Grace</li>\n    <li>Alan</li>\n  </ul>\n  <button id=\"bell\">Ring for the usher</button>\n</body>\n</html>\n",
+   "stdout": "Found the sign: Tonight: Hamlet\nScript finished. Waiting for the bell...\nDing dong! The usher is coming.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open lobby.html in a browser (console shown)",
+     "out": "Found the sign: Tonight: Hamlet\nScript finished. Waiting for the bell...\nDing dong! The usher is coming.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "js/lobby.js": {
+   "src": "const title = document.querySelector(\"#title\");\nconsole.log(\"Found the sign:\", title.textContent);\n\nconst bell = document.querySelector(\"#bell\");\nbell.addEventListener(\"click\", () => {\n  console.log(\"Ding dong! The usher is coming.\");\n});\nconsole.log(\"Script finished. Waiting for the bell...\");\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "machine_badsel.html": {
+   "src": "<!doctype html>\n<h1 id=\"title\">Tonight: Hamlet</h1>\n<script>\n  document.querySelector(\"Tonight: Hamlet\");\n</script>\n",
+   "stdout": "",
+   "stderr": "Uncaught SyntaxError: Failed to execute 'querySelector' on 'Document': 'Tonight: Hamlet' is not a valid selector.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open machine_badsel.html in a browser (console shown)",
+     "out": "",
+     "err": "Uncaught SyntaxError: Failed to execute 'querySelector' on 'Document': 'Tonight: Hamlet' is not a valid selector.\n",
+     "exit": 1
+    }
+   ]
+  },
+  "machine_empty.html": {
+   "src": "<!doctype html>\n<h1 id=\"title\">Tonight: Hamlet</h1>\n<script>\n  document.querySelector(\"\");\n</script>\n",
+   "stdout": "",
+   "stderr": "Uncaught SyntaxError: Failed to execute 'querySelector' on 'Document': The provided selector is empty.\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open machine_empty.html in a browser (console shown)",
+     "out": "",
+     "err": "Uncaught SyntaxError: Failed to execute 'querySelector' on 'Document': The provided selector is empty.\n",
+     "exit": 1
+    }
+   ]
+  },
+  "machine_find.html": {
+   "src": "<!doctype html>\n<h1 id=\"title\">Tonight: Hamlet</h1>\n<ul id=\"cast\">\n  <li class=\"lead\">Ada</li>\n  <li>Grace</li>\n  <li>Alan</li>\n</ul>\n<button id=\"bell\">Ring</button>\n<script>\n  for (const selector of [\"h1\", \"li\", \"#bell\", \"ul li\", \"#titel\", \"h2\"]) {\n    const found = document.querySelector(selector);\n    console.log(found === null ? \"null\" : found.outerHTML);\n  }\n</script>\n",
+   "stdout": "<h1 id=\"title\">Tonight: Hamlet</h1>\n<li class=\"lead\">Ada</li>\n<button id=\"bell\">Ring</button>\n<li class=\"lead\">Ada</li>\nnull\nnull\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open machine_find.html in a browser (console shown)",
+     "out": "<h1 id=\"title\">Tonight: Hamlet</h1>\n<li class=\"lead\">Ada</li>\n<button id=\"bell\">Ring</button>\n<li class=\"lead\">Ada</li>\nnull\nnull\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "module_file.html": {
+   "src": "<!doctype html>\n<title>A module from a double-clicked file</title>\n<button id=\"bell\">Ring for the usher</button>\n<script type=\"module\" src=\"js/bell-module.js\"></script>\n",
+   "stdout": "",
+   "stderr": "Access to script at 'file:///home/you/javascript-ch15/js/bell-module.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: chrome, chrome-untrusted, data, http, https.\nFailed to load resource: net::ERR_FAILED\n",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open module_file.html in a browser (console shown)",
+     "out": "",
+     "err": "Access to script at 'file:///home/you/javascript-ch15/js/bell-module.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: chrome, chrome-untrusted, data, http, https.\nFailed to load resource: net::ERR_FAILED\n",
+     "exit": 0
+    }
+   ]
+  },
+  "nodelist.html": {
+   "src": "<!doctype html>\n<ul><li>Ada</li><li>Grace</li><li>Alan</li></ul>\n<script>\n  const items = document.querySelectorAll(\"li\");\n  console.log(items.length);\n  items.forEach((li) => console.log(li.textContent));\n  const names = items.map((li) => li.textContent);\n  console.log(names);\n</script>\n",
+   "stdout": "3\nAda\nGrace\nAlan\n",
+   "stderr": "Uncaught TypeError: items.map is not a function\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open nodelist.html in a browser (console shown)",
+     "out": "3\nAda\nGrace\nAlan\n",
+     "err": "Uncaught TypeError: items.map is not a function\n",
+     "exit": 1,
+     "merged": "3\nAda\nGrace\nAlan\nUncaught TypeError: items.map is not a function\n"
+    }
+   ]
+  },
+  "nodelist_fix.html": {
+   "src": "<!doctype html>\n<ul><li>Ada</li><li>Grace</li><li>Alan</li></ul>\n<script>\n  const items = document.querySelectorAll(\"li\");\n  console.log(Array.isArray(items));\n  const names = Array.from(items).map((li) => li.textContent);\n  console.log(Array.isArray(names));\n  console.log(names.join(\", \"));\n</script>\n",
+   "stdout": "false\ntrue\nAda, Grace, Alan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open nodelist_fix.html in a browser (console shown)",
+     "out": "false\ntrue\nAda, Grace, Alan\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "onclick.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring</button>\n<script>\n  const bell = document.querySelector(\"#bell\");\n  bell.onclick = () => console.log(\"onclick: call the usher\");\n  bell.onclick = () => console.log(\"onclick: dim the lights\");\n  bell.addEventListener(\"click\", () => console.log(\"listener: call the usher\"));\n  bell.addEventListener(\"click\", () => console.log(\"listener: dim the lights\"));\n</script>\n",
+   "stdout": "onclick: dim the lights\nlistener: call the usher\nlistener: dim the lights\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open onclick.html in a browser (console shown)",
+     "out": "onclick: dim the lights\nlistener: call the usher\nlistener: dim the lights\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "ops.html": {
+   "src": "<!doctype html>\n<div id=\"stage\">\n  <h2>Tonight</h2>\n  <ul id=\"cast\">\n    <li>Ada</li>\n  </ul>\n</div>\n<script src=\"js/print-tree.js\"></script>\n<script>\n  const stage = document.querySelector(\"#stage\");\n  const snap = (label) => { console.log(\"## \" + label); printTree(stage); };\n  snap(\"0. the page as written\");\n\n  document.querySelector(\"h2\").textContent = \"Tonight: Hamlet\";\n  snap(\"1. h2.textContent = \\\"Tonight: Hamlet\\\"\");\n\n  const li = document.createElement(\"li\");\n  li.textContent = \"Grace\";\n  document.querySelector(\"#cast\").append(li);\n  snap(\"2. createElement, then cast.append(li)\");\n\n  document.querySelector(\"li\").classList.add(\"lead\");\n  snap(\"3. first li: classList.add(\\\"lead\\\")\");\n\n  document.querySelector(\"h2\").innerHTML = \"Tonight: <em>Hamlet</em>\";\n  snap(\"4. h2.innerHTML = \\\"Tonight: <em>Hamlet</em>\\\"\");\n\n  document.querySelector(\"li\").remove();\n  snap(\"5. first li: remove()\");\n</script>\n",
+   "stdout": "## 0. the page as written\n<div id=\"stage\">\n  <h2>\n    \"Tonight\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n## 1. h2.textContent = \"Tonight: Hamlet\"\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n## 2. createElement, then cast.append(li)\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 3. first li: classList.add(\"lead\")\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li class=\"lead\">\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 4. h2.innerHTML = \"Tonight: <em>Hamlet</em>\"\n<div id=\"stage\">\n  <h2>\n    \"Tonight: \"\n    <em>\n      \"Hamlet\"\n  <ul id=\"cast\">\n    <li class=\"lead\">\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 5. first li: remove()\n<div id=\"stage\">\n  <h2>\n    \"Tonight: \"\n    <em>\n      \"Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Grace\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open ops.html in a browser (console shown)",
+     "out": "## 0. the page as written\n<div id=\"stage\">\n  <h2>\n    \"Tonight\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n## 1. h2.textContent = \"Tonight: Hamlet\"\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n## 2. createElement, then cast.append(li)\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 3. first li: classList.add(\"lead\")\n<div id=\"stage\">\n  <h2>\n    \"Tonight: Hamlet\"\n  <ul id=\"cast\">\n    <li class=\"lead\">\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 4. h2.innerHTML = \"Tonight: <em>Hamlet</em>\"\n<div id=\"stage\">\n  <h2>\n    \"Tonight: \"\n    <em>\n      \"Hamlet\"\n  <ul id=\"cast\">\n    <li class=\"lead\">\n      \"Ada\"\n    <li>\n      \"Grace\"\n## 5. first li: remove()\n<div id=\"stage\">\n  <h2>\n    \"Tonight: \"\n    <em>\n      \"Hamlet\"\n  <ul id=\"cast\">\n    <li>\n      \"Grace\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_append.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\"><li>Ada</li><li>Grace</li></ul>\n<script>\n  const li = document.createElement(\"li\");\n  li.textContent = \"Alan\";\n  console.log(li.textContent, \"| on the page?\", li.isConnected);\n  document.querySelector(\"#cast\").append(li);\n  console.log(li.textContent, \"| on the page?\", li.isConnected);\n</script>\n",
+   "stdout": "Alan | on the page? false\nAlan | on the page? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open parsons_append.html in a browser (console shown)",
+     "out": "Alan | on the page? false\nAlan | on the page? true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_bubble.html": {
+   "src": "<!doctype html>\n<style>\n  #menu { width: 360px; height: 220px; }\n  #list { width: 340px; height: 120px; margin: 0; }\n  #item { width: 120px; }\n</style>\n<nav id=\"menu\">\n  <ul id=\"list\">\n    <li id=\"item\">Tickets</li>\n  </ul>\n</nav>\n<script>\n  const say = (event) => console.log(event.currentTarget.id, \"<-\", event.target.id);\n  document.querySelector(\"#item\").addEventListener(\"click\", say);\n  document.querySelector(\"#menu\").addEventListener(\"click\", say);\n</script>\n",
+   "stdout": "item <- item\nmenu <- item\nmenu <- list\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_bubble.html in a browser (console shown)",
+     "out": "item <- item\nmenu <- item\nmenu <- list\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_event.html": {
+   "src": "<!doctype html>\n<div id=\"poster\" style=\"width: 300px; height: 120px\">\n  <h2 id=\"headline\">Hamlet</h2>\n</div>\n<script>\n  document.querySelector(\"#poster\").addEventListener(\"click\", (event) => {\n    console.log(event.type, event.target.id, event.currentTarget.id);\n  });\n</script>\n",
+   "stdout": "click headline poster\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_event.html in a browser (console shown)",
+     "out": "click headline poster\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_find.html": {
+   "src": "<!doctype html>\n<ul id=\"props\">\n  <li class=\"prop\">skull</li>\n  <li class=\"prop\">sword</li>\n  <li class=\"prop lost\">crown</li>\n</ul>\n<script>\n  console.log(document.querySelectorAll(\".prop\").length);\n  console.log(document.querySelector(\".prop\").textContent);\n  console.log(document.querySelector(\".lost\").textContent);\n  console.log(document.querySelector(\"#crown\"));\n</script>\n",
+   "stdout": "3\nskull\ncrown\nnull\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_find.html in a browser (console shown)",
+     "out": "3\nskull\ncrown\nnull\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_onclick.html": {
+   "src": "<!doctype html>\n<button id=\"curtain\">Curtain</button>\n<script>\n  const curtain = document.querySelector(\"#curtain\");\n  curtain.addEventListener(\"click\", () => console.log(\"A\"));\n  curtain.onclick = () => console.log(\"B\");\n  curtain.addEventListener(\"click\", () => console.log(\"C\"));\n  curtain.onclick = () => console.log(\"D\");\n</script>\n",
+   "stdout": "A\nD\nC\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_onclick.html in a browser (console shown)",
+     "out": "A\nD\nC\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_ops.html": {
+   "src": "<!doctype html>\n<ul id=\"queue\">\n  <li>Ada</li>\n  <li>Grace</li>\n</ul>\n<script>\n  const queue = document.querySelector(\"#queue\");\n  const alan = document.createElement(\"li\");\n  alan.textContent = \"Alan\";\n  queue.append(alan);\n  document.querySelector(\"li\").remove();\n  alan.textContent = \"Alan T.\";\n  const items = document.querySelectorAll(\"li\");\n  console.log(items.length);\n  items.forEach((li) => console.log(li.textContent));\n</script>\n",
+   "stdout": "2\nGrace\nAlan T.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_ops.html in a browser (console shown)",
+     "out": "2\nGrace\nAlan T.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_seats.html": {
+   "src": "<!doctype html>\n<input id=\"tickets\" aria-label=\"Tickets\">\n<button id=\"go\">Price it</button>\n<script>\n  const tickets = document.querySelector(\"#tickets\");\n  document.querySelector(\"#go\").addEventListener(\"click\", () => {\n    console.log(tickets.value + 2);\n    console.log(tickets.value * 2);\n    console.log(Number(tickets.value) + 2);\n  });\n</script>\n",
+   "stdout": "52\n10\n7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open predict_seats.html in a browser (console shown)",
+     "out": "52\n10\n7\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "props.html": {
+   "src": "<!doctype html>\n<input id=\"seats\" value=\"2\" aria-label=\"Seats\">\n<a id=\"map\" href=\"map.html\">Seating map</a>\n<script>\n  const seats = document.querySelector(\"#seats\");\n  console.log(\"attribute:\", seats.getAttribute(\"value\"), \"| property:\", seats.value);\n  seats.addEventListener(\"input\", () => {\n    console.log(\"attribute:\", seats.getAttribute(\"value\"), \"| property:\", seats.value);\n  });\n\n  const map = document.querySelector(\"#map\");\n  console.log(map.getAttribute(\"href\"));\n  console.log(map.href);\n  map.id = \"seating\";\n  console.log(map.getAttribute(\"id\"));\n</script>\n",
+   "stdout": "attribute: 2 | property: 2\nmap.html\nfile:///home/you/javascript-ch15/map.html\nseating\nattribute: 2 | property: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open props.html in a browser (console shown)",
+     "out": "attribute: 2 | property: 2\nmap.html\nfile:///home/you/javascript-ch15/map.html\nseating\nattribute: 2 | property: 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "remove.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring</button>\n<button id=\"unplug\">Unplug</button>\n<script>\n  const bell = document.querySelector(\"#bell\");\n  function ring() {\n    console.log(\"Ding dong!\");\n  }\n  bell.addEventListener(\"click\", ring);\n  bell.addEventListener(\"click\", () => console.log(\"Bravo!\"));\n\n  document.querySelector(\"#unplug\").addEventListener(\"click\", () => {\n    bell.removeEventListener(\"click\", ring);\n    bell.removeEventListener(\"click\", () => console.log(\"Bravo!\"));\n    console.log(\"Tried to unplug both.\");\n  });\n</script>\n",
+   "stdout": "Ding dong!\nBravo!\nTried to unplug both.\nBravo!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open remove.html in a browser (console shown)",
+     "out": "Ding dong!\nBravo!\nTried to unplug both.\nBravo!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "seats_string.html": {
+   "src": "<!doctype html>\n<input id=\"seats\" value=\"2\" aria-label=\"Seats\">\n<button id=\"add\">Add a friend</button>\n<script>\n  const seats = document.querySelector(\"#seats\");\n  document.querySelector(\"#add\").addEventListener(\"click\", () => {\n    console.log(typeof seats.value);\n    console.log(seats.value + 1);\n    console.log(Number(seats.value) + 1);\n  });\n</script>\n",
+   "stdout": "string\n31\n4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open seats_string.html in a browser (console shown)",
+     "out": "string\n31\n4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "signs.html": {
+   "src": "<!doctype html>\n<p id=\"a\">old sign</p>\n<p id=\"b\">old sign</p>\n<script>\n  const a = document.querySelector(\"#a\");\n  const b = document.querySelector(\"#b\");\n  a.textContent = \"Tonight: <b>Hamlet</b>\";\n  b.innerHTML = \"Tonight: <b>Hamlet</b>\";\n\n  console.log(\"a text:\", a.textContent);\n  console.log(\"a html:\", a.innerHTML);\n  console.log(\"a children:\", a.children.length);\n\n  console.log(\"b text:\", b.textContent);\n  console.log(\"b html:\", b.innerHTML);\n  console.log(\"b children:\", b.children.length);\n</script>\n",
+   "stdout": "a text: Tonight: <b>Hamlet</b>\na html: Tonight: &lt;b&gt;Hamlet&lt;/b&gt;\na children: 0\nb text: Tonight: Hamlet\nb html: Tonight: <b>Hamlet</b>\nb children: 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open signs.html in a browser (console shown)",
+     "out": "a text: Tonight: <b>Hamlet</b>\na html: Tonight: &lt;b&gt;Hamlet&lt;/b&gt;\na children: 0\nb text: Tonight: Hamlet\nb html: Tonight: <b>Hamlet</b>\nb children: 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_called.html": {
+   "src": "<!doctype html>\n<p id=\"stage\">The stage</p>\n<button id=\"lights\">Lights!</button>\n<script>\n  const stage = document.querySelector(\"#stage\");\n  function switchLights() {\n    stage.classList.toggle(\"lit\");\n    console.log(\"lit?\", stage.classList.contains(\"lit\"));\n  }\n  document.querySelector(\"#lights\").addEventListener(\"click\", switchLights());\n</script>\n",
+   "stdout": "lit? true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open spot_called.html in a browser (console shown)",
+     "out": "lit? true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_head.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Lights</title>\n  <script>\n    const lights = document.querySelector(\"#lights\");\n    lights.addEventListener(\"click\", () => {\n      document.querySelector(\"#stage\").classList.toggle(\"lit\");\n    });\n  </script>\n</head>\n<body>\n  <p id=\"stage\">The stage</p>\n  <button id=\"lights\">Lights!</button>\n</body>\n</html>\n",
+   "stdout": "",
+   "stderr": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open spot_head.html in a browser (console shown)",
+     "out": "",
+     "err": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')\n",
+     "exit": 1
+    }
+   ]
+  },
+  "spot_typo.html": {
+   "src": "<!doctype html>\n<p id=\"note\">Doors open at 7 pm.</p>\n<script>\n  const note = document.querySelector(\"#note\");\n  console.log(note.textContent);\n  const sign = document.querySelector(\".note\");\n  sign.classList.add(\"big\");\n  console.log(\"made it bigger\");\n</script>\n",
+   "stdout": "Doors open at 7 pm.\n",
+   "stderr": "Uncaught TypeError: Cannot read properties of null (reading 'classList')\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open spot_typo.html in a browser (console shown)",
+     "out": "Doors open at 7 pm.\n",
+     "err": "Uncaught TypeError: Cannot read properties of null (reading 'classList')\n",
+     "exit": 1,
+     "merged": "Doors open at 7 pm.\nUncaught TypeError: Cannot read properties of null (reading 'classList')\n"
+    }
+   ]
+  },
+  "submit_fixed.html": {
+   "src": "<!doctype html>\n<form id=\"booking\">\n  <input id=\"name\" name=\"name\" aria-label=\"Your name\">\n  <button>Book a seat</button>\n</form>\n<script>\n  console.log(\"Page loaded. Address ends with:\", location.search || \"(nothing)\");\n  const form = document.querySelector(\"#booking\");\n  form.addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    console.log(\"Booked a seat for\", document.querySelector(\"#name\").value);\n  });\n</script>\n",
+   "stdout": "Page loaded. Address ends with: (nothing)\nBooked a seat for Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open submit_fixed.html in a browser (console shown)",
+     "out": "Page loaded. Address ends with: (nothing)\nBooked a seat for Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "submit_reload.html": {
+   "src": "<!doctype html>\n<form id=\"booking\">\n  <input id=\"name\" name=\"name\" aria-label=\"Your name\">\n  <button>Book a seat</button>\n</form>\n<script>\n  console.log(\"Page loaded. Address ends with:\", location.search || \"(nothing)\");\n  const form = document.querySelector(\"#booking\");\n  form.addEventListener(\"submit\", () => {\n    console.log(\"Booked a seat for\", document.querySelector(\"#name\").value);\n  });\n</script>\n",
+   "stdout": "Page loaded. Address ends with: (nothing)\nBooked a seat for Ada\nPage loaded. Address ends with: ?name=Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open submit_reload.html in a browser (console shown)",
+     "out": "Page loaded. Address ends with: (nothing)\nBooked a seat for Ada\nPage loaded. Address ends with: ?name=Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "this.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring</button>\n<script>\n  const bell = document.querySelector(\"#bell\");\n  bell.addEventListener(\"click\", function () {\n    console.log(\"regular function, this:\", this.id);\n  });\n  bell.addEventListener(\"click\", () => {\n    console.log(\"arrow function, this:\", String(this));\n  });\n  bell.addEventListener(\"click\", (event) => {\n    console.log(\"event.currentTarget:\", event.currentTarget.id);\n  });\n</script>\n",
+   "stdout": "regular function, this: bell\narrow function, this: [object Window]\nevent.currentTarget: bell\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open this.html in a browser (console shown)",
+     "out": "regular function, this: bell\narrow function, this: [object Window]\nevent.currentTarget: bell\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "this_module.html": {
+   "src": "<!doctype html>\n<button id=\"bell\">Ring</button>\n<script type=\"module\">\n  const bell = document.querySelector(\"#bell\");\n  bell.addEventListener(\"click\", () => {\n    console.log(\"arrow function in a module, this:\", String(this));\n  });\n</script>\n",
+   "stdout": "arrow function in a module, this: undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open this_module.html in a browser (console shown)",
+     "out": "arrow function in a module, this: undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "timing.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>When does each script run?</title>\n  <script>\n    console.log(\"1. head, plain:\", document.querySelector(\"#bell\") ? \"found\" : \"null\");\n  </script>\n  <script defer>\n    console.log(\"2. head, inline with defer:\", document.querySelector(\"#bell\") ? \"found\" : \"null\");\n  </script>\n  <script src=\"js/timing-defer.js\" defer></script>\n  <script type=\"module\">\n    console.log(\"4. head, type=module:\", document.querySelector(\"#bell\") ? \"found\" : \"null\");\n  </script>\n</head>\n<body>\n  <button id=\"bell\">Ring for the usher</button>\n  <script>\n    console.log(\"5. end of body, plain:\", document.querySelector(\"#bell\") ? \"found\" : \"null\");\n  </script>\n</body>\n</html>\n",
+   "stdout": "1. head, plain: null\n2. head, inline with defer: null\n5. end of body, plain: found\n3. head, src + defer: found\n4. head, type=module: found\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open timing.html in a browser (console shown)",
+     "out": "1. head, plain: null\n2. head, inline with defer: null\n5. end of body, plain: found\n3. head, src + defer: found\n4. head, type=module: found\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "js/timing-defer.js": {
+   "src": "console.log(\"3. head, src + defer:\", document.querySelector(\"#bell\") ? \"found\" : \"null\");\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "trace_bubble.html": {
+   "src": "<!doctype html>\n<style>\n  #theatre { width: 360px; height: 260px; padding: 10px; }\n  #row { width: 340px; height: 90px; text-align: left; }\n  #seat { width: 90px; height: 40px; }\n</style>\n<div id=\"theatre\">\n  <div id=\"row\">\n    <button id=\"seat\">Seat 7</button>\n  </div>\n</div>\n<script>\n  function heard(event) {\n    console.log(event.currentTarget.id, event.target.id);\n  }\n  document.querySelector(\"#theatre\").addEventListener(\"click\", heard);\n  document.querySelector(\"#row\").addEventListener(\"click\", heard);\n  document.querySelector(\"#seat\").addEventListener(\"click\", heard);\n</script>\n",
+   "stdout": "seat seat\nrow seat\ntheatre seat\nrow row\ntheatre row\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open trace_bubble.html in a browser (console shown)",
+     "out": "seat seat\nrow seat\ntheatre seat\nrow row\ntheatre row\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_classes.html": {
+   "src": "<!doctype html>\n<p id=\"lamp\" class=\"lamp\">Lamp</p>\n<script>\n  const lamp = document.querySelector(\"#lamp\");\n  const cues = [\"toggle\", \"toggle\", \"add\", \"add\", \"toggle\", \"remove\"];\n  for (const cue of cues) {\n    if (cue === \"add\") lamp.classList.add(\"lit\");\n    if (cue === \"remove\") lamp.classList.remove(\"lit\");\n    if (cue === \"toggle\") lamp.classList.toggle(\"lit\");\n    console.log(cue, lamp.classList.contains(\"lit\"), lamp.classList.length);\n  }\n</script>\n",
+   "stdout": "toggle true 2\ntoggle false 1\nadd true 2\nadd true 2\ntoggle false 1\nremove false 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open trace_classes.html in a browser (console shown)",
+     "out": "toggle true 2\ntoggle false 1\nadd true 2\nadd true 2\ntoggle false 1\nremove false 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_typing.html": {
+   "src": "<!doctype html>\n<input id=\"name\" aria-label=\"Your name\">\n<button id=\"done\">Done</button>\n<script>\n  const name = document.querySelector(\"#name\");\n  const log = (event) => console.log(event.type, JSON.stringify(name.value));\n  name.addEventListener(\"keydown\", log);\n  name.addEventListener(\"input\", log);\n  name.addEventListener(\"change\", log);\n</script>\n",
+   "stdout": "keydown \"\"\ninput \"J\"\nkeydown \"J\"\ninput \"Jo\"\nkeydown \"Jo\"\ninput \"J\"\nchange \"J\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open trace_typing.html in a browser (console shown)",
+     "out": "keydown \"\"\ninput \"J\"\nkeydown \"J\"\ninput \"Jo\"\nkeydown \"Jo\"\ninput \"J\"\nchange \"J\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "tree.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Tonight at the Lantern</title>\n  <script src=\"js/print-tree.js\"></script>\n</head>\n<body>\n  <h1 id=\"title\">Tonight: Hamlet</h1>\n  <p class=\"note\">Doors open at <b>7 pm</b>.</p>\n  <ul id=\"cast\">\n    <li class=\"lead\">Ada</li>\n    <li>Grace</li>\n  </ul>\n  <button id=\"bell\">Ring for the usher</button>\n  <script>printTree(document);</script>\n</body>\n</html>\n",
+   "stdout": "document\n  <!doctype html>\n  <html lang=\"en\">\n    <head>\n      <meta charset=\"utf-8\">\n      <title>\n        \"Tonight at the Lantern\"\n    <body>\n      <h1 id=\"title\">\n        \"Tonight: Hamlet\"\n      <p class=\"note\">\n        \"Doors open at \"\n        <b>\n          \"7 pm\"\n        \".\"\n      <ul id=\"cast\">\n        <li class=\"lead\">\n          \"Ada\"\n        <li>\n          \"Grace\"\n      <button id=\"bell\">\n        \"Ring for the usher\"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open tree.html in a browser (console shown)",
+     "out": "document\n  <!doctype html>\n  <html lang=\"en\">\n    <head>\n      <meta charset=\"utf-8\">\n      <title>\n        \"Tonight at the Lantern\"\n    <body>\n      <h1 id=\"title\">\n        \"Tonight: Hamlet\"\n      <p class=\"note\">\n        \"Doors open at \"\n        <b>\n          \"7 pm\"\n        \".\"\n      <ul id=\"cast\">\n        <li class=\"lead\">\n          \"Ada\"\n        <li>\n          \"Grace\"\n      <button id=\"bell\">\n        \"Ring for the usher\"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "js/print-tree.js": {
+   "src": "// Prints a node and everything inside it, one line per node,\n// indented two spaces per generation. Skips <script> tags and\n// text nodes that are only spaces and line breaks.\nfunction printTree(node, depth = 0) {\n  const pad = \"  \".repeat(depth);\n  if (node.nodeType === Node.TEXT_NODE) {\n    if (node.textContent.trim() !== \"\") {\n      console.log(pad + JSON.stringify(node.textContent));\n    }\n    return;\n  }\n  if (node.nodeName === \"SCRIPT\") return;\n  if (node.nodeType === Node.DOCUMENT_TYPE_NODE) {\n    console.log(pad + \"<!doctype \" + node.name + \">\");\n    return;\n  }\n  if (node.nodeType === Node.DOCUMENT_NODE) {\n    console.log(pad + \"document\");\n  } else {\n    let attrs = \"\";\n    for (const a of node.attributes) {\n      attrs += a.value === \"\" ? \" \" + a.name : \" \" + a.name + '=\"' + a.value + '\"';\n    }\n    console.log(pad + \"<\" + node.localName + attrs + \">\");\n  }\n  for (const child of node.childNodes) {\n    printTree(child, depth + 1);\n  }\n}\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "typing.html": {
+   "src": "<!doctype html>\n<label>Name <input id=\"name\"></label>\n<label><input type=\"checkbox\" id=\"vip\"> VIP seat</label>\n<script>\n  const name = document.querySelector(\"#name\");\n  name.addEventListener(\"keydown\", (event) => console.log(\"keydown\", event.key));\n  name.addEventListener(\"input\", () => console.log(\"input\", name.value));\n  name.addEventListener(\"change\", () => console.log(\"change\", name.value));\n  const vip = document.querySelector(\"#vip\");\n  vip.addEventListener(\"change\", () => console.log(\"change vip\", vip.checked));\n</script>\n",
+   "stdout": "keydown A\ninput A\nkeydown d\ninput Ad\nkeydown a\ninput Ada\nchange Ada\nchange vip true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open typing.html in a browser (console shown)",
+     "out": "keydown A\ninput A\nkeydown d\ninput Ad\nkeydown a\ninput Ada\nchange Ada\nchange vip true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "typo.html": {
+   "src": "<!doctype html>\n<h1 id=\"title\">Tonight: Hamlet</h1>\n<script>\n  const title = document.querySelector(\"#tittle\");\n  console.log(\"found:\", title);\n  title.textContent = \"Tonight: Macbeth\";\n  console.log(\"sign changed\");\n</script>\n",
+   "stdout": "found: null\n",
+   "stderr": "Uncaught TypeError: Cannot set properties of null (setting 'textContent')\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "open typo.html in a browser (console shown)",
+     "out": "found: null\n",
+     "err": "Uncaught TypeError: Cannot set properties of null (setting 'textContent')\n",
+     "exit": 1,
+     "merged": "found: null\nUncaught TypeError: Cannot set properties of null (setting 'textContent')\n"
+    }
+   ]
+  },
+  "usher_board.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>The usher's board</title>\n  <script src=\"js/usher-board.js\" defer></script>\n</head>\n<body>\n  <h1>Guests tonight</h1>\n  <form id=\"add-guest\">\n    <label for=\"guest\">Name</label>\n    <input id=\"guest\" name=\"guest\">\n    <button>Add guest</button>\n  </form>\n  <ul id=\"guests\"></ul>\n  <p id=\"status\" aria-live=\"polite\"></p>\n</body>\n</html>\n",
+   "stdout": "Ada added. Guests: 1\nType a name first.\nGrace added. Guests: 2\nAda is seated.\nRemoved. Guests: 1\nAda stood up.\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open usher_board.html in a browser (console shown)",
+     "out": "Ada added. Guests: 1\nType a name first.\nGrace added. Guests: 2\nAda is seated.\nRemoved. Guests: 1\nAda stood up.\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "js/usher-board.js": {
+   "src": "const form = document.querySelector(\"#add-guest\");\nconst input = document.querySelector(\"#guest\");\nconst list = document.querySelector(\"#guests\");\nconst status = document.querySelector(\"#status\");\n\nfunction say(message) {\n  status.textContent = message;\n  console.log(message);\n}\n\nform.addEventListener(\"submit\", (event) => {\n  event.preventDefault();\n  const name = input.value.trim();\n  if (name === \"\") {\n    say(\"Type a name first.\");\n    return;\n  }\n  const li = document.createElement(\"li\");\n  const seat = document.createElement(\"button\");\n  seat.textContent = name;\n  seat.className = \"seat\";\n  const gone = document.createElement(\"button\");\n  gone.textContent = \"Remove\";\n  gone.className = \"gone\";\n  li.append(seat, gone);\n  list.append(li);\n  input.value = \"\";\n  say(name + \" added. Guests: \" + list.children.length);\n});\n\nlist.addEventListener(\"click\", (event) => {\n  const li = event.target.parentNode;\n  if (event.target.matches(\".seat\")) {\n    li.classList.toggle(\"seated\");\n    const seated = li.classList.contains(\"seated\");\n    say(event.target.textContent + (seated ? \" is seated.\" : \" stood up.\"));\n  }\n  if (event.target.matches(\".gone\")) {\n    li.remove();\n    say(\"Removed. Guests: \" + list.children.length);\n  }\n});\n",
+   "stdout": "",
+   "stderr": "",
+   "exit": 0,
+   "sourceOnly": true
+  },
+  "whitespace.html": {
+   "src": "<!doctype html>\n<html lang=\"en\">\n<body>\n  <ul id=\"cast\">\n    <li>Ada</li>\n    <li>Grace</li>\n    <li>Alan</li>\n  </ul>\n  <script>\n    const ul = document.querySelector(\"#cast\");\n    console.log(\"childNodes:\", ul.childNodes.length, \"children:\", ul.children.length);\n    console.log(\"first child is a\", ul.firstChild.nodeName, \"holding\", JSON.stringify(ul.firstChild.textContent));\n  </script>\n</body>\n</html>\n",
+   "stdout": "childNodes: 7 children: 3\nfirst child is a #text holding \"\\n    \"\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open whitespace.html in a browser (console shown)",
+     "out": "childNodes: 7 children: 3\nfirst child is a #text holding \"\\n    \"\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "wipe.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li><button id=\"ada\">Ada</button></li>\n</ul>\n<button id=\"more\">Add Grace</button>\n<script>\n  const cast = document.querySelector(\"#cast\");\n  const ada = document.querySelector(\"#ada\");\n  ada.addEventListener(\"click\", () => console.log(\"Ada takes a bow\"));\n\n  document.querySelector(\"#more\").addEventListener(\"click\", () => {\n    cast.innerHTML += \"<li>Grace</li>\";\n    console.log(\"Added Grace. Same Ada button?\", document.querySelector(\"#ada\") === ada);\n  });\n</script>\n",
+   "stdout": "Ada takes a bow\nAdded Grace. Same Ada button? false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open wipe.html in a browser (console shown)",
+     "out": "Ada takes a bow\nAdded Grace. Same Ada button? false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "wipe_fixed.html": {
+   "src": "<!doctype html>\n<ul id=\"cast\">\n  <li><button id=\"ada\">Ada</button></li>\n</ul>\n<button id=\"more\">Add Grace</button>\n<script>\n  const cast = document.querySelector(\"#cast\");\n  const ada = document.querySelector(\"#ada\");\n  ada.addEventListener(\"click\", () => console.log(\"Ada takes a bow\"));\n\n  document.querySelector(\"#more\").addEventListener(\"click\", () => {\n    const li = document.createElement(\"li\");\n    li.textContent = \"Grace\";\n    cast.append(li);\n    console.log(\"Added Grace. Same Ada button?\", document.querySelector(\"#ada\") === ada);\n  });\n</script>\n",
+   "stdout": "Ada takes a bow\nAdded Grace. Same Ada button? true\nAda takes a bow\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open wipe_fixed.html in a browser (console shown)",
+     "out": "Ada takes a bow\nAdded Grace. Same Ada button? true\nAda takes a bow\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
