@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backpacks and Ventriloquists</title>
+<meta name="description" content="Chapter 17 of the Pip &amp; Friends JavaScript book, a comic course: closures and this. Every function carries a backpack of the variables from where it was born: lexical scope, counter factories, private state, closures in loops (var versus let, finally explained), timers and stale closures, memory kept alive by a closure, function factories and partial application, a memo cache, once(), and the module pattern with an IIFE. Then a ventriloquist explains this in full: the default, implicit, explicit and new rules plus arrow functions, strict versus sloppy mode and globalThis, call, apply and bind, losing this in callbacks and three fixes, Node's Timeout, DOM handlers, and function borrowing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch17.css">
+<script defer src="../data/js-ch17.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch17.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch16.html">&larr; Ch 16</a><span aria-current="page">Ch 17 of 29</span><a href="ch18.html">Ch 18 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 17 · INTERMEDIATE</p>
+    <h1 id="cover-h">BACKPACKS AND VENTRILOQUISTS</h1>
+    <div class="cover-cast">
+      <svg class="char bp" data-char="roompack" data-items="count = 0" data-label="tickets"></svg>
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char pp" data-char="puppet" data-label="me = ?" data-mouth="open"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit, the stage manager in a pink hoodie and headset, waves hello. On one side sits a yellow backpack with a tag that says tickets, and a label sticking out of its top that says count = 0. On the other side, a ventriloquist's puppet in a blue jacket and red bow tie holds up a placard that says me = ?</p>
+    <p class="caption blurb">Two mysteries are left over from earlier chapters. How does a callback still know the names from where it was written, long after that code has finished? And who exactly is <code>this</code>? Today you solve both. Every function carries a <b>backpack</b> of the variables around the place it was born, and that one idea explains counters, private data, the famous <code>3 3 3</code> loop, caches and modules. Then a <b>ventriloquist</b> shows the five rules that decide who "me" is, and the tools <code>call</code>, <code>apply</code> and <code>bind</code> that put words in a function's mouth. About 130 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Every function carries a backpack</a></li>
+      <li><a href="#part-2">Counter factories and private state</a></li>
+      <li><a href="#part-3">Loops, timers and stale backpacks</a></li>
+      <li><a href="#part-4">The closure toolbox</a></li>
+      <li><a href="#part-5">The ventriloquist: who is <code>this</code>?</a></li>
+      <li><a href="#part-6">Losing the puppet, and getting it back</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · EVERY FUNCTION CARRIES A BACKPACK<small>Functions remember where they were born</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: Kit's leftover question">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="HMM?" data-seed="17"></svg>
+    <p class="caption">At the end of Chapter 16, Kit noticed something odd. An interval callback kept reading <code>count</code> every 100 ms, long after the script that made <code>count</code> had finished.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="focus" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>In Chapter 8 we learned that a function's variables live in its own room, and the room is cleared when the function ends.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>So how can a little function, made inside a bigger one, still use the bigger one's variables after the bigger one has <b>finished</b>? Where does it keep them?</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit shrugs, puzzled. A burst says HMM?</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: a function made inside a function">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Here is the puzzle in its smallest form. You saw this kind of greeter machine in Chapter 7. Now we open it up.</p>
+    <span class="file-tab">backpack.js</span>
+    <pre class="code" data-src="backpack.js"></pre>
+    <pre class="term" data-run="backpack.js" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8</b> calls <code>makeGreeter("Hello")</code>. Inside, <code>greeting</code> is <code>"Hello"</code> and <code>mark</code> is <code>"!"</code>. Line 3 makes a new little function and hands it back. Then <code>makeGreeter</code> <b>ends</b>.</span></li>
+      <li><span><b>Line 10</b> calls that little function, now called <code>hello</code>, with <code>"Ada"</code>. Line 4 needs <code>greeting</code> and <code>mark</code>. Neither is <code>hello</code>'s own variable, and the call that made them is over. Yet the output is <samp>Hello, Ada!</samp>.</span></li>
+      <li><span><b>Lines 11 and 12:</b> <code>howdy</code> remembers <code>"Howdy"</code>, and <code>hello</code> still remembers <code>"Hello"</code>. Each little function remembers <b>its own</b> call of <code>makeGreeter</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: the backpack">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">The answer: when a function is born, it packs a <b>backpack</b>. The backpack holds the room it was born in, with every variable in that room and in the rooms around it. Wherever the function goes, the backpack goes too.</p>
+    <div class="props17">
+      <figure class="c1"><svg class="char machine17" data-char="machine" data-label="hello"></svg><figcaption>The function <code>hello</code>: the recipe in line 4.</figcaption></figure>
+      <figure class="c2"><svg class="char" data-char="roompack" data-items="greeting = &quot;Hello&quot;,mark = &quot;!&quot;" data-label="hello"></svg><figcaption>Its backpack: the room of the <code>makeGreeter(<wbr>"Hello")</code> call.</figcaption></figure>
+      <figure class="c3"><svg class="char" data-char="roompack" data-items="greeting = &quot;Howdy&quot;,mark = &quot;!&quot;" data-label="howdy"></svg><figcaption><code>howdy</code>'s backpack: a different call, a different room.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: three boxes. First, a function machine labelled hello. Second, a backpack tagged hello with two labels sticking out: greeting = "Hello" and mark = "!". Third, a backpack tagged howdy with greeting = "Howdy" and mark = "!".</p>
+    <p>Programmers call a function together with its backpack a <b>closure</b>: the function "closes over" the variables around it. The backpack itself is called the function's <b>lexical environment</b>. "Lexical" means "decided by where it is written in the text". In JavaScript, <em>every</em> function carries one.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>So the room isn't cleared when <code>makeGreeter</code> ends, as long as somebody still carries it in a backpack. My callback in Chapter 16 had <code>count</code> in its backpack all along!</p></div>
+    </div>
+    <p class="catch">EVERY FUNCTION CARRIES A BACKPACK</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: born in the lobby" data-walk="walk-born">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">What goes in the backpack: the variables from where the function is <b>born</b>, or from where it is <b>called</b>? Two variables called <code>where</code> settle it. Walk Kit through.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 150 200" aria-hidden="true"></svg>
+        <p class="card-title">birthplace.js</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-born">{"program": "birthplace.js", "steps": [
+      {"line": 1, "output": [], "mood": "happy", "arms": "point", "note": "Kit starts at the top."},
+      {"line": 12, "output": [], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 1: <code>where</code> is <code>\"the lobby\"</code>, in the top-level room. Lines 3 to 10 only file away two functions. <code>speak</code> is born <b>here</b>, at the top level, so its backpack holds the top-level room."},
+      {"line": 8, "output": [], "mood": "happy", "arms": "point", "note": "Line 12 calls <code>stage()</code>. Kit jumps into <code>stage</code>, which gets a fresh room of its own."},
+      {"line": 9, "output": [], "mood": "happy", "arms": "point", "note": "Line 8 makes a second <code>where</code>, <code>\"the stage\"</code>, in <code>stage</code>'s room. The top-level <code>where</code> is untouched."},
+      {"line": 4, "output": [], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 9 calls <code>speak()</code> from <b>inside</b> <code>stage</code>. Kit jumps into <code>speak</code>. Which <code>where</code> will it find?"},
+      {"line": 13, "output": ["I was born in the lobby"], "mood": "happy", "arms": "point", "note": "Line 4 needs <code>where</code>. <code>speak</code> has none of its own, so it looks in its backpack: the room where it was born, the top level. <samp>the lobby</samp>. The stage's <code>where</code> was never in the backpack, because <code>speak</code> wasn't born in <code>stage</code>."},
+      {"line": 4, "output": ["I was born in the lobby"], "mood": "happy", "arms": "point", "note": "Line 13 calls <code>speak()</code> again, this time from the top level."},
+      {"line": null, "output": ["I was born in the lobby", "I was born in the lobby"], "mood": "happy", "arms": "cheer", "note": "The same answer. Where <code>speak</code> is called from makes no difference at all. Born in the lobby, always the lobby."}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 5: born, not called">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <div class="duo">
+      <div class="duo-card ok"><h3>&#x2713; WHERE IT WAS BORN<small>lexical scope</small></h3><p>A function looks up a name in its own room first, then in its backpack: the room it was written in, then the room around that, out to the top of the file. This is fixed the moment the function is written.</p></div>
+      <div class="duo-card warn"><h3>&#x2717; WHERE IT IS CALLED<small>not how JavaScript works</small></h3><p>The caller's variables are never visible. <code>stage</code> calling <code>speak</code> doesn't lend <code>speak</code> its room. (Hold on to this: <code>this</code> in Part 5 is the one thing that <em>is</em> decided by the call.)</p></div>
+    </div>
+    <p class="catch">WHERE IT WAS BORN, NOT WHERE IT IS CALLED</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-born-m" id="ex-born"></div>
+  <script type="application/json" id="ex-born-m">{"program": "birth_predict.js", "prompt": "Three variables are all called <code>snack</code>. The seller is born in one place and called in another. Predict both lines.", "hint": "Where is the arrow on line 4 written? Which <code>snack</code> is in that room?", "explain": "The arrow is born inside <code>makeSeller</code>, where <code>snack</code> is <code>\"pretzels\"</code>, so that room is in its backpack. Being called from inside <code>intermission</code> (where snack is ice cream) changes nothing: <samp>Selling pretzels</samp>. Line 12 is at the top level and sees the top-level <code>snack</code>: <samp>Lobby has popcorn</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: the backpack holds live variables">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">One more fact about the backpack. Does it hold a <b>photocopy</b> of each variable, taken when the function was born, or the <b>variable itself</b>?</p>
+    <span class="file-tab">live.js</span>
+    <pre class="code" data-src="live.js"></pre>
+    <pre class="term wrap" data-run="live.js"></pre>
+    <p>The variable itself. <code>report</code> was born when <code>mood</code> was <code>"calm"</code>, but line 7 reads it <em>now</em>, after line 6 changed it. The backpack holds a link to the real variable, so a function always sees its current value.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Professor says: </span>Not a photo of the room: a door into it. If anyone changes a variable in that room, every function holding the door sees the change. That will matter a lot in Part 3.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-live-m" id="ex-live"></div>
+  <script type="application/json" id="ex-live-m">{"q": "<code>let price = 5; const show = () =&gt; price; price = 8;</code> What does <code>show()</code> return now?", "options": [
+    {"t": "<code>8</code>", "correct": true, "why": "Yes. The arrow's backpack holds the variable <code>price</code> itself, and its value is 8 by the time you call it."},
+    {"t": "<code>5</code>, because that was the value when the arrow was born", "why": "That would be a photocopy. JavaScript's backpack holds the live variable, as <code>live.js</code> shows."},
+    {"t": "<code>undefined</code>, because <code>price</code> isn't a parameter", "why": "A function can read any variable from the room it was born in; it doesn't need to be a parameter."},
+    {"t": "A ReferenceError", "why": "<code>price</code> is in the room where the arrow was born, so the lookup finds it."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · COUNTER FACTORIES<small>Two counters, two backpacks, and data nobody else can touch</small></h2>
+
+  <section class="panel clean" aria-label="Panel 7: a counter factory">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">The theatre needs counters: one for tickets, one for programmes. A <b>factory</b> is a function that builds and returns new things. This one builds counters.</p>
+    <span class="file-tab">counter.js</span>
+    <pre class="code" data-src="counter.js"></pre>
+    <pre class="term wrap" data-run="counter.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 9</b> runs the factory once. That call gets a room with <code>count = 0</code>, and the returned function carries that room in its backpack.</span></li>
+      <li><span><b>Line 10</b> runs the factory again: a <b>new</b> call, a new room, a new <code>count = 0</code>, a new backpack.</span></li>
+      <li><span>So <code>tickets</code> counts 1, 2 while <code>programs</code> starts its own count at 1. They never share. Step through it next to see the rooms.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 8: memory tracer, rooms that outlive their call" data-tracer="tr-count" id="tr-count-box">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Step through <code>counter.js</code>. Each call of <code>makeCounter</code> makes a room (drawn as a <b>backpack</b> box). Watch the call's frame close at the end of the call while its room stays, kept alive by the function that carries it.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-count-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-count">{"program": "counter.js", "steps": [
+      {"line": 1, "note": "Node opens the module. No names yet.", "output": [], "frames": [{"name": "counter.js (module)", "vars": []}], "objects": {}},
+      {"line": 9, "note": "Lines 1 to 7 make the function <code>makeCounter</code>. Making it doesn't run it.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}}, "changed": ["makeCounter"]},
+      {"line": 2, "note": "Line 9 calls <code>makeCounter()</code>. The call gets a frame, and its variables live in a new room, E1. <code>count</code> exists but isn't set yet.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}]}, {"name": "makeCounter() call 1", "vars": [{"n": "its room", "ref": "E1"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "(not yet)"}]}}, "changed": ["its room"]},
+      {"line": 3, "note": "Line 2: <code>count</code> is 0, inside room E1.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}]}, {"name": "makeCounter() call 1", "vars": [{"n": "its room", "ref": "E1"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "0"}]}}},
+      {"line": 10, "note": "Line 3 makes a new function, F1. It is born in room E1, so E1 goes in its backpack. The call returns F1 and its frame closes. <code>tickets</code> now names F1. Room E1 is <b>not</b> faded: F1 still carries it.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "0"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}}, "changed": ["tickets"]},
+      {"line": 11, "note": "Line 10 calls the factory again: a second call, a second room E2 with its own <code>count = 0</code>, and a second function F2 that carries E2. <code>programs</code> names F2.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "0"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}, "changed": ["programs"]},
+      {"line": 4, "note": "Line 11 calls <code>tickets()</code>, which is F1. Its frame has no variables of its own; it opens its backpack, room E1.", "output": [], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}, {"name": "tickets() (F1)", "vars": [{"n": "backpack", "ref": "E1"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "0"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}, "changed": ["backpack"]},
+      {"line": 12, "note": "Line 4 changes <code>count</code> <b>in room E1</b> to 1. Line 5 returns it, and line 11 prints <samp>1</samp>. The call's frame closes; room E1 keeps the 1.", "output": ["1"], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "1"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}},
+      {"line": 4, "note": "Line 12 calls <code>tickets()</code> again. Same function, same backpack, same room E1.", "output": ["1"], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}, {"name": "tickets() (F1)", "vars": [{"n": "backpack", "ref": "E1"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "1"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}, "changed": ["backpack"]},
+      {"line": 13, "note": "<code>count</code> in E1 goes from 1 to 2: <samp>2</samp>. The count survived between calls because it lives in the backpack, not in the call's frame.", "output": ["1", "2"], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "2"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}},
+      {"line": 4, "note": "Line 13 calls <code>programs()</code>, which is F2. Its backpack is room <b>E2</b>, where <code>count</code> is still 0.", "output": ["1", "2"], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}, {"name": "programs() (F2)", "vars": [{"n": "backpack", "ref": "E2"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "2"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "0"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}, "changed": ["backpack"]},
+      {"line": null, "note": "<code>count</code> in E2 becomes 1: <samp>1</samp>. Room E1 still says 2. Two calls of the factory, two rooms, two independent counters.", "output": ["1", "2", "1"], "frames": [{"name": "counter.js (module)", "vars": [{"n": "makeCounter", "ref": "MK"}, {"n": "tickets", "ref": "F1"}, {"n": "programs", "ref": "F2"}]}], "objects": {"MK": {"kind": "function", "value": "makeCounter"}, "E1": {"kind": "backpack", "label": "room E1 (call 1)", "pairs": [{"k": "count", "val": "2"}]}, "F1": {"kind": "function", "label": "function F1", "pairs": [{"k": "backpack", "ref": "E1"}]}, "E2": {"kind": "backpack", "label": "room E2 (call 2)", "pairs": [{"k": "count", "val": "1"}]}, "F2": {"kind": "function", "label": "function F2", "pairs": [{"k": "backpack", "ref": "E2"}]}}}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-count-m" id="ex-count"></div>
+  <script type="application/json" id="ex-count-m">{"program": "trace_counters.js", "columns": ["who", "count"], "given": [0], "prompt": "One factory, two counters with different steps: Ada counts by 1, Bo by 10. Each call prints the counter's name and its new count. Fill in the counts.", "explain": "Each call of <code>makeCounter</code> made its own room, so Ada's <code>count</code> and Bo's <code>count</code> are different variables. Ada: 1, 2, 3. Bo: 10, 20. Calling one counter never moves the other."}</script>
+
+  <section class="panel clean" aria-label="Panel 9: private state, a wallet">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Two functions born in the <b>same</b> call share the <b>same</b> backpack. And nobody else can get inside it. That gives you <b>private state</b>: data only certain functions can reach.</p>
+    <span class="file-tab">wallet.js</span>
+    <pre class="code" data-src="wallet.js"></pre>
+    <pre class="term wrap" data-run="wallet.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 4 and 7:</b> <code>pay</code> and <code>check</code> are both born inside the same <code>makeWallet(10)</code> call, so they share one room with one <code>balance</code>. <code>pay(3)</code> changes it; <code>check()</code> sees 7.</span></li>
+      <li><span><b>Line 16:</b> <code>wallet.balance</code> is <samp>undefined</samp>. The returned object only has two drawers, <code>pay</code> and <code>check</code>. <code>balance</code> isn't a drawer at all; it's in the backpack.</span></li>
+      <li><span><b>Line 17</b> tries to cheat, but it only adds a new drawer called <code>balance</code> to the object. The real balance is untouched: line 18 still says <samp>7</samp>.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>The only way in is through the two functions the factory chose to hand out. That's how you protect data from mistakes.</p></div>
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="pointL"></svg>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 10: reaching into the backpack from outside">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <svg class="sfx tr" data-sfx="LOCKED!" data-seed="10"></svg>
+    <p class="caption">What if you just ask for <code>balance</code> by name, from outside? Read it like a detective.</p>
+    <span class="file-tab">peek.js</span>
+    <pre class="code" data-src="peek.js"></pre>
+    <pre class="term wrap" data-run="peek.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message:</b> <samp>ReferenceError: balance is not defined</samp>. Chapter 8's bouncer: the top level has no variable with that name, and lookup only goes <b>outward</b>, never into another function's room.</span></li>
+      <li><span><b>Where:</b> <samp>peek.js:7</samp>, the caret under <code>balance</code>. Line 6 worked and printed <samp>10</samp>: <code>check</code> can reach the balance because it was born next to it.</span></li>
+      <li><span><b>The lesson:</b> the backpack belongs to the function. Outsiders can only ask the function.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-shared-m" id="ex-shared"></div>
+  <script type="application/json" id="ex-shared-m">{"program": "spot_shared.js", "bug": 1, "prompt": "Each door should count its own visitors, so door B's first visitor should be number 1. It says 3. Click the line with the bug.", "explain": "Line 1 puts <code>count</code> at the top level, outside the factory. Every counter is born inside <code>makeCounter</code>, but the only <code>count</code> they can find is the shared top-level one, so both doors count into the same variable. Move <code>let count = 0;</code> inside <code>makeCounter</code>, before the <code>return</code>, so each call gets its own room."}</script>
+
+  <div data-ex="fill" data-model="ex-step-m" id="ex-step"></div>
+  <script type="application/json" id="ex-step-m">{"program": "fill_counter.js", "prompt": "Build a counter factory that counts in steps. Fill in the three blanks to get the goal output.", "blanks": [{"line": 2, "text": "let", "accept": ["var"]}, {"line": 3, "text": "return"}, {"line": 4, "text": "step"}], "explain": "Line 2 makes a fresh <code>count</code> in each call's room (it must be <code>let</code>, not <code>const</code>, because line 4 changes it). Line 3 hands the arrow back, and the arrow keeps the room in its backpack. Line 4 adds <code>step</code>, which is also in the backpack: 2 for <code>byTwo</code>, 5 for <code>byFive</code>."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · LOOPS, TIMERS AND STALE BACKPACKS<small>The 3 3 3 mystery, finally explained</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 11: the 3 3 3 mystery returns">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <svg class="sfx tl" data-sfx="3! 3! 3!" data-seed="11"></svg>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>Remember Chapter 8? Three cue cards in a loop. With <code>let</code> I heard "0, 1, 2". With <code>var</code> I heard "3, 3, 3", though the loop never had a lap 3.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>Back then we said: <code>var</code> gives one shared <code>i</code> tag, <code>let</code> gives a new <code>i</code> tag for each lap. Now I know each cue carries a backpack. So whose room is in it?</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, worried, shrugs. A burst says 3! 3! 3!</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: the two loops, real runs">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">The two loops again, as real runs. They differ by one word.</p>
+    <div class="two-files">
+      <div><span class="file-tab">var_loop.js</span><pre class="code" data-src="var_loop.js"></pre><pre class="term wrap" data-run="var_loop.js"></pre></div>
+      <div><span class="file-tab">let_loop.js</span><pre class="code" data-src="let_loop.js"></pre><pre class="term wrap" data-run="let_loop.js"></pre></div>
+    </div>
+    <p>Every arrow is a closure born inside the loop. The timers run after the loop has finished (Chapter 16: the script first, then the timers). By then, what each arrow sees depends on which room is in its backpack.</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 13: memory tracer, one shared room versus a room per lap" data-tracer="tr-loops" id="tr-loops-box">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Both loops in one program, two laps each. Watch where each cue's backpack arrow points: the <code>var</code> cues all point at <b>one</b> room; each <code>let</code> cue points at <b>its own</b> lap's room.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-loops-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-loops">{"program": "loops_both.js", "steps": [
+      {"line": 1, "note": "Before line 1 runs, <code>var v</code> already has a place in the module's own room, MR, holding <code>undefined</code> (Chapter 8: <code>var</code> is hoisted). The timer shelf is empty.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": []}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "undefined"}]}}},
+      {"line": 2, "note": "Line 1 starts the <code>var</code> loop: <code>v</code> is 0, in the module room. <code>0 &lt; 2</code>, so into the body.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": []}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "0"}]}}},
+      {"line": 2, "note": "Line 2 makes arrow C1 and puts it on the timer shelf. C1 is born in the module room, so <b>MR</b> is its backpack. Then <code>v++</code> makes <code>v</code> 1, in the same room, and lap 2 begins.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "1"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}}, "changed": ["cue 1"]},
+      {"line": 4, "note": "Line 2 again: arrow C2, also born in the module room, also carrying <b>MR</b>. <code>v++</code> makes <code>v</code> 2; <code>2 &lt; 2</code> is false, so the loop ends. Both cues point at one room, where <code>v</code> is 2.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}, {"n": "cue 2", "ref": "C2"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}}, "changed": ["cue 2"]},
+      {"line": 5, "note": "Line 4 starts the <code>let</code> loop. <code>let</code> in a loop head gives every lap a <b>new room</b> of its own. Lap room R0 holds <code>l = 0</code>.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}, {"n": "cue 2", "ref": "C2"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}}},
+      {"line": 5, "note": "Line 5 makes arrow C3, born in lap room <b>R0</b>, and shelves it. Then the next lap gets a fresh room R1: <code>l</code> is copied in and increased to 1. R0 keeps its 0, because C3 still carries it.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}, {"n": "cue 2", "ref": "C2"}, {"n": "cue 3", "ref": "C3"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}, "C3": {"kind": "function", "label": "let cue C3", "pairs": [{"k": "backpack", "ref": "R0"}]}, "R1": {"kind": "backpack", "label": "lap room R1", "pairs": [{"k": "l", "val": "1"}]}}, "changed": ["cue 3"]},
+      {"line": 7, "note": "Line 5 again: arrow C4, born in lap room <b>R1</b>. Then <code>l</code> reaches 2 and the loop ends. Two <code>let</code> cues, two different rooms.", "output": [], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}, {"n": "cue 2", "ref": "C2"}, {"n": "cue 3", "ref": "C3"}, {"n": "cue 4", "ref": "C4"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}, "C3": {"kind": "function", "label": "let cue C3", "pairs": [{"k": "backpack", "ref": "R0"}]}, "R1": {"kind": "backpack", "label": "lap room R1", "pairs": [{"k": "l", "val": "1"}]}, "C4": {"kind": "function", "label": "let cue C4", "pairs": [{"k": "backpack", "ref": "R1"}]}}, "changed": ["cue 4"]},
+      {"line": 2, "note": "Line 7 prints <samp>loops done</samp>. The script is finished, so Kit turns to the timer shelf. Cue 1 runs its line 2.", "output": ["loops done"], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 1", "ref": "C1"}, {"n": "cue 2", "ref": "C2"}, {"n": "cue 3", "ref": "C3"}, {"n": "cue 4", "ref": "C4"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}, "C3": {"kind": "function", "label": "let cue C3", "pairs": [{"k": "backpack", "ref": "R0"}]}, "R1": {"kind": "backpack", "label": "lap room R1", "pairs": [{"k": "l", "val": "1"}]}, "C4": {"kind": "function", "label": "let cue C4", "pairs": [{"k": "backpack", "ref": "R1"}]}}},
+      {"line": 5, "note": "Cue 1 opens its backpack, MR, and reads <code>v</code>: <samp>var 2</samp>. Cue 2 has the very same backpack: <samp>var 2</samp> again. Both are done and nothing holds them any more, so they fade.", "output": ["loops done", "var 2", "var 2"], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": [{"n": "cue 3", "ref": "C3"}, {"n": "cue 4", "ref": "C4"}]}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}, "C3": {"kind": "function", "label": "let cue C3", "pairs": [{"k": "backpack", "ref": "R0"}]}, "R1": {"kind": "backpack", "label": "lap room R1", "pairs": [{"k": "l", "val": "1"}]}, "C4": {"kind": "function", "label": "let cue C4", "pairs": [{"k": "backpack", "ref": "R1"}]}}},
+      {"line": null, "note": "Cue 3 opens <b>R0</b>: <samp>let 0</samp>. Cue 4 opens <b>R1</b>: <samp>let 1</samp>. All four cues have run and fade: nothing holds them now. Once the cleaner throws a cue away, its lap room goes with it. The screen matches the real run exactly.", "output": ["loops done", "var 2", "var 2", "let 0", "let 1"], "frames": [{"name": "module", "vars": [{"n": "room", "ref": "MR"}]}, {"name": "timer shelf", "vars": []}], "objects": {"MR": {"kind": "backpack", "label": "module room MR", "pairs": [{"k": "v", "val": "2"}]}, "C1": {"kind": "function", "label": "var cue C1", "pairs": [{"k": "backpack", "ref": "MR"}]}, "C2": {"kind": "function", "label": "var cue C2", "pairs": [{"k": "backpack", "ref": "MR"}]}, "R0": {"kind": "backpack", "label": "lap room R0", "pairs": [{"k": "l", "val": "0"}]}, "C3": {"kind": "function", "label": "let cue C3", "pairs": [{"k": "backpack", "ref": "R0"}]}, "R1": {"kind": "backpack", "label": "lap room R1", "pairs": [{"k": "l", "val": "1"}]}, "C4": {"kind": "function", "label": "let cue C4", "pairs": [{"k": "backpack", "ref": "R1"}]}}}]}</script>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 14: one room or a room per lap">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <div class="duo">
+      <div class="duo-card warn"><h3>&#x2717; VAR: ONE ROOM<small><code>for (var i …)</code></small></h3><p><code>var</code> ignores the loop's braces and lives in the room around the loop. Every closure made in the loop packs that <b>same</b> room, and reads <code>i</code> later, when it has its final value.</p></div>
+      <div class="duo-card ok"><h3>&#x2713; LET: A ROOM PER LAP<small><code>for (let i …)</code></small></h3><p>Each lap gets a fresh room with its own <code>i</code>. Each closure packs <b>its</b> lap's room, and that <code>i</code> never changes again.</p></div>
+    </div>
+    <p class="caption soft">The backpack always holds live variables (panel 6). The <code>var</code> cues aren't remembering a wrong number: they're all reading the one variable, which is now 3.</p>
+    <p class="catch">LET GIVES EVERY LAP ITS OWN ROOM</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-loop-m" id="ex-loop"></div>
+  <script type="application/json" id="ex-loop-m">{"program": "predict_loop.js", "prompt": "No timers this time: the closures are stored in an array and called after both loops. Predict all six lines.", "hint": "The timers were never the cause. When the cards are finally called, what is <code>seat</code>? Which room does each <code>row</code> card carry?", "explain": "The three <code>var</code> cards share one <code>seat</code>, which stopped the loop at 4 (<code>4 &lt;= 3</code> is false): <samp>var seat 4</samp> three times. Each <code>let</code> card carries its own lap's <code>row</code>: <samp>let row 1</samp>, <samp>2</samp>, <samp>3</samp>. Closures, not timers, make the difference: a timer only gives the loop time to finish first."}</script>
+
+  <div data-ex="choice" data-model="ex-lapwhy-m" id="ex-lapwhy"></div>
+  <script type="application/json" id="ex-lapwhy-m">{"q": "Which explanation of <code>var_loop.js</code> printing <samp>var lap 3</samp> three times is right?", "options": [
+    {"t": "All three closures share one variable <code>i</code>, and they read it after the loop has set it to 3", "correct": true, "why": "Yes. <code>var</code> makes one <code>i</code> for the whole loop, every arrow carries the same room, and the timers read it after the loop finished at 3."},
+    {"t": "Each closure took a photocopy of <code>i</code>, but the copy was made too late", "why": "No copies are made. The backpack holds the live variable itself; with <code>var</code> there's only one."},
+    {"t": "<code>setTimeout</code> always adds 1 to its variables", "why": "Timers don't touch your variables. Even without timers, closures stored in an array give the same result (the exercise above)."},
+    {"t": "With <code>var</code>, the closures look up <code>i</code> where they are called, not where they were born", "why": "Closures always look where they were born. With <code>var</code>, the room they were born in is the module's room, shared by all laps."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 15: closures in timers">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Timers and event handlers are closures doing their everyday job. This countdown's arrow needs <code>left</code> and <code>timer</code> every 20 ms, long after <code>startCountdown</code> has returned.</p>
+    <span class="file-tab">countdown.js</span>
+    <pre class="code" data-src="countdown.js"></pre>
+    <pre class="term wrap" data-run="countdown.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 13</b> calls <code>startCountdown(3)</code>. It sets up the interval and returns at once, so <b>line 14</b> prints first.</span></li>
+      <li><span>Every tick, the arrow opens its backpack: the room of that call, holding <code>from</code>, <code>left</code> and <code>timer</code>. It prints <code>left</code> and lowers it. The room lives on between ticks because the interval keeps the arrow, and the arrow keeps the room.</span></li>
+      <li><span>On the third tick <b>line 7</b> stops the interval. Now nothing holds the arrow, so nothing holds the room either.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 16: a stale backpack">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <svg class="sfx tr" data-sfx="OLD NEWS!" data-seed="16"></svg>
+    <p class="caption">Now a classic bug: a <b>stale closure</b>. "Stale" means old, like yesterday's bread. Kit turns the volume up to 9, but the reporter still says 3.</p>
+    <span class="file-tab">stale.js</span>
+    <pre class="code" data-src="stale.js"></pre>
+    <pre class="term wrap" data-run="stale.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 7</b> passes the <em>current</em> settings object to <code>makeReporter</code>. Inside, the parameter <code>s</code> is a name tag on that object, and the arrow carries <code>s</code> in its backpack.</span></li>
+      <li><span><b>Line 8</b> moves the outside tag <code>settings</code> to a brand-new object. <code>s</code> is a different tag, in a different room, and it still points at the old object with volume 3.</span></li>
+      <li><span>So the reporter reads <samp>3</samp> while <code>settings</code> says <samp>9</samp>. Nothing crashed. This is a sneaky bug: the backpack is live, but it holds a different variable from the one you changed.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. You changed <code>settings</code>. The reporter's backpack holds <code>s</code>. Two tags, and you only moved one.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak, a sly little critter that stands for bugs that don't crash, grins. A burst says OLD NEWS!</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: fixing the stale reporter">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">The fix: make the reporter read the variable that actually changes. Its backpack then holds <code>settings</code> itself, so it always reads the latest object.</p>
+    <span class="file-tab">stale_fixed.js</span>
+    <pre class="code" data-src="stale_fixed.js"></pre>
+    <pre class="term wrap" data-run="stale_fixed.js"></pre>
+    <p>In web apps, stale closures usually look like this: an event handler or timer set up early keeps showing an old value, because it captured a variable that later code never updates (or a copy, passed in as a parameter). When something "won't update", ask: <b>which variable is in this function's backpack, and is it the one I'm changing?</b></p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-stale-m" id="ex-stale"></div>
+  <script type="application/json" id="ex-stale-m">{"program": "spot_stale.js", "bug": 7, "prompt": "The final score is 8, but the announcer says 0. Click the line where the announcer gets a stale value.", "explain": "Line 7 builds the announcer while <code>score</code> is still 0, and passes that number in as <code>current</code>. Numbers are copied into parameters, so the announcer's backpack holds <code>current = 0</code> forever; lines 8 and 9 change <code>score</code>, a different variable. Fix: build it after the score is final (move line 7 below line 9), or let the arrow read <code>score</code> directly: <code>() =&gt; console.log(\"Final score:\", score)</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 18: backpacks and memory">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">A backpack can be heavy. JavaScript frees memory automatically with a <b>garbage collector</b>: a cleaner that throws away anything no living code can reach any more. A room is reachable as long as some reachable function carries it.</p>
+    <span class="file-tab">big.js</span>
+    <pre class="code" data-src="big.js"></pre>
+    <pre class="term wrap" data-run="big.js"></pre>
+    <div class="props17">
+      <figure class="c1"><svg class="char" data-char="roompack" data-items="seats: a million" data-label="countSeats"></svg><figcaption>Lines 6 and 7: <code>countSeats</code> carries a room with a million-seat array.</figcaption></figure>
+      <figure class="dashed"><svg class="char" data-char="roompack" data-items="seats: a million" data-state="faded"></svg><figcaption>Line 8: no name holds the function, so nobody can reach the room. The cleaner may now free it.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: first, a yellow backpack tagged countSeats, with a label seats: a million. Second, the same backpack drawn grey and dashed, its tag saying NO OWNER.</p>
+    <p>A long-lived closure, such as a handler or interval nobody removes, keeps its whole room alive, including big things it may not even need. That's a <b>memory leak</b>. Exactly <em>when</em> the cleaner runs is up to the engine and can't be seen from ordinary code, so this book describes it rather than printing it.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-gc-m" id="ex-gc"></div>
+  <script type="application/json" id="ex-gc-m">{"q": "A web page starts <code>setInterval(() =&gt; draw(bigPicture), 1000)</code> and never calls <code>clearInterval</code>. What happens to <code>bigPicture</code>?", "options": [
+    {"t": "It stays in memory as long as the interval keeps running", "correct": true, "why": "Yes. The interval's callback carries it in its backpack. The interval keeps the callback alive, the callback keeps its room alive, and the room holds <code>bigPicture</code>. Stop the interval, and it can all be collected."},
+    {"t": "It's freed when the function that started the interval returns", "why": "Returning ends the call, but the room survives because the callback still carries it (panel 15)."},
+    {"t": "It's copied into the callback once, so the original can be freed", "why": "Backpacks hold the variables themselves, not copies."},
+    {"t": "JavaScript frees it after exactly one minute", "why": "There's no fixed time. Memory is freed only when nothing can reach it any more, and then whenever the engine chooses."}]}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE CLOSURE TOOLBOX<small>Factories, partial application, a memo cache, <code>once()</code>, and modules</small></h2>
+
+  <section class="panel clean" aria-label="Panel 19: function factories and partial application">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Ticket prices depend on two things: the rate and the number of tickets. Often you know the rate long before the number. A factory can fill in the first argument now, and wait for the second.</p>
+    <span class="file-tab">partial.js</span>
+    <pre class="code" data-src="partial.js"></pre>
+    <pre class="term wrap" data-run="partial.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6:</b> <code>withRate</code> returns an arrow that remembers <code>rate</code> and only needs <code>count</code>.</span></li>
+      <li><span><b>Lines 9 and 10</b> make two specialised price machines: <code>adult</code> (rate 10) and <code>child</code> (rate 6).</span></li>
+      <li><span>Filling in some of a function's arguments now, and the rest later, is called <b>partial application</b>. Here it's done with a closure; Part 5 shows a built-in way.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 20: the withRate() machine" data-machine="m-rate">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Feed the factory machine <code>withRate(rate)</code>, which is <code>(count) =&gt; rate * count</code> with <code>rate</code> in the backpack. One pair of brackets gives you a machine. Two pairs give you a price.</p>
+    <span class="file-tab">machine_rate.js</span>
+    <pre class="code" data-src="machine_rate.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-rate">{"label": "withRate()", "program": "machine_rate.js", "examples": [
+      {"in": "withRate(10)", "out": "[Function (anonymous)]", "outKind": "a function", "note": "Out comes a new machine, not a number. Node prints a function as <samp>[Function (anonymous)]</samp>: the arrow has no name of its own."},
+      {"in": "withRate(10)(2)", "out": "20", "outKind": "number", "note": "The first brackets build the machine; the second call it with <code>count = 2</code>. It finds <code>rate = 10</code> in its backpack: 20."},
+      {"in": "withRate(6)(3)", "out": "18", "outKind": "number", "note": "A different call, a different room: <code>rate</code> is 6 this time."},
+      {"in": "typeof withRate(6)", "out": "function", "outKind": "string", "note": "Confirmed: the factory hands back a function."},
+      {"in": "withRate(10)(2)(5)", "error": "TypeError: withRate(...)(...) is not a function", "program": "machine_rate_bad.js", "note": "One pair of brackets too many. <code>withRate(10)(2)</code> is the number 20, and you can't call a number. V8 writes the parts it already ran as <code>(...)</code>. (<code>machine_rate_bad.js</code> runs only this call.)"}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: a memo cache">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">A backpack is a great place to <b>remember answers</b>. <code>memoize</code> wraps a slow function, keeping a <b>cache</b> (a stash of answers already worked out) in its backpack. This trick is called <b>memoization</b>, from "memo": a note to yourself.</p>
+    <span class="file-tab">memo.js</span>
+    <pre class="code" data-src="memo.js"></pre>
+    <pre class="term wrap" data-run="memo.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> one <code>cache</code> object per call of <code>memoize</code>, in the backpack of the arrow returned on line 3.</span></li>
+      <li><span><b>First <code>square(4)</code>:</b> 4 isn't in the cache (line 4 uses <code>in</code>, from Chapter 10), so line 9 works it out and stores it.</span></li>
+      <li><span><b>Second <code>square(4)</code>:</b> found in the cache; the slow function isn't called again. For a truly slow job, such as a big calculation or a network request, that saves real time.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-memo-m" id="ex-memo"></div>
+  <script type="application/json" id="ex-memo-m">{"program": "trace_memo.js", "columns": ["n", "result", "work"], "given": [0], "prompt": "This memoized <code>triple</code> counts how many times it really had to work (<code>work</code>, in its backpack). Each call prints <code>n</code>, the answer and the work count so far. Fill in the table.", "explain": "2 and 5 are new: worked out, <code>work</code> goes 1, 2. The second 2 and the second 5 come from the cache, so <code>work</code> stays 2. 7 is new: 21, and <code>work</code> becomes 3. Both <code>cache</code> and <code>work</code> live in the same backpack and survive between calls."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: once()">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Some things must happen only once: opening the curtain, charging a card, sending a welcome email. <code>once</code> wraps a function so it runs the first time and then just repeats its first answer.</p>
+    <span class="file-tab">once.js</span>
+    <pre class="code" data-src="once.js"></pre>
+    <pre class="term wrap" data-run="once.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 2 and 3:</b> <code>done</code> and <code>result</code> live in the backpack of the wrapper made on line 4.</span></li>
+      <li><span><b>First call:</b> <code>done</code> is <code>false</code>, so line 6 flips it and line 7 runs the real function: the curtain opens for Ada.</span></li>
+      <li><span><b>Second call:</b> <code>done</code> is now <code>true</code>, so the curtain function isn't run again; line 9 returns the saved <samp>open</samp>. Bo gets no second opening. (<code>...args</code> passes along whatever arguments arrive, as in Chapter 11.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-once-m" id="ex-once"></div>
+  <script type="application/json" id="ex-once-m">{"program": "fill_once.js", "prompt": "A doorbell that may only ring once. Fill in the three blanks.", "blanks": [{"line": 2, "text": "false"}, {"line": 4, "text": "return"}, {"line": 5, "text": "true"}], "explain": "<code>done</code> starts <code>false</code> in the backpack. The first ring passes line 4, sets <code>done = true</code> and rings. Every later ring hits <code>if (done) return;</code> and leaves early. Because <code>done</code> lives in the backpack, not inside the arrow, it keeps its value between rings."}</script>
+
+  <div data-ex="parsons" data-model="ex-ticket-m" id="ex-ticket"></div>
+  <script type="application/json" id="ex-ticket-m">{"program": "parsons_factory.js", "seed": 17, "pin": [1], "prompt": "Put the lines in order: a factory that makes numbered tickets for a show, then two tickets, printing only the second.", "explain": "The counter <code>number</code> must be created in the factory's room before the arrow is returned. Inside the arrow, the number goes up before it's used. After the factory come the machine for Oz, a first ticket that isn't printed, and then the printed one: <samp>Oz #2</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: the module pattern with an IIFE">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Before JavaScript had modules (Chapter 14), programmers used closures to make private areas inside one big file. The trick is an <b>IIFE</b> (say "iffy"): an <b>I</b>mmediately <b>I</b>nvoked <b>F</b>unction <b>E</b>xpression, a function that is called the moment it's written.</p>
+    <span class="file-tab">iife.js</span>
+    <pre class="code" data-src="iife.js"></pre>
+    <pre class="term wrap" data-run="iife.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1:</b> <code>(function () { … })</code> wraps a function in brackets, and the <code>()</code> at the end of <b>line 10</b> calls it straight away. It runs once; <code>booth</code> gets what it returns.</span></li>
+      <li><span><b>Line 9</b> returns an object with two of its functions. Both carry the IIFE's room, with <code>sold</code>, in their backpacks.</span></li>
+      <li><span><b>Lines 15 and 16:</b> <code>sold</code> and <code>sell</code> are invisible outside. Only <code>sell</code> and <code>report</code>, through <code>booth</code>, can reach the count. This is the <b>module pattern</b>: a public front, private insides.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Professor says: </span>Today each module file is already a private room: only what you <code>export</code> gets out. You'll still meet IIFEs in older code and in scripts loaded by plain <code>&lt;script&gt;</code> tags.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-booth-m" id="ex-booth"></div>
+  <script type="application/json" id="ex-booth-m">{"program": "predict_iife.js", "prompt": "A lighting desk built with the module pattern. Predict all four lines.", "hint": "<code>up</code> and <code>reset</code> share one <code>level</code> in their backpack. Is <code>level</code> a drawer of the object <code>lights</code>?", "explain": "<code>up</code> raises the shared <code>level</code>: <samp>1</samp>, <samp>2</samp>. <code>reset</code> sets the same variable back to 0, so the next <code>up</code> gives <samp>1</samp>. <code>lights.level</code> is <samp>undefined</samp>: the object only has the drawers <code>up</code> and <code>reset</code>; <code>level</code> is private, in the backpack."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE VENTRILOQUIST<small>Who is "me"? The rules for this, and call, apply and bind</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 24: the ventriloquist">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <svg class="sfx tr" data-sfx="WHO, ME?" data-seed="24"></svg>
+    <p class="caption">Chapter 11 taught one rule for <code>this</code>, the word "me": <b>whoever is before the dot</b>. Tonight a ventriloquist is in the show. A ventriloquist works a puppet and speaks for it, and decides who the puppet is.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="happy" data-mouth="shout" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>A function using <code>this</code> is a puppet. It says "my name is <code>this.name</code>", but it has no idea who "me" is until somebody works it.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>Backpacks are packed where a function is <b>born</b>. <code>this</code> is the opposite: it's chosen fresh at every <b>call</b>, by whoever makes the call.</p>
+      </div>
+    </div>
+    <div class="props17">
+      <figure class="c1"><svg class="char" data-char="puppet" data-label="me = ?"></svg><figcaption>Before a call: nobody knows.</figcaption></figure>
+      <figure class="c2"><svg class="char" data-char="puppet" data-label="me = Ada" data-mouth="open"></svg><figcaption><code>ada.intro()</code>: Ada works it.</figcaption></figure>
+      <figure class="c3"><svg class="char" data-char="puppet" data-label="me = Bo" data-mouth="open"></svg><figcaption><code>intro.call(<wbr>bo)</code>: the ventriloquist picks Bo.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: Kit points, excited. Below, three copies of the same puppet. The first holds a placard saying me = ?, with its mouth shut. The second says me = Ada, mouth open. The third says me = Bo, mouth open. A burst says WHO, ME?</p>
+    <p class="catch">BACKPACKS AT BIRTH, "ME" AT EVERY CALL</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 25: the five rules for this">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">Five rules decide <code>this</code>. Check them <b>in this order</b> and stop at the first that fits.</p>
+    <div class="rules17">
+      <div class="rule17 r1"><p class="no">1</p><h3>ARROW</h3><code>() =&gt; this</code><p>An arrow has no <code>this</code> of its own. It borrows the <code>this</code> of the place it was born, like a backpack. Nothing can change it.</p></div>
+      <div class="rule17 r2"><p class="no">2</p><h3>NEW</h3><code>new Puppet()</code><p>A brand-new empty object is made, and <code>this</code> is that object.</p></div>
+      <div class="rule17 r3"><p class="no">3</p><h3>EXPLICIT</h3><code>f.call(x) f.apply(x) f.bind(x)</code><p>The ventriloquist names "me" outright: <code>this</code> is <code>x</code>.</p></div>
+      <div class="rule17 r4"><p class="no">4</p><h3>IMPLICIT</h3><code>obj.f()</code><p>The object before the dot (Chapter 11).</p></div>
+      <div class="rule17 r5"><p class="no">5</p><h3>DEFAULT</h3><code>f()</code><p>Nobody: <code>undefined</code> in strict code, which includes every module. In old "sloppy" code, the global object.</p></div>
+    </div>
+    <p>The names "default", "implicit" (implied by the dot), "explicit" (stated outright) and "new" binding are what you'll see in books and talks. To <b>bind</b> <code>this</code> means to decide what it refers to.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: default binding, strict and sloppy">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Rule 5 first, because it has two versions. You have met <b>strict mode</b> in earlier chapters: the modern, safer rules that every module follows automatically. Older code without it is nicknamed <b>sloppy mode</b>. A <code>.cjs</code> file is CommonJS, which is sloppy unless it says <code>"use strict"</code>.</p>
+    <div class="two-files">
+      <div><span class="file-tab">default_strict.js</span><pre class="code" data-src="default_strict.js"></pre><pre class="term wrap" data-run="default_strict.js"></pre></div>
+      <div><span class="file-tab">default_sloppy.cjs</span><pre class="code" data-src="default_sloppy.cjs"></pre><pre class="term wrap" data-run="default_sloppy.cjs"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Strict (the module):</b> a plain call has nobody before the dot, so <code>this</code> is <samp>undefined</samp>. Line 6 shows the module's own top-level <code>this</code> is <code>undefined</code> too.</span></li>
+      <li><span><b>Sloppy (the .cjs file):</b> JavaScript quietly swaps in the <b>global object</b>, the object that holds built-ins like <code>setTimeout</code>. Its standard name everywhere is <code>globalThis</code> (in browsers it's also called <code>window</code>). Line 9 proves it: <samp>true</samp>.</span></li>
+      <li><span><b>Line 5</b> of the .cjs file turns strict mode on for just that function, and the swap stops: <samp>undefined</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 27: why strict mode is safer">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Why does strict mode refuse to swap in the global object? Watch what sloppy mode lets slip through. The same three lines, run both ways:</p>
+    <div class="two-files">
+      <div><span class="file-tab">sloppy_leak.cjs</span><pre class="code" data-src="sloppy_leak.cjs"></pre><pre class="term wrap" data-run="sloppy_leak.cjs"></pre></div>
+      <div><span class="file-tab">strict_leak.js</span><pre class="code" data-src="strict_leak.js"></pre><pre class="term wrap" data-run="strict_leak.js" data-exit data-fold></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Sloppy:</b> <code>setName("Ada")</code> has no object, so <code>this</code> becomes the global object, and line 2 quietly writes a <b>global variable</b> called <code>name</code>. No error, a hidden mess.</span></li>
+      <li><span><b>Strict:</b> <code>this</code> is <code>undefined</code>, and you can't put a drawer on <code>undefined</code>: <samp>TypeError: Cannot set properties of undefined (setting 'name')</samp>, at line 2, called from line 5. A loud error at the right line beats a silent leak.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-mouth="flat" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Whenever you see "Cannot read" or "Cannot set properties of undefined" inside a function that uses <code>this</code>, suspect a call with nobody before the dot.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sloppy-m" id="ex-sloppy"></div>
+  <script type="application/json" id="ex-sloppy-m">{"q": "<code>function f() { return this; }</code> is called as <code>f()</code>. In which kind of file does it return the global object?", "options": [
+    {"t": "A CommonJS <code>.cjs</code> file without <code>\"use strict\"</code>", "correct": true, "why": "Yes. That's sloppy code, where a missing <code>this</code> is replaced by <code>globalThis</code> (<code>default_sloppy.cjs</code>, line 9)."},
+    {"t": "An ES module, such as this book's <code>.js</code> files", "why": "Modules are always strict, so <code>this</code> stays <code>undefined</code> (<code>default_strict.js</code>)."},
+    {"t": "Any file, if <code>f</code> is written at the top level", "why": "Where <code>f</code> is written decides its backpack, not its <code>this</code>. Strict or sloppy decides what a plain call gives."},
+    {"t": "A file that says <code>\"use strict\"</code> at the top", "why": "That turns strict mode on: <code>this</code> stays <code>undefined</code>."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 28: the ventriloquist's three tricks">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Rule 3: the ventriloquist chooses "me" directly. Every function has three built-in methods for this.</p>
+    <div class="vent17">
+      <div><h3>CALL</h3><svg class="char" data-char="puppet" data-label="me = ada" data-mouth="open"></svg><code>intro.call(ada, "Hi", "!")</code><p>Call it <b>now</b>, with <code>this</code> = <code>ada</code>, then the arguments one by one, in a list.</p></div>
+      <div><h3>APPLY</h3><svg class="char" data-char="puppet" data-label="me = ada" data-mouth="open"></svg><code>intro.apply(ada, ["Hi", "!"])</code><p>The same, but the arguments come in an <b>array</b>. <b>A</b>pply, <b>a</b>rray.</p></div>
+      <div><h3>BIND</h3><svg class="char" data-char="puppet" data-label="me = ada"></svg><code>const f = intro.bind(ada)</code><p>Doesn't call it. Makes a <b>new function</b> whose "me" is glued to <code>ada</code> for good. Call it later.</p></div>
+    </div>
+    <p class="sr-only">Picture: three boxes, each with the puppet holding a placard that says me = ada. In the call and apply boxes the puppet is talking; in the bind box it waits with its mouth shut.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 29: call and apply">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">One function, <code>introduce</code>, that belongs to nobody. <code>call</code> and <code>apply</code> work it with different puppets.</p>
+    <span class="file-tab">call_apply.js</span>
+    <pre class="code" data-src="call_apply.js"></pre>
+    <pre class="term wrap" data-run="call_apply.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8:</b> the first argument of <code>call</code> becomes <code>this</code> (<code>ada</code>); the rest become <code>greeting</code> and <code>mark</code>.</span></li>
+      <li><span><b>Line 10:</b> <code>apply</code> takes the arguments as one array. That's handy when they're already in an array, like <code>words</code> on lines 11 and 12.</span></li>
+      <li><span>Neither <code>ada</code> nor <code>bo</code> has an <code>introduce</code> drawer. The function was lent to them for one call each.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 30: bind glues this for good">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption"><code>bind</code> makes a <b>bound function</b>: a new function whose <code>this</code> is fixed forever. Let's try every way to change it.</p>
+    <span class="file-tab">bind.js</span>
+    <pre class="code" data-src="bind.js"></pre>
+    <pre class="term wrap" data-run="bind.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8</b> doesn't call <code>introduce</code>; it makes <code>adaSays</code>, glued to <code>ada</code>.</span></li>
+      <li><span><b>Line 11:</b> stored on <code>bo</code> and called as <code>bo.speak()</code>, with Bo before the dot. Still <samp>Ada</samp>: the glue beats the dot.</span></li>
+      <li><span><b>Line 12:</b> <code>call(bo)</code> can't change it either. <b>Lines 13 and 14:</b> binding a bound function again doesn't re-glue it: still <samp>Ada</samp>. The first <code>bind</code> wins, forever.</span></li>
+      <li><span><b>Line 15:</b> <samp>false</samp>. <code>bind</code> returns a different function; the original <code>introduce</code> is untouched.</span></li>
+    </ol>
+    <p class="catch">BIND GLUES "ME" FOR GOOD. THE FIRST GLUE WINS.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cab-m" id="ex-cab"></div>
+  <script type="application/json" id="ex-cab-m">{"q": "A button needs a function to call <b>later</b>, and that function must always use <code>panel</code> as <code>this</code>. Which do you hand the button?", "options": [
+    {"t": "<code>show.bind(panel)</code>", "correct": true, "why": "Yes. <code>bind</code> doesn't call anything; it returns a new function glued to <code>panel</code>, ready for the button to call whenever it likes."},
+    {"t": "<code>show.call(panel)</code>", "why": "That calls <code>show</code> right now and hands the button whatever it returned, probably <code>undefined</code>."},
+    {"t": "<code>show.apply(panel)</code>", "why": "Like <code>call</code>, it runs <code>show</code> immediately. Only the way of passing arguments differs."},
+    {"t": "<code>show</code>", "why": "The button would call it alone, with nobody before the dot, so <code>this</code> wouldn't be <code>panel</code>."}]}</script>
+
+  <div data-ex="predict" data-model="ex-bind-m" id="ex-bind"></div>
+  <script type="application/json" id="ex-bind-m">{"program": "predict_bind.js", "prompt": "One <code>shout</code>, one copy glued to Kit, and Ada trying to take it over. Predict all four lines.", "hint": "Only line 7 uses the plain function. The other three use <code>kitShout</code>, glued to Kit. Can <code>bind</code> or <code>call</code> unglue it?", "explain": "Line 7: Ada is before the dot of the plain <code>shout</code>: <samp>ADA!</samp>. Line 8: the bound copy: <samp>KIT!</samp>. Line 9: binding again doesn't re-glue: <samp>KIT!</samp>. Line 10: <code>call</code> can't change a bound function's <code>this</code> either: <samp>KIT!</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 31: partial application with bind">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption"><code>bind</code> can also fill in leading arguments: the partial application of panel 19, built in. Arguments after the <code>this</code> are glued on too.</p>
+    <span class="file-tab">bind_partial.js</span>
+    <pre class="code" data-src="bind_partial.js"></pre>
+    <pre class="term wrap" data-run="bind_partial.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5:</b> <code>ticketPrice</code> doesn't use <code>this</code>, so we pass <code>null</code> as a placeholder, then glue <code>rate = 10</code>. <code>adult(2)</code> fills in <code>count</code>: <samp>20</samp>.</span></li>
+      <li><span><b>Line 9:</b> a bound function's name tells you what it is: <samp>bound ticketPrice</samp>. Useful when you meet one in a stack trace.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: the new rule, in brief">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Rule 2, in brief, because it gets a whole chapter next time. Calling a function with <code>new</code> makes a fresh empty object, runs the function with <code>this</code> as that object, and hands the object back.</p>
+    <span class="file-tab">new_rule.js</span>
+    <pre class="code" data-src="new_rule.js"></pre>
+    <pre class="term wrap" data-run="new_rule.js"></pre>
+    <p>Lines 2 and 3 fill in the new object's drawers. Line 8 shows how Node prints it: <samp>Puppet { … }</samp>, with the name of the function that built it in front. That label is Node's own formatting (browsers show it their own way). Functions built for <code>new</code> are called <b>constructors</b>, and their names start with a capital letter by convention. Chapter 18 shows the four steps of <code>new</code> by hand, and its modern form, <code>class</code>.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-call-m" id="ex-call"></div>
+  <script type="application/json" id="ex-call-m">{"program": "fill_call.js", "prompt": "Cast the show with the ventriloquist's three tricks. Fill in one word per blank so the program prints the goal output.", "blanks": [{"line": 6, "text": "call"}, {"line": 7, "text": "apply"}, {"line": 8, "text": "bind"}], "explain": "Line 6 lists the arguments one by one, so it's <code>call</code>. Line 7 passes them in an array, so it's <code>apply</code>. Line 8 doesn't run anything yet: it makes <code>cySays</code>, glued to Cy, with the role glued on as well, so it's <code>bind</code>. Line 9 supplies the last argument, the act."}</script>
+
+  <section class="panel sketch" aria-label="Panel 33: the map of the this rules" data-map="map-rules">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">The rules as a road map. Eight real programs, eight calls. Pick one and follow Kit down the questions until a rule fits. All eight files are modules, so strict mode applies.</p>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maprules-t maprules-d"><title id="maprules-t">Map of the rules for this</title><desc id="maprules-d">A call starts at the top. Question 1: is the function an arrow? If yes, this is borrowed from where it was born. Otherwise question 2: was it called with new? If yes, this is a brand-new object. Otherwise question 3: is it bound, called with call or apply, or called by a host that chooses? If yes, this is the chosen object. Otherwise question 4: is there an object before the dot? If yes, this is that object. Otherwise this is undefined in strict code.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-rules">{"seed": 17, "size": [700, 660], "start": [[170, 2], [170, 34]],
+      "states": [
+        {"id": "CALL", "x": 20, "y": 40, "w": 300, "h": 64, "label": "a function is called", "sub": "who is me?"},
+        {"id": "Q1", "x": 20, "y": 150, "w": 300, "h": 64, "label": "1 · an arrow?", "sub": "written with =>"},
+        {"id": "Q2", "x": 20, "y": 260, "w": 300, "h": 64, "label": "2 · called with `new`?"},
+        {"id": "Q3", "x": 20, "y": 370, "w": 300, "h": 64, "label": "3 · bound, call, apply?", "sub": "or a host that picks"},
+        {"id": "Q4", "x": 20, "y": 480, "w": 300, "h": 64, "label": "4 · object before the dot?"},
+        {"id": "ARROW", "x": 380, "y": 150, "w": 300, "h": 64, "label": "borrows outer this", "sub": "nothing can change it", "kind": "end"},
+        {"id": "NEW", "x": 380, "y": 260, "w": 300, "h": 64, "label": "a brand-new object", "kind": "end"},
+        {"id": "EXPL", "x": 380, "y": 370, "w": 300, "h": 64, "label": "the chosen object", "kind": "end"},
+        {"id": "DOT", "x": 380, "y": 480, "w": 300, "h": 64, "label": "the object before the dot", "kind": "end"},
+        {"id": "DEF", "x": 380, "y": 584, "w": 300, "h": 64, "label": "undefined", "sub": "strict (sloppy: globalThis)", "kind": "end"}],
+      "transitions": [
+        {"id": "t0", "from": "CALL", "to": "Q1", "pts": [[170, 108], [170, 144]]},
+        {"id": "y1", "from": "Q1", "to": "ARROW", "pts": [[324, 182], [374, 182]], "label": "yes", "lx": 334, "ly": 170},
+        {"id": "n1", "from": "Q1", "to": "Q2", "pts": [[170, 218], [170, 254]], "label": "no", "lx": 182, "ly": 242},
+        {"id": "y2", "from": "Q2", "to": "NEW", "pts": [[324, 292], [374, 292]], "label": "yes", "lx": 334, "ly": 280},
+        {"id": "n2", "from": "Q2", "to": "Q3", "pts": [[170, 328], [170, 364]], "label": "no", "lx": 182, "ly": 352},
+        {"id": "y3", "from": "Q3", "to": "EXPL", "pts": [[324, 402], [374, 402]], "label": "yes", "lx": 334, "ly": 390},
+        {"id": "n3", "from": "Q3", "to": "Q4", "pts": [[170, 438], [170, 474]], "label": "no", "lx": 182, "ly": 462},
+        {"id": "y4", "from": "Q4", "to": "DOT", "pts": [[324, 512], [374, 512]], "label": "yes", "lx": 334, "ly": 500},
+        {"id": "n4", "from": "Q4", "to": "DEF", "pts": [[170, 548], [170, 616], [374, 616]], "label": "no", "lx": 182, "ly": 580}],
+      "paths": [
+        {"id": "dot", "label": "ada.who()", "program": "rule_dot.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_dot.js</code> line 7 calls <code>ada.who()</code>. <code>who</code> is a regular method."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No, it was written as a method."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Called with <code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Bound, or <code>call</code>/<code>apply</code>? No."},
+          {"on": ["Q4"], "via": ["n3"], "output": [], "note": "An object before the dot? Yes: <code>ada</code>."},
+          {"on": ["DOT"], "via": ["y4"], "output": ["Ada"], "note": "Rule 4: <code>this</code> is <code>ada</code>, and the program prints <samp>Ada</samp>."}]},
+        {"id": "plain", "label": "who()", "program": "rule_plain.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_plain.js</code> copies the method out (<code>const who = ada.who</code>) and calls <code>who()</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "<code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Bound or <code>call</code>/<code>apply</code>? No."},
+          {"on": ["Q4"], "via": ["n3"], "output": [], "note": "Before the dot? Nothing: there's no dot at all."},
+          {"on": ["DEF"], "via": ["n4"], "output": ["undefined"], "note": "Rule 5, strict: <code>this</code> is <code>undefined</code>. The probe prints <samp>undefined</samp> instead of crashing."}]},
+        {"id": "call", "label": "ada.who.call(bo)", "program": "rule_call.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_call.js</code> calls <code>ada.who.call(bo)</code>. There's a dot before <code>who</code>, but watch which rule comes first."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "<code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Explicit? Yes: <code>call</code> names <code>bo</code>."},
+          {"on": ["EXPL"], "via": ["y3"], "output": ["Bo"], "note": "Rule 3 beats the dot. <code>this</code> is <code>bo</code>: <samp>Bo</samp>."}]},
+        {"id": "bind", "label": "bo.who() (bound)", "program": "rule_bind.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_bind.js</code> binds <code>who</code> to Cy, stores the bound copy on <code>bo</code>, and calls <code>bo.who()</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "<code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Bound? Yes, to Cy. Kit stops here, before ever asking about the dot."},
+          {"on": ["EXPL"], "via": ["y3"], "output": ["Cy"], "note": "The glue beats Bo before the dot: <samp>Cy</samp>."}]},
+        {"id": "new", "label": "new Puppet()", "program": "rule_new.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_new.js</code> calls <code>new Puppet(\"Polly\")</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No (arrows can't be used with <code>new</code> at all; panel 37)."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Called with <code>new</code>? Yes."},
+          {"on": ["NEW"], "via": ["y2"], "output": ["Polly"], "note": "Rule 2: <code>this</code> is a fresh object. Line 2 puts <code>name</code> on it, and line 5 prints <samp>Polly</samp>."}]},
+        {"id": "arrow", "label": "arrow.call(bo)", "program": "rule_arrow.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_arrow.js</code>: inside <code>kit.cue()</code>, an arrow is called with <code>arrow.call({ name: \"Bo\" })</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? Yes. Kit stops at the very first question."},
+          {"on": ["ARROW"], "via": ["y1"], "output": ["Kit"], "note": "Rule 1: the arrow borrows <code>this</code> from where it was born, inside <code>cue</code>, which was called as <code>kit.cue()</code>. The <code>call</code> is ignored: <samp>Kit</samp>."}]},
+        {"id": "cb", "label": "forEach callback", "program": "rule_callback.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_callback.js</code> hands a regular function to <code>forEach</code>. <code>forEach</code> makes the call, not you."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No, it's a <code>function</code>."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "<code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Does <code>forEach</code> pick a <code>this</code>? Not unless you give it one as a second argument."},
+          {"on": ["Q4"], "via": ["n3"], "output": [], "note": "It calls your function plainly, with nothing before a dot."},
+          {"on": ["DEF"], "via": ["n4"], "output": ["undefined"], "note": "Rule 5: <samp>undefined</samp>. This is how callbacks lose <code>this</code> (Part 6)."}]},
+        {"id": "timer", "label": "timer callback", "program": "rule_timer.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>rule_timer.js</code> hands a regular function to <code>setTimeout</code>, and Node's timer makes the call."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "An arrow? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "<code>new</code>? No."},
+          {"on": ["Q3"], "via": ["n2"], "output": [], "note": "Does the host pick? Yes: Node's timer calls your function with <code>this</code> set to its own <code>Timeout</code> object, as if by <code>call</code>."},
+          {"on": ["EXPL"], "via": ["y3"], "output": ["Timeout"], "note": "The program prints <code>this.constructor.name</code>, the name of the function that built <code>this</code>: <samp>Timeout</samp>. That's Node; a browser's timer gives <code>window</code> (the notebook's lab runs <code>timer_browser.html</code>)."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-eight-m" id="ex-eight"></div>
+  <script type="application/json" id="ex-eight-m">{"program": "predict_eight.js", "prompt": "Eight calls in strict mode. <code>probe</code> prints <code>this.name</code>, or <samp>nobody</samp> when <code>this</code> is <code>undefined</code>. Predict all eight lines.", "hint": "For each call, go down the rules: arrow? <code>new</code>? bound or call/apply? something before the dot? Otherwise nobody. <code>map</code> calls its callback plainly.", "explain": "Line 10: Ada before the dot, <samp>Ada</samp>. Line 11: copied out, plain call, <samp>nobody</samp>. Line 12: <code>call(ada)</code>, <samp>Ada</samp>. Line 13: <code>apply(bo)</code>, <samp>Bo</samp>. Line 14: bound to Bo, <samp>Bo</samp>. Line 15: bound beats Cy before the dot, <samp>Bo</samp>. Line 16: bound beats <code>call</code>, <samp>Bo</samp>. Line 17: <code>map</code> calls <code>probe</code> plainly, <samp>nobody</samp>."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · LOSING THE PUPPET<small>Callbacks, timers, arrows, events and borrowing</small></h2>
+
+  <section class="panel pop" aria-label="Panel 34: a method handed to forEach">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="WHO?!" data-seed="34"></svg>
+    <p class="caption">The most common <code>this</code> crash: handing a method to someone else to call. Here <code>forEach</code> (Chapter 9) gets <code>stage.announce</code>. Read it like a detective.</p>
+    <span class="file-tab">lost_callback.js</span>
+    <pre class="code" data-src="lost_callback.js"></pre>
+    <pre class="term wrap" data-run="lost_callback.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message:</b> <samp>TypeError: Cannot read properties of undefined (reading 'name')</samp>. Something before <code>.name</code> was <code>undefined</code>. On line 4, that's <code>this</code>.</span></li>
+      <li><span><b>The trace, top down:</b> <code>at announce (…:4:42)</code> is the crash, inside the method. <code>at Array.forEach (&lt;anonymous&gt;)</code> says <code>forEach</code> made the call. <code>…:10:6</code> is your line that handed it over.</span></li>
+      <li><span><b>Why:</b> line 10 passes the function alone, without <code>stage</code>. <code>forEach</code> calls it plainly: rule 5, <code>undefined</code>. Line 8 worked because it had <code>stage</code> before the dot.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: three fixes">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Three ways to keep the puppet attached when you hand a method to someone else.</p>
+    <span class="file-tab">three_fixes.js</span>
+    <pre class="code" data-src="three_fixes.js"></pre>
+    <pre class="term wrap" data-run="three_fixes.js"></pre>
+    <div class="duo three">
+      <div class="duo-card ok"><h3>1 · ARROW WRAPPER<small><code>() =&gt; stage.announce()</code></small></h3><p>Line 8. Hand over a tiny arrow; when it's called, it calls the method the proper way, with <code>stage</code> before the dot. The first fix to reach for.</p></div>
+      <div class="duo-card cool"><h3>2 · BIND<small><code>stage.announce.bind(stage)</code></small></h3><p>Line 9. A bound copy, glued to <code>stage</code>, whoever calls it.</p></div>
+      <div class="duo-card hot"><h3>3 · ARROW FIELD<small><code>announce = () =&gt; …</code></small></h3><p>Lines 11 to 14, a preview of Chapter 18's classes. An arrow made for each new object borrows that object as <code>this</code>, so <code>viaField</code> works even detached.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fix-m" id="ex-fix"></div>
+  <script type="application/json" id="ex-fix-m">{"program": "fill_fixes.js", "prompt": "The lamp's <code>shine</code> method is used three times: twice handed to a timer, once called by the ventriloquist. Fill in each blank so every line says <samp>Shining blue</samp>.", "blanks": [{"line": 7, "text": "() => lamp.shine()", "accept": ["()=>lamp.shine()", "() => { lamp.shine(); }", "() => { lamp.shine() }"]}, {"line": 8, "text": "bind(lamp)"}, {"line": 9, "text": "call(lamp)", "accept": ["apply(lamp)"]}], "explain": "Line 7: an arrow wrapper calls <code>lamp.shine()</code> with the lamp before the dot. Line 8: <code>bind(lamp)</code> makes a copy glued to the lamp. Line 9 runs now, so it prints first: <code>call(lamp)</code> (or <code>apply(lamp)</code>, as there are no arguments) chooses the lamp as \"me\". Handing the timer plain <code>lamp.shine</code> would print <samp>Shining undefined</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 36: Node's timer picks a Timeout">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Chapter 11 peeked at this already. Handed to a Node timer, a regular function doesn't get <code>undefined</code>. Here's the full picture.</p>
+    <span class="file-tab">timer_this.js</span>
+    <pre class="code" data-src="timer_this.js"></pre>
+    <pre class="term wrap" data-run="timer_this.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 9:</b> a proper method call. <code>this.constructor.name</code> is the name of whatever built <code>this</code>: a plain object, <samp>Object</samp>.</span></li>
+      <li><span><b>Line 10:</b> Node's timer calls the function with <code>this</code> set to its <code>Timeout</code> object, the timer's own ticket. It has no <code>name</code>, so <samp>undefined</samp>, and no crash to warn you.</span></li>
+      <li><span>This is <b>host-specific</b>. A browser's <code>setTimeout</code> uses <code>window</code> instead (captured in the notebook's lab, <code>timer_browser.html</code>). The program prints only the constructor's name because the whole <code>Timeout</code> object shows timing numbers that change on every run.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-lost-m" id="ex-lost"></div>
+  <script type="application/json" id="ex-lost-m">{"program": "spot_lost.js", "bug": 10, "prompt": "The summary works once, then crashes 10 ms later. The caret points at line 5, but that's not where the mistake is. Click the line where the method loses its object.", "explain": "Line 10 copies the method out of <code>show</code>: <code>tellLater</code> is the bare function. When line 11 calls <code>tellLater()</code>, nobody is before the dot, so <code>this</code> is <code>undefined</code> and line 5 crashes reading <code>title</code>. Fix line 10: <code>const tellLater = show.summary.bind(show);</code> (or <code>() =&gt; show.summary()</code>)."}</script>
+
+  <section class="panel clean" aria-label="Panel 37: arrows ignore call and bind">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Rule 1 sits at the top of the map for a reason: an arrow's <code>this</code> is packed at birth, like its backpack, and no ventriloquist can change it.</p>
+    <span class="file-tab">arrow_ignores.js</span>
+    <pre class="code" data-src="arrow_ignores.js"></pre>
+    <pre class="term wrap" data-run="arrow_ignores.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 9 and 10:</b> the regular function obeys <code>call</code> and <code>bind</code>: <samp>Kit</samp>, <samp>Bo</samp>. The arrow ignores both and keeps the <code>this</code> of where it was born, the top of a module: <code>undefined</code>, so <code>this?.name</code> is <samp>undefined</samp>.</span></li>
+      <li><span><b>Line 12:</b> arrows can't be used with <code>new</code> either: <samp>TypeError: arrow is not a constructor</samp>. Line 11 shows a regular function can.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-arrowcall-m" id="ex-arrowcall"></div>
+  <script type="application/json" id="ex-arrowcall-m">{"q": "Inside <code>kit.cue()</code> (called as <code>kit.cue()</code>), an arrow is written: <code>const say = () =&gt; this.name;</code>. What does <code>say.call(bo)</code> return?", "options": [
+    {"t": "<code>kit.name</code>", "correct": true, "why": "Yes. The arrow borrowed <code>this</code> from <code>cue</code>, where it was born, and in that call <code>this</code> was <code>kit</code>. <code>call</code> can't change an arrow's <code>this</code> (<code>rule_arrow.js</code>)."},
+    {"t": "<code>bo.name</code>", "why": "That's what a regular function would give. Arrows ignore the <code>this</code> argument of <code>call</code>, <code>apply</code> and <code>bind</code>."},
+    {"t": "<code>undefined</code>, because arrows have no <code>this</code>", "why": "Arrows have no <code>this</code> <em>of their own</em>, so they use the surrounding one. Here that's <code>cue</code>'s, which is <code>kit</code>."},
+    {"t": "A TypeError: arrows can't be called with <code>call</code>", "why": "<code>call</code> works on arrows; it passes the other arguments normally. It just can't set <code>this</code>. Only <code>new</code> is refused."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 38: this in DOM event handlers">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">In a web page (Chapter 15), the browser is the ventriloquist for event handlers. This page has three handlers on one button. Clicking it once, in a real browser, prints to the console:</p>
+    <span class="file-tab">dom_this.html</span>
+    <pre class="code" data-src="dom_this.html"></pre>
+    <pre class="term wrap" data-run="dom_this.html"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5, a regular function:</b> the browser calls it with <code>this</code> set to the element the listener is on, the button. <code>this.id</code> is <samp>bell</samp>.</span></li>
+      <li><span><b>Line 8, an arrow:</b> it ignores the browser's choice and borrows the <code>this</code> of where it was written. In a classic <code>&lt;script&gt;</code>, that's <code>window</code>, the browser's global object.</span></li>
+      <li><span><b>Line 11, the safe habit:</b> use the event object. <code>event.currentTarget</code> is the element the listener is on, whatever kind of function you wrote.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-dom-m" id="ex-dom"></div>
+  <script type="application/json" id="ex-dom-m">{"program": "dom_predict.html", "prompt": "A different button, four handlers in a new order, and one regular function called plainly inside a handler. The page is a classic <code>&lt;script&gt;</code> (sloppy, not a module). Clicked once, what does the console show? Predict all three lines.", "hint": "Handlers run in the order they were added. For each one ask: who calls it, and does that kind of function accept the browser's choice of <code>this</code>? <code>inner()</code> is a plain call: Chapter 17's rule 5, in sloppy code.", "explain": "The first handler reads the button from the event: <samp>first: gong</samp>. The arrow keeps the script's <code>this</code>, the window: <samp>second: window</samp>. The regular function gets the button as <code>this</code>, so <code>this.id</code> is <code>gong</code>; but <code>inner()</code> is a plain call with nobody before the dot, and in a sloppy classic script rule 5 gives the global object, <code>window</code>: <samp>third: gong window</samp>. A regular function's <code>this</code> never passes down to another regular function it calls."}</script>
+
+  <section class="panel clean" aria-label="Panel 39: function borrowing">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">The ventriloquist's last trick: <b>borrowing</b> a method from one kind of object and working it on another. You'll see this in older code all the time.</p>
+    <span class="file-tab">borrow.js</span>
+    <pre class="code" data-src="borrow.js"></pre>
+    <pre class="term wrap" data-run="borrow.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> inside a regular function, <code>arguments</code> holds every argument passed. It has a length and indexes, but it isn't a real array: <samp>false 3</samp>, and it has no <code>join</code>.</span></li>
+      <li><span><b>Line 3:</b> <code>Array.prototype.slice</code> is the <code>slice</code> method every array shares (Chapter 18 explains <code>prototype</code>). <code>call(arguments)</code> works it with <code>arguments</code> as "me", and out comes a real array.</span></li>
+      <li><span><b>Line 9:</b> a string isn't an array either, but it has a length and indexes, so <code>map</code> can be borrowed for it: <code>caps</code> is a real array of capital letters.</span></li>
+      <li><span><b>Lines 11 and 12:</b> the old way to pass an array as separate arguments was <code>apply</code>; today the spread <code>...</code> from Chapter 11 does it. Modern code also uses rest parameters (<code>...guests</code>) instead of <code>arguments</code>.</span></li>
+    </ol>
+  </section>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: backpacks and puppets, all mixed</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 40: boss level">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="40"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Two questions for every function. Which backpack did it pack where it was born? And who's working the puppet at this call? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. Each host object has a <code>greet</code> method with a private <code>calls</code> counter in its backpack, and reads its name from <code>this</code>. Then the puppets get swapped. Predict all four lines.", "hint": "The <b>count</b> comes from the backpack: which <code>makeHost</code> call was the method born in? The <b>name</b> comes from <code>this</code>: who is \"me\" at this call?", "explain": "Line 13: Ada's method, Ada before the dot: <samp>Ada #1</samp>. Line 14: still <b>Ada's</b> method (Ada's <code>calls</code> goes to 2), but <code>call(bo)</code> makes Bo \"me\": <samp>Bo #2</samp>. Line 15: Bo's method, Bo's own counter: <samp>Bo #1</samp>. Line 17: Bo's method (Bo's <code>calls</code> goes to 2), glued to Ada: <samp>Ada #2</samp>. The backpack and <code>this</code> are completely separate."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.js", "bug": 3, "prompt": "Boss 2. <code>once</code> should launch only once, but the rocket launches twice. Click the line with the bug.", "explain": "Line 3 creates <code>done</code> <b>inside</b> the returned arrow, so every call makes a fresh <code>done = false</code> and the check always passes. The flag must survive between calls, so it belongs in the backpack: move <code>let done = false;</code> up to line 2, inside <code>once</code> but before the <code>return</code>."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.js", "seed": 40, "pin": [1, 2], "prompt": "Boss 3. Build a counter object with an <code>add</code> method, glue a copy of <code>add</code> to it, hand that copy to a loop, and print the total. The first two lines are fixed.", "explain": "The method sits inside the object: its header, the line that changes <code>this.count</code>, <code>},</code> to close the method and <code>};</code> to close the object. Only then can <code>bind</code> make <code>addTo</code>, glued to <code>counter</code>. The loop calls it with 1, 2 and 3, and the last line prints <samp>6</samp>."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.js", "prompt": "Boss 4. A logger with a private line counter in its backpack that also says who is logging, using <code>this</code>. Fill in the four blanks.", "blanks": [{"line": 2, "text": "let"}, {"line": 3, "text": "function"}, {"line": 11, "text": "call"}, {"line": 12, "text": "bind"}], "explain": "Line 2: <code>let</code>, because the counter changes. Line 3 must be a regular <code>function</code>: an arrow would borrow <code>makeLogger</code>'s <code>this</code> (<code>undefined</code>) and crash, whoever called it. Line 11 runs now with Bo as \"me\": <code>call</code>. Line 12 makes a copy glued to Kit for later: <code>bind</code>. All three calls share one <code>lines</code> counter: 1, 2, 3."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.js", "columns": ["lap", "total"], "given": [0], "prompt": "Boss 5. Each lap of a <code>let</code> loop makes a <code>total</code> and a closure that adds its lap number to it. The closures are then called out of order. Fill in each total.", "explain": "Every lap has its own room with its own <code>i</code> and its own <code>total</code>. Lap 1's closure adds 1 each time: 1, then 2. Lap 3's adds 3: 3, then 6. Lap 2's is called once: 2. Calling one closure never changes another lap's total."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. <code>const speaker = { name: \"Ada\", start() { setTimeout(function () { console.log(this.name); }, 10); } }; speaker.start();</code> In Node it prints <samp>undefined</samp>. Which change makes it print <samp>Ada</samp>?", "options": [
+    {"t": "Make the timer callback an arrow: <code>() =&gt; { … }</code>", "correct": true, "why": "Yes. The arrow borrows <code>this</code> from <code>start</code>, where it was born, and <code>start</code> was called as <code>speaker.start()</code>. Adding <code>.bind(this)</code> to the regular function would also work."},
+    {"t": "Turn <code>start</code> into an arrow: <code>start: () =&gt; { … }</code>", "why": "Then <code>start</code> borrows the module's top-level <code>this</code>, <code>undefined</code>, and the callback still gets the Timeout. Arrows make good callbacks, not good methods."},
+    {"t": "Call it with an explicit <code>this</code>: <code>speaker.start.call(speaker)</code>", "why": "<code>start</code> already had <code>speaker</code> as <code>this</code>. The problem is the inner callback, which the timer calls with its own Timeout object."},
+    {"t": "Add a <code>\"use strict\"</code> line at the top of the timer callback", "why": "In strict mode the timer still passes its Timeout object as <code>this</code>. Strictness changes only what a plain call gives."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 41: what you learned">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">What you learned in Chapter 17</p>
+    <ul class="recap">
+      <li><b>EVERY FUNCTION CARRIES A BACKPACK</b>A function remembers the room it was born in, with all its variables, even after the code that made them has finished. A function plus its backpack is a <b>closure</b>. The backpack holds the live variables, not copies, and a room lives as long as some reachable function carries it (then the garbage collector may free it).</li>
+      <li><b>WHERE IT WAS BORN, NOT WHERE IT IS CALLED</b>Names are looked up in the function's own room, then outward through the rooms where it was written (lexical scope). A caller's variables are never visible. Outsiders get <i>ReferenceError: … is not defined</i>.</li>
+      <li><b>LET GIVES EVERY LAP ITS OWN ROOM</b><code>var</code> loops share one variable, so closures made in them all see its final value (<code>3 3 3</code>); <code>let</code> loops make a room per lap. Stale closures read a different variable from the one you changed.</li>
+      <li><b>BACKPACKS AT BIRTH, "ME" AT EVERY CALL</b>Closures give factories, private state, partial application, memo caches, <code>once</code> and the IIFE module pattern. <code>this</code> is chosen at each call: arrow (borrowed), <code>new</code> (fresh object), explicit (<code>call</code>, <code>apply</code>, <code>bind</code>, or a host such as Node's timer with its <code>Timeout</code>), the object before the dot, or nobody (<code>undefined</code> in strict code, <code>globalThis</code> in sloppy code).</li>
+      <li><b>BIND GLUES "ME" FOR GOOD. THE FIRST GLUE WINS.</b><code>call</code> takes a list, <code>apply</code> an array, and both call now; <code>bind</code> returns a new function whose <code>this</code> can't be changed again, and can glue arguments too. A detached method crashes with <i>Cannot read properties of undefined (reading 'name')</i>: fix it with an arrow wrapper, <code>bind</code>, or an arrow class field. Arrows ignore <code>call</code>/<code>bind</code> and can't be used with <code>new</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Now I know what my callbacks carry, and who's speaking when they talk. One cue at a time, and every cue with its backpack.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 42: next time, parents and cookie cutters">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption soft">Coming up in Chapter 18…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Kit thinks: </span>Two loose ends. <code>new Puppet("Polly")</code> made an object, but what are its four steps? And in <code>borrow.js</code>, where does <code>Array.prototype.slice</code> live, and why can every array use it? Next time: objects that ask their <b>parents</b> when they don't know something, and <b>cookie cutters</b> that stamp out objects of the same shape.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit points ahead, thinking about the next chapter.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 18 · PARENTS AND COOKIE CUTTERS<br><small style="font: 700 1rem var(--f-bubble)">Prototypes, the chain of "ask my parent" notes, and classes.</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch16.html">← Ch 16 · The Restaurant Pager</a><a class="next" href="ch18.html">Ch 18 · Parents and Cookie Cutters →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: environments, contexts and how this is set</summary>
+    <div class="page-body">
+      <h3>Environment records</h3>
+      <p>The language standard (ECMAScript) describes scope with <b>environment records</b>: the comic's rooms. Every call of a function, every block with <code>let</code> or <code>const</code>, every module and the global scope gets one. Each record has a link to its <b>outer</b> record, and name lookup follows those links outward until it finds the name, or reaches the end and throws a ReferenceError.</p>
+      <h3>[[Environment]]: the backpack</h3>
+      <p>When a function object is created, the engine stores the current environment record in a hidden internal slot the standard calls <code>[[Environment]]</code>. When the function is later called, its new record's outer link is set to that stored record, not to the caller's. That single rule is lexical scope, and it is why every JavaScript function is a closure (the only exception is a function made with <code>new Function("…")</code>, whose outer link is always the global scope).</p>
+      <h3>What V8 actually keeps</h3>
+      <p>Engines don't really keep every variable of every room. V8, the engine in Node and Chrome, works out ahead of time which variables any inner function uses, and keeps only those in a heap-allocated <b>context</b>; variables nobody captures stay on the fast stack and vanish when the call ends. All closures created in the same room share one context, so if one closure uses a big array, every sibling closure keeps it alive too. A debugger paused inside a closure may therefore show an outer variable as unavailable: it was optimised away because the closure never used it.</p>
+      <h3>Per-iteration bindings</h3>
+      <p>For <code>for (let i = …; …; …)</code>, the standard copies the loop variables into a fresh environment record before each lap's update step ("CreatePerIterationEnvironment"). Closures made in a lap therefore keep that lap's record. <code>for…of</code> and <code>for…in</code> with <code>let</code> or <code>const</code> also get a fresh binding every lap. <code>var</code> lives in the function's (or module's) record, so there's only one.</p>
+      <h3>How this is decided</h3>
+      <p>Every regular function call passes a <code>thisArgument</code>. <code>obj.f()</code> passes <code>obj</code> (the standard calls the <code>obj.f</code> part a Reference, which remembers its base object; that's what's lost when you copy <code>obj.f</code> into a variable). A plain <code>f()</code> passes <code>undefined</code>. <code>call</code>/<code>apply</code> pass their first argument. A bound function is a special "exotic" object that stores a target function, a bound <code>this</code> and bound arguments, and always calls the target with them, which is why rebinding can't change it. <code>new</code> creates the object first and passes it. In sloppy functions, the engine then replaces <code>undefined</code> or <code>null</code> with <code>globalThis</code> and wraps primitives (so <code>this</code> for <code>f.call(7)</code> is a Number object); strict functions get the value as-is. Arrow functions have no <code>this</code> binding at all, so <code>this</code> inside them is looked up through the environment, exactly like a variable from the backpack.</p>
+      <h3>new beats bind</h3>
+      <p>One more ranking detail the comic skips: calling a bound function with <code>new</code> ignores the bound <code>this</code> (the new object wins) but keeps the bound arguments. That's why <code>new</code> sits above explicit binding on the map.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Event handlers and callbacks</b> are closures in almost every program: a click handler that remembers which item it belongs to, a <code>fetch</code> callback that remembers which request it was for, an interval that remembers its counter.</li>
+        <li><b>Private state</b> with factories is a popular alternative to classes: <code>createStore()</code>, <code>createLogger()</code> and similar functions return objects whose methods share hidden variables. Classes now have their own private <code>#fields</code> too (Chapter 18).</li>
+        <li><b>Memoization</b> speeds up expensive pure functions, and UI frameworks offer it built in (for example React's <code>useMemo</code> and <code>memo</code>). Real caches also need a size limit, or they become memory leaks.</li>
+        <li><b>once, debounce and throttle</b> are closure wrappers found in utility libraries such as Lodash. Debounce waits until calls stop for a moment (search boxes); throttle allows at most one call per time window (scroll handlers). Both keep a timer id in their backpack.</li>
+        <li><b>Stale closures</b> are among the most-asked questions about React hooks: an effect or handler created during one render keeps reading that render's values. The tools for fixing them (dependency lists, functional updates, refs) all come down to "which variable is in the backpack?"</li>
+        <li><b>bind in older code:</b> before arrow functions (2015) and class fields (2022), code was full of <code>this.handleClick = this.handleClick.bind(this)</code> and <code>var self = this;</code> (saving <code>this</code> in an ordinary variable, so a nested function could find it in its backpack).</li>
+        <li><b>Memory leaks</b> in long-running servers and single-page apps often come from closures that are never released: listeners that are never removed, intervals never cleared, caches that only grow. Browser DevTools' Memory panel and Node's <code>--inspect</code> heap snapshots show what keeps an object alive.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A closure is a special kind of function you create on purpose."</b> Every function closes over the room where it was born. "Closure" usually describes a function that is used outside that room.</li>
+        <li><b>"A closure takes a snapshot of the variables."</b> It keeps the live variables (panel 6). It only looks like a snapshot when nobody changes them, or when a value was copied into a parameter (panel 16).</li>
+        <li><b>"Each call of the inner function gets a new copy of the outer variables."</b> No: all calls of one closure share its backpack (the counter). Each call of the <em>outer</em> function makes a new room.</li>
+        <li><b>"The 3 3 3 bug is caused by setTimeout."</b> It's caused by <code>var</code> sharing one variable; closures stored in an array show the same thing (exercise after panel 14).</li>
+        <li><b>"Closures always leak memory."</b> A closure keeps its room only as long as the closure itself is reachable. Most are short-lived and are freed normally.</li>
+        <li><b>"<code>this</code> is the function itself" or "<code>this</code> is the object the function was written in."</b> It's chosen at each call by the rules; where a regular function was written doesn't matter.</li>
+        <li><b>"Arrow functions have <code>this</code> bound to the object they're defined in."</b> They have no <code>this</code>; they use the surrounding function's (or module's). An arrow written as an object property sees the code outside the object.</li>
+        <li><b>"<code>bind</code> changes the original function."</b> It returns a new one; the original is untouched (<samp>false</samp> on line 15 of <code>bind.js</code>).</li>
+        <li><b>"I can rebind a bound function."</b> The first binding wins forever.</li>
+        <li><b>"<code>call</code> and <code>apply</code> are different things."</b> They do the same job; only the way you pass the arguments differs.</li>
+        <li><b>"In a callback, <code>this</code> is always <code>undefined</code>."</b> It's whatever the caller chooses: <code>undefined</code> for <code>forEach</code> without a second argument, a <code>Timeout</code> for Node timers, the element for DOM listeners.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Set up a folder</h3>
+      <ol>
+        <li>Check Node with <code>node --version</code>. This chapter used v26.13.0, and every program was also run on v22.23.4. For older versions, MDN's browser-compat data lists class fields from Node 12 and optional chaining (<code>this?.name</code>) from Node 14. If Node is missing, install the LTS version from nodejs.org (Windows and macOS installers; on Linux, the instructions there or a version manager such as nvm).</li>
+        <li>Make a folder <code>backpacks</code>, open it in VS Code and open a terminal there (<b>Windows:</b> PowerShell in VS Code works; <b>macOS / Linux:</b> any terminal).</li>
+        <li>Run <code>npm init -y</code> and then <code>npm pkg set type=module</code>, so <code>.js</code> files are strict ES modules, as in this book.</li>
+      </ol>
+      <h3>2. Backpacks</h3>
+      <ol>
+        <li>Type <code>counter.js</code> (panel 7) and run <code>node counter.js</code>. Add a third counter and call it a few times.</li>
+        <li>Open the same file in Chrome's or Edge's debugger: run <code>node --inspect-brk counter.js</code>, open <code>chrome://inspect</code>, and click <b>inspect</b>. Put a breakpoint on line 4 and run to it. The Scope pane shows a <b>Closure (makeCounter)</b> section holding <code>count</code>: the backpack, drawn by real tools.</li>
+        <li>Type <code>var_loop.js</code>, run it, then change <code>var</code> to <code>let</code> and run it again.</li>
+      </ol>
+      <h3>3. The ventriloquist</h3>
+      <ol>
+        <li>Type <code>call_apply.js</code> and <code>bind.js</code>, run them, and add your own puppets.</li>
+        <li>Save <code>strict_leak.js</code> as <code>leak.cjs</code> and run both. Then add <code>"use strict";</code> as the first line of <code>leak.cjs</code> and run it again.</li>
+        <li>Type <code>timer_this.js</code>. Then print the whole <code>this</code> instead of its constructor's name, as <code>timeout_print.js</code> does, and run it twice. Here is <b>one possible run</b>: the <code>_idleStart</code> number is a time in milliseconds since the program started, so it changes from run to run (two runs made while checking this page printed different values), which is why the comic prints only the constructor's name.
+          <span class="file-tab">timeout_print.js</span><pre class="code" data-src="timeout_print.js"></pre><pre class="term wrap" data-run="timeout_print.js"></pre></li>
+      </ol>
+      <h3>4. In a browser</h3>
+      <ol>
+        <li>Save <code>dom_this.html</code>, open it by double-clicking, press <kbd>F12</kbd> (macOS: <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd>), choose <b>Console</b>, and click the button. Then change the script tag to <code>&lt;script type="module"&gt;</code>, reload and click again. This book did exactly that in <code>dom_this_module.html</code> (the only change is line 3), and the arrow handler's <code>this</code> became <code>undefined</code>, because module scripts are strict and their top-level <code>this</code> is <code>undefined</code>:
+          <pre class="term wrap" data-run="dom_this_module.html"></pre></li>
+        <li>Hand a browser timer a regular function and ask whether its <code>this</code> is <code>window</code>. <code>timer_browser.html</code> does it, run in the same headless Chromium: <code>true</code>, unlike Node's <code>Timeout</code> (panel 36).
+          <span class="file-tab">timer_browser.html</span><pre class="code" data-src="timer_browser.html"></pre><pre class="term wrap" data-run="timer_browser.html"></pre></li>
+      </ol>
+      <p><b>About this book's runs:</b> every capture used <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. No program in this chapter prints a date, a time or a locale-dependent number, so neither setting changes any output here. <code>dom_this.html</code>, <code>dom_this_module.html</code> and <code>dom_predict.html</code> ran in headless Chromium, each clicked once by the capture tool, and <code>timer_browser.html</code> was simply opened; the console's lines are shown as the terminal.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every Node program was also run on Node 22.23.4. Seven runs differ. In six of them, the runs that print a trace (<code>peek.js</code>, <code>strict_leak.js</code>, <code>machine_rate_bad.js</code>, <code>lost_callback.js</code>, <code>spot_lost.js</code> and <code>arrow_ignores.js</code>), the program output and exit code were identical and only Node's own stack-trace lines (<code>node:internal/…</code> line numbers) and the version footer changed. The seventh is <code>timeout_print.js</code> from the lab, a one-possible-run program whose printout changes on every run, so its two versions can't be compared line for line. Here is panel 10 on Node 22:</p>
+      <pre class="term wrap" data-run="peek.js" data-alt data-exit></pre>
+      <ul>
+        <li><b>Feature ages:</b> <code>let</code>, <code>const</code>, arrow functions and per-lap loop bindings arrived in ES2015 (Node 6 and later); <code>bind</code>, strict mode and <code>"use strict"</code> are older still (ES5); <code>globalThis</code> in ES2020 (Node 12); public class fields, used in <code>three_fixes.js</code>, in ES2022 (Node 12 and later); numeric separators (<code>1_000_000</code> in <code>big.js</code>) in ES2021 (Node 12.5). The editions come from TC39's list of finished proposals and the Node versions from MDN's browser-compat data (version 5.6.0), both read on 2026-11-08; no older Node was run.</li>
+        <li><b>Engine wording:</b> the error messages here are V8's (Node, Chrome, Edge). Firefox, for example, reports the detached method as <i>this is undefined</i>, and Safari as <i>undefined is not an object (evaluating 'this.name')</i>.</li>
+        <li><b>Hosts:</b> a Node timer passes its <code>Timeout</code> object as <code>this</code> (<code>timer_this.js</code>); a browser's passes <code>window</code> (<code>timer_browser.html</code>). An ES module's top-level <code>this</code> is <code>undefined</code> (<code>default_strict.js</code>, line 6); a classic browser script's is <code>window</code> (the arrow handler in <code>dom_this.html</code>).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>closure</dt><dd>A function together with the variables from where it was born, which it can still use later, anywhere. Every JavaScript function is one.</dd>
+        <dt>backpack</dt><dd>The comic's picture of what a closure carries: the room it was born in, and the rooms around it.</dd>
+        <dt>lexical environment</dt><dd>The technical name for the backpack: the variables in scope where the function was written.</dd>
+        <dt>lexical scope</dt><dd>Names are found by where code is written, not where it is called.</dd>
+        <dt>factory</dt><dd>A function that builds and returns new objects or functions, such as <code>makeCounter</code>.</dd>
+        <dt>private state</dt><dd>Data only certain functions can reach, kept in their shared backpack.</dd>
+        <dt>stale closure</dt><dd>A closure that keeps reading an old value, because its backpack holds a different variable from the one being updated.</dd>
+        <dt>garbage collector</dt><dd>The part of the engine that frees memory no running code can reach any more.</dd>
+        <dt>memory leak</dt><dd>Memory kept alive by mistake, for example by a closure that is never released.</dd>
+        <dt>partial application</dt><dd>Filling in some of a function's arguments now and the rest later.</dd>
+        <dt>memoization, cache</dt><dd>Saving the answers of a function so repeated questions are answered from the cache instead of worked out again.</dd>
+        <dt><code>once</code></dt><dd>A wrapper that lets a function run only the first time.</dd>
+        <dt>IIFE</dt><dd>Immediately Invoked Function Expression: <code>(function () { … })()</code>, called the moment it's written.</dd>
+        <dt>module pattern</dt><dd>An IIFE that returns a public object while its variables stay private.</dd>
+        <dt><code>this</code></dt><dd>The word "me" inside a regular function, chosen at each call.</dd>
+        <dt>binding (of this)</dt><dd>Deciding what <code>this</code> refers to: default, implicit, explicit, <code>new</code>, or borrowed by an arrow.</dd>
+        <dt>strict mode / sloppy mode</dt><dd>Modern safer rules (all modules, <code>"use strict"</code>) versus the older loose rules (plain scripts, CommonJS files).</dd>
+        <dt><code>globalThis</code></dt><dd>The global object, holding the built-ins, under one standard name in every host (<code>window</code> in browsers).</dd>
+        <dt><code>call</code>, <code>apply</code></dt><dd>Call a function now with a chosen <code>this</code>; <code>call</code> takes the arguments as a list, <code>apply</code> as an array.</dd>
+        <dt><code>bind</code>, bound function</dt><dd><code>bind</code> returns a new function whose <code>this</code> (and any leading arguments) are fixed for good.</dd>
+        <dt>constructor</dt><dd>A function meant to be called with <code>new</code>, which makes a fresh object as its <code>this</code>.</dd>
+        <dt><code>arguments</code></dt><dd>An array-like object holding every argument of a regular function call. Arrows don't have one.</dd>
+        <dt>function borrowing</dt><dd>Using one object's method on another object with <code>call</code> or <code>apply</code>.</dd>
+        <dt>class field</dt><dd>A property written directly in a class body, set on every new object (Chapter 18).</dd>
+        <dt>host</dt><dd>The environment running JavaScript, such as Node or a browser, which supplies extras like timers.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide">MDN JavaScript Guide</a>, especially the Closures chapter, and the MDN reference pages for <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this">this</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions">arrow functions</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/call">Function.prototype.call()</a> and its neighbours <code>apply</code> and <code>bind</code></li>
+        <li><a href="https://tc39.es/ecma262/">The ECMAScript specification</a>: "Environment Records", "OrdinaryCallBindThis" and "Bound Function Exotic Objects" (dense, but the source of truth)</li>
+        <li><a href="https://nodejs.org/api/timers.html">Node.js: Timers</a> (the <code>Timeout</code> class)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://javascript.info/closure">javascript.info: Variable scope, closure</a>, then <a href="https://javascript.info/call-apply-decorators">Decorators and forwarding, call/apply</a> and <a href="https://javascript.info/bind">Function binding</a></li>
+        <li><a href="https://github.com/getify/You-Dont-Know-JS/blob/2nd-ed/scope-closures/README.md">You Don't Know JS Yet: Scope &amp; Closures</a> (2nd edition, free on GitHub), chapters 7 and 8 and Appendix B</li>
+        <li><a href="https://eloquentjavascript.net/">Eloquent JavaScript, 4th edition</a>, chapter 3, section "Closure"</li>
+        <li><a href="https://roadmap.sh/javascript">roadmap.sh/javascript</a>, the nodes on closures, <code>this</code> and explicit binding</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch17</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are strict ES modules; the two <code>.cjs</code> files are sloppy CommonJS on purpose), with <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. The four <code>.html</code> programs (<code>dom_this.html</code>, <code>dom_this_module.html</code>, <code>dom_predict.html</code> and <code>timer_browser.html</code>) were opened in headless Chromium, and the first three had their button clicked once by the capture tool; the terminal shows the browser console. Program output and exit codes were identical on both Node versions, apart from <code>timeout_print.js</code>, whose printout changes on every run; otherwise only Node-internal trace lines and the version footer differ, as the version notes describe. 65 programs were captured, each run twice on the primary toolchain to confirm the same output, except <code>timeout_print.js</code>, which is marked as varying and shown only as one possible run.</p>
+  <p>Timer programs here are deterministic on purpose: delays differ by at least 10 ms and nothing prints a time. The Node timer's <code>this</code> is printed as <code>this.constructor.name</code> because the whole <code>Timeout</code> object contains timing fields that change on every run. Garbage collection is described, never captured: when memory is freed is up to the engine.</p>
+  <p>In the terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines from Node's own code are folded into one line by the page's script; the full, unedited text is one click away under each of those terminals. Kit's walk through <code>birthplace.js</code>, the two memory tracers, the <code>withRate()</code> machine and the map of the rules for <code>this</code> are teaching models; each checks itself against the real runs and says so. The rooms and ids in the tracers (E1, F1, MR, R0, C1) are labels for the picture, not real memory addresses; "its room", "backpack" and the "timer shelf" are the picture's names for internal links (the standard's environment records and <code>[[Environment]]</code> slot, and Node's timer list), not real variables. V8 keeps only the captured variables in a closure's context, as the notebook explains.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): javascript.info "Variable scope, closure" (its lexical-environment model, the counter-independence task, the "army of functions" loop bug, garbage collection of environments and V8's dropping of unused outer variables), "Decorators and forwarding, call/apply" and "Function binding" (losing <code>this</code>, wrapper versus <code>bind</code>, partial functions, a function cannot be re-bound); MDN reference "this" (sloppy-mode substitution of <code>globalThis</code> and primitive wrapping, bound functions, arrows ignoring <code>call</code>/<code>bind</code>, DOM listeners getting the element, callbacks and <code>thisArg</code>, class-field arrows) and "Arrow function expressions"; the MDN JavaScript Guide; You Don't Know JS Yet, Scope &amp; Closures chapters 7 and 8 and Appendix B, and Objects &amp; Classes chapter 4; Eloquent JavaScript, 4th edition, chapter 3; roadmap.sh's closures, <code>this</code> and explicit-binding nodes; Exercism's closures concept; JavaScript: The Definitive Guide, 7th edition, sections 8.6 and 8.7.4–8.7.5; web.dev Learn JavaScript "this", as listed in this book's research map (<code>research/javascript.md</code>, modules I1 and I2). The research map's facts about Node's Timeout <code>this</code> and the detached-method TypeError were confirmed by this chapter's own runs.</p>
+  <p>Kit, the backpack, the puppet, the Professor and the sneak are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
