@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Triage and Pager Chains</title>
+<meta name="description" content="Chapter 24 of the Pip &amp; Friends JavaScript book, a comic course: designing error handling and promises in depth. A hospital triage desk where each layer treats, refers upward or discharges: custom error classes and a small hierarchy, setting name, instanceof versus name checks, Error.isError and other realms, error cause when wrapping, rethrowing what you can't handle, catching at program edges, logging with context, never swallowing errors, thrown strings, finally, AggregateError, result objects, using and DisposableStack. Then promises as pagers: pending, fulfilled and rejected, settled is final, the executor runs at once, then returns a new promise, returning values and promises, the forgotten return, errors travelling down a chain, a catch placed too early, finally, Promise.all, allSettled, race and any, withResolvers, Promise.try, util.promisify, a sleep function, unhandled rejections and promises that never settle, from callback pyramids to chains to async and await.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch24.css">
+<script defer src="../data/js-ch24.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch24.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch23.html">&larr; Ch 23</a><span aria-current="page">Ch 24 of 29</span><a href="ch25.html">Ch 25 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 24</p>
+    <h1 id="cover-h">TRIAGE AND PAGER CHAINS</h1>
+    <div class="cover24">
+      <svg class="char" data-char="professor"></svg>
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char pg" data-char="pager" data-state="buzz" data-label="24"></svg>
+      <svg class="char" data-char="chef"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit, the stage manager in a pink hoodie and headset, waves hello. Beside Kit are the Professor with his notebook, a restaurant pager buzzing with its tag #24, and the chef in a tall white hat.</p>
+    <p class="caption blurb">In Chapter 12 you learned to <b>catch</b> an error. Today you learn to <b>design</b> for them, like a hospital triage desk where every layer decides: treat it here, refer it upstairs, or discharge and tidy up. Then the restaurant pager from Chapter 16 comes back, and this time you <b>build</b> pagers, chain them so each restaurant hands you to the next, and wait on many at once. About 130 minutes, with 23 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The triage desk: error classes</a></li>
+      <li><a href="#part-2">Referring upward: cause, rethrow, cleanup</a></li>
+      <li><a href="#part-3">Building a pager: promise states</a></li>
+      <li><a href="#part-4">Pager chains: then, catch, finally</a></li>
+      <li><a href="#part-5">Many pagers at once</a></li>
+      <li><a href="#part-6">From callbacks to pagers</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE TRIAGE DESK<small>Your own kinds of error, and who treats which</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: Kit volunteers at the triage desk">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="NEXT!" data-seed="24"></svg>
+    <p class="caption">The theatre's box office is getting busy. Wrong seat codes, missing shows, bugs in the code: errors arrive all day. Kit has an idea from a hospital visit.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>At a hospital, nobody sends every patient to the top surgeon. A nurse at the <b>triage desk</b> looks at each one first. A scraped knee? Treated right there. Something serious? Sent upstairs to a specialist, with a note explaining what happened.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>And whatever happens, the desk gets wiped and the next patient is called. My code needs a triage desk too.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, points at the clipboard. A burst says NEXT!</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the triage desk, three ways out">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">Every layer of a program that meets an error has the same three choices.</p>
+    <div class="desk24 picscroll"><svg class="char pic-wide" data-char="triagedesk"></svg></div>
+    <p class="sr-only">Picture: a triage desk with a bell and a yellow TRIAGE sign. An arrow leads left to a bed with a tick, labelled TREAT: catch it here. Another arrow leads right to a staircase going up, labelled REFER UP: throw, with cause. At the far right is an exit door, and under the floor it says DISCHARGE: finally, tidy up.</p>
+    <div class="duo three">
+      <div class="duo-card ok"><h3>TREAT<small>catch (err) { … }</small></h3><p>You know this error and what to do about it: show a friendly message, use a default, try again. Then carry on.</p></div>
+      <div class="duo-card cool"><h3>REFER UP<small>throw err</small></h3><p>Not yours to fix. Pass it to the caller, the next layer up. If you add a note, keep the original attached (Part 2).</p></div>
+      <div class="duo-card hot"><h3>DISCHARGE<small>finally { … }</small></h3><p>Treated or referred, some tidying always happens: close the file, switch off the lights, call the next patient.</p></div>
+    </div>
+    <p class="catch">TREAT IT, REFER IT UP, OR DISCHARGE</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: your own error class">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">To triage, the desk must tell patients apart. So give each kind of problem its own class. Chapter 18 showed that a class can <code>extends Error</code>; here is the full recipe.</p>
+    <span class="file-tab">custom_error.js</span>
+    <pre class="code" data-src="custom_error.js"></pre>
+    <pre class="term" data-run="custom_error.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1:</b> <code>ValidationError</code> is a new kind of error, built on <code>Error</code>. A <b>validation error</b> means "the input was the wrong shape", such as a word where a number belongs.</span></li>
+      <li><span><b>Line 3:</b> <code>super(message)</code> runs <code>Error</code>'s own constructor, which stores the message and records the stack trace. It must come first.</span></li>
+      <li><span><b>Line 4:</b> sets <code>name</code>, the word printed before the colon. The last line shows why you get both checks for free: the error is a <code>ValidationError</code> <em>and</em> an <code>Error</code>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 4: forgetting the name">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">What if you skip line 4? The class still works, but every report about it lies a little.</p>
+    <span class="file-tab">names.js</span>
+    <pre class="code" data-src="names.js"></pre>
+    <pre class="term" data-run="names.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. <code>Nameless</code> inherits <code>name</code> from <code>Error.prototype</code>, so it introduces itself as plain <samp>Error</samp>. In a log full of errors, nobody will spot that it was yours.</p></div>
+    </div>
+    <p>Rule: every custom error class sets <code>this.name</code> right after <code>super(…)</code>. It's the label on the patient's wristband.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: a family of errors">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Real programs keep their error classes in one file, as a small family tree. One parent, <code>AppError</code>, means "a problem our program knows about". Its children are more specific.</p>
+    <div class="two-files">
+      <div><span class="file-tab">errors.js</span><pre class="code" data-src="errors.js"></pre></div>
+      <div><span class="file-tab">hierarchy.js</span><pre class="code" data-src="hierarchy.js"></pre></div>
+    </div>
+    <pre class="term" data-run="hierarchy.js"></pre>
+    <ol class="readlist">
+      <li><span><b>errors.js line 5:</b> <code>this.constructor.name</code> is the name of the class used with <code>new</code>, so every child gets the right <code>name</code> without repeating the line. The <code>options</code> on line 3 are passed on too; Part 2 needs them.</span></li>
+      <li><span><b>The tree:</b> <code>SeatTakenError</code> is a <code>ValidationError</code>, which is an <code>AppError</code>, which is an <code>Error</code>. <code>instanceof</code> walks up the tree (the prototype chain from Chapter 18), so a check for a parent catches all its children.</span></li>
+      <li><span><b>The <code>TypeError</code></b> is not in our family: it's a bug, not a problem we planned for. That difference is what the triage desk uses.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-hier-m" id="ex-hier"></div>
+  <script type="application/json" id="ex-hier-m">{"program": "fill_hierarchy.js", "prompt": "Build a small family of payment errors, the way <code>errors.js</code> does. Fill the four blanks so the program prints the goal output, with line 4 written so that it names <b>every</b> class in the family correctly, not just this one.", "blanks": [{"line": 3, "text": "super(message)"}, {"line": 4, "text": "this.constructor.name"}, {"line": 7, "text": "extends AppError"}, {"line": 8, "text": "extends PaymentError"}], "explain": "<code>super(message)</code> must run before <code>this</code> is touched. <code>this.constructor.name</code> is the name of the class that was really used with <code>new</code>, so one line in <code>AppError</code> names every child correctly: <samp>CardDeclinedError</samp>. (Writing <code>\"AppError\"</code> there would name every child AppError, and <code>\"CardDeclinedError\"</code> would print the right word here but mislabel every <code>PaymentError</code>.) <code>CardDeclinedError</code> extends <code>PaymentError</code>, which extends <code>AppError</code>, so both <code>instanceof</code> checks are <samp>true</samp>; it was never a <code>TypeError</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: the desk in code">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Here's the box office as three layers. <code>lookup</code> is the ward where trouble starts. <code>desk</code> treats input mistakes. <code>visit</code>, at the top, has a specialist for missing seats. Four tiny programs call <code>visit</code> with different seat codes.</p>
+    <span class="file-tab">desk.js</span>
+    <pre class="code" data-src="desk.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 16 to 19, treat:</b> the desk only handles <code>ValidationError</code> (and its children). It prints a note and returns <code>null</code>: "no seat, but no crash".</span></li>
+      <li><span><b>Line 20, refer up:</b> anything else is thrown again, unchanged. Throwing an error you caught is called <b>rethrowing</b>.</span></li>
+      <li><span><b>Lines 21 to 23, discharge:</b> <code>finally</code> runs every time, whichever way the desk is left.</span></li>
+      <li><span><b>Lines 30 to 35:</b> the specialist upstairs treats <code>NotFoundError</code> and rethrows the rest. Nobody above <code>visit</code> catches anything.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: map of the triage desk" data-map="map-desk">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">Four seat codes, four real runs. Pick one and follow Kit through the hospital.</p>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapdesk-t mapdesk-d"><title id="mapdesk-t">Map of the triage desk</title><desc id="mapdesk-d">An error starts in lookup. It goes to the desk's catch, which treats validation errors and rethrows the rest. The desk's finally always runs. A returned seat ends the visit normally. A rethrown error goes to visit's catch, which treats not-found errors; anything else is rethrown and crashes the program.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-desk">{"seed": 24, "size": [700, 470], "start": [[160, 2], [160, 26]],
+      "states": [
+        {"id": "LOOKUP", "x": 20, "y": 30, "w": 280, "h": 80, "label": "lookup(code)", "sub": "the ward: may throw"},
+        {"id": "DESK", "x": 400, "y": 30, "w": 280, "h": 80, "label": "desk: catch", "sub": "treats ValidationError"},
+        {"id": "FINALLY", "x": 400, "y": 200, "w": 280, "h": 80, "label": "desk: finally", "sub": "next patient, please"},
+        {"id": "OVER", "x": 20, "y": 200, "w": 280, "h": 80, "label": "visit over", "sub": "no crash", "kind": "end"},
+        {"id": "VCATCH", "x": 400, "y": 370, "w": 280, "h": 80, "label": "visit: catch", "sub": "treats NotFoundError"},
+        {"id": "CRASH", "x": 20, "y": 370, "w": 280, "h": 80, "label": "nobody treats it", "sub": "crash, exit code 1", "kind": "error"}],
+      "transitions": [
+        {"id": "t1", "from": "LOOKUP", "to": "DESK", "pts": [[304, 70], [394, 70]], "label": "throws", "lx": 318, "ly": 96},
+        {"id": "t2", "from": "LOOKUP", "to": "FINALLY", "pts": [[160, 114], [160, 155], [470, 155], [470, 194]], "label": "returns a seat", "lx": 176, "ly": 146},
+        {"id": "t3", "from": "DESK", "to": "FINALLY", "pts": [[600, 114], [600, 194]], "label": ["treated or", "rethrown"], "lx": 610, "ly": 146},
+        {"id": "t4", "from": "FINALLY", "to": "OVER", "pts": [[396, 240], [304, 240]], "label": "returned", "lx": 316, "ly": 266},
+        {"id": "t5", "from": "FINALLY", "to": "VCATCH", "pts": [[600, 284], [600, 364]], "label": "rethrown", "lx": 610, "ly": 330},
+        {"id": "t6", "from": "VCATCH", "to": "CRASH", "pts": [[396, 410], [304, 410]], "label": "rethrown", "lx": 316, "ly": 436, "bug": true}],
+      "paths": [
+        {"id": "ok", "label": "visit(\"B7\")", "program": "visit_ok.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["LOOKUP"], "output": [], "note": "<code>visit</code> calls <code>desk</code>, whose <code>try</code> calls <code>lookup(\"B7\")</code>. <samp>B7</samp> is in the list, so nothing is thrown."},
+          {"on": ["FINALLY"], "via": ["t2"], "output": ["desk: next patient, please"], "note": "<code>lookup</code> returns <samp>B7</samp>, and the desk's <code>return</code> is on its way out. But <code>finally</code> runs first: <samp>desk: next patient, please</samp>."},
+          {"on": ["OVER"], "via": ["t4"], "output": ["desk: next patient, please", "visit over, seat: B7"], "note": "Back in <code>visit</code>, line 29 prints the seat. A healthy patient never sees a catch."}]},
+        {"id": "empty", "label": "visit(\"   \")", "program": "visit_empty.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["LOOKUP"], "output": [], "note": "Three spaces, trimmed, leave <code>\"\"</code>. Line 7 throws a <code>ValidationError</code>."},
+          {"on": ["DESK"], "via": ["t1"], "output": ["desk treats it: no seat typed"], "note": "The desk's <code>catch</code> checks <code>instanceof ValidationError</code>: yes. It <b>treats</b> it: a note, then <code>return null</code>."},
+          {"on": ["FINALLY"], "via": ["t3"], "output": ["desk treats it: no seat typed", "desk: next patient, please"], "note": "The return is on its way out, so <code>finally</code> runs."},
+          {"on": ["OVER"], "via": ["t4"], "output": ["desk treats it: no seat typed", "desk: next patient, please", "visit over, seat: null"], "note": "<code>visit</code> gets <code>null</code> and carries on. The specialist was never bothered."}]},
+        {"id": "missing", "label": "visit(\"Z9\")", "program": "visit_missing.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["LOOKUP"], "output": [], "note": "<samp>Z9</samp> isn't a seat. Line 8 throws a <code>NotFoundError</code>."},
+          {"on": ["DESK"], "via": ["t1"], "output": [], "note": "The desk checks: not a <code>ValidationError</code>. Not ours, so line 20 <b>refers it upward</b>: <code>throw err</code>."},
+          {"on": ["FINALLY"], "via": ["t3"], "output": ["desk: next patient, please"], "note": "Even while the error is flying past, <code>finally</code> runs. Discharge always happens."},
+          {"on": ["VCATCH"], "via": ["t5"], "output": ["desk: next patient, please", "specialist treats it: no seat Z9"], "note": "Upstairs, <code>visit</code>'s catch: it <em>is</em> a <code>NotFoundError</code>, so the specialist treats it. Line 29 was skipped. The program ends normally."}]},
+        {"id": "bug", "label": "visit(42)", "program": "visit_bug.js", "expect": {"exit": 1, "stderrContains": "TypeError: code.trim is not a function"}, "steps": [
+          {"on": ["LOOKUP"], "output": [], "note": "A number has no <code>trim</code> method. Line 6 throws a <code>TypeError</code>, a real bug, not one of our planned errors."},
+          {"on": ["DESK"], "via": ["t1"], "output": [], "note": "Not a <code>ValidationError</code>: rethrown."},
+          {"on": ["FINALLY"], "via": ["t3"], "output": ["desk: next patient, please"], "note": "<code>finally</code> still runs."},
+          {"on": ["VCATCH"], "via": ["t5"], "output": ["desk: next patient, please"], "note": "Not a <code>NotFoundError</code> either: line 34 rethrows it."},
+          {"on": ["CRASH"], "via": ["t6"], "output": ["desk: next patient, please"], "error": "TypeError: code.trim is not a function", "note": "Nobody is left to catch it, so Node prints it with its stack and exits with code 1. That's <b>good</b>: a bug should be loud, not quietly treated as \"no seat\"."}]}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-handlers-m" id="ex-handlers"></div>
+  <script type="application/json" id="ex-handlers-m">{"program": "trace_handlers.js", "columns": ["turn", "error", "handler"], "given": [0, 1], "prompt": "Four patients arrive. <code>whoTreats</code> uses the same rules as the desk and the specialist (with the family from <code>errors.js</code>). Fill in who treats each one.", "explain": "<code>NotFoundError</code>: not a validation error, so the specialist. <code>TypeError</code>: in neither family, so nobody (it would crash). <code>SeatTakenError</code> extends <code>ValidationError</code>, so <code>instanceof ValidationError</code> is true: the desk. A plain <code>ValidationError</code>: the desk. Order matters too: checks for the more specific families must come before anything that would catch everything."}</script>
+
+  <section class="panel clean" aria-label="Panel 8: instanceof, name and Error.isError">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">Two ways to ask "what kind of error is this?": <code>err instanceof ValidationError</code> (walks the family tree) or <code>err.name === "ValidationError"</code> (reads the wristband). Usually they agree. Here's a case where <code>instanceof</code> gets it wrong.</p>
+    <span class="file-tab">realms.js</span>
+    <pre class="code" data-src="realms.js"></pre>
+    <pre class="term" data-run="realms.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4:</b> Node's <code>vm</code> module runs code in a fresh, separate JavaScript world, called a <b>realm</b>, with its own copy of every built-in, including its own <code>Error</code>. Browsers make realms too: every <code>&lt;iframe&gt;</code> has one.</span></li>
+      <li><span><b>Line 6:</b> the foreign error was made by the <em>other</em> realm's <code>Error</code>, so <code>foreign instanceof Error</code> is <samp>false</samp>. Same name, different family tree.</span></li>
+      <li><span><b>Line 8:</b> <code>Error.isError(value)</code> asks "was this really made by an error constructor, from any realm?" Both are <samp>true</samp>. <b>Line 9:</b> an ordinary object that just <em>looks</em> like an error is <samp>false</samp>, which a <code>name</code> check would get wrong.</span></li>
+    </ol>
+    <p><code>Error.isError</code> is brand new: Node 26 has it, Node 22 doesn't, and MDN marks it "limited availability" in browsers. Node 22's run stops at line 8:</p>
+    <pre class="term wrap" data-run="realms.js" data-alt data-exit data-fold></pre>
+  </section>
+
+  <div data-ex="choice" data-model="ex-realm-m" id="ex-realm"></div>
+  <script type="application/json" id="ex-realm-m">{"q": "Your desk must treat <code>SeatTakenError</code> <em>and</em> every other kind of <code>ValidationError</code>, including ones added next year. Which check fits best?", "options": [
+    {"t": "<code>err instanceof ValidationError</code>", "correct": true, "why": "Yes. <code>instanceof</code> walks up the family tree, so every child class, present or future, passes. Inside one program (one realm) it's the usual choice."},
+    {"t": "<code>err.name === \"ValidationError\"</code>", "why": "A <code>SeatTakenError</code>'s name is <samp>SeatTakenError</samp>, so this misses every child. Name checks only match one exact kind."},
+    {"t": "<code>Error.isError(err)</code>", "why": "That's true for <em>every</em> real error, including the <code>TypeError</code> bug. It tells you \"this is an error\", not which kind."},
+    {"t": "<code>typeof err === \"ValidationError\"</code>", "why": "<code>typeof</code> of any object, errors included, is just <samp>\"object\"</samp>."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · REFERRING UPWARD<small>Wrapping with a cause, rethrowing, logging, cleanup and other shapes of failure</small></h2>
+
+  <section class="panel pop" aria-label="Panel 9: the note that loses the patient's history">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="9"></svg>
+    <p class="caption">Sometimes a layer wants to refer upward <em>with a better note</em>: "could not load settings" says more to the caller than a raw JSON complaint. Here's the common first try.</p>
+    <span class="file-tab">lost_cause.js</span>
+    <pre class="code" data-src="lost_cause.js"></pre>
+    <pre class="term" data-run="lost_cause.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>The specialist gets a referral that says "could not load settings" and nothing else. <em>Why</em> not? Which line? What was wrong with the file? Line 9 threw all of that away. <code>err.cause</code> is <samp>undefined</samp>.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 10: wrapping with a cause">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The fix is one option. <code>Error</code> and its built-in relatives take an options object, <code>{ cause: … }</code> (the second argument; the third for <code>AggregateError</code>), and keep it as <code>err.cause</code>: the original error, still attached. This is called <b>wrapping</b> an error.</p>
+    <span class="file-tab">with_cause.js</span>
+    <pre class="code" data-src="with_cause.js"></pre>
+    <pre class="term" data-run="with_cause.js"></pre>
+    <p>Now the caller has both: the friendly summary in <code>err.message</code> and the full history in <code>err.cause</code>, a real <code>SyntaxError</code> from <code>JSON.parse</code> (Chapter 13) with its own message and stack. In <code>errors.js</code>, that's why <code>AppError</code> passes <code>options</code> on to <code>super</code>: so <code>new NotFoundError("…", { cause: err })</code> works too.</p>
+    <p class="catch">WRAP IT, DON'T LOSE IT: { cause }</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 11: reading a wrapped crash">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">And if nobody catches the wrapped error? Node prints the whole chain. Read it like a detective, from the top.</p>
+    <span class="file-tab">cause_crash.js</span>
+    <pre class="code" data-src="cause_crash.js"></pre>
+    <pre class="term wrap" data-run="cause_crash.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The top:</b> where the outer error was thrown (line 5, caret under <code>new</code>), then <samp>Error: could not load settings</samp> and its footprints.</span></li>
+      <li><span><b><samp>... 2 lines matching cause stack trace ...</samp></b>: Node noticed the two stacks share their bottom lines and printed them once.</span></li>
+      <li><span><b><samp>[cause]: SyntaxError: …</samp></b>: the original, indented inside the braces, with <em>its</em> footprints. <samp>cause_crash.js:3:17</samp> is the real spot: the <code>JSON.parse</code> call. Without <code>{ cause }</code>, this whole second half would be missing.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-cause-m" id="ex-cause"></div>
+  <script type="application/json" id="ex-cause-m">{"program": "parsons_cause.js", "seed": 11, "pin": [1, 2, 3, 4, 5], "prompt": "The function is fixed. Put the rest in order: call it inside a safety net, and wrap what goes wrong with a cause before printing both messages.", "explain": "<code>try {</code> opens the net around the risky call. <code>} catch (err) {</code> closes it and receives the <code>RangeError</code>. Inside, the new error is made with <code>{ cause: err }</code> <em>before</em> the line that reads <code>wrapped.cause</code>. The last <code>}</code> closes the catch."}</script>
+
+  <div data-ex="spot" data-model="ex-swallow-m" id="ex-swallow"></div>
+  <script type="application/json" id="ex-swallow-m">{"program": "spot_swallow.js", "bug": 9, "prompt": "The ticket file has a typo, and this program prints 0 tickets with no hint of why. Nobody can debug it from its output. Click the line that makes the problem invisible.", "explain": "Line 9 <b>swallows</b> the error: it prints the word <samp>error</samp> and throws the error object away, with its message (<i>Expected double-quoted property name…</i>), its line number and its stack. Then the program carries on with a wrong answer as if nothing happened. At the very least, log <code>err</code> itself, with context. Better: if you can't really treat it, don't catch it, or rethrow it. Panel 12 shows a better version."}</script>
+
+  <section class="panel clean" aria-label="Panel 12: log with context, and catch at the edge">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Two habits from real programs. First: a log line that says <b>who</b> (box office), <b>what</b> (order 7) and <b>why</b> (the cause). Second: one safety net at the program's <b>edge</b>, around everything, so any crash ends with a clear message and a failure exit code.</p>
+    <div class="two-files">
+      <div><span class="file-tab">logging.js</span><pre class="code" data-src="logging.js"></pre><pre class="term wrap" data-run="logging.js" data-exit></pre></div>
+      <div><span class="file-tab">edge.js</span><pre class="code" data-src="edge.js"></pre><pre class="term wrap" data-run="edge.js" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b><code>console.error</code></b> writes to <b>stderr</b>, the error stream, which the terminal shows in red here. Logs and real output stay separate.</span></li>
+      <li><span><b><code>process.exitCode = 1</code></b> says "this run failed" without stopping on the spot: the program ends normally, then reports failure to whoever ran it (a script, a test runner, a build server).</span></li>
+      <li><span><b>Where to catch:</b> deep layers usually rethrow (or wrap); the <b>edges</b> catch: the top of the program, one web request, one button click. That's where you know how to tell the user.</span></li>
+    </ol>
+    <p class="catch">NEVER SWALLOW. LOG WHO, WHAT AND WHY.</p>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 13: throwing a string">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <svg class="sfx tl" data-sfx="UH-OH" data-seed="13"></svg>
+    <p class="caption">JavaScript lets you <code>throw</code> <em>anything</em>, not just errors. Some old code throws plain strings. Watch what that costs.</p>
+    <span class="file-tab">throw_string.js</span>
+    <pre class="code" data-src="throw_string.js"></pre>
+    <pre class="term wrap" data-run="throw_string.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Caught:</b> <code>err</code> is a string, so <code>err.message</code> and <code>err.stack</code> are <samp>undefined</samp>. Every catch that reads <code>err.message</code> now prints nonsense.</span></li>
+      <li><span><b>Uncaught (line 13):</b> Node can only print the value, <samp>out of lobster</samp>. There's no file, no line of yours, no footprints: a string has no stack. Node even suggests a special option to find where it came from.</span></li>
+      <li><span><b>Rule:</b> always <code>throw new Error(…)</code> (or a subclass). And in a catch where you're not sure, <code>Error.isError(err)</code> tells you whether you got a real error.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 14: finally always discharges">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">Chapter 12 introduced <code>finally</code>. Here's its real job: cleanup that must happen on every way out, even a <code>return</code> or a throw.</p>
+    <span class="file-tab">finally_cleanup.js</span>
+    <pre class="code" data-src="finally_cleanup.js"></pre>
+    <pre class="term" data-run="finally_cleanup.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Scene 1:</b> line 6 returns <code>"applause"</code>, but before the function really leaves, <code>finally</code> switches the lights off. Only then does line 12 print <samp>applause</samp>.</span></li>
+      <li><span><b>Scene 2:</b> line 4 throws. There's no <code>catch</code> in <code>playScene</code>, yet <code>finally</code> still runs, and then the error carries on up to line 15's catch.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-finally-m" id="ex-finally"></div>
+  <script type="application/json" id="ex-finally-m">{"program": "predict_finally.js", "prompt": "Predict every line. Careful: who prints first, the <code>finally</code> or the <code>console.log</code> that receives the returned value?", "hint": "A return value travels back to the caller only after <code>finally</code> has run.", "explain": "<code>serve(\"soup\")</code>: the <code>return</code> is waiting, <code>finally</code> prints <samp>wipe the table</samp>, then line 13 prints <samp>serving soup</samp>. <code>serve(\"\")</code>: line 3 throws, the catch prints <samp>caught: no dish</samp> and returns the bread, <code>finally</code> wipes the table, then line 14 prints <samp>serving bread instead</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 15: fail fast or recover">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">The big design question for every error: keep going, or stop?</p>
+    <div class="duo">
+      <div class="duo-card warn"><h3>FAIL FAST<small>stop, loudly</small></h3><p>For bugs and impossible states: a <code>TypeError</code>, a missing config file, a broken promise to yourself. Carrying on would only spread wrong data. Let it crash (or catch it at the edge, log it, exit with code 1).</p></div>
+      <div class="duo-card ok"><h3>RECOVER<small>treat it, carry on</small></h3><p>For problems you expected: a user typed a bad seat, a server was busy, a file was empty. Show a message, use a default, retry. Treat <em>only</em> the kinds you named.</p></div>
+    </div>
+    <ul class="checklist">
+      <li>Catch what you can treat. Rethrow the rest, unchanged or wrapped with <code>{ cause }</code>.</li>
+      <li>One safety net at each edge: the program's top, each request, each click.</li>
+      <li>Never an empty <code>catch</code>, never a catch that logs only "error".</li>
+      <li>Throw <code>Error</code> objects, never strings, and give your classes a <code>name</code>.</li>
+      <li>Put cleanup in <code>finally</code> (or <code>using</code>, panel 18).</li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: AggregateError, many problems in one">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Sometimes several things go wrong at once, like a form with three bad fields. Reporting only the first is annoying. <code>AggregateError</code> carries a whole list of errors in one.</p>
+    <span class="file-tab">aggregate.js</span>
+    <pre class="code" data-src="aggregate.js"></pre>
+    <pre class="term" data-run="aggregate.js"></pre>
+    <p><code>new AggregateError(listOfErrors, message)</code>: the list is kept in <code>err.errors</code>, an ordinary array you can loop over. You'll meet it again in Part 5: it's what <code>Promise.any</code> throws when every pager fails.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: result objects instead of throwing">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Not every "no" needs an exception. When failure is an ordinary, expected answer, a function can <b>return</b> it, in a <b>result object</b>: <code>{ ok: true, value }</code> or <code>{ ok: false, error }</code>.</p>
+    <span class="file-tab">result.js</span>
+    <pre class="code" data-src="result.js"></pre>
+    <pre class="term" data-run="result.js"></pre>
+    <div class="duo">
+      <div class="duo-card cool"><h3>RESULT OBJECT<small>return { ok, … }</small></h3><p>The caller <em>must</em> look at <code>ok</code>: failure is part of the normal answer. Good for checking user input, where "not a seat" happens all the time.</p></div>
+      <div class="duo-card hot"><h3>EXCEPTION<small><code>throw new …Error()</code></small></h3><p>Skips every layer that can't handle it, straight to a catch. Good for rare or serious problems, and for anything a caller might forget to check.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-result-m" id="ex-result"></div>
+  <script type="application/json" id="ex-result-m">{"q": "A search box checks every key the user types and says whether the text is a valid seat code yet. Half-typed codes like <samp>B</samp> are invalid most of the time. Which design fits?", "options": [
+    {"t": "Return a result object such as <code>{ ok: false, error: \"…\" }</code>", "correct": true, "why": "Yes. \"Not valid yet\" is the normal answer here, many times a second. Returning it keeps the caller's code simple and doesn't treat ordinary typing as an emergency."},
+    {"t": "Throw a <code>ValidationError</code> on every key and catch it in the search box", "why": "It works, but exceptions are for problems that should skip layers. Here the immediate caller always handles it, every keystroke; a returned answer says that more plainly."},
+    {"t": "Throw a string like <code>throw \"bad seat\"</code>", "why": "Never throw strings: no stack, no <code>message</code>, and <code>err.message</code> is <samp>undefined</samp> (panel 13)."},
+    {"t": "Catch everything and print <code>\"error\"</code>", "why": "That's the swallowed error from the spot-the-bug exercise: no information at all."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 18: using, automatic discharge">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">One more way to discharge, newer than <code>finally</code>. In Chapter 19 you met well-known symbols. An object with a <code>[Symbol.dispose]()</code> method knows how to clean itself up, and a <code>using</code> declaration (instead of <code>const</code>) calls it <b>automatically</b> when the block ends, however it ends.</p>
+    <span class="file-tab">using_demo.js</span>
+    <pre class="code" data-src="using_demo.js"></pre>
+    <pre class="term" data-run="using_demo.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 11 and 12</b> open two doors. Each <code>using</code> remembers the object's dispose method.</span></li>
+      <li><span><b>When <code>rehearse</code> ends</b>, normally or by a throw, the doors close in <b>reverse order</b>: the last one opened is closed first, like taking off socks before shoes.</span></li>
+      <li><span>This is the same promise as <code>finally</code>, without having to write a <code>finally</code> for each resource. It's on by default in Node 26. Node 22 doesn't know the word yet and can't even read the file:</span></li>
+    </ol>
+    <pre class="term wrap" data-run="using_demo.js" data-alt data-exit data-fold></pre>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 19: DisposableStack, a list of cleanup jobs">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">A <code>DisposableStack</code> is a clipboard of cleanup jobs. <code>defer(fn)</code> adds a job; <code>dispose()</code> runs them all, newest first.</p>
+    <span class="file-tab">disposable_stack.js</span>
+    <pre class="code" data-src="disposable_stack.js"></pre>
+    <pre class="term" data-run="disposable_stack.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Professor says: </span>A <code>DisposableStack</code> is itself disposable, so you can write <code>using cleanup = new DisposableStack();</code> and never call <code>dispose()</code> yourself. Both features come from the "explicit resource management" proposal: Chrome and Firefox have them, MDN still lists them as limited availability, and on Node 22 <code>DisposableStack</code> is simply <i>not defined</i>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor, with glasses and a notebook, explains.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-using-m" id="ex-using"></div>
+  <script type="application/json" id="ex-using-m">{"program": "trace_using.js", "columns": ["step", "action", "name"], "given": [0], "prompt": "Two doors are opened with <code>using</code> inside a block <code>{ … }</code>. Each row shows the step, what happened and to which door. Fill in the table.", "explain": "The block opens <samp>stage</samp>, then <samp>props</samp>, then plays. At the closing brace, the <code>using</code> declarations are disposed in reverse: <samp>props</samp> first, then <samp>stage</samp>. A block is enough: <code>using</code> works in any <code>{ }</code>, not only in functions."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · BUILDING A PAGER<small>new Promise, the three states, and settled is final</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 20: the three states of a pager">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Chapter 16 used pagers the kitchen made. Now Kit goes behind the counter. Every pager is in exactly one of three states.</p>
+    <div class="pagers24">
+      <figure><svg class="char" data-char="pager" data-state="wait" data-label="1"></svg><figcaption><b>pending</b>: no value yet</figcaption></figure>
+      <div class="arrow24"><b>→</b><span>resolve(value)</span></div>
+      <figure><svg class="char" data-char="pager" data-state="buzz" data-label="1"></svg><figcaption><b>fulfilled</b>: holds a value</figcaption></figure>
+      <span class="or24">OR</span>
+      <div class="arrow24"><b>→</b><span>reject(error)</span></div>
+      <figure><svg class="char" data-char="pager" data-state="no" data-label="1"></svg><figcaption><b>rejected</b>: holds an error</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a pager saying WAIT is pending, with no value yet. An arrow labelled resolve(value) leads to a pager saying BUZZ!, fulfilled, holding a value. Or an arrow labelled reject(error) leads to a dashed pager saying SORRY, rejected, holding an error.</p>
+    <p>A pager that has buzzed, either way, is <b>settled</b>. And here's the rule that makes promises trustworthy: once settled, it never changes again. It can't buzz twice, it can't change its mind, and it can't go back to waiting.</p>
+    <p class="catch">SETTLED IS FINAL</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: making a pager with new Promise">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">To build a pager, call <code>new Promise(executor)</code>. The <b>executor</b> is a function you write. JavaScript calls it with two buttons: <code>resolve</code> (buzz with a value) and <code>reject</code> (buzz with an error).</p>
+    <span class="file-tab">make_pager.js</span>
+    <pre class="code" data-src="make_pager.js"></pre>
+    <pre class="term" data-run="make_pager.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 1 to 3:</b> the executor starts a 100 ms timer and returns. Nobody has pressed a button yet, so line 5 shows <samp>Promise { &lt;pending&gt; }</samp>.</span></li>
+      <li><span><b>100 ms later</b> the timer presses <code>resolve("soup")</code>: fulfilled. The <code>await</code> on line 6 unwraps it.</span></li>
+      <li><span><b>Line 8:</b> the same pager now prints <samp>Promise { 'soup' }</samp>. It will hold <code>'soup'</code> for ever.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 22: the executor runs right away">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">A surprise for many programmers: the executor is <b>not</b> "later". It runs immediately, inside <code>new Promise(…)</code>, before the next line. Only the <code>.then</code> callbacks wait.</p>
+    <span class="file-tab">executor_sync.js</span>
+    <pre class="code" data-src="executor_sync.js"></pre>
+    <pre class="term" data-run="executor_sync.js"></pre>
+    <p>B and C print inside <code>new Promise</code>, even after <code>resolve</code> on line 4 (pressing the button doesn't end the executor). D finishes the script. Only then does the pager desk run the <code>.then</code> callback: E. A promise doesn't make code asynchronous by itself; the waiting comes from timers, networks and files.</p>
+    <p class="catch">THE EXECUTOR RUNS NOW. THEN RUNS LATER.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-exec-m" id="ex-exec-ch"></div>
+  <script type="application/json" id="ex-exec-m">{"program": "predict_executor.js", "prompt": "The kitchen builds a pager whose executor sets a 10 ms timer. Predict every line.", "hint": "Which lines run inside <code>new Promise</code>, right now? Which run when the timer rings, and which after <code>resolve</code>?", "explain": "<samp>order placed</samp>, then the executor runs at once: <samp>kitchen starts</samp>, sets the timer, <samp>pager handed over</samp>. Line 10 registers a callback; line 11 prints <samp>find a table</samp>. 10 ms later the timer prints <samp>kitchen finishes</samp> and presses <code>resolve</code>, so the callback prints <samp>eat noodles</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 23: map of a pager's life" data-map="map-states">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Four small programs, four real runs. Follow each pager through its states. Watch what happens to buttons pressed after it has settled.</p>
+    <div class="two-files">
+      <div><span class="file-tab">state_twice.js</span><pre class="code" data-src="state_twice.js"></pre></div>
+      <div><span class="file-tab">state_throw.js</span><pre class="code" data-src="state_throw.js"></pre></div>
+      <div><span class="file-tab">state_later.js</span><pre class="code" data-src="state_later.js"></pre></div>
+      <div><span class="file-tab">state_never.js</span><pre class="code" data-src="state_never.js"></pre></div>
+    </div>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapst-t mapst-d"><title id="mapst-t">Map of a promise's states</title><desc id="mapst-d">A promise starts pending. resolve takes it to fulfilled; reject, or a throw inside the executor, takes it to rejected. From either one it is settled, and later calls are ignored. A pending promise that nothing can ever settle ends the program with exit code 13 when a top-level await is waiting for it.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-states">{"seed": 23, "size": [700, 500], "start": [[160, 2], [160, 26]],
+      "states": [
+        {"id": "PENDING", "x": 20, "y": 30, "w": 280, "h": 80, "label": "pending", "sub": "WAIT: no value yet"},
+        {"id": "NEVER", "x": 400, "y": 30, "w": 280, "h": 80, "label": "never settles", "sub": "exit code 13", "kind": "error"},
+        {"id": "FULFILLED", "x": 20, "y": 210, "w": 280, "h": 80, "label": "fulfilled", "sub": "BUZZ!: holds a value"},
+        {"id": "REJECTED", "x": 400, "y": 210, "w": 280, "h": 80, "label": "rejected", "sub": "SORRY: holds an error"},
+        {"id": "SETTLED", "x": 210, "y": 390, "w": 280, "h": 80, "label": "settled: final", "sub": "later calls ignored", "kind": "end"}],
+      "transitions": [
+        {"id": "t1", "from": "PENDING", "to": "FULFILLED", "pts": [[110, 114], [110, 204]], "label": "resolve(value)", "lx": 122, "ly": 166},
+        {"id": "t2", "from": "PENDING", "to": "REJECTED", "pts": [[260, 114], [260, 150], [540, 150], [540, 204]], "label": ["reject(error)", "or a throw"], "lx": 320, "ly": 176},
+        {"id": "t3", "from": "PENDING", "to": "NEVER", "pts": [[304, 70], [394, 70]], "label": "nothing left", "lx": 306, "ly": 96, "bug": true},
+        {"id": "t4", "from": "FULFILLED", "to": "SETTLED", "pts": [[160, 294], [160, 430], [204, 430]], "label": "final", "lx": 100, "ly": 360},
+        {"id": "t5", "from": "REJECTED", "to": "SETTLED", "pts": [[540, 294], [540, 430], [496, 430]], "label": "final", "lx": 552, "ly": 360}],
+      "paths": [
+        {"id": "twice", "label": "state_twice.js", "program": "state_twice.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["PENDING"], "output": [], "note": "<code>new Promise</code> calls the executor at once. The pager starts pending."},
+          {"on": ["FULFILLED"], "via": ["t1"], "output": [], "note": "Line 2: <code>resolve(\"soup\")</code>. Fulfilled with <code>'soup'</code>."},
+          {"on": ["SETTLED"], "via": ["t4"], "output": [], "note": "Line 3 presses <code>reject</code>, line 4 presses <code>resolve(\"pie\")</code>. Both are <b>silently ignored</b>: no error, no change. Settled is final."},
+          {"on": ["SETTLED"], "output": ["Promise { 'soup' }"], "note": "Line 6 shows it: still <code>'soup'</code>."},
+          {"on": ["SETTLED"], "output": ["Promise { 'soup' }", "fulfilled: soup"], "note": "After the script, the <code>.then</code> callback runs with <code>'soup'</code>; the <code>.catch</code> has nothing to do."}]},
+        {"id": "throw", "label": "state_throw.js", "program": "state_throw.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["PENDING"], "output": [], "note": "The executor starts running…"},
+          {"on": ["REJECTED"], "via": ["t2"], "output": [], "note": "…and throws on line 2. A throw inside an executor doesn't crash the program: it <b>rejects</b> the pager with that error, as if <code>reject</code> had been pressed."},
+          {"on": ["REJECTED"], "output": ["promise made"], "note": "So line 4 still runs: <samp>promise made</samp>."},
+          {"on": ["SETTLED"], "via": ["t5"], "output": ["promise made", "rejected: kitchen fire"], "note": "After the script, the bad news skips the <code>.then</code> and lands in <code>.catch</code>."}]},
+        {"id": "later", "label": "state_later.js", "program": "state_later.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["PENDING"], "output": [], "note": "The executor sets a 50 ms timer and returns. Pending."},
+          {"on": ["PENDING"], "output": ["Promise { <pending> }"], "note": "Line 4 prints the pager. Line 5 registers a callback for later."},
+          {"on": ["FULFILLED"], "via": ["t1"], "output": ["Promise { <pending> }"], "note": "50 ms later the timer presses <code>resolve(\"soup\")</code>."},
+          {"on": ["SETTLED"], "via": ["t4"], "output": ["Promise { <pending> }", "fulfilled: soup"], "note": "The callback runs. Settled, for good."}]},
+        {"id": "never", "label": "state_never.js", "program": "state_never.js", "expect": {"exit": 13, "stderrContains": "Detected unsettled top-level await"}, "steps": [
+          {"on": ["PENDING"], "output": ["order taken"], "note": "The executor prints <samp>order taken</samp>, and returns. It never presses either button, and keeps no timer that could."},
+          {"on": ["PENDING"], "output": ["order taken", "waiting..."], "note": "Line 4 prints. Line 5 waits for the pager at the top level."},
+          {"on": ["NEVER"], "via": ["t3"], "output": ["order taken", "waiting..."], "error": "Warning: Detected unsettled top-level await at file:///home/you/javascript-ch24/state_never.js:5", "note": "Nothing is left that could ever settle it. Node gives up with a warning and exit code 13 (Chapter 16). <samp>served</samp> never prints. The real bug: the executor forgot to call <code>resolve</code>."}]}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-never-m" id="ex-never"></div>
+  <script type="application/json" id="ex-never-m">{"program": "never_plain.js", "prompt": "Same forgotten <code>resolve</code>, but this time nobody uses <code>await</code>; there's only a <code>.then</code>. Predict everything the program prints.", "hint": "Does a <code>.then</code> keep Node waiting the way a top-level <code>await</code> does? Can this pager ever buzz?", "explain": "The executor prints <samp>order taken</samp>, line 5 prints <samp>end of the script</samp>, and then the program simply ends with exit code 0. No warning, no error: Node only waits for timers, files and network jobs, and there are none. <samp>served</samp> never appears. A pager that never buzzes is one of the quietest bugs there is."}</script>
+
+  <section class="panel clean" aria-label="Panel 24: withResolvers and Promise.try">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Two newer helpers for building pagers. First: <code>Promise.withResolvers()</code> (2024) hands you the pager <em>and</em> its two buttons, so the buttons can be pressed from anywhere, not only inside an executor. Second: <code>Promise.try(fn, …args)</code> (2025) calls a function and always gives back a pager, even if the function throws on the spot.</p>
+    <div class="two-files">
+      <div><span class="file-tab">with_resolvers.js</span><pre class="code" data-src="with_resolvers.js"></pre><pre class="term" data-run="with_resolvers.js"></pre></div>
+      <div><span class="file-tab">promise_try.js</span><pre class="code" data-src="promise_try.js"></pre><pre class="term" data-run="promise_try.js"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>with_resolvers.js, line 1:</b> destructuring (Chapter 11) takes the three pieces apart. Line 3 gives <code>resolve</code> to a timer; in real code it might go to a click handler or another object.</span></li>
+      <li><span><b>promise_try.js:</b> <code>plate("lobster")</code> throws immediately, but <code>Promise.try</code> turns that throw into a rejected pager, so one <code>.catch</code> handles both quick throws and slow rejections. Both callbacks wait for the script to finish.</span></li>
+      <li><span><b>Versions:</b> <code>withResolvers</code> works on both Node versions here. <code>Promise.try</code> is missing from Node 22:</span></li>
+    </ol>
+    <pre class="term wrap" data-run="promise_try.js" data-alt data-exit data-fold></pre>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · PAGER CHAINS<small>then returns a new pager; values and errors flow down the chain</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 25: each restaurant hands you a new pager">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption soft">A food-hall evening. The soup stall's pager buzzes; you collect the soup, and the stall hands you a <b>new</b> pager for your bread from the bakery next door. That one buzzes, and you get a pager for pie. Every <code>.then</code> works like that.</p>
+    <div class="pagers24">
+      <figure><svg class="char" data-char="pager" data-state="buzz" data-label="1"></svg><figcaption><code>cook("soup")</code></figcaption></figure>
+      <div class="arrow24"><b>→</b><span>.then(…)</span></div>
+      <figure><svg class="char" data-char="pager" data-state="wait" data-label="2"></svg><figcaption>a <b>new</b> pager</figcaption></figure>
+      <div class="arrow24"><b>→</b><span>.then(…)</span></div>
+      <figure><svg class="char" data-char="pager" data-state="wait" data-label="3"></svg><figcaption>another new one</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: pager #1, for the soup, is buzzing. An arrow labelled .then leads to a new pager #2, still waiting, and another .then arrow leads to pager #3, also waiting.</p>
+    <p class="catch">THEN HANDS YOU A NEW PAGER</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: three pagers, not one">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Proof that <code>then</code> makes new pagers. <code>Promise.resolve(2)</code> is a pager already buzzing with 2.</p>
+    <span class="file-tab">chain.js</span>
+    <pre class="code" data-src="chain.js"></pre>
+    <pre class="term" data-run="chain.js"></pre>
+    <p><samp>false false</samp>: three different objects. Whatever a <code>then</code> callback <b>returns</b> becomes the value of the <em>next</em> pager: 2 becomes 20, 20 becomes 21. Step through it in memory below.</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 27: memory tracer, a chain of pagers" data-tracer="tr-chain" id="tr-chain-box">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Each pager is an object in memory. Watch the three names point at three objects, and watch values travel down the chain after the script ends.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-chain-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-chain">{"program": "chain.js", "steps": [
+      {"line": 1, "note": "The module starts with no names.", "output": [], "frames": [{"name": "chain.js (module)", "vars": []}], "objects": {}},
+      {"line": 2, "note": "Line 1: <code>Promise.resolve(2)</code> makes pager P1, already fulfilled with 2.", "output": [], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}}, "changed": ["p1"]},
+      {"line": 3, "note": "Line 2: <code>p1.then(…)</code> returns a brand-new pager, P2, pending. Its callback can't run yet: callbacks wait until the script has finished.", "output": [], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "pending"}}, "changed": ["p2"]},
+      {"line": 5, "note": "Line 3: another <code>then</code>, another new pager: P3, pending.", "output": [], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "pending"}, "P3": {"kind": "Promise", "value": "pending"}}, "changed": ["p3"]},
+      {"line": 6, "note": "Line 5 compares the names: three different objects, so <samp>false false</samp>.", "output": ["false false"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "pending"}, "P3": {"kind": "Promise", "value": "pending"}}},
+      {"line": 7, "note": "Line 6: <code>p3.then(…)</code> also returns a new pager, P4. Nobody keeps it, so it is drawn faded. That's fine: the callback still runs.", "output": ["false false"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "pending"}, "P3": {"kind": "Promise", "value": "pending"}, "P4": {"kind": "Promise", "value": "pending"}}},
+      {"line": 2, "note": "Line 7 prints P2: still <samp>Promise { &lt;pending&gt; }</samp>. The script is finished. Now the pager desk: line 2's callback runs first.", "output": ["false false", "Promise { <pending> }"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "pending"}, "P3": {"kind": "Promise", "value": "pending"}, "P4": {"kind": "Promise", "value": "pending"}}},
+      {"line": 3, "note": "Line 2's callback gets <code>n = 2</code> and returns 20. What a callback returns fulfils the pager its <code>then</code> made: P2 now holds 20.", "output": ["false false", "Promise { <pending> }"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "fulfilled: 20"}, "P3": {"kind": "Promise", "value": "pending"}, "P4": {"kind": "Promise", "value": "pending"}}},
+      {"line": 6, "note": "P2 buzzed, so line 3's callback runs with 20 and returns 21: P3 holds 21.", "output": ["false false", "Promise { <pending> }"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "fulfilled: 20"}, "P3": {"kind": "Promise", "value": "fulfilled: 21"}, "P4": {"kind": "Promise", "value": "pending"}}},
+      {"line": null, "note": "P3 buzzed, so line 6's callback prints <samp>end of the chain: 21</samp>. It returns nothing, so P4 is fulfilled with <code>undefined</code>. Nothing is left; the program ends.", "output": ["false false", "Promise { <pending> }", "end of the chain: 21"], "frames": [{"name": "chain.js (module)", "vars": [{"n": "p1", "ref": "P1"}, {"n": "p2", "ref": "P2"}, {"n": "p3", "ref": "P3"}]}], "objects": {"P1": {"kind": "Promise", "value": "fulfilled: 2"}, "P2": {"kind": "Promise", "value": "fulfilled: 20"}, "P3": {"kind": "Promise", "value": "fulfilled: 21"}, "P4": {"kind": "Promise", "value": "fulfilled: undefined"}}}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: returning a value or a pager">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">A <code>then</code> callback can return two kinds of thing, and the chain treats them differently.</p>
+    <span class="file-tab">return_promise.js</span>
+    <pre class="code" data-src="return_promise.js"></pre>
+    <pre class="term" data-run="return_promise.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6 returns a pager</b> (bread takes 30 ms). The chain <b>waits</b> for it, and the next step gets what's inside: <samp>got bread</samp>, not a promise.</span></li>
+      <li><span><b>Line 10 returns a plain value.</b> It's passed straight on: <samp>got the dessert menu</samp>.</span></li>
+      <li><span>That's how a chain runs slow jobs one after another, flat, without nesting.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 29: the forgotten return">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="29"></svg>
+    <p class="caption">The most common chain bug. One word is missing on line 6.</p>
+    <span class="file-tab">forgot_return.js</span>
+    <pre class="code" data-src="forgot_return.js"></pre>
+    <pre class="term" data-run="forgot_return.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. The bread is still cooked, but nobody hands its pager down the chain. A callback without <code>return</code> returns <code>undefined</code>, so the next step gets <samp>undefined</samp> right away, without waiting.</p></div>
+    </div>
+    <p>Watch the curly braces. <code>(d) =&gt; cook("bread", 30)</code> returns automatically (Chapter 7's short arrow form), but <code>(d) =&gt; { cook("bread", 30); }</code> doesn't: braces need an explicit <code>return</code>.</p>
+    <p class="catch">NO RETURN, NO VALUE</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-return-m" id="ex-return"></div>
+  <script type="application/json" id="ex-return-m">{"program": "spot_return.js", "bug": 7, "prompt": "4 times 2, plus a booking fee of 1, should be 9. The program says <samp>Total: undefined</samp>. Click the line with the bug.", "explain": "Line 7 calls <code>addFee(total)</code> and throws the 9 away: the callback has braces and no <code>return</code>, so its pager is fulfilled with <code>undefined</code>. Fix: <code>return addFee(total);</code>. Line 4 is fine: a short arrow without braces returns <code>price * 2</code> by itself."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: walk a chain with a throw in the middle" data-walk="walk-chain">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">What happens when a step in the middle throws? Walk Kit through it. Watch which steps Kit skips.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 150 200" aria-hidden="true"></svg>
+        <p class="card-title">chain_throw.js</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-chain">{"program": "chain_throw.js", "steps": [
+      {"line": 1, "output": [], "mood": "happy", "arms": "point", "note": "Kit starts at line 1: a pager already buzzing with <code>\"ticket\"</code>."},
+      {"line": 3, "output": [], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Lines 1 to 10 are <b>one statement</b>. Each <code>.then</code>, <code>.catch</code> and <code>.finally</code> registers a callback and hands back a new pager. Nothing prints. Then the script is over, and the first callback (line 3) runs."},
+      {"line": 4, "output": ["1 check the ticket"], "mood": "happy", "arms": "point", "note": "Line 3 prints <samp>1 check the ticket</samp>."},
+      {"line": 8, "output": ["1 check the ticket"], "mood": "worried", "mouth": "o", "arms": "shrug", "note": "Line 4 <b>throws</b>. The pager from the first <code>.then</code> is rejected. Lines 6 and 7 are <code>.then</code>s with only a success callback: bad news passes straight through them, unopened. Kit skips both, all the way to the <code>.catch</code>."},
+      {"line": 9, "output": ["1 check the ticket", "4 catch: the ticket is torn"], "mood": "happy", "arms": "point", "note": "Line 8 treats it and returns normally (with <code>undefined</code>). So <code>.catch</code>'s own pager is <b>fulfilled</b>: the chain is back on the happy road."},
+      {"line": 10, "output": ["1 check the ticket", "4 catch: the ticket is torn", "5 buy popcorn"], "mood": "happy", "arms": "point", "note": "Line 9 runs: <samp>5 buy popcorn</samp>."},
+      {"line": null, "output": ["1 check the ticket", "4 catch: the ticket is torn", "5 buy popcorn", "6 finally: go home"], "mood": "happy", "arms": "cheer", "note": "<code>.finally</code> runs whatever happened before it, and passes the value or error on unchanged. Steps 2 and 3 never ran."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-chain-m" id="ex-chain"></div>
+  <script type="application/json" id="ex-chain-m">{"program": "predict_chain.js", "prompt": "A number travels down a chain. One step throws; the <code>catch</code> returns a value. Predict every line.", "hint": "What value does the second step get? Which <code>then</code> does the error skip? What does the step after the catch receive?", "explain": "1 becomes 2. The third step throws <code>bad 2</code>, so the next <code>then</code> is skipped (no <samp>skipped?</samp> line). The catch prints <samp>caught bad 2</samp> and returns 10, which fulfils its pager, so the next step prints <samp>after catch 10</samp>. Then <samp>finally</samp>."}</script>
+
+  <section class="panel pop" aria-label="Panel 31: a catch placed too early">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tl" data-sfx="CRASH!" data-seed="31"></svg>
+    <p class="caption">Where you put the <code>.catch</code> matters. In the first, the catch comes <b>before</b> the step that uses the dish. In the second, it comes at the end.</p>
+    <div class="two-files">
+      <div><span class="file-tab">early_catch.js</span><pre class="code" data-src="early_catch.js"></pre><pre class="term wrap" data-run="early_catch.js" data-exit></pre></div>
+      <div><span class="file-tab">late_catch.js</span><pre class="code" data-src="late_catch.js"></pre><pre class="term wrap" data-run="late_catch.js" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>early_catch.js:</b> the catch treats the lobster and returns <code>undefined</code>, so the chain goes back to the happy road, and line 5 calls <code>undefined.toUpperCase()</code>. That new <code>TypeError</code> has no catch after it: an unhandled rejection, exit code 1.</span></li>
+      <li><span><b>late_catch.js:</b> the error skips the serving step and is caught at the end. A <code>.catch</code> only protects the steps <em>above</em> it.</span></li>
+    </ol>
+    <p class="catch">CATCH AT THE END OF THE CHAIN</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-chainfill-m" id="ex-chainfill"></div>
+  <script type="application/json" id="ex-chainfill-m">{"program": "fill_chain.js", "prompt": "Dinner as a chain: soup, then lobster, with one safety net and a bill at the end, whatever happens. Fill the three blanks.", "blanks": [{"line": 6, "text": "return"}, {"line": 9, "text": ".catch"}, {"line": 10, "text": ".finally"}], "explain": "<code>return</code> hands the lobster's pager down, so the chain waits for it, and its rejection reaches the <code>.catch</code>. Without it, the main step would get <code>undefined</code> and the rejection would be unhandled. <code>.catch</code> sits after every step it should protect; <code>.finally</code> asks for the bill on every road."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · MANY PAGERS AT ONCE<small>Promise.all, allSettled, race and any</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 32: four ways to wait for a table of pagers">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">Kit's friends order at three stalls at once. Each gets a pager. There are four ways to wait for the whole table, and each one hands you <b>one</b> new pager for the group.</p>
+    <div class="ways24">
+      <div class="way24 w1"><h3>ALL<small><code>Promise.all(pagers)</code></small></h3><div class="row24"><svg class="char" data-char="pager" data-state="buzz" data-label="1"></svg><svg class="char" data-char="pager" data-state="buzz" data-label="2"></svg><svg class="char" data-char="pager" data-state="buzz" data-label="3"></svg></div><p>Waits for <b>every</b> pager and gives all the values, in the order you listed them. If one says SORRY, it gives up at once with that error.</p></div>
+      <div class="way24 w2"><h3>ALL SETTLED<small><code>Promise.allSettled(pagers)</code></small></h3><div class="row24"><svg class="char" data-char="pager" data-state="buzz" data-label="1"></svg><svg class="char" data-char="pager" data-state="no" data-label="2"></svg><svg class="char" data-char="pager" data-state="buzz" data-label="3"></svg></div><p>Waits for every pager, good news or bad, and gives a report for each one. Never rejects.</p></div>
+      <div class="way24 w3"><h3>RACE<small><code>Promise.race(pagers)</code></small></h3><div class="row24"><svg class="char" data-char="pager" data-state="wait" data-label="1"></svg><svg class="char" data-char="pager" data-state="buzz" data-label="2"></svg><svg class="char" data-char="pager" data-state="wait" data-label="3"></svg></div><p>Settles like the <b>first</b> pager to settle, whether that's good news or bad.</p></div>
+      <div class="way24 w4"><h3>ANY<small><code>Promise.any(pagers)</code></small></h3><div class="row24"><svg class="char" data-char="pager" data-state="no" data-label="1"></svg><svg class="char" data-char="pager" data-state="buzz" data-label="2"></svg><svg class="char" data-char="pager" data-state="wait" data-label="3"></svg></div><p>The first <b>good</b> news wins; failures are ignored. Only if <em>every</em> pager fails does it reject, with an <code>AggregateError</code>.</p></div>
+    </div>
+    <p class="sr-only">Picture: four cards. All: three buzzing pagers. All settled: buzzing, sorry, buzzing. Race: waiting, buzzing, waiting. Any: sorry, buzzing, waiting.</p>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 33: the four ways, fed the same orders" data-machine="m-combine">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">The same kitchen orders, fed to each way of waiting. <code>good</code> is tea (30 ms), soup (10 ms) and pie (20 ms). <code>mixed</code> swaps the soup for lobster, which fails at 15 ms. Pick an input.</p>
+    <span class="file-tab">combine.js</span>
+    <pre class="code" data-src="combine.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-combine">{"label": "Promise.X(jobs)", "program": "combine.js", "examples": [
+      {"in": "Promise.all(good())", "out": "all: [ 'tea', 'soup', 'pie' ]", "outKind": "an array, in listed order", "note": "Waits for all three (30 ms, the slowest). The values come in the order you <b>listed</b> the pagers, not the order they finished: soup finished first but sits second."},
+      {"in": "Promise.race(good())", "out": "race: soup", "outKind": "one value", "note": "Soup settles first, at 10 ms, so the race is over. Tea and pie still finish, but nobody listens."},
+      {"in": "Promise.any(mixed())", "out": "any: pie", "outKind": "one value", "note": "Lobster fails first (15 ms) and is ignored. The first good news is pie, at 20 ms."},
+      {"in": "Promise.allSettled(mixed())", "out": "allSettled: tea, (out of lobster), pie", "outKind": "a report for each", "note": "Every pager is reported: two <code>fulfilled</code> with values, one <code>rejected</code> with its reason. The <code>map</code> turns the reports into words for one line."},
+      {"in": "Promise.race(mixed())", "out": "race, mixed: rejected, out of lobster", "outKind": "the first to settle: bad news", "note": "A race doesn't care whether the first news is good. Lobster settles first, so the race rejects; the <code>.catch</code> after it turns the rejection into a string."},
+      {"in": "Promise.all(mixed())", "error": "Error: out of lobster", "program": "all_fail.js", "note": "One failure is enough: at 15 ms <code>Promise.all</code> rejects with the lobster's error, and nothing catches it in <code>all_fail.js</code>. Tea and pie are lost."},
+      {"in": "Promise.any(two lobsters)", "error": "AggregateError: All promises were rejected", "program": "any_fail.js", "note": "Every pager failed, so <code>any</code> rejects with an <code>AggregateError</code> holding both errors (<code>any_fail.js</code> runs only this)."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: Promise.all gives up early and loses the rest">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">The classic <code>Promise.all</code> trap: one failure, and you lose <em>every</em> result, even the ones that worked. When you want to know about each order, use <code>allSettled</code>.</p>
+    <span class="file-tab">all_loses.js</span>
+    <pre class="code" data-src="all_loses.js"></pre>
+    <pre class="term" data-run="all_loses.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 5 to 10:</b> <code>Promise.all</code> <b>fails fast</b>: it rejects at 15 ms, as soon as the lobster does. The tea and pie were cooked, but their values are gone.</span></li>
+      <li><span><b>Lines 12 to 15:</b> each report has a <code>status</code>, then either <code>value</code> (fulfilled) or <code>reason</code> (rejected, the error).</span></li>
+      <li><span>Fail-fast is often exactly right: if a page needs all three pieces of data, there's no point waiting for the other two once one has failed.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: when any gets no good news at all">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption"><code>Promise.any</code> only fails when <em>everything</em> fails, and then it has several errors to report, so it uses the <code>AggregateError</code> from panel 16.</p>
+    <span class="file-tab">any_errors.js</span>
+    <pre class="code" data-src="any_errors.js"></pre>
+    <pre class="term" data-run="any_errors.js"></pre>
+    <p>The message is fixed: <samp>All promises were rejected</samp>. The real reasons are in <code>err.errors</code>, in the order the pagers were listed.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-anyerr-m" id="ex-anyerr"></div>
+  <script type="application/json" id="ex-anyerr-m">{"program": "any_fail.js", "expect": "error", "answer": "AggregateError", "ask": "This program crashes. What is the <b>name</b> of the error Node reports?", "prompt": "Both pagers are lobster orders, and nothing catches.", "explain": "Neither order succeeds, so <code>Promise.any</code> rejects with an <code>AggregateError</code> (<i>All promises were rejected</i>), and the top-level <code>await</code> throws it. Node prints it as <samp>[AggregateError: All promises were rejected]</samp> with an <samp>[errors]</samp> list holding both lobster errors."}</script>
+
+  <section class="panel sketch" aria-label="Panel 36: which way to wait">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">A cheat sheet. Ask: do I need every result, a report on each, the first answer, or the first good answer?</p>
+    <div class="tablewrap24">
+      <table class="pick24 ref-table">
+        <thead><tr><th>You want…</th><th>Use</th><th>If one fails</th></tr></thead>
+        <tbody>
+          <tr><td>every value, and one failure means the whole job failed</td><td><code>Promise.all</code></td><td>rejects at once with that error</td></tr>
+          <tr><td>to know how each one went</td><td><code>Promise.allSettled</code></td><td>never rejects; reports it</td></tr>
+          <tr><td>whatever happens first (for example, a timeout)</td><td><code>Promise.race</code></td><td>rejects if the failure is first</td></tr>
+          <tr><td>the first success, from several backups</td><td><code>Promise.any</code></td><td>ignored, unless all fail (AggregateError)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pick1-m" id="ex-pick1"></div>
+  <script type="application/json" id="ex-pick1-m">{"q": "A dashboard loads five small widgets, each with its own request. If one widget's request fails, the other four should still be shown, with a note on the broken one. Which do you use?", "options": [
+    {"t": "<code>Promise.allSettled</code>", "correct": true, "why": "Yes. It waits for all five and reports each as <code>fulfilled</code> (show it) or <code>rejected</code> (show a note), never throwing away the good ones."},
+    {"t": "<code>Promise.all</code>", "why": "One failed widget would reject the whole thing, and the four good results would be lost (panel 34)."},
+    {"t": "<code>Promise.race</code>", "why": "That gives only the first widget to settle; the other four are ignored."},
+    {"t": "<code>Promise.any</code>", "why": "That gives only the first successful widget, not all of them."}]}</script>
+
+  <div data-ex="choice" data-model="ex-pick2-m" id="ex-pick2"></div>
+  <script type="application/json" id="ex-pick2-m">{"q": "You want to give up on a slow request after 3 seconds. You make a second pager that <em>rejects</em> after 3000 ms. How do you combine the request and the timer?", "options": [
+    {"t": "<code>Promise.race([request, timer])</code>", "correct": true, "why": "Yes. Whichever settles first decides: the response if it arrives in time, otherwise the timer's rejection. That's exactly a timeout."},
+    {"t": "<code>Promise.all([request, timer])</code>", "why": "The timer always rejects, so <code>all</code> would always fail, even when the response came quickly."},
+    {"t": "<code>Promise.any([request, timer])</code>", "why": "<code>any</code> ignores rejections, so the timer's rejection would never win; you'd wait for the slow request anyway."},
+    {"t": "<code>Promise.allSettled([request, timer])</code>", "why": "It waits for both, so you'd always wait at least 3 seconds."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · FROM CALLBACKS TO PAGERS<small>Callback pyramids, promisify, sleep, and pagers nobody listens to</small></h2>
+
+  <section class="panel pop" aria-label="Panel 37: the callback pyramid">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="UGH!" data-seed="37"></svg>
+    <p class="caption">Before promises, async code used callbacks (Chapter 16). Here's an old-style kitchen: you pass a callback, and it calls you back with <code>(err, result)</code>, error first. Now order three courses, one after another.</p>
+    <div class="two-files">
+      <div><span class="file-tab">old_kitchen.js</span><pre class="code" data-src="old_kitchen.js"></pre></div>
+      <div><span class="file-tab">hell.js</span><pre class="code" data-src="hell.js"></pre></div>
+    </div>
+    <pre class="term" data-run="hell.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="worried" data-mouth="frown" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Each course goes one level deeper, and every level repeats its own error check. Programmers call this shape <b>callback hell</b>, or the pyramid of doom. Ten courses and it would fall off the right side of the screen.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 38: util.promisify turns a callback function into a pager function">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Node has a converter. <code>promisify</code> from <code>node:util</code> takes any function whose <b>last</b> argument is an error-first callback, and gives back a version that returns a pager instead.</p>
+    <span class="file-tab">promisify.js</span>
+    <pre class="code" data-src="promisify.js"></pre>
+    <pre class="term" data-run="promisify.js"></pre>
+    <p>The callback's <code>err</code> becomes a rejection; its <code>result</code> becomes the fulfilled value. Boss 3 shows how to do the same by hand with <code>new Promise</code>.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 39: sleep, a pager from setTimeout">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption"><code>setTimeout</code> takes its callback <b>first</b>, so the usual error-first recipe doesn't apply. Wrapping it by hand takes one line, works everywhere (browsers included), and gives every program a <code>sleep</code>.</p>
+    <div class="two-files">
+      <div><span class="file-tab">sleep.js</span><pre class="code" data-src="sleep.js"></pre><pre class="term" data-run="sleep.js"></pre></div>
+      <div><span class="file-tab">sleep_builtin.js</span><pre class="code" data-src="sleep_builtin.js"></pre><pre class="term" data-run="sleep_builtin.js"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>sleep.js:</b> the executor hands <code>resolve</code> itself to <code>setTimeout</code> as the callback. After <code>ms</code> milliseconds, the timer presses the button.</span></li>
+      <li><span><b>sleep_builtin.js:</b> Node ships a ready-made one in <code>node:timers/promises</code>; its second argument becomes the value.</span></li>
+    </ol>
+    <p>Node also special-cases <code>setTimeout</code> for <code>promisify</code>, so in Node this works too, with the same second-argument trick:</p>
+    <span class="file-tab">sleep_promisify.js</span>
+    <pre class="code" data-src="sleep_promisify.js"></pre>
+    <pre class="term" data-run="sleep_promisify.js"></pre>
+  </section>
+
+  <div data-ex="fill" data-model="ex-sleep-m" id="ex-sleep"></div>
+  <script type="application/json" id="ex-sleep-m">{"program": "fill_sleep.js", "prompt": "Write your own <code>sleep</code>: a function that returns a pager which buzzes after <code>ms</code> milliseconds. Fill the three blanks.", "blanks": [{"line": 2, "text": "new Promise"}, {"line": 2, "text": "setTimeout(resolve, ms)", "accept": ["setTimeout(() => resolve(), ms)", "setTimeout(()=>resolve(), ms)"]}, {"line": 6, "text": "await"}], "explain": "<code>new Promise</code> builds the pager; its executor gives <code>resolve</code> to <code>setTimeout</code>, so the timer presses it after <code>ms</code>. <code>await</code> on line 6 pauses the module until it buzzes, so <samp>Curtain up!</samp> comes 100 ms after <samp>Lights down...</samp>. Without <code>await</code>, both lines would print at once."}</script>
+
+  <section class="panel clean" aria-label="Panel 40: three generations of the same dinner">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">The same three-course dinner, written the two newer ways with the promisified kitchen. All three programs print the same line.</p>
+    <div class="two-files">
+      <div><span class="file-tab">gen_then.js</span><pre class="code" data-src="gen_then.js"></pre><pre class="term" data-run="gen_then.js"></pre></div>
+      <div><span class="file-tab">gen_await.js</span><pre class="code" data-src="gen_await.js"></pre><pre class="term" data-run="gen_await.js"></pre></div>
+    </div>
+    <div class="duo three">
+      <div class="duo-card warn"><h3>CALLBACKS<small>hell.js</small></h3><p>Nests one level per step. An error check in every level.</p></div>
+      <div class="duo-card cool"><h3>CHAINS<small>gen_then.js</small></h3><p>Flat. One <code>.catch</code> at the end. Sharing values between steps is clumsy (<code>soup</code> and <code>bread</code> live outside).</p></div>
+      <div class="duo-card ok"><h3>ASYNC/AWAIT<small>gen_await.js</small></h3><p>Reads top to bottom, with ordinary <code>const</code>s and one <code>try</code>/<code>catch</code>. Under the hood, it's still pagers.</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 41: every pager needs a listener">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">Last warning. A <code>.then</code> without a <code>.catch</code> is still a pager with nobody to hear bad news. Chapter 16 showed Node's verdict for a pager nobody listens to (<code>ignored_pager.js</code>); a <code>.then</code> without a <code>.catch</code> gets the same.</p>
+    <span class="file-tab">unhandled.js</span>
+    <pre class="code" data-src="unhandled.js"></pre>
+    <pre class="term wrap" data-run="unhandled.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>At 50 ms</b> the lobster is rejected. The <code>.then</code> has no failure handler, so the new pager it made is rejected too, and nobody handles <em>that</em>: an <b>unhandled rejection</b>. Node crashes with exit code 1.</span></li>
+      <li><span><b><samp>dessert</samp> never prints</b>, though its timer was waiting. The trace points into <samp>kitchen.js:11</samp>, where the error was made, not at your chain.</span></li>
+      <li><span><b>The rule:</b> every chain ends in a <code>.catch</code>, or is <code>await</code>ed inside a <code>try</code>, or is handed to a caller who does one of those.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Every pager I hand out, someone must listen to. For good news <em>and</em> bad.</p></div>
+    </div>
+    <p class="catch">EVERY PAGER NEEDS A LISTENER</p>
+  </section>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: triage and pagers, all mixed</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 42: boss level">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="42"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>For each error: treat, refer up, or discharge? For each pager: who returns it, who catches it, and has it settled yet? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. A dinner chain with a failure in the middle, plus a timer. Soup takes 30 ms, lobster 10 ms more, pasta 10 ms more, and the music is due at 20 ms. Predict every line.", "hint": "The script prints first. Then sort by time: what happens at 20, 30, 40 and 50 ms? Which <code>then</code> does the lobster's error skip?", "explain": "Script: <samp>order</samp>, <samp>chat</samp>. At 20 ms: <samp>music</samp>. At 30 ms: <samp>starter soup</samp>, which returns the lobster's pager. At 40 ms it rejects: line 9 is skipped and the catch prints <samp>sorry out of lobster</samp>, returning a pasta pager. At 50 ms: <samp>main pasta</samp>, then <samp>bill</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.js", "bug": 3, "prompt": "Boss 2. The program should print <samp>SeatError</samp> and <samp>seat B7 is taken</samp>. Instead the catch receives a completely different error. Click the line with the bug.", "explain": "Line 3 touches <code>this</code> before <code>super(…)</code> has run. In a class that <code>extends</code> another, <code>this</code> doesn't exist until the parent's constructor has made it, so JavaScript throws a <code>ReferenceError</code>: <i>Must call super constructor in derived class before accessing 'this'…</i>. And because <code>new SeatError</code> is inside the <code>try</code>, the catch treats the wrong patient. Fix: swap lines 3 and 4."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.js", "seed": 42, "pin": [1, 12, 13], "prompt": "Boss 3. Promisify the old kitchen by hand: <code>cookAsync</code> returns a pager that the old callback settles. Put the lines in order.", "explain": "The function returns <code>new Promise</code> straight away. Inside the executor, the old <code>cookLater</code> is called with a callback; when it calls back, an <code>err</code> presses <code>reject</code>, otherwise <code>resolve</code> gets the result. Then the braces close in reverse order: the callback <code>});</code>, the executor <code>});</code>, the function <code>}</code>. This is what <code>promisify</code> does for you."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.js", "prompt": "Boss 4. Three orders, one of them doomed. Serve what you can and list what failed. Fill the three blanks.", "blanks": [{"line": 4, "text": "Promise.allSettled"}, {"line": 6, "text": "\"fulfilled\"", "accept": ["'fulfilled'"]}, {"line": 10, "text": "r.reason.message"}], "explain": "<code>Promise.allSettled</code> waits for all three and never rejects, so no result is lost. Each report has <code>status</code> <code>\"fulfilled\"</code> (with <code>value</code>) or <code>\"rejected\"</code> (with <code>reason</code>, the error). <code>r.reason.message</code> is the lobster's text. With <code>Promise.all</code>, the program would crash at 10 ms."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.js", "columns": ["step", "where", "value"], "given": [0], "prompt": "Boss 5. A number travels down a chain, through a throw, a catch and a finally. <code>log</code> prints each step and passes its value on. Fill in the table.", "explain": "3 × 2 = 6 (<samp>then 6</samp>). 6 is more than 5, so the next step throws <code>too big: 6</code> before it can log; the catch logs the message's length, 10 characters, and returns it. The next step logs 10 + 1 = 11. <code>finally</code> logs <code>step</code>, which is 3 at that moment, then counts itself as step 4."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A function reads a config file. When <code>JSON.parse</code> fails, the caller should see <i>could not load config</i>, and a developer should still be able to find the original parse error and its line. Which catch block do you write?", "options": [
+    {"t": "<code>catch (err) { throw new Error(\"could not load config\", { cause: err }); }</code>", "correct": true, "why": "Yes. Refer upward with a better note, and keep the original attached as <code>cause</code>: Node prints it under <samp>[cause]</samp> (panel 11)."},
+    {"t": "<code>catch (err) { throw new Error(\"could not load config\"); }</code>", "why": "The caller gets the friendly message, but the original error is gone: <code>err.cause</code> is <samp>undefined</samp> (panel 9)."},
+    {"t": "<code>catch (err) { console.log(\"error\"); }</code>", "why": "That swallows the error: no message, no line, and the caller thinks everything worked."},
+    {"t": "<code>catch (err) { throw \"could not load config\"; }</code>", "why": "A thrown string has no stack and no <code>message</code>, and the original error is lost too (panel 13)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 43: what you learned">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">What you learned in Chapter 24</p>
+    <ul class="recap">
+      <li><b>TREAT IT, REFER IT UP, OR DISCHARGE</b>Give each kind of problem a class (<code>class ValidationError extends Error</code>, <code>super(message)</code>, then <code>this.name</code>), in a small family tree. Each layer catches only what it can treat (<code>instanceof</code> covers children; <code>Error.isError</code> works across realms), rethrows the rest, and cleans up in <code>finally</code> or with <code>using</code> / <code>DisposableStack</code>.</li>
+      <li><b>WRAP IT, DON'T LOSE IT: { cause }</b><code>new Error("summary", { cause: err })</code> keeps the original error; Node prints it under <samp>[cause]</samp>.</li>
+      <li><b>NEVER SWALLOW. LOG WHO, WHAT AND WHY.</b>No empty catches, no "error" alone, no thrown strings. Catch at the edges, use <code>process.exitCode = 1</code>, and choose fail-fast for bugs, recovery (or result objects) for expected problems. <code>AggregateError</code> carries many errors at once.</li>
+      <li><b>SETTLED IS FINAL</b>A promise is pending, then fulfilled or rejected, once and for good. <code>new Promise(executor)</code> runs the executor <em>now</em>; a throw inside it rejects. Forget <code>resolve</code>, and the program just ends (or exits with code 13 under top-level <code>await</code>). <code>withResolvers</code> and <code>Promise.try</code> are newer helpers.</li>
+      <li><b>THEN HANDS YOU A NEW PAGER</b>A callback's returned value (or the inside of a returned promise) fulfils the next pager. No return, no value. A throw skips the <code>then</code>s down to the next <code>catch</code>; catch at the end of the chain. <code>all</code> needs every result, <code>allSettled</code> reports each, <code>race</code> takes the first to settle, <code>any</code> the first success.</li>
+      <li><b>EVERY PAGER NEEDS A LISTENER</b>Unhandled rejections crash Node with exit code 1. <code>util.promisify</code> and a one-line <code>sleep</code> turn callbacks into pagers: callbacks, then chains, then <code>async</code>/<code>await</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Every error goes to the right desk, and every pager reaches someone who's listening. Long job? I'll call you back when it's done, and you'll hear about it if it goes wrong.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 44: next time, the chef's two spikes">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption soft">Coming up in Chapter 25…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="chef"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">The chef thinks: </span>One kitchen, one cook: me. Order tickets go on two spikes: a VIP spike that I empty completely, and a normal spike, one ticket at a time. Every <code>then</code> you wrote today went on my VIP spike. Next time: <code>async</code>/<code>await</code> in depth, running jobs in parallel, and exactly which ticket I cook next.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: the chef thinks about two spikes of order tickets.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 25 · THE CHEF'S TWO SPIKES<br><small style="font: 700 1rem var(--f-bubble)">async/await in depth and the event loop: one chef, a VIP spike for microtasks and a spike for timers.</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch23.html">← Ch 23 · Rulers and Tape Measures</a><a class="next" href="ch25.html">Ch 25 · The Chef's Two Spikes →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: errors, stacks and how a promise really works</summary>
+    <div class="page-body">
+      <h3>What an Error object holds</h3>
+      <p>An <code>Error</code> has an own property <code>message</code>, an optional own <code>cause</code> (only when you passed <code>{ cause }</code>; it can be any value), and in V8 an own <code>stack</code> string. <code>name</code> usually comes from the prototype: <code>Error.prototype.name</code> is <code>"Error"</code>, <code>TypeError.prototype.name</code> is <code>"TypeError"</code>, and so on. That's why a subclass that never sets <code>name</code> introduces itself as <samp>Error</samp> (panel 4). In V8 the stack is captured when the error is <em>constructed</em>, not when it's thrown, and its first line is formatted from <code>name</code> and <code>message</code> the first time something reads it, which is why setting <code>this.name</code> right after <code>super</code> shows up in crash reports.</p>
+      <h3>Why <code>super</code> must come first</h3>
+      <p>In a derived class (<code>extends</code>), the object is created by the <em>parent</em>'s constructor. Until <code>super(…)</code> returns, there is no <code>this</code> to write to; touching it throws the <code>ReferenceError</code> from Boss 2. <code>Error</code>'s constructor is also what installs the internal marker that <code>Error.isError</code> checks, so an object merely made with <code>Object.create(Error.prototype)</code> passes <code>instanceof Error</code> but fails <code>Error.isError</code>.</p>
+      <h3>Realms</h3>
+      <p>A realm is a complete set of built-ins (<code>Object</code>, <code>Array</code>, <code>Error</code>, …) plus a global object. An iframe, a <code>vm</code> context and a worker each have their own. <code>instanceof</code> compares prototype chains, so values crossing realms fail it. <code>Array.isArray</code> was the first "brand check" built to work across realms; <code>Error.isError</code> does the same for errors.</p>
+      <h3>A promise inside</h3>
+      <p>A promise keeps a state (pending, fulfilled, rejected), a result, and two lists of reactions (callbacks registered by <code>then</code>). <code>resolve</code> and <code>reject</code> are a pair of functions that share one "already resolved" flag, so only the first call counts (panel 23's ignored buttons). When the promise settles, each reaction becomes a job on the microtask queue (Chapter 16's pager desk). <code>then</code> creates the next promise and its own resolve/reject pair; whatever the callback returns is passed to that resolve, and a thrown error goes to its reject. If the returned value is itself a promise (or any object with a <code>then</code> method, a <b>thenable</b>), the next promise <em>follows</em> it instead of holding it, which is why the chain waits in panel 28 and why you can never get a promise of a promise.</p>
+      <h3>catch and finally are then in disguise</h3>
+      <p><code>p.catch(f)</code> is <code>p.then(undefined, f)</code>. <code>p.finally(f)</code> calls <code>f</code> with no argument on either road, then passes the original value or error on unchanged, unless <code>f</code> itself throws or returns a rejected promise. A <code>then</code> with no failure handler passes a rejection straight to its own new promise, which is how an error "skips" steps (panel 30).</p>
+      <h3>Unhandled rejections</h3>
+      <p>The engine tells the host when a promise is rejected with no handler attached. Node waits until the current batch of microtasks is done (in case a handler is attached a moment later), then, by default since Node 15 (see the version notes), treats it like an uncaught exception: print, exit code 1. Browsers fire an <code>unhandledrejection</code> event and log <i>Uncaught (in promise)</i>, but the page keeps running.</p>
+      <h3><code>using</code> and disposal order</h3>
+      <p>Each <code>using</code> declaration pushes its value's <code>[Symbol.dispose]</code> method onto the block's hidden disposal stack; at the end of the block they run last-in, first-out. If disposal itself throws while another error is already flying, both are kept in a <code>SuppressedError</code> (with <code>error</code> and <code>suppressed</code> properties), so neither is silently lost. <code>await using</code> and <code>AsyncDisposableStack</code> do the same for asynchronous cleanup, with <code>Symbol.asyncDispose</code>.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Error families are everywhere.</b> Web frameworks map classes to HTTP status codes: a <code>ValidationError</code> becomes "400 Bad Request", a <code>NotFoundError</code> "404 Not Found", and anything unexpected "500 Internal Server Error", logged in full. That's the triage desk at the edge of every request.</li>
+        <li><b>Node's own errors carry a <code>code</code>.</b> Errors from Node have a stable <code>err.code</code> such as <samp>ENOENT</samp> (file not found) or <samp>ERR_INVALID_ARG_TYPE</samp>. Checking <code>err.code</code> is often more reliable than reading the message, which may change between versions.</li>
+        <li><b>Causes in logs.</b> Logging libraries and error-tracking services print the whole <code>cause</code> chain, so wrapping with <code>{ cause }</code> pays off the first time something breaks at 3 a.m.</li>
+        <li><b><code>Promise.all</code> for parallel work.</b> Loading a user, their orders and their settings at once, and failing the page if any is missing. <code>allSettled</code> for batch jobs: send 100 emails and report which failed. <code>race</code> for timeouts. <code>any</code> for trying several mirror servers.</li>
+        <li><b>Promisified Node.</b> Most Node modules now have promise versions built in: <code>node:fs/promises</code>, <code>node:timers/promises</code>, <code>node:dns/promises</code>, <code>node:stream/promises</code>. You'll rarely call <code>promisify</code> on Node's own functions, but you'll still meet it for older libraries.</li>
+        <li><b>Linters guard the chain.</b> ESLint's <code>promise/always-return</code> and <code>promise/catch-or-return</code> rules (from a popular plugin) and TypeScript-ESLint's <code>no-floating-promises</code> flag the forgotten <code>return</code> and the chain with no <code>catch</code>.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A class that extends Error names itself."</b> Not unless you set <code>this.name</code>; otherwise it says <samp>Error</samp>.</li>
+        <li><b>"Catching everything is the safe choice."</b> A catch-all that hides bugs is the opposite of safe. Catch what you can treat.</li>
+        <li><b>"Wrapping an error replaces it."</b> Only if you forget <code>{ cause }</code>.</li>
+        <li><b>"<code>err.message</code> always exists in a catch."</b> Anything can be thrown; a string has no <code>message</code>.</li>
+        <li><b>"<code>instanceof Error</code> is always reliable."</b> Not across realms (iframes, <code>vm</code>, some test runners).</li>
+        <li><b>"The executor runs later."</b> It runs at once, inside <code>new Promise</code>.</li>
+        <li><b>"Calling <code>reject</code> after <code>resolve</code> throws an error."</b> It's silently ignored.</li>
+        <li><b>"A throw inside a <code>setTimeout</code> inside an executor rejects the promise."</b> No: by then the executor has finished, so that throw is an ordinary uncaught exception. Call <code>reject</code> instead.</li>
+        <li><b>"<code>then</code> changes the promise it was called on."</b> It returns a new one; the original never changes.</li>
+        <li><b>"A <code>.catch</code> anywhere in the chain protects all of it."</b> Only the steps above it.</li>
+        <li><b>"After a <code>.catch</code>, the chain stops."</b> It continues on the happy road with whatever the catch returned.</li>
+        <li><b>"<code>Promise.all</code> runs the jobs."</b> The jobs already started when you called <code>cook(…)</code>; <code>all</code> only waits. It also doesn't cancel the others when one fails.</li>
+        <li><b>"<code>Promise.race</code> picks the first success."</b> It picks the first to settle, success or failure. That's <code>any</code>'s job.</li>
+        <li><b>"A promise that never settles makes Node hang."</b> Usually the program just ends; only a top-level <code>await</code> on it gives exit code 13.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. A module folder with Node 26</h3>
+      <ol>
+        <li>Check <code>node --version</code>. This chapter used v26.13.0. <code>using</code>, <code>DisposableStack</code>, <code>Error.isError</code> and <code>Promise.try</code> need a recent Node (26 has them all, 22 has none; Node 24.22.1 also has all four, checked by hand outside this book's captures). Everything else ran on Node 22.23.4 here, and <code>Promise.withResolvers</code> (panel 24) needs Node 22 or later (MDN's compatibility data). Install the current LTS from nodejs.org (Windows and macOS installers; on Linux, the instructions there or a version manager such as nvm, or fnm on Windows).</li>
+        <li>Make a folder <code>triage</code>, open a terminal there (<b>Windows:</b> PowerShell or the VS Code terminal; <b>macOS / Linux:</b> any terminal), and run <code>npm init -y</code> then <code>npm pkg set type=module</code>.</li>
+      </ol>
+      <h3>2. The triage desk</h3>
+      <ol>
+        <li>Type <code>errors.js</code>, <code>desk.js</code> and <code>visit_bug.js</code>. Run <code>node visit_bug.js</code>, then check the exit code: <code>echo $?</code> on macOS/Linux, <code>echo $LASTEXITCODE</code> in PowerShell.</li>
+        <li>Add a third <code>else if</code> to <code>visit</code> that treats <code>TypeError</code>, and see the crash disappear. Then ask yourself whether hiding that bug was a good idea.</li>
+        <li>Delete <code>{ cause: err }</code> from <code>cause_crash.js</code> and compare the crash reports.</li>
+      </ol>
+      <h3>3. Pagers</h3>
+      <ol>
+        <li>Type <code>state_twice.js</code> and swap the <code>resolve</code> and <code>reject</code> lines. Predict, then run.</li>
+        <li>In <code>forgot_return.js</code>, change the braces to a short arrow: <code>.then((dish) =&gt; cook("bread", 30))</code>. What does the second step get now?</li>
+        <li>In <code>combine.js</code>, give the lobster 5 ms instead of 15 and predict each line again.</li>
+      </ol>
+      <h3>4. In a browser</h3>
+      <ol>
+        <li>Open the console (<kbd>F12</kbd>; macOS: <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>J</kbd> in Chrome) and paste <code>Promise.reject(new Error("nobody listens"))</code>. The console reports <i>Uncaught (in promise)</i>, but the page keeps working: browsers don't crash on unhandled rejections.</li>
+        <li>Try <code>typeof Error.isError</code> and <code>typeof DisposableStack</code> in different browsers. Where it's <samp>"undefined"</samp>, the feature isn't there yet: feature-detect before using it.</li>
+      </ol>
+      <p><b>About this book's runs:</b> every capture used <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. No program here prints a time or date; the kitchens use fixed, distinct delays (10, 15, 20, 30 ms and so on), so every order is the same on every run.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every program was also run on Node 22.23.4. Twelve runs differ:</p>
+      <ul>
+        <li><b>Missing features on Node 22:</b> <code>realms.js</code> (<i>TypeError: Error.isError is not a function</i>, after its first two lines), <code>promise_try.js</code> (<i>Promise.try is not a function</i>), <code>disposable_stack.js</code> (<i>ReferenceError: DisposableStack is not defined</i>), and <code>using_demo.js</code> and <code>trace_using.js</code>, which Node 22 can't even read (<i>SyntaxError: Unexpected identifier 'stage'</i>, or <i>'a'</i> in <code>trace_using.js</code>: to Node 22, <code>using</code> is just a name). The comic shows three of these runs next to the Node 26 ones.</li>
+        <li><b>Only Node-internal lines differ</b> in <code>all_fail.js</code>, <code>any_fail.js</code>, <code>cause_crash.js</code>, <code>early_catch.js</code>, <code>throw_string.js</code>, <code>unhandled.js</code> and <code>visit_bug.js</code>: the program output, error messages and exit codes are the same; the <code>node:internal/…</code> line numbers and the version footer change.</li>
+      </ul>
+      <p>Older history: <code>Promise</code> arrived in ES2015, <code>finally</code> in ES2018, <code>allSettled</code> in ES2020, <code>any</code> and <code>AggregateError</code> in ES2021, error <code>cause</code> in ES2022, <code>withResolvers</code> in ES2024 and <code>Promise.try</code> in ES2025. Crash-on-unhandled-rejection became Node's default in Node 15 (the Node 26 documentation for <code>--unhandled-rejections</code>: "v15.0.0: Changed default mode to throw").</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>triage</dt><dd>Sorting problems by who should handle them. The comic's desk: treat, refer up, discharge.</dd>
+        <dt>custom error class</dt><dd>Your own kind of error: <code>class X extends Error</code>, calling <code>super(message)</code> and setting <code>this.name</code>.</dd>
+        <dt>validation error</dt><dd>An error meaning "the input has the wrong shape or value".</dd>
+        <dt>error hierarchy</dt><dd>A family tree of error classes; checking for a parent also matches its children.</dd>
+        <dt><code>name</code></dt><dd>The error's kind, printed before the colon. Inherited as "Error" unless you set it.</dd>
+        <dt>rethrow</dt><dd>Throwing again an error you caught, because this layer can't treat it.</dd>
+        <dt>wrap</dt><dd>Throwing a new, clearer error with the original kept as its <code>cause</code>.</dd>
+        <dt><code>cause</code></dt><dd>The option <code>{ cause: err }</code> on any error constructor; read back as <code>err.cause</code>.</dd>
+        <dt>swallowing an error</dt><dd>Catching it and hiding it, so nobody can learn what went wrong.</dd>
+        <dt>edge (of a program)</dt><dd>The outermost layer: the top of the script, one request, one click. Where errors are finally reported.</dd>
+        <dt>stderr</dt><dd>The error output stream. <code>console.error</code> writes there.</dd>
+        <dt><code>process.exitCode</code></dt><dd>The exit code Node will use when the program ends; 1 means failure.</dd>
+        <dt>fail fast</dt><dd>Stop loudly as soon as something impossible happens, rather than carry on with bad data.</dd>
+        <dt><code>AggregateError</code></dt><dd>One error that carries a list of errors in <code>errors</code>.</dd>
+        <dt>result object</dt><dd>A returned <code>{ ok, value }</code> or <code>{ ok, error }</code> instead of a thrown error.</dd>
+        <dt>realm</dt><dd>A separate JavaScript world with its own built-ins (an iframe, a <code>vm</code> context).</dd>
+        <dt><code>Error.isError(value)</code></dt><dd>True if the value is a real error from any realm.</dd>
+        <dt><code>using</code></dt><dd>A declaration that disposes its value automatically when the block ends.</dd>
+        <dt><code>Symbol.dispose</code></dt><dd>The well-known symbol naming an object's cleanup method.</dd>
+        <dt><code>DisposableStack</code></dt><dd>A list of cleanup jobs (<code>defer</code>, <code>use</code>), run newest first by <code>dispose()</code>.</dd>
+        <dt>executor</dt><dd>The function passed to <code>new Promise</code>. It runs at once and gets <code>resolve</code> and <code>reject</code>.</dd>
+        <dt><code>resolve</code> / <code>reject</code></dt><dd>The two buttons that settle a promise, with a value or an error. Only the first press counts.</dd>
+        <dt>settled</dt><dd>Fulfilled or rejected. Final.</dd>
+        <dt>promise chain</dt><dd>Promises linked by <code>then</code>, <code>catch</code> and <code>finally</code>, each returning a new promise.</dd>
+        <dt><code>.catch(f)</code></dt><dd>Handles a rejection from any step above it; the same as <code>.then(undefined, f)</code>.</dd>
+        <dt><code>.finally(f)</code></dt><dd>Runs on both roads and passes the value or error on.</dd>
+        <dt>thenable</dt><dd>Any object with a <code>then</code> method; promises follow thenables returned to them.</dd>
+        <dt><code>Promise.all</code> / <code>allSettled</code> / <code>race</code> / <code>any</code></dt><dd>Wait for every result / a report on each / the first to settle / the first success.</dd>
+        <dt>fail fast (<code>Promise.all</code>)</dt><dd>Rejecting as soon as one input rejects.</dd>
+        <dt><code>Promise.withResolvers()</code></dt><dd>Returns <code>{ promise, resolve, reject }</code> together.</dd>
+        <dt><code>Promise.try(fn, …args)</code></dt><dd>Calls <code>fn</code> and always returns a promise, turning a quick throw into a rejection.</dd>
+        <dt>error-first callback</dt><dd>A callback called as <code>(err, result)</code>; Node's old style.</dd>
+        <dt>callback hell</dt><dd>Callbacks nested inside callbacks, drifting to the right.</dd>
+        <dt><code>util.promisify(fn)</code></dt><dd>Turns an error-first-callback function into one that returns a promise.</dd>
+        <dt><code>sleep(ms)</code></dt><dd>A promise that fulfils after <code>ms</code> milliseconds, built from <code>setTimeout</code>.</dd>
+        <dt>unhandled rejection</dt><dd>A rejected promise nobody handles. Node crashes with exit code 1.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>MDN: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a> (custom error types, <code>cause</code>), <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/isError">Error.isError()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError">AggregateError</a></li>
+        <li>MDN Guide: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises">Using promises</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Resource_management">Resource management</a> (<code>using</code>, <code>DisposableStack</code>)</li>
+        <li>MDN reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>, including <code>all</code>, <code>allSettled</code>, <code>race</code>, <code>any</code>, <code>withResolvers</code> and <code>try</code></li>
+        <li>Node.js: <a href="https://nodejs.org/api/errors.html">Errors</a>, <a href="https://nodejs.org/api/util.html#utilpromisifyoriginal">util.promisify</a>, <a href="https://nodejs.org/api/timers.html#timers-promises-api">Timers promises API</a>, <a href="https://nodejs.org/api/vm.html">vm</a></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://javascript.info/custom-errors">javascript.info: Custom errors, extending Error</a> and the whole <a href="https://javascript.info/async">Promises, async/await</a> section (chaining, error handling, the Promise API, promisification)</li>
+        <li><a href="https://eloquentjavascript.net/08_error.html">Eloquent JavaScript, chapter 8: Bugs and Errors</a> and <a href="https://eloquentjavascript.net/11_async.html">chapter 11: Asynchronous Programming</a></li>
+        <li><a href="https://nodejs.org/en/learn/asynchronous-work/discover-promises-in-nodejs">Node.js Learn: Discover Promises in Node.js</a></li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch24</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are ES modules), with <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. 67 programs were captured (including the helper modules <code>errors.js</code>, <code>desk.js</code>, <code>kitchen.js</code> and <code>old_kitchen.js</code>, which print nothing on their own), each run twice on Node 26 to confirm identical output. Twelve differ on Node 22, as the version notes describe.</p>
+  <p>Async programs are deterministic on purpose: promises settle immediately or after fixed timer delays that differ by at least 5 ms, and nothing prints a time, a port or a process id. In terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines from Node's own code are folded into one line by the page's script; the full, unedited text is one click away. The two maps, Kit's walk through the chain, the memory tracer and the four-ways machine are teaching models; each checks itself against the real runs and says so. Pager names in the tracer (P1 to P4) are labels for the picture, not real addresses.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): MDN's reference pages for <code>Error.isError()</code> (brand check, false negatives across realms, limited availability) and the web-features explorer entry for explicit resource management (limited availability: Chrome 134, Firefox 141, not Safari), both fetched; javascript.info "Error handling with promises" (implicit try/catch around handlers, rethrowing from catch, unhandled rejections), fetched. From this book's research map (<code>research/javascript.md</code>, modules I13 and I14), not re-fetched: javascript.info "Custom errors" and its Promises section; Eloquent JavaScript chapters 8 and 11; Exercism's errors and promises concepts; JavaScript: The Definitive Guide sections 11.5 and 13.2; the MDN Guide's "Resource management" and "Using promises"; roadmap.sh's Error Objects, Promises and Callback Hell nodes; boot.dev's Promises lessons; Node.js Learn "Discover Promises in Node.js". Every error message on this page was found by running it. For Node version facts, MDN's browser-compat-data 8.1.8 was fetched on 2026-11-08 (the data behind MDN's compatibility tables): <code>Promise.withResolvers</code> in Node 22; and Node's own v26.13.0 documentation source for <code>--unhandled-rejections</code> (default changed to <code>throw</code> in v15.0.0).</p>
+  <p>Kit, the chef, the pager, the Professor, the sneak and the triage desk are original characters and drawings made in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
