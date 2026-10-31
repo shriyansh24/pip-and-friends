@@ -1,0 +1,81 @@
+/* Captured from real runs on 2026-11-07 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-07",
+  "workdir": "/home/you/javascript-ch99",
+  "versionDifferences": [
+   "coerce.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): coerce.js."
+ },
+ "programs": {
+  "click.html": {
+   "src": "<!doctype html><button id=\"go\">Go</button><p id=\"out\"></p><script>document.querySelector(\"#go\").addEventListener(\"click\", () => { document.querySelector(\"#out\").textContent = \"clicked\"; console.log(\"clicked!\"); }); console.log(\"loaded\");</script>\n",
+   "stdout": "loaded\nclicked!\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "open click.html in a browser (console shown)",
+     "out": "loaded\nclicked!\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "coerce.js": {
+   "src": "console.log(0.1 + 0.2);\nconsole.log(\"2\" + 2, \"2\" * 2);\nnull.x;\n",
+   "stdout": "0.30000000000000004\n22 4\n",
+   "stderr": "/home/you/javascript-ch99/coerce.js:3\nnull.x;\n     ^\n\nTypeError: Cannot read properties of null (reading 'x')\n    at Object.<anonymous> (/home/you/javascript-ch99/coerce.js:3:6)\n    at Module._compile (node:internal/modules/cjs/loader:1968:14)\n    at Object..js (node:internal/modules/cjs/loader:2108:10)\n    at Module.load (node:internal/modules/cjs/loader:1690:32)\n    at Module._load (node:internal/modules/cjs/loader:1480:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:33:47\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node coerce.js",
+     "out": "0.30000000000000004\n22 4\n",
+     "err": "/home/you/javascript-ch99/coerce.js:3\nnull.x;\n     ^\n\nTypeError: Cannot read properties of null (reading 'x')\n    at Object.<anonymous> (/home/you/javascript-ch99/coerce.js:3:6)\n    at Module._compile (node:internal/modules/cjs/loader:1968:14)\n    at Object..js (node:internal/modules/cjs/loader:2108:10)\n    at Module.load (node:internal/modules/cjs/loader:1690:32)\n    at Module._load (node:internal/modules/cjs/loader:1480:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:33:47\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "0.30000000000000004\n22 4\n",
+    "stderr": "/home/you/javascript-ch99/coerce.js:3\nnull.x;\n     ^\n\nTypeError: Cannot read properties of null (reading 'x')\n    at Object.<anonymous> (/home/you/javascript-ch99/coerce.js:3:6)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node coerce.js",
+      "out": "0.30000000000000004\n22 4\n",
+      "err": "/home/you/javascript-ch99/coerce.js:3\nnull.x;\n     ^\n\nTypeError: Cannot read properties of null (reading 'x')\n    at Object.<anonymous> (/home/you/javascript-ch99/coerce.js:3:6)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "t.ts": {
+   "src": "const n: number = 2;\nconsole.log(n * 21);\n",
+   "stdout": "42\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node t.ts",
+     "out": "42\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);
