@@ -1,0 +1,1015 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch10",
+  "versionDifferences": [
+   "clone_fn.js",
+   "clone_method.js",
+   "const_mutate.js",
+   "crash_method.js",
+   "crash_read.js",
+   "crash_set.js",
+   "deep_crash.js",
+   "deep_nobody.js",
+   "keys_null.js",
+   "null_read.js",
+   "predict_crash.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): clone_fn.js, clone_method.js, const_mutate.js, crash_method.js, crash_read.js, crash_set.js, deep_crash.js, deep_nobody.js, keys_null.js, null_read.js, predict_crash.js."
+ },
+ "programs": {
+  "alias.js": {
+   "src": "let ada = { name: \"Ada\", lines: 42 };\nlet star = ada;\nstar.lines = 50;\nconsole.log(ada.lines);\nstar = { name: \"Bo\", lines: 38 };\nconsole.log(ada.name, star.name);\nada = star;\nconsole.log(ada === star);\n",
+   "stdout": "50\nAda Bo\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node alias.js",
+     "out": "50\nAda Bo\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "alias_fixed.js": {
+   "src": "const costumes = [\"cape\", \"crown\"];\nconst understudyCostumes = [...costumes];\nunderstudyCostumes.push(\"wig\");\nconsole.log(understudyCostumes);\nconsole.log(costumes);\n",
+   "stdout": "[ 'cape', 'crown', 'wig' ]\n[ 'cape', 'crown' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node alias_fixed.js",
+     "out": "[ 'cape', 'crown', 'wig' ]\n[ 'cape', 'crown' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "alias_surprise.js": {
+   "src": "const costumes = [\"cape\", \"crown\"];\nconst understudyCostumes = costumes;\nunderstudyCostumes.push(\"wig\");\nconsole.log(understudyCostumes);\nconsole.log(costumes);\n",
+   "stdout": "[ 'cape', 'crown', 'wig' ]\n[ 'cape', 'crown', 'wig' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node alias_surprise.js",
+     "out": "[ 'cape', 'crown', 'wig' ]\n[ 'cape', 'crown', 'wig' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_fill.js": {
+   "src": "const original = { name: \"Ada\", outfit: { hat: \"crown\" } };\nconst field = \"name\";\nconst twin = structuredClone(original);\ntwin[field] = \"Ada II\";\ntwin.outfit.hat = \"tiara\";\nconsole.log(original.name, original.outfit.hat);\nconsole.log(twin.name, twin.outfit.hat);\n",
+   "stdout": "Ada crown\nAda II tiara\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_fill.js",
+     "out": "Ada crown\nAda II tiara\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_mix.js": {
+   "src": "const crew = { boss: \"Kit\", tools: [\"tape\"] };\nconst shift2 = { ...crew };\nconst same = crew;\nshift2.boss = \"Max\";\nshift2.tools.push(\"rope\");\nsame.boss = \"Lee\";\nconsole.log(crew.boss, shift2.boss);\nconsole.log(crew.tools.length, shift2.tools === crew.tools);\n",
+   "stdout": "Lee Max\n2 true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_mix.js",
+     "out": "Lee Max\n2 true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.js": {
+   "src": "const words = [\"mask\", \"cape\", \"mask\"];\nconst counts = { total: words.length };\nfor (const w of words) {\n  if (!(w in counts)) counts[w] = 0;\n  counts[w] = counts[w] + 1;\n}\nconsole.log(counts);\n",
+   "stdout": "{ total: 3, mask: 2, cape: 1 }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parsons.js",
+     "out": "{ total: 3, mask: 2, cape: 1 }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.js": {
+   "src": "const template = { act: 1, notes: [] };\nfunction newScene(note) {\n  const scene = { ...template };\n  scene.notes.push(note);\n  return scene;\n}\nconst s1 = newScene(\"enter left\");\nconst s2 = newScene(\"thunder\");\nconsole.log(s1.notes);\nconsole.log(s2.notes);\n",
+   "stdout": "[ 'enter left', 'thunder' ]\n[ 'enter left', 'thunder' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_spot.js",
+     "out": "[ 'enter left', 'thunder' ]\n[ 'enter left', 'thunder' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.js": {
+   "src": "const box = { a: 1 };\nconst names = [\"a\", \"b\", \"a\", \"c\", \"b\"];\nfor (const key of names) {\n  if (key in box) box[key] = box[key] * 2;\n  else box[key] = 1;\n  console.log(key, box.a, box.b, box.c);\n}\n",
+   "stdout": "a 2 undefined undefined\nb 2 1 undefined\na 4 1 undefined\nc 4 1 1\nb 4 2 1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_trace.js",
+     "out": "a 2 undefined undefined\nb 2 1 undefined\na 4 1 undefined\nc 4 1 1\nb 4 2 1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "brackets.js": {
+   "src": "const actor = { name: \"Ada\", role: \"Juliet\", \"stage-left\": true };\nconsole.log(actor[\"role\"]);\nconst field = \"name\";\nconsole.log(actor[field]);\nconsole.log(actor.field);\nconsole.log(actor[\"stage-left\"]);\n",
+   "stdout": "Juliet\nAda\nundefined\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node brackets.js",
+     "out": "Juliet\nAda\nundefined\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "by_value.js": {
+   "src": "let seat = 7;\nlet copy = seat;\ncopy = copy + 1;\nconsole.log(seat, copy);\nlet star = \"Ada\";\nlet backup = star;\nbackup = \"Bo\";\nconsole.log(star, backup);\n",
+   "stdout": "7 8\nAda Bo\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node by_value.js",
+     "out": "7 8\nAda Bo\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "clone_fn.js": {
+   "src": "const greet = () => 1;\nconsole.log(\"cloning a function...\");\nconst copy = structuredClone(greet);\nconsole.log(copy);\n",
+   "stdout": "cloning a function...\n",
+   "stderr": "node:internal/per_context/domexception:79\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:79:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node clone_fn.js",
+     "out": "cloning a function...\n",
+     "err": "node:internal/per_context/domexception:79\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:79:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "cloning a function...\nnode:internal/per_context/domexception:79\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:79:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "cloning a function...\n",
+    "stderr": "node:internal/per_context/domexception:76\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node clone_fn.js",
+      "out": "cloning a function...\n",
+      "err": "node:internal/per_context/domexception:76\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "cloning a function...\nnode:internal/per_context/domexception:76\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: () => 1 could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_fn.js:3:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "clone_machine.js": {
+   "src": "console.log(structuredClone(42));\nconsole.log(structuredClone(\"curtain\"));\nconsole.log(structuredClone([1, [2, 3]]));\nconsole.log(structuredClone({ seat: \"B7\", tags: [\"aisle\"] }));\nconsole.log(structuredClone(new Date(0)));\n",
+   "stdout": "42\ncurtain\n[ 1, [ 2, 3 ] ]\n{ seat: 'B7', tags: [ 'aisle' ] }\n1970-01-01T00:00:00.000Z\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node clone_machine.js",
+     "out": "42\ncurtain\n[ 1, [ 2, 3 ] ]\n{ seat: 'B7', tags: [ 'aisle' ] }\n1970-01-01T00:00:00.000Z\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "clone_method.js": {
+   "src": "const actor = {\n  name: \"Ada\",\n  bow() {\n    return \"Thank you!\";\n  },\n};\nconst twin = structuredClone(actor);\nconsole.log(twin);\n",
+   "stdout": "",
+   "stderr": "node:internal/per_context/domexception:79\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: bow() {\n    return \"Thank you!\";\n  } could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:79:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_method.js:7:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node clone_method.js",
+     "out": "",
+     "err": "node:internal/per_context/domexception:79\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: bow() {\n    return \"Thank you!\";\n  } could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:79:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_method.js:7:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "node:internal/per_context/domexception:76\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: bow() {\n    return \"Thank you!\";\n  } could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_method.js:7:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node clone_method.js",
+      "out": "",
+      "err": "node:internal/per_context/domexception:76\n    const self = new Error();\n                 ^\n\nDOMException [DataCloneError]: bow() {\n    return \"Thank you!\";\n  } could not be cloned.\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at structuredClone (node:internal/worker/js_transferable:126:26)\n    at file:///home/you/javascript-ch10/clone_method.js:7:14\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "computed.js": {
+   "src": "const name = \"Bo\";\nconst role = \"Romeo\";\nconst understudy = { name, role };\nconsole.log(understudy);\nconst scene = 2;\nconst props = { [\"scene\" + scene]: \"balcony\", [role]: \"dagger\" };\nconsole.log(props);\nconsole.log(props.scene2);\n",
+   "stdout": "{ name: 'Bo', role: 'Romeo' }\n{ scene2: 'balcony', Romeo: 'dagger' }\nbalcony\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node computed.js",
+     "out": "{ name: 'Bo', role: 'Romeo' }\n{ scene2: 'balcony', Romeo: 'dagger' }\nbalcony\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "const_mutate.js": {
+   "src": "const set = { scene: 1, lights: \"on\" };\nset.scene = 2;\nset.curtain = \"up\";\nconsole.log(set);\nset = { scene: 3 };\nconsole.log(\"never printed\");\n",
+   "stdout": "{ scene: 2, lights: 'on', curtain: 'up' }\n",
+   "stderr": "file:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node const_mutate.js",
+     "out": "{ scene: 2, lights: 'on', curtain: 'up' }\n",
+     "err": "file:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "{ scene: 2, lights: 'on', curtain: 'up' }\nfile:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "{ scene: 2, lights: 'on', curtain: 'up' }\n",
+    "stderr": "file:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node const_mutate.js",
+      "out": "{ scene: 2, lights: 'on', curtain: 'up' }\n",
+      "err": "file:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "{ scene: 2, lights: 'on', curtain: 'up' }\nfile:///home/you/javascript-ch10/const_mutate.js:5\nset = { scene: 3 };\n    ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch10/const_mutate.js:5:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "crash_method.js": {
+   "src": "const robot = {\n  name: \"Spotlight\",\n  move() {\n    return \"whirr\";\n  },\n};\nconsole.log(robot.move());\nconsole.log(robot.go());\n",
+   "stdout": "whirr\n",
+   "stderr": "file:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node crash_method.js",
+     "out": "whirr\n",
+     "err": "file:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "whirr\nfile:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "whirr\n",
+    "stderr": "file:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node crash_method.js",
+      "out": "whirr\n",
+      "err": "file:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "whirr\nfile:///home/you/javascript-ch10/crash_method.js:8\nconsole.log(robot.go());\n                  ^\n\nTypeError: robot.go is not a function\n    at file:///home/you/javascript-ch10/crash_method.js:8:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "crash_read.js": {
+   "src": "const show = { title: \"Hamlet\", lead: { name: \"Ada\" } };\nconsole.log(show.lead.name);\nconsole.log(show.director);\nconsole.log(show.director.name);\n",
+   "stdout": "Ada\nundefined\n",
+   "stderr": "file:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node crash_read.js",
+     "out": "Ada\nundefined\n",
+     "err": "file:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Ada\nundefined\nfile:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Ada\nundefined\n",
+    "stderr": "file:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node crash_read.js",
+      "out": "Ada\nundefined\n",
+      "err": "file:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Ada\nundefined\nfile:///home/you/javascript-ch10/crash_read.js:4\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of undefined (reading 'name')\n    at file:///home/you/javascript-ch10/crash_read.js:4:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "crash_set.js": {
+   "src": "const show = { title: \"Hamlet\" };\nshow.title = \"Macbeth\";\nconsole.log(show.title);\nshow.director.name = \"Kit\";\n",
+   "stdout": "Macbeth\n",
+   "stderr": "file:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node crash_set.js",
+     "out": "Macbeth\n",
+     "err": "file:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Macbeth\nfile:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Macbeth\n",
+    "stderr": "file:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node crash_set.js",
+      "out": "Macbeth\n",
+      "err": "file:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Macbeth\nfile:///home/you/javascript-ch10/crash_set.js:4\nshow.director.name = \"Kit\";\n                   ^\n\nTypeError: Cannot set properties of undefined (setting 'name')\n    at file:///home/you/javascript-ch10/crash_set.js:4:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "deep.js": {
+   "src": "const ada = { name: \"Ada\", costume: { color: \"blue\" }, props: [\"fan\"] };\nconst twin = structuredClone(ada);\ntwin.costume.color = \"red\";\ntwin.props.push(\"mask\");\nconsole.log(ada);\nconsole.log(twin);\nconsole.log(twin.costume === ada.costume);\n",
+   "stdout": "{ name: 'Ada', costume: { color: 'blue' }, props: [ 'fan' ] }\n{ name: 'Ada', costume: { color: 'red' }, props: [ 'fan', 'mask' ] }\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node deep.js",
+     "out": "{ name: 'Ada', costume: { color: 'blue' }, props: [ 'fan' ] }\n{ name: 'Ada', costume: { color: 'red' }, props: [ 'fan', 'mask' ] }\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "deep_crash.js": {
+   "src": "const cast = [\n  { name: \"Ada\", costume: { color: \"blue\" } },\n  { name: \"Bo\" },\n];\nconst pick = 1;\nconsole.log(cast[pick].costume.color);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch10/deep_crash.js:6\nconsole.log(cast[pick].costume.color);\n                               ^\n\nTypeError: Cannot read properties of undefined (reading 'color')\n    at file:///home/you/javascript-ch10/deep_crash.js:6:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node deep_crash.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch10/deep_crash.js:6\nconsole.log(cast[pick].costume.color);\n                               ^\n\nTypeError: Cannot read properties of undefined (reading 'color')\n    at file:///home/you/javascript-ch10/deep_crash.js:6:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch10/deep_crash.js:6\nconsole.log(cast[pick].costume.color);\n                               ^\n\nTypeError: Cannot read properties of undefined (reading 'color')\n    at file:///home/you/javascript-ch10/deep_crash.js:6:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node deep_crash.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch10/deep_crash.js:6\nconsole.log(cast[pick].costume.color);\n                               ^\n\nTypeError: Cannot read properties of undefined (reading 'color')\n    at file:///home/you/javascript-ch10/deep_crash.js:6:32\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "deep_found.js": {
+   "src": "const cast = [\n  { name: \"Ada\", costume: { color: \"blue\" } },\n  { name: \"Bo\", costume: { color: \"red\" } },\n];\nconst pick = 1;\nconsole.log(cast[pick].costume.color);\n",
+   "stdout": "red\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node deep_found.js",
+     "out": "red\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "deep_ghost.js": {
+   "src": "const cast = [\n  { name: \"Ada\", costume: { color: \"blue\" } },\n  { name: \"Bo\", costume: { size: \"L\" } },\n];\nconst pick = 1;\nconsole.log(cast[pick].costume.color);\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node deep_ghost.js",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "deep_nobody.js": {
+   "src": "const cast = [\n  { name: \"Ada\", costume: { color: \"blue\" } },\n  { name: \"Bo\", costume: { color: \"red\" } },\n];\nconst pick = 2;\nconsole.log(cast[pick].costume.color);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch10/deep_nobody.js:6\nconsole.log(cast[pick].costume.color);\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'costume')\n    at file:///home/you/javascript-ch10/deep_nobody.js:6:24\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node deep_nobody.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch10/deep_nobody.js:6\nconsole.log(cast[pick].costume.color);\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'costume')\n    at file:///home/you/javascript-ch10/deep_nobody.js:6:24\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch10/deep_nobody.js:6\nconsole.log(cast[pick].costume.color);\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'costume')\n    at file:///home/you/javascript-ch10/deep_nobody.js:6:24\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node deep_nobody.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch10/deep_nobody.js:6\nconsole.log(cast[pick].costume.color);\n                       ^\n\nTypeError: Cannot read properties of undefined (reading 'costume')\n    at file:///home/you/javascript-ch10/deep_nobody.js:6:24\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "drawers.js": {
+   "src": "const actor = { name: \"Ada\", role: \"Juliet\", lines: 42 };\nactor.lines = 50;\nactor.dressingRoom = 3;\nconsole.log(actor);\ndelete actor.role;\nconsole.log(actor);\nconsole.log(actor.role);\n",
+   "stdout": "{ name: 'Ada', role: 'Juliet', lines: 50, dressingRoom: 3 }\n{ name: 'Ada', lines: 50, dressingRoom: 3 }\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node drawers.js",
+     "out": "{ name: 'Ada', role: 'Juliet', lines: 50, dressingRoom: 3 }\n{ name: 'Ada', lines: 50, dressingRoom: 3 }\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_bracket.js": {
+   "src": "const seat = { row: \"C\", number: 12, \"has-view\": true };\nconst want = \"number\";\nconsole.log(seat.row);\nconsole.log(seat[want]);\nconsole.log(seat[\"has-view\"]);\nseat.price = 15;\nconsole.log(seat);\n",
+   "stdout": "C\n12\ntrue\n{ row: 'C', number: 12, 'has-view': true, price: 15 }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_bracket.js",
+     "out": "C\n12\ntrue\n{ row: 'C', number: 12, 'has-view': true, price: 15 }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_copy.js": {
+   "src": "const lead = { name: \"Ada\", lines: 42 };\nconst draft = { ...lead };\ndraft.lines = 60;\nconst ref = lead;\nref.name = \"Ada L.\";\nconsole.log(lead);\nconsole.log(draft);\n",
+   "stdout": "{ name: 'Ada L.', lines: 42 }\n{ name: 'Ada', lines: 60 }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_copy.js",
+     "out": "{ name: 'Ada L.', lines: 42 }\n{ name: 'Ada', lines: 60 }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "first_cabinet.js": {
+   "src": "const actor = {\n  name: \"Ada\",\n  role: \"Juliet\",\n  lines: 42,\n};\nconsole.log(actor);\nconsole.log(actor.name);\nconsole.log(actor.lines + 8);\nconsole.log(typeof actor);\n",
+   "stdout": "{ name: 'Ada', role: 'Juliet', lines: 42 }\nAda\n50\nobject\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node first_cabinet.js",
+     "out": "{ name: 'Ada', role: 'Juliet', lines: 42 }\nAda\n50\nobject\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "garbage.js": {
+   "src": "let poster = { show: \"Hamlet\", size: \"A1\" };\nlet wall = poster;\nposter = null;\nconsole.log(wall.show);\nwall = { show: \"Macbeth\", size: \"A2\" };\nconsole.log(wall.show, poster);\n",
+   "stdout": "Hamlet\nMacbeth null\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node garbage.js",
+     "out": "Hamlet\nMacbeth null\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "has.js": {
+   "src": "const actor = { name: \"Ada\", lines: undefined };\nconsole.log(\"name\" in actor, Object.hasOwn(actor, \"name\"));\nconsole.log(\"lines\" in actor, Object.hasOwn(actor, \"lines\"));\nconsole.log(\"role\" in actor, Object.hasOwn(actor, \"role\"));\nconsole.log(\"toString\" in actor, Object.hasOwn(actor, \"toString\"));\nconsole.log(actor.lines === actor.role);\ndelete actor.lines;\nconsole.log(\"lines\" in actor);\n",
+   "stdout": "true true\ntrue true\nfalse false\ntrue false\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node has.js",
+     "out": "true true\ntrue true\nfalse false\ntrue false\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "identity.js": {
+   "src": "const a = { seat: 1 };\nconst b = { seat: 1 };\nconst c = a;\nconsole.log(a === b);\nconsole.log(a == b);\nconsole.log(a === c);\nconsole.log(a.seat === b.seat);\nconsole.log([1, 2] === [1, 2]);\n",
+   "stdout": "false\nfalse\ntrue\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node identity.js",
+     "out": "false\nfalse\ntrue\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "keys_machine.js": {
+   "src": "console.log(Object.keys({ name: \"Ada\", role: \"Juliet\" }));\nconsole.log(Object.keys({ b: 1, 2: 1, a: 1, 1: 1 }));\nconsole.log(Object.keys({}));\nconsole.log(Object.keys([\"x\", \"y\"]));\n",
+   "stdout": "[ 'name', 'role' ]\n[ '1', '2', 'b', 'a' ]\n[]\n[ '0', '1' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node keys_machine.js",
+     "out": "[ 'name', 'role' ]\n[ '1', '2', 'b', 'a' ]\n[]\n[ '0', '1' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "keys_null.js": {
+   "src": "const missing = null;\nconsole.log(Object.keys(missing));\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch10/keys_null.js:2\nconsole.log(Object.keys(missing));\n                   ^\n\nTypeError: Cannot convert undefined or null to object\n    at Object.keys (<anonymous>)\n    at file:///home/you/javascript-ch10/keys_null.js:2:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node keys_null.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch10/keys_null.js:2\nconsole.log(Object.keys(missing));\n                   ^\n\nTypeError: Cannot convert undefined or null to object\n    at Object.keys (<anonymous>)\n    at file:///home/you/javascript-ch10/keys_null.js:2:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch10/keys_null.js:2\nconsole.log(Object.keys(missing));\n                   ^\n\nTypeError: Cannot convert undefined or null to object\n    at Function.keys (<anonymous>)\n    at file:///home/you/javascript-ch10/keys_null.js:2:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node keys_null.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch10/keys_null.js:2\nconsole.log(Object.keys(missing));\n                   ^\n\nTypeError: Cannot convert undefined or null to object\n    at Function.keys (<anonymous>)\n    at file:///home/you/javascript-ch10/keys_null.js:2:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "keys_strings.js": {
+   "src": "const seats = { 1: \"Ada\", 2: \"Bo\", true: \"yes\" };\nconsole.log(seats[1]);\nconsole.log(seats[\"1\"]);\nconsole.log(seats[\"true\"]);\nconsole.log(Object.keys(seats));\nconsole.log(typeof Object.keys(seats)[0]);\n",
+   "stdout": "Ada\nAda\nyes\n[ '1', '2', 'true' ]\nstring\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node keys_strings.js",
+     "out": "Ada\nAda\nyes\n[ '1', '2', 'true' ]\nstring\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "listing.js": {
+   "src": "const prices = { adult: 12, child: 6, senior: 8 };\nconsole.log(Object.keys(prices));\nconsole.log(Object.values(prices));\nconsole.log(Object.entries(prices));\nfor (const ticket in prices) {\n  console.log(ticket, \"costs\", prices[ticket]);\n}\n",
+   "stdout": "[ 'adult', 'child', 'senior' ]\n[ 12, 6, 8 ]\n[ [ 'adult', 12 ], [ 'child', 6 ], [ 'senior', 8 ] ]\nadult costs 12\nchild costs 6\nsenior costs 8\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node listing.js",
+     "out": "[ 'adult', 'child', 'senior' ]\n[ 12, 6, 8 ]\n[ [ 'adult', 12 ], [ 'child', 6 ], [ 'senior', 8 ] ]\nadult costs 12\nchild costs 6\nsenior costs 8\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "methods.js": {
+   "src": "const actor = {\n  name: \"Ada\",\n  bow: function () {\n    return \"Thank you, thank you!\";\n  },\n  greet(fan) {\n    return \"Hello, \" + fan + \"!\";\n  },\n};\nconsole.log(actor.bow());\nconsole.log(actor.greet(\"Sam\"));\nconsole.log(actor.bow);\nconsole.log(actor);\n",
+   "stdout": "Thank you, thank you!\nHello, Sam!\n[Function: bow]\n{ name: 'Ada', bow: [Function: bow], greet: [Function: greet] }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node methods.js",
+     "out": "Thank you, thank you!\nHello, Sam!\n[Function: bow]\n{ name: 'Ada', bow: [Function: bow], greet: [Function: greet] }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "mutate_param.js": {
+   "src": "function giveBonus(actor) {\n  actor.lines = actor.lines + 10;\n}\nconst ada = { name: \"Ada\", lines: 42 };\ngiveBonus(ada);\nconsole.log(ada.lines);\n",
+   "stdout": "52\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node mutate_param.js",
+     "out": "52\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "nested.js": {
+   "src": "const actor = {\n  name: \"Ada\",\n  costume: { color: \"blue\", size: \"M\" },\n};\nconsole.log(actor.costume.color);\nactor.costume.size = \"L\";\nconsole.log(actor);\nactor.costume.hat = { style: \"crown\", gems: { count: 3 } };\nconsole.log(actor);\n",
+   "stdout": "blue\n{ name: 'Ada', costume: { color: 'blue', size: 'L' } }\n{\n  name: 'Ada',\n  costume: { color: 'blue', size: 'L', hat: { style: 'crown', gems: [Object] } }\n}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node nested.js",
+     "out": "blue\n{ name: 'Ada', costume: { color: 'blue', size: 'L' } }\n{\n  name: 'Ada',\n  costume: { color: 'blue', size: 'L', hat: { style: 'crown', gems: [Object] } }\n}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "nested_full.js": {
+   "src": "const actor = {\n  name: \"Ada\",\n  costume: { hat: { style: \"crown\", gems: { count: 3 } } },\n};\nconsole.log(actor);\nconsole.dir(actor, { depth: null });\nconsole.log(JSON.stringify(actor));\n",
+   "stdout": "{ name: 'Ada', costume: { hat: { style: 'crown', gems: [Object] } } }\n{\n  name: 'Ada',\n  costume: { hat: { style: 'crown', gems: { count: 3 } } }\n}\n{\"name\":\"Ada\",\"costume\":{\"hat\":{\"style\":\"crown\",\"gems\":{\"count\":3}}}}\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node nested_full.js",
+     "out": "{ name: 'Ada', costume: { hat: { style: 'crown', gems: [Object] } } }\n{\n  name: 'Ada',\n  costume: { hat: { style: 'crown', gems: { count: 3 } } }\n}\n{\"name\":\"Ada\",\"costume\":{\"hat\":{\"style\":\"crown\",\"gems\":{\"count\":3}}}}\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "null_read.js": {
+   "src": "const show = { title: \"Hamlet\", director: null };\nconsole.log(show.director);\nconsole.log(show.director.name);\n",
+   "stdout": "null\n",
+   "stderr": "file:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node null_read.js",
+     "out": "null\n",
+     "err": "file:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "null\nfile:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "null\n",
+    "stderr": "file:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node null_read.js",
+      "out": "null\n",
+      "err": "file:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "null\nfile:///home/you/javascript-ch10/null_read.js:3\nconsole.log(show.director.name);\n                          ^\n\nTypeError: Cannot read properties of null (reading 'name')\n    at file:///home/you/javascript-ch10/null_read.js:3:27\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "order.js": {
+   "src": "const box = { b: \"bee\", 2: \"two\", a: \"ant\", 1: \"one\" };\nconsole.log(Object.keys(box));\nconsole.log(box);\nconst rows = { \"10\": \"back\", \"9\": \"middle\", \"-1\": \"pit\", \"01\": \"odd\" };\nconsole.log(Object.keys(rows));\n",
+   "stdout": "[ '1', '2', 'b', 'a' ]\n{ '1': 'one', '2': 'two', b: 'bee', a: 'ant' }\n[ '9', '10', '-1', '01' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node order.js",
+     "out": "[ '1', '2', 'b', 'a' ]\n{ '1': 'one', '2': 'two', b: 'bee', a: 'ant' }\n[ '9', '10', '-1', '01' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_copy.js": {
+   "src": "const ada = { name: \"Ada\", hat: { color: \"blue\" } };\nconst safe = structuredClone(ada);\nsafe.hat.color = \"gold\";\nconsole.log(\"ada:\", ada.hat.color, \"/ safe:\", safe.hat.color);\n",
+   "stdout": "ada: blue / safe: gold\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_copy.js",
+     "out": "ada: blue / safe: gold\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_entries.js": {
+   "src": "const stock = { masks: 4, capes: 2, wigs: 5 };\nconst names = Object.keys(stock);\nconsole.log(names.length + \" kinds of prop\");\nfor (const name of names) {\n  console.log(name + \": \" + stock[name]);\n}\n",
+   "stdout": "3 kinds of prop\nmasks: 4\ncapes: 2\nwigs: 5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_entries.js",
+     "out": "3 kinds of prop\nmasks: 4\ncapes: 2\nwigs: 5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_alias.js": {
+   "src": "const lamp = { on: false, color: \"white\" };\nconst spotlight = lamp;\nspotlight.on = true;\nconst flood = { on: false, color: \"white\" };\nflood.color = \"amber\";\nconsole.log(lamp.on, lamp.color);\nconsole.log(spotlight === lamp, flood === lamp);\n",
+   "stdout": "true white\ntrue false\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_alias.js",
+     "out": "true white\ntrue false\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_crash.js": {
+   "src": "const tour = { city: \"Oslo\", hotel: { name: \"Fjord Inn\" } };\nconsole.log(tour.hotel.name);\nconsole.log(tour.venue);\ntour.venue.seats = 400;\nconsole.log(\"tickets on sale\");\n",
+   "stdout": "Fjord Inn\nundefined\n",
+   "stderr": "file:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node predict_crash.js",
+     "out": "Fjord Inn\nundefined\n",
+     "err": "file:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "Fjord Inn\nundefined\nfile:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "Fjord Inn\nundefined\n",
+    "stderr": "file:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node predict_crash.js",
+      "out": "Fjord Inn\nundefined\n",
+      "err": "file:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "Fjord Inn\nundefined\nfile:///home/you/javascript-ch10/predict_crash.js:4\ntour.venue.seats = 400;\n                 ^\n\nTypeError: Cannot set properties of undefined (setting 'seats')\n    at file:///home/you/javascript-ch10/predict_crash.js:4:18\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "predict_order.js": {
+   "src": "const lockers = { z: \"zip\", 30: \"mop\", 4: \"rope\", m: \"mask\" };\nlockers[7] = \"fan\";\nlockers.c = \"cape\";\nconsole.log(Object.keys(lockers));\n",
+   "stdout": "[ '4', '7', '30', 'z', 'm', 'c' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_order.js",
+     "out": "[ '4', '7', '30', 'z', 'm', 'c' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_print.js": {
+   "src": "const prop = { item: \"lantern\", weight: 3, lit: false };\nconsole.log(prop.item);\nconsole.log(prop.weight * 2);\nconsole.log(prop);\n",
+   "stdout": "lantern\n6\n{ item: 'lantern', weight: 3, lit: false }\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_print.js",
+     "out": "lantern\n6\n{ item: 'lantern', weight: 3, lit: false }\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_reassign.js": {
+   "src": "function tidy(list) {\n  list.push(\"broom\");\n  list = [\"new\", \"list\"];\n  list.push(\"mop\");\n}\nconst kit = [\"tape\"];\ntidy(kit);\nconsole.log(kit);\n",
+   "stdout": "[ 'tape', 'broom' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_reassign.js",
+     "out": "[ 'tape', 'broom' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_shallow.js": {
+   "src": "const show = { title: \"Oz\", songs: [\"Rainbow\"] };\nconst tour = { ...show };\ntour.title = \"Oz on Tour\";\ntour.songs.push(\"Yellow Road\");\nconsole.log(show.title);\nconsole.log(show.songs);\n",
+   "stdout": "Oz\n[ 'Rainbow', 'Yellow Road' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_shallow.js",
+     "out": "Oz\n[ 'Rainbow', 'Yellow Road' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "reassign_param.js": {
+   "src": "function recast(actor) {\n  actor = { name: \"Bo\", lines: 0 };\n  console.log(\"inside:\", actor.name);\n}\nconst ada = { name: \"Ada\", lines: 42 };\nrecast(ada);\nconsole.log(\"outside:\", ada.name);\n",
+   "stdout": "inside: Bo\noutside: Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node reassign_param.js",
+     "out": "inside: Bo\noutside: Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "records.js": {
+   "src": "const cast = [\n  { name: \"Ada\", role: \"Juliet\", lines: 42 },\n  { name: \"Bo\", role: \"Romeo\", lines: 38 },\n  { name: \"Cy\", role: \"Nurse\", lines: 17 },\n];\nconsole.log(cast.length, \"actors\");\nconsole.log(cast[1].name);\nfor (const actor of cast) {\n  console.log(actor.name + \" plays \" + actor.role);\n}\nconst busy = cast.filter((a) => a.lines > 20);\nconsole.log(busy.map((a) => a.name));\nconsole.log(cast);\n",
+   "stdout": "3 actors\nBo\nAda plays Juliet\nBo plays Romeo\nCy plays Nurse\n[ 'Ada', 'Bo' ]\n[\n  { name: 'Ada', role: 'Juliet', lines: 42 },\n  { name: 'Bo', role: 'Romeo', lines: 38 },\n  { name: 'Cy', role: 'Nurse', lines: 17 }\n]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node records.js",
+     "out": "3 actors\nBo\nAda plays Juliet\nBo plays Romeo\nCy plays Nurse\n[ 'Ada', 'Bo' ]\n[\n  { name: 'Ada', role: 'Juliet', lines: 42 },\n  { name: 'Bo', role: 'Romeo', lines: 38 },\n  { name: 'Cy', role: 'Nurse', lines: 17 }\n]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "scattered.js": {
+   "src": "const actorName = \"Ada\";\nconst actorRole = \"Juliet\";\nconst actorLines = 42;\nconst understudyName = \"Bo\";\nconst understudyRole = \"Juliet\";\nconsole.log(actorName, actorRole, actorLines);\nconsole.log(understudyName, understudyRole);\n",
+   "stdout": "Ada Juliet 42\nBo Juliet\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node scattered.js",
+     "out": "Ada Juliet 42\nBo Juliet\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shallow.js": {
+   "src": "const ada = { name: \"Ada\", lines: 42 };\nconst copy1 = { ...ada };\nconst copy2 = Object.assign({}, ada);\ncopy1.lines = 0;\ncopy2.name = \"Bo\";\nconsole.log(ada);\nconsole.log(copy1, copy2);\nconsole.log(copy1 === ada);\nconst props = [\"cape\", \"crown\"];\nconst propsCopy = [...props];\npropsCopy.push(\"wig\");\nconsole.log(props, propsCopy);\n",
+   "stdout": "{ name: 'Ada', lines: 42 }\n{ name: 'Ada', lines: 0 } { name: 'Bo', lines: 42 }\nfalse\n[ 'cape', 'crown' ] [ 'cape', 'crown', 'wig' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shallow.js",
+     "out": "{ name: 'Ada', lines: 42 }\n{ name: 'Ada', lines: 0 } { name: 'Bo', lines: 42 }\nfalse\n[ 'cape', 'crown' ] [ 'cape', 'crown', 'wig' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shallow_nested.js": {
+   "src": "const ada = { name: \"Ada\", costume: { color: \"blue\" } };\nconst copy = { ...ada };\ncopy.name = \"Bo\";\ncopy.costume.color = \"red\";\nconsole.log(ada.name, ada.costume.color);\nconsole.log(copy.costume === ada.costume);\n",
+   "stdout": "Ada red\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shallow_nested.js",
+     "out": "Ada red\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_dotkey.js": {
+   "src": "const actor = { name: \"Ada\", role: \"Juliet\", lines: 42 };\nconst fields = [\"name\", \"role\", \"lines\"];\nfor (const field of fields) {\n  console.log(field + \":\", actor.field);\n}\n",
+   "stdout": "name: undefined\nrole: undefined\nlines: undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_dotkey.js",
+     "out": "name: undefined\nrole: undefined\nlines: undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_mutate.js": {
+   "src": "function withDiscount(ticket) {\n  ticket.price = ticket.price - 5;\n  return ticket;\n}\nconst full = { seat: \"A1\", price: 20 };\nconst cheap = withDiscount(full);\nconsole.log(\"cheap:\", cheap.price);\nconsole.log(\"full:\", full.price);\n",
+   "stdout": "cheap: 15\nfull: 15\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_mutate.js",
+     "out": "cheap: 15\nfull: 15\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_typo.js": {
+   "src": "const ticket = { seat: \"B7\", price: 12, row: \"B\" };\nticket.price = ticket.price + 3;\nconsole.log(\"Seat:\", ticket.seat);\nconsole.log(\"Row:\", ticket.Row);\nconsole.log(\"Price:\", ticket.price);\n",
+   "stdout": "Seat: B7\nRow: undefined\nPrice: 15\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_typo.js",
+     "out": "Seat: B7\nRow: undefined\nPrice: 15\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_alias.js": {
+   "src": "const a = { n: 1 };\nlet b = a;\nfor (let step = 1; step <= 4; step++) {\n  if (step === 3) b = { n: 100 };\n  b.n = b.n + 1;\n  console.log(step, a.n, b.n);\n}\n",
+   "stdout": "1 2 2\n2 3 3\n3 3 101\n4 3 102\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_alias.js",
+     "out": "1 2 2\n2 3 3\n3 3 101\n4 3 102\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_drawers.js": {
+   "src": "const prop = { name: \"lamp\", uses: 1 };\nconsole.log(1, Object.keys(prop).length, prop.uses);\nprop.uses = prop.uses + 1;\nconsole.log(2, Object.keys(prop).length, prop.uses);\nprop.broken = true;\nconsole.log(3, Object.keys(prop).length, prop.uses);\ndelete prop.uses;\nconsole.log(4, Object.keys(prop).length, prop.uses);\nprop.uses = 10;\nconsole.log(5, Object.keys(prop).length, prop.uses);\n",
+   "stdout": "1 2 1\n2 2 2\n3 3 2\n4 2 undefined\n5 3 10\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_drawers.js",
+     "out": "1 2 1\n2 2 2\n3 3 2\n4 2 undefined\n5 3 10\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

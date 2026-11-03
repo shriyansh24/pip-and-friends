@@ -1,0 +1,1171 @@
+/* Captured from real runs on 2026-11-08 by tools/capture.py. Do not edit by hand; re-run the tool. */
+(function (root) {
+  "use strict";
+  root.POLYGLOT = root.POLYGLOT || {};
+  root.POLYGLOT.data = root.POLYGLOT.data || {};
+  root.POLYGLOT.data.captures = {
+ "meta": {
+  "lang": "javascript",
+  "capturedWith": [
+   "Node.js 26.13.0 LTS",
+   "Node.js 22.23.4"
+  ],
+  "primary": "Node.js 26.13.0 LTS",
+  "date": "2026-11-08",
+  "workdir": "/home/you/javascript-ch9",
+  "versionDifferences": [
+   "bad_length.js",
+   "bad_length_frac.js",
+   "const_push.js",
+   "push_crash.js",
+   "reduce_empty.js",
+   "sort_bad.js",
+   "spot_offbyone.js"
+  ],
+  "isolation": "none",
+  "note": "Every program was run with both toolchains. These differ between versions (the page shows the primary run): bad_length.js, bad_length_frac.js, const_push.js, push_crash.js, reduce_empty.js, sort_bad.js, spot_offbyone.js."
+ },
+ "programs": {
+  "bad_length.js": {
+   "src": "const seats = new Array(-1);\nconsole.log(seats);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch9/bad_length.js:1\nconst seats = new Array(-1);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node bad_length.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch9/bad_length.js:1\nconst seats = new Array(-1);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch9/bad_length.js:1\nconst seats = new Array(-1);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node bad_length.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch9/bad_length.js:1\nconst seats = new Array(-1);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "bad_length_frac.js": {
+   "src": "const seats = new Array(2.5);\nconsole.log(seats);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch9/bad_length_frac.js:1\nconst seats = new Array(2.5);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length_frac.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node bad_length_frac.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch9/bad_length_frac.js:1\nconst seats = new Array(2.5);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length_frac.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch9/bad_length_frac.js:1\nconst seats = new Array(2.5);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length_frac.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node bad_length_frac.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch9/bad_length_frac.js:1\nconst seats = new Array(2.5);\n              ^\n\nRangeError: Invalid array length\n    at file:///home/you/javascript-ch9/bad_length_frac.js:1:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "belt.js": {
+   "src": "const boxes = [3, 8, 1, 6];\nconsole.log(boxes.map((n) => n * 10));\nconsole.log(boxes.filter((n) => n > 2));\nconsole.log(boxes.find((n) => n > 5));\nconsole.log(boxes.findIndex((n) => n > 5));\nconsole.log(boxes.some((n) => n > 7));\nconsole.log(boxes.every((n) => n > 2));\nconsole.log(boxes.reduce((sum, n) => sum + n, 0));\nconsole.log(boxes.forEach((n) => n * 10));\n",
+   "stdout": "[ 30, 80, 10, 60 ]\n[ 3, 8, 6 ]\n8\n1\ntrue\nfalse\n18\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node belt.js",
+     "out": "[ 30, 80, 10, 60 ]\n[ 3, 8, 6 ]\n8\n1\ntrue\nfalse\n18\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_fill.js": {
+   "src": "const cart = [8, 25, 4, 30];\nconst total = cart\n  .filter((p) => p >= 10)\n  .map((p) => p * 2)\n  .reduce((sum, p) => sum + p, 0);\nconsole.log(total);\n",
+   "stdout": "110\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_fill.js",
+     "out": "110\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_mix.js": {
+   "src": "const line = [\"Ada\", \"Kit\", \"Max\"];\nconst n = line.push(\"Zed\");\nconst front = line.slice(0, 2);\nline.splice(1, 1);\nconsole.log(n, line.length);\nconsole.log(front);\nconsole.log(line.at(-1), line.indexOf(\"Kit\"));\n",
+   "stdout": "4 3\n[ 'Ada', 'Kit' ]\nZed -1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_mix.js",
+     "out": "4 3\n[ 'Ada', 'Kit' ]\nZed -1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parseint.js": {
+   "src": "console.log([\"10\", \"10\", \"10\"].map(parseInt));\n",
+   "stdout": "[ 10, NaN, 2 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parseint.js",
+     "out": "[ 10, NaN, 2 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_parsons.js": {
+   "src": "const names = [\"max\", \"Ada\", \"kit\"];\nconst loud = names.map((n) => n.toUpperCase());\nconst sorted = loud.toSorted();\nconst roll = sorted.join(\", \");\nconsole.log(roll);\n",
+   "stdout": "ADA, KIT, MAX\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_parsons.js",
+     "out": "ADA, KIT, MAX\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_spot.js": {
+   "src": "function topScore(list) {\n  const ranked = list.sort((a, b) => b - a);\n  return ranked[0];\n}\nconst scores = [70, 95, 40];\nconsole.log(\"Top:\", topScore(scores));\nconsole.log(\"In the order played:\", scores);\n",
+   "stdout": "Top: 95\nIn the order played: [ 95, 70, 40 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_spot.js",
+     "out": "Top: 95\nIn the order played: [ 95, 70, 40 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "boss_trace.js": {
+   "src": "const line = [\"Ada\", \"Kit\", \"Max\"];\nfor (let lap = 1; lap <= 4; lap++) {\n  const front = line.shift();\n  line.push(front);\n  console.log(lap, front, line.join(\"-\"));\n}\n",
+   "stdout": "1 Ada Kit-Max-Ada\n2 Kit Max-Ada-Kit\n3 Max Ada-Kit-Max\n4 Ada Kit-Max-Ada\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node boss_trace.js",
+     "out": "1 Ada Kit-Max-Ada\n2 Kit Max-Ada-Kit\n3 Max Ada-Kit-Max\n4 Ada Kit-Max-Ada\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "chain.js": {
+   "src": "const orders = [12, 3, 25, 8, 40];\nconst total = orders\n  .filter((n) => n >= 10)\n  .map((n) => n * 2)\n  .reduce((sum, n) => sum + n, 0);\nconsole.log(total);\n",
+   "stdout": "154\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node chain.js",
+     "out": "154\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "chain_steps.js": {
+   "src": "const orders = [12, 3, 25, 8, 40];\nconst big = orders.filter((n) => n >= 10);\nconsole.log(big);\nconst doubled = big.map((n) => n * 2);\nconsole.log(doubled);\nconst total = doubled.reduce((sum, n) => sum + n, 0);\nconsole.log(total);\n",
+   "stdout": "[ 12, 25, 40 ]\n[ 24, 50, 80 ]\n154\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node chain_steps.js",
+     "out": "[ 12, 25, 40 ]\n[ 24, 50, 80 ]\n154\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "concat_join.js": {
+   "src": "const act1 = [\"hat\", \"cape\"];\nconst act2 = [\"mask\"];\nconst all = act1.concat(act2, [\"fan\"]);\nconsole.log(all);\nconsole.log(act1);\nconsole.log(all.join(\" + \"));\nconsole.log(all.join());\nconsole.log(all.join(\"\"));\n",
+   "stdout": "[ 'hat', 'cape', 'mask', 'fan' ]\n[ 'hat', 'cape' ]\nhat + cape + mask + fan\nhat,cape,mask,fan\nhatcapemaskfan\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node concat_join.js",
+     "out": "[ 'hat', 'cape', 'mask', 'fan' ]\n[ 'hat', 'cape' ]\nhat + cape + mask + fan\nhat,cape,mask,fan\nhatcapemaskfan\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "const_push.js": {
+   "src": "const props = [\"hat\"];\nprops.push(\"cape\");\nprops[0] = \"wig\";\nconsole.log(props);\nprops = [\"fan\"];\n",
+   "stdout": "[ 'wig', 'cape' ]\n",
+   "stderr": "file:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node const_push.js",
+     "out": "[ 'wig', 'cape' ]\n",
+     "err": "file:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "[ 'wig', 'cape' ]\nfile:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "[ 'wig', 'cape' ]\n",
+    "stderr": "file:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node const_push.js",
+      "out": "[ 'wig', 'cape' ]\n",
+      "err": "file:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "[ 'wig', 'cape' ]\nfile:///home/you/javascript-ch9/const_push.js:5\nprops = [\"fan\"];\n      ^\n\nTypeError: Assignment to constant variable.\n    at file:///home/you/javascript-ch9/const_push.js:5:7\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "empty_it.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nprops.length = 1;\nconsole.log(props);\nprops.length = 0;\nconsole.log(props);\nconsole.log(props.length === 0);\n",
+   "stdout": "[ 'hat' ]\n[]\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node empty_it.js",
+     "out": "[ 'hat' ]\n[]\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_desc.js": {
+   "src": "const scores = [40, 95, 70];\nscores.sort((a, b) => b - a);\nconsole.log(scores);\n",
+   "stdout": "[ 95, 70, 40 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_desc.js",
+     "out": "[ 95, 70, 40 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_map.js": {
+   "src": "const nums = [1, 2, 3];\nconst twice = nums.map((n) => {\n  return n * 2;\n});\nconsole.log(twice);\n",
+   "stdout": "[ 2, 4, 6 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_map.js",
+     "out": "[ 2, 4, 6 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "fill_queue.js": {
+   "src": "const queue = [\"Ada\", \"Kit\"];\nqueue.unshift(\"Zed\");\nqueue.push(\"Max\");\nconsole.log(queue);\n",
+   "stdout": "[ 'Zed', 'Ada', 'Kit', 'Max' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node fill_queue.js",
+     "out": "[ 'Zed', 'Ada', 'Kit', 'Max' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "filter.js": {
+   "src": "const ages = [12, 30, 7, 45, 16];\nconst adults = ages.filter((a) => a >= 18);\nconsole.log(adults);\nconst none = ages.filter((a) => a > 100);\nconsole.log(none);\nconsole.log(ages);\n",
+   "stdout": "[ 30, 45 ]\n[]\n[ 12, 30, 7, 45, 16 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node filter.js",
+     "out": "[ 30, 45 ]\n[]\n[ 12, 30, 7, 45, 16 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "find_family.js": {
+   "src": "const ages = [12, 30, 7, 45];\nconsole.log(ages.find((a) => a >= 18));\nconsole.log(ages.findIndex((a) => a >= 18));\nconsole.log(ages.findLast((a) => a >= 18));\nconsole.log(ages.find((a) => a > 100));\nconsole.log(ages.findIndex((a) => a > 100));\n",
+   "stdout": "30\n1\n45\nundefined\n-1\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node find_family.js",
+     "out": "30\n1\n45\nundefined\n-1\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "first_array.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nconsole.log(props);\nconsole.log(props.length);\nconsole.log(props[0]);\nconsole.log(props[2]);\n",
+   "stdout": "[ 'hat', 'cape', 'mask' ]\n3\nhat\nmask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node first_array.js",
+     "out": "[ 'hat', 'cape', 'mask' ]\n3\nhat\nmask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "flat_from.js": {
+   "src": "const seats = [[\"A1\", \"A2\"], [\"B1\"]];\nconsole.log(seats.flat());\nconsole.log([1, [2, [3]]].flat());\nconsole.log([1, [2, [3]]].flat(Infinity));\nconsole.log(Array.from(\"Kit\"));\nconsole.log(Array.from({ length: 3 }, (_, i) => i * 2));\n",
+   "stdout": "[ 'A1', 'A2', 'B1' ]\n[ 1, 2, [ 3 ] ]\n[ 1, 2, 3 ]\n[ 'K', 'i', 't' ]\n[ 0, 2, 4 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node flat_from.js",
+     "out": "[ 'A1', 'A2', 'B1' ]\n[ 1, 2, [ 3 ] ]\n[ 1, 2, 3 ]\n[ 'K', 'i', 't' ]\n[ 0, 2, 4 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "foreach.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nprops.forEach((item, i) => {\n  console.log(i, item);\n});\n",
+   "stdout": "0 hat\n1 cape\n2 mask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node foreach.js",
+     "out": "0 hat\n1 cape\n2 mask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "foreach_bug.js": {
+   "src": "const prices = [5, 10, 20];\nconst doubled = prices.forEach((p) => p * 2);\nconsole.log(doubled);\n",
+   "stdout": "undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node foreach_bug.js",
+     "out": "undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "grid.js": {
+   "src": "const seats = [\n  [\"A1\", \"A2\", \"A3\"],\n  [\"B1\", \"B2\", \"B3\"],\n];\nconsole.log(seats[1]);\nconsole.log(seats[1][2]);\nconsole.log(seats.length, seats[0].length);\nfor (const row of seats) {\n  console.log(row.join(\" \"));\n}\n",
+   "stdout": "[ 'B1', 'B2', 'B3' ]\nB3\n2 3\nA1 A2 A3\nB1 B2 B3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node grid.js",
+     "out": "[ 'B1', 'B2', 'B3' ]\nB3\n2 3\nA1 A2 A3\nB1 B2 B3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "holes.js": {
+   "src": "const a = [1, , 3];\nconsole.log(a);\nconsole.log(a.length, a[1]);\nconst b = [\"hat\"];\nb[4] = \"fan\";\nconsole.log(b);\nconsole.log(b.length);\n",
+   "stdout": "[ 1, <1 empty item>, 3 ]\n3 undefined\n[ 'hat', <3 empty items>, 'fan' ]\n5\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node holes.js",
+     "out": "[ 1, <1 empty item>, 3 ]\n3 undefined\n[ 'hat', <3 empty items>, 'fan' ]\n5\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "holes_methods.js": {
+   "src": "const a = [1, , 3];\nlet visits = 0;\na.forEach(() => visits++);\nconsole.log(\"forEach visits\", visits);\nconsole.log(\"map\", a.map((n) => n * 10));\nconsole.log(\"filter\", a.filter(() => true));\nconst seen = [];\nfor (const n of a) seen.push(n);\nconsole.log(\"for...of\", seen);\nconsole.log(\"find\", a.find((n) => n === undefined));\nconsole.log(\"includes\", a.includes(undefined));\n",
+   "stdout": "forEach visits 2\nmap [ 10, <1 empty item>, 30 ]\nfilter [ 1, 3 ]\nfor...of [ 1, undefined, 3 ]\nfind undefined\nincludes true\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node holes_methods.js",
+     "out": "forEach visits 2\nmap [ 10, <1 empty item>, 30 ]\nfilter [ 1, 3 ]\nfor...of [ 1, undefined, 3 ]\nfind undefined\nincludes true\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "is_array.js": {
+   "src": "const props = [\"hat\", \"cape\"];\nconsole.log(typeof props);\nconsole.log(Array.isArray(props));\nconsole.log(Array.isArray(\"hat\"));\nconsole.log(Boolean([]));\nconsole.log([].length === 0);\nconsole.log([1, 2] === [1, 2]);\n",
+   "stdout": "object\ntrue\nfalse\ntrue\ntrue\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node is_array.js",
+     "out": "object\ntrue\nfalse\ntrue\ntrue\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "isarr_check.js": {
+   "src": "const tests = [\n  (x) => Array.isArray(x) && x.length > 0,\n  (x) => typeof x === \"object\" && x.length > 0,\n  (x) => x !== undefined && x.length !== 0,\n  (x) => typeof x === \"array\" && x.length > 0,\n];\nfor (const x of [[\"hat\"], [], { length: 1 }, \"hat\"]) {\n  console.log(tests.map((test) => test(x)));\n}\n",
+   "stdout": "[ true, true, true, false ]\n[ false, false, false, false ]\n[ false, true, true, false ]\n[ false, false, true, false ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node isarr_check.js",
+     "out": "[ true, true, true, false ]\n[ false, false, false, false ]\n[ false, true, true, false ]\n[ false, false, true, false ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "locale_sort.js": {
+   "src": "const names = [\"banana\", \"apple\", \"Apple\", \"Cherry\"];\nconsole.log(names.toSorted());\nconsole.log(names.toSorted((a, b) => a.localeCompare(b)));\n",
+   "stdout": "[ 'Apple', 'Cherry', 'apple', 'banana' ]\n[ 'apple', 'Apple', 'banana', 'Cherry' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node locale_sort.js",
+     "out": "[ 'Apple', 'Cherry', 'apple', 'banana' ]\n[ 'apple', 'Apple', 'banana', 'Cherry' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "long_array.js": {
+   "src": "console.log(Array.from({ length: 30 }, (_, i) => i));\n",
+   "stdout": "[\n   0,  1,  2,  3,  4,  5,  6,  7,  8,\n   9, 10, 11, 12, 13, 14, 15, 16, 17,\n  18, 19, 20, 21, 22, 23, 24, 25, 26,\n  27, 28, 29\n]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node long_array.js",
+     "out": "[\n   0,  1,  2,  3,  4,  5,  6,  7,  8,\n   9, 10, 11, 12, 13, 14, 15, 16, 17,\n  18, 19, 20, 21, 22, 23, 24, 25, 26,\n  27, 28, 29\n]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "loose.js": {
+   "src": "const prop1 = \"hat\";\nconst prop2 = \"cape\";\nconst prop3 = \"mask\";\nconsole.log(prop1, prop2, prop3);\n",
+   "stdout": "hat cape mask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node loose.js",
+     "out": "hat cape mask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "map.js": {
+   "src": "const prices = [5, 10, 20];\nconst doubled = prices.map((p) => p * 2);\nconsole.log(doubled);\nconsole.log(prices);\nconst loud = [\"hat\", \"cape\"].map((w) => w.toUpperCase());\nconsole.log(loud);\n",
+   "stdout": "[ 10, 20, 40 ]\n[ 5, 10, 20 ]\n[ 'HAT', 'CAPE' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node map.js",
+     "out": "[ 10, 20, 40 ]\n[ 5, 10, 20 ]\n[ 'HAT', 'CAPE' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "map_noreturn.js": {
+   "src": "const nums = [1, 2, 3];\nconst twice = nums.map((n) => { n * 2 });\nconsole.log(twice);\n",
+   "stdout": "[ undefined, undefined, undefined ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node map_noreturn.js",
+     "out": "[ undefined, undefined, undefined ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "mixed.js": {
+   "src": "const box = [42, \"Kit\", true, null, [1, 2]];\nconsole.log(box);\nconsole.log(box.length);\nconst empty = [];\nconsole.log(empty, empty.length);\n",
+   "stdout": "[ 42, 'Kit', true, null, [ 1, 2 ] ]\n5\n[] 0\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node mixed.js",
+     "out": "[ 42, 'Kit', true, null, [ 1, 2 ] ]\n5\n[] 0\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "nan_search.js": {
+   "src": "const readings = [3, NaN, 7];\nconsole.log(readings.includes(NaN));\nconsole.log(readings.indexOf(NaN));\nconsole.log(NaN === NaN);\n",
+   "stdout": "true\n-1\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node nan_search.js",
+     "out": "true\n-1\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "new_array.js": {
+   "src": "console.log(new Array(3));\nconsole.log(new Array(3, 4));\nconsole.log(new Array(\"3\"));\nconsole.log(new Array(0));\nconsole.log(Array.of(3));\n",
+   "stdout": "[ <3 empty items> ]\n[ 3, 4 ]\n[ '3' ]\n[]\n[ 3 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node new_array.js",
+     "out": "[ <3 empty items> ]\n[ 3, 4 ]\n[ '3' ]\n[]\n[ 3 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "offbyone_fixed.js": {
+   "src": "const cast = [\"kit\", \"ada\", \"max\"];\nfor (let i = 0; i < cast.length; i++) {\n  console.log(cast[i].toUpperCase());\n}\n",
+   "stdout": "KIT\nADA\nMAX\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node offbyone_fixed.js",
+     "out": "KIT\nADA\nMAX\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "out_of_range.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nconsole.log(props[3]);\nconsole.log(props[props.length]);\nconsole.log(props[props.length - 1]);\nconsole.log(props[-1]);\nconsole.log(props.at(-1));\n",
+   "stdout": "undefined\nundefined\nmask\nundefined\nmask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node out_of_range.js",
+     "out": "undefined\nundefined\nmask\nundefined\nmask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parseint_map.js": {
+   "src": "console.log([\"1\", \"2\", \"3\"].map(parseInt));\n[\"1\", \"2\", \"3\"].forEach((item, index) => {\n  console.log(`parseInt(\"${item}\", ${index}) is`, parseInt(item, index));\n});\nconsole.log([\"1\", \"2\", \"3\"].map((s) => parseInt(s, 10)));\nconsole.log([\"1\", \"2\", \"3\"].map(Number));\n",
+   "stdout": "[ 1, NaN, NaN ]\nparseInt(\"1\", 0) is 1\nparseInt(\"2\", 1) is NaN\nparseInt(\"3\", 2) is NaN\n[ 1, 2, 3 ]\n[ 1, 2, 3 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parseint_map.js",
+     "out": "[ 1, NaN, NaN ]\nparseInt(\"1\", 0) is 1\nparseInt(\"2\", 1) is NaN\nparseInt(\"3\", 2) is NaN\n[ 1, 2, 3 ]\n[ 1, 2, 3 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_chain.js": {
+   "src": "const scores = [4, 9, 2, 7];\nconst big = scores.filter((s) => s > 3);\nconst tens = big.map((s) => s * 10);\nconst total = tens.reduce((a, s) => a + s, 0);\nconsole.log(total);\n",
+   "stdout": "200\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_chain.js",
+     "out": "200\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "parsons_push.js": {
+   "src": "const props = [\"hat\"];\nconst size = props.push(\"cape\");\nprops[size] = \"mask\";\nconsole.log(props.at(-1), props.length);\n",
+   "stdout": "mask 3\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node parsons_push.js",
+     "out": "mask 3\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_grid.js": {
+   "src": "const board = [\n  [\"X\", \"O\", \"X\"],\n  [\"O\", \"X\", \"O\"],\n];\nconsole.log(board[0][1]);\nconsole.log(board[1]);\nconsole.log(board[1][0] + board[0][0]);\nconsole.log(board.length);\n",
+   "stdout": "O\n[ 'O', 'X', 'O' ]\nOX\n2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_grid.js",
+     "out": "O\n[ 'O', 'X', 'O' ]\nOX\n2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_index.js": {
+   "src": "const cars = [\"red\", \"blue\", \"green\", \"gold\"];\nconsole.log(cars.length);\nconsole.log(cars[1]);\nconsole.log(cars[cars.length - 1]);\nconsole.log(cars[4]);\n",
+   "stdout": "4\nblue\ngold\nundefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_index.js",
+     "out": "4\nblue\ngold\nundefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_methods.js": {
+   "src": "const tickets = [40, 15, 60, 25];\nconsole.log(tickets.map((t) => t / 5));\nconsole.log(tickets.filter((t) => t < 30));\nconsole.log(tickets.find((t) => t > 50));\nconsole.log(tickets.every((t) => t > 20));\n",
+   "stdout": "[ 8, 3, 12, 5 ]\n[ 15, 25 ]\n60\nfalse\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_methods.js",
+     "out": "[ 8, 3, 12, 5 ]\n[ 15, 25 ]\n60\nfalse\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_return.js": {
+   "src": "const stack = [\"a\", \"b\"];\nconsole.log(stack.push(\"c\"));\nconsole.log(stack.pop());\nconsole.log(stack.unshift(\"z\"));\nconsole.log(stack.shift());\nconsole.log(stack);\n",
+   "stdout": "3\nc\n3\nz\n[ 'a', 'b' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_return.js",
+     "out": "3\nc\n3\nz\n[ 'a', 'b' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_slice.js": {
+   "src": "const nums = [10, 20, 30, 40];\nconst a = nums.slice(1, 3);\nconsole.log(a);\nconsole.log(nums);\nconst b = nums.splice(1, 2);\nconsole.log(b);\nconsole.log(nums);\n",
+   "stdout": "[ 20, 30 ]\n[ 10, 20, 30, 40 ]\n[ 20, 30 ]\n[ 10, 40 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_slice.js",
+     "out": "[ 20, 30 ]\n[ 10, 20, 30, 40 ]\n[ 20, 30 ]\n[ 10, 40 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "predict_sort.js": {
+   "src": "const pages = [9, 80, 700];\nconsole.log(pages.toSorted());\nconsole.log(pages.toSorted((a, b) => a - b));\nconsole.log(pages);\n",
+   "stdout": "[ 700, 80, 9 ]\n[ 9, 80, 700 ]\n[ 9, 80, 700 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node predict_sort.js",
+     "out": "[ 700, 80, 9 ]\n[ 9, 80, 700 ]\n[ 9, 80, 700 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "push_crash.js": {
+   "src": "let cast = [\"Kit\", \"Ada\"];\ncast = cast.push(\"Max\");\nconsole.log(cast);\ncast.push(\"Zed\");\n",
+   "stdout": "3\n",
+   "stderr": "file:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node push_crash.js",
+     "out": "3\n",
+     "err": "file:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "3\nfile:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "3\n",
+    "stderr": "file:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node push_crash.js",
+      "out": "3\n",
+      "err": "file:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "3\nfile:///home/you/javascript-ch9/push_crash.js:4\ncast.push(\"Zed\");\n     ^\n\nTypeError: cast.push is not a function\n    at file:///home/you/javascript-ch9/push_crash.js:4:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "push_pop.js": {
+   "src": "const props = [\"hat\", \"cape\"];\nprops.push(\"mask\");\nconsole.log(props);\nconst last = props.pop();\nconsole.log(last);\nconsole.log(props);\n",
+   "stdout": "[ 'hat', 'cape', 'mask' ]\nmask\n[ 'hat', 'cape' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node push_pop.js",
+     "out": "[ 'hat', 'cape', 'mask' ]\nmask\n[ 'hat', 'cape' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "push_trap.js": {
+   "src": "let cast = [\"Kit\", \"Ada\"];\nconst size = cast.push(\"Max\");\nconsole.log(size, cast);\ncast = cast.push(\"Zed\");\nconsole.log(cast);\n",
+   "stdout": "3 [ 'Kit', 'Ada', 'Max' ]\n4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node push_trap.js",
+     "out": "3 [ 'Kit', 'Ada', 'Max' ]\n4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "reduce.js": {
+   "src": "const prices = [5, 10, 20];\nconst total = prices.reduce((sum, p) => sum + p, 0);\nconsole.log(total);\nconst words = [\"hat\", \"mask\", \"cape\"];\nconst longest = words.reduce((best, w) => (w.length > best.length ? w : best), \"\");\nconsole.log(longest);\n",
+   "stdout": "35\nmask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node reduce.js",
+     "out": "35\nmask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "reduce_empty.js": {
+   "src": "const basket = [];\nconst total = basket.reduce((sum, p) => sum + p);\nconsole.log(total);\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch9/reduce_empty.js:2\nconst total = basket.reduce((sum, p) => sum + p);\n                     ^\n\nTypeError: Reduce of empty array with no initial value\n    at Array.reduce (<anonymous>)\n    at file:///home/you/javascript-ch9/reduce_empty.js:2:22\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node reduce_empty.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch9/reduce_empty.js:2\nconst total = basket.reduce((sum, p) => sum + p);\n                     ^\n\nTypeError: Reduce of empty array with no initial value\n    at Array.reduce (<anonymous>)\n    at file:///home/you/javascript-ch9/reduce_empty.js:2:22\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch9/reduce_empty.js:2\nconst total = basket.reduce((sum, p) => sum + p);\n                     ^\n\nTypeError: Reduce of empty array with no initial value\n    at Array.reduce (<anonymous>)\n    at file:///home/you/javascript-ch9/reduce_empty.js:2:22\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node reduce_empty.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch9/reduce_empty.js:2\nconst total = basket.reduce((sum, p) => sum + p);\n                     ^\n\nTypeError: Reduce of empty array with no initial value\n    at Array.reduce (<anonymous>)\n    at file:///home/you/javascript-ch9/reduce_empty.js:2:22\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "reduce_safe.js": {
+   "src": "const basket = [];\nconst total = basket.reduce((sum, p) => sum + p, 0);\nconsole.log(total);\nconsole.log([7].reduce((sum, p) => sum + p));\n",
+   "stdout": "0\n7\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node reduce_safe.js",
+     "out": "0\n7\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "road_hit.js": {
+   "src": "const ages = [12, 30, 45];\nconst first = ages.find((a) => {\n  console.log(\"checking\", a);\n  return a >= 18;\n});\nconsole.log(\"found:\", first);\n",
+   "stdout": "checking 12\nchecking 30\nfound: 30\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node road_hit.js",
+     "out": "checking 12\nchecking 30\nfound: 30\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "road_last.js": {
+   "src": "const ages = [12, 30, 45];\nconst last = ages.findLast((a) => {\n  console.log(\"checking\", a);\n  return a < 18;\n});\nconsole.log(\"found:\", last);\n",
+   "stdout": "checking 45\nchecking 30\nchecking 12\nfound: 12\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node road_last.js",
+     "out": "checking 45\nchecking 30\nchecking 12\nfound: 12\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "road_miss.js": {
+   "src": "const ages = [12, 7];\nconst first = ages.find((a) => {\n  console.log(\"checking\", a);\n  return a >= 18;\n});\nconsole.log(\"found:\", first);\n",
+   "stdout": "checking 12\nchecking 7\nfound: undefined\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node road_miss.js",
+     "out": "checking 12\nchecking 7\nfound: undefined\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "search.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\", \"cape\"];\nconsole.log(props.includes(\"mask\"));\nconsole.log(props.includes(\"wig\"));\nconsole.log(props.indexOf(\"cape\"));\nconsole.log(props.lastIndexOf(\"cape\"));\nconsole.log(props.indexOf(\"wig\"));\nconsole.log(props.at(-2));\n",
+   "stdout": "true\nfalse\n1\n3\n-1\nmask\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node search.js",
+     "out": "true\nfalse\n1\n3\n-1\nmask\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "shift_unshift.js": {
+   "src": "const props = [\"hat\", \"cape\"];\nprops.unshift(\"fan\");\nconsole.log(props);\nconst first = props.shift();\nconsole.log(first);\nconsole.log(props);\n",
+   "stdout": "[ 'fan', 'hat', 'cape' ]\nfan\n[ 'hat', 'cape' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node shift_unshift.js",
+     "out": "[ 'fan', 'hat', 'cape' ]\nfan\n[ 'hat', 'cape' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slice_more.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\", \"wig\", \"fan\"];\nconsole.log(props.slice(2));\nconsole.log(props.slice(-2));\nconsole.log(props.slice());\nconsole.log(props.splice(-1, 1, \"drum\", \"bow\"));\nconsole.log(props);\n",
+   "stdout": "[ 'mask', 'wig', 'fan' ]\n[ 'wig', 'fan' ]\n[ 'hat', 'cape', 'mask', 'wig', 'fan' ]\n[ 'fan' ]\n[ 'hat', 'cape', 'mask', 'wig', 'drum', 'bow' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node slice_more.js",
+     "out": "[ 'mask', 'wig', 'fan' ]\n[ 'wig', 'fan' ]\n[ 'hat', 'cape', 'mask', 'wig', 'fan' ]\n[ 'fan' ]\n[ 'hat', 'cape', 'mask', 'wig', 'drum', 'bow' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "slice_splice.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\", \"wig\", \"fan\"];\nconst copy = props.slice(1, 3);\nconsole.log(copy, props);\nconst cut = props.splice(1, 2);\nconsole.log(cut, props);\nprops.splice(1, 0, \"bell\");\nconsole.log(props);\n",
+   "stdout": "[ 'cape', 'mask' ] [ 'hat', 'cape', 'mask', 'wig', 'fan' ]\n[ 'cape', 'mask' ] [ 'hat', 'wig', 'fan' ]\n[ 'hat', 'bell', 'wig', 'fan' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node slice_splice.js",
+     "out": "[ 'cape', 'mask' ] [ 'hat', 'cape', 'mask', 'wig', 'fan' ]\n[ 'cape', 'mask' ] [ 'hat', 'wig', 'fan' ]\n[ 'hat', 'bell', 'wig', 'fan' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "some_every.js": {
+   "src": "const ages = [12, 30, 7];\nconsole.log(ages.some((a) => a >= 18));\nconsole.log(ages.every((a) => a >= 18));\nconsole.log([].some((a) => a >= 18));\nconsole.log([].every((a) => a >= 18));\n",
+   "stdout": "true\nfalse\nfalse\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node some_every.js",
+     "out": "true\nfalse\nfalse\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sort_bad.js": {
+   "src": "const nums = [3, 1, 2];\nnums.sort(\"smallest first\");\n",
+   "stdout": "",
+   "stderr": "file:///home/you/javascript-ch9/sort_bad.js:2\nnums.sort(\"smallest first\");\n     ^\n\nTypeError: The comparison function must be either a function or undefined: smallest first\n    at Array.sort (<anonymous>)\n    at file:///home/you/javascript-ch9/sort_bad.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node sort_bad.js",
+     "out": "",
+     "err": "file:///home/you/javascript-ch9/sort_bad.js:2\nnums.sort(\"smallest first\");\n     ^\n\nTypeError: The comparison function must be either a function or undefined: smallest first\n    at Array.sort (<anonymous>)\n    at file:///home/you/javascript-ch9/sort_bad.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "",
+    "stderr": "file:///home/you/javascript-ch9/sort_bad.js:2\nnums.sort(\"smallest first\");\n     ^\n\nTypeError: The comparison function must be either a function or undefined: smallest first\n    at Array.sort (<anonymous>)\n    at file:///home/you/javascript-ch9/sort_bad.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node sort_bad.js",
+      "out": "",
+      "err": "file:///home/you/javascript-ch9/sort_bad.js:2\nnums.sort(\"smallest first\");\n     ^\n\nTypeError: The comparison function must be either a function or undefined: smallest first\n    at Array.sort (<anonymous>)\n    at file:///home/you/javascript-ch9/sort_bad.js:2:6\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1
+     }
+    ]
+   }
+  },
+  "sort_compare.js": {
+   "src": "const nums = [10, 1, 5, 100];\nnums.sort((a, b) => a - b);\nconsole.log(nums);\nnums.sort((a, b) => b - a);\nconsole.log(nums);\n",
+   "stdout": "[ 1, 5, 10, 100 ]\n[ 100, 10, 5, 1 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node sort_compare.js",
+     "out": "[ 1, 5, 10, 100 ]\n[ 100, 10, 5, 1 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sort_default.js": {
+   "src": "const nums = [10, 1, 5, 100];\nnums.sort();\nconsole.log(nums);\nconst words = [\"pear\", \"Apple\", \"fig\", \"banana\", \"Zebra\"];\nwords.sort();\nconsole.log(words);\n",
+   "stdout": "[ 1, 10, 100, 5 ]\n[ 'Apple', 'Zebra', 'banana', 'fig', 'pear' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node sort_default.js",
+     "out": "[ 1, 10, 100, 5 ]\n[ 'Apple', 'Zebra', 'banana', 'fig', 'pear' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sort_machine.js": {
+   "src": "console.log([10, 1, 5, 100].sort());\nconsole.log([10, 1, 5, 100].sort((a, b) => a - b));\nconsole.log([10, 1, 5, 100].sort((a, b) => b - a));\nconsole.log([25, 3, 100, 7].sort());\nconsole.log([\"pear\", \"Apple\", \"fig\"].sort());\nconsole.log([2, -1, 10].sort());\n",
+   "stdout": "[ 1, 10, 100, 5 ]\n[ 1, 5, 10, 100 ]\n[ 100, 10, 5, 1 ]\n[ 100, 25, 3, 7 ]\n[ 'Apple', 'fig', 'pear' ]\n[ -1, 10, 2 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node sort_machine.js",
+     "out": "[ 1, 10, 100, 5 ]\n[ 1, 5, 10, 100 ]\n[ 100, 10, 5, 1 ]\n[ 100, 25, 3, 7 ]\n[ 'Apple', 'fig', 'pear' ]\n[ -1, 10, 2 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "sort_mutates.js": {
+   "src": "const scores = [30, 10, 20];\nconst sorted = scores.sort((a, b) => a - b);\nconsole.log(sorted);\nconsole.log(scores);\nconsole.log(sorted === scores);\n",
+   "stdout": "[ 10, 20, 30 ]\n[ 10, 20, 30 ]\ntrue\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node sort_mutates.js",
+     "out": "[ 10, 20, 30 ]\n[ 10, 20, 30 ]\ntrue\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "spot_offbyone.js": {
+   "src": "const cast = [\"kit\", \"ada\", \"max\"];\nfor (let i = 0; i <= cast.length; i++) {\n  console.log(cast[i].toUpperCase());\n}\n",
+   "stdout": "KIT\nADA\nMAX\n",
+   "stderr": "file:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+   "exit": 1,
+   "steps": [
+    {
+     "cmd": "node spot_offbyone.js",
+     "out": "KIT\nADA\nMAX\n",
+     "err": "file:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n",
+     "exit": 1,
+     "merged": "KIT\nADA\nMAX\nfile:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)\n\nNode.js v26.13.0\n"
+    }
+   ],
+   "alt": {
+    "version": "Node.js 22.23.4",
+    "stdout": "KIT\nADA\nMAX\n",
+    "stderr": "file:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+    "exit": 1,
+    "steps": [
+     {
+      "cmd": "node spot_offbyone.js",
+      "out": "KIT\nADA\nMAX\n",
+      "err": "file:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n",
+      "exit": 1,
+      "merged": "KIT\nADA\nMAX\nfile:///home/you/javascript-ch9/spot_offbyone.js:3\n  console.log(cast[i].toUpperCase());\n                      ^\n\nTypeError: Cannot read properties of undefined (reading 'toUpperCase')\n    at file:///home/you/javascript-ch9/spot_offbyone.js:3:23\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.23.4\n"
+     }
+    ]
+   }
+  },
+  "spot_slice.js": {
+   "src": "const queue = [\"Ada\", \"Kit\", \"Max\", \"Zed\"];\n// Max has left the queue: take out 1 name at index 2\nqueue.slice(2, 1);\nconsole.log(queue);\n",
+   "stdout": "[ 'Ada', 'Kit', 'Max', 'Zed' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node spot_slice.js",
+     "out": "[ 'Ada', 'Kit', 'Max', 'Zed' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "to_sorted.js": {
+   "src": "const scores = [30, 10, 20];\nconst sorted = scores.toSorted((a, b) => a - b);\nconsole.log(sorted, scores);\nconst flipped = scores.toReversed();\nconsole.log(flipped, scores);\nscores.reverse();\nconsole.log(scores);\n",
+   "stdout": "[ 10, 20, 30 ] [ 30, 10, 20 ]\n[ 20, 10, 30 ] [ 30, 10, 20 ]\n[ 20, 10, 30 ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node to_sorted.js",
+     "out": "[ 10, 20, 30 ] [ 30, 10, 20 ]\n[ 20, 10, 30 ] [ 30, 10, 20 ]\n[ 20, 10, 30 ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_grid.js": {
+   "src": "const seats = [\n  [\"A1\", \"A2\"],\n  [\"B1\", \"B2\"],\n];\nfor (let r = 0; r < seats.length; r++) {\n  for (let c = 0; c < seats[r].length; c++) {\n    console.log(r, c, seats[r][c]);\n  }\n}\n",
+   "stdout": "0 0 A1\n0 1 A2\n1 0 B1\n1 1 B2\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_grid.js",
+     "out": "0 0 A1\n0 1 A2\n1 0 B1\n1 1 B2\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_ops.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nprops.push(\"drum\");\nconsole.log(\"push\", props.length, props[0], props.at(-1));\nprops.shift();\nconsole.log(\"shift\", props.length, props[0], props.at(-1));\nprops.unshift(\"fan\");\nconsole.log(\"unshift\", props.length, props[0], props.at(-1));\nprops.pop();\nconsole.log(\"pop\", props.length, props[0], props.at(-1));\nprops.pop();\nconsole.log(\"pop\", props.length, props[0], props.at(-1));\nprops.push(\"wig\");\nconsole.log(\"push\", props.length, props[0], props.at(-1));\n",
+   "stdout": "push 4 hat drum\nshift 3 cape drum\nunshift 4 fan drum\npop 3 fan mask\npop 2 fan cape\npush 3 fan wig\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_ops.js",
+     "out": "push 4 hat drum\nshift 3 cape drum\nunshift 4 fan drum\npop 3 fan mask\npop 2 fan cape\npush 3 fan wig\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "trace_reduce.js": {
+   "src": "const prices = [5, 10, 20, 15];\nprices.reduce((sum, p) => {\n  console.log(sum, p, sum + p);\n  return sum + p;\n}, 0);\n",
+   "stdout": "0 5 5\n5 10 15\n15 20 35\n35 15 50\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node trace_reduce.js",
+     "out": "0 5 5\n5 10 15\n15 20 35\n35 15 50\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "write_index.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nprops[1] = \"wig\";\nconsole.log(props);\nprops[3] = \"fan\";\nconsole.log(props);\nconsole.log(props.length);\n",
+   "stdout": "[ 'hat', 'wig', 'mask' ]\n[ 'hat', 'wig', 'mask', 'fan' ]\n4\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node write_index.js",
+     "out": "[ 'hat', 'wig', 'mask' ]\n[ 'hat', 'wig', 'mask', 'fan' ]\n4\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  },
+  "yard.js": {
+   "src": "const props = [\"hat\", \"cape\", \"mask\"];\nconsole.log(props.push(\"drum\"), props);\nconsole.log(props.pop(), props);\nconsole.log(props.unshift(\"fan\"), props);\nconsole.log(props.shift(), props);\nconsole.log(props.shift(), props);\nconsole.log(props.push(\"wig\", \"bell\"), props);\n",
+   "stdout": "4 [ 'hat', 'cape', 'mask', 'drum' ]\ndrum [ 'hat', 'cape', 'mask' ]\n4 [ 'fan', 'hat', 'cape', 'mask' ]\nfan [ 'hat', 'cape', 'mask' ]\nhat [ 'cape', 'mask' ]\n4 [ 'cape', 'mask', 'wig', 'bell' ]\n",
+   "stderr": "",
+   "exit": 0,
+   "steps": [
+    {
+     "cmd": "node yard.js",
+     "out": "4 [ 'hat', 'cape', 'mask', 'drum' ]\ndrum [ 'hat', 'cape', 'mask' ]\n4 [ 'fan', 'hat', 'cape', 'mask' ]\nfan [ 'hat', 'cape', 'mask' ]\nhat [ 'cape', 'mask' ]\n4 [ 'cape', 'mask', 'wig', 'bell' ]\n",
+     "err": "",
+     "exit": 0
+    }
+   ]
+  }
+ }
+};
+})(typeof globalThis !== "undefined" ? globalThis : this);

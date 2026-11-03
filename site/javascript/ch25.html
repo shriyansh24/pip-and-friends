@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Chef's Two Spikes</title>
+<meta name="description" content="Chapter 25 of the Pip &amp; Friends JavaScript book, a comic course: async and await in depth, and the event loop. One chef (the single thread) with two order spikes: async functions return promises and await unwraps them, try and catch around await, return await, sequential versus parallel awaits, forEach that does not wait, top-level await, async generators, for await and Array.fromAsync. Then the call stack, the microtask queue (the VIP spike) and the timer queue (the normal spike), queueMicrotask, process.nextTick, setImmediate, Node's event-loop phases, setTimeout 0 versus setImmediate, blocking the loop, chunking work, and cancelling with AbortController.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch25.css">
+<script defer src="../data/js-ch25.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch25.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch24.html">&larr; Ch 24</a><span aria-current="page">Ch 25 of 29</span><a href="ch26.html">Ch 26 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 25</p>
+    <h1 id="cover-h">THE CHEF'S TWO SPIKES</h1>
+    <div class="cover25">
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char" data-char="chef"></svg>
+      <svg class="char sp" data-char="spike25" data-label="VIP" data-tickets="3"></svg>
+      <svg class="char sp" data-char="spike25" data-label="NORMAL" data-tickets="2"></svg>
+      <svg class="char sp" data-char="pager" data-state="buzz" data-label="25"></svg>
+      <svg class="char" data-char="professor"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit, the stage manager in a pink hoodie and headset, waves hello. Next to Kit stands the chef in a tall white hat, then two order spikes with paper tickets stuck on them, one labelled VIP with a star and one labelled NORMAL, a buzzing restaurant pager with tag #25, and the Professor with his notebook.</p>
+    <p class="caption blurb">Chapter 16 showed you <code>await</code> and the pager desk. Chapter 24 showed you how to build and chain pagers. Today Kit goes into the kitchen itself, where <b>one chef</b> cooks everything, one dish at a time, and order tickets wait on <b>two spikes</b>. You'll learn when to wait one by one and when to cook in parallel, how tickets can arrive one at a time, and exactly which ticket the chef takes next. About 130 minutes, with 23 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">One chef, one stove: async and await</a></li>
+      <li><a href="#part-2">One by one, or all at once</a></li>
+      <li><a href="#part-3">Tickets that arrive one by one</a></li>
+      <li><a href="#part-4">The two spikes: the event loop</a></li>
+      <li><a href="#part-5">Node's full round: nextTick, setImmediate, phases</a></li>
+      <li><a href="#part-6">Don't block the stove, and how to cancel</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · ONE CHEF, ONE STOVE<small>async functions return pagers; await unwraps them</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: Kit meets the chef">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="ORDER UP!" data-seed="25"></svg>
+    <p class="caption">After the show, Kit pops into the theatre restaurant's kitchen. It's the busiest room in the building, and there is only <b>one</b> cook.</p>
+    <div class="scene">
+      <svg class="char" data-char="chef"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">The chef says: </span>One stove, one chef: me. I never cook two things at the same moment. I finish what's in the pan, then I look at my order <b>spikes</b> for the next ticket.</p>
+        <p class="bubble"><span class="sr-only">The chef says: </span>The ovens and the deliveries work on their own. When something's ready, a ticket goes on a spike. I don't wait by the oven: I cook something else.</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="stagehand" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>That's JavaScript! One <b>thread</b>, one cue at a time. The chef is the JavaScript engine, and the stove is what it's running right now.</p></div>
+    </div>
+    <p class="sr-only">Picture: the chef explains his kitchen. Kit, surprised, points. A burst says ORDER UP!</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 2: the kitchen, the stove and two spikes">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption soft">The whole chapter lives in this kitchen. Learn its three places now; Part 4 shows the rule that connects them.</p>
+    <div class="kitchen25">
+      <figure class="k1"><svg class="char" data-char="chef"></svg><h3>THE STOVE<small>the call stack</small></h3><figcaption>What the chef is cooking right now: the code that's running. Only one dish at a time.</figcaption></figure>
+      <figure class="k2"><svg class="char" data-char="spike25" data-label="VIP" data-tickets="3"></svg><h3>VIP SPIKE<small>the microtask queue</small></h3><figcaption>Promise callbacks and functions resuming after <code>await</code>. Chapter 16 called it the pager desk.</figcaption></figure>
+      <figure class="k3"><svg class="char" data-char="spike25" data-label="NORMAL" data-tickets="2"></svg><h3>NORMAL SPIKE<small>the timer queue</small></h3><figcaption>Timer callbacks from <code>setTimeout</code>, once they're due. Chapter 16's timer shelf.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: three cards. The stove, with the chef: the call stack, what runs now. A spike labelled VIP with three tickets: the microtask queue. A spike labelled NORMAL with two tickets: the timer queue.</p>
+    <p>A <b>thread</b> is one line of work a computer follows, one step after another. JavaScript gives your code one thread, so it can only do one thing at a time. The <b>call stack</b> is the list of functions running right now, each one waiting for the one it called (Chapter 7).</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: an async function always hands you a pager">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">First, a closer look at the tool you'll use all chapter. The word <code>async</code> in front of a function changes what it gives back: <b>always</b> a pager (a promise), whatever happens inside.</p>
+    <span class="file-tab">async_returns.js</span>
+    <pre class="code" data-src="async_returns.js"></pre>
+    <pre class="term" data-run="async_returns.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 1 to 3, 9 and 10:</b> <code>getSoup</code> returns <code>"soup"</code>, but the caller gets <samp>Promise { 'soup' }</samp>: a pager already holding the soup. <code>return v</code> in an async function <b>fulfils</b> its pager with <code>v</code>.</span></li>
+      <li><span><b>Line 11:</b> <code>await p</code> waits for the pager and unwraps it: <samp>soup</samp>.</span></li>
+      <li><span><b>Lines 5 to 7:</b> a <code>throw</code> inside an async function doesn't escape as a normal crash. It <b>rejects</b> the pager. Line 14 confirms <code>q</code> is a promise; line 16's <code>await</code> turns the rejection back into a throw, which the <code>catch</code> on line 17 receives.</span></li>
+    </ol>
+    <p class="catch">ASYNC ALWAYS HANDS YOU A PAGER</p>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 4: the await machine" data-machine="m-await">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">Think of <code>await</code> as a machine: put something in, and it pauses the function until there's a plain value to hand back. Feed it different things.</p>
+    <span class="file-tab">await_machine.js</span>
+    <pre class="code" data-src="await_machine.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-await">{"label": "await", "program": "await_machine.js", "examples": [
+      {"in": "5", "out": "await 5 -> 5", "outKind": "the same value", "note": "Not a promise at all? <code>await</code> still pauses for a moment (until the VIP spike gets to it), then hands back the value unchanged."},
+      {"in": "Promise.resolve(\"soup\")", "out": "await Promise.resolve(\"soup\") -> soup", "outKind": "the value inside", "note": "A pager that has already buzzed: <code>await</code> takes the soup out of it."},
+      {"in": "a pager that buzzes in 20 ms", "out": "await a 20 ms pager -> pie", "outKind": "the value, 20 ms later", "note": "Here the module really waits. The chef doesn't stand still meanwhile: anything else that's ready can be cooked."},
+      {"in": "tea()", "out": "await tea() -> tea", "outKind": "the value inside", "note": "An async function's pager, unwrapped. This is the everyday use: <code>await someAsyncFunction()</code>."},
+      {"in": "tea(), without await", "out": "tea() without await -> Promise { 'tea' }", "outKind": "a pager, not tea", "note": "Forget <code>await</code> and you're holding the pager itself (the bug from Chapter 16)."},
+      {"in": "a rejected pager", "error": "Error: out of lobster", "program": "await_reject.js", "note": "A rejected pager makes <code>await</code> <b>throw</b> its error, right on that line. Nobody catches it in <code>await_reject.js</code>, so Node crashes with exit code 1, and line 2 never runs."}]}</script>
+  </section>
+
+  <div data-ex="choice" data-model="ex-ret-m" id="ex-ret"></div>
+  <script type="application/json" id="ex-ret-m">{"q": "<code>async function price() { return 7; }</code>. What is <code>price()</code>, called <b>without</b> <code>await</code>?", "options": [
+    {"t": "A promise that is already fulfilled with 7", "correct": true, "why": "Yes. An async function always returns a promise; <code>return 7</code> fulfils it. Node prints it as <samp>Promise { 7 }</samp>."},
+    {"t": "The number 7", "why": "Only <code>await price()</code> gives you 7. The call itself hands over a pager."},
+    {"t": "A promise that is still pending, and will be 7 after a timer", "why": "No timer is involved. The promise is fulfilled as soon as <code>return 7</code> runs, which is before <code>price()</code> even returns."},
+    {"t": "<code>undefined</code>, because nothing is awaited", "why": "<code>async</code> functions don't need an <code>await</code> inside to return a promise."}]}</script>
+
+  <div data-ex="predict" data-model="ex-sync-m" id="ex-sync"></div>
+  <script type="application/json" id="ex-sync-m">{"program": "predict_async.js", "prompt": "<code>brew</code> is an async function with no <code>await</code> inside. Predict every line.", "hint": "Calling an async function runs its body right away, on the stove, until it reaches an <code>await</code> (or the end). Only the <em>result</em> comes in a pager.", "explain": "<samp>1 order</samp>, then the call on line 7 runs <code>brew</code>'s body immediately: <samp>brewing tea</samp>. It returns a pager already holding <code>\"TEA\"</code>. Line 8 prints <samp>2 pager in hand</samp>, and line 9 awaits it: <samp>3 got TEA</samp>. An async function is not \"later\": it runs now, up to its first <code>await</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 5: try and catch around await">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Because a rejected pager makes <code>await</code> <b>throw</b>, ordinary <code>try</code>/<code>catch</code>/<code>finally</code> from Chapter 12 works around it, exactly as for normal code.</p>
+    <span class="file-tab">try_await.js</span>
+    <pre class="code" data-src="try_await.js"></pre>
+    <pre class="term" data-run="try_await.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 12</b> waits 20 ms for the soup, and line 13 prints it.</span></li>
+      <li><span><b>Line 14:</b> the lobster's pager is rejected after 10 ms, so <code>await</code> throws. Line 15 is skipped; the <code>catch</code> on line 16 treats it.</span></li>
+      <li><span><b>Line 19:</b> <code>finally</code> asks for the bill on every road. Then <code>dinner</code>'s own pager is fulfilled, and line 24 runs.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 6: return versus return await inside try">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <svg class="sfx tr" data-sfx="WHOOSH" data-seed="6"></svg>
+    <p class="caption">A sneaky one. Two functions, one word apart: <code>careless</code> returns the pager, <code>careful</code> returns <code>await</code> the pager.</p>
+    <span class="file-tab">return_await.js</span>
+    <pre class="code" data-src="return_await.js"></pre>
+    <pre class="term" data-run="return_await.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. On line 12, <code>careless</code> hands the pager straight to its caller and <b>leaves</b> the <code>try</code> at once. 10 ms later, the pager is rejected, but nobody is inside that <code>try</code> any more. The error flies past the <code>catch</code> on line 13 and lands on line 29.</p></div>
+    </div>
+    <p>On line 20, <code>await</code> keeps <code>careful</code> <em>inside</em> its <code>try</code> until the pager settles, so the rejection is thrown right there and caught on line 21. Rule: inside a <code>try</code>, write <code>return await</code>. Outside a <code>try</code>, plain <code>return</code> and <code>return await</code> give the caller the same result.</p>
+    <p class="catch">INSIDE TRY, RETURN AWAIT</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-retaw-m" id="ex-retaw"></div>
+  <script type="application/json" id="ex-retaw-m">{"program": "spot_return_await.js", "bug": 12, "prompt": "On Mondays the shop is closed, so <code>menuOrDefault</code> should fall back to <samp>sandwiches only</samp>. Instead the program crashes. Click the line with the bug.", "explain": "Line 12 returns the pager without awaiting it, so the function leaves its <code>try</code> before the pager is rejected. The <code>catch</code> on line 13 never sees the error, the caller's <code>await</code> on line 19 throws it, and nothing catches it there: Node crashes with exit code 1 (the footprints point at line 4, where the error was made). Fix: <code>return await fetchMenu(day);</code>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · ONE BY ONE, OR ALL AT ONCE<small>await in a loop, Promise.all, and forEach that doesn't wait</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 7: three dishes, two ways">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">A table orders soup (30 minutes in the oven), salad (20) and bread (10). In our pretend kitchen, milliseconds stand in for minutes. There are two ways to run the ovens.</p>
+    <div class="duo">
+      <div class="duo-card hot"><h3>ONE BY ONE<small>sequential</small></h3><p>Put the soup in, stand by the oven until it's done, then start the salad, then the bread. 30 + 20 + 10 = 60.</p></div>
+      <div class="duo-card ok"><h3>ALL AT ONCE<small>parallel</small></h3><p>Put all three in three ovens, then wait until the last one is done. The slowest dish decides: 30.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="chef"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The chef says: </span>Ovens work on their own. Starting all three costs me nothing. Waiting for each one before starting the next wastes the evening.</p></div>
+    </div>
+    <p>"Parallel" here means the <em>waiting</em> overlaps. The chef still cooks one thing at a time; the ovens (timers, networks, disks) do the slow part outside JavaScript.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 8: the kitchen helper and await in a loop">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <p class="caption">The rest of the chapter uses this tiny kitchen file. <code>cook(dish, ms)</code> prints when a dish starts and when it's done, and returns a pager. On its own it prints nothing.</p>
+    <span class="file-tab">kitchen.js</span>
+    <pre class="code" data-src="kitchen.js"></pre>
+    <p>Now the one-by-one way: an <code>await</code> inside a <code>for...of</code> loop.</p>
+    <span class="file-tab">sequential.js</span>
+    <pre class="code" data-src="sequential.js"></pre>
+    <pre class="term" data-run="sequential.js"></pre>
+    <p>Each <code>start</code> comes only after the previous <code>done</code>. Line 6's <code>await</code> pauses the loop until that dish is ready, and only then does the loop move on and start the next one.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 9: start everything, then Promise.all">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">The all-at-once way: <b>start</b> every dish first (no <code>await</code> yet), keep the pagers, and then wait for all of them with <code>Promise.all</code> from Chapter 24.</p>
+    <span class="file-tab">parallel.js</span>
+    <pre class="code" data-src="parallel.js"></pre>
+    <pre class="term" data-run="parallel.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4:</b> <code>map</code> calls <code>cook</code> three times in a row, so all three <code>start</code> lines print at once. The result is an array of three pagers.</span></li>
+      <li><span><b>Line 5:</b> one <code>await</code>, for the whole table. The dishes finish in order of their delays (bread, salad, soup), but <code>served</code> keeps the order you <b>listed</b> them.</span></li>
+    </ol>
+    <p class="catch">START THEM ALL, THEN AWAIT THEM ALL</p>
+  </section>
+
+  <section class="panel clean" data-play aria-label="Panel 10: the two timelines">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">The same three dishes on a timeline. Each bar runs from a dish's <code>start</code> to its <code>done</code>. The times are worked out from the delays written in the code, and each picture checks that this order of starts and finishes is exactly what the real run printed.</p>
+    <div class="tl25-pair">
+      <div class="tl25 seq" data-timeline25="tl-seq">
+        <h3>ONE BY ONE<small>sequential.js</small></h3>
+        <div class="tl25-stage picscroll"></div>
+        <span class="parity"></span>
+        <details><summary>Text version: the computed starts and finishes</summary><table class="transcript"><thead><tr><th>#</th><th>At</th><th>Event</th><th>Line printed</th></tr></thead><tbody></tbody></table></details>
+        <script type="application/json" id="tl-seq">{"program": "sequential.js", "mode": "seq", "jobs": [["soup", 30], ["salad", 20], ["bread", 10]], "start": "  start {dish}", "done": "  done  {dish} ({ms} ms)"}</script>
+      </div>
+      <div class="tl25 par" data-timeline25="tl-par">
+        <h3>ALL AT ONCE<small>parallel.js</small></h3>
+        <div class="tl25-stage picscroll"></div>
+        <span class="parity"></span>
+        <details><summary>Text version: the computed starts and finishes</summary><table class="transcript"><thead><tr><th>#</th><th>At</th><th>Event</th><th>Line printed</th></tr></thead><tbody></tbody></table></details>
+        <script type="application/json" id="tl-par">{"program": "parallel.js", "mode": "par", "jobs": [["soup", 30], ["salad", 20], ["bread", 10]], "start": "  start {dish}", "done": "  done  {dish} ({ms} ms)"}</script>
+      </div>
+    </div>
+    <p>One by one: done at 60 ms. All at once: done at 30 ms, the slowest dish. With ten requests to a slow server, that's the difference between waiting for all ten one after another and waiting for just the slowest one.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-seqpar-m" id="ex-seqpar"></div>
+  <script type="application/json" id="ex-seqpar-m">{"program": "trace_seqpar.js", "columns": ["turn", "event", "dish"], "given": [0], "prompt": "Two dishes one by one, then two at once. <code>cook</code> prints a numbered line when a dish starts and when it's done. Fill in the table.", "explain": "Lines 10 and 11 await one at a time: tea starts and finishes (20 ms) before jam starts (10 ms). Line 12 starts egg and ham together, so both <samp>start</samp> lines come first; ham (15 ms) is done before egg (30 ms)."}</script>
+
+  <div data-ex="fill" data-model="ex-par-m" id="ex-par"></div>
+  <script type="application/json" id="ex-par-m">{"program": "fill_parallel.js", "prompt": "A web page needs three pieces of data. <code>fetchJSON</code> pretends to load each one (with a fixed delay). Load all three <b>in parallel</b>, and give each result its own name. Fill the blanks.", "blanks": [{"line": 7, "text": "[user, orders, menu]"}, {"line": 7, "text": "Promise.all"}], "explain": "<code>Promise.all</code> receives three pagers that are already running and waits for the slowest (30 ms), instead of 30 + 10 + 20 = 60 ms one by one. Its result is an array in the order you listed them, so array destructuring (Chapter 11) names the three results: <code>[user, orders, menu]</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 11: when one by one is right">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption">Parallel isn't always possible. The pizza goes on the dough, so the dough must be ready first.</p>
+    <span class="file-tab">depends.js</span>
+    <pre class="code" data-src="depends.js"></pre>
+    <pre class="term" data-run="depends.js"></pre>
+    <p>Line 4 <b>uses</b> the result of line 3. When a step needs the previous step's answer, await them one by one. When steps don't need each other, start them together.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-dep-m" id="ex-dep"></div>
+  <script type="application/json" id="ex-dep-m">{"q": "A program must (1) log a user in, which returns a token, then (2) use that token to load their orders and their messages. How should it wait?", "options": [
+    {"t": "Await the login; then await orders and messages together with <code>Promise.all</code>", "correct": true, "why": "Yes. Orders and messages both need the token, so login comes first. But they don't need each other, so they can wait in parallel."},
+    {"t": "Start all three at once with <code>Promise.all</code>, so all the waiting overlaps", "why": "Orders and messages need the token, which doesn't exist until the login has finished."},
+    {"t": "Await all three one after another: login, then orders, then messages", "why": "It works, because login comes first, but orders and messages then wait for each other for no reason."},
+    {"t": "Don't await at all; the results will be there by the time you need them", "why": "Without <code>await</code> you're holding pagers, not results (Chapter 16)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 12: forEach doesn't wait">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <svg class="sfx tl" data-sfx="LIAR!" data-seed="12"></svg>
+    <p class="caption">Here's a very common bug. <code>forEach</code> with an <code>async</code> callback looks like it should wait for each dish.</p>
+    <span class="file-tab">foreach_bug.js</span>
+    <pre class="code" data-src="foreach_bug.js"></pre>
+    <pre class="term" data-run="foreach_bug.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. <samp>all served!</samp> before a single dish is done. <code>forEach</code> calls the callback three times and throws away what each call returns, which is a pager. Nobody waits for those pagers, so line 7 runs straight away.</p></div>
+    </div>
+    <p>The <code>await</code> on line 5 only pauses <em>its own</em> little callback, not <code>forEach</code> and not the code after it. <code>forEach</code> was written long before promises and never looks at return values.</p>
+    <p class="catch">FOREACH NEVER WAITS</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 13: two honest fixes">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Two honest fixes, depending on what you want. For one by one, use <code>for...of</code> with <code>await</code> (that's <code>sequential.js</code> in panel 8). For all at once, use <code>map</code>, which <em>keeps</em> the pagers, and await them together:</p>
+    <span class="file-tab">foreach_fix.js</span>
+    <pre class="code" data-src="foreach_fix.js"></pre>
+    <pre class="term" data-run="foreach_fix.js"></pre>
+    <p>Line 4 hands the array of pagers that <code>map</code> made to <code>Promise.all</code>, and awaits that. Now <samp>all served!</samp> tells the truth.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-each-m" id="ex-each"></div>
+  <script type="application/json" id="ex-each-m">{"program": "spot_foreach.js", "bug": 7, "prompt": "The prices of tea, cake and pie are 3, 4 and 3, so the total should be 10. The program prints <samp>total: 0</samp>. Click the line with the bug.", "explain": "Line 7 uses <code>forEach</code> with an async callback. It starts three price lookups and returns at once, so line 10 prints the total before any <code>+=</code> has happened. Fix it with <code>for (const item of items) { total += await price(item); }</code>, or in parallel: <code>const prices = await Promise.all(items.map(price));</code> and add them up."}</script>
+
+  <section class="panel clean" aria-label="Panel 14: mixing then and await">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption">One more style trap. <code>.then</code> chains (Chapter 24) and <code>await</code> both work. Mixing them in one statement works too, but it's hard to read. Both of these print the same thing:</p>
+    <div class="two-files">
+      <div><span class="file-tab">mixed.js</span><pre class="code" data-src="mixed.js"></pre></div>
+      <div><span class="file-tab">unmixed.js</span><pre class="code" data-src="unmixed.js"></pre><pre class="term" data-run="unmixed.js"></pre></div>
+    </div>
+    <p>In <code>mixed.js</code> you have to work out what the one <code>await</code> is waiting for (the end of the whole chain), and what each arrow returns (the bread's pager, then a string). <code>unmixed.js</code> reads top to bottom with ordinary names. Pick one style per function, and in new code prefer <code>await</code>.</p>
+  </section>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · TICKETS THAT ARRIVE ONE BY ONE<small>async generators, for await...of, Array.fromAsync and top-level await</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 15: the ticket printer">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption soft">Sometimes results don't arrive all at once: they trickle in, like orders from a ticket printer that prints one ticket whenever the next dish is ready.</p>
+    <div class="duo">
+      <div class="duo-card cool"><h3>GENERATOR<small><code>function*</code> (Chapter 20)</small></h3><p>Hands out values one at a time with <code>yield</code>, and a <code>for...of</code> loop collects them. Each value is ready at once.</p></div>
+      <div class="duo-card hot"><h3>ASYNC GENERATOR<small><code>async function*</code></small></h3><p>Also hands out values with <code>yield</code>, but may <code>await</code> before each one. A <code>for await...of</code> loop waits for every value.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Long job? I'll call you back when it's done. A long <em>list</em> of jobs? I'll call you back once for each one.</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 16: an async generator and for await">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">An async generator (line 1, <code>async function*</code>) and a loop that waits for each ticket (line 9, <code>for await</code>).</p>
+    <span class="file-tab">ticket_printer.js</span>
+    <pre class="code" data-src="ticket_printer.js"></pre>
+    <pre class="term" data-run="ticket_printer.js"></pre>
+    <ol class="readlist">
+      <li><span><b>The printer is lazy.</b> It doesn't start the next dish until the loop asks for the next ticket. So the pie (10 ms) comes after the soup (30 ms), and everything takes 30 + 10 + 20 ms: this is one by one.</span></li>
+      <li><span><b>Each round:</b> <code>for await</code> asks for a ticket, the generator runs until its next <code>yield</code> (waiting on line 3 on the way), and the loop body runs with that dish.</span></li>
+      <li><span>That laziness is the point: a stream of messages, the pages of a long search result, or the lines of a huge file, handled one at a time as they arrive, without waiting for them all.</span></li>
+    </ol>
+    <p>How does <code>for await</code> know how to ask? It looks for a method stored under <code>Symbol.asyncIterator</code>, the async twin of Chapter 20's <code>Symbol.iterator</code>. An async generator object has one built in, and it returns the generator itself. A plain array has none (panel 17 shows that <code>for await</code> still accepts an array of pagers).</p>
+    <span class="file-tab">async_iter.js</span>
+    <pre class="code" data-src="async_iter.js"></pre>
+    <pre class="term" data-run="async_iter.js"></pre>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: for await over pagers that are already running">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption"><code>for await</code> also works on an ordinary array of pagers. Here all three are started first, so they cook in parallel.</p>
+    <span class="file-tab">for_await_array.js</span>
+    <pre class="code" data-src="for_await_array.js"></pre>
+    <pre class="term" data-run="for_await_array.js"></pre>
+    <p>The loop awaits the pagers in <b>array</b> order. The soup is first in the list and takes longest, so by the time it's done, pie and tea are ready too, and the three <samp>serve</samp> lines come together, in list order. (If a later pager were rejected while the loop was still waiting for an earlier one, nobody would be listening to it yet; <code>Promise.all</code> is the safer tool for a fixed list.)</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-forawait-m" id="ex-forawait"></div>
+  <script type="application/json" id="ex-forawait-m">{"program": "predict_forawait.js", "prompt": "Two pagers: A buzzes after 20 ms, B after 10 ms. Each prints when it buzzes. The loop prints when it gets each value. Predict every line.", "hint": "When do the pagers start? In which order does <code>for await</code> look at them?", "explain": "Both pagers start on line 8. B buzzes first (<samp>buzz B</samp> at 10 ms), but the loop is waiting for A, the first in the array. At 20 ms: <samp>buzz A</samp>, then <samp>got A</samp>, and B is already settled, so <samp>got B</samp> follows at once."}</script>
+
+  <section class="panel clean" aria-label="Panel 18: Array.fromAsync collects everything">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption">When you just want every ticket in an array, <code>Array.fromAsync</code> (2024; part of ES2026) runs the <code>for await</code> loop for you. Like <code>Array.from</code> (Chapter 9; Chapter 21 used its mapping recipe), it can map each item on the way.</p>
+    <span class="file-tab">from_async.js</span>
+    <pre class="code" data-src="from_async.js"></pre>
+    <pre class="term" data-run="from_async.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8:</b> collects all three tickets, one by one, into an array.</span></li>
+      <li><span><b>Lines 11 and 12:</b> an array that mixes values and pagers works too; each item is awaited, then mapped (times 10).</span></li>
+      <li><span><code>Array.fromAsync</code> awaits items <b>one after another</b>, not all at once. MDN marks it as widely available in browsers since January 2024; both Node versions in this book have it and print the same.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-gen-m" id="ex-gen"></div>
+  <script type="application/json" id="ex-gen-m">{"program": "parsons_gen.js", "seed": 25, "pin": [1, 2, 3, 4, 5], "prompt": "The kitchen helper is fixed. Build an async generator that yields a ticket for each dish once it's cooked, then a loop that prints each ticket, then a goodbye.", "explain": "<code>async function*</code> opens the generator; its <code>for...of</code> loop awaits <code>cook(dish)</code> and only then yields the ticket (the <code>yield</code> uses <code>ticket</code>, so it must come after). Two closing braces end the loop and the generator. Then <code>for await</code> collects each ticket and prints it, and <samp>kitchen closed</samp> comes after the loop."}</script>
+
+  <section class="panel pop" aria-label="Panel 19: two real errors, read like a detective">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <svg class="sfx tr" data-sfx="HUH?" data-seed="19"></svg>
+    <p class="caption">Two errors you'll meet with these tools. Read each like a detective: first the error line (the one that starts with the error's name, just above Node's version footer), then the file and line number, then the caret.</p>
+    <span class="file-tab">not_async_iterable.js</span>
+    <pre class="code" data-src="not_async_iterable.js"></pre>
+    <pre class="term wrap" data-run="not_async_iterable.js" data-exit data-fold></pre>
+    <p><b>The error line:</b> <samp>TypeError: order is not async iterable</samp>. <b>Where:</b> line 2, caret under <code>order</code>. A plain object isn't a list of anything: <code>for await</code> needs something that can hand out values one by one (an async generator, an array, a stream). To loop over an object's keys, use <code>Object.keys</code> (Chapter 10).</p>
+    <p>Second: <code>await</code> at the top level of a file is only allowed in an <b>ES module</b>. This book's folder says <code>"type": "module"</code>, so <code>top_level.js</code> just works. The same line in a <code>.cjs</code> file (an old-style CommonJS file, which Chapter 26 explains) is refused:</p>
+    <div class="two-files">
+      <div><span class="file-tab">top_level.js</span><pre class="code" data-src="top_level.js"></pre><pre class="term" data-run="top_level.js"></pre></div>
+      <div><span class="file-tab">await_cjs.cjs</span><pre class="code" data-src="await_cjs.cjs"></pre><pre class="term wrap" data-run="await_cjs.cjs" data-exit data-fold></pre></div>
+    </div>
+    <p><b>The error line first:</b> <samp>SyntaxError: await is only valid in async functions and the top level bodies of modules</samp>: nothing ran at all, because Node refused to read the file. Above it, Node even guesses what you meant: <i>Make sure to set "type": "module"…</i>.</p>
+    <p><b>About the two commands.</b> Node prints its warning with the process id, as <samp>(node:12345)</samp>, which changes on every run. So this terminal sends both streams (<code>2&gt;&amp;1</code>) through <code>sed</code>, a text-replacing tool, to show it as <samp>(node:PID)</samp>. A pipe normally finishes with the exit code of its <em>last</em> command, here <code>sed</code>'s 0, which would hide Node's failure. So the terminal first types <code>set -o pipefail</code>, a bash setting that makes a pipe finish with the exit code of the command that failed: Node's 1, shown at the bottom. Chapter 27 uses the same two steps for every test report.</p>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE TWO SPIKES<small>The call stack, the VIP spike for microtasks and the normal spike for timers</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 20: the chef's rule">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Now the rule that decides which ticket the chef takes next. It's the heart of the chapter, so it gets its own panel.</p>
+    <div class="scene">
+      <svg class="char" data-char="chef"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The chef says: </span>My rule never changes. Learn it and you can predict any kitchen.</p></div>
+    </div>
+    <ul class="checklist">
+      <li><b>Finish the stove.</b> Whatever is cooking (the script, or one callback) runs to the end. Nobody interrupts it.</li>
+      <li><b>Empty the VIP spike, completely.</b> Every microtask, oldest first, <em>including new VIP tickets added while emptying it</em>.</li>
+      <li><b>Take ONE ticket from the normal spike</b> (a due timer) and cook it. Then go back to step 2.</li>
+    </ul>
+    <p>A <b>microtask</b> is a small job that must happen as soon as the current code finishes: promise callbacks (<code>.then</code>, <code>.catch</code>, <code>.finally</code>), the rest of an async function after its <code>await</code>, and functions passed to <code>queueMicrotask</code>. A <b>task</b> (sometimes called a macrotask) is a bigger unit of work, such as a timer callback. The <b>event loop</b> is the chef walking this circuit for as long as there are tickets or ovens running.</p>
+    <p class="catch">EMPTY THE VIP SPIKE, THEN ONE NORMAL TICKET</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 21: the rule in a real run">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">Each line says which spike it came from. <code>queueMicrotask(fn)</code> puts <code>fn</code> straight on the VIP spike, without needing a promise.</p>
+    <span class="file-tab">two_spikes.js</span>
+    <pre class="code" data-src="two_spikes.js"></pre>
+    <pre class="term" data-run="two_spikes.js"></pre>
+    <p>The timer was set <b>first</b>, with a delay of 0, and it still prints <b>last</b>. A 0 ms timer only means "put a ticket on the normal spike as soon as possible", and the normal spike always waits for the stove and the whole VIP spike.</p>
+  </section>
+
+  <section class="panel clean spk25" aria-label="Panel 22: the chef cooks chef_await.js, ticket by ticket" data-spikes25="spk-await">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Now watch the kitchen itself. This program has an <code>await</code> in the middle of a function. Step through and watch where every ticket goes.</p>
+    <div class="spk-top"><ol class="tr-code spk-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="spk-kitchen"></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="spk-await">{"program": "chef_await.js", "lanes": ["vip", "normal"], "steps": [
+      {"line": 7, "stove": ["module code"], "vip": [], "normal": [], "output": ["A open the kitchen"], "note": "The module's code is on the stove. Line 7 prints <samp>A</samp>. (Lines 1 to 5 only <em>define</em> <code>plate</code>.)"},
+      {"line": 8, "stove": ["module code"], "vip": [], "normal": ["timer F (line 8)"], "output": ["A open the kitchen"], "note": "Line 8 sets a 0 ms timer. Its callback goes on the <b>normal spike</b>. It will have to wait."},
+      {"line": 2, "stove": ["module code", "plate(\"soup\")"], "vip": [], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup"], "note": "Line 9 calls <code>plate</code>. It goes on top of the stove (the call stack) and runs <b>now</b>: <samp>B</samp>."},
+      {"line": 3, "stove": ["module code"], "vip": ["rest of plate (line 4)"], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup"], "note": "Line 3: <code>await</code>. <code>plate</code> is taken off the stove, half done, and <b>the rest of it goes on the VIP spike</b> as a ticket. <code>plate</code> hands its pager back to line 9, and the module carries on."},
+      {"line": 10, "stove": ["module code"], "vip": ["rest of plate (line 4)", "then E (line 10)"], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup"], "note": "Line 10: the pager is already fulfilled, so its <code>.then</code> callback goes straight on the VIP spike, <b>behind</b> plate's ticket."},
+      {"line": 11, "stove": ["module code"], "vip": ["rest of plate (line 4)", "then E (line 10)"], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup", "C script done"], "note": "Line 11 prints <samp>C</samp>. That's the last line."},
+      {"line": null, "stove": [], "vip": ["rest of plate (line 4)", "then E (line 10)"], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup", "C script done"], "note": "The stove is empty. Rule step 2: empty the VIP spike, oldest ticket first."},
+      {"line": 4, "stove": ["plate(\"soup\"), resumed"], "vip": ["then E (line 10)"], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup", "C script done", "D finish plating soup"], "note": "The oldest VIP ticket: <code>plate</code> is back on the stove, right after its <code>await</code>, with <code>dish</code> still <code>\"soup\"</code>. Line 4 prints <samp>D</samp>."},
+      {"line": 10, "stove": ["then callback"], "vip": [], "normal": ["timer F (line 8)"], "output": ["A open the kitchen", "B start plating soup", "C script done", "D finish plating soup", "E then ticket"], "note": "Next VIP ticket: line 10's callback prints <samp>E</samp>. The VIP spike is now empty."},
+      {"line": 8, "stove": ["timer callback"], "vip": [], "normal": [], "output": ["A open the kitchen", "B start plating soup", "C script done", "D finish plating soup", "E then ticket", "F timer ticket"], "note": "Rule step 3: one ticket from the normal spike. The timer, set first of all, prints <samp>F</samp> last."},
+      {"line": null, "stove": [], "vip": [], "normal": [], "output": ["A open the kitchen", "B start plating soup", "C script done", "D finish plating soup", "E then ticket", "F timer ticket"], "note": "Nothing cooking, no tickets, no ovens running: the kitchen closes and Node exits. The letters came out A to F, the order the rule predicts."}]}</script>
+  </section>
+
+  <p class="catch">AWAIT PUTS THE REST BACK ON THE VIP SPIKE</p>
+
+  <div data-ex="predict" data-model="ex-spikes-m" id="ex-spikes"></div>
+  <script type="application/json" id="ex-spikes-m">{"program": "predict_spikes.js", "prompt": "Breakfast: three 0 ms timers, two VIP tickets, and one timer that adds a VIP ticket of its own. Predict every line.", "hint": "Sort each line onto the stove, the VIP spike or the normal spike. After <em>each</em> timer, the chef empties the VIP spike again.", "explain": "Stove: <samp>coffee</samp>. VIP spike, in order: <samp>eggs</samp>, <samp>beans</samp>. Normal spike, one at a time: <samp>toast</samp>; then <samp>juice</samp>, whose callback puts <code>jam</code> on the VIP spike, and the VIP spike is emptied before the next timer, so <samp>jam</samp> comes before <samp>tea</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: the VIP spike can keep refilling">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">"Completely" really means completely. Here a VIP ticket adds another VIP ticket, four times.</p>
+    <span class="file-tab">vip_refill.js</span>
+    <pre class="code" data-src="vip_refill.js"></pre>
+    <pre class="term" data-run="vip_refill.js"></pre>
+    <p>The timer was due long before the fourth ticket, but it waits for all of them. If line 7 had no <code>if</code>, the VIP spike would never empty, and the timer would <b>never</b> run: the program would freeze with the processor busy. That's called <b>starving</b> the event loop. Microtasks are for small, quick follow-ups, not for endless work.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tspk-m" id="ex-tspk"></div>
+  <script type="application/json" id="ex-tspk-m">{"program": "trace_spikes.js", "columns": ["turn", "label", "spike"], "given": [0], "prompt": "An async function with <b>two</b> awaits, a <code>queueMicrotask</code> and a timer. Each <code>log</code> prints its turn, its label and where it ran. Fill in the table.", "explain": "The stove runs <samp>W1</samp> (the call on line 12 runs <code>waiter</code> up to its first <code>await</code>), then <samp>S</samp>. VIP spike: the rest of <code>waiter</code> was queued first, so <samp>W2</samp>; its second <code>await</code> puts the remainder at the <b>back</b> of the spike, behind <code>Q</code>, so <samp>Q</samp> then <samp>W3</samp>. Last, the timer <samp>T1</samp>. Every <code>await</code> sends the rest of the function to the back of the VIP queue."}</script>
+
+  <div data-ex="choice" data-model="ex-zero-m" id="ex-zero"></div>
+  <script type="application/json" id="ex-zero-m">{"q": "A program calls <code>setTimeout(f, 0)</code> on line 1 and <code>Promise.resolve().then(g)</code> on line 2. Which callback runs first, and why?", "options": [
+    {"t": "<code>g</code>: promise callbacks go on the VIP spike, which is emptied before any timer", "correct": true, "why": "Yes. Order of writing doesn't matter. The microtask queue always goes before the timer queue."},
+    {"t": "<code>f</code>: it was scheduled first, and 0 ms means \"immediately\"", "why": "This is the classic wrong guess. 0 ms only means \"a ticket on the normal spike as soon as possible\"; the VIP spike still goes first."},
+    {"t": "<code>f</code>: timers are handled by the operating system, so they're faster", "why": "Speed has nothing to do with it. It's a fixed rule about queues."},
+    {"t": "It changes from run to run", "why": "Not for these two: the microtask rule is guaranteed. (You'll meet a pair that really does vary in Part 5.)"}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · NODE'S FULL ROUND<small>process.nextTick, setImmediate, and the phases of Node's event loop</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 24: two more places in Node's kitchen">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption soft">Browsers have just the two spikes. Node's kitchen has two extra places, both only in Node.</p>
+    <div class="duo">
+      <div class="duo-card warn"><h3>THE STICKY NOTE<small><code>process.nextTick(fn)</code></small></h3><p>A note the chef sticks on the stove itself: "do this the moment the current dish is done". Node runs these <b>before</b> anything else, VIP spike included, in an ordinary script. Every note is done before the chef moves on.</p></div>
+      <div class="duo-card ok"><h3>THE CHECK WINDOW<small><code>setImmediate(fn)</code></small></h3><p>A hatch the chef checks once per round, right after waiting for deliveries (files, network). It means "soon, after the I/O that's ready". Not a timer, and not a microtask.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>The names are famously back to front: <code>nextTick</code> runs <em>sooner</em> than <code>setImmediate</code>. Remember it as "the sticky note is on the stove; the check window is across the room."</p></div>
+    </div>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 25: the eight-line ordering puzzle">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">The famous puzzle: every kind of ticket in eight lines. This is a <code>.cjs</code> file, an old-style CommonJS script; panel 27 shows why that matters. Line 7 keeps the chef chopping onions for 5 ms, so the 0 ms timer is surely due when the round starts (more on that in panel 30).</p>
+    <span class="file-tab">puzzle8.cjs</span>
+    <pre class="code" data-src="puzzle8.cjs"></pre>
+    <pre class="term" data-run="puzzle8.cjs"></pre>
+    <ol class="checklist">
+      <li><b>The stove:</b> <samp>script: open</samp>, <samp>script: close</samp>.</li>
+      <li><b>The sticky note:</b> <samp>nextTick</samp>.</li>
+      <li><b>The VIP spike:</b> <samp>promise</samp>, then <samp>microtask</samp>, in the order they were added.</li>
+      <li><b>The normal spike</b> (timers phase): <samp>timeout</samp>.</li>
+      <li><b>The check window</b> (check phase): <samp>immediate</samp>.</li>
+    </ol>
+    <p class="catch">STOVE, NOTE, VIP, TIMERS, CHECK</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: walk Kit through the puzzle" data-walk="walk-puzzle">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Walk Kit through it. First Kit runs the eight lines, which mostly <em>place</em> tickets. Then Kit visits each line whose callback runs.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 150 200" aria-hidden="true"></svg>
+        <p class="card-title">puzzle8.cjs</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-puzzle">{"program": "puzzle8.cjs", "steps": [
+      {"line": 1, "output": [], "mood": "happy", "arms": "point", "note": "Kit starts at line 1, on the stove."},
+      {"line": 2, "output": ["script: open"], "mood": "happy", "arms": "point", "note": "Line 1 prints <samp>script: open</samp>."},
+      {"line": 3, "output": ["script: open"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 2 sets a 0 ms timer: a future ticket for the <b>normal spike</b>."},
+      {"line": 4, "output": ["script: open"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 3: a ticket for the <b>check window</b>."},
+      {"line": 5, "output": ["script: open"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 4: the pager is already fulfilled, so its callback goes on the <b>VIP spike</b>."},
+      {"line": 6, "output": ["script: open"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 5: a <b>sticky note</b> on the stove."},
+      {"line": 7, "output": ["script: open"], "mood": "focus", "mouth": "flat", "arms": "point", "note": "Line 6: another VIP ticket, behind the promise's."},
+      {"line": 8, "output": ["script: open"], "mood": "worried", "mouth": "o", "arms": "shrug", "note": "Line 7 chops onions for 5 ms. Nothing can interrupt it. By the end, the timer from line 2 is overdue."},
+      {"line": 5, "output": ["script: open", "script: close"], "mood": "happy", "arms": "point", "note": "Line 8 prints <samp>script: close</samp>. The script is done. First stop: the sticky note from line 5."},
+      {"line": 4, "output": ["script: open", "script: close", "nextTick"], "mood": "happy", "arms": "point", "note": "<samp>nextTick</samp>. No more notes, so on to the VIP spike: line 4's callback is the oldest ticket."},
+      {"line": 6, "output": ["script: open", "script: close", "nextTick", "promise"], "mood": "happy", "arms": "point", "note": "<samp>promise</samp>. Next VIP ticket: line 6."},
+      {"line": 2, "output": ["script: open", "script: close", "nextTick", "promise", "microtask"], "mood": "happy", "arms": "point", "note": "<samp>microtask</samp>. The VIP spike is empty. The event loop starts its round with the <b>timers</b> phase: line 2's timer is due."},
+      {"line": 3, "output": ["script: open", "script: close", "nextTick", "promise", "microtask", "timeout"], "mood": "happy", "arms": "point", "note": "<samp>timeout</samp>. Nothing waits for files or the network, so the round moves straight on to the <b>check</b> phase: line 3."},
+      {"line": null, "output": ["script: open", "script: close", "nextTick", "promise", "microtask", "timeout", "immediate"], "mood": "happy", "arms": "cheer", "note": "<samp>immediate</samp>. No tickets and no timers left: Node exits."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: the same file as an ES module">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">Now the twist. Here is the same puzzle, saved as <code>puzzle8.js</code>. In this book's folder, <code>.js</code> files are <b>ES modules</b> (<code>"type": "module"</code>). The badge proves the two files are identical, character for character.</p>
+    <p><span class="parity" data-same-src="puzzle8.cjs,puzzle8.js"></span></p>
+    <span class="file-tab">puzzle8.js</span>
+    <pre class="term" data-run="puzzle8.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Professor says: </span>Look: <samp>promise</samp> and <samp>microtask</samp> now come <b>before</b> <samp>nextTick</samp>. Node runs an ES module's top-level code from inside its own promise machinery, because modules may use top-level <code>await</code>. So when your module's code ends, the engine is still in the middle of a promise job, and it empties the VIP spike before handing control back to Node, which only then reads its sticky notes.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor explains.</p>
+    <p>Inside callbacks (a timer, a file read, a click) both kinds of file behave the same: sticky notes first, then the VIP spike. Panel 28's file-read callback shows it. The lesson isn't to memorise this corner case; it's to never let your program's correctness depend on <code>nextTick</code>-versus-promise order. Node's own documentation recommends <code>queueMicrotask</code> or promises for most new code.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-ticks-m" id="ex-ticks"></div>
+  <script type="application/json" id="ex-ticks-m">{"program": "trace_ticks.cjs", "columns": ["turn", "label", "queue"], "given": [0], "prompt": "A CommonJS script: a sticky note that adds another sticky note, a promise, and an immediate. Fill in the table.", "explain": "Stove: <samp>S</samp>. Then the sticky notes, <b>all</b> of them, including the one <samp>N1</samp> added: <samp>N1</samp>, <samp>N2</samp>. Then the VIP spike: <samp>P</samp>. There's no timer, so the round's first stop with work is the check window: <samp>I</samp>."}</script>
+
+  <div data-ex="predict" data-model="ex-pticks-m" id="ex-pticks"></div>
+  <script type="application/json" id="ex-pticks-m">{"program": "predict_ticks.cjs", "prompt": "Another CommonJS script. This time a promise callback writes a sticky note. Predict every line.", "hint": "After the VIP spike, Node checks for sticky notes again before moving on to the check window.", "explain": "<samp>script</samp>, then the sticky note <samp>nextTick</samp>, then the VIP spike: <samp>promise</samp>, which adds a new note. Node keeps going round notes and VIP tickets until both are empty, so <samp>nextTick from promise</samp> runs before the round reaches the check window: <samp>immediate</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 28: map of Node's event loop" data-map="map-loop">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption soft">Node's chef walks a fixed round of <b>phases</b>, again and again. Between any two callbacks, sticky notes and the VIP spike are emptied. Pick a program and follow Kit around the round.</p>
+    <div class="two-files">
+      <div><span class="file-tab">io_order.js</span><pre class="code" data-src="io_order.js"></pre></div>
+      <div><span class="file-tab">timer_inside.js</span><pre class="code" data-src="timer_inside.js"></pre></div>
+    </div>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maploop-t maploop-d"><title id="maploop-t">Map of Node's event loop</title><desc id="maploop-d">Your script runs first, with its sticky notes and VIP tickets. Then the loop goes round its phases: timers (due setTimeout and setInterval callbacks), pending callbacks (a few deferred system callbacks), poll (waits for and runs file and network callbacks), check (setImmediate callbacks), close callbacks, and back to timers. When nothing is left to wait for after the close phase, Node exits.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-loop">{"seed": 25, "size": [700, 580], "start": [[350, 2], [350, 26]],
+      "states": [
+        {"id": "SCRIPT", "x": 210, "y": 30, "w": 280, "h": 74, "label": "your script", "sub": "then notes + VIP spike"},
+        {"id": "TIMERS", "x": 20, "y": 160, "w": 280, "h": 80, "label": "1 · timers", "sub": "due setTimeout"},
+        {"id": "PENDING", "x": 400, "y": 160, "w": 280, "h": 80, "label": "2 · pending", "sub": "a few system callbacks"},
+        {"id": "CLOSE", "x": 20, "y": 320, "w": 280, "h": 80, "label": "5 · close", "sub": "'close' callbacks"},
+        {"id": "POLL", "x": 400, "y": 320, "w": 280, "h": 80, "label": "3 · poll", "sub": "file + network callbacks"},
+        {"id": "EXIT", "x": 20, "y": 480, "w": 280, "h": 80, "label": "Node exits", "sub": "nothing left to wait for", "kind": "end"},
+        {"id": "CHECK", "x": 400, "y": 480, "w": 280, "h": 80, "label": "4 · check", "sub": "setImmediate"}],
+      "transitions": [
+        {"id": "s0", "from": "SCRIPT", "to": "TIMERS", "pts": [[260, 108], [260, 130], [160, 130], [160, 154]], "label": "script done", "lx": 274, "ly": 140},
+        {"id": "t1", "from": "TIMERS", "to": "PENDING", "pts": [[304, 200], [394, 200]], "label": "next", "lx": 330, "ly": 226},
+        {"id": "t2", "from": "PENDING", "to": "POLL", "pts": [[540, 244], [540, 314]], "label": "next", "lx": 552, "ly": 286},
+        {"id": "t3", "from": "POLL", "to": "CHECK", "pts": [[540, 404], [540, 474]], "label": "next", "lx": 552, "ly": 446},
+        {"id": "t4", "from": "CHECK", "to": "CLOSE", "pts": [[396, 520], [350, 520], [350, 360], [304, 360]], "label": "next", "lx": 314, "ly": 452},
+        {"id": "t5", "from": "CLOSE", "to": "TIMERS", "pts": [[200, 316], [200, 244]], "label": "next round", "lx": 212, "ly": 286},
+        {"id": "t6", "from": "CLOSE", "to": "EXIT", "pts": [[100, 404], [100, 474]], "label": "all done", "lx": 112, "ly": 446}],
+      "paths": [
+        {"id": "io", "label": "io_order.js", "program": "io_order.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SCRIPT"], "output": ["script: asked for the file"], "note": "Line 3 asks the operating system to read <code>menu.txt</code> and leaves a callback; the reading happens outside JavaScript. Line 10 prints. No notes, no VIP tickets."},
+          {"on": ["TIMERS"], "via": ["s0"], "output": ["script: asked for the file"], "note": "The round begins. No timers at all yet."},
+          {"on": ["POLL"], "via": ["t1", "t2"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea"], "note": "Nothing pending. In <b>poll</b> the chef waits at the back door for the delivery. The file arrives, and the callback runs: line 4 prints, and lines 5 to 8 leave a timer, an immediate, a VIP ticket and a sticky note."},
+          {"on": ["POLL"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise"], "note": "The callback is done, so before anything else: the sticky note, then the VIP spike. (Inside a callback, notes come first even in an ES module.)"},
+          {"on": ["CHECK"], "via": ["t3"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate"], "note": "Straight after poll comes <b>check</b>: <samp>check: immediate</samp>. The timer has to wait for the next round."},
+          {"on": ["TIMERS"], "via": ["t4", "t5"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate", "timers: timeout"], "note": "Close phase (nothing), then the next round: <b>timers</b>, and the 0 ms timer runs at last."},
+          {"on": ["EXIT"], "via": ["t1", "t2", "t3", "t4", "t6"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate", "timers: timeout"], "note": "One more lap finds nothing to do and nothing to wait for. Node exits. <b>Inside an I/O callback, an immediate always beats a 0 ms timer.</b>"}]},
+        {"id": "puz", "label": "puzzle8.cjs", "program": "puzzle8.cjs", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SCRIPT"], "output": ["script: open", "script: close"], "note": "The script runs, including 5 ms of onion chopping, and leaves a timer, an immediate, a note and two VIP tickets."},
+          {"on": ["SCRIPT"], "output": ["script: open", "script: close", "nextTick", "promise", "microtask"], "note": "Before the loop starts: the sticky note, then the VIP spike."},
+          {"on": ["TIMERS"], "via": ["s0"], "output": ["script: open", "script: close", "nextTick", "promise", "microtask", "timeout"], "note": "<b>Timers</b>: the 0 ms timer has been due for about 5 ms, so it runs."},
+          {"on": ["CHECK"], "via": ["t1", "t2", "t3"], "output": ["script: open", "script: close", "nextTick", "promise", "microtask", "timeout", "immediate"], "note": "Pending: nothing. Poll: there's an immediate waiting, so the chef doesn't wait at the door. <b>Check</b>: <samp>immediate</samp>."},
+          {"on": ["EXIT"], "via": ["t4", "t6"], "output": ["script: open", "script: close", "nextTick", "promise", "microtask", "timeout", "immediate"], "note": "Close phase, then nothing left: Node exits."}]},
+        {"id": "inner", "label": "timer_inside.js", "program": "timer_inside.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["SCRIPT"], "output": [], "note": "The script only sets a 10 ms timer, and prints nothing."},
+          {"on": ["POLL"], "via": ["s0", "t1", "t2"], "output": [], "note": "The timer isn't due yet, so the chef waits in <b>poll</b>, but only until the timer is due."},
+          {"on": ["TIMERS"], "via": ["t3", "t4", "t5"], "output": ["timers: first timeout"], "note": "Round again to <b>timers</b>: the 10 ms timer runs. Inside it, line 3 sets a 0 ms timer and line 4 an immediate."},
+          {"on": ["CHECK"], "via": ["t1", "t2", "t3"], "output": ["timers: first timeout", "check: inner immediate"], "note": "We're already past the timers phase, so the next stop with work is <b>check</b>: the immediate."},
+          {"on": ["TIMERS"], "via": ["t4", "t5"], "output": ["timers: first timeout", "check: inner immediate", "timers: inner timeout"], "note": "Next round: the inner timer."},
+          {"on": ["EXIT"], "via": ["t1", "t2", "t3", "t4", "t6"], "output": ["timers: first timeout", "check: inner immediate", "timers: inner timeout"], "note": "Nothing left: Node exits. <b>Inside a timer callback, an immediate also beats a new 0 ms timer.</b>"}]}]}</script>
+  </section>
+
+  <section class="panel clean spk25" aria-label="Panel 29: the chef cooks io_order.js, with all four places" data-spikes25="spk-io">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">The same file-reading program, this time in the kitchen with all four places: sticky note, VIP spike, normal spike and check window.</p>
+    <div class="spk-top"><ol class="tr-code spk-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="spk-kitchen"></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="spk-io">{"program": "io_order.js", "lanes": ["tick", "vip", "normal", "check"], "steps": [
+      {"line": 3, "stove": ["module code"], "tick": [], "vip": [], "normal": [], "check": [], "output": [], "note": "Line 3 asks for the file. The reading is done by the operating system, outside the kitchen, like a delivery driver. No ticket yet: the callback waits for the delivery."},
+      {"line": 10, "stove": ["module code"], "tick": [], "vip": [], "normal": [], "check": [], "output": ["script: asked for the file"], "note": "Line 10 prints. The script is done."},
+      {"line": null, "stove": [], "tick": [], "vip": [], "normal": [], "check": [], "output": ["script: asked for the file"], "note": "Stove empty, every spike empty. But a delivery is on its way, so the kitchen stays open: the chef waits at the back door (the poll phase)."},
+      {"line": 4, "stove": ["readFile callback"], "tick": [], "vip": [], "normal": [], "check": [], "output": ["script: asked for the file", "poll: file read: soup, pie, tea"], "note": "The file arrives. Its callback goes on the stove: line 4 prints the menu."},
+      {"line": 6, "stove": ["readFile callback"], "tick": [], "vip": [], "normal": ["timeout (line 5)"], "check": ["immediate (line 6)"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea"], "note": "Line 5 puts a timer ticket on the normal spike; line 6 puts a ticket in the check window."},
+      {"line": 8, "stove": ["readFile callback"], "tick": ["nextTick (line 8)"], "vip": ["promise (line 7)"], "normal": ["timeout (line 5)"], "check": ["immediate (line 6)"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea"], "note": "Line 7 adds a VIP ticket, line 8 a sticky note. The callback ends."},
+      {"line": 8, "stove": ["nextTick callback"], "tick": [], "vip": ["promise (line 7)"], "normal": ["timeout (line 5)"], "check": ["immediate (line 6)"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick"], "note": "The sticky note first, though it was written last."},
+      {"line": 7, "stove": ["then callback"], "tick": [], "vip": [], "normal": ["timeout (line 5)"], "check": ["immediate (line 6)"], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise"], "note": "Then the VIP spike."},
+      {"line": 6, "stove": ["immediate callback"], "tick": [], "vip": [], "normal": ["timeout (line 5)"], "check": [], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate"], "note": "The poll phase is over, and the next phase is <b>check</b>: the immediate runs."},
+      {"line": 5, "stove": ["timer callback"], "tick": [], "vip": [], "normal": [], "check": [], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate", "timers: timeout"], "note": "Next round, timers phase: the 0 ms timer."},
+      {"line": null, "stove": [], "tick": [], "vip": [], "normal": [], "check": [], "output": ["script: asked for the file", "poll: file read: soup, pie, tea", "microtask: nextTick", "microtask: promise", "check: immediate", "timers: timeout"], "note": "Everything is empty and nothing is on its way: Node exits."}]}</script>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 30: setTimeout 0 versus setImmediate in the main script">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <svg class="sfx tr" data-sfx="EITHER?!" data-seed="30"></svg>
+    <p class="caption">So which wins in a plain script, a 0 ms timer or an immediate? Node's own guide says: it depends on how fast the process is. Here is <b>one possible run</b> of this program:</p>
+    <span class="file-tab">race_main.js</span>
+    <pre class="code" data-src="race_main.js"></pre>
+    <pre class="term" data-run="race_main.js"></pre>
+    <p>Run it ten times and you'll see both orders. A "0 ms" timer is really due after 1 ms. When the loop starts its first round, if that 1 ms hasn't passed yet, the timers phase finds nothing due and the check window goes first. If it has passed, the timer goes first. That's why <code>puzzle8.cjs</code> chops onions for 5 ms: so its order is the same on every run.</p>
+    <div class="duo">
+      <div class="duo-card warn"><h3>IN THE MAIN SCRIPT<small>race_main.js</small></h3><p>Order not guaranteed. Never write code that depends on it.</p></div>
+      <div class="duo-card ok"><h3>INSIDE AN I/O CALLBACK<small>io_order.js</small></h3><p><code>setImmediate</code> always runs first, because check comes straight after poll.</p></div>
+    </div>
+    <p class="catch">0 MS IS NOT "NOW"</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-io-m" id="ex-io"></div>
+  <script type="application/json" id="ex-io-m">{"q": "Inside a <code>readFile</code> callback, you call <code>setTimeout(a, 0)</code> and then <code>setImmediate(b)</code>. What happens?", "options": [
+    {"t": "<code>b</code> runs first, every time", "correct": true, "why": "Yes. The callback runs in the poll phase, and the very next phase is check, where <code>b</code> runs. The timer waits for the next round's timers phase (panel 28)."},
+    {"t": "<code>a</code> runs first, every time", "why": "Only if the loop reached a timers phase before check, which it doesn't: check comes right after poll."},
+    {"t": "It varies from run to run", "why": "That's true in the main script (panel 30), not inside an I/O callback."},
+    {"t": "They run at the same time", "why": "One chef, one stove: two callbacks never run at the same time."}]}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · DON'T BLOCK THE STOVE<small>CPU-heavy work, chunking, and cancelling with AbortController</small></h2>
+
+  <section class="panel pop" aria-label="Panel 31: a busy stove freezes every timer">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tl" data-sfx="CHOP CHOP" data-seed="31"></svg>
+    <p class="caption">The rule has a dark side: nothing interrupts the stove. What if one dish takes a long time to <em>cook</em>, not to wait for?</p>
+    <span class="file-tab">busy.js</span>
+    <pre class="code" data-src="busy.js"></pre>
+    <pre class="term" data-run="busy.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="chef"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The chef says: </span>The timer ticket was due after 1 millisecond. But I was chopping 300 million onions on lines 5 to 7, and I never look at the spikes in the middle of a dish. The timer had to wait for the very last onion.</p></div>
+    </div>
+    <p>Work that keeps the processor busy (big loops, heavy maths, parsing a huge file) is called <b>CPU-bound</b>. While it runs, the loop is <b>blocked</b>: no timers, no file callbacks, and in a server, no other visitors. In a browser tab, no clicks and no screen updates either: the page freezes. The program prints only order here, never times.</p>
+    <p class="catch">NOTHING INTERRUPTS THE STOVE</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: chunking the work">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">The fix for long cooking: cut it into <b>chunks</b>, and between chunks give the kitchen a chance to serve someone else. Both programs chop three batches; a customer is waiting in the check window.</p>
+    <div class="two-files">
+      <div><span class="file-tab">blocking.js</span><pre class="code" data-src="blocking.js"></pre><pre class="term" data-run="blocking.js"></pre></div>
+      <div><span class="file-tab">chunked.js</span><pre class="code" data-src="chunked.js"></pre><pre class="term" data-run="chunked.js"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>blocking.js:</b> the loop on lines 9 to 11 chops all three batches in one go, and the customer waits until the end.</span></li>
+      <li><span><b>chunked.js:</b> each batch schedules the next one with <code>setImmediate</code> (line 5). Batch 2's immediate and the customer's sit in the check window together, in order, so the customer is served between batch 2 and batch 3. Immediates added while the check window is being worked through wait for the next round.</span></li>
+      <li><span>For really heavy work, Node and browsers can also run JavaScript on a second thread, a <b>worker</b>. Chapter 29 gives a preview.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-block-m" id="ex-block"></div>
+  <script type="application/json" id="ex-block-m">{"q": "A Node server must add up a million numbers for one visitor. While it does, other visitors get no answer. Which change helps the <b>other visitors</b>?", "options": [
+    {"t": "Split the sum into chunks, each started with <code>setImmediate</code>", "correct": true, "why": "Yes. Between chunks, the loop gets to poll for other visitors' requests. (A worker thread is the other good answer for heavy work.)"},
+    {"t": "Make the summing function <code>async</code> so it runs aside", "why": "An async function still runs on the same stove until its first <code>await</code>. A loop with no <code>await</code> inside blocks just the same."},
+    {"t": "Wrap the whole loop in <code>Promise.resolve().then(…)</code>", "why": "That only delays the loop to the VIP spike. When it runs, it blocks just as long, and VIP tickets go even before I/O."},
+    {"t": "Put <code>setTimeout(loop, 0)</code> around the whole loop", "why": "That moves the whole loop to later, but it's still one long dish. Nothing gets in while it runs."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 33: AbortController cancels a job">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Last tool: cancelling. The customer leaves before the turkey is done. Why keep roasting? An <code>AbortController</code> is a remote control with one button, <code>abort()</code>. Its <code>signal</code> is the receiver, which you pass to the job.</p>
+    <span class="file-tab">abort.js</span>
+    <pre class="code" data-src="abort.js"></pre>
+    <pre class="term" data-run="abort.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1:</b> <code>node:timers/promises</code> has a promise version of <code>setTimeout</code> (Chapter 24), renamed <code>sleep</code> here. Its options accept a <code>signal</code>.</span></li>
+      <li><span><b>Line 4:</b> after 20 ms, someone presses the button. The 100 ms wait on line 8 is rejected at once with an error named <samp>AbortError</samp>; line 9 never runs.</span></li>
+      <li><span><b>Line 13:</b> the signal remembers: <code>aborted</code> is <samp>true</samp>. The same signal option works with <code>fetch</code> (Chapter 28), file reading and many other Node functions.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: a timeout signal, and your own cancellable job">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">Two more ways to use signals. <code>AbortSignal.timeout(ms)</code> makes a receiver that presses its own button after <code>ms</code>. And your own functions can listen to a signal too.</p>
+    <div class="two-files">
+      <div><span class="file-tab">abort_timeout.js</span><pre class="code" data-src="abort_timeout.js"></pre><pre class="term" data-run="abort_timeout.js"></pre></div>
+      <div><span class="file-tab">abort_listen.js</span><pre class="code" data-src="abort_listen.js"></pre><pre class="term" data-run="abort_listen.js"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>abort_timeout.js:</b> the 200 ms stew gives up after 30 ms. Node's <code>sleep</code> rejects with an <samp>AbortError</samp>, and keeps the real reason as its <code>cause</code> (Chapter 24): a <samp>TimeoutError</samp>. With <code>fetch</code> you'd get the <code>TimeoutError</code> directly.</span></li>
+      <li><span><b>abort_listen.js:</b> a signal is an event target (Chapter 15), so line 4 listens for <code>"abort"</code>, stops the oven with <code>clearTimeout</code> and rejects. <code>abort("customer left")</code> stores its argument as <code>signal.reason</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-abort-m" id="ex-abort"></div>
+  <script type="application/json" id="ex-abort-m">{"program": "fill_abort.js", "prompt": "Tea takes 10 ms, cake 40 ms. After 25 ms the customer cancels everything. Report how each job ended. Fill the blanks.", "blanks": [{"line": 3, "text": "new AbortController()"}, {"line": 4, "text": "controller.signal"}, {"line": 5, "text": "controller.abort()"}, {"line": 8, "text": "Promise.allSettled"}], "explain": "The controller is the remote control and <code>controller.signal</code> the receiver handed to both jobs. At 25 ms, <code>controller.abort()</code> rejects every job still waiting: the tea finished at 10 ms, the cake didn't. <code>Promise.allSettled</code> (Chapter 24) reports both without throwing: <samp>fulfilled tea</samp> and <samp>rejected AbortError</samp>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 35: where does each ticket go?">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption soft">The kitchen cheat sheet. When you read async code, ask of every line: where does this put a ticket?</p>
+    <table class="ref-table">
+      <thead><tr><th>You write…</th><th>The ticket goes…</th><th>Runs…</th></tr></thead>
+      <tbody>
+        <tr><td>ordinary code, calling a function (even an <code>async</code> one)</td><td>on the stove, now</td><td>straight away</td></tr>
+        <tr><td><code>process.nextTick(fn)</code> (Node only)</td><td>the sticky note</td><td>as soon as the current code finishes</td></tr>
+        <tr><td><code>.then</code>, <code>.catch</code>, <code>.finally</code>, the rest after <code>await</code>, <code>queueMicrotask(fn)</code></td><td>the VIP spike (microtask queue)</td><td>after the current code; the whole spike is emptied</td></tr>
+        <tr><td><code>setTimeout(fn, ms)</code>, <code>setInterval</code></td><td>the normal spike, once due (timers phase)</td><td>one at a time, VIP spike in between</td></tr>
+        <tr><td>file and network callbacks</td><td>poll phase</td><td>when the operating system says they're ready</td></tr>
+        <tr><td><code>setImmediate(fn)</code> (Node only)</td><td>the check window (check phase)</td><td>right after the poll phase</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: awaits, spikes, phases and cancelling, all mixed</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 36: boss level">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="36"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>For every line: the stove, the sticky note, the VIP spike, the normal spike or the check window? One by one, or all at once? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. Two courses cook in parallel (soup 40 ms, salad 10 ms), music is due at 25 ms, and the napkins are a VIP ticket. Predict every line.", "hint": "First the stove: what do the two calls print before their <code>await</code>? Then the VIP spike. Then sort by time: 10, 25, 40 ms.", "explain": "The stove: each <code>course</code> call prints its order and pauses at its <code>await</code> (<samp>order soup</samp>, <samp>order salad</samp>), then <samp>chat</samp>. VIP spike: <samp>napkins</samp>. At 10 ms: <samp>eat salad</samp>. At 25 ms: <samp>music</samp>. At 40 ms: <samp>eat soup</samp>, and with both courses done, <code>Promise.all</code> lets line 17 print <samp>bill</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.js", "bug": 8, "prompt": "Boss 2. The program should print <samp>plates: [ 'SOUP', 'PIE' ]</samp>. It prints two pending promises instead. Click the line with the bug.", "explain": "Line 8 awaits an <b>array</b>. An array isn't a promise, so <code>await</code> hands it straight back, still full of pending pagers. Fix: <code>await Promise.all(orders.map(...))</code>. <code>Promise.all</code> turns many pagers into one pager for all the results."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.js", "seed": 36, "pin": [1], "prompt": "Boss 3. Each order gets a time-limit signal: if the dish takes longer, give up. Soup (10 ms, limit 50) should be served; stew (80 ms, limit 20) should give up. Put the lines in order.", "explain": "The function opens, then a <code>try</code> around the wait, which receives the signal; the served line must come after the <code>await</code> that produces <code>plate</code>. The catch reads the cause, <samp>TimeoutError</samp>. The two calls run one after another, soup first, as the goal output shows; each <code>AbortSignal.timeout</code> starts its clock when its call is made."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.js", "prompt": "Boss 4. Deliveries arrive one by one from an async generator. Unpack each as it arrives, then collect a fresh round of deliveries into an array, in capitals. Fill the four blanks.", "blanks": [{"line": 1, "text": "async function*"}, {"line": 4, "text": "yield"}, {"line": 8, "text": "for await"}, {"line": 11, "text": "Array.fromAsync"}], "explain": "<code>async function*</code> makes a generator that may <code>await</code>; <code>yield</code> hands out each crate after its delivery delay. <code>for await</code> waits for every crate. <code>Array.fromAsync</code> calls <code>deliveries()</code> again, collects every crate one by one and maps each with <code>toUpperCase</code>."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.js", "columns": ["turn", "label", "queue"], "given": [0], "prompt": "Boss 5. Everything happens inside a file-read callback: a timer, an immediate that writes a sticky note, a promise and a sticky note. Fill in the table.", "explain": "The callback itself logs <samp>R</samp> (poll). Then sticky notes, <samp>N1</samp>, then the VIP spike, <samp>P</samp>. Next phase: check, <samp>I</samp>, which writes a note, and notes run as soon as the current callback ends, so <samp>N2</samp>. Only in the next round does the timer run: <samp>T</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. A page shows a list of 20 products. For each product it loads a picture from a server (independent requests), and the whole list should show as soon as all pictures are in. If the user leaves the page, the downloads should stop. Which plan fits?", "options": [
+    {"t": "Pass one controller's signal to all 20 loads, <code>await Promise.all</code>, <code>abort()</code> on leaving", "correct": true, "why": "Yes. Independent requests wait in parallel (the slowest decides), and one <code>AbortController</code>'s signal can cancel them all at once."},
+    {"t": "Load one at a time: <code>for (const p of products) { await load(p); }</code>, then show the list", "why": "That waits for 20 pictures one after another, and nothing can cancel them."},
+    {"t": "<code>products.forEach(async (p) =&gt; { await load(p); })</code>, then show the list straight away", "why": "<code>forEach</code> never waits, so the list would show before any picture arrived (panel 12)."},
+    {"t": "Load them in a busy loop that checks every millisecond whether all 20 pictures have arrived", "why": "A busy loop blocks the stove: the callbacks that would deliver the pictures could never run (panel 31)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 37: what you learned">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">What you learned in Chapter 25</p>
+    <ul class="recap">
+      <li><b>ASYNC ALWAYS HANDS YOU A PAGER</b>An <code>async</code> function runs now, up to its first <code>await</code>, and returns a promise: <code>return</code> fulfils it, <code>throw</code> rejects it. <code>await</code> unwraps a promise or throws its error, so <code>try</code>/<code>catch</code>/<code>finally</code> work around it. Inside a <code>try</code>, write <code>return await</code>.</li>
+      <li><b>START THEM ALL, THEN AWAIT THEM ALL</b><code>await</code> in a loop is one by one (the delays add up). Starting jobs first and using <code>Promise.all</code> is parallel (the slowest decides). Await in sequence only when a step needs the previous answer. <code>forEach</code> never waits: use <code>for...of</code> or <code>Promise.all(arr.map(…))</code>. Don't mix <code>.then</code> and <code>await</code> in one statement.</li>
+      <li><b>ONE TICKET AT A TIME</b><code>async function*</code> yields values that arrive over time; <code>for await...of</code> waits for each, and <code>Array.fromAsync</code> collects them. Top-level <code>await</code> works only in ES modules.</li>
+      <li><b>EMPTY THE VIP SPIKE, THEN ONE NORMAL TICKET</b>The stove (call stack) finishes, then every microtask (promise callbacks, the rest after <code>await</code>, <code>queueMicrotask</code>), then one timer, and the VIP spike again. <code>await</code> puts the rest of the function at the back of the VIP spike. A 0 ms timer still waits.</li>
+      <li><b>STOVE, NOTE, VIP, TIMERS, CHECK</b>Node adds <code>process.nextTick</code> (before the VIP spike in scripts; after it at an ES module's top level) and <code>setImmediate</code> (the check phase). Phases: timers, pending, poll, check, close. <code>setTimeout(0)</code> versus <code>setImmediate</code> varies in the main script, but inside an I/O callback the immediate always wins.</li>
+      <li><b>NOTHING INTERRUPTS THE STOVE</b>CPU-heavy work blocks every timer and callback: chunk it with <code>setImmediate</code> (or use a worker). Cancel waiting jobs with <code>AbortController</code> and <code>AbortSignal.timeout</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="chef"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The chef says: </span>One stove, two spikes, one rule. Keep each dish short, start the ovens together, and nobody waits long in my restaurant.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 38: next time, catalogs and workbenches">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption soft">Coming up in Chapter 26…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Kit thinks: </span>Today a <code>.cjs</code> file refused my top-level <code>await</code>, and the same puzzle ran differently as <code>.js</code>. Why do JavaScript files come in two kinds? Next time: a city of shops. Some print a <b>catalog</b> in advance (ES modules); others hand you whatever's in the box when you knock (CommonJS). Then the workshop wall: npm, lockfiles, linters, formatters and bundlers.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit thinks about shops with catalogs and a workshop wall full of tools.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 26 · CATALOGS AND WORKBENCHES<br><small style="font: 700 1rem var(--f-bubble)">Modules in depth (ES modules and CommonJS) and the tools on a JavaScript workbench.</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch24.html">← Ch 24 · Triage and Pager Chains</a><a class="next" href="ch26.html">Ch 26 · Catalogs and Workbenches →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: what await really does, and Node's loop in detail</summary>
+    <div class="page-body">
+      <h3>await, unfolded</h3>
+      <p>When an async function reaches <code>await x</code>, the engine turns <code>x</code> into a promise (if it isn't one already), subscribes to it, saves the function's paused state (its local variables and where it stopped), and returns to whoever called it. When that promise settles, a job goes on the microtask queue; running that job puts the function back on the call stack exactly where it stopped, with the value (or the error, thrown at the <code>await</code>). That's why every <code>await</code>, even <code>await null</code>, costs at least one trip through the microtask queue, and why the rest of the function lands <em>behind</em> tickets already waiting (<code>trace_spikes.js</code>). Modern engines take a shortcut when <code>x</code> is already a native promise, so <code>await</code> uses fewer microtask turns than it did before 2019; code shouldn't depend on the exact count.</p>
+      <h3>Why return await matters only inside try</h3>
+      <p>Returning a promise from an async function makes the function's own promise follow it. The function itself has already finished, so its <code>try</code>/<code>catch</code> no longer exists by the time the inner promise rejects. <code>return await p</code> keeps the function paused inside the <code>try</code> until <code>p</code> settles. Outside a <code>try</code>, both forms give the caller the same result. Stack traces also tend to be more complete with <code>await</code>, because V8's "async stack traces" follow awaited calls.</p>
+      <h3>The loop is libuv</h3>
+      <p>Node's event loop is provided by a C library called <b>libuv</b>. Each round runs the phases in order: <b>timers</b> (due <code>setTimeout</code>/<code>setInterval</code> callbacks), <b>pending callbacks</b> (some system callbacks deferred from the previous round, such as certain network errors), <b>idle/prepare</b> (internal), <b>poll</b> (wait for, and run, I/O callbacks; how long it waits depends on the nearest timer and on whether immediates are queued), <b>check</b> (<code>setImmediate</code>) and <b>close callbacks</b> (for example a socket's <code>'close'</code> after <code>destroy()</code>). After every single callback, Node drains the <code>process.nextTick</code> queue and then the microtask queue, repeating until both are empty. When no timers, handles or requests remain, the loop ends and the process exits.</p>
+      <h3>Timers are "at least", never "exactly"</h3>
+      <p><code>setTimeout(fn, ms)</code> means "not before <code>ms</code> milliseconds". Node turns 0 (and anything below 1) into 1. While writing this chapter, an early version of Boss 1 printed <samp>music</samp> and <samp>eat salad</samp> in either order on different runs, though their due times looked 15 ms apart. That run wasn't kept, so this page can't show it, and the cause is unproven. Our best guess: Node measures timers from a loop clock that is only refreshed at certain moments, so timers set at slightly different moments can drift. Whatever the cause, don't rely on near-ties: keep timers well apart, or don't depend on their order at all.</p>
+      <h3>Browsers</h3>
+      <p>Browsers follow the HTML standard's event loop: one task (a timer, a click, a network event), then all microtasks, then possibly a <b>rendering</b> step (style, layout, paint, <code>requestAnimationFrame</code> callbacks), then the next task. There's no <code>process.nextTick</code> and no standard <code>setImmediate</code>. Nested timers deeper than five levels are clamped to at least 4 ms. A long task or a never-ending microtask chain freezes rendering, which is why chunking and workers matter so much in pages.</p>
+      <h3>Why nextTick exists at all</h3>
+      <p><code>process.nextTick</code> is older than promises in Node. Node's guide gives its uses: letting a caller attach event listeners before an event fires, or reporting an error asynchronously but before anything else happens. Recursive <code>nextTick</code> calls can starve I/O just like the endless VIP spike in panel 23, and the guide recommends <code>setImmediate</code> as "easier to reason about".</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Parallel requests.</b> A web page loading a user, their orders and their settings uses <code>Promise.all</code> over three <code>fetch</code> calls; a server does the same with database queries. Many sequential <code>await</code>s in a row are one of the most common reasons an app feels slow.</li>
+        <li><b>Too much parallelism.</b> Starting 10,000 requests at once can overwhelm a server or hit rate limits. Real programs often process a big list in batches of, say, 10 at a time, with a loop around <code>Promise.all</code> or a small library that limits how many run together.</li>
+        <li><b>Async iteration everywhere.</b> Node streams can be read with <code>for await (const chunk of stream)</code>; <code>readline</code> gives the lines of a file the same way; many APIs page through results with async generators. Chapter 27 uses streams.</li>
+        <li><b>Linters catch the classics.</b> ESLint's built-in <code>no-await-in-loop</code> rule flags <code>await</code> inside loops (to make you ask "could these run in parallel?"), and TypeScript-ESLint's <code>no-misused-promises</code> and <code>no-floating-promises</code> catch async callbacks passed to <code>forEach</code> and pagers nobody awaits.</li>
+        <li><b>Cancellation.</b> <code>fetch(url, { signal })</code>, <code>fs.readFile(path, { signal })</code>, <code>timers/promises</code>, event listeners (<code>addEventListener(type, fn, { signal })</code> removes the listener on abort) and test runners all accept signals. <code>AbortSignal.any([a, b])</code> combines several.</li>
+        <li><b>Keeping servers responsive.</b> Node's guide "Don't Block the Event Loop" lists the usual culprits: huge JSON parsing, slow regular expressions, synchronous file APIs (<code>readFileSync</code>) inside request handlers, and heavy crypto. The fixes are chunking, the asynchronous versions of APIs, and worker threads.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"An async function runs in the background."</b> It runs on the same thread, right away, until its first <code>await</code>.</li>
+        <li><b>"<code>await</code> blocks the whole program."</b> It pauses only its own function; the chef cooks other tickets meanwhile.</li>
+        <li><b>"Making a function async makes it faster."</b> Only the waiting can overlap. CPU work takes as long as ever, and blocks just the same.</li>
+        <li><b>"<code>Promise.all</code> runs the jobs in parallel."</b> The jobs started when you called them; <code>all</code> only waits for them together.</li>
+        <li><b>"<code>forEach</code> waits for async callbacks."</b> Never. Neither do <code>filter</code>, <code>some</code> or <code>reduce</code> with async callbacks; they see pending promises.</li>
+        <li><b>"<code>setTimeout(f, 0)</code> runs before <code>Promise.then</code>."</b> Microtasks always go first.</li>
+        <li><b>"0 ms means immediately."</b> At least 1 ms in Node, and only after the stove and the VIP spike.</li>
+        <li><b>"<code>setImmediate</code> runs immediately, and <code>nextTick</code> on the next round."</b> Back to front: <code>nextTick</code> is sooner.</li>
+        <li><b>"<code>setTimeout(0)</code> always beats <code>setImmediate</code>."</b> Not guaranteed in the main script, and always the other way round inside I/O callbacks.</li>
+        <li><b>"<code>nextTick</code> always runs before promises."</b> Not at the top level of an ES module (panel 27).</li>
+        <li><b>"Aborting stops the work."</b> It rejects the waiting and lets well-behaved APIs stop. A function that ignores its signal keeps going.</li>
+        <li><b>"<code>return p</code> and <code>return await p</code> are the same."</b> Not inside <code>try</code>.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. A module folder</h3>
+      <ol>
+        <li>Check <code>node --version</code>. This chapter used v26.13.0, and every program also runs on Node 22. Install the current LTS from nodejs.org (Windows and macOS installers; on Linux, the instructions there or a version manager such as nvm, or fnm on Windows).</li>
+        <li>Make a folder <code>kitchen</code>, open a terminal there (<b>Windows:</b> PowerShell or the VS Code terminal; <b>macOS / Linux:</b> any terminal) and run <code>npm init -y</code> then <code>npm pkg set type=module</code>.</li>
+      </ol>
+      <h3>2. One by one or all at once</h3>
+      <ol>
+        <li>Type <code>kitchen.js</code>, <code>sequential.js</code> and <code>parallel.js</code>. Run each with <code>node sequential.js</code>.</li>
+        <li>Feel the difference: change the delays to 3000, 2000 and 1000 and run them again. One takes about 6 seconds, the other about 3. (This book never prints times, but you can: wrap a run with <code>console.time("dinner")</code> and <code>console.timeEnd("dinner")</code>.)</li>
+      </ol>
+      <h3>3. The race</h3>
+      <ol>
+        <li>Run <code>node race_main.js</code> ten times. On macOS/Linux: <code>for i in 1 2 3 4 5 6 7 8 9 10; do node race_main.js | tr '\n' ' '; echo; done</code>. In PowerShell: <code>1..10 | % { (node race_main.js) -join ' ' }</code>. How often does each order appear on your machine?</li>
+        <li>Delete line 7 of <code>puzzle8.cjs</code> (the onion chopping) and run it several times. Then rename it <code>puzzle8.js</code> and compare.</li>
+      </ol>
+      <h3>4. Block the stove</h3>
+      <ol>
+        <li>In <code>busy.js</code>, add a <code>setInterval(() =&gt; console.log("tick"), 10)</code> at the top and a <code>clearInterval</code> at the end. How many ticks appear while chopping? (None.)</li>
+        <li>Remove the <code>if</code> from <code>vip_refill.js</code>. The program never ends and the timer never runs: stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+      </ol>
+      <h3>5. In a browser</h3>
+      <ol>
+        <li>Open the console (<kbd>F12</kbd>; macOS: <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>J</kbd> in Chrome) and paste <code>two_spikes.js</code>. Same order: the two spikes are standard. Then try <code>typeof setImmediate</code> and <code>typeof process</code>: both are <samp>"undefined"</samp> in browsers.</li>
+        <li>Paste <code>for (let i = 0; i &lt; 3e9; i++) {}</code> and try to scroll or click on the page while it runs: the tab freezes until the loop ends.</li>
+      </ol>
+      <p><b>About this book's runs:</b> every capture used <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. No program here prints a time, date or duration: delays are fixed and at least 5 ms apart in any race, and orders are what the pages check. <code>race_main.js</code> is the one program whose order varies; it is marked as one possible run and is never used as an answer.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every program was also run on Node 22.23.4. All orders, outputs and exit codes are the same, including <code>Array.fromAsync</code>, <code>AbortSignal.timeout</code> and the ES module versus CommonJS difference in <code>puzzle8</code>. Four runs differ only in Node-internal lines of their crash reports (<code>node:internal/…</code> line numbers and the version footer): <code>await_reject.js</code>, <code>not_async_iterable.js</code>, <code>spot_return_await.js</code> and <code>await_cjs.cjs</code>.</p>
+      <p>History: <code>async</code>/<code>await</code> arrived in ES2017, async generators and <code>for await</code> in ES2018, top-level <code>await</code> in ES2022, and <code>Array.fromAsync</code> was standardised for ES2026 after shipping in browsers in 2024. <code>queueMicrotask</code> has been in Node since v11; since Node 11, Node also empties microtasks after every single timer callback, as browsers do (older versions ran all due timers first).</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>thread</dt><dd>One line of work a computer follows, step by step. JavaScript runs your code on one.</dd>
+        <dt>call stack</dt><dd>The functions running right now, each waiting for the one it called. The comic's stove.</dd>
+        <dt><code>async</code> function</dt><dd>A function that always returns a promise; it may use <code>await</code> inside.</dd>
+        <dt><code>await</code></dt><dd>Pauses the async function until a promise settles; gives its value, or throws its error.</dd>
+        <dt><code>return await</code></dt><dd>Waiting for a promise before returning it, so a surrounding <code>try</code> can catch its rejection.</dd>
+        <dt>sequential</dt><dd>One after another: each job starts when the previous one is done.</dd>
+        <dt>parallel (waiting)</dt><dd>Several jobs started together, so their waiting overlaps.</dd>
+        <dt>async generator</dt><dd><code>async function*</code>: yields values that may take time to arrive.</dd>
+        <dt><code>for await...of</code></dt><dd>A loop that awaits each value from an async iterable (or an array of promises).</dd>
+        <dt>async iterable</dt><dd>Something <code>for await</code> can loop over, such as an async generator or a stream.</dd>
+        <dt><code>Symbol.asyncIterator</code></dt><dd>The key of the method <code>for await</code> looks for: the async twin of <code>Symbol.iterator</code>.</dd>
+        <dt><code>Array.fromAsync</code></dt><dd>Collects every value of an async iterable into an array, one by one.</dd>
+        <dt>top-level <code>await</code></dt><dd><code>await</code> outside any function, allowed only in ES modules.</dd>
+        <dt>event loop</dt><dd>The chef's round: run what's on the stove, then the queues, again and again.</dd>
+        <dt>microtask</dt><dd>A small follow-up job: promise callbacks, the rest after <code>await</code>, <code>queueMicrotask</code>. The VIP spike.</dd>
+        <dt>microtask queue</dt><dd>The queue of microtasks, emptied completely after each piece of code.</dd>
+        <dt>task (macrotask)</dt><dd>A larger unit of work, such as a timer callback. The normal spike.</dd>
+        <dt><code>queueMicrotask(fn)</code></dt><dd>Puts <code>fn</code> on the microtask queue directly.</dd>
+        <dt><code>process.nextTick(fn)</code></dt><dd>Node only: runs <code>fn</code> as soon as the current operation finishes. The sticky note.</dd>
+        <dt><code>setImmediate(fn)</code></dt><dd>Node only: runs <code>fn</code> in the check phase, right after poll. The check window.</dd>
+        <dt>phase</dt><dd>One stop in Node's loop: timers, pending callbacks, poll, check, close callbacks.</dd>
+        <dt>poll phase</dt><dd>Where Node waits for and runs file and network callbacks.</dd>
+        <dt>libuv</dt><dd>The C library that provides Node's event loop and talks to the operating system.</dd>
+        <dt>starving the loop</dt><dd>Endless microtasks or sticky notes that never let timers and I/O run.</dd>
+        <dt>CPU-bound</dt><dd>Work that keeps the processor busy, rather than waiting.</dd>
+        <dt>blocking</dt><dd>Keeping the stove busy so long that nothing else can run.</dd>
+        <dt>chunking</dt><dd>Splitting long work into pieces, letting other callbacks run in between.</dd>
+        <dt>worker</dt><dd>A second thread that can run JavaScript alongside the main one.</dd>
+        <dt><code>AbortController</code></dt><dd>A remote control with <code>abort()</code>; its <code>signal</code> is passed to jobs that can be cancelled.</dd>
+        <dt><code>AbortSignal</code></dt><dd>The receiver: <code>aborted</code>, <code>reason</code>, and an <code>"abort"</code> event.</dd>
+        <dt><code>AbortSignal.timeout(ms)</code></dt><dd>A signal that aborts itself after <code>ms</code>, with a <code>TimeoutError</code>.</dd>
+        <dt><code>AbortError</code></dt><dd>The error name for an operation that was cancelled.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>Node.js Learn: <a href="https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick">The Node.js Event Loop</a> (phases, <code>setImmediate</code> versus <code>setTimeout</code>, <code>process.nextTick</code>) and <a href="https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop">Don't Block the Event Loop</a></li>
+        <li>MDN: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function">async function</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await">await</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of">for await...of</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fromAsync">Array.fromAsync()</a></li>
+        <li>MDN: <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide">Using microtasks in JavaScript with queueMicrotask()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController">AbortController</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static">AbortSignal.timeout()</a></li>
+        <li>Node.js API: <a href="https://nodejs.org/api/process.html#processnexttickcallback-args">process.nextTick</a>, <a href="https://nodejs.org/api/timers.html">Timers</a> (including <code>timers/promises</code>)</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://javascript.info/event-loop">javascript.info: Event loop: microtasks and macrotasks</a>, plus its <a href="https://javascript.info/async-iterators-generators">Async iteration and generators</a> lesson</li>
+        <li><a href="https://eloquentjavascript.net/11_async.html">Eloquent JavaScript, chapter 11: Asynchronous Programming</a></li>
+        <li>Philip Roberts, "What the heck is the event loop anyway?" (JSConf EU 2014), a free talk with an animated call stack and queues</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch25</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are ES modules, while <code>.cjs</code> files are CommonJS), with <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. 51 programs were captured (including the helper <code>kitchen.js</code>, which prints nothing on its own), each run twice on Node 26 to confirm identical output, except <code>race_main.js</code>, whose order legitimately varies and which is shown as one possible run. Four differ on Node 22 only in Node-internal stack lines.</p>
+  <p>Async programs are deterministic on purpose: promises settle immediately or after fixed timer delays at least 5 ms apart (the boss's timers 15 ms apart), and nothing prints a time, duration or process id. <code>puzzle8</code> spends 5 ms in a loop so its 0 ms timer is surely due; the page says so where it's shown. One terminal pipes Node's output through <code>sed</code> to replace the process id in a warning; the shown commands include that pipe and the <code>set -o pipefail</code> that keeps Node's own exit code. In terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines are folded into one line by the page's script; the full text is one click away. The two kitchen steppers, Kit's walk through the puzzle, the event-loop map, the timelines and the await machine are teaching models; each checks itself against the real runs and says so. The timelines' millisecond numbers are computed from the delays written in the code, not measured.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): Node.js Learn "The Node.js Event Loop" (the phases; <i>"the order in which the two timers are executed is non-deterministic"</i> in the main module, while within an I/O cycle the immediate is always first; <code>nextTick</code> runs after the current operation, can starve I/O, and <code>setImmediate</code> is recommended), fetched; javascript.info "Event loop: microtasks and macrotasks" (microtasks drained after each macrotask, rendering between tasks, splitting CPU-hungry tasks), fetched; MDN <code>Array.fromAsync()</code> (sequential awaiting, widely available since January 2024) and <code>AbortSignal.timeout()</code> (<code>TimeoutError</code> versus <code>AbortError</code>), fetched. From this book's research map (<code>research/javascript.md</code>, module I15), not re-fetched: javascript.info 11.7–11.8 and 12.2; boot.dev's Event Loop chapter; the Node.js Learn "Asynchronous Work" articles; JavaScript: The Definitive Guide 13.3–13.4; roadmap.sh's Event Loop, async/await, setTimeout and setInterval nodes. The ES module versus CommonJS order in <code>puzzle8</code>, the error messages and every other output on this page were found by running them.</p>
+  <p>Kit, the chef, the order spikes, the pager, the Professor and the sneak are original characters and drawings made in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

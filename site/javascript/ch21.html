@@ -1,0 +1,1329 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bricks and Tray Stacks</title>
+<meta name="description" content="Chapter 21 of the Pip &amp; Friends JavaScript book, a comic course: functional patterns and recursion. Pure functions are building bricks that always click the same way: side effects, higher-order functions, Array.from with a recipe, the hidden mutation bug (sort inside a function), the copy-making methods toSorted, toReversed, toSpliced and with, flat and flatMap, reduce patterns (count, index, group) and the empty-array TypeError, pipelines and compose as a belt of machines, currying and partial application, a debounce preview, declarative versus imperative. Then recursion as a stack of cafeteria trays: base case and recursive case, the call stack drawn for factorial(4), Maximum call stack size exceeded, skipping the base case, recursing on the same input, forgetting to return, recursion on nested data (deep flatten, tree sums, walking JSON), strings, memoization, loops versus recursion and a cartoon of tail calls.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch21.css">
+<script defer src="../data/js-ch21.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch21.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch20.html">&larr; Ch 20</a><span aria-current="page">Ch 21 of 29</span><a href="ch22.html">Ch 22 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 21</p>
+    <h1 id="cover-h">BRICKS AND TRAY STACKS</h1>
+    <div class="cover21">
+      <svg class="char bk" data-char="toybrick" data-label="price(2, 5)" data-gives="35"></svg>
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char tr" data-char="traystack" data-items="factorial(1),factorial(2),factorial(3),factorial(4)" data-note="eating"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit, the stage manager in a pink hoodie and headset, waves hello. On one side is a yellow building brick with four studs on top. Its side says price(2, 5), and a tag under it says arrow 35. On the other side is a stack of four cafeteria trays on a counter labelled CALL STACK. From the top down the trays say factorial(1), factorial(2), factorial(3) and factorial(4). A sticky note beside the top tray says "eating".</p>
+    <p class="caption blurb">Functions have been machines since Chapter 7. Today you learn two ways to build big things out of them. First, <b>bricks</b>: functions that always give the same answer for the same input and never mess with anything else. Bricks like that click together into <b>pipelines</b>, rows of machines on a belt. You'll meet the copy-making array methods that keep you from changing someone else's data by accident. Then, <b>trays</b>: a function that calls <i>itself</i>, stacking one tray per call, until it reaches the bottom of the problem. About 140 minutes, with 27 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Bricks that always click</a></li>
+      <li><a href="#part-2">Copy, don't change</a></li>
+      <li><a href="#part-3">The bucket on the belt: reduce patterns</a></li>
+      <li><a href="#part-4">Machines on a belt</a></li>
+      <li><a href="#part-5">A stack of trays: recursion</a></li>
+      <li><a href="#part-6">Boxes inside boxes</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · BRICKS THAT ALWAYS CLICK<small>Pure functions, side effects and functions that handle functions</small></h2>
+
+
+  <section class="panel pop" data-play aria-label="Panel 1: the price that kept changing">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="WAIT, WHAT?" data-seed="21"></svg>
+    <p class="caption">The box office. Kit asks the ticket script for the price of two seats. Then asks again, to double-check. Then a third time. Three different answers.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>Same question, same two seats. Thirty-five, then thirty, then twenty-five? If I ask a fourth time, do we start paying the audience?</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>A function should be like a building brick. Every time you press it onto the board, it clicks the same way.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, worried, shrugs with her mouth open. A burst says WAIT, WHAT?</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 2: a function with a secret">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">Here is the ticket script. Read it and spot the secret before you look at the screen.</p>
+    <span class="file-tab">impure.js</span>
+    <pre class="code" data-src="impure.js"></pre>
+    <pre class="term" data-run="impure.js" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b> makes <code>discount</code> <i>outside</i> the function, at the top of the file.</span></li>
+      <li><span><b>Line 4</b> is the secret: every call <b>changes</b> that outside variable, adding 5. The function quietly reaches out of its own room (Chapter 8) and rearranges the furniture.</span></li>
+      <li><span>So the answer depends on <b>how many times you've asked before</b>: 40 − 5 = <samp>35</samp>, then 40 − 10 = <samp>30</samp>, then 40 − 15 = <samp>25</samp>. Nothing in <code>price(2)</code> tells you that.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel sketch" aria-label="Panel 3: pure functions are bricks">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">A <b>pure function</b> is a brick that follows two rules. Break either rule and the brick gets odd: it might click today and wobble tomorrow.</p>
+    <div class="duo">
+      <div class="duo-card ok"><h3>Rule 1<small>same in, same out</small></h3><p>Give it the same arguments and it gives back the same answer. Every time, no matter what happened before. Its answer depends <b>only</b> on what you hand it.</p></div>
+      <div class="duo-card cool"><h3>Rule 2<small>no side effects</small></h3><p>It doesn't change anything outside itself. A <b>side effect</b> is anything a function does besides handing back its answer: changing an outside variable, changing an object or array it was given, printing, saving a file.</p></div>
+    </div>
+    <div class="bricks21">
+      <figure><svg class="char" data-char="toybrick" data-label="price(2, 5)" data-gives="35" data-color="mint"></svg><figcaption>Pure: <code>price(2, 5)</code> is 35 today, tomorrow and forever.</figcaption></figure>
+      <figure><svg class="char" data-char="toybrick" data-label="Math.max(3, 9)" data-gives="9" data-color="sky"></svg><figcaption>Pure: built-ins like <code>Math.max</code> are bricks too.</figcaption></figure>
+      <figure class="odd"><svg class="char" data-char="toybrick" data-label="price(2)" data-gives="35? 30? 25?" data-color="pink"></svg><figcaption>Not pure: <code>impure.js</code>'s <code>price(2)</code> depends on a hidden counter.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: three building bricks. A mint brick says price(2, 5) with a tag saying 35. A sky-blue brick says Math.max(3, 9) with a tag saying 9. A pink brick in a dashed frame says price(2) with a tag saying 35? 30? 25?</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>"Pure" doesn't mean clean or good. It's a technical word: same in, same out, and hands off everything else.</p></div>
+    </div>
+    <p class="catch">SAME IN, SAME OUT</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 4: the brick version">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">The fix: pass the discount <b>in</b> as an argument instead of keeping it outside. Now everything the answer depends on is in the brackets.</p>
+    <span class="file-tab">pure.js</span>
+    <pre class="code" data-src="pure.js"></pre>
+    <pre class="term" data-run="pure.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 5 and 6</b> ask the same question twice and get <samp>35</samp> twice. <b>Line 7</b> asks a different question (discount 10) and gets a different answer, <samp>30</samp>. That's allowed: different in, different out.</span></li>
+      <li><span>You can now <b>test</b> it with one line, reason about it without reading the rest of the file, and call it in any order. Nothing else in the program can change what it does.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-pure-m" id="ex-pure"></div>
+  <script type="application/json" id="ex-pure-m">{"q": "Which of these functions is <b>pure</b>? (<code>total</code> and <code>list</code> are made outside the function.)", "options": [
+    {"t": "<code>(a, b) =&gt; a * b + 1</code>", "correct": true, "why": "Yes. The answer depends only on <code>a</code> and <code>b</code>, and nothing outside is touched. Same in, same out."},
+    {"t": "<code>(x) =&gt; { total += x; return total; }</code>", "why": "It changes the outside variable <code>total</code> (a side effect), and its answer depends on every earlier call, like <code>impure.js</code>."},
+    {"t": "<code>(name) =&gt; { list.push(name); return list; }</code>", "why": "<code>push</code> changes an array that lives outside the function. That's a side effect."},
+    {"t": "<code>() =&gt; Math.random()</code>", "why": "No arguments, and a different answer every call. Same in (nothing), different out, so it breaks rule 1."},
+    {"t": "<code>(name) =&gt; console.log(name)</code>", "why": "Printing is a side effect: it changes what's on the screen. (It also hands back <code>undefined</code>, not an answer.)"}]}</script>
+
+
+  <section class="panel clean" aria-label="Panel 5: changing the caller's array">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">The sneakiest side effect: changing an array or object <b>you were handed</b>. Chapter 10 showed that objects travel by arrow, not by copy. So a function that changes its argument changes the caller's thing too.</p>
+    <span class="file-tab">effects.js</span>
+    <pre class="code" data-src="effects.js"></pre>
+    <pre class="term" data-run="effects.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4:</b> <code>addActor</code> pushes into <code>list</code>, which is an arrow to the very same array as <code>cast</code>. Line 12 shows the damage: <code>cast</code> now holds <samp>Cy</samp>. The function changed its caller's array.</span></li>
+      <li><span><b>Line 9:</b> <code>withActor</code> builds a <b>new</b> array with spreading (Chapter 11): everything in <code>list</code>, then the new name. Line 14: <code>bigger</code> has Di, and <code>cast</code> is untouched. Hand back a new thing; leave the old one alone.</span></li>
+    </ol>
+    <div class="duo">
+      <div class="duo-card warn"><h3>addActor<small>changes the original</small></h3><p>Handy, but anyone else holding <code>cast</code> gets a surprise.</p></div>
+      <div class="duo-card ok"><h3>withActor<small>makes a copy</small></h3><p>A brick: same list in, same new list out, original safe.</p></div>
+    </div>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>Side effects aren't evil. A show needs lights, sound and printouts! The trick is to keep them at the <b>edges</b>: pure bricks in the middle do the thinking, and a few clearly named functions do the printing and saving.</p></div>
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-effect-m" id="ex-effect"></div>
+  <script type="application/json" id="ex-effect-m">{"program": "predict_effect.js", "prompt": "<code>double</code> always hands back the same answer for the same number. But is it pure? Predict the one line it prints.", "hint": "Are <code>a</code> and <code>b</code> the same? How many times did line 4 run?", "explain": "Both calls hand back 8, so <code>a === b</code> is <samp>true</samp>: rule 1 holds. But each call also bumps <code>calls</code> on line 4, so it's <samp>2</samp> afterwards. Changing an outside variable is a side effect, so <code>double</code> breaks rule 2 and isn't pure, even though its answers never change."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 6: functions that handle functions">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">Bricks get really useful when functions handle <b>other functions</b>. A <b>higher-order function</b> takes a function as an argument, or hands one back, or both. You've used them since Chapter 9: <code>map</code>, <code>filter</code> and <code>reduce</code> all take a function.</p>
+    <span class="file-tab">hof.js</span>
+    <pre class="code" data-src="hof.js"></pre>
+    <pre class="term" data-run="hof.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 1 to 3:</b> <code>twice</code> <b>takes</b> a function, <code>fn</code>, and runs it on the value, then on the result. It doesn't know or care what <code>fn</code> does.</span></li>
+      <li><span><b>Lines 5 to 7:</b> <code>makeAdder</code> <b>hands back</b> a brand-new function. That new function remembers <code>amount</code> in its backpack (Chapter 17's closures). <b>Line 9</b> makes one that adds 10.</span></li>
+      <li><span><b>Line 10:</b> 1 + 10 + 10 = <samp>21</samp>. <b>Line 11</b> hands the same brick to <code>map</code>: <samp>[ 11, 12, 13 ]</samp>. <b>Line 12</b> gives <code>twice</code> a different function, written on the spot: <samp>Go!!</samp>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>In JavaScript a function is a value, like a number or a string. You can put it in a variable, pass it along, or hand it back. That's what people mean when they say functions are "first-class".</p></div>
+    </div>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 7: Array.from with a recipe">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">A handy higher-order tool: <code>Array.from({ length: n }, fn)</code> builds an array of <code>n</code> items by calling your function once per slot. The <code>{ length: 5 }</code> is a pretend array with five empty slots, and <code>fn</code> is the recipe for each one.</p>
+    <span class="file-tab">from.js</span>
+    <pre class="code" data-src="from.js"></pre>
+    <pre class="term" data-run="from.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1:</b> the recipe gets two arguments: the slot's value (always <code>undefined</code> here, so we name it <code>_</code>, a common "I don't need this one" name) and its index <code>i</code>. 0 + 1 up to 4 + 1: <samp>[ 1, 2, 3, 4, 5 ]</samp>.</span></li>
+      <li><span><b>Line 4:</b> <code>"ABC"[i]</code> picks one letter per row: <samp>Row A</samp>, <samp>Row B</samp>, <samp>Row C</samp>.</span></li>
+      <li><span><b>Lines 7 to 9:</b> the recipe runs <b>once per row</b>, so each row is its own new array. Marking <code>grid[0][0]</code> changes only row 0.</span></li>
+      <li><span><b>Lines 11 to 13, the trap:</b> <code>fill</code> puts the <b>same</b> array into both slots (two arrows, one array). Marking row 0 marks "both" rows, because there's only one. A recipe makes fresh things; <code>fill</code> copies one arrow.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-from-m" id="ex-from"></div>
+  <script type="application/json" id="ex-from-m">{"program": "fill_from.js", "prompt": "Build <samp>[ 0, 10, 20, 30 ]</samp> with <code>Array.from</code> and a recipe. Fill in the two blanks.", "blanks": [{"line": 1, "text": "length"}, {"line": 1, "text": "i * 10", "accept": ["10 * i", "i*10", "10*i"]}], "explain": "<code>{ length: 4 }</code> asks for four slots. The recipe gets each slot's value (ignored, <code>_</code>) and its index <code>i</code>: 0, 1, 2, 3. Times ten gives <samp>[ 0, 10, 20, 30 ]</samp>."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · COPY, DON'T CHANGE<small>The hidden mutation bug, toSorted, toReversed, toSpliced, with, flat and flatMap</small></h2>
+
+
+  <section class="panel pop" aria-label="Panel 8: the sign-up list got scrambled">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="SCRAMBLED!" data-seed="8"></svg>
+    <p class="caption">Kit keeps the audition scores in sign-up order, so she can call people in the order they arrived. She writes a little helper to find the top three. It works. Then she calls the first person on the list… and it's the wrong one.</p>
+    <span class="file-tab">hidden.js</span>
+    <pre class="code" data-src="hidden.js"></pre>
+    <pre class="term" data-run="hidden.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. Line 6 asked for the top three and got them. Line 7 asked for the sign-up list and got… the <b>sorted</b> list. <samp>40</samp> was first. Now <samp>95</samp> is. No error anywhere.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak, a sly little critter that stands for bugs that don't crash, grins. A burst says SCRAMBLED!</p>
+  </section>
+
+
+  <section class="panel clean tracer" aria-label="Panel 9: memory tracer, the hidden mutation" data-tracer="tr-hidden" id="tr-hidden-box">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Step through <code>hidden.js</code>. Watch the arrow from <code>scores</code>: it isn't a copy of the list, it's a second arrow to the <b>same</b> array. Then watch what <code>sort</code> does to that array.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-hidden-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-hidden">{"program": "hidden.js", "steps": [
+      {"line": 5, "note": "Node files the function <code>topThree</code> away before running anything (function declarations are ready from the start, Chapter 7). No array exists yet.", "output": [], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}}},
+      {"line": 6, "note": "Line 5 builds array A1 in sign-up order, and <code>signups</code> gets an arrow to it.", "output": [], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1", "items": [{"val": "40"}, {"val": "95"}, {"val": "70"}, {"val": "85"}, {"val": "60"}]}}, "changed": ["signups"]},
+      {"line": 2, "note": "Line 6 calls <code>topThree(signups)</code>. A new frame opens, and its parameter <code>scores</code> gets the <b>same arrow</b> as <code>signups</code>. The array is not copied. Two names, one array.", "output": [], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}, {"name": "topThree(scores)", "vars": [{"n": "scores", "ref": "A1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1", "items": [{"val": "40"}, {"val": "95"}, {"val": "70"}, {"val": "85"}, {"val": "60"}]}}, "changed": ["scores"]},
+      {"line": 2, "note": "Line 2, first half: <code>scores.sort(…)</code> rearranges <b>A1 itself</b>, biggest first. There is no new array. <code>signups</code> points at A1 too, so the caller's list has just changed.", "output": [], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}, {"name": "topThree(scores)", "vars": [{"n": "scores", "ref": "A1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1 · sorted in place!", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}, {"val": "60"}, {"val": "40"}]}}, "changed": ["scores", "signups"]},
+      {"line": 6, "note": "Line 2, second half: <code>slice(0, 3)</code> copies the first three into a <b>new</b> array, A2, and the function returns it.", "output": [], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}, {"name": "topThree(scores)", "vars": [{"n": "scores", "ref": "A1"}, {"n": "return", "ref": "A2"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1 · sorted in place!", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}, {"val": "60"}, {"val": "40"}]}, "A2": {"kind": "array", "label": "array A2 · new", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}]}}, "changed": ["return"]},
+      {"line": 7, "note": "The frame closes, and line 6 prints A2. Nobody holds A2 any more, so it fades: it's garbage now.", "output": ["[ 95, 85, 70 ]"], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1 · sorted in place!", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}, {"val": "60"}, {"val": "40"}]}, "A2": {"kind": "array", "label": "array A2 · new", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}]}}},
+      {"line": null, "note": "Line 7 prints <code>signups</code>: the arrow leads to A1, which <code>sort</code> rearranged inside the function. The sign-up order is gone, and nothing crashed.", "output": ["[ 95, 85, 70 ]", "[ 95, 85, 70, 60, 40 ]"], "frames": [{"name": "hidden.js (module)", "vars": [{"n": "topThree", "ref": "F1"}, {"n": "signups", "ref": "A1"}]}], "objects": {"F1": {"kind": "function", "value": "topThree"}, "A1": {"kind": "array", "label": "array A1 · sorted in place!", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}, {"val": "60"}, {"val": "40"}]}, "A2": {"kind": "array", "label": "array A2 · new", "items": [{"val": "95"}, {"val": "85"}, {"val": "70"}]}}}]}</script>
+    <p class="catch">SORT CHANGES THE ORIGINAL</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 10: toSorted makes a copy">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">Chapter 9 met the fix: <code>toSorted</code>. It takes the same comparing function as <code>sort</code>, but hands back a <b>new</b>, sorted array and leaves the original exactly as it was. One word changes, on line 2.</p>
+    <span class="file-tab">fixed.js</span>
+    <pre class="code" data-src="fixed.js"></pre>
+    <pre class="term" data-run="fixed.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6:</b> the same top three, <samp>[ 95, 85, 70 ]</samp>.</span></li>
+      <li><span><b>Line 7:</b> the sign-up list is safe, <samp>[ 40, 95, 70, 85, 60 ]</samp>. <code>topThree</code> is a brick now: it hands back an answer and touches nothing else.</span></li>
+      <li><span>Before <code>toSorted</code> arrived (ES2023), people wrote <code>[...scores].sort(…)</code> or <code>scores.slice().sort(…)</code>: copy first, then sort the copy. You'll see that in older code. It does the same job.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>A function that's handed an array is a guest in someone else's house. Look, copy, rearrange the copy. Don't move their furniture.</p></div>
+    </div>
+    <p class="catch">COPY, DON'T CHANGE</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-sortbug-m" id="ex-sortbug"></div>
+  <script type="application/json" id="ex-sortbug-m">{"program": "spot_sort.js", "bug": 2, "prompt": "<code>cheapest</code> finds the lowest price correctly. But afterwards the menu's first price is 4, not 9. Click the line with the bug.", "explain": "Line 2 calls <code>prices.sort(…)</code>, which rearranges the caller's <code>menu</code> array in place: <code>prices</code> and <code>menu</code> are two arrows to one array. <code>sorted</code> is that same array too. Use <code>prices.toSorted((a, b) =&gt; a - b)</code> and the menu keeps its order. (Even simpler: <code>Math.min(...prices)</code> finds the lowest without sorting at all.)"}</script>
+
+
+  <section class="panel sketch" aria-label="Panel 11: four pairs of twins">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">ES2023 gave four old array methods a careful twin. The old one changes the array it's called on. The twin, whose name starts with <code>to</code> or is <code>with</code>, makes a changed <b>copy</b>.</p>
+    <table class="ref-table copy21">
+      <thead><tr><th scope="col">Job</th><th scope="col">Changes the original</th><th scope="col">Makes a copy</th></tr></thead>
+      <tbody>
+        <tr><td>put in order</td><td class="chg"><code>a.sort(fn)</code><small>✗ changes <code>a</code>, hands back <code>a</code></small></td><td class="cpy"><code>a.toSorted(fn)</code><small>✓ new array</small></td></tr>
+        <tr><td>flip</td><td class="chg"><code>a.reverse()</code><small>✗ changes <code>a</code>, hands back <code>a</code></small></td><td class="cpy"><code>a.toReversed()</code><small>✓ new array</small></td></tr>
+        <tr><td>cut out / put in</td><td class="chg"><code>a.splice(start, count, …items)</code><small>✗ changes <code>a</code>, hands back the <b>removed</b> items</small></td><td class="cpy"><code>a.toSpliced(start, count, …items)</code><small>✓ new array with the change</small></td></tr>
+        <tr><td>replace one item</td><td class="chg"><code>a[i] = value</code><small>✗ changes <code>a</code></small></td><td class="cpy"><code>a.with(i, value)</code><small>✓ new array with one item swapped</small></td></tr>
+      </tbody>
+    </table>
+    <p>Some methods never change the original and always did: <code>map</code>, <code>filter</code>, <code>slice</code>, <code>concat</code>, <code>flat</code>, <code>flatMap</code>. Others always change it: <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>fill</code>, <code>copyWithin</code>. When you're unsure, check the docs, or run it and print the original afterwards.</p>
+  </section>
+
+
+  <section class="panel clean machine" aria-label="Panel 12: the copy-or-change machine" data-machine="m-copy">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">Feed the machine the array <code>[30, 10, 20]</code> and a method. It shows what the method hands back, and underneath, what the <b>original</b> looks like afterwards. Every input runs on a fresh copy of <code>[30, 10, 20]</code> in <code>copy_machine.js</code>, where <code>JSON.stringify</code> prints each array on one short line.</p>
+    <span class="file-tab">copy_machine.js</span>
+    <pre class="code" data-src="copy_machine.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-copy">{"label": "copy or change?", "program": "copy_machine.js", "examples": [
+      {"in": "nums.sort((x, y) => x - y)", "out": "[10,20,30]", "outKind": "original now [10,20,30]: CHANGED", "expectLine": "sort gives [10,20,30] · original [10,20,30]", "note": "<code>sort</code> rearranges the array itself and hands back that same array. The original is gone."},
+      {"in": "nums.toSorted((x, y) => x - y)", "out": "[10,20,30]", "outKind": "original still [30,10,20]: safe", "expectLine": "toSorted gives [10,20,30] · original [30,10,20]", "note": "The same answer, in a brand-new array. The original keeps its order."},
+      {"in": "nums.reverse()", "out": "[20,10,30]", "outKind": "original now [20,10,30]: CHANGED", "expectLine": "reverse gives [20,10,30] · original [20,10,30]", "note": "<code>reverse</code> flips the array in place, like <code>sort</code>."},
+      {"in": "nums.toReversed()", "out": "[20,10,30]", "outKind": "original still [30,10,20]: safe", "expectLine": "toReversed gives [20,10,30] · original [30,10,20]", "note": "A flipped copy."},
+      {"in": "nums.splice(1, 1)", "out": "[10]", "outKind": "original now [30,20]: CHANGED", "expectLine": "splice gives [10] · original [30,20]", "note": "Surprise for many people: <code>splice</code> hands back the <b>removed</b> items, <code>[10]</code>, and the original loses them."},
+      {"in": "nums.toSpliced(1, 1)", "out": "[30,20]", "outKind": "original still [30,10,20]: safe", "expectLine": "toSpliced gives [30,20] · original [30,10,20]", "note": "<code>toSpliced</code> hands back the <b>result</b>: the array as it would look after the cut. Same arguments, different answer from <code>splice</code>."},
+      {"in": "nums.with(0, 99)", "out": "[99,10,20]", "outKind": "original still [30,10,20]: safe", "expectLine": "with gives [99,10,20] · original [30,10,20]", "note": "A copy with item 0 swapped for 99. Compare <code>nums[0] = 99</code>, which would change the original."},
+      {"in": "lineup.with(3, \"Di\")", "error": "RangeError: Invalid index : 3", "program": "with_bad.js", "note": "<code>with</code> only <b>replaces</b>; it can't add a new slot at the end. Index 3 doesn't exist in a 3-item array, so it jams. Panel 14 reads this error."},
+      {"in": "frozen.sort()", "error": "TypeError: Cannot assign to read only property '0' of object '[object Array]'", "program": "freeze_sort.js", "note": "<code>freeze_sort.js</code> freezes the array first (Chapter 19). <code>toSorted</code> works fine on it, but <code>sort</code> tries to write into slot 0 and is refused."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-copy-m" id="ex-copy"></div>
+  <script type="application/json" id="ex-copy-m">{"program": "predict_copy.js", "prompt": "One copying method, one changing method. Predict all three lines.", "hint": "Which of <code>toSorted</code> and <code>reverse</code> changes <code>queue</code>? And what does <code>reverse</code> hand back?", "explain": "Line 2 makes a sorted copy, <code>a</code>: <samp>[ 'Ada', 'Bo', 'Cy' ]</samp>, and <code>queue</code> stays as it was. Line 3's <code>reverse</code> flips <code>queue</code> itself: <samp>[ 'Bo', 'Ada', 'Cy' ]</samp>. And it hands back the <b>same</b> array it flipped, so <code>b === queue</code> is <samp>true</samp>. Use <code>toReversed()</code> if you wanted a second array."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 13: toSpliced and with">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">The two newest twins up close. <code>toSpliced(start, count, …newItems)</code> cuts out <code>count</code> items at <code>start</code> and slides in any new ones. <code>with(index, value)</code> swaps one item.</p>
+    <span class="file-tab">copy_more.js</span>
+    <pre class="code" data-src="copy_more.js"></pre>
+    <pre class="term" data-run="copy_more.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> from index 1, cut 2 items (Bo and Cy): <samp>[ 'Ada', 'Di' ]</samp>.</span></li>
+      <li><span><b>Line 3:</b> from index 1, cut 0 items and slide in Eve: an insert, <samp>[ 'Ada', 'Eve', 'Bo', 'Cy', 'Di' ]</samp>.</span></li>
+      <li><span><b>Line 4:</b> <code>with</code> accepts negative indexes, counting from the end like <code>at</code> (Chapter 9): -1 is the last item, so Di becomes <samp>Zed</samp>.</span></li>
+      <li><span><b>Line 6:</b> after four changes, the original is still <samp>[ 'Ada', 'Bo', 'Cy', 'Di' ]</samp>. Each line got its own copy.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel pop" aria-label="Panel 14: with can't add a slot">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="NO SLOT!" data-seed="14"></svg>
+    <p class="caption">Kit tries to add a fourth actor with <code>with</code>.</p>
+    <span class="file-tab">with_bad.js</span>
+    <pre class="code" data-src="with_bad.js"></pre>
+    <pre class="term wrap" data-run="with_bad.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>RangeError: Invalid index : 3</samp>. A <b>RangeError</b> means a value is outside the allowed range. (The odd space before the colon is really in V8's message.)</span></li>
+      <li><span><b>Where:</b> <samp>with_bad.js:2</samp>, and the caret sits just after <code>with</code>, at the call's opening bracket. The stack also says <samp>at Array.with</samp>: the complaint came from inside the built-in method.</span></li>
+      <li><span><b>Why:</b> the lineup has slots 0, 1 and 2. <code>with</code> replaces; it never grows the array. Writing <code>lineup[3] = "Di"</code> would quietly add a slot, but <code>with</code> refuses. To add a copy with one more item, use <code>[...lineup, "Di"]</code> or <code>lineup.toSpliced(3, 0, "Di")</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-with-m" id="ex-with"></div>
+  <script type="application/json" id="ex-with-m">{"program": "fill_with.js", "prompt": "Make one copy with seat A2 swapped for <code>\"XX\"</code>, and another with the first seat cut out. The original must not change. Fill in the two method names.", "blanks": [{"line": 2, "text": "with"}, {"line": 3, "text": "toSpliced"}], "explain": "<code>seats.with(1, \"XX\")</code> copies the array with index 1 replaced: <samp>[ 'A1', 'XX', 'A3' ]</samp>. <code>seats.toSpliced(0, 1)</code> copies it with one item cut from index 0: <samp>[ 'A2', 'A3' ]</samp>. And <code>seats</code> is still <samp>[ 'A1', 'A2', 'A3' ]</samp>. With <code>splice</code>, <code>fewer</code> would be the removed item and <code>seats</code> would shrink."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 15: a frozen array as a guard">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption">Want to <b>catch</b> hidden mutations instead of hoping nobody makes one? Freeze the data (Chapter 19). Copying methods still work. Changing methods crash loudly, right at the guilty line.</p>
+    <span class="file-tab">freeze_sort.js</span>
+    <pre class="code" data-src="freeze_sort.js"></pre>
+    <pre class="term wrap" data-run="freeze_sort.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> <code>toSorted</code> only reads the frozen array, so it's happy: <samp>[ 'Ada', 'Bo', 'Cy' ]</samp>.</span></li>
+      <li><span><b>Line 3, the message line first:</b> <samp>TypeError: Cannot assign to read only property '0' of object '[object Array]'</samp>. <code>sort</code> tried to write a new value into slot <code>'0'</code>, and the frozen slot said no. Line 4 never runs.</span></li>
+      <li><span>Some teams freeze their data while developing, just to make hidden mutations crash where they happen. A crash at line 3 beats a scrambled list discovered on opening night.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 16: copying objects with a change">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Objects get the same treatment with spreading (Chapter 11): copy every drawer, then overwrite the ones you want to change. This is called an <b>immutable update</b>. <b>Immutable</b> means "never changed after it's made".</p>
+    <span class="file-tab">update.js</span>
+    <pre class="code" data-src="update.js"></pre>
+    <pre class="term" data-run="update.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> <code>{ ...show, title: "Macbeth" }</code> copies <code>title</code> and <code>cast</code>, then the later <code>title</code> wins. Line 5: the original show is still <samp>Hamlet</samp>.</span></li>
+      <li><span><b>Line 3:</b> to "add" an actor without changing anything, build a new cast array too: <code>[...show.cast, "Bo"]</code>.</span></li>
+      <li><span><b>Line 8:</b> spreading is <b>shallow</b>, like freezing. <code>renamed.cast</code> is the <b>same</b> array as <code>show.cast</code> (<samp>true</samp>): pushing into it would change both. <code>bigger.cast</code> is a new one (<samp>false</samp>). Copy every layer you change.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 17: flat and flatMap">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">Two more copy-makers. <code>flat(depth)</code> unpacks arrays inside the array, one layer by default. <code>flatMap(fn)</code> is <code>map</code> followed by a one-layer <code>flat</code>: perfect when each item turns into <b>several</b> items, or none.</p>
+    <span class="file-tab">flat.js</span>
+    <pre class="code" data-src="flat.js"></pre>
+    <pre class="term" data-run="flat.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> one layer unpacked. <code>["C1", "C2"]</code> was two layers deep, so it's still an array: <samp>[ 'A1', 'A2', 'B1', [ 'C1', 'C2' ] ]</samp>. <b>Line 3:</b> <code>flat(2)</code> goes two layers deep.</span></li>
+      <li><span><b>Line 6:</b> <code>map</code> gives one item per order, and each is an array of two words. <b>Line 7:</b> <code>flatMap</code> flattens those pairs into one list of four words.</span></li>
+      <li><span><b>Line 8:</b> return <code>[]</code> to drop an item, or <code>[n, n]</code> to double it. <code>flatMap</code> can filter and map in one pass: <samp>[ 1, 1, 3, 3 ]</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-flat-m" id="ex-flat"></div>
+  <script type="application/json" id="ex-flat-m">{"program": "predict_flat.js", "prompt": "Predict both lines. Careful with the layers.", "hint": "<code>flat()</code> unpacks one layer only. And <code>flatMap</code>'s function returns a number here, not an array.", "explain": "<code>crates</code> holds two arrays. <code>flat()</code> unpacks one layer: 1, the array <code>[2]</code>, and 3, so <samp>[ 1, [ 2 ], 3 ]</samp>. The <code>[2]</code> was two layers deep and stays an array. <code>flatMap((c) =&gt; c.length)</code> maps each crate to its length, 2 and 1. A plain number has nothing to unpack, so the answer is <samp>[ 2, 1 ]</samp>."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE BUCKET ON THE BELT<small>reduce patterns: count, index, group, and the empty-array crash</small></h2>
+
+
+  <section class="panel sketch" aria-label="Panel 18: three shapes of bucket">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">Chapter 9's <code>reduce</code> walks the belt with a <b>bucket</b>, the <b>accumulator</b>: the running result. At each item, your function gets the bucket and the item and hands back the bucket for the next step. The second argument to <code>reduce</code> is the empty bucket it starts with. Change the starting bucket and you get a different tool.</p>
+    <div class="crates21">
+      <div><h3>A NUMBER</h3><p class="box">start: 0</p><p>Add each item in: totals, sums, the longest, the biggest.</p></div>
+      <div><h3>AN OBJECT OF COUNTS</h3><p class="box">start: {}</p><p>One drawer per kind of item, holding how many: a <b>tally</b>.</p></div>
+      <div><h3>AN OBJECT OF LISTS</h3><p class="box">start: {}</p><p>One drawer per group, holding a list: <b>grouping</b>. Or one drawer per id: an <b>index</b>.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Is changing the bucket inside <code>reduce</code> a side effect? Only inside. The bucket is a brand-new <code>{}</code> that <code>reduce</code> made for this one job, and nobody else holds it. The original array is never touched, so the whole <code>reduce</code> is still a brick.</p></div>
+    </div>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 19: counting votes">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">The cast votes on the snack for the dress rehearsal. One <code>reduce</code> turns a list of votes into a tally.</p>
+    <span class="file-tab">count.js</span>
+    <pre class="code" data-src="count.js"></pre>
+    <pre class="term" data-run="count.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6:</b> the bucket starts as an empty object, <code>{}</code>.</span></li>
+      <li><span><b>Line 4</b> is the whole trick. <code>counts[vote]</code> is the drawer named after this vote. The first time a snack appears, the drawer is missing (<code>undefined</code>), so <code>?? 0</code> (Chapter 6) fills in 0 before adding 1.</span></li>
+      <li><span><b>Line 5</b> hands the bucket on to the next step. Forget it and the next step gets <code>undefined</code> as its bucket, and line 4 crashes with a TypeError.</span></li>
+      <li><span><b>Line 9:</b> the votes list still has all <samp>6</samp> votes. Nothing was taken out of it.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tally-m" id="ex-tally"></div>
+  <script type="application/json" id="ex-tally-m">{"program": "trace_tally.js", "columns": ["vote", "tea", "cake"], "given": [0], "prompt": "Five votes, one row per step. After each vote is counted, the program prints the vote and the tea and cake drawers (0 if a drawer doesn't exist yet). Fill in the counts.", "explain": "The bucket starts empty. tea: tea is 1, cake is still missing, so 0. cake: 1 and 1. Then two more teas: 2 1, then 3 1. The last cake: 3 2. The same bucket travels all the way along the belt and fills up."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 20: an index and groups">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Two more bucket shapes. An <b>index</b> files each item in a drawer named after its id, so you can find it in one step instead of searching. <b>Grouping</b> files items into lists by some property.</p>
+    <span class="file-tab">index.js</span>
+    <pre class="code wrap" data-src="index.js"></pre>
+    <pre class="term" data-run="index.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 7 to 10:</b> one drawer per actor, named by <code>id</code>. Line 11 prints the index and then finds actor 9 straight away: <samp>Cy</samp>. Notice the drawers print as <samp>'3'</samp>, <samp>'7'</samp>, <samp>'9'</samp>: number-like keys are listed in number order, not insertion order (Chapter 19).</span></li>
+      <li><span><b>Lines 13 to 17:</b> the first time a role appears, line 14 makes an empty list for it. Line 15 adds the name to that role's list.</span></li>
+      <li><span><b>Line 19:</b> grouping is so common that ES2024 added <code>Object.groupBy</code> (Chapter 19). It builds the same piles; the <samp>chorus</samp> pile has <samp>2</samp> actors. Use the built-in when it fits, and <code>reduce</code> when you need a different bucket.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-index-m" id="ex-index"></div>
+  <script type="application/json" id="ex-index-m">{"program": "parsons_index.js", "seed": 21, "prompt": "Build a stock list: one drawer per prop name, holding its quantity. Put the lines in order.", "explain": "The data comes first. <code>reduce</code> opens with the bucket's name, <code>index</code>, and the current prop, <code>p</code>. Inside, file the quantity under the prop's name, then hand the bucket on. <code>}, {});</code> closes the function and gives the starting bucket. Printing shows <samp>{ mask: 2, cape: 1 }</samp>."}</script>
+
+
+  <section class="panel pop" aria-label="Panel 21: reduce on an empty list">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <svg class="sfx tr" data-sfx="EMPTY BELT!" data-seed="12"></svg>
+    <p class="caption">Chapter 9 warned about this one. Kit adds up the night's sales. On a quiet night there are none.</p>
+    <span class="file-tab">reduce_empty.js</span>
+    <pre class="code" data-src="reduce_empty.js"></pre>
+    <pre class="term wrap" data-run="reduce_empty.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>TypeError: Reduce of empty array with no initial value</samp>. The message names both halves of the problem.</span></li>
+      <li><span><b>The footprints:</b> it happened <samp>at Array.reduce</samp>, called from <samp>total</samp> at <samp>reduce_empty.js:2</samp>, which was called from line 6. Line 5 worked: <samp>15</samp>.</span></li>
+      <li><span><b>Why:</b> without a starting bucket, <code>reduce</code> uses the first item as the bucket. An empty list has no first item, so there's nothing to start with.</span></li>
+    </ol>
+    <p>The fix is one argument: always give a starting bucket.</p>
+    <span class="file-tab">reduce_safe.js</span>
+    <pre class="code" data-src="reduce_safe.js"></pre>
+    <pre class="term" data-run="reduce_safe.js"></pre>
+    <p>With <code>, 0</code> on line 2, an empty list adds up to <samp>0</samp>. Line 7 shows the other odd case: one item and no starting bucket. The callback never runs at all, and <code>reduce</code> just hands back the item, <samp>42</samp>.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-empty-m" id="ex-empty"></div>
+  <script type="application/json" id="ex-empty-m">{"program": "predict_empty.js", "expect": "error", "answer": "TypeError", "ask": "Line 3 prints <samp>minutes: 0</samp>. Then line 4 runs. Which kind of error ends the program? Type just its name.", "explain": "Line 2 gives a starting bucket, <code>0</code>, so an empty list is fine: <samp>minutes: 0</samp>. Line 4 has no starting bucket, and there's no first item to use instead: <samp>TypeError: Reduce of empty array with no initial value</samp>. Line 5 never runs. A good starting bucket for \"the biggest\" is <code>-Infinity</code>, or check <code>late.length</code> first."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 22: too clever to debug">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption">Higher-order functions chain beautifully. They can also chain into a knot. Both programs answer "which night sold the most?" Which would you rather fix at midnight?</p>
+    <div class="two-files">
+      <div><span class="file-tab">clever.js</span><pre class="code wrap" data-src="clever.js"></pre><pre class="term" data-run="clever.js"></pre></div>
+      <div><span class="file-tab">readable.js</span><pre class="code" data-src="readable.js"></pre><pre class="term" data-run="readable.js"></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b><code>clever.js</code></b> crams filtering, grouping, spreading, sorting and two indexes into one line. It works: <samp>Fri</samp>. But if it printed the wrong night, where would you put a <code>console.log</code>? There's nowhere to stand.</span></li>
+      <li><span><b><code>readable.js</code></b> gives every step a <b>name</b>: <code>sold</code>, <code>totals</code>, <code>ranked</code>. You can print any of them (line 9 prints <code>totals</code>: <samp>{ Fri: 45, Sat: 35 }</samp>), and the names explain the plan. It even uses a plain loop for the grouping, because that was clearest.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>Short isn't the goal. Clear is. If a chain needs a comment to explain it, give the middle steps names instead.</p></div>
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="pointL"></svg>
+    </div>
+    <p class="catch">NAME THE STEPS</p>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · MACHINES ON A BELT<small>Pipelines, compose, currying, partial application, a debounce preview, declarative code</small></h2>
+
+
+  <section class="panel sketch" data-play aria-label="Panel 23: a row of machines on a belt">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption soft">Kit needs web addresses for each show, like <code>opening-night-gala</code>. Messy text goes in one end. Three tiny machines each do <b>one job</b>, and a tidy name comes out of the other end. A row of functions where each one's output is the next one's input is called a <b>pipeline</b>.</p>
+    <div class="belt21">
+      <p class="end in">"  Opening Night Gala "</p>
+      <div class="stop"><svg class="char" data-char="machine" data-label="trim"></svg><p>cuts the spaces off both ends</p></div>
+      <div class="stop"><svg class="char" data-char="machine" data-label="lower"></svg><p>makes every letter small</p></div>
+      <div class="stop"><svg class="char" data-char="machine" data-label="dashes"></svg><p>swaps each space for <code>-</code></p></div>
+      <p class="end out">"opening-night-gala"</p>
+    </div>
+    <p class="sr-only">Picture: a conveyor belt. In goes the messy text "  Opening Night Gala " with spaces at both ends. Three machines stand on the belt: trim, which cuts the spaces off both ends; lower, which makes every letter small; and dashes, which swaps each space for a dash. Out of the far end comes "opening-night-gala".</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Each machine is a brick: same text in, same text out, nothing else touched. That's what makes them safe to line up in any combination.</p></div>
+    </div>
+    <p class="catch">ONE MACHINE, ONE JOB</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 24: building the belt in code">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Two ways to run the belt. The first nests the calls. The second builds a <code>pipe</code> function that lines the machines up for you.</p>
+    <span class="file-tab">pipeline.js</span>
+    <pre class="code" data-src="pipeline.js"></pre>
+    <pre class="term" data-run="pipeline.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b> nests the calls: <code>dashes(lower(trim(raw)))</code>. It works, but you read it inside out: the <b>last</b> machine is written <b>first</b>.</span></li>
+      <li><span><b>Line 8</b> is the whole <code>pipe</code>. <code>...fns</code> is a rest parameter (Chapter 7) that collects every machine into an array. <code>pipe</code> hands back a new function waiting for <code>x</code>. When that runs, <code>reduce</code> walks the machines, and the bucket is the <b>value</b> on the belt: each machine gets it and hands back the next version.</span></li>
+      <li><span><b>Line 9</b> builds the belt once, in reading order. Lines 10 and 11 reuse it. Line 11 has two spaces in the middle, so it gets two dashes: <samp>closing--party</samp>. Each machine did exactly its one job. (Fixing that would be a fourth machine.)</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 25: walk Kit along the belt" data-walk="walk-belt">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">Follow one string down the belt. Kit jumps into each machine in turn and back to <code>pipe</code>'s <code>reduce</code> between them.</p>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 150 200" aria-hidden="true"></svg>
+        <p class="card-title">belt.js</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-belt">{"program": "belt.js", "steps": [
+      {"line": 1, "output": [], "mood": "focus", "arms": "point", "note": "Lines 1 and 2 define <code>pipe</code>. It's a function that takes machines and hands back a new function. Nothing runs yet."},
+      {"line": 4, "output": [], "mood": "focus", "arms": "point", "note": "<code>pipe</code> is filed away. Next, the three machines."},
+      {"line": 5, "output": [], "mood": "happy", "arms": "point", "note": "<code>trim</code> is filed away."},
+      {"line": 6, "output": [], "mood": "happy", "arms": "point", "note": "<code>lower</code> is filed away."},
+      {"line": 8, "output": [], "mood": "happy", "arms": "point", "note": "<code>dashes</code> is filed away. Three bricks, one job each."},
+      {"line": 9, "output": [], "mood": "focus", "arms": "point", "note": "Line 8 calls <code>pipe(trim, lower, dashes)</code>. It hands back the inner function <code>(x) =&gt; …</code>, which keeps the list of three machines in its backpack (Chapter 17). Nothing has been trimmed yet: the belt is built, not running."},
+      {"line": 2, "output": [], "mood": "surprised", "mouth": "o", "arms": "point", "note": "Line 9 calls <code>slug(\"  Big Finale \")</code>. Kit jumps into the inner function, whose body is line 2, with <code>x</code> = <code>\"  Big Finale \"</code>. <code>reduce</code> puts <code>x</code> on the belt as the first value."},
+      {"line": 4, "output": [], "mood": "focus", "arms": "point", "note": "<code>reduce</code> calls the first machine with the value: <code>trim(\"  Big Finale \")</code>."},
+      {"line": 2, "output": [], "mood": "happy", "arms": "point", "note": "<code>trim</code> hands back <code>\"Big Finale\"</code>. Back on the belt, that's the new value."},
+      {"line": 5, "output": [], "mood": "focus", "arms": "point", "note": "Second machine: <code>lower(\"Big Finale\")</code>."},
+      {"line": 2, "output": [], "mood": "happy", "arms": "point", "note": "It hands back <code>\"big finale\"</code>."},
+      {"line": 6, "output": [], "mood": "focus", "arms": "point", "note": "Third machine: <code>dashes(\"big finale\")</code>."},
+      {"line": 9, "output": [], "mood": "happy", "arms": "point", "note": "It hands back <code>\"big-finale\"</code>. No machines left, so <code>reduce</code> hands that back, and so does <code>slug</code>."},
+      {"line": null, "output": ["big-finale"], "mood": "happy", "arms": "cheer", "note": "<code>console.log</code> prints <samp>big-finale</samp>. One value, three stops, one job at each."}]}</script>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 26: pipe and compose">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">Many libraries also offer <code>compose</code>. It's <code>pipe</code> backwards: the machines run from <b>right to left</b>, the way nested calls read in maths. <code>reduceRight</code> is <code>reduce</code> starting from the last item.</p>
+    <span class="file-tab">compose.js</span>
+    <pre class="code wrap" data-src="compose.js"></pre>
+    <pre class="term" data-run="compose.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 7:</b> <code>pipe(minusFive, double)(50)</code> builds a belt and runs it straight away (the second pair of brackets calls the function <code>pipe</code> handed back). Left to right: 50 − 5 = 45, then doubled: <samp>90</samp>.</span></li>
+      <li><span><b>Line 8:</b> the same two machines through <code>compose</code> run right to left: 50 doubled is 100, minus 5: <samp>95</samp>. Order matters!</span></li>
+      <li><span><b>Line 9:</b> <code>compose(f, g)(x)</code> is exactly <code>f(g(x))</code>: <samp>true</samp>. <code>compose</code> keeps the nested order; <code>pipe</code> keeps the reading order.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-compose-m" id="ex-compose"></div>
+  <script type="application/json" id="ex-compose-m">{"program": "fill_compose.js", "prompt": "Write <code>compose</code> yourself. It must run the machines from right to left, so <code>cheer(\"go\")</code> repeats the word first and adds the <code>!</code> last. Fill in the two blanks.", "blanks": [{"line": 1, "text": "reduceRight"}, {"line": 1, "text": "fn(value)"}], "explain": "<code>reduceRight</code> starts from the last machine, the one that repeats the text: <code>\"gogo\"</code>. Then it moves left to the <code>!</code> machine: <samp>gogo!</samp>. In each step the machine <code>fn</code> is called with the current <code>value</code>, and its answer becomes the next value. With plain <code>reduce</code> you'd get <code>pipe</code>: the <code>!</code> first, then the repeat, <code>\"go!go!\"</code>."}</script>
+
+
+  <section class="panel pop" aria-label="Panel 27: a string on the belt">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <svg class="sfx tr" data-sfx="CLUNK!" data-seed="27"></svg>
+    <p class="caption">Kit adds a <code>"trim"</code> step in a hurry. Read this one like a detective, because the crash isn't where the mistake is.</p>
+    <span class="file-tab">pipe_bad.js</span>
+    <pre class="code" data-src="pipe_bad.js"></pre>
+    <pre class="term wrap" data-run="pipe_bad.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>TypeError: fn is not a function</samp>. Something called <code>fn</code> was called with brackets, but it isn't a function.</span></li>
+      <li><span><b>The place:</b> <samp>pipe_bad.js:1</samp>, the caret under <code>fn(value)</code>, inside <code>pipe</code>. But <code>pipe</code> is fine! Read down the footprints: <samp>at Array.reduce</samp>, then line 1 again (the inner function), then <samp>pipe_bad.js:5</samp>, where <code>slug</code> was called.</span></li>
+      <li><span><b>The real culprit is line 4:</b> <code>"trim"</code> in quotes is a <b>string</b>, the name of a machine, not the machine. <code>pipe</code> stored it without complaint, and the belt jammed only when it reached it. Pass the function <code>trim</code>, or <code>(s) =&gt; s.trim()</code>.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>With higher-order functions, the crash site and the scene of the mistake can be far apart. Follow the footprints down to <b>your</b> line that handed over the bad piece.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pipe-m" id="ex-pipe"></div>
+  <script type="application/json" id="ex-pipe-m">{"program": "parsons_pipe.js", "seed": 4, "alts": [{"order": [1, 2, 3, 5, 4, 6, 7], "program": "parsons_pipe_alt1.js"}, {"order": [1, 2, 5, 3, 4, 6, 7], "program": "parsons_pipe_alt2.js"}], "prompt": "Build a pipeline from shuffled steps: keep the prices of 8 or more, double them, sort them low to high <b>without changing <code>prices</code></b>, and keep the first two. Put the lines in order.", "explain": "The order of a chain is the order of the belt. Filter first, so 5 never gets doubled: 12, 30 and 8 survive. Doubling gives 24, 60, 16. <code>toSorted</code> gives a sorted copy: 16, 24, 60. <code>slice(0, 2)</code> keeps <samp>[ 16, 24 ]</samp>. Doubling before filtering would have let 5 through as 10. Sorting may come earlier, before the filter or before the doubling, and those orders are accepted too: doubling keeps the numbers in the same order, and filtering a sorted list leaves it sorted. Only <code>slice</code> must come last."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 28: currying and partial application">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">A belt wants machines with <b>one</b> input. What about a function that needs two, like a price per seat <i>and</i> a number of seats? Fix one of them in advance, and you get a one-input machine.</p>
+    <span class="file-tab">curry.js</span>
+    <pre class="code" data-src="curry.js"></pre>
+    <pre class="term" data-run="curry.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 1</b> is a <b>curried</b> function: instead of taking two arguments at once, it takes <code>rate</code> and hands back a function that takes <code>seats</code>. Two arrows, two steps.</span></li>
+      <li><span><b>Lines 3 and 4</b> make two ready-made machines with the rate filled in. Line 5: <samp>16 30</samp>. <b>Line 6</b> feeds both steps at once with two pairs of brackets: <samp>60</samp>. <b>Line 7</b> stops after one step, and Node prints the waiting function: <samp>[Function (anonymous)]</samp>.</span></li>
+      <li><span><b>Lines 9 to 13:</b> <code>greet</code> takes both arguments at once. To fix the first one in advance, wrap it (line 12) or use <code>bind</code> (Chapter 17), whose extra arguments are filled in first (line 13). Fixing some arguments ahead of time is called <b>partial application</b>.</span></li>
+    </ol>
+    <div class="duo">
+      <div class="duo-card hot"><h3>currying<small>one argument per call</small></h3><p><code>price(15)(4)</code>. The function is <b>written</b> to take its inputs one at a time.</p></div>
+      <div class="duo-card cool"><h3>partial application<small>fill some in now</small></h3><p><code>greet.bind(null, "Hi")</code>. Any function, with some arguments fixed and the rest given later.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-curry-m" id="ex-curry"></div>
+  <script type="application/json" id="ex-curry-m">{"program": "predict_curry.js", "prompt": "A curried label maker with three steps. Predict all three lines.", "hint": "Count the arrows: three. How many have been fed on each line?", "explain": "<code>red</code> has the colour fixed; <code>bigRed</code> has colour and size, so line 4 completes the third step: <samp>[red big] SALE</samp>. Line 5 feeds the last two steps in one go: <samp>[red small] hi</samp>. Line 6 feeds only two of the three, so the result is still a waiting function: <samp>function</samp>."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 29: a debounce preview">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">A real-world higher-order function: <b>debounce</b>. It wraps a function so that rapid calls are squashed into one: only the last call runs, once things have been quiet for a while. Think of a search box that waits until you stop typing before searching.</p>
+    <span class="file-tab">debounce.js</span>
+    <pre class="code" data-src="debounce.js"></pre>
+    <pre class="term" data-run="debounce.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 1 to 7:</b> <code>debounce</code> takes a function and hands back a wrapped one. Each call cancels the previous timer (line 4) and starts a new one (line 5), using Chapter 16's <code>setTimeout</code>.</span></li>
+      <li><span><b>Lines 10 to 12</b> call <code>save</code> three times in a row. The first two timers are cancelled before they ring. Line 13 prints straight away; 100 milliseconds later only the last call runs: <samp>Saved: Hello</samp>.</span></li>
+      <li><span>Its cousin <b>throttle</b> lets a call through at most once per time window (say, once every 100 ms while you scroll), instead of waiting for quiet. Both are just functions that hand back functions. Chapter 25 explains the timers underneath, and Chapter 29 builds both properly.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 30: declarative versus imperative">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Two programs, same answer: add 5 bonus points to every score of 60 or more. One spells out <b>how</b>, step by step. The other says <b>what</b> it wants.</p>
+    <div class="two-files side">
+      <div><span class="file-tab">imperative.js</span><pre class="code" data-src="imperative.js"></pre><pre class="term wrap" data-run="imperative.js"></pre></div>
+      <div><span class="file-tab">declarative.js</span><pre class="code" data-src="declarative.js"></pre><pre class="term wrap" data-run="declarative.js"></pre></div>
+    </div>
+    <div class="duo">
+      <div class="duo-card hot"><h3>imperative<small>how, step by step</small></h3><p>Make an empty list, loop, check, push. You manage the list and the loop yourself. Great when the steps are unusual, or you need to stop early.</p></div>
+      <div class="duo-card ok"><h3>declarative<small>what you want</small></h3><p>"Keep the passes, then add 5." <code>filter</code> and <code>map</code> do the looping and the new list. Shorter, and each step has one job.</p></div>
+    </div>
+    <p>Neither is "right". Most real code mixes them: <code>readable.js</code> in panel 22 used <code>filter</code> <i>and</i> a <code>for...of</code> loop. Choose whichever makes the plan easiest to read.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-declare-m" id="ex-declare"></div>
+  <script type="application/json" id="ex-declare-m">{"q": "Which statement about a pipeline of pure functions like <code>scores.filter(…).map(…)</code> is true?", "options": [
+    {"t": "Each step makes a new array; <code>scores</code> is unchanged.", "correct": true, "why": "Yes. <code>filter</code> and <code>map</code> always build new arrays, and nothing along the way touches the original."},
+    {"t": "It always runs faster than a <code>for</code> loop.", "why": "Not necessarily: each step makes a new array, so a single loop can do less work. Pick for clarity first, and measure if speed ever matters (Chapter 29)."},
+    {"t": "<code>map</code> changes each item of <code>scores</code>.", "why": "<code>map</code> never changes the original. It hands back a new array of answers."},
+    {"t": "<code>console.log</code> can't look inside a chain.", "why": "You can: give the middle step a name and print it, or add <code>.map((x) =&gt; { console.log(x); return x; })</code> for a quick peek."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · A STACK OF TRAYS<small>Recursion: base case, recursive case, the call stack, and the three classic mistakes</small></h2>
+
+
+  <section class="panel pop" data-play aria-label="Panel 31: Kit hands the job down">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Countdown to curtain. Kit doesn't want to count all the way herself. So she says one number and hands the rest of the job to a helper, who says one number and hands the rest to another helper… until someone has nothing left to count and just shouts "Curtain up!"</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>Here's the cheeky part: every helper is <b>me</b>, running the same instructions with a smaller number. A function that calls itself is called <b>recursion</b>.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>It only works because the job gets <b>smaller</b> each time, and because there's a moment when it's so small that I can just answer.</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, happy, points forward as she explains.</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 32: the first recursive function">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">The countdown in code. Every recursive function has the same two parts.</p>
+    <span class="file-tab">countdown.js</span>
+    <pre class="code" data-src="countdown.js"></pre>
+    <pre class="term" data-run="countdown.js" data-type></pre>
+    <div class="duo">
+      <div class="duo-card ok"><h3>base case<small>lines 2 to 5</small></h3><p>The problem is so small that the answer is obvious: at 0, shout and stop. <b>No</b> new call. This is the floor that stops the falling.</p></div>
+      <div class="duo-card cool"><h3>recursive case<small>lines 6 and 7</small></h3><p>Do one small piece (say <code>n</code>), then call yourself with a <b>smaller</b> problem, <code>n - 1</code>, which is one step closer to the base case.</p></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Line 10</b> calls <code>countdown(3)</code>. 3 isn't 0, so line 6 prints <samp>3</samp> and line 7 calls <code>countdown(2)</code>, which prints <samp>2</samp> and calls <code>countdown(1)</code>, then <code>countdown(0)</code>.</span></li>
+      <li><span><code>countdown(0)</code> takes the base case: <samp>Curtain up!</samp>, then <code>return</code>. No more calls, so everything winds back up and the program ends.</span></li>
+    </ol>
+    <p class="catch">A FLOOR AND A SMALLER STEP</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 33: factorial, a recursive answer">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption">Recursion that <b>hands back</b> an answer. The <b>factorial</b> of 4, written 4!, is 4 × 3 × 2 × 1 = 24: the number of ways to line up 4 actors for a bow. Notice that 4! is just 4 × 3!. A big factorial is a number times a smaller factorial.</p>
+    <span class="file-tab">factorial.js</span>
+    <pre class="code" data-src="factorial.js"></pre>
+    <pre class="term" data-run="factorial.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b> is the base case: the factorial of 1 is 1. (<code>&lt;=</code> also catches 0, whose factorial is also 1.)</span></li>
+      <li><span><b>Line 3</b> is the recursive case, written just like the sentence above: <code>n * factorial(n - 1)</code>. But to multiply, it needs <code>factorial(n - 1)</code>'s answer first. So it has to <b>wait</b>.</span></li>
+      <li><span>Lines 6 to 8: <samp>24</samp>, <samp>1</samp> (straight to the base case), and 10! = <samp>3628800</samp>, after ten calls.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel sketch" aria-label="Panel 34: the call stack is a stack of trays">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption soft">Who remembers all that waiting? The <b>call stack</b> (Chapter 7). Picture a stack of cafeteria trays: every call puts a fresh tray on top, holding that call's own <code>n</code>. Only the <b>top</b> tray is being eaten from; every tray below is paused, waiting. When a call returns, its tray is taken away and the one beneath carries on.</p>
+    <div class="trays21">
+      <figure class="up"><svg class="char" data-char="traystack" data-items="factorial(1),factorial(2),factorial(3),factorial(4)" data-note="running"></svg><figcaption>Going up: four trays. Only <code>factorial(1)</code> is running. The other three are paused mid-multiply.</figcaption></figure>
+      <figure class="down"><svg class="char" data-char="traystack" data-items="factorial(2),factorial(3),factorial(4)" data-note="2 × 1 = 2"></svg><figcaption>Coming down: <code>factorial(1)</code> returned 1, and its tray left. <code>factorial(2)</code> is on top again and finishes its multiply.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: two stacks of trays. The first, labelled going up, has four trays: factorial(1) on top with a note saying running, then factorial(2), factorial(3) and factorial(4) at the bottom. The second, labelled coming down, has three trays: factorial(2) on top with a note saying 2 times 1 equals 2, then factorial(3) and factorial(4).</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Four calls to <code>factorial</code> means four <code>n</code>s alive at once, each on its own tray. They don't mix up, because each call gets its own frame.</p></div>
+    </div>
+    <p class="catch">ONLY THE TOP TRAY RUNS</p>
+  </section>
+
+
+  <section class="panel clean tracer" aria-label="Panel 35: memory tracer, factorial of 4" data-tracer="tr-fact" id="tr-fact-box">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">Now the real thing. Each frame below the module is one tray; the newest is at the bottom of the picture (the top of the stack). Watch the frames pile up on the way in, and leave one at a time on the way out, each handing back its answer.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-fact-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-fact">{"program": "fact4.js", "steps": [
+      {"line": 6, "note": "Node files <code>factorial</code> away. Only the module's frame exists: no trays yet.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}}},
+      {"line": 2, "note": "Line 6 calls <code>factorial(4)</code>. Tray 1 goes on the stack: a frame with its own <code>n</code> = 4.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}}, "changed": ["n"]},
+      {"line": 3, "note": "Line 2: is 4 &lt;= 1? No, so no return here.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}}},
+      {"line": 2, "note": "Line 3 wants <code>4 * factorial(3)</code>, but it needs <code>factorial(3)</code>'s answer first. <code>factorial(4)</code> pauses mid-multiply, and tray 2 goes on top with <code>n</code> = 3. Two different <code>n</code>s now, one per frame.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}}, "changed": ["n"]},
+      {"line": 2, "note": "3 &lt;= 1? No. Line 3 needs <code>factorial(2)</code>, so <code>factorial(3)</code> pauses too. Tray 3: <code>n</code> = 2.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}]}, {"name": "factorial(2)", "vars": [{"n": "n", "ref": "n2"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}, "n2": {"kind": "number", "value": "2"}}, "changed": ["n"]},
+      {"line": 2, "note": "2 &lt;= 1? No. Tray 4: <code>factorial(1)</code>. Four trays, and only the top one is running; the three below are all paused on line 3.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}]}, {"name": "factorial(2)", "vars": [{"n": "n", "ref": "n2"}]}, {"name": "factorial(1)", "vars": [{"n": "n", "ref": "n1"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}, "n2": {"kind": "number", "value": "2"}, "n1": {"kind": "number", "value": "1"}}, "changed": ["n"]},
+      {"line": 3, "note": "Line 2: 1 &lt;= 1? Yes! The base case returns 1 without calling anything. The floor.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}]}, {"name": "factorial(2)", "vars": [{"n": "n", "ref": "n2"}]}, {"name": "factorial(1)", "vars": [{"n": "n", "ref": "n1"}, {"n": "return", "ref": "r1"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}, "n2": {"kind": "number", "value": "2"}, "n1": {"kind": "number", "value": "1"}, "r1": {"kind": "number", "label": "returned", "value": "1"}}, "changed": ["return"]},
+      {"line": 3, "note": "Tray 4 leaves. <code>factorial(2)</code> resumes on line 3 with the answer it was waiting for: 2 × 1 = 2. It returns 2.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}]}, {"name": "factorial(2)", "vars": [{"n": "n", "ref": "n2"}, {"n": "return", "ref": "r2"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}, "n2": {"kind": "number", "value": "2"}, "r2": {"kind": "number", "label": "returned", "value": "2"}}, "changed": ["return"]},
+      {"line": 3, "note": "Tray 3 leaves. <code>factorial(3)</code> resumes: 3 × 2 = 6. It returns 6.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}]}, {"name": "factorial(3)", "vars": [{"n": "n", "ref": "n3"}, {"n": "return", "ref": "r6"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "n3": {"kind": "number", "value": "3"}, "r6": {"kind": "number", "label": "returned", "value": "6"}}, "changed": ["return"]},
+      {"line": 6, "note": "Tray 2 leaves. <code>factorial(4)</code> resumes: 4 × 6 = 24. It returns 24 to line 6.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}]}, {"name": "factorial(4)", "vars": [{"n": "n", "ref": "n4"}, {"n": "return", "ref": "r24"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "n4": {"kind": "number", "value": "4"}, "r24": {"kind": "number", "label": "returned", "value": "24"}}, "changed": ["return"]},
+      {"line": 7, "note": "The last tray leaves, and line 6 stores the answer in <code>answer</code>. Last in, first out: four trays up, four trays down.", "output": [], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}, {"n": "answer", "ref": "r24"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "r24": {"kind": "number", "label": "returned", "value": "24"}}, "changed": ["answer"]},
+      {"line": null, "note": "Line 7 prints <samp>24</samp>.", "output": ["24"], "frames": [{"name": "fact4.js (module)", "vars": [{"n": "factorial", "ref": "F1"}, {"n": "answer", "ref": "r24"}]}], "objects": {"F1": {"kind": "function", "value": "factorial"}, "r24": {"kind": "number", "label": "returned", "value": "24"}}}]}</script>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 36: a staircase of calls">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">A trick for seeing recursion in any program: pass a <code>depth</code> along, and indent each call's messages by it. The printout becomes a picture of the stack.</p>
+    <span class="file-tab">staircase.js</span>
+    <pre class="code" data-src="staircase.js"></pre>
+    <pre class="term" data-run="staircase.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> two spaces per level of depth. Each call passes <code>depth + 1</code> down (line 8), so deeper calls print further right.</span></li>
+      <li><span><b>Going down the stairs:</b> every call prints <samp>starts</samp> before anyone returns. All four trays are on the stack at once.</span></li>
+      <li><span><b>Coming back up:</b> the <b>last</b> call to start is the <b>first</b> to return. "Last in, first out" is what makes it a stack. Each return line shows the multiply that call was waiting to do: 1, 2, 6, <samp>24</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-sumtrace-m" id="ex-sumtrace"></div>
+  <script type="application/json" id="ex-sumtrace-m">{"program": "trace_sum.js", "columns": ["n", "depth", "returns"], "given": [0], "prompt": "<code>sumTo(3)</code> adds 3 + 2 + 1 + 0 recursively. Each call prints one row <b>just before it returns</b>: its <code>n</code>, its depth and the value it hands back. The rows come out in return order. Fill in the table.", "explain": "The deepest call returns first. <code>sumTo(0)</code> is at depth 4 (the first call was given depth 1) and returns 0. Then <code>sumTo(1)</code> at depth 3 returns 1 + 0 = 1, <code>sumTo(2)</code> at depth 2 returns 2 + 1 = 3, and the first call, depth 1, returns 3 + 3 = 6. Rows print on the way back up the stairs."}</script>
+
+  <div data-ex="fill" data-model="ex-base-m" id="ex-base"></div>
+  <script type="application/json" id="ex-base-m">{"program": "fill_base.js", "prompt": "<code>power(base, exp)</code> multiplies <code>base</code> by itself <code>exp</code> times: 2<sup>5</sup> = 2 × 2<sup>4</sup>, and anything to the power 0 is 1. Fill in the base case's test and the smaller step.", "blanks": [{"line": 2, "text": "exp === 0", "accept": ["exp == 0", "exp <= 0", "exp < 1", "0 === exp", "!exp"]}, {"line": 3, "text": "exp - 1", "accept": ["exp-1"]}], "explain": "The floor is <code>exp === 0</code>, where the answer is simply 1. The smaller step is <code>exp - 1</code>: 2<sup>5</sup> = 2 × 2<sup>4</sup> = 2 × 2 × 2<sup>3</sup>… down to 2<sup>0</sup> = 1. So <samp>32</samp>, and <code>power(7, 0)</code> hits the floor at once: <samp>1</samp>."}</script>
+
+
+  <section class="panel pop" aria-label="Panel 37: no floor at all">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <svg class="sfx tr" data-sfx="CRASH!" data-seed="36"></svg>
+    <p class="caption">Classic mistake number one: <b>no base case</b>. Every call makes another call, forever. Well, not forever.</p>
+    <span class="file-tab">no_base.js</span>
+    <pre class="code" data-src="no_base.js"></pre>
+    <pre class="term wrap" data-run="no_base.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>RangeError: Maximum call stack size exceeded</samp>. The stack has a size limit, and the trays hit the ceiling. (Chapter 12 met this error in passing.)</span></li>
+      <li><span><b>The footprints:</b> ten lines of <samp>at trays</samp>, all pointing at <samp>no_base.js:2</samp>. Node keeps only the ten newest footprints, so you see a wall of identical lines. That wall <b>is</b> the clue: one function calling itself without stopping. The real stack held thousands of trays.</span></li>
+      <li><span><b>The fix:</b> a floor. <code>if (n === 0) return 0;</code> before line 2.</span></li>
+    </ol>
+    <div class="trays21">
+      <figure class="bad"><svg class="char" data-char="traystack" data-items="trays(-9997),trays(-9996),trays(-9995),… thousands …,trays(2),trays(3)" data-state="topple"></svg><figcaption>No floor: the trays pile up until the stack is full and topples.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a very tall stack of trays, with the top two sliding off. The trays say trays(-9997), trays(-9996), trays(-9995), then "thousands", then trays(2) and trays(3) at the bottom. A dashed sign says TOO MANY TRAYS! The numbers are only an illustration.</p>
+  </section>
+
+
+  <section class="panel pop" aria-label="Panel 38: stepping over the floor">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <svg class="sfx tr" data-sfx="MISSED IT!" data-seed="37"></svg>
+    <p class="caption">Mistake number two is sneakier: there <b>is</b> a base case, but some inputs step right over it.</p>
+    <span class="file-tab">skip_base.js</span>
+    <pre class="code" data-src="skip_base.js"></pre>
+    <pre class="term wrap" data-run="skip_base.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6</b> is fine: 3, 2, 1, 0, and the floor at 0 catches it: <samp>Lift off!</samp>.</span></li>
+      <li><span><b>Line 7:</b> 2.5, 1.5, 0.5, −0.5, −1.5… It never lands exactly on 0, so <code>n === 0</code> is never true. Same RangeError, and the caret points at line 2, the floor it kept missing.</span></li>
+      <li><span><b>The fix:</b> make the floor wide enough to catch every input. <code>n &lt;= 0</code> catches 0, negatives and anything that jumps past.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 39: a smaller step that isn't smaller">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Mistake number three: the recursive call gets the <b>same</b> input it was given. The job never shrinks.</p>
+    <div class="two-files">
+      <div><span class="file-tab">same_input.js</span><pre class="code" data-src="same_input.js"></pre><pre class="term wrap" data-run="same_input.js" data-exit></pre></div>
+      <div><span class="file-tab">same_fixed.js</span><pre class="code" data-src="same_fixed.js"></pre><pre class="term" data-run="same_fixed.js" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b><code>same_input.js</code>, line 3:</b> <code>total(list)</code> passes the whole list again. The empty list on line 6 is fine (<samp>0</samp>), but <code>[4, 5, 6]</code> never gets shorter: RangeError.</span></li>
+      <li><span><b><code>same_fixed.js</code>, line 3:</b> <code>list.slice(1)</code> is everything except the first item, a new, shorter list. 4 + total([5, 6]) = 4 + 5 + total([6]) = 4 + 5 + 6 + total([]) = <samp>15</samp>. (And <code>slice</code> doesn't change <code>list</code>: still a brick.)</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>Before you run a recursive function, ask two questions. Where's the floor? And does every call move <b>closer</b> to it?</p></div>
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+  </section>
+
+  <div data-ex="predict" data-model="ex-overflow-m" id="ex-overflow"></div>
+  <script type="application/json" id="ex-overflow-m">{"program": "predict_overflow.js", "expect": "error", "answer": "RangeError", "ask": "Line 6 prints <samp>done</samp>. Then line 7 runs <code>ping(0)</code>. Which kind of error ends the program? Type just its name.", "explain": "<code>ping(1)</code> goes 1, 4, 7, 10 and lands on the floor: <samp>done</samp>. <code>ping(0)</code> goes 0, 3, 6, 9, 12… and jumps over 10, so the floor never catches it: <samp>RangeError: Maximum call stack size exceeded</samp>. A safer floor is <code>n &gt;= 10</code>."}</script>
+
+
+  <section class="panel pop" aria-label="Panel 40: the answer dropped on the floor">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <svg class="sfx tr" data-sfx="UNDEFINED?" data-seed="39"></svg>
+    <p class="caption">Mistake number four doesn't crash at all. Spot the missing word.</p>
+    <span class="file-tab">no_return.js</span>
+    <pre class="code" data-src="no_return.js"></pre>
+    <pre class="term" data-run="no_return.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Line 3 works out <code>n * factorial(n - 1)</code>… and then nobody hands it back. A function that ends without <code>return</code> gives <code>undefined</code> (Chapter 7). So <code>factorial(2)</code> returns <code>undefined</code>, <code>factorial(3)</code> works out <code>3 * undefined</code>, which is <code>NaN</code>, and drops that too. Only the base case, with its own <code>return</code>, answers: <samp>1</samp>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak grins. A burst says UNDEFINED?</p>
+    <p>The fix is the word <code>return</code> at the start of line 3. In a recursive function, every path must hand its answer back, or the trays below get nothing.</p>
+    <p class="catch">RETURN IT, OR LOSE IT</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-noreturn-m" id="ex-noreturn"></div>
+  <script type="application/json" id="ex-noreturn-m">{"program": "spot_return.js", "bug": 4, "prompt": "<code>digitSum(472)</code> should add the digits, 4 + 7 + 2 = 13. It prints <samp>undefined</samp> instead. Click the line with the bug.", "explain": "Line 4 works out the last digit plus the digit sum of the rest, then throws the result away: there's no <code>return</code>. So every call except the base case hands back <code>undefined</code>. Write <code>return last + digitSum(Math.floor(n / 10));</code> and it prints 13."}</script>
+
+
+  <section class="panel sketch" aria-label="Panel 41: the map of a recursive call" data-map="map-rec">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption soft">Every recursive call takes the same roads. Three real runs of one countdown function, whose floor is <code>n === 0</code>: one that lands on the floor at once, one that takes three trays to get there, and one that steps over it. Pick a road and follow Kit.</p>
+    <span class="file-tab">road_two.js</span>
+    <pre class="code" data-src="road_two.js"></pre>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="maprec-t maprec-d"><title id="maprec-t">Map of a recursive countdown call</title><desc id="maprec-d">A call to countdown(n) starts and puts a new tray on the stack. Then the question: is n equal to 0? If yes, the base case returns "Lift off!", and each tray in turn hands the answer down to the one below and leaves, until no trays are left and console.log prints it. If no, the function calls countdown(n - 1), a smaller problem, and the road goes back to the start with a new tray. If the calls never reach 0, the stack fills up and the program stops with a RangeError.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-rec">{"seed": 21, "size": [700, 540], "start": [[180, 2], [180, 34]],
+      "states": [
+        {"id": "CALL", "x": 40, "y": 40, "w": 280, "h": 64, "label": "`countdown(n)` starts", "sub": "a new tray on the stack"},
+        {"id": "Q", "x": 40, "y": 160, "w": 280, "h": 64, "label": "is `n === 0`?", "sub": "the base case check"},
+        {"id": "BASE", "x": 400, "y": 160, "w": 280, "h": 64, "label": "return \"Lift off!\"", "sub": "base case: no new call"},
+        {"id": "STEP", "x": 40, "y": 280, "w": 280, "h": 64, "label": "call `countdown(n - 1)`", "sub": "a smaller problem"},
+        {"id": "BACK", "x": 400, "y": 300, "w": 280, "h": 64, "label": "hand the answer down", "sub": "the top tray leaves"},
+        {"id": "DONE", "x": 400, "y": 440, "w": 280, "h": 64, "label": "console.log prints it", "sub": "the stack is empty", "kind": "end"},
+        {"id": "ERR", "x": 40, "y": 440, "w": 280, "h": 64, "label": "RangeError", "sub": "the stack is full", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "CALL", "to": "Q", "pts": [[180, 108], [180, 154]]},
+        {"id": "yes", "from": "Q", "to": "BASE", "pts": [[324, 192], [394, 192]], "label": "yes", "lx": 342, "ly": 181},
+        {"id": "no", "from": "Q", "to": "STEP", "pts": [[180, 228], [180, 274]], "label": "no", "lx": 192, "ly": 257},
+        {"id": "again", "from": "STEP", "to": "CALL", "pts": [[36, 312], [16, 312], [16, 72], [34, 72]], "label": "again", "lx": 24, "ly": 138},
+        {"id": "over", "from": "STEP", "to": "ERR", "pts": [[180, 348], [180, 434]], "label": "never reaches 0", "lx": 192, "ly": 396},
+        {"id": "ret", "from": "BASE", "to": "BACK", "pts": [[540, 228], [540, 294]], "label": "answer", "lx": 552, "ly": 267},
+        {"id": "done", "from": "BACK", "to": "DONE", "pts": [[540, 368], [540, 434]], "label": "no trays left", "lx": 552, "ly": 406}],
+      "paths": [
+        {"id": "zero", "label": "countdown(0)", "program": "road_zero.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>road_zero.js</code> calls <code>countdown(0)</code>. One tray goes on the stack, with <code>n</code> = 0."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is <code>n === 0</code>? Yes, straight away."},
+          {"on": ["BASE"], "via": ["yes"], "output": [], "note": "The base case: <code>return \"Lift off!\"</code>, with no new call."},
+          {"on": ["BACK"], "via": ["ret"], "output": [], "note": "The only tray leaves and hands <code>\"Lift off!\"</code> back to line 6."},
+          {"on": ["DONE"], "via": ["done"], "output": ["Lift off!"], "note": "<code>console.log</code> prints <samp>Lift off!</samp>. One tray, no recursion needed."}]},
+        {"id": "two", "label": "countdown(2)", "program": "road_two.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>road_two.js</code> calls <code>countdown(2)</code>. Tray 1: <code>n</code> = 2."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is 2 equal to 0? No."},
+          {"on": ["STEP"], "via": ["no"], "output": [], "note": "Line 3 calls <code>countdown(1)</code>. <code>countdown(2)</code> pauses, waiting for the answer."},
+          {"on": ["CALL"], "via": ["again"], "output": [], "note": "Tray 2 goes on top: <code>n</code> = 1."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is 1 equal to 0? No."},
+          {"on": ["STEP"], "via": ["no"], "output": [], "note": "Call <code>countdown(0)</code>. Now two trays are paused."},
+          {"on": ["CALL"], "via": ["again"], "output": [], "note": "Tray 3: <code>n</code> = 0. Three trays on the stack."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is 0 equal to 0? Yes!"},
+          {"on": ["BASE"], "via": ["yes"], "output": [], "note": "The floor: <code>return \"Lift off!\"</code>."},
+          {"on": ["BACK"], "via": ["ret"], "output": [], "note": "Tray 3 leaves. Tray 2, <code>countdown(1)</code>, was paused on <code>return countdown(n - 1)</code>; it gets <code>\"Lift off!\"</code> and returns it too."},
+          {"on": ["BACK"], "output": [], "note": "Tray 2 leaves. Tray 1, <code>countdown(2)</code>, gets the answer and returns it."},
+          {"on": ["BACK"], "output": [], "note": "Tray 1 leaves. The answer arrives back at line 6."},
+          {"on": ["DONE"], "via": ["done"], "output": ["Lift off!"], "note": "<samp>Lift off!</samp>. Three trays up, three trays down."}]},
+        {"id": "half", "label": "countdown(0.5)", "program": "road_half.js", "expect": {"exit": 1, "stderrContains": "RangeError: Maximum call stack size exceeded"}, "steps": [
+          {"on": ["CALL"], "output": [], "note": "<code>road_half.js</code> calls <code>countdown(0.5)</code>. Tray 1: <code>n</code> = 0.5."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is 0.5 equal to 0? No."},
+          {"on": ["STEP"], "via": ["no"], "output": [], "note": "Call <code>countdown(-0.5)</code>. It jumped straight past 0."},
+          {"on": ["CALL"], "via": ["again"], "output": [], "note": "Tray 2: <code>n</code> = −0.5."},
+          {"on": ["Q"], "via": ["t0"], "output": [], "note": "Is −0.5 equal to 0? No. And −1.5 won't be, or −2.5…"},
+          {"on": ["STEP"], "via": ["no"], "output": [], "note": "Round and round: call, check, call, check. Thousands of trays."},
+          {"on": ["ERR"], "via": ["over"], "output": [], "error": "RangeError: Maximum call stack size exceeded", "note": "The stack is full: <samp>RangeError: Maximum call stack size exceeded</samp>. A floor of <code>n &lt;= 0</code> would have caught 0.5 on the very first check."}]}]}</script>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · BOXES INSIDE BOXES<small>Recursion on nested data, strings, memoization, loops versus recursion, tail calls</small></h2>
+
+
+  <section class="panel sketch" data-play aria-label="Panel 42: boxes inside boxes">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption soft">Counting down doesn't really <i>need</i> recursion; a loop does it fine. Recursion shines when the <b>data itself</b> is nested: boxes that may hold props or more boxes, which may hold more boxes, with no limit on how deep. You can't write one loop per level when you don't know how many levels there are.</p>
+    <div class="nest21" aria-hidden="true">
+      <div class="bx"><b>boxes</b><span class="it">1</span>
+        <div class="bx"><b>box</b><span class="it">2</span>
+          <div class="bx"><b>box</b><span class="it">3</span><div class="bx"><b>box</b><span class="it">4</span></div></div>
+          <span class="it">5</span></div>
+        <div class="bx"><b>box</b><div class="bx"><b>box</b><span class="it">6</span></div></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: the array [1, [2, [3, [4]], 5], [[6]]] drawn as nested boxes. The outer box holds the prop 1, a box and another box. The first inner box holds 2, a box holding 3 and a box holding 4, and then 5. The second inner box holds a box holding 6.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>The plan for any box: go through what's inside. A prop? Keep it. Another box? Open it with <b>the same plan</b>. The floor is a box with no boxes inside.</p></div>
+    </div>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 43: a deep flatten">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">That plan, in code. It's how <code>flat(Infinity)</code> could be written.</p>
+    <span class="file-tab">deep_flatten.js</span>
+    <pre class="code" data-src="deep_flatten.js"></pre>
+    <pre class="term" data-run="deep_flatten.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4:</b> is this item a box (an array)? <b>Line 5:</b> then flatten it with the same function, and spread its flat answer into <code>out</code>.</span></li>
+      <li><span><b>Line 7:</b> a plain item goes straight in. There's no <code>if … return</code> line for the base case this time: an array with no arrays inside never calls <code>flatten</code> again, so the recursion stops there by itself.</span></li>
+      <li><span><b>Line 15:</b> the built-in <code>flat(Infinity)</code> agrees. <b>Line 16:</b> <code>boxes</code> still has its <samp>3</samp> top-level items: <code>flatten</code> builds a new array and never changes its input.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-deep-m" id="ex-deep"></div>
+  <script type="application/json" id="ex-deep-m">{"program": "parsons_deep.js", "seed": 6, "pin": [8], "prompt": "Add up every number in nested arrays, however deep. The last line, which calls the function, is fixed. Put the function's lines in order.", "explain": "Start the total at 0 before the loop. For each item, a box is added up with <code>deepSum</code> itself, and a number is added as it is (the <code>? :</code> picks which). After the loop closes, hand the total back. 1 + (2 + (3)) + 4 = <samp>10</samp>."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 44: summing a tree">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">Kit's theatre is split into areas, and some areas contain smaller areas. Data shaped like this is called a <b>tree</b>: each area is a <b>node</b>, the areas inside it are its <b>children</b>, and an area with no children is a <b>leaf</b>. How many lights are there in total?</p>
+    <span class="file-tab">tree.js</span>
+    <pre class="code" data-src="tree.js"></pre>
+    <pre class="term" data-run="tree.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 11:</b> start with this area's own lights. <b>Lines 12 to 14:</b> add the total for each inner area, worked out by the same function.</span></li>
+      <li><span>The floor is in the data again: a leaf has <code>areas: []</code>, so the loop runs zero times and line 15 hands back just its own lights.</span></li>
+      <li><span><b>Line 18:</b> 4 + 2 + (3 + 1) = <samp>10</samp>. <b>Line 19</b> starts at the right wing instead, a smaller tree: 3 + 1 = <samp>4</samp>. Every branch of a tree is a tree.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean tracer" aria-label="Panel 45: memory tracer, a tree sum" data-tracer="tr-tree" id="tr-tree-box">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption">A smaller tree, step by step: a wing with 3 lights and one inner area, the balcony, with 1. Watch each <code>countLights</code> frame keep its <b>own</b> <code>total</code>, and the inner frame's answer land in the outer frame's total.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-tree-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-tree">{"program": "tree_small.js", "steps": [
+      {"line": 9, "note": "Node files <code>countLights</code> away.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}}},
+      {"line": 10, "note": "Line 9 builds the balcony B1: 1 light, and an empty <code>areas</code> list. A leaf.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}}, "changed": ["balcony"]},
+      {"line": 11, "note": "Line 10 builds the wing W1 (3 lights). Its <code>areas</code> array A1 holds an arrow to the balcony: a tree two levels deep.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}}, "changed": ["wing"]},
+      {"line": 2, "note": "Line 11 calls <code>countLights(wing)</code>. Tray 1: <code>area</code> points at W1.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}}, "changed": ["area"]},
+      {"line": 3, "note": "Line 2: this frame's <code>total</code> starts at W1's own lights, 3.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}}, "changed": ["total"]},
+      {"line": 4, "note": "Line 3: the loop takes the first inner area: <code>inner</code> points at B1.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}, {"n": "inner", "ref": "B1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}}, "changed": ["inner"]},
+      {"line": 2, "note": "Line 4 needs <code>countLights(inner)</code> before it can add. Tray 2 goes on top: its own <code>area</code> points at B1. Tray 1 waits, its <code>total</code> still 3.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}, {"n": "inner", "ref": "B1"}]}, {"name": "countLights(B1)", "vars": [{"n": "area", "ref": "B1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}}, "changed": ["area"]},
+      {"line": 3, "note": "Line 2 in tray 2: a <b>different</b> <code>total</code>, starting at B1's lights, 1.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}, {"n": "inner", "ref": "B1"}]}, {"name": "countLights(B1)", "vars": [{"n": "area", "ref": "B1"}, {"n": "total", "ref": "t1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}, "t1": {"kind": "number", "value": "1"}}, "changed": ["total"]},
+      {"line": 6, "note": "Line 3: B1's <code>areas</code> is empty, so the loop body never runs. No more calls: this is the floor, built into the data.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}, {"n": "inner", "ref": "B1"}]}, {"name": "countLights(B1)", "vars": [{"n": "area", "ref": "B1"}, {"n": "total", "ref": "t1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}, "t1": {"kind": "number", "value": "1"}}},
+      {"line": 4, "note": "Line 6: tray 2 returns its total, 1.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t3"}, {"n": "inner", "ref": "B1"}]}, {"name": "countLights(B1)", "vars": [{"n": "area", "ref": "B1"}, {"n": "total", "ref": "t1"}, {"n": "return", "ref": "t1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t3": {"kind": "number", "value": "3"}, "t1": {"kind": "number", "value": "1"}}, "changed": ["return"]},
+      {"line": 3, "note": "Tray 2 leaves. Back in tray 1, line 4 finishes: <code>total += 1</code>, so tray 1's total is now 4.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t4"}, {"n": "inner", "ref": "B1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t4": {"kind": "number", "value": "4"}}, "changed": ["total"]},
+      {"line": 6, "note": "Line 3: A1 has no more inner areas, so the loop ends.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t4"}, {"n": "inner", "ref": "B1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t4": {"kind": "number", "value": "4"}}},
+      {"line": 11, "note": "Line 6: tray 1 returns 4 to line 11.", "output": [], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}, {"name": "countLights(W1)", "vars": [{"n": "area", "ref": "W1"}, {"n": "total", "ref": "t4"}, {"n": "inner", "ref": "B1"}, {"n": "return", "ref": "t4"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t4": {"kind": "number", "value": "4"}}, "changed": ["return"]},
+      {"line": null, "note": "The last tray leaves, and line 11 prints <samp>4</samp>. The tree was never changed: counting only reads.", "output": ["4"], "frames": [{"name": "tree_small.js (module)", "vars": [{"n": "countLights", "ref": "F1"}, {"n": "balcony", "ref": "B1"}, {"n": "wing", "ref": "W1"}]}], "objects": {"F1": {"kind": "function", "value": "countLights"}, "W1": {"kind": "object", "label": "wing W1", "pairs": [{"k": "lights", "val": "3"}, {"k": "areas", "ref": "A1"}]}, "A1": {"kind": "array", "label": "array A1", "items": [{"ref": "B1"}]}, "B1": {"kind": "object", "label": "balcony B1", "pairs": [{"k": "lights", "val": "1"}, {"k": "areas", "val": "[ ]"}]}, "t4": {"kind": "number", "value": "4"}}}]}</script>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 46: walking parsed JSON">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption">JSON from a server (Chapter 13) is often a tree of objects and arrays nested to any depth. One recursive function can search all of it: here, for every <code>name</code>, wherever it hides.</p>
+    <span class="file-tab">json_walk.js</span>
+    <pre class="code wrap" data-src="json_walk.js"></pre>
+    <pre class="term" data-run="json_walk.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5:</b> an array? Search each item (line 6). <b>Line 7:</b> an object? (<code>value !== null</code> because <code>typeof null</code> is <samp>"object"</samp>, Chapter 2's famous quirk.) Then look at each drawer: a <code>name</code> drawer is collected (line 9), and anything else is searched (line 10).</span></li>
+      <li><span><b>The floor:</b> a string, number, boolean or <code>null</code> matches neither branch, so the function just hands back the list. Every call shares one <code>found</code> array, passed down as an argument and filled as the search goes.</span></li>
+      <li><span><b>Line 16:</b> <samp>[ 'Ada', 'Bo', 'Cy' ]</samp>, including Cy, three levels down inside <code>crew.lights</code>.</span></li>
+    </ol>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 47: recursion on strings">
+    <span class="panel-no" aria-hidden="true">47</span>
+    <p class="caption">Strings and arrays can be seen as nested too: a first letter, plus a shorter string. That gives tidy recursive answers to string puzzles.</p>
+    <span class="file-tab">strings.js</span>
+    <pre class="code" data-src="strings.js"></pre>
+    <pre class="term" data-run="strings.js"></pre>
+    <ol class="readlist">
+      <li><span><b><code>reverse</code>:</b> the reverse of "stage" is the reverse of "tage", then "s" at the end. The floor: the reverse of the empty string <code>""</code> is <code>""</code>. Result: <samp>egats</samp>.</span></li>
+      <li><span><b><code>isPalindrome</code></b> (a word that reads the same backwards): if the first and last letters differ, it isn't one (line 8). If they match, check the inside with both ends cut off (line 9). One letter or none counts as a palindrome. "level" → "eve" → "v": <samp>true</samp>. "kit" fails at once: <samp>false</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-echo-m" id="ex-echo"></div>
+  <script type="application/json" id="ex-echo-m">{"program": "predict_echo.js", "prompt": "<code>echo</code> puts the first letter on <b>both</b> sides of the echo of the rest. Predict both lines.", "hint": "Work from the floor up: <code>echo(\"\")</code> is <code>\"\"</code>. What's <code>echo(\"c\")</code>? Then <code>echo(\"bc\")</code>?", "explain": "<code>echo(\"c\")</code> is \"c\" + \"\" + \"c\" = \"cc\". <code>echo(\"bc\")</code> is \"b\" + \"cc\" + \"b\" = \"bccb\". <code>echo(\"abc\")</code> is \"a\" + \"bccb\" + \"a\": <samp>abccba</samp>, a palindrome built on the way back up. <code>echo(\"x\")</code> is <samp>xx</samp>."}</script>
+
+
+  <section class="panel clean" aria-label="Panel 48: remembering answers">
+    <span class="panel-no" aria-hidden="true">48</span>
+    <p class="caption">The <b>Fibonacci</b> numbers start 0, 1, and each one after is the sum of the two before: 0, 1, 1, 2, 3, 5, 8, 13… The recursive version is short, but watch how many calls it makes. (The <code>calls</code> counters are side effects we added on purpose, just to count.)</p>
+    <span class="file-tab">fib.js</span>
+    <pre class="code" data-src="fib.js"></pre>
+    <pre class="term" data-run="fib.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5</b> makes <b>two</b> calls, and each of those makes two more. <code>fib(23)</code> gets worked out twice, <code>fib(22)</code> three times, and so on down. Result: <samp>75025 after 242785 calls</samp>.</span></li>
+      <li><span><b>Lines 9 to 18</b> keep a notebook: a Map (Chapter 20) from <code>n</code> to its answer. Line 14 checks the notebook before working anything out, and line 16 writes each new answer in it. Same answer, <samp>after 49 calls</samp>. Remembering answers like this is called <b>memoization</b>.</span></li>
+    </ol>
+    <p>Memoization is a higher-order trick too: a <code>memoize</code> function can wrap <b>any</b> one-argument function in a notebook.</p>
+    <span class="file-tab">memoize.js</span>
+    <pre class="code" data-src="memoize.js"></pre>
+    <pre class="term" data-run="memoize.js"></pre>
+    <p>The second <code>square(9)</code> is answered from the cache: no <samp>working out</samp> line. This is only safe for <b>pure</b> functions. If the answer could change between calls, the notebook would hand back a stale one. Bricks again: same in, same out, so the answer can be saved.</p>
+  </section>
+
+
+  <section class="panel clean" aria-label="Panel 49: loop or recursion">
+    <span class="panel-no" aria-hidden="true">49</span>
+    <p class="caption">Anything a loop can do, recursion can do, and the other way round. So which should you pick? Try both on a big number.</p>
+    <span class="file-tab">loop_vs_rec.js</span>
+    <pre class="code" data-src="loop_vs_rec.js"></pre>
+    <pre class="term wrap" data-run="loop_vs_rec.js" data-exit></pre>
+    <p>Up to 100, both say <samp>5050</samp>. For 100,000 the loop is fine, <samp>5000050000</samp>, but the recursion needs 100,000 trays at once, and the stack runs out: RangeError. A loop reuses one frame.</p>
+    <table class="choose21">
+      <thead><tr><th scope="col">Pick a loop when…</th><th scope="col">Pick recursion when…</th></tr></thead>
+      <tbody>
+        <tr><td>the data is flat: a list, a range of numbers, a string read left to right</td><td>the data is nested to an unknown depth: folders, trees, JSON, menus inside menus</td></tr>
+        <tr><td>the input can be very large (thousands of steps deep would overflow)</td><td>the depth stays modest (a page's structure, a family tree, a game's moves)</td></tr>
+        <tr><td>you want the plainest code for counting or walking</td><td>the problem is defined in terms of a smaller version of itself</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div data-ex="choice" data-model="ex-looprec-m" id="ex-looprec"></div>
+  <script type="application/json" id="ex-looprec-m">{"q": "Four jobs. Which one is the most natural fit for <b>recursion</b> rather than a loop?", "options": [
+    {"t": "Counting files in folders nested to any depth", "correct": true, "why": "Yes. A folder is files plus smaller folders, each a smaller version of the same problem, and you don't know how deep it goes. That's recursion's home ground."},
+    {"t": "Adding up a flat list of 20 ticket prices", "why": "Flat data: a loop, or <code>reduce</code>, does it in one pass with no stack at all."},
+    {"t": "Printing every number from 1 to 100,000", "why": "A loop. Recursion would need 100,000 trays at once and overflow, as <code>loop_vs_rec.js</code> showed."},
+    {"t": "Finding the biggest number in a long list", "why": "One pass through flat data: a loop, <code>reduce</code> or <code>Math.max(...list)</code>."}]}</script>
+
+
+  <section class="panel sketch" aria-label="Panel 50: a cartoon of tail calls">
+    <span class="panel-no" aria-hidden="true">50</span>
+    <p class="caption soft">One last idea, as a cartoon. In <code>factorial</code>, each tray waits to <b>multiply</b> after the call below it returns. But what if the recursive call were the very <b>last</b> thing a function did, with nothing left to do afterwards? That's called a <b>tail call</b>. Then the old tray isn't needed any more, and the new call could just <b>reuse</b> it.</p>
+    <span class="file-tab">tail.js</span>
+    <pre class="code" data-src="tail.js"></pre>
+    <pre class="term wrap" data-run="tail.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3</b> is a tail call: the running total is carried along as an argument, so nothing is waiting when <code>sumTo</code> calls itself. 1000 calls: <samp>500500</samp>.</span></li>
+      <li><span><b>Line 7</b> still overflows. The JavaScript standard (ES2015) says engines should reuse the tray for tail calls in strict code ("proper tail calls"), but V8, the engine inside Node and Chrome, doesn't do it: line 7 is the proof. (Other engines weren't run for this book.)</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The Professor says: </span>So in Node, don't count on tail calls to save a deep recursion. If the depth could reach the thousands, write a loop. The notebook has more.</p></div>
+    </div>
+    <p class="sr-only">Picture: the Professor, with glasses and a notebook, explains.</p>
+  </section>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: copies, pipelines and trays, all mixed</small></h2>
+
+
+  <section class="panel pop" data-play aria-label="Panel 51: boss level">
+    <span class="panel-no" aria-hidden="true">51</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="44"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Three questions for every function. Does it change anything it was handed? What does each machine on the belt hand to the next? And where's the floor? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. Copies, a flip and a swap, all starting from <code>cues</code>. Predict both lines.", "hint": "Which lines change <code>cues</code> itself? <code>sorted</code> was made before the flip. And what does <code>reverse</code> hand back?", "explain": "Line 2 makes a sorted copy, <code>[1, 2, 3]</code>. Line 3 flips <code>cues</code> itself to <code>[2, 1, 3]</code> and hands back that same array. Line 4 copies <code>sorted</code> with slot 0 swapped: <code>[9, 2, 3]</code>. So line 5: <samp>[ 2, 1, 3 ] [ 1, 2, 3 ] [ 9, 2, 3 ]</samp>. Line 6: <code>flipped</code> is <code>cues</code>, so <samp>true</samp>, and 9 + 2 + 3 is <samp>14</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.js", "bug": 9, "prompt": "Boss 2. <code>countBoxes</code> should count the prop room plus the boxes inside it: 3. Instead the stack overflows. There is a floor (a box with no inner boxes), so why is it never reached? Click the line with the bug.", "explain": "Line 9 calls <code>countBoxes(box)</code>, the very box it was given, instead of <code>countBoxes(inner)</code>. The job never gets smaller, so the floor is never reached: <samp>RangeError: Maximum call stack size exceeded</samp>. Mistake number three, recursing on the same input. With <code>inner</code>, each Hats and Masks box counts 1 and the answer is 3."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.js", "prompt": "Boss 3. <code>ticketPrice</code> adds a 2-dollar fee and then triples, built from a pipe and two curried helpers. Fill in the three blanks.", "blanks": [{"line": 1, "text": "reduce"}, {"line": 3, "text": "(b)", "accept": ["b"]}, {"line": 5, "text": "times(3)"}], "explain": "<code>pipe</code> runs machines left to right, so it walks them with <code>reduce</code>. <code>times</code> is curried like <code>add</code>: it takes <code>a</code>, then hands back a function of <code>(b)</code>. Line 5 lines up <code>add(2)</code>, then <code>times(3)</code>: (10 + 2) × 3 = <samp>36</samp>, and for 1 and 2: <samp>[ 9, 12 ]</samp>. A one-input machine fits straight into <code>map</code>."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.js", "columns": ["area", "depth", "total"], "given": [0], "prompt": "Boss 4. A tree of four areas: the Hall holds the Wing and the Pit, and the Wing holds the Loft. Each call prints its area, its depth and its total <b>just before it returns</b>. The rows come out in return order. Fill in the table.", "explain": "The Hall's call can't finish until the Wing's has, and the Wing's waits for the Loft's. So the Loft, at depth 2, finishes first with its own 4. The Wing (depth 1) has 1 + 4 = 5. Then the Hall's loop moves on to the Pit (depth 1), a leaf: 3. Last, the Hall (depth 0): 2 + 5 + 3 = 10."}</script>
+
+  <div data-ex="parsons" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_parsons.js", "seed": 45, "pin": [1, 2, 9], "prompt": "Boss 5. Count the leaves of a tree (nodes with no kids) with recursion, <code>map</code> and <code>reduce</code>. The first two lines, the data, and the last line, the print, are fixed. Put the function's lines in order.", "explain": "A node with no kids is a leaf: the floor, worth 1. Otherwise, <code>map</code> each kid to its own leaf count (the same function, so <code>.map(countLeaves)</code>), then add those counts with <code>reduce</code>, starting from 0. The tree's first kid is a leaf, and its second kid has two: <samp>3</samp>. <code>leaf</code> on its own is one leaf: <samp>1</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. Kit wraps four functions with the <code>memoize</code> helper from <code>memoize.js</code>. For which one could the cache hand back a <b>wrong</b> answer?", "options": [
+    {"t": "<code>(seats) =&gt; seats * currentPrice</code>", "correct": true, "why": "Yes, if <code>currentPrice</code> is an outside variable that changes during the day. This function isn't pure: its answer depends on an outside variable. After the price changes, the cache still hands back the old answer for the same number of seats."},
+    {"t": "<code>(n) =&gt; n * n</code>", "why": "Pure: the same <code>n</code> always gives the same square, so a saved answer is always right."},
+    {"t": "<code>(word) =&gt; word.toUpperCase()</code>", "why": "Pure: it depends only on <code>word</code>, so the cache is safe."},
+    {"t": "<code>(n) =&gt; factorial(n)</code>", "why": "Pure, with <code>factorial</code> from <code>factorial.js</code>: the factorial of 10 is 3628800 forever. A perfect thing to memoize."}]}</script>
+
+
+  <section class="panel pop" aria-label="Panel 52: what you learned">
+    <span class="panel-no" aria-hidden="true">52</span>
+    <p class="caption">What you learned in Chapter 21</p>
+    <ul class="recap">
+      <li><b>SAME IN, SAME OUT</b>A pure function's answer depends only on its arguments, and it has no side effects: no changing outside variables or its arguments, no printing. Pure functions are bricks: easy to test, reuse, combine and memoize. Higher-order functions take or hand back functions; <code>Array.from({ length: n }, fn)</code> builds an array from a recipe.</li>
+      <li><b>COPY, DON'T CHANGE</b><code>sort</code>, <code>reverse</code>, <code>splice</code> and <code>a[i] = v</code> change the original, even a caller's array. Their twins <code>toSorted</code>, <code>toReversed</code>, <code>toSpliced</code> and <code>with</code> make copies. <code>with</code> past the end gives <i>RangeError: Invalid index : 3</i>. <code>reduce</code> buckets count, index and group; without a starting bucket, an empty list gives <i>TypeError: Reduce of empty array with no initial value</i>.</li>
+      <li><b>ONE MACHINE, ONE JOB</b>A pipeline lines up one-input bricks: <code>pipe</code> left to right with <code>reduce</code>, <code>compose</code> right to left with <code>reduceRight</code>. Currying and partial application turn many-input functions into one-input machines. Debounce is a function that hands back a function. Name the steps instead of writing clever chains, and follow the footprints to <i>your</i> line when a belt jams (<i>fn is not a function</i>).</li>
+      <li><b>A FLOOR AND A SMALLER STEP</b>Recursion is a function calling itself. It needs a base case that answers without calling, and a recursive case that moves closer to it. Without both: <i>RangeError: Maximum call stack size exceeded</i>, from a missing floor, a floor that can be stepped over, or the same input again. Recursion fits nested data best: deep flatten, trees, JSON; loops fit flat data and big inputs.</li>
+      <li><b>ONLY THE TOP TRAY RUNS</b>Each call gets its own frame on the call stack, a tray with its own variables. Calls pile up on the way in and leave last in, first out, each handing its answer to the tray below. Memoization saves answers so repeated calls are skipped. Node doesn't reuse trays for tail calls.</li>
+      <li><b>RETURN IT, OR LOSE IT</b>A recursive case that works out an answer without <code>return</code> hands back <code>undefined</code>, and the trays below get nothing, or <code>NaN</code>.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Bricks that always click, a belt that does one job per stop, and a stack of trays that always finds the floor. One cue at a time.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+
+  <section class="panel sketch" aria-label="Panel 53: next time, stencils and emoji">
+    <span class="panel-no" aria-hidden="true">53</span>
+    <p class="caption soft">Coming up in Chapter 22…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Kit thinks: </span>My <code>reverse</code> turned "stage" into "egats", one letter at a time, using <code>text[0]</code>. But is one slot of a string always one letter? Someone wants a show called "Opening Night" with a star emoji in it… Next time: a <b>library where some books take two shelf slots</b>, and <b>stencils</b> you slide along text to find patterns, the regular expressions.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit points ahead, thinking about the next chapter.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 22 · STENCILS AND EMOJI<br><small style="font: 700 1rem var(--f-bubble)">Strings in depth, Unicode, and regular expressions.</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch20.html">← Ch 20 · Coat Checks and Dispensers</a><a class="next" href="ch22.html">Ch 22 · Stencils and Emoji →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: frames, the stack limit and the copying methods</summary>
+    <div class="page-body">
+      <h3>What a tray really is</h3>
+      <p>Each call creates an <b>execution context</b>: the standard's name for the record of one call in progress. It holds the call's own variables (its environment), its <code>this</code>, and where to carry on when it finishes. The engine keeps these on the <b>execution context stack</b>, which everyone calls the call stack. The running context is always the top one. Returning pops it, and the one underneath resumes exactly where it paused, in the middle of its expression.</p>
+      <h3>Why the limit isn't a number of calls</h3>
+      <p>V8 reserves a fixed amount of memory for the stack, and each frame takes up space according to how many arguments and local variables it has. So the number of trays that fit depends on the function: a frame with many locals uses more room. That's why this book never prints "how deep can I go?": the answer changes from function to function and between Node versions. Node has a <code>--stack-size</code> option, but raising it far can crash the process outright instead of throwing a catchable RangeError, so don't treat it as a fix.</p>
+      <h3>Why exactly ten footprints</h3>
+      <p>V8 records at most <code>Error.stackTraceLimit</code> frames in an error's stack, and the default is 10. A runaway recursion therefore shows ten identical <code>at …</code> lines, however deep it went. You can set <code>Error.stackTraceLimit = 50</code> at the top of a program while debugging.</p>
+      <h3>The copying methods, precisely</h3>
+      <ul>
+        <li><code>toSorted</code>, <code>toReversed</code>, <code>toSpliced</code> and <code>with</code> came from the ES2023 "change array by copy" proposal. They always return a brand-new ordinary array.</li>
+        <li>They treat holes in sparse arrays (Chapter 9) as <code>undefined</code>, so the copy has no holes.</li>
+        <li><code>with(i, v)</code> accepts <code>-length</code> up to <code>length - 1</code>, and anything outside that range throws a RangeError. It never grows the array.</li>
+        <li>Typed arrays (such as <code>Uint8Array</code>) have <code>toSorted</code>, <code>toReversed</code> and <code>with</code>, but not <code>toSpliced</code>, because a typed array's length can't change.</li>
+        <li>Since ES2019, <code>sort</code> and <code>toSorted</code> must be <b>stable</b>: items that compare as equal keep their original order.</li>
+      </ul>
+      <h3><code>reduce</code>, exactly</h3>
+      <p>With a starting value, the callback runs once per item. Without one, the first item becomes the bucket and the callback runs from the second item, so a one-item list returns that item without calling the callback, and an empty list throws the TypeError. The callback also receives the index and the whole array as third and fourth arguments. <code>reduceRight</code> is the same, walking from the last item.</p>
+      <h3>Spreading into a call</h3>
+      <p><code>out.push(...flatten(item))</code> passes every item as a separate argument. For extremely large arrays (hundreds of thousands of items) that can itself throw a RangeError, because arguments live on the stack too. For huge data, push in a loop or use <code>concat</code>.</p>
+      <h3>Tail calls in the standard</h3>
+      <p>ES2015 specifies "proper tail calls": in strict-mode code, a call in tail position (<code>return f(…)</code> with nothing left to do) must not grow the stack. V8, the engine in Node, doesn't do it, as <code>tail.js</code> shows; this book didn't run other engines. One cost of reusing trays: the reused frames would vanish from stack traces. In practice, write deep repetition as a loop.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>User-interface state:</b> React and Redux-style code expects state to be updated by copy, with spreading, <code>map</code>, <code>filter</code>, <code>toSorted</code> and friends, never in place. The framework compares the old and new arrays with <code>===</code> to decide what to redraw, so a <code>sort</code> in place can leave the screen stale.</li>
+        <li><b>Functional libraries:</b> Lodash (<code>lodash/fp</code>) and Ramda provide <code>pipe</code>, <code>compose</code>, <code>curry</code>, <code>memoize</code>, <code>debounce</code> and <code>throttle</code>. A pipeline operator, <code>value |&gt; f</code>, has been a proposal for JavaScript for years; until it lands, <code>pipe</code> helpers and method chains do the job.</li>
+        <li><b>Debounce and throttle</b> are everywhere on the web: search-as-you-type, saving drafts, resizing and scroll handlers. Chapter 25 explains the timers, and Chapter 29 builds both.</li>
+        <li><b>Recursion</b> walks every tree a program meets: the DOM (Chapter 15's tree of elements), JSON from APIs, nested comments and menus, folders on disk (Node's <code>fs.readdir</code> even has a <code>recursive</code> option), syntax trees in compilers, linters and formatters, and the built-in <code>structuredClone</code>, which deep-copies nested data.</li>
+        <li><b>Memoization</b> shows up as caches: React's <code>useMemo</code>, the "dynamic programming" technique in algorithms (Chapter 29), and HTTP caching, all with the same rule: only cache what is pure.</li>
+        <li><b>Tests love pure functions.</b> A pure function needs no setup and no clean-up: one input, one expected output (Chapter 27).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A function can't change my array; it only gets a copy."</b> It gets an arrow to the same array (panel 9). Primitives like numbers are safe; objects and arrays are not.</li>
+        <li><b>"<code>const</code> stops <code>sort</code> changing the array."</b> <code>const</code> glues the name; <code>sort</code> rearranges the array behind it. Freeze it, or use <code>toSorted</code>.</li>
+        <li><b>"<code>reverse()</code> returns a reversed copy."</b> It reverses in place and returns the same array (<code>predict_copy.js</code>).</li>
+        <li><b>"<code>splice</code> and <code>toSpliced</code> return the same thing."</b> <code>splice</code> returns the removed items; <code>toSpliced</code> returns the new array.</li>
+        <li><b>"Spreading makes a deep copy."</b> One layer only. Inner arrays and objects are shared (<code>update.js</code>, line 8).</li>
+        <li><b>"Pure means no variables change."</b> Local variables inside the function may change freely. Pure is about what the outside world can see.</li>
+        <li><b>"Pure code can't print."</b> Programs need side effects. Keep them in a few named places at the edges.</li>
+        <li><b>"Shorter chains are better code."</b> Clearer code is better code (panel 22).</li>
+        <li><b>"Recursion is slow / always better / only for experts."</b> It's a tool for self-similar problems. Plain recursion like <code>fib</code> can redo work; memoization fixes that.</li>
+        <li><b>"The base case has to be the first line."</b> It has to be <b>reachable</b> on every path. It can be implicit, like a loop over an empty list.</li>
+        <li><b>"A RangeError means my numbers were too big."</b> In recursion it almost always means the floor was missed or the step didn't shrink.</li>
+        <li><b>"Recursive calls share the same <code>n</code>."</b> Each call has its own frame with its own variables (panel 35).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Set up a folder</h3>
+      <ol>
+        <li>Check Node with <code>node --version</code>. This chapter used v26.13.0. Everything here works on Node 20 or later; <code>Object.groupBy</code> in <code>index.js</code> needs Node 21 or later. If Node is missing, install the LTS version from nodejs.org (Windows and macOS installers; on Linux, the instructions there or a version manager such as nvm).</li>
+        <li>Make a folder <code>bricks</code>, open it in VS Code and open a terminal there (<b>Windows:</b> PowerShell in VS Code works; <b>macOS / Linux:</b> any terminal).</li>
+        <li>Run <code>npm init -y</code> and then <code>npm pkg set type=module</code>, so <code>.js</code> files are ES modules, as in this book.</li>
+      </ol>
+      <h3>2. Bricks and copies</h3>
+      <ol>
+        <li>Type <code>hidden.js</code> (panel 8) and run <code>node hidden.js</code>. Then add <code>Object.freeze(signups);</code> after line 5 and run it again: the hidden mutation now crashes at line 2. This book ran exactly that change:
+          <span class="file-tab">lab_frozen.js</span><pre class="code" data-src="lab_frozen.js"></pre><pre class="term wrap" data-run="lab_frozen.js" data-exit data-fold></pre></li>
+        <li>Change <code>sort</code> to <code>toSorted</code> and run it once more. Both lines should agree with <code>fixed.js</code>.</li>
+        <li>Open the Node REPL with <code>node</code> and try <code>[1, 2, 3].toSpliced(1, 1)</code>, then <code>[1, 2, 3].splice(1, 1)</code>. Leave with <code>.exit</code>.</li>
+      </ol>
+      <h3>3. A belt of your own</h3>
+      <ol>
+        <li>Type <code>pipeline.js</code> and add a fourth machine that squashes repeated dashes: <code>(s) =&gt; s.replaceAll("--", "-")</code>. Where in the <code>pipe(…)</code> list must it go?</li>
+        <li>Swap the order of two machines in <code>compose.js</code> and predict the numbers before you run it.</li>
+      </ol>
+      <h3>4. Trays</h3>
+      <ol>
+        <li>Type <code>staircase.js</code> and run it with 6 instead of 4. Then remove <code>return result;</code> (line 10) and watch the staircase print <code>NaN</code> on the way back up. This book ran that change with 4:
+          <span class="file-tab">lab_noreturn.js</span><pre class="code" data-src="lab_noreturn.js"></pre><pre class="term" data-run="lab_noreturn.js"></pre>
+          <code>factorial(2)</code> still prints its line, but hands back <code>undefined</code>, so <code>factorial(3)</code> works out <code>3 * undefined</code>: <samp>NaN</samp>.</li>
+        <li>Run <code>no_base.js</code>, then add <code>Error.stackTraceLimit = 3;</code> as its first line and run it again: only three footprints.
+          <span class="file-tab">lab_limit.js</span><pre class="code" data-src="lab_limit.js"></pre><pre class="term wrap" data-run="lab_limit.js" data-exit></pre></li>
+        <li><b>Debugger:</b> in VS Code, click left of line 3 in <code>factorial.js</code> to set a breakpoint, open the Run and Debug panel and choose "Node.js". Each time it stops, the CALL STACK section lists one tray per call in progress. (Chrome's DevTools shows the same list for code in a web page.)</li>
+      </ol>
+      <p><b>About this book's runs:</b> every capture used <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. No program here prints a date, a time or a locale-dependent number, so your output should match exactly, except that file paths in error messages will show your own folder.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every program was also run on Node 22.23.4. All standard output, every exit code and every error message were identical. The only differences were in Node's own stack-trace lines (<code>node:internal/…</code> line numbers) and the version line at the bottom of each crash (<samp>Node.js v22.23.4</samp>). Here is <code>with_bad.js</code> on Node 22, for comparison with panel 14:</p>
+      <pre class="term wrap" data-run="with_bad.js" data-alt data-exit></pre>
+      <ul>
+        <li><b>Feature ages</b> (from the ES5.1 and ES2015 specifications, TC39's list of finished proposals and MDN's compatibility data, checked on 2026-11-08): <code>reduce</code> and <code>reduceRight</code> are in ES5; arrow functions, rest parameters, spreading into arrays and calls, and <code>Array.from</code> in ES2015; spreading objects in ES2018; <code>flat</code> and <code>flatMap</code> in ES2019; <code>??</code> in ES2020; <code>replaceAll</code> and <code>at</code> in ES2021 and ES2022; <code>toSorted</code>, <code>toReversed</code>, <code>toSpliced</code> and <code>with</code> in ES2023 (Node 20 and later); <code>Object.groupBy</code> in ES2024 (Node 21 and later).</li>
+        <li><b>Engine wording:</b> the error messages here are V8's (Node, Chrome, Edge). Firefox and Safari word some of them differently; for example, MDN's error reference gives Firefox's stack overflow as <i>InternalError: too much recursion</i> (not run for this book). The meaning is the same.</li>
+        <li><b>Printing:</b> <samp>[Function (anonymous)]</samp> and the spacing inside <samp>[ 1, 2, 3 ]</samp> are Node's <code>util.inspect</code> formatting; browser consoles draw arrays and functions their own way.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>pure function</dt><dd>A function whose answer depends only on its arguments and which has no side effects. Same in, same out.</dd>
+        <dt>side effect</dt><dd>Anything a function does besides handing back its answer: changing an outside variable or an argument, printing, saving.</dd>
+        <dt>higher-order function</dt><dd>A function that takes a function as an argument, hands one back, or both: <code>map</code>, <code>twice</code>, <code>pipe</code>, <code>debounce</code>.</dd>
+        <dt>first-class functions</dt><dd>Functions treated as values: stored in variables, passed along and handed back.</dd>
+        <dt>mutate, mutation</dt><dd>To change an existing object or array in place.</dd>
+        <dt>immutable, immutable update</dt><dd>Never changed after it's made; an update done by making a changed copy.</dd>
+        <dt>hidden mutation</dt><dd>A function changing data its caller still uses, without saying so.</dd>
+        <dt><code>toSorted</code>, <code>toReversed</code>, <code>toSpliced</code>, <code>with</code></dt><dd>The copy-making twins of <code>sort</code>, <code>reverse</code>, <code>splice</code> and index assignment.</dd>
+        <dt><code>flat</code>, <code>flatMap</code></dt><dd>Unpack nested arrays by some number of layers; map, then unpack one layer.</dd>
+        <dt>accumulator</dt><dd>The running result (the bucket) that <code>reduce</code> carries from item to item.</dd>
+        <dt>tally, index, grouping</dt><dd>Three bucket shapes: counts per kind, one item per id, lists per group.</dd>
+        <dt>pipeline</dt><dd>A row of functions where each one's output is the next one's input.</dd>
+        <dt><code>pipe</code>, <code>compose</code></dt><dd>Helpers that join functions into one: left to right, or right to left.</dd>
+        <dt>currying</dt><dd>Writing a function to take its arguments one at a time, each call handing back a function for the next.</dd>
+        <dt>partial application</dt><dd>Fixing some of a function's arguments in advance, making a function that needs fewer.</dd>
+        <dt>debounce, throttle</dt><dd>Wrappers that squash rapid calls into one after a quiet moment, or let at most one through per time window.</dd>
+        <dt>declarative, imperative</dt><dd>Code that says what it wants (<code>filter</code>, <code>map</code>) versus code that spells out each step (loops and pushes).</dd>
+        <dt>recursion, recursive function</dt><dd>A function that calls itself on a smaller version of the problem.</dd>
+        <dt>base case</dt><dd>The input small enough to answer without another call: the floor.</dd>
+        <dt>recursive case</dt><dd>The part that does a little work and calls the function again, closer to the base case.</dd>
+        <dt>call stack, frame</dt><dd>The pile of calls in progress, newest on top; each call's own record of variables (one tray).</dd>
+        <dt>stack overflow</dt><dd>Running out of stack space: <code>RangeError: Maximum call stack size exceeded</code>.</dd>
+        <dt>factorial</dt><dd>The product of the whole numbers from 1 to n, written n!. 4! = 24.</dd>
+        <dt>tree, node, children, leaf</dt><dd>Nested data where each node may contain child nodes; a node with no children is a leaf.</dd>
+        <dt>palindrome</dt><dd>A word that reads the same backwards, like "level".</dd>
+        <dt>Fibonacci numbers</dt><dd>0, 1, then each number is the sum of the two before.</dd>
+        <dt>memoization</dt><dd>Saving each answer so a repeat call with the same input is answered from the notebook.</dd>
+        <dt>tail call</dt><dd>A call that is the very last thing a function does. Not optimized in V8.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>MDN reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted">Array.prototype.toSorted()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSpliced">toSpliced()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/with">with()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/flatMap">flatMap()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce">reduce()</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from">Array.from()</a></li>
+        <li>MDN: <a href="https://developer.mozilla.org/en-US/docs/Glossary/Recursion">Recursion</a>, <a href="https://developer.mozilla.org/en-US/docs/Glossary/Call_stack">Call stack</a> and the error page <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_much_recursion">InternalError: too much recursion</a> (which lists the Chrome, Firefox and Safari wordings)</li>
+        <li><a href="https://tc39.es/ecma262/">The ECMAScript specification</a>: "Array.prototype.toSpliced", "Array.prototype.with", "Execution Contexts" and "Tail Position Calls" (dense, but the source of truth)</li>
+        <li><a href="https://nodejs.org/api/errors.html">Node.js: Errors</a>, including <code>Error.stackTraceLimit</code></li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://javascript.info/recursion">javascript.info: Recursion and stack</a>, with its execution-context pictures, and <a href="https://javascript.info/currying-partials">Currying</a></li>
+        <li><a href="https://eloquentjavascript.net/05_higher_order.html">Eloquent JavaScript, 4th edition, chapter 5: Higher-Order Functions</a>, and chapter 3's section on recursion</li>
+        <li><a href="https://www.freecodecamp.org/learn">freeCodeCamp JavaScript certification</a>: the recursion lecture and labs, and the functional programming module</li>
+        <li><a href="https://www.theodinproject.com/lessons/javascript-recursive-methods">The Odin Project: Recursive Methods</a>, and <a href="https://exercism.org/tracks/javascript/concepts/recursion">Exercism's recursion concept</a> for practice with tests</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch21</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are strict ES modules), with <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. Standard output, exit codes and error messages were identical on both versions; only Node's internal stack-trace lines and the version footer differ, as the version notes describe. 76 programs were captured, each run twice on the primary toolchain to confirm the same output; they include two accepted orders of the pipeline puzzle (<code>parsons_pipe_alt1.js</code>, <code>parsons_pipe_alt2.js</code>) and three lab runs (<code>lab_frozen.js</code>, <code>lab_noreturn.js</code>, <code>lab_limit.js</code>). The stack-overflow programs keep Node's default stack size; their traces show ten frames because of V8's default <code>Error.stackTraceLimit</code>.</p>
+  <p>In the terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines from Node's own code are folded into one line by the page's script; the full, unedited text is one click away under each of those terminals. The memory tracers, the walker, the machine and the map of a recursive call are teaching models; each checks itself against the real runs and says so. The ids in the tracers (A1, F1, W1) are labels for the picture, not real memory addresses. The bricks, belts and tray stacks are pictures of ideas, not real objects; the tray labels in the toppling stack are an illustration, not captured values.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): javascript.info "Recursion and stack" (execution contexts, recursion depth, recursive traversals of nested structures) and "Currying"; Eloquent JavaScript, 4th edition, chapter 5 "Higher-Order Functions" and chapter 3's recursion section (recursion versus loops, composability); MDN reference pages for <code>toSorted</code>, <code>toSpliced</code>, <code>with</code>, <code>flatMap</code> and <code>reduce</code> (copying versus mutating, holes, the RangeError from <code>with</code>, the empty-array TypeError) and MDN's "too much recursion" error page; the freeCodeCamp JavaScript certification's recursion and functional-programming modules; The Odin Project "Recursive Methods"; Exercism's JavaScript recursion concept; roadmap.sh's recursion and higher-order-function nodes; as listed in this book's research map (<code>research/javascript.md</code>, modules I8 and I9). The research map's error messages for <code>reduce</code> on an empty array and for stack overflow were confirmed by this chapter's own runs. Fetched on 2026-11-08 to check the version facts: the ES5.1 and ES2015 specifications (262.ecma-international.org), TC39's finished-proposals list (github.com/tc39/proposals), MDN's browser-compatibility data (version 6.0.30) and MDN's "too much recursion" error page.</p>
+  <p>Kit, the building bricks, the tray stacks, the machines, the Professor and the sneak are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

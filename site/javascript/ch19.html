@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Toggles and Invisible Ink</title>
+<meta name="description" content="Chapter 19 of the Pip &amp; Friends JavaScript book, a comic course: object internals. Every property has a control panel of three toggles (writable, enumerable, configurable): getOwnPropertyDescriptor, defineProperty, getters and setters, preventExtensions, seal and freeze, why freeze is shallow, strict versus sloppy writes, and the object toolbox (entries and fromEntries, key order, Object.assign, Object.hasOwn, Object.groupBy and Map.groupBy). Then symbols, the invisible-ink keys only their holder can use, the global registry and the well-known symbols, how an object answers 'who are you, in one word?' (toString, valueOf, Symbol.toPrimitive and the three hints, finally explaining [] + {}), a Temperature that adds and prints, and tagged templates with String.raw.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch19.css">
+<script defer src="../data/js-ch19.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch19.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch18.html">&larr; Ch 18</a><span aria-current="page">Ch 19 of 29</span><a href="ch20.html">Ch 20 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 19</p>
+    <h1 id="cover-h">TOGGLES AND INVISIBLE INK</h1>
+    <div class="cover19">
+      <svg class="char sp" data-char="switchpanel" data-label="show" data-rows="title:111,seats:011"></svg>
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char key" data-char="inkkey" data-label="Symbol(note)"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit, the stage manager in a pink hoodie and headset, waves hello. On one side is a control panel for an object called show, with a row of three toggles for each property: title has all three toggles ON, seats has its first toggle OFF and the other two ON. On the other side floats a key drawn with a dashed, sparkly outline, tagged Symbol(note): a key written in invisible ink.</p>
+    <p class="caption blurb">Objects have been drawers with labels since Chapter 10. Today you open the back panel. Every drawer has <b>three little toggles</b> that decide whether it can be changed, whether it shows up when someone lists the drawers, and whether it can be removed. You'll lock a whole object with <code>Object.freeze</code> (and find out why the lock only reaches the top layer), and pick up a toolbox of object helpers. Then come <b>symbols</b>, keys written in invisible ink, and the question that has hung over this book since Chapter 5: why is <code>[] + {}</code> the text <samp>[object Object]</samp>? About 130 minutes, with 26 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">Three toggles on every drawer</a></li>
+      <li><a href="#part-2">Freeze, seal, and the top layer</a></li>
+      <li><a href="#part-3">The object toolbox</a></li>
+      <li><a href="#part-4">Invisible ink: symbols</a></li>
+      <li><a href="#part-5">Who are you, in one word?</a></li>
+      <li><a href="#part-6">Tagged templates</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THREE TOGGLES ON EVERY DRAWER<small>Property descriptors, defineProperty, getters and setters</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: someone changed the seats">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="ZERO?!" data-seed="19"></svg>
+    <p class="caption">Opening night. Kit's <code>show</code> object says how many seats the theatre has. A helper script, written in a hurry, set <code>show.seats = 0</code> by mistake, and the box office sold nothing all afternoon.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="worried" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>In Chapter 9 we learned that <code>const</code> glues the <b>tag</b> to one object. It doesn't lock the drawers inside. Anyone holding the object can still change them.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span>I want some drawers to be read-only. And some I'd like to <b>hide</b> from anyone who lists the drawers. Is there a back panel I can open?</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, worried, shrugs. A burst says ZERO?!</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: asking a drawer for its settings">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">There is. <code>Object.getOwnPropertyDescriptor(object, "name")</code> asks one drawer for its settings. The answer is called a <b>property descriptor</b>: a small object that describes the property.</p>
+    <span class="file-tab">switches.js</span>
+    <pre class="code" data-src="switches.js"></pre>
+    <pre class="term" data-run="switches.js" data-type></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b> prints the descriptor for <code>title</code>. Besides its <code>value</code>, <samp>'Hamlet'</samp>, it has three yes-or-no settings: <code>writable</code>, <code>enumerable</code> and <code>configurable</code>. All three are <samp>true</samp>.</span></li>
+      <li><span><b>Line 5:</b> <code>seats</code> has the same three settings, also all <samp>true</samp>. Every drawer you make the ordinary way, with <code>{ }</code> or <code>obj.x = …</code>, starts with all three toggles on.</span></li>
+      <li><span><b>Line 6:</b> there's no <code>director</code> drawer, so there's nothing to describe: <samp>undefined</samp>. ("Own" in the name means it only looks at the object's own drawers, not its parents' from Chapter 18.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 3: the control panel">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption soft">Picture each object with a <b>control panel</b> on its back: one row per drawer, three toggles per row. Every toggle says ON or OFF.</p>
+    <div class="props19">
+      <figure class="c1"><svg class="char" data-char="switchpanel" data-label="show" data-rows="title:111,seats:111"></svg><figcaption>The panel for <code>switches.js</code>: two drawers, every toggle ON.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a control panel labelled show, with columns W, E and C. The row for title has three toggles, all ON. The row for seats has three toggles, all ON.</p>
+    <div class="legend19">
+      <div><p class="big">W</p><h3>writable</h3><p>"Can someone put a new value in this drawer?" OFF means read-only.</p></div>
+      <div><p class="big">E</p><h3>enumerable</h3><p>"Is this drawer listed when someone counts the drawers?" OFF means it's left out of <code>Object.keys</code>, <code>for...in</code>, <code>JSON.stringify</code> and spreading. It can still be read by name.</p></div>
+      <div><p class="big">C</p><h3>configurable</h3><p>"Can someone unscrew the panel?" OFF means the drawer can't be deleted and its toggles can't be rewired.</p></div>
+    </div>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>"Enumerable" is just a long word for "counted when you list them". To enumerate means to count things off one by one.</p></div>
+    </div>
+    <p class="catch">EVERY DRAWER HAS THREE TOGGLES</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-switch-m" id="ex-switch"></div>
+  <script type="application/json" id="ex-switch-m">{"q": "You want a drawer that your code can still read by name, but that doesn't appear in <code>Object.keys()</code>, <code>JSON.stringify()</code> or a <code>for...in</code> loop. Which toggle do you turn off?", "options": [
+    {"t": "<code>enumerable</code>", "correct": true, "why": "Yes. Enumerable means \"listed when someone counts the drawers\". Off, the drawer is skipped by the listing tools, but <code>obj.name</code> still reads it."},
+    {"t": "<code>writable</code>", "why": "That makes the drawer read-only. It would still be listed by <code>Object.keys()</code>."},
+    {"t": "<code>configurable</code>", "why": "That stops the drawer being deleted or rewired. It would still be listed."},
+    {"t": "All of them, or the drawer can still be found", "why": "Only the E toggle controls listing. Turning off W and C as well would also make it read-only and permanent, which you didn't ask for."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 4: defineProperty, toggles start off">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption">To set the toggles yourself, use <code>Object.defineProperty(object, "name", descriptor)</code>. It makes a drawer, or changes one, using the settings you pass. Watch what happens to the toggles you <b>don't</b> mention.</p>
+    <span class="file-tab">define.js</span>
+    <pre class="code" data-src="define.js"></pre>
+    <pre class="term" data-run="define.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b> makes a new drawer <code>id</code> and only says <code>value: 7</code>. Line 4 reads it fine: <samp>7</samp>.</span></li>
+      <li><span><b>Line 5:</b> the three toggles are all <samp>false</samp>. For a <b>new</b> drawer, <code>defineProperty</code> turns OFF every toggle you leave out. That's the opposite of ordinary assignment.</span></li>
+      <li><span><b>Lines 6 to 8:</b> because E is off, <code>id</code> is missing from <code>Object.keys</code>, from the JSON text and even from Node's printout. The drawer is there; it just isn't listed.</span></li>
+    </ol>
+    <div class="props19">
+      <figure class="c2"><svg class="char" data-char="switchpanel" data-label="show" data-rows="title:111,id:000"></svg><figcaption>After line 2: <code>title</code> was made the ordinary way, <code>id</code> by <code>defineProperty</code>.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: the control panel for show. The title row has W, E and C all ON. The id row has all three toggles OFF.</p>
+    <p class="catch">DEFINEPROPERTY'S TOGGLES START OFF</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: the W toggle off, strict and sloppy">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Now turn off <b>W</b> on <code>seats</code> and try Kit's accident again. Same code, two kinds of file. First, <code>readonly.js</code>: in this book's folder a <code>.js</code> file is an ES module, which always uses strict mode (Chapter 17). Second, <code>readonly_sloppy.cjs</code>: a <code>.cjs</code> file runs in the old, sloppy mode.</p>
+    <div class="two-files">
+      <div><span class="file-tab">readonly.js (strict)</span><pre class="code" data-src="readonly.js"></pre><pre class="term wrap" data-run="readonly.js" data-exit data-fold></pre></div>
+      <div><span class="file-tab">readonly_sloppy.cjs (sloppy)</span><pre class="code" data-src="readonly_sloppy.cjs"></pre><pre class="term wrap" data-run="readonly_sloppy.cjs" data-exit></pre></div>
+    </div>
+    <ol class="readlist">
+      <li><span><b>Line 2</b> changes only one toggle of an existing drawer. When <code>defineProperty</code> changes a drawer that already exists, the toggles you leave out stay as they were (E and C stay ON).</span></li>
+      <li><span><b>Strict, read it like a detective.</b> The <code>Name: message</code> line first (in Node it sits in the middle; the last line only names the Node version): <samp>TypeError: Cannot assign to read only property 'seats' of object '#&lt;Object&gt;'</samp>. "Read only" is the W toggle. <samp>#&lt;Object&gt;</samp> is how V8 names a plain object in a message. Then the place: <samp>readonly.js:5</samp>, caret under the <code>=</code>. Line 6 never runs.</span></li>
+      <li><span><b>Sloppy:</b> no error at all. Line 5 is simply ignored, and line 6 prints <samp>120</samp>. The program carries on as if nothing happened. That's the dangerous one: the bug stays hidden.</span></li>
+    </ol>
+    <div class="scene flip">
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>Strict mode shouts, sloppy mode shrugs. I'd rather be shouted at on opening night than find out later that nothing got saved.</p></div>
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="pointL"></svg>
+    </div>
+    <p class="catch">STRICT SHOUTS, SLOPPY SHRUGS</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-sloppy-m" id="ex-sloppy"></div>
+  <script type="application/json" id="ex-sloppy-m">{"program": "predict_sloppy.cjs", "prompt": "A <code>.cjs</code> file, so sloppy mode. The poster's <code>title</code> drawer has W turned off. Predict the one line it prints.", "hint": "In sloppy mode, does a write to a read-only drawer crash, or is it quietly ignored? And is <code>color</code> read-only too?", "explain": "Line 4 tries to write to a drawer with W off. In sloppy mode that write is silently ignored, so <code>title</code> stays <samp>Macbeth</samp>. Line 5 writes to <code>color</code>, whose toggles are all still on, so it changes to <samp>blue</samp>. Saved as a <code>.js</code> module, line 4 would crash with the TypeError from panel 5."}</script>
+
+  <section class="panel clean" aria-label="Panel 6: the E toggle off">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption">The <b>E</b> toggle in detail. A ticket gets a <code>barcode</code> that the scanner needs, but that shouldn't clutter lists or be sent out in the JSON.</p>
+    <span class="file-tab">hidden.js</span>
+    <pre class="code" data-src="hidden.js"></pre>
+    <pre class="term" data-run="hidden.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6:</b> reading it by name works: <samp>X-4471</samp>. E OFF doesn't mean secret.</span></li>
+      <li><span><b>Lines 7 to 11</b> all leave it out: <code>Object.keys</code>, <code>for...in</code>, <code>JSON.stringify</code>, spreading with <code>{ ...ticket }</code> (so a copy made that way has no barcode at all), and Node's <code>console.log</code>.</span></li>
+      <li><span><b>Lines 12 and 13</b> still find it: <code>Object.hasOwn</code> asks about one name directly, and <code>Object.getOwnPropertyNames</code> lists every own string key, counted or not.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 7: built-ins have toggles too">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption soft">JavaScript's own objects use these toggles all the time. This explains two old puzzles.</p>
+    <span class="file-tab">builtins_flags.js</span>
+    <pre class="code" data-src="builtins_flags.js"></pre>
+    <pre class="term" data-run="builtins_flags.js"></pre>
+    <ul class="readlist">
+      <li><span><b><code>Math.PI</code></b> has all three toggles OFF. You can't change it, it isn't listed, and you can't delete it. That's how a built-in constant is protected.</span></li>
+      <li><span>An array's <b><code>length</code></b> is writable (Chapter 9: setting <code>length</code> shortens the array) but not enumerable. That's why <code>Object.keys([10, 20])</code> gives only the indexes.</span></li>
+      <li><span><b><code>toString</code></b> on <code>Object.prototype</code> is not enumerable. Chapter 18 said <code>for...in</code> also walks the parents' drawers. It never shows <code>toString</code>, <code>hasOwnProperty</code> and friends because the built-in methods have E turned OFF.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 8: the C toggle, a one-way door">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="LOCKED IN!" data-seed="8"></svg>
+    <p class="caption">The <b>C</b> toggle decides whether the panel itself can be unscrewed. Turn it OFF, and the drawer can never be deleted, and its toggles can only move one way.</p>
+    <span class="file-tab">locked.js</span>
+    <pre class="code" data-src="locked.js"></pre>
+    <pre class="term wrap" data-run="locked.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 2 to 4</b> make <code>capacity</code> with W and E on, C off. <b>Line 6</b> still changes the value: <samp>280</samp>. C OFF doesn't freeze the value; W decides that.</span></li>
+      <li><span><b>Line 8</b> turns W off. Allowed: with C off, you may still turn W from on to off, and nothing else. Line 9 shows <samp>writable: false</samp>.</span></li>
+      <li><span><b>Line 10</b> tries to turn W back on. Read it like a detective: <samp>TypeError: Cannot redefine property: capacity</samp>, and the stack shows it came from inside <samp>Object.defineProperty</samp>, called at <samp>locked.js:10</samp>. With C off, the door only opens one way.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-enum-m" id="ex-enum"></div>
+  <script type="application/json" id="ex-enum-m">{"program": "spot_enum.js", "bug": 3, "prompt": "Kit adds two roles to the cast, but the count says 0 roles, even though <code>cast.Hamlet</code> is right there. Click the line with the bug.", "explain": "Line 3 makes each drawer with <code>defineProperty</code> and only mentions <code>value</code> and <code>writable</code>. The toggles you leave out start OFF, so <code>enumerable</code> is false and <code>Object.keys</code> skips both roles: <samp>Roles: 0</samp>. Add <code>enumerable: true</code> to the descriptor, or just write <code>cast[role] = actor;</code>, which turns all three toggles on."}</script>
+
+  <section class="panel clean" aria-label="Panel 9: getters and setters">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Some drawers don't hold a value at all. They hold two little functions: a <b>getter</b> that runs when you read the drawer, and a <b>setter</b> that runs when you write to it. These are called <b>accessor properties</b>. (Chapter 18 used them in classes; they work in plain objects too.)</p>
+    <span class="file-tab">accessor.js</span>
+    <pre class="code" data-src="accessor.js"></pre>
+    <pre class="term" data-run="accessor.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 7</b> reads <code>ticket.price</code>, with no brackets, and the getter on line 3 runs. It builds the text from the stored cents: <samp>$12.50</samp>.</span></li>
+      <li><span><b>Line 8</b> writes <code>"$9.99"</code>. The setter on line 4 receives it as <code>text</code>, cuts off the dollar sign, and multiplies the text <code>"9.99"</code> by 100 (<code>*</code> turns text into a number, Chapter 5). <code>Math.round</code> tidies the tiny float error from Chapter 3, and <code>999</code> cents are stored. Line 9: <samp>999 $9.99</samp>.</span></li>
+      <li><span><b>Line 10:</b> an accessor's descriptor has <code>get</code> and <code>set</code> instead of <code>value</code> and <code>writable</code>. It still has E and C.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 10: a getter with no setter">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <svg class="sfx tr" data-sfx="NOPE!" data-seed="10"></svg>
+    <p class="caption">A getter without a setter makes a drawer you can read but not write. In strict code, writing to it is an error.</p>
+    <span class="file-tab">accessor_only.js</span>
+    <pre class="code" data-src="accessor_only.js"></pre>
+    <pre class="term wrap" data-run="accessor_only.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>TypeError: Cannot set property credit of #&lt;Object&gt; which has only a getter</samp>. The message tells you the exact reason.</span></li>
+      <li><span><b>Where:</b> <samp>accessor_only.js:7</samp>. Line 6 worked and printed <samp>Ada Byron</samp>, worked out fresh from <code>first</code> and <code>last</code>.</span></li>
+      <li><span><b>The fix:</b> change <code>first</code> and <code>last</code> instead, or add a <code>set credit(text)</code> that splits the text into them. (In a sloppy <code>.cjs</code> file the write would be silently ignored.)</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-acc-m" id="ex-acc"></div>
+  <script type="application/json" id="ex-acc-m">{"program": "fill_accessor.js", "prompt": "A volume knob with an accessor property <code>loud</code>. Reading it tells you whether the level is above 7; writing <code>true</code> turns it up to 10. Fill in the three blanks.", "blanks": [{"line": 3, "text": "get"}, {"line": 4, "text": "set"}, {"line": 4, "text": "this.level"}], "explain": "Line 3 runs when <code>volume.loud</code> is read, so it's a <code>get</code>ter: 3 is not above 7, so <samp>false</samp>. Line 4 runs when <code>volume.loud = true</code> is written, so it's a <code>set</code>ter, and it stores the new level in <code>this.level</code>, the real drawer: <samp>10 true</samp>. <code>loud</code> holds no value of its own."}</script>
+
+  <div data-ex="parsons" data-model="ex-lock-m" id="ex-lock"></div>
+  <script type="application/json" id="ex-lock-m">{"program": "parsons_lock.js", "seed": 19, "alts": [{"order": [1, 3, 2, 4, 5, 6, 7, 8], "program": "parsons_lock_alt1.js"}, {"order": [1, 2, 3, 4, 5, 6, 8, 7], "program": "parsons_lock_alt2.js"}, {"order": [1, 3, 2, 4, 5, 6, 8, 7], "program": "parsons_lock_alt3.js"}], "prompt": "Lock the <code>venue</code> drawer so it's read-only, try to change it inside a <code>try</code>, print the refusal, then show the venue is unchanged. Put the lines in order.", "explain": "The object must exist before its toggle can be changed (lines 1 and 2). The write goes inside <code>try { … }</code>, so the strict-mode TypeError jumps to <code>catch (err)</code>, which prints its message. After the closing brace, line 8 shows <samp>Globe</samp>: the write never happened. Two small changes also work, and are accepted: locking the drawer as the first line inside the <code>try</code>, or printing the venue inside the <code>catch</code> block."}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · FREEZE, SEAL, AND THE TOP LAYER<small>Locking a whole object, and where the lock stops</small></h2>
+
+  <section class="panel sketch" aria-label="Panel 11: three levels of lock">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">Setting toggles one drawer at a time is fiddly. Three built-in tools lock a <b>whole object</b> at once, each a bit tighter than the last.</p>
+    <div class="duo three">
+      <div class="duo-card hot"><h3>preventExtensions<small>no new drawers</small></h3><p><code>Object.<wbr>preventExtensions(obj)</code>: nothing can be added. Existing drawers keep their toggles, so they can still be changed and deleted.</p></div>
+      <div class="duo-card cool"><h3>seal<small>no new, no removing</small></h3><p><code>Object.seal(obj)</code>: no new drawers, and every drawer's <b>C</b> goes OFF. Values can still change.</p></div>
+      <div class="duo-card ok"><h3>freeze<small>nothing at all</small></h3><p><code>Object.freeze(obj)</code>: no new drawers, every <b>C</b> OFF and every <b>W</b> OFF. Read-only from top to bottom… of the top layer.</p></div>
+    </div>
+    <div class="props19">
+      <figure class="c2"><svg class="char" data-char="switchpanel" data-label="sealed" data-rows="seats:110"></svg><figcaption><code>Object.seal</code>: C off.</figcaption></figure>
+      <figure class="dashed"><svg class="char" data-char="switchpanel" data-label="frozen" data-state="frozen" data-rows="seats:010"></svg><figcaption><code>Object.freeze</code>: W and C off. E is left alone.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: two control panels. The sealed object's seats row has W ON, E ON, C OFF. The frozen object's panel has a FROZEN badge and a dashed outline; its seats row has W OFF, E ON, C OFF.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 12: the three levels, tested">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <p class="caption">One program tries the same three jobs on each kind of object: add a drawer, change one, delete one. Each try catches its error and reports <code>ok</code> or <code>refused</code>.</p>
+    <span class="file-tab">levels.js</span>
+    <pre class="code" data-src="levels.js"></pre>
+    <pre class="term" data-run="levels.js"></pre>
+    <p>Line 2 uses <code>catch { … }</code> with no <code>(err)</code>: allowed since ES2019 when you don't need the error. Each row matches the cards in panel 11. And you can ask an object how locked it is:</p>
+    <span class="file-tab">level_checks.js</span>
+    <pre class="code" data-src="level_checks.js"></pre>
+    <pre class="term wrap" data-run="level_checks.js"></pre>
+    <p>Each row prints <code>isExtensible</code>, <code>isSealed</code>, <code>isFrozen</code>. A frozen object counts as sealed too. Line 9 shows freeze really is just the toggles: <samp>writable: false</samp> and <samp>configurable: false</samp>.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-seal-m" id="ex-seal"></div>
+  <script type="application/json" id="ex-seal-m">{"program": "predict_seal.js", "prompt": "A sealed ticket, in a strict <code>.js</code> file. Two of the jobs are caught and print their messages. Predict all four lines.", "hint": "Seal turns off C on every drawer and stops new drawers. W stays on. Which of lines 4, 5 and 6 is still allowed?", "explain": "Line 4 changes a value: sealing leaves W on, so <code>paid</code> becomes <samp>true</samp> silently. Line 5 adds a drawer: refused, <samp>No: Cannot add property vip, object is not extensible</samp>. Line 6 deletes one: refused, <samp>No: Cannot delete property 'seat' of #&lt;Object&gt;</samp>. Line 7 shows the ticket, and line 8: sealed <samp>true</samp>, frozen <samp>false</samp>."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 13: writing into a frozen object" data-machine="m-freeze">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <p class="caption">Feed the frozen show some writes. Each input is a tiny real program: <code>const show = Object.freeze({ title: "Hamlet", seats: 120 })</code>, then the one line on the chip. Chips marked <code>(.cjs)</code> ran in a sloppy <code>.cjs</code> file; all the others ran in a strict <code>.js</code> file.</p>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-freeze">{"label": "frozen show", "program": "fz_strict.js", "examples": [
+      {"in": "show.seats = 0 (.js)", "error": "TypeError: Cannot assign to read only property 'seats' of object '#<Object>'", "program": "fz_strict.js", "note": "W is off on every drawer, and strict code reports it. The same message you met in panel 5."},
+      {"in": "show.seats = 0 (.cjs)", "out": "seats is still 120", "outKind": "silently ignored", "program": "fz_sloppy.cjs", "note": "The same write in a sloppy file: no error, no change. <code>fz_sloppy.cjs</code> prints the drawer afterwards to prove it."},
+      {"in": "show.director = \"Kit\"", "error": "TypeError: Cannot add property director, object is not extensible", "program": "fz_add.js", "note": "Freezing also stops new drawers. \"Not extensible\" is the preventExtensions part of freeze."},
+      {"in": "delete show.title", "error": "TypeError: Cannot delete property 'title' of #<Object>", "program": "fz_delete.js", "note": "C is off on every drawer, so nothing can be removed."},
+      {"in": "cast.push(\"Cy\") (.cjs)", "error": "TypeError: Cannot add property 2, object is not extensible", "program": "fz_push.cjs", "note": "A surprise: this one throws even in sloppy code. <code>cast[0] = \"Cy\"</code> on line 2 of <code>fz_push.cjs</code> was silently ignored, but <code>push</code> is a built-in method, and array methods like <code>push</code> throw when a write fails, even in sloppy code."},
+      {"in": "show.cast.push(\"Bo\")", "out": "cast is now Ada and Bo", "outKind": "allowed!", "program": "fz_nested.js", "note": "<code>fz_nested.js</code> freezes a show that holds a <code>cast</code> array. Pushing into that array works, even in strict code. The next panels explain why."}]}</script>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 14: defineProperty on a number">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <svg class="sfx tr" data-sfx="HUH?!" data-seed="14"></svg>
+    <p class="caption">Control panels belong to objects. What if you hand the tools a plain number?</p>
+    <span class="file-tab">nonobject.js</span>
+    <pre class="code" data-src="nonobject.js"></pre>
+    <pre class="term wrap" data-run="nonobject.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> <code>Object.freeze(120)</code> doesn't complain. A number has no drawers to lock, so freeze hands it straight back: <samp>120</samp>.</span></li>
+      <li><span><b>Line 3, the message line first:</b> <samp>TypeError: Object.defineProperty called on non-object</samp>. <code>defineProperty</code> refuses outright, because it can't make a drawer on something that has no drawers. The stack says the error came from inside <samp>Object.defineProperty</samp>, called at <samp>nonobject.js:3</samp>.</span></li>
+      <li><span><b>The usual cause:</b> a variable you thought held an object holds a number, a string, <code>undefined</code> or <code>null</code>. Print it, and check where it was set.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 15: the freeze that didn't hold">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <svg class="sfx tr" data-sfx="HEH!" data-seed="15"></svg>
+    <p class="caption">Kit freezes the whole show before opening night. Then a script adds an actor and turns the lights red. No errors, in a strict file.</p>
+    <span class="file-tab">shallow.js</span>
+    <pre class="code" data-src="shallow.js"></pre>
+    <pre class="term wrap" data-run="shallow.js"></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. You froze the <b>show</b>. You didn't freeze the <b>cast</b> or the <b>lights</b>. Line 9 says it: show frozen <samp>true</samp>, cast frozen <samp>false</samp>.</p></div>
+    </div>
+    <p class="sr-only">Picture: the sneak, a sly little critter that stands for bugs that don't crash, grins. A burst says HEH!</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 16: memory tracer, freeze only locks the top layer" data-tracer="tr-shallow" id="tr-shallow-box">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption">Step through <code>shallow.js</code>. The <code>show</code> object's drawers hold <b>arrows</b> to two other objects (Chapter 10: objects hold references). Freeze locks the arrows in place. It doesn't touch the objects at the other end.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-shallow-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls"><div class="btns">
+      <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+      <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+      <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+      <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+    </div><span class="parity"></span></div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-shallow">{"program": "shallow.js", "steps": [
+      {"line": 1, "note": "Node opens <code>shallow.js</code>. Nothing exists yet.", "output": [], "frames": [{"name": "shallow.js (module)", "vars": []}], "objects": {}},
+      {"line": 6, "note": "Lines 1 to 5 build <b>three</b> objects: the show (S1), the cast array (A1) and the lights (O2). <code>Object.freeze</code> then turns off W and C on S1's three drawers, and stops new ones. A1 and O2 are separate objects with their own panels, still all ON. Their labels say so.", "output": [], "frames": [{"name": "shallow.js (module)", "vars": [{"n": "show", "ref": "S1"}]}], "objects": {"S1": {"kind": "object", "label": "show S1 · FROZEN", "pairs": [{"k": "title", "val": "\"Hamlet\""}, {"k": "cast", "ref": "A1"}, {"k": "lights", "ref": "O2"}]}, "A1": {"kind": "array", "label": "array A1 · not frozen", "items": [{"val": "\"Ada\""}]}, "O2": {"kind": "object", "label": "lights O2 · not frozen", "pairs": [{"k": "color", "val": "\"blue\""}]}}, "changed": ["show"]},
+      {"line": 7, "note": "Line 6 reads <code>show.cast</code>: reading a frozen drawer is fine, and it gives the arrow to A1. <code>push</code> then changes <b>A1</b>, not S1. S1's <code>cast</code> drawer still holds the very same arrow, so freeze has nothing to object to.", "output": [], "frames": [{"name": "shallow.js (module)", "vars": [{"n": "show", "ref": "S1"}]}], "objects": {"S1": {"kind": "object", "label": "show S1 · FROZEN", "pairs": [{"k": "title", "val": "\"Hamlet\""}, {"k": "cast", "ref": "A1"}, {"k": "lights", "ref": "O2"}]}, "A1": {"kind": "array", "label": "array A1 · not frozen", "items": [{"val": "\"Ada\""}, {"val": "\"Bo\""}]}, "O2": {"kind": "object", "label": "lights O2 · not frozen", "pairs": [{"k": "color", "val": "\"blue\""}]}}},
+      {"line": 8, "note": "Line 7 follows the <code>lights</code> arrow to O2 and writes its <code>color</code> drawer. O2's W toggle is on, so <code>\"red\"</code> goes in.", "output": [], "frames": [{"name": "shallow.js (module)", "vars": [{"n": "show", "ref": "S1"}]}], "objects": {"S1": {"kind": "object", "label": "show S1 · FROZEN", "pairs": [{"k": "title", "val": "\"Hamlet\""}, {"k": "cast", "ref": "A1"}, {"k": "lights", "ref": "O2"}]}, "A1": {"kind": "array", "label": "array A1 · not frozen", "items": [{"val": "\"Ada\""}, {"val": "\"Bo\""}]}, "O2": {"kind": "object", "label": "lights O2 · not frozen", "pairs": [{"k": "color", "val": "\"red\""}]}}},
+      {"line": 9, "note": "Line 8 prints the whole show, following the arrows: Bo is in the cast and the lights are red.", "output": ["{ title: 'Hamlet', cast: [ 'Ada', 'Bo' ], lights: { color: 'red' } }"], "frames": [{"name": "shallow.js (module)", "vars": [{"n": "show", "ref": "S1"}]}], "objects": {"S1": {"kind": "object", "label": "show S1 · FROZEN", "pairs": [{"k": "title", "val": "\"Hamlet\""}, {"k": "cast", "ref": "A1"}, {"k": "lights", "ref": "O2"}]}, "A1": {"kind": "array", "label": "array A1 · not frozen", "items": [{"val": "\"Ada\""}, {"val": "\"Bo\""}]}, "O2": {"kind": "object", "label": "lights O2 · not frozen", "pairs": [{"k": "color", "val": "\"red\""}]}}},
+      {"line": null, "note": "Line 9 asks each object about itself: S1 is frozen, A1 is not. What <b>would</b> fail is changing S1's own drawers, for example <code>show.cast = []</code>, which tries to move the arrow. Freeze guards the top layer only.", "output": ["{ title: 'Hamlet', cast: [ 'Ada', 'Bo' ], lights: { color: 'red' } }", "true false"], "frames": [{"name": "shallow.js (module)", "vars": [{"n": "show", "ref": "S1"}]}], "objects": {"S1": {"kind": "object", "label": "show S1 · FROZEN", "pairs": [{"k": "title", "val": "\"Hamlet\""}, {"k": "cast", "ref": "A1"}, {"k": "lights", "ref": "O2"}]}, "A1": {"kind": "array", "label": "array A1 · not frozen", "items": [{"val": "\"Ada\""}, {"val": "\"Bo\""}]}, "O2": {"kind": "object", "label": "lights O2 · not frozen", "pairs": [{"k": "color", "val": "\"red\""}]}}}]}</script>
+    <p class="catch">FREEZE ONLY LOCKS THE TOP LAYER</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 17: a deep freeze">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">To lock every layer, freeze every object you can reach. A function that calls itself on each inner object does it. (A function calling itself is called <b>recursion</b>; Chapter 21 digs into it.)</p>
+    <span class="file-tab">deep.js</span>
+    <pre class="code" data-src="deep.js"></pre>
+    <pre class="term wrap" data-run="deep.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 2 and 3</b> look at every drawer's value. If it's an object (arrays are objects too), <code>deepFreeze</code> freezes it first. <code>value !== null</code> is needed because <code>typeof null</code> is <samp>"object"</samp> (Chapter 2's famous quirk).</span></li>
+      <li><span><b>Line 5</b> freezes the object itself and returns it. Line 11: both inner objects are frozen now, <samp>true true</samp>.</span></li>
+      <li><span><b>Line 12</b> now fails, with the familiar <samp>Cannot assign to read only property 'color'</samp>. Deep freezing visits every object, so keep it for small settings objects. A structure that points back at itself would need a list of objects already visited.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 18: const versus freeze">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <p class="caption soft">Two different locks that people often mix up. One locks the <b>tag</b>, the other locks the <b>drawers</b>.</p>
+    <span class="file-tab">const_freeze.js</span>
+    <pre class="code" data-src="const_freeze.js"></pre>
+    <pre class="term" data-run="const_freeze.js"></pre>
+    <div class="duo">
+      <div class="duo-card cool"><h3>const<small>the name tag is glued</small></h3><p><code>a</code> can never point at another object, but the object's drawers are open: line 2 changes <code>seats</code>.</p></div>
+      <div class="duo-card ok"><h3>Object.freeze<small>the drawers are locked</small></h3><p>The object can't change, but a <code>let</code> tag can be moved to a different object: line 6. Use <b>both</b>, <code>const</code> and freeze, to lock tag and drawers.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-const-m" id="ex-const"></div>
+  <script type="application/json" id="ex-const-m">{"q": "In a strict <code>.js</code> file: <code>let poster = Object.freeze({ title: \"Macbeth\" });</code> Which of these lines runs <b>without</b> an error?", "options": [
+    {"t": "<code>poster = { title: \"Hamlet\" };</code>", "correct": true, "why": "Yes. <code>let</code> lets the tag move to a brand-new object. Freeze locked the old object's drawers, not the tag."},
+    {"t": "<code>poster.title = \"Hamlet\";</code>", "why": "The <code>title</code> drawer has W off, and strict code throws <i>Cannot assign to read only property 'title'</i>."},
+    {"t": "<code>poster.year = 1606;</code>", "why": "A frozen object can't get new drawers: <i>Cannot add property year, object is not extensible</i>."},
+    {"t": "<code>delete poster.title;</code>", "why": "C is off on every drawer of a frozen object: <i>Cannot delete property 'title'</i>."}]}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · THE OBJECT TOOLBOX<small>entries and fromEntries, key order, assign, hasOwn, groupBy</small></h2>
+
+  <section class="panel clean" aria-label="Panel 19: keys, values, entries">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Objects don't have <code>map</code> or <code>filter</code>; arrays do (Chapter 9). So the trick is to turn an object into an array, work on that, and turn it back.</p>
+    <span class="file-tab">entries.js</span>
+    <pre class="code" data-src="entries.js"></pre>
+    <pre class="term wrap" data-run="entries.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 3 to 5:</b> <code>Object.keys</code> gives the names, <code>Object.values</code> the values, and <code>Object.entries</code> both, as little <code>[key, value]</code> pairs. All three list only the drawers with E on.</span></li>
+      <li><span><b>Line 8</b> maps every pair to a new pair with half the price. Each <code>[kind, price]</code> in the arrow's brackets unpacks one pair (destructuring, Chapter 11).</span></li>
+      <li><span><b>Line 7:</b> <code>Object.fromEntries</code> does the reverse of <code>entries</code>: it builds an object from a list of pairs. <samp>{ adult: 6, child: 3, senior: 4 }</samp>.</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 20: the entries pipeline">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption soft">Remember it as a three-stop round trip:</p>
+    <div class="pipe19">
+      <div><h3>1 · UNPACK</h3><code>Object.entries(obj)</code><p>Object to a list of <code>[key, value]</code> pairs.</p></div>
+      <div><h3>2 · WORK</h3><code>.map(…)</code> <code>.filter(…)</code><p>Any array tool: change pairs, drop pairs, sort them.</p></div>
+      <div><h3>3 · REPACK</h3><code>Object.fromEntries(pairs)</code><p>List of pairs back to an object.</p></div>
+    </div>
+    <p class="catch">ENTRIES OUT, ARRAY TOOLS, FROMENTRIES BACK</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-entries-m" id="ex-entries"></div>
+  <script type="application/json" id="ex-entries-m">{"program": "trace_entries.js", "columns": ["item", "before", "after"], "given": [0], "prompt": "The shop restocks anything with fewer than 5 in stock by adding 10. The last line prints each restocked item with its old and new count. Fill in the table.", "explain": "<code>entries</code> makes four pairs. <code>filter</code> keeps those with <code>n &lt; 5</code>: pens (4), maps (0) and mugs (2); hats (7) is dropped. <code>map</code> adds 10 to each. <code>fromEntries</code> repacks them, and the loop prints old and new: 4 and 14, 0 and 10, 2 and 12. The order stays the order the drawers were added in."}</script>
+
+  <section class="panel clean" aria-label="Panel 21: the order of the drawers">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption">What order do the keys come out in? It isn't random, and it isn't always the order you added them.</p>
+    <span class="file-tab">order.js</span>
+    <pre class="code" data-src="order.js"></pre>
+    <pre class="term wrap" data-run="order.js"></pre>
+    <ol class="readlist">
+      <li><span><b>First,</b> keys that look like array indexes (whole numbers like <code>2</code> and <code>10</code>), from smallest to largest, wherever they were added. Note that keys are always text: they print as <samp>'2'</samp> and <samp>'10'</samp>.</span></li>
+      <li><span><b>Then</b> every other text key in the order it was added: <samp>'b'</samp>, <samp>'a'</samp>, and <samp>'-1'</samp>, which doesn't count as an index because of the minus sign.</span></li>
+      <li><span><b>Last,</b> symbol keys (Part 4), which <code>Object.keys</code> leaves out entirely. <code>Reflect.ownKeys</code> on line 10 lists every own key: text, uncounted and symbol.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-order-m" id="ex-order"></div>
+  <script type="application/json" id="ex-order-m">{"program": "predict_order.js", "prompt": "Five lockers are added in a mixed-up order. Predict the one line of keys.", "hint": "Index-like keys first, smallest first. Is <code>\"07\"</code> index-like, or is it ordinary text?", "explain": "<code>7</code> and <code>\"3\"</code> are index-like, so they come first, smallest first: <samp>3 7</samp>. Then the other keys in the order they were added: <samp>zed amy 07</samp>. <code>\"07\"</code> isn't index-like, because an index is written without a leading zero."}</script>
+
+  <section class="panel clean" aria-label="Panel 22: Object.assign and spreading">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption"><code>Object.assign(target, ...sources)</code> copies drawers from the sources into the target, left to right, and returns the target. It's the classic way to merge default settings with your own choices.</p>
+    <span class="file-tab">assign.js</span>
+    <pre class="code" data-src="assign.js"></pre>
+    <pre class="term wrap" data-run="assign.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4</b> copies <code>defaults</code>, then <code>options</code>, into a fresh <code>{}</code>. A later source wins: <samp>volume: 9</samp>.</span></li>
+      <li><span><b>Lines 6 and 7:</b> the copy is <b>shallow</b>, like freeze. <code>crew</code> is copied as an arrow to the same inner object, so changing <code>settings.crew.size</code> changes the defaults too: <samp>6</samp>.</span></li>
+      <li><span><b>Lines 10 and 11:</b> the target itself is changed and returned, so <code>same === target</code> is <samp>true</samp>. <b>Line 12:</b> spreading into an object literal does the same merge without touching any target.</span></li>
+      <li><span>Both copy only own drawers with E on (symbols included), and they copy <b>values, not toggles</b>: a copy of a frozen object isn't frozen.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-assign-m" id="ex-assign"></div>
+  <script type="application/json" id="ex-assign-m">{"program": "predict_assign.js", "prompt": "A frozen <code>base</code> is merged with two more objects into a fresh one. Then the copy is changed. Predict both lines.", "hint": "Later sources win. And does <code>Object.assign</code> copy the toggles, or only the values?", "explain": "The scenes are copied in turn, 1, then 2, then 3, so the last one wins: <code>scene: 3</code>. <code>next</code> is a brand-new ordinary object (only values were copied), so line 4 can change <code>act</code> to 2: <samp>{ act: 2, scene: 3 }</samp>. <code>base</code> is still frozen and <code>next</code> isn't: <samp>true false</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 23: Object.hasOwn">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <p class="caption">Is a drawer really this object's own, or borrowed from a parent? Chapter 18 met <code>Object.hasOwn</code>. Here it is next to the <code>in</code> operator.</p>
+    <span class="file-tab">hasown.js</span>
+    <pre class="code" data-src="hasown.js"></pre>
+    <pre class="term" data-run="hasown.js"></pre>
+    <ul class="readlist">
+      <li><span><code>"toString" in prop</code> is <samp>true</samp>: <code>in</code> also looks up the parent chain, and every object inherits <code>toString</code>. <code>Object.hasOwn</code> only looks at the object itself: <samp>false</samp>.</span></li>
+      <li><span>It even works on an object with no parent at all (line 6), where calling <code>bare.hasOwnProperty(…)</code> would crash, because that method lives on the missing parent. Prefer <code>Object.hasOwn</code>.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: Object.groupBy and Map.groupBy">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">The snack bar wants its orders sorted into piles by kind. <code>Object.groupBy(list, callback)</code> (new in ES2024) calls the callback on every item and puts the item in the pile named by its answer.</p>
+    <span class="file-tab">groupby.js</span>
+    <pre class="code" data-src="groupby.js"></pre>
+    <pre class="term wrap" data-run="groupby.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 9</b> makes an object with one drawer per pile, in the order each pile first appeared: <samp>snack</samp>, <samp>drink</samp>, <samp>merch</samp>. Each drawer holds an array of the matching orders.</span></li>
+      <li><span><b>Line 12:</b> no order said <code>"toy"</code>, so there's no <code>toy</code> drawer: <samp>undefined</samp>, not an empty array.</span></li>
+      <li><span><b>Line 16</b> shows how Node prints the result: <samp>[Object: null prototype]</samp>. The piles object is made with no parent (Chapter 18's <code>Object.create(null)</code>), so a pile called <code>"toString"</code> can never clash with an inherited method. That label is Node's own formatting.</span></li>
+    </ol>
+    <p><code>Map.groupBy</code> works the same way but returns a <b>Map</b>, a different kind of container that Chapter 20 opens properly. Node prints it like this:</p>
+    <span class="file-tab">groupby_map.js</span>
+    <pre class="code" data-src="groupby_map.js"></pre>
+    <pre class="term wrap" data-run="groupby_map.js"></pre>
+    <p>For now, notice three things: <samp>Map(2)</samp> is Node's way of saying "a Map with 2 entries", you read a pile with <code>.get("small")</code> rather than a dot, and <code>.size</code> counts the piles.</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-group-m" id="ex-group"></div>
+  <script type="application/json" id="ex-group-m">{"program": "fill_groupby.js", "prompt": "Group tickets by the night of the show, then print each night with its seats. Fill in the three blanks.", "blanks": [{"line": 7, "text": "Object.groupBy"}, {"line": 7, "text": "t.night"}, {"line": 8, "text": "Object.entries"}], "explain": "Line 7 groups with <code>Object.groupBy</code>, and the callback's answer, <code>t.night</code>, names the pile. Line 8 turns the piles object into <code>[night, list]</code> pairs with <code>Object.entries</code>, so the loop can print each one. Fri appeared first, so it's printed first: <samp>Fri A1,C2</samp>, then <samp>Sat B4</samp>."}</script>
+
+  <div data-ex="parsons" data-model="ex-pipe-m" id="ex-pipe"></div>
+  <script type="application/json" id="ex-pipe-m">{"program": "parsons_pipe.js", "seed": 24, "prompt": "Raise every price on the menu by 1, keep only the dishes that still cost less than 6, and print the result. Put the lines in order.", "explain": "Each line needs the one before: the menu, its entries, the pairs with prices raised (tea 3, cake 5, soup 7), the cheap ones (soup is dropped), the repacked object, and the print: <samp>{ tea: 3, cake: 5 }</samp>. Unpack, work, repack."}</script>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · INVISIBLE INK: SYMBOLS<small>Keys that nobody else can stumble on</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 25: a note nobody else trips over">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <svg class="sfx tr" data-sfx="PSST!" data-seed="25"></svg>
+    <p class="caption">The props table is shared by every crew. Kit wants to stick a private note on the crown: "glue the left side". But if Kit calls the drawer <code>note</code>, the costume team might use <code>note</code> for something else, and one overwrites the other.</p>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="focus" data-arms="point"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>Any text name could clash. I need a key that's one of a kind. A key that nobody can type by accident, and that doesn't show up when the costume team lists the drawers.</p>
+      </div>
+      <svg class="char lg" data-char="inkkey" data-label="Symbol(note)"></svg>
+    </div>
+    <p class="sr-only">Picture: Kit points at a key with a dashed, sparkly outline, tagged Symbol(note). A burst says PSST!</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: making symbols">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption">That's a <b>symbol</b>: a brand-new kind of value, made with <code>Symbol("description")</code>. Chapter 5 met it briefly, as a "one-of-a-kind label".</p>
+    <span class="file-tab">symbol_basics.js</span>
+    <pre class="code" data-src="symbol_basics.js"></pre>
+    <pre class="term" data-run="symbol_basics.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 4:</b> its type is <samp>symbol</samp>, its own primitive type, like number or string.</span></li>
+      <li><span><b>Lines 5 and 6:</b> the text you pass in is only a <b>description</b>, a label for people reading printouts.</span></li>
+      <li><span><b>Line 7:</b> two symbols with the same description are still different: <samp>false</samp>. Every call to <code>Symbol()</code> makes a value that has never existed before and is equal only to itself (line 8).</span></li>
+    </ol>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 27: the invisible ink drawer">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption soft">Use a symbol as a drawer key, and you get a drawer written in <b>invisible ink</b>. Only someone holding that exact symbol can open it, and the drawer doesn't show up when ordinary tools list the drawers.</p>
+    <div class="props19">
+      <figure class="c1"><svg class="char narrow" data-char="inkcab" data-label="prop" data-keys="name,weight" data-ink="Symbol(note)"></svg><figcaption>Two ordinary drawers and one in invisible ink.</figcaption></figure>
+      <figure class="c2"><svg class="char narrow" data-char="inkkey" data-label="note" data-teeth="1011"></svg><figcaption>Kit's key, kept in the variable <code>note</code>. Only this exact key opens the ink drawer.</figcaption></figure>
+    </div>
+    <p class="sr-only">Picture: a cabinet labelled prop with two solid drawers, name and weight, and a third drawer drawn dashed with the words Symbol(note) and invisible ink, plus a key hole. Next to it, a sparkly dashed key tagged note.</p>
+    <p class="catch">ONLY THE EXACT KEY OPENS THE INK DRAWER</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: symbol keys are hidden, not secret">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">How invisible is the ink? Line 3 writes the drawer with square brackets, the only way to use a symbol as a key.</p>
+    <span class="file-tab">hidden_ink.js</span>
+    <pre class="code" data-src="hidden_ink.js"></pre>
+    <pre class="term wrap" data-run="hidden_ink.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5:</b> with the key in hand, the drawer opens: <samp>glue the left side</samp>.</span></li>
+      <li><span><b>Lines 6 to 8:</b> <code>Object.keys</code>, <code>for...in</code> and <code>JSON.stringify</code> skip it completely. The costume team's code will never stumble on it.</span></li>
+      <li><span><b>Lines 9 to 12:</b> but it isn't a secret. Node's <code>console.log</code> shows it (Node 22 writes it as <samp>[Symbol(note)]</samp>; see the version notes), <code>Object.getOwnPropertySymbols</code> and <code>Reflect.ownKeys</code> list it, and <code>Object.assign</code> copies it.</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="professor"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Professor says: </span>Symbols prevent <b>accidents</b>, not snooping. For data that truly must stay private, use a class's <code>#private</code> field (Chapter 18) or a closure (Chapter 17).</p></div>
+    </div>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 29: a brand-new key opens nothing">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <svg class="sfx tr" data-sfx="EMPTY!" data-seed="29"></svg>
+    <p class="caption">The classic symbol bug. Line 2 writes a badge with <code>Symbol("badge")</code>, and line 3 tries to read it back with <code>Symbol("badge")</code>.</p>
+    <span class="file-tab">fresh_key.js</span>
+    <pre class="code" data-src="fresh_key.js"></pre>
+    <pre class="term wrap" data-run="fresh_key.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 3:</b> <samp>undefined</samp>. Each <code>Symbol("badge")</code> makes a new key that has never existed before. The key that wrote the drawer was never stored anywhere, so that drawer can't be opened by name ever again.</span></li>
+      <li><span><b>Lines 5 to 7</b> do it right: make the key <b>once</b>, keep it in a variable, and use that variable both times.</span></li>
+      <li><span><b>Line 8</b> shows the result: two drawers with the same description, <samp>Symbol(badge)</samp>, but different keys. The description is just a label.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-fresh-m" id="ex-fresh"></div>
+  <script type="application/json" id="ex-fresh-m">{"program": "spot_fresh.js", "bug": 5, "prompt": "The stage door has a secret drawer, but <code>readSecret</code> always says <samp>undefined</samp>. Click the line with the bug.", "explain": "Line 5 makes a <b>new</b> symbol and uses it as the key. It has the same description as <code>secret</code>, but it's a different key, so it opens nothing. Use the symbol that wrote the drawer: <code>return obj[secret];</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 30: the global registry, Symbol.for">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption">Sometimes two separate parts of a program need the <b>same</b> symbol without passing a variable around. <code>Symbol.for("name")</code> looks the name up in a shared <b>registry</b>, a cupboard of keys for the whole program, and makes the key only the first time.</p>
+    <span class="file-tab">registry.js</span>
+    <pre class="code" data-src="registry.js"></pre>
+    <pre class="term" data-run="registry.js"></pre>
+    <ul class="readlist">
+      <li><span><b>Line 3:</b> both calls return the one registered key: <samp>true</samp>. <code>Symbol.keyFor</code> tells you the name it's registered under.</span></li>
+      <li><span><b>Line 7:</b> a plain <code>Symbol("crew.badge")</code> is not in the registry, even with the same text: <samp>false undefined</samp>. Its <code>description</code> still works.</span></li>
+      <li><span>Registered keys can clash like text names, so give them long, unique names such as <code>"crew.badge"</code>.</span></li>
+    </ul>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 31: a symbol refuses to become text">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <svg class="sfx tr" data-sfx="NO GLUE!" data-seed="31"></svg>
+    <p class="caption">Chapter 5 showed this error in passing. Now you know what a symbol is, read it like a detective.</p>
+    <span class="file-tab">symbol_plus.js</span>
+    <pre class="code" data-src="symbol_plus.js"></pre>
+    <pre class="term wrap" data-run="symbol_plus.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>The message line first:</b> <samp>TypeError: Cannot convert a Symbol value to a string</samp>. <b>Where:</b> <samp>symbol_plus.js:5</samp>, caret under the <code>+</code>.</span></li>
+      <li><span><b>Why:</b> gluing with <code>+</code> converts quietly, and JavaScript refuses to turn a symbol into text quietly, so that a key can never be mistaken for the text <code>"Symbol(note)"</code>. <b>Line 4</b> shows that a template literal, <code>`${note}`</code>, refuses too: its <code>catch</code> prints the same message.</span></li>
+      <li><span><b>The fixes</b> are on lines 2 and 3: ask for the text <b>on purpose</b>, with <code>String(note)</code> or <code>note.toString()</code>, or take just the label with <code>note.description</code>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="predict" data-model="ex-symmath-m" id="ex-symmath"></div>
+  <script type="application/json" id="ex-symmath-m">{"program": "symbol_math.js", "expect": "error", "answer": "number", "prompt": "Line 2 prints fine. Line 3 crashes with a TypeError that begins <samp>Cannot convert a Symbol value to a …</samp>", "ask": "Type the last word of the error message:", "explain": "Multiplying needs a number, and a symbol refuses to become one quietly: <samp>TypeError: Cannot convert a Symbol value to a number</samp>. Line 2 worked because <code>toString()</code> asks for text on purpose."}</script>
+
+  <section class="panel sketch" aria-label="Panel 32: the well-known symbols">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption soft">JavaScript itself uses symbols as <b>hooks</b>: special keys you can put on your own objects to change how the language treats them. Because they're symbols, they can never clash with your own drawer names. They're called <b>well-known symbols</b>, and they live on <code>Symbol</code>.</p>
+    <span class="file-tab">wellknown.js</span>
+    <pre class="code" data-src="wellknown.js"></pre>
+    <pre class="term wrap" data-run="wellknown.js"></pre>
+    <div class="wk19">
+      <div class="now"><h3>Symbol.toStringTag</h3><p>The name in <samp>[object …]</samp>. Below, now.</p><span class="when">this chapter</span></div>
+      <div class="now"><h3>Symbol.toPrimitive</h3><p>How your object turns into a number or text. Part 5.</p><span class="when">this chapter</span></div>
+      <div class="later"><h3>Symbol.iterator</h3><p>What makes <code>for...of</code> and spreading work.</p><span class="when">Chapter 20</span></div>
+      <div class="later"><h3>Symbol.dispose</h3><p>Clean-up for the <code>using</code> keyword.</p><span class="when">Chapter 24</span></div>
+      <div class="later"><h3>Symbol.asyncIterator</h3><p>The async twin of <code>iterator</code>: the hook <code>for await...of</code> looks for.</p><span class="when"><code>for await...of</code>: Chapter 25</span></div>
+    </div>
+    <span class="file-tab">tostringtag.js</span>
+    <pre class="code" data-src="tostringtag.js"></pre>
+    <pre class="term" data-run="tostringtag.js"></pre>
+    <p>A plain object's default text is <samp>[object Object]</samp>. Giving the class a <code>Symbol.toStringTag</code> getter (line 3) changes the second word: <samp>[object Ticket]</samp>. Built-ins already have one, which is why a Map says <samp>[object Map]</samp>. Line 11 shows a trick older code uses to tell types apart: <samp>[object Null]</samp>.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-sym-m" id="ex-sym"></div>
+  <script type="application/json" id="ex-sym-m">{"q": "Which statement about a drawer whose key is a symbol is true?", "options": [
+    {"t": "<code>Object.keys</code> skips it, but <code>Object.assign</code> copies it", "correct": true, "why": "Yes, exactly what <code>hidden_ink.js</code> shows: <code>Object.keys</code> and <code>JSON.stringify</code> skip it, while <code>Object.getOwnPropertySymbols</code> finds it and <code>Object.assign</code> copies it. Symbol keys are hidden from the ordinary listing tools, not secret."},
+    {"t": "Nobody without the key can list it, not even <code>Reflect.ownKeys</code>", "why": "Node's <code>console.log</code> shows it, and <code>Reflect.ownKeys</code> lists it. Symbols prevent accidental clashes, not snooping."},
+    {"t": "<code>obj[Symbol(\"note\")]</code> reads it back if the label matches", "why": "Every <code>Symbol()</code> call makes a new key. A matching description opens nothing (<code>fresh_key.js</code>)."},
+    {"t": "A dot reads it, as in <code>obj.note</code>, like any drawer", "why": "<code>obj.note</code> means the text key <code>\"note\"</code>. Symbol keys need square brackets and the symbol itself: <code>obj[note]</code>."}]}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · WHO ARE YOU, IN ONE WORD?<small>toString, valueOf, Symbol.toPrimitive and the three hints</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 33: the Chapter 5 mystery">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <svg class="sfx tl" data-sfx="WHAT?!" data-seed="33"></svg>
+    <div class="scene">
+      <svg class="char" data-char="stagehand" data-mood="surprised" data-mouth="o" data-arms="shrug"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">Kit says: </span>Chapter 5 left me a puzzle. <code>[] + {}</code> isn't an error. It's the text <samp>[object Object]</samp>. Chapter 5 promised the answer here.</p>
+        <p class="bubble"><span class="sr-only">Kit says: </span><code>+</code> only knows how to add numbers or glue text. An array and an object are neither. So somebody must turn them into something simpler first. Who, and how?</p>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit, surprised, shrugs. A burst says WHAT?!</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 34: valueOf and toString">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <p class="caption">When an operator needs a <b>primitive</b> (a number, a string, a boolean and friends) but gets an object, it asks the object: "Who are you, in one word?" A plain object has two built-in ways to answer, inherited from <code>Object.prototype</code>: <code>valueOf()</code> and <code>toString()</code>.</p>
+    <span class="file-tab">plus_mystery.js</span>
+    <pre class="code" data-src="plus_mystery.js"></pre>
+    <pre class="term" data-run="plus_mystery.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5:</b> for plain objects and arrays, <code>valueOf()</code> just returns the object itself: <samp>true true</samp>. That's not a primitive, so the answer is ignored.</span></li>
+      <li><span><b>Line 6:</b> so JavaScript tries <code>toString()</code>. An empty array becomes the empty text <samp>""</samp> (its items joined with commas, and there are none). A plain object becomes <samp>[object Object]</samp>.</span></li>
+      <li><span><b>Line 4, solved:</b> <code>[] + {}</code> becomes <code>"" + "[object Object]"</code>. Now <code>+</code> has text, so it glues: <samp>[object Object]</samp>. Line 7 is <code>"1,2" + "3"</code>, and line 8 is <code>"[object Object]" + 1</code>.</span></li>
+    </ol>
+    <p class="catch">EVERY OBJECT GETS ASKED: WHO ARE YOU IN ONE WORD?</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 35: the three hints">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption">The question comes with a <b>hint</b>: what the operator would like back. An object can listen for the hint by having a method under the well-known key <code>Symbol.toPrimitive</code>. This one is a spy: it prints every hint it's given.</p>
+    <span class="file-tab">hints.js</span>
+    <pre class="code" data-src="hints.js"></pre>
+    <pre class="term wrap" data-run="hints.js"></pre>
+    <table class="ref-table hints19">
+      <thead><tr><th>Hint</th><th>Who asks with it (from the run above)</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>"string"</code></td><td>template literals <code>`${x}`</code> (line 7), <code>String(x)</code> (line 8), and using an object as a drawer key (line 18)</td><td>"I'd like text."</td></tr>
+        <tr><td><code>"number"</code></td><td>unary <code>+x</code> (line 9), <code>Number(x)</code> (line 14), <code>*</code>, <code>-</code>, <code>/</code> and <code>%</code> (lines 10 and 15), and comparisons <code>&gt;</code> and <code>&lt;=</code> (lines 11 and 16)</td><td>"I'd like a number."</td></tr>
+        <tr><td><code>"default"</code></td><td>binary <code>x + y</code> (line 12), and <code>==</code> against a primitive (line 13)</td><td>"Could be either: <code>+</code> might add or glue."</td></tr>
+      </tbody>
+    </table>
+    <p>Each <samp>asked with hint</samp> line prints <b>before</b> the result, because the conversion happens while the outer <code>console.log</code> is still working out its argument. Line 15 asks three times, once per operator, before it prints <samp>6&nbsp;1&nbsp;3</samp>. The method may return any primitive. The hint is a wish, not a rule.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 36: the map of the conversion road" data-map="map-prim">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption soft">The whole decision as a road map. The standard calls it <b>ToPrimitive</b>. Five real programs, five roads. Pick one and follow Kit.</p>
+    <div class="paths" role="group" aria-label="Choose a program"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mapprim-t mapprim-d"><title id="mapprim-t">Map of how an object becomes a primitive</title><desc id="mapprim-d">An object meets an operator that needs a primitive, and the operator picks a hint. Question 1: does the object have a Symbol.toPrimitive method? If yes, it is called with the hint, and its primitive answer is used. If no, question 2: is the hint string? If yes, try toString, then valueOf. If no, try valueOf, then toString. The first primitive answer is used. If neither gives a primitive, the result is a TypeError.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-prim">{"seed": 19, "size": [700, 600], "start": [[160, 2], [160, 34]],
+      "states": [
+        {"id": "MEET", "x": 20, "y": 40, "w": 280, "h": 64, "label": "object meets operator", "sub": "it picks a hint"},
+        {"id": "Q1", "x": 20, "y": 150, "w": 280, "h": 64, "label": "1 · has toPrimitive?", "sub": "a [Symbol.toPrimitive] method"},
+        {"id": "TP", "x": 400, "y": 150, "w": 280, "h": 64, "label": "call it with the hint", "sub": "use its answer"},
+        {"id": "Q2", "x": 20, "y": 260, "w": 280, "h": 64, "label": "2 · hint is \"string\"?"},
+        {"id": "TS", "x": 400, "y": 260, "w": 280, "h": 64, "label": "toString, then valueOf", "sub": "first primitive wins"},
+        {"id": "VS", "x": 20, "y": 370, "w": 280, "h": 64, "label": "valueOf, then toString", "sub": "first primitive wins"},
+        {"id": "PRIM", "x": 400, "y": 480, "w": 280, "h": 64, "label": "a primitive!", "sub": "the operator carries on", "kind": "end"},
+        {"id": "ERR", "x": 20, "y": 520, "w": 250, "h": 64, "label": "TypeError", "sub": "no primitive came back", "kind": "error"}],
+      "transitions": [
+        {"id": "t0", "from": "MEET", "to": "Q1", "pts": [[160, 108], [160, 144]]},
+        {"id": "y1", "from": "Q1", "to": "TP", "pts": [[304, 182], [394, 182]], "label": "yes", "lx": 330, "ly": 170},
+        {"id": "n1", "from": "Q1", "to": "Q2", "pts": [[160, 218], [160, 254]], "label": "no", "lx": 172, "ly": 242},
+        {"id": "y2", "from": "Q2", "to": "TS", "pts": [[304, 292], [394, 292]], "label": "yes", "lx": 330, "ly": 280},
+        {"id": "n2", "from": "Q2", "to": "VS", "pts": [[160, 328], [160, 364]], "label": "no", "lx": 172, "ly": 352},
+        {"id": "tpok", "from": "TP", "to": "PRIM", "pts": [[684, 182], [694, 182], [694, 512], [686, 512]]},
+        {"id": "tsok", "from": "TS", "to": "PRIM", "pts": [[540, 328], [540, 474]], "label": "got one", "lx": 552, "ly": 410},
+        {"id": "vsok", "from": "VS", "to": "PRIM", "pts": [[304, 402], [350, 402], [350, 512], [394, 512]], "label": "got one", "lx": 358, "ly": 452},
+        {"id": "vserr", "from": "VS", "to": "ERR", "pts": [[145, 438], [145, 514]], "label": "neither", "lx": 157, "ly": 482}],
+      "paths": [
+        {"id": "plain", "label": "list + obj", "program": "plain_plus.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MEET"], "output": [], "note": "<code>plain_plus.js</code> runs <code>list + obj</code> with <code>list = []</code> and <code>obj = {}</code>. Binary <code>+</code> asks both sides, with the hint <code>\"default\"</code>. Follow <code>obj</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "A <code>Symbol.toPrimitive</code> method? A plain object has none."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Is the hint <code>\"string\"</code>? No, it's <code>\"default\"</code>."},
+          {"on": ["VS"], "via": ["n2"], "output": [], "note": "So <code>valueOf()</code> goes first. It returns the object itself, not a primitive, so it's ignored. Next, <code>toString()</code>: <code>\"[object Object]\"</code>, a string."},
+          {"on": ["PRIM"], "via": ["vsok"], "output": ["[object Object]"], "note": "A primitive. (The array took the same road and became <code>\"\"</code>.) Now <code>+</code> has text and glues: <samp>[object Object]</samp>. Chapter 5's mystery, solved."}]},
+        {"id": "tmpl", "label": "`${price}`", "program": "valueof_template.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MEET"], "output": [], "note": "<code>valueof_template.js</code>: <code>price</code> has its own <code>valueOf()</code> returning <code>42</code>. A template literal asks with the hint <code>\"string\"</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "A <code>Symbol.toPrimitive</code> method? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Is the hint <code>\"string\"</code>? Yes."},
+          {"on": ["TS"], "via": ["y2"], "output": [], "note": "So <code>toString()</code> goes <b>first</b>. <code>price</code> didn't write its own, so the inherited one answers <code>\"[object Object]\"</code>, a primitive. <code>valueOf</code> is never asked."},
+          {"on": ["PRIM"], "via": ["tsok"], "output": ["[object Object]"], "note": "The template prints <samp>[object Object]</samp>, not 42. Writing only <code>valueOf</code> isn't enough for text."}]},
+        {"id": "plus", "label": "price + \"\"", "program": "valueof_plus.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MEET"], "output": [], "note": "<code>valueof_plus.js</code>: the same <code>price</code>, but now <code>price + \"\"</code>. Binary <code>+</code> uses the hint <code>\"default\"</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "A <code>Symbol.toPrimitive</code> method? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Is the hint <code>\"string\"</code>? No."},
+          {"on": ["VS"], "via": ["n2"], "output": [], "note": "<code>valueOf()</code> goes first, and <code>price</code>'s own <code>valueOf</code> returns <code>42</code>, a number."},
+          {"on": ["PRIM"], "via": ["vsok"], "output": ["42"], "note": "<code>42 + \"\"</code> glues to the text <samp>42</samp>. Same object, different operator, different answer."}]},
+        {"id": "tp", "label": "`${temp}`", "program": "tp_string.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [
+          {"on": ["MEET"], "output": [], "note": "<code>tp_string.js</code>: <code>temp</code> has a <code>[Symbol.toPrimitive](hint)</code> method. The template asks with <code>\"string\"</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "A <code>Symbol.toPrimitive</code> method? Yes."},
+          {"on": ["TP"], "via": ["y1"], "output": [], "note": "It's called with <code>\"string\"</code> and answers <code>\"21°C\"</code>. Neither <code>valueOf</code> nor <code>toString</code> is asked: this one method handles every hint."},
+          {"on": ["PRIM"], "via": ["tpok"], "output": ["21°C"], "note": "The template prints <samp>21°C</samp>."}]},
+        {"id": "err", "label": "prop + 1 (no primitive)", "program": "no_primitive.js", "expect": {"exit": 1, "stderrContains": "TypeError: Cannot convert object to primitive value"}, "steps": [
+          {"on": ["MEET"], "output": [], "note": "<code>no_primitive.js</code>: <code>prop</code>'s <code>valueOf</code> and <code>toString</code> both return <code>this</code>, the object. <code>prop + 1</code> asks with <code>\"default\"</code>."},
+          {"on": ["Q1"], "via": ["t0"], "output": [], "note": "A <code>Symbol.toPrimitive</code> method? No."},
+          {"on": ["Q2"], "via": ["n1"], "output": [], "note": "Hint <code>\"string\"</code>? No."},
+          {"on": ["VS"], "via": ["n2"], "output": [], "note": "<code>valueOf()</code>: an object, ignored. <code>toString()</code>: an object again, ignored. Out of answers."},
+          {"on": ["ERR"], "via": ["vserr"], "output": [], "error": "TypeError: Cannot convert object to primitive value", "note": "Nobody gave a primitive, so the program stops: <samp>TypeError: Cannot convert object to primitive value</samp>. A <code>Symbol.toPrimitive</code> method that returns an object fails with the same message (the machine below shows it)."}]}]}</script>
+  </section>
+
+  <section class="panel clean machine" aria-label="Panel 37: the Symbol.toPrimitive machine" data-machine="m-temp">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Feed the <code>temp</code> object into six operators. Its <code>[Symbol.toPrimitive](hint)</code> answers <code>"21°C"</code> for the hint <code>"string"</code> and the number <code>21</code> for anything else. Watch which hint each operator sends.</p>
+    <span class="file-tab">machine_temp.js</span>
+    <pre class="code" data-src="machine_temp.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-temp">{"label": "temp", "program": "machine_temp.js", "examples": [
+      {"in": "`${temp}`", "out": "21°C", "outKind": "string · hint \"string\"", "note": "A template literal asks for text, so the method returns <code>\"21°C\"</code>."},
+      {"in": "temp + 1", "out": "22", "outKind": "number · hint \"default\"", "note": "Binary <code>+</code> sends <code>\"default\"</code>. This method treats that like a number: <code>21 + 1</code>."},
+      {"in": "temp * 2", "out": "42", "outKind": "number · hint \"number\"", "note": "<code>*</code> only works on numbers, so it asks for one: <code>21 * 2</code>."},
+      {"in": "temp + \"!\"", "out": "21!", "outKind": "string · hint \"default\"", "note": "Also <code>\"default\"</code>, so the answer is the number 21, <b>not</b> \"21°C\". Then <code>+</code> sees text on the right and glues: <samp>21!</samp>."},
+      {"in": "temp > 25", "out": "false", "outKind": "boolean · hint \"number\"", "note": "Comparisons ask for numbers: <code>21 &gt; 25</code> is false."},
+      {"in": "Number(temp) - 1", "out": "20", "outKind": "number · hint \"number\"", "note": "<code>Number()</code> asks for a number on purpose: 21, then minus 1."},
+      {"in": "a bad toPrimitive", "error": "TypeError: Cannot convert object to primitive value", "program": "machine_bad.js", "note": "<code>machine_bad.js</code> has a <code>Symbol.toPrimitive</code> that returns <code>{ celsius: 21 }</code>. Unlike <code>valueOf</code>, whose object answers are quietly skipped, this method must return a primitive, or the conversion fails at once."}]}</script>
+  </section>
+
+  <div data-ex="predict" data-model="ex-hints-m" id="ex-hints"></div>
+  <script type="application/json" id="ex-hints-m">{"program": "predict_hints.js", "prompt": "This seat answers differently for every hint: <code>3</code> for \"number\", <code>\"row 3\"</code> for \"string\", and <code>\"seat\"</code> for \"default\". Predict all six lines.", "hint": "Check the hint table in panel 35 for each operator. For line 12, which hint does unary <code>+</code> send, and then what does the second <code>+</code> do?", "explain": "Template: \"string\", <samp>row 3</samp>. <code>* 10</code>: \"number\", <samp>30</samp>. <code>seat + 1</code>: \"default\", so <code>\"seat\" + 1</code> glues to <samp>seat1</samp>. <code>+seat + 1</code>: unary plus asks for a number, 3, and then <code>3 + 1</code> is <samp>4</samp>. <code>String(seat)</code> is \"row 3\", 5 characters: <samp>5</samp>. <code>seat == \"seat\"</code>: \"default\" gives \"seat\", which equals \"seat\": <samp>true</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 38: valueOf and surprising ==">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Writing only a <code>valueOf</code> gives some surprising answers, especially with <code>==</code>.</p>
+    <span class="file-tab">valueof_eq.js</span>
+    <pre class="code" data-src="valueof_eq.js"></pre>
+    <pre class="term" data-run="valueof_eq.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 4 and 5:</b> <code>price == 5</code> is <samp>true</samp>, because <code>==</code> converts the object (Chapter 5's loose equality). <code>===</code> never converts: an object is not a number, <samp>false</samp>.</span></li>
+      <li><span><b>Line 7:</b> the template asks for text, <code>toString</code> goes first, and you get <samp>[object Object]</samp>, the trap from the map.</span></li>
+      <li><span><b>Lines 8 and 9, the big surprise:</b> <code>price == same</code> is <samp>false</samp>, because when <b>both</b> sides are objects, <code>==</code> converts nothing and asks "same object?" Yet <code>&lt;=</code> and <code>&gt;=</code> do convert, so each is "at most" and "at least" the other. Equal by every test except equality!</span></li>
+    </ol>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Objects that pretend to be numbers make <code>==</code> lie to you. Compare the real numbers instead: <code>price.valueOf() === same.valueOf()</code>.</p></div>
+    </div>
+  </section>
+
+  <div data-ex="choice" data-model="ex-eq-m" id="ex-eq"></div>
+  <script type="application/json" id="ex-eq-m">{"q": "<code>const a = { valueOf() { return 1; } }; const b = { valueOf() { return 1; } };</code> What is <code>a == b</code>?", "options": [
+    {"t": "<code>false</code>", "correct": true, "why": "Yes. Two objects are compared by identity, and <code>valueOf</code> is never called: <code>==</code> only converts when one side is a primitive. Two different objects are never equal, whatever they'd convert to (line 8 of <code>valueof_eq.js</code>)."},
+    {"t": "<code>true</code>", "why": "Both would convert to 1, and that's what <code>a &lt;= b</code> uses, because it converts. <code>==</code> between two objects doesn't convert at all."},
+    {"t": "A TypeError", "why": "Comparing objects is allowed; it just asks whether they are the very same object."},
+    {"t": "<code>\"[object Object]\"</code>", "why": "<code>==</code> always gives <code>true</code> or <code>false</code>, never text."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 39: a Temperature class">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">Put it together: a <code>Temperature</code> class (Chapter 18) that prints with its unit and still does arithmetic.</p>
+    <span class="file-tab">temperature.js</span>
+    <pre class="code" data-src="temperature.js"></pre>
+    <pre class="term" data-run="temperature.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 11:</b> templates ask for text, so each temperature brings its unit: <samp>Morning 12°C, noon 21°C</samp>.</span></li>
+      <li><span><b>Lines 12 to 14:</b> <code>-</code>, <code>+</code> between two temperatures (hint "default", answered with the number) and <code>&gt;</code> all get numbers: a rise of <samp>9</samp>, an average of <samp>16.5</samp>, and <samp>true</samp>.</span></li>
+      <li><span><b>Line 15, the trap:</b> <code>"Plus: " + noon</code> sends "default", not "string", so you get the number: <samp>Plus: 21</samp>, without the unit. To get text, ask for it: a template, or <code>String(noon)</code> as on line 16.</span></li>
+    </ol>
+    <p class="catch">THE HINT COMES FROM THE OPERATOR</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 40: Date breaks the default rule">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption">One built-in answers "default" differently. A <code>Date</code> treats "default" as "string", so <code>+</code> glues it as text. (This book's runs use <code>TZ=UTC</code>, so the time shows as UTC. On your machine it shows your own time zone.)</p>
+    <span class="file-tab">date_hint.js</span>
+    <pre class="code" data-src="date_hint.js"></pre>
+    <pre class="term wrap" data-run="date_hint.js"></pre>
+    <p><b>Line 3:</b> <code>-</code> asks for a number: the milliseconds since 1 January 1970, UTC (dates get a whole chapter later, Chapter 23). <b>Line 4:</b> <code>+</code> sends "default", and the Date answers with text, so the <code>0</code> is glued on the end. Ordinary objects and most built-ins answer "default" as if it were "number".</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-temp-m" id="ex-temp"></div>
+  <script type="application/json" id="ex-temp-m">{"program": "fill_temp.js", "prompt": "Build your own <code>Temperature</code> that prints with °C in a template and still subtracts. Fill in the three blanks.", "blanks": [{"line": 3, "text": "Symbol.toPrimitive"}, {"line": 4, "text": "\"string\"", "accept": ["'string'"]}, {"line": 5, "text": "this.celsius"}], "explain": "The method's key is the well-known symbol <code>Symbol.toPrimitive</code>, in square brackets because it's a symbol. For the hint <code>\"string\"</code> it returns text with the unit: <samp>Low 18°C, high 24°C</samp>. For every other hint it returns the plain number <code>this.celsius</code>, so <code>high - low</code> is <samp>6</samp>."}</script>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · TAGGED TEMPLATES<small>A function in front of a template, and String.raw</small></h2>
+
+  <section class="panel clean" aria-label="Panel 41: a tag function">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <p class="caption">Put a function name directly in front of a template literal, with no brackets, and JavaScript calls that function with the template <b>taken apart</b>. The function is called a <b>tag</b>, and this is a <b>tagged template</b>.</p>
+    <span class="file-tab">tag_basic.js</span>
+    <pre class="code" data-src="tag_basic.js"></pre>
+    <pre class="term" data-run="tag_basic.js"></pre>
+    <div class="split19" aria-hidden="true"><span class="str">"Hello "</span><span class="hole">who</span><span class="str">", seat "</span><span class="hole">seat</span><span class="str">"!"</span></div>
+    <p class="sr-only">Picture: the template cut into five pieces: the text "Hello ", the hole who, the text ", seat ", the hole seat, and the text "!".</p>
+    <ol class="readlist">
+      <li><span><b>Line 9</b> calls <code>show</code>. Its first parameter, <code>strings</code>, gets the <b>text pieces</b> between the holes: <samp>[ 'Hello ', ', seat ', '!' ]</samp>.</span></li>
+      <li><span><code>...values</code> (rest parameters, Chapter 7) collects the <b>values</b> of the holes, already worked out: <samp>[ 'Ada', 7 ]</samp>. Note that 7 is still a number. Nothing has been turned into text.</span></li>
+      <li><span>There is always one more text piece than there are values (the last piece may be empty). And whatever the tag returns is the result: line 10 prints <samp>done</samp>.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="trace" data-model="ex-tagtrace-m" id="ex-tagtrace"></div>
+  <script type="application/json" id="ex-tagtrace-m">{"program": "trace_tag.js", "columns": ["i", "length", "value"], "given": [0], "prompt": "The tag prints one row per text piece: its index, the piece's length in characters, and the value that follows it (or <code>-</code> after the last piece). Fill in the table.", "explain": "The pieces are <code>\"Act \"</code> (4 characters, counting the space), <code>\", scene \"</code> (8, counting the comma and both spaces) and the empty last piece <code>\"\"</code> (0), because the template ends right after a hole. The values are <code>act</code> (3) and <code>scene</code> (2). Three pieces, two values: always one more piece."}</script>
+
+  <section class="panel clean" aria-label="Panel 42: a safe tag">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">Why would you want the pieces apart? Because the tag can treat <b>your text</b> and the <b>values</b> differently. Here a tag makes visitor names safe to put in a web page: in HTML, <code>&lt;b&gt;</code> is a command, so a name like that would turn the page bold, or worse.</p>
+    <span class="file-tab">tag_safe.js</span>
+    <pre class="code" data-src="tag_safe.js"></pre>
+    <pre class="term wrap" data-run="tag_safe.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2</b> starts with the first text piece. <b>Lines 3 to 7</b> add each value, with <code>&lt;</code> and <code>&gt;</code> replaced by their harmless HTML spellings, followed by the next text piece.</span></li>
+      <li><span><b>Line 12</b>, an ordinary template, glues the name in as-is. <b>Line 13</b>, tagged, prints <samp>&amp;lt;b&amp;gt;Bo&amp;lt;/b&amp;gt;</samp>, which a browser would show as the plain text &lt;b&gt;Bo&lt;/b&gt;.</span></li>
+      <li><span>Real libraries use tags like this for HTML, SQL database queries, CSS and translations. (A real HTML escaper also handles <code>&amp;</code> and quotes.)</span></li>
+    </ol>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 43: String.raw">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <p class="caption">JavaScript comes with one tag built in: <code>String.raw</code>. It keeps backslashes exactly as typed, instead of reading <code>\n</code> as "new line" and <code>\t</code> as "tab" (Chapter 4's escape sequences).</p>
+    <span class="file-tab">raw.js</span>
+    <pre class="code" data-src="raw.js"></pre>
+    <pre class="term" data-run="raw.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 2:</b> the ordinary string turned <code>\n</code> into a line break and <code>\t</code> into a tab, so the Windows path is mangled across two lines.</span></li>
+      <li><span><b>Line 3:</b> <code>String.raw</code> keeps every backslash: <samp>C:\new\table</samp>. <b>Line 4:</b> holes still work, and the <code>\n</code> at the end stays two characters.</span></li>
+      <li><span><b>Line 5</b> counts: 10 characters with escapes (each <code>\n</code> and <code>\t</code> is one character), 12 raw. Tag functions can see both versions: <code>strings</code> holds the cooked pieces and <code>strings.raw</code> the raw ones.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-tag-m" id="ex-tag"></div>
+  <script type="application/json" id="ex-tag-m">{"program": "parsons_tag.js", "seed": 43, "pin": [8, 9, 10], "prompt": "Write a <code>shout</code> tag that upper-cases every value but leaves your own text alone. The last three lines are fixed. Put the function's lines in order.", "explain": "Start with the first text piece (here the empty text before <code>${hero}</code>). Then, for each value, add the value in capitals followed by the text piece after it, <code>strings[i + 1]</code>. Close the loop, and only then return the result: a <code>return</code> inside the loop would stop after the first value. Then close the function. <samp>KIT: beware of IAGO!</samp>: only the values were shouted."}</script>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: toggles, freezing, ink and hints, all mixed</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 44: boss level">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="44"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Three questions for every object. Which toggles are on? How deep does the lock go? And when an operator asks "who are you?", which hint is it using? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. A frozen box with a symbol drawer and an array inside, then a copy made by spreading. Predict all three lines.", "hint": "Is the inner array frozen? Does spreading copy symbol keys, and does it copy the freeze? What does <code>Object.keys</code> count?", "explain": "Line 4 pushes into the inner array, which isn't frozen: the box's items are now mask and cape. Spreading copies every own listed drawer, the symbol one included, into a new ordinary object, and <code>label</code> is overwritten. <code>Object.keys(copy)</code> counts only text keys: <samp>2</samp>, and <code>copy[key]</code> is <samp>crown</samp>. Line 6 gives the copy a new array, so <samp>2 3</samp>. The copy isn't frozen, and the box's JSON skips the symbol drawer: <samp>false {\"label\":\"props\",\"items\":[\"mask\",\"cape\"]}</samp>."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.js", "bug": 4, "prompt": "Boss 2. This <code>deepFreeze</code> should lock every layer, yet the lights still turn red without an error, in a strict file. Click the line with the bug.", "explain": "Line 4 freezes each inner object with <code>Object.freeze(value)</code>, which only reaches <b>one</b> layer down: <code>stage</code> gets frozen, but <code>lights</code>, two layers down, never does. It must call <code>deepFreeze(value)</code> so the function repeats the job at every depth."}</script>
+
+  <div data-ex="fill" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_fill.js", "prompt": "Boss 3. A <code>Money</code> class that prints as dollars, multiplies as a number, and names itself in <code>[object …]</code>. Fill in the three blanks.", "blanks": [{"line": 3, "text": "Symbol.toPrimitive"}, {"line": 5, "text": "\"number\"", "accept": ["'number'"]}, {"line": 7, "text": "Symbol.toStringTag"}], "explain": "Line 3's method is the conversion hook, <code>Symbol.toPrimitive</code>. Line 5 returns the plain number only for the hint <code>\"number\"</code>, which <code>*</code> sends: 12.5 times 2 is <samp>25</samp>. Every other hint, such as the template's \"string\", gets <samp>$12.50</samp>. Line 7's getter, <code>Symbol.toStringTag</code>, gives <samp>[object Money]</samp>."}</script>
+
+  <div data-ex="trace" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_trace.js", "columns": ["step", "keys", "all"], "given": [0], "prompt": "Boss 4. Five steps change the <code>prop</code> object. After each, the program prints how many keys <code>Object.keys</code> lists and how many <code>Reflect.ownKeys</code> lists. Fill in the table.", "explain": "Step 1 adds <code>id</code> with every toggle off: listed 1 (name), all 2. Step 2 adds <code>color</code> the ordinary way: 2 and 3. Step 3 turns off <code>color</code>'s E: listed 1, still 3 in all. Step 4 adds a symbol drawer, which <code>Object.keys</code> never lists: 1 and 4. Step 5 deletes <code>name</code>: listed 0, all 3 (<code>id</code>, <code>color</code> and the symbol)."}</script>
+
+  <div data-ex="parsons" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_parsons.js", "seed": 45, "prompt": "Boss 5. Group ticket sales by night, add up each night's total, and print an object of totals. Put the lines in order.", "explain": "Group the sales first (each sale is a <code>[night, amount]</code> pair, so <code>([night]) =&gt; night</code> names the pile). Then unpack the piles with <code>Object.entries</code> and map each to a new pair: the night, then the sum of its amounts. <code>]);</code> closes the pair, the <code>map</code> call and the statement. <code>Object.fromEntries</code> repacks it: <samp>{ Fri: 42, Sat: 45 }</samp>."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. <code>const box = { valueOf() { return 7; } };</code> Which expression gives the text <samp>\"[object Object]\"</samp>?", "options": [
+    {"t": "<code>`${box}`</code>", "correct": true, "why": "Yes. A template sends the hint \"string\", so <code>toString</code> goes first, and the inherited one answers <code>\"[object Object]\"</code>. <code>valueOf</code> is never asked."},
+    {"t": "<code>box + \"\"</code>", "why": "Binary <code>+</code> sends \"default\", so <code>valueOf</code> goes first: 7, then glued to <code>\"7\"</code>."},
+    {"t": "<code>box * 1</code>", "why": "<code>*</code> sends \"number\": <code>valueOf</code> gives 7, so the result is the number 7."},
+    {"t": "<code>box == 7</code>", "why": "<code>==</code> against a number converts with \"default\": 7 == 7, so <code>true</code>."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 45: what you learned">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption">What you learned in Chapter 19</p>
+    <ul class="recap">
+      <li><b>EVERY DRAWER HAS THREE TOGGLES</b><code>writable</code> (can it change?), <code>enumerable</code> (is it listed by <code>Object.keys</code>, <code>for...in</code>, JSON and spreading?) and <code>configurable</code> (can it be deleted or rewired? turning it off is a one-way door). Read them with <code>Object.<wbr>getOwnProperty<wbr>Descriptor</code>; set them with <code>Object.<wbr>defineProperty</code>, whose toggles start OFF for new drawers. Getters and setters are drawers that run code.</li>
+      <li><b>STRICT SHOUTS, SLOPPY SHRUGS</b>A write to a read-only drawer throws <i>TypeError: Cannot assign to read only property 'seats' of object '#&lt;Object&gt;'</i> in strict code (every ES module) and is silently ignored in sloppy code. Built-in methods like <code>push</code> throw either way. <code>defineProperty</code> on a primitive throws <i>Object.defineProperty called on non-object</i>.</li>
+      <li><b>FREEZE ONLY LOCKS THE TOP LAYER</b><code>preventExtensions</code> stops new drawers, <code>seal</code> also stops deleting, <code>freeze</code> also stops changing. Inner objects stay open unless you deep-freeze them. <code>const</code> glues the tag; freeze locks the drawers. The toolbox: <code>entries</code> out, array tools, <code>fromEntries</code> back; index keys first, then insertion order; <code>Object.assign</code> and spreading copy values shallowly; <code>Object.hasOwn</code>; <code>Object.groupBy</code> and <code>Map.groupBy</code>.</li>
+      <li><b>ONLY THE EXACT KEY OPENS THE INK DRAWER</b>Every <code>Symbol()</code> is new and unique; the description is just a label. Symbol keys are hidden from <code>Object.keys</code> and JSON but not secret. <code>Symbol.for</code> shares keys through a registry. Symbols refuse quiet conversion: <i>Cannot convert a Symbol value to a string</i>. Well-known symbols are the language's hooks.</li>
+      <li><b>THE HINT COMES FROM THE OPERATOR</b>Objects become primitives by <code>Symbol.toPrimitive</code> if present, otherwise <code>toString</code> then <code>valueOf</code> for "string", and <code>valueOf</code> then <code>toString</code> for "number" and "default". That's why <code>[] + {}</code> is <samp>[object Object]</samp>. <code>==</code> between two objects never converts. Tagged templates receive the text pieces and the values separately; <code>String.raw</code> keeps backslashes.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Seats locked, notes in invisible ink, and every prop knows how to answer "who are you?" That's a show I can run. One cue at a time.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 46: next time, coat checks and dispensers">
+    <span class="panel-no" aria-hidden="true">46</span>
+    <p class="caption soft">Coming up in Chapter 20…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Kit thinks: </span>Two loose ends. <code>Map.groupBy</code> handed me a <b>Map</b>, read with <code>.get()</code>, not a dot. What is it, and why would I pick it over an object? And <code>Symbol.iterator</code> is the hook behind <code>for...of</code>. Could I hang it on my own objects? Next time: a <b>coat check</b> that takes any ticket, a guest list where every name appears once, and a <b>candy dispenser</b> that hands out one value at a time.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit points ahead, thinking about the next chapter.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 20 · COAT CHECKS AND DISPENSERS<br><small style="font: 700 1rem var(--f-bubble)">Map, Set, WeakMap, iterators and generators.</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch18.html">← Ch 18 · Parents and Cookie Cutters</a><a class="next" href="ch20.html">Ch 20 · Coat Checks and Dispensers →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: attributes, integrity levels and ToPrimitive</summary>
+    <div class="page-body">
+      <h3>Property attributes</h3>
+      <p>The ECMAScript standard stores each property as a record of <b>attributes</b>, written in double square brackets. A <b>data property</b> has <code>[[Value]]</code>, <code>[[Writable]]</code>, <code>[[Enumerable]]</code> and <code>[[Configurable]]</code>. An <b>accessor property</b> has <code>[[Get]]</code>, <code>[[Set]]</code>, <code>[[Enumerable]]</code> and <code>[[Configurable]]</code>. A descriptor object is just how JavaScript lets you read and write that record. The standard forbids passing both <code>value</code> and <code>get</code> to <code>defineProperty</code>, because no property can be both kinds (not run here).</p>
+      <h3>The configurable rules, exactly</h3>
+      <p>When <code>[[Configurable]]</code> is false, the standard's ValidateAndApplyPropertyDescriptor allows only two changes: <code>[[Writable]]</code> from true to false, and a new <code>[[Value]]</code> if the property is still writable. Everything else, including deleting, flipping E, or turning a data property into an accessor, is refused. That's the one-way door in <code>locked.js</code>.</p>
+      <h3>Integrity levels</h3>
+      <p>Every object has an internal <code>[[Extensible]]</code> flag. <code>preventExtensions</code> clears it. <code>seal</code> clears it and sets every own property's <code>[[Configurable]]</code> to false. <code>freeze</code> does that and sets <code>[[Writable]]</code> to false on every data property (accessors keep their setters: a frozen object's setter still runs, and may change some <em>other</em> object). <code>isFrozen</code> checks that the object isn't extensible and every own property is locked. None of this reaches private <code>#fields</code>, which aren't properties, so a frozen class instance can still change its private state.</p>
+      <h3>Silent failure, explained</h3>
+      <p>Assignment calls the object's internal <code>[[Set]]</code>, which returns true or false. In strict code a false result throws a TypeError; in sloppy code it's thrown away. Built-in methods such as <code>Array.prototype.push</code> are specified to throw whenever a write fails, which is why <code>fz_push.cjs</code> throws in sloppy mode.</p>
+      <h3>Key order</h3>
+      <p>The standard's OrdinaryOwnPropertyKeys lists array-index keys (canonical numeric strings from 0 up to 2<sup>32</sup> − 2) in ascending order, then other string keys in creation order, then symbols in creation order. <code>Object.keys</code>, <code>for...in</code> (for the object's own keys), <code>JSON.stringify</code> and <code>Object.entries</code> all follow it.</p>
+      <h3>ToPrimitive and OrdinaryToPrimitive</h3>
+      <p>ToPrimitive(input, hint) first looks up <code>input[Symbol.toPrimitive]</code>. If it exists, it is called with the hint and must return a non-object, or a TypeError is thrown. Otherwise the standard runs OrdinaryToPrimitive, which calls <code>toString</code> then <code>valueOf</code> for "string" and the reverse for "number", skipping any that are missing or return an object, and throws if neither gives a primitive. A missing hint means "default", which OrdinaryToPrimitive treats as "number". <code>Date.prototype[Symbol.toPrimitive]</code> maps "default" to "string", and <code>Symbol.prototype[Symbol.toPrimitive]</code> returns the symbol itself, which is why a Symbol wrapper object converts back to a symbol.</p>
+      <h3>Symbols</h3>
+      <p>A symbol is a primitive whose only property is its identity, plus an optional <code>[[Description]]</code>. Property keys are either strings or symbols, nothing else: a number key is turned into a string first (ToPropertyKey, which asks objects with the hint "string"). <code>Symbol()</code> can't be called with <code>new</code>. The global registry is shared by every realm in the process (for example, every iframe on a page). The well-known symbols are the same values in every realm.</p>
+      <h3>Template objects</h3>
+      <p>The <code>strings</code> array a tag receives is frozen, has a frozen <code>raw</code> array, and is created once per place in the source code: calling the same tagged template in a loop passes the very same array every time. That lets libraries cache work per template. Invalid escapes such as <code>\unicode</code> are allowed in tagged templates (the cooked piece becomes <code>undefined</code>, the raw piece keeps the text), which is why <code>String.raw`C:\users`</code> works.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>Configuration and constants:</b> apps often <code>Object.freeze</code> their settings or lookup tables (a list of HTTP status codes, a colour palette) so nothing changes them by accident. Teams that freeze nested data use a deep-freeze helper or a library.</li>
+        <li><b>State management:</b> UI frameworks expect state to be treated as immutable: you make a changed copy (with spreading or <code>Object.assign</code>) instead of editing. Some libraries freeze state in development builds to catch accidental edits, and the strict-mode TypeError then points straight at the culprit.</li>
+        <li><b>Hidden helpers:</b> libraries use <code>enumerable: false</code> for internal bookkeeping on objects they hand you, so it doesn't appear in your loops or JSON. Built-in methods are non-enumerable for the same reason.</li>
+        <li><b>Getters and setters</b> validate input, compute values on demand (a full name from first and last), or keep a cached value fresh. Many front-end frameworks use getters or Proxies to notice when data is read and changed.</li>
+        <li><b>Symbols</b> appear as private-ish markers in libraries (a symbol key that tags objects the library made), as registry keys shared between separately loaded scripts, and above all as the well-known hooks: every iterable in Chapter 20 has a <code>Symbol.iterator</code> method.</li>
+        <li><b><code>Object.groupBy</code></b> replaces many hand-written <code>reduce</code> loops for reports: orders by status, log lines by level, students by grade. Older code used Lodash's <code>groupBy</code>.</li>
+        <li><b>Tagged templates</b> are everywhere in modern web code: <code>html`…`</code> in lit, <code>css`…`</code> and <code>styled.div`…`</code> in CSS-in-JS libraries, <code>sql`…`</code> query builders that turn every value into a safe database parameter, <code>gql`…`</code> for GraphQL, and translation helpers.</li>
+        <li><b>Custom conversions:</b> date, money and unit libraries define <code>toString</code>, <code>toJSON</code> and sometimes <code>Symbol.toPrimitive</code> so their objects print nicely. Many deliberately <em>throw</em> from <code>valueOf</code> (the Temporal API does) to stop accidental <code>&lt;</code> and <code>+</code> on objects that shouldn't be compared that way.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"<code>const</code> makes an object read-only."</b> It glues the name to the object. Freezing is a separate step (panel 18).</li>
+        <li><b>"<code>Object.freeze</code> freezes everything inside."</b> Only the object's own drawers. Inner objects and arrays stay open (panel 16).</li>
+        <li><b>"Freeze returns a frozen copy."</b> It freezes the object you pass, and returns the same object.</li>
+        <li><b>"If the write didn't throw, it worked."</b> In sloppy code, writes to read-only drawers fail silently. Check with a strict file, or read the value back.</li>
+        <li><b>"Non-enumerable means private."</b> It only means "not listed". Anyone can read it by name, and <code>Object.getOwnPropertyNames</code> lists it.</li>
+        <li><b>"<code>defineProperty</code> with just a value makes a normal property."</b> It makes a read-only, unlisted, permanent one, because missing toggles default to off.</li>
+        <li><b>"Symbols are secret."</b> They avoid clashes. <code>Object.getOwnPropertySymbols</code>, <code>Reflect.ownKeys</code> and <code>console.log</code> all reveal them.</li>
+        <li><b>"<code>Symbol(\"id\")</code> gives me back the key I made earlier."</b> Every call makes a new one. Keep the symbol in a variable, or use <code>Symbol.for</code>.</li>
+        <li><b>"<code>valueOf</code> is used for everything."</b> Templates and <code>String()</code> try <code>toString</code> first.</li>
+        <li><b>"<code>obj + \"\"</code> and <code>`${obj}`</code> are the same."</b> The first sends "default", the second "string" (panel 36, roads two and three).</li>
+        <li><b>"The <code>number</code> hint means I'll get a number back."</b> The method may return any primitive; the hint is only a wish.</li>
+        <li><b>"Two objects that convert to the same value are <code>==</code>."</b> Object versus object is always an identity check.</li>
+        <li><b>"A tag function receives a finished string."</b> It receives the pieces and the raw values, and returns whatever it likes, not necessarily a string.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <h3>1. Set up a folder</h3>
+      <ol>
+        <li>Check Node with <code>node --version</code>. This chapter used v26.13.0, and every program also ran on v22.23.4. <code>Object.groupBy</code> and <code>Map.groupBy</code> need Node 21 or later (MDN's compatibility data); everything else here is older. If Node is missing, install the LTS version from nodejs.org (Windows and macOS installers; on Linux, the instructions there or a version manager such as nvm).</li>
+        <li>Make a folder <code>toggles</code>, open it in VS Code and open a terminal there (<b>Windows:</b> PowerShell in VS Code works; <b>macOS / Linux:</b> any terminal).</li>
+        <li>Run <code>npm init -y</code> and then <code>npm pkg set type=module</code>, so <code>.js</code> files are strict ES modules, as in this book. Files ending in <code>.cjs</code> stay sloppy CommonJS.</li>
+      </ol>
+      <h3>2. Toggles and freezing</h3>
+      <ol>
+        <li>Type <code>readonly.js</code> (panel 5) and run <code>node readonly.js</code>. Copy it to <code>readonly.cjs</code> (Windows PowerShell: <code>Copy-Item readonly.js readonly.cjs</code>; macOS / Linux: <code>cp readonly.js readonly.cjs</code>) and run that. Then add <code>"use strict";</code> as the first line of the <code>.cjs</code> file and run it again.</li>
+        <li>Type <code>shallow.js</code>. Then paste the <code>deepFreeze</code> function from <code>deep.js</code> above it and use it instead of <code>Object.freeze</code>. Now the <code>push</code> line crashes instead, with a different message from the frozen write. This book ran exactly that change as <code>lab_deep.js</code>:
+          <span class="file-tab">lab_deep.js</span><pre class="code" data-src="lab_deep.js"></pre><pre class="term wrap" data-run="lab_deep.js" data-exit data-fold></pre>
+          <code>push</code> tries to add a slot to the frozen array: <samp>TypeError: Cannot add property 1, object is not extensible</samp>, at <samp>lab_deep.js:13</samp>.</li>
+        <li>Open the Node REPL with <code>node</code> and type <code>Object.getOwnPropertyDescriptors(Math)</code> to see every toggle on every <code>Math</code> drawer. Leave with <code>.exit</code>.</li>
+      </ol>
+      <h3>3. Ink and hints</h3>
+      <ol>
+        <li>Type <code>hidden_ink.js</code> and add <code>console.log(Object.getOwnPropertyDescriptor(prop, note));</code>. Predict first: does a symbol drawer have toggles too?</li>
+        <li>Type <code>hints.js</code> and add your own lines: <code>Math.max(spy, 1)</code>, <code>[spy].join()</code>, <code>spy &lt; spy</code>. Predict each hint before you run it.</li>
+        <li>In a browser console (<kbd>F12</kbd>, or <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd> on macOS), type <code>[] + {}</code> and then <code>({}) + []</code>. Typing <code>{} + []</code> without the brackets may print <code>0</code> instead: at the start of a line, <code>{}</code> is read as an empty block, not an object, so it's really <code>+[]</code>. This book didn't run a browser console. It ran the same two lines as text through Node's <code>eval</code>, which also reads a leading <code>{}</code> as a block:
+          <span class="file-tab">block_plus.js</span><pre class="code" data-src="block_plus.js"></pre><pre class="term" data-run="block_plus.js"></pre></li>
+      </ol>
+      <p><b>About this book's runs:</b> every capture used <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. Only <code>date_hint.js</code> prints a date: with another time zone, its text and the zone name change, but the milliseconds on its first line don't. No program here prints a locale-dependent number.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every program was also run on Node 22.23.4. All exit codes and every error message were identical. Two programs printed differently: Node 22 writes symbol keys in square brackets when it prints an object. Here is <code>hidden_ink.js</code> on Node 22 (compare line 9's output with panel 28):</p>
+      <pre class="term wrap" data-run="hidden_ink.js" data-alt></pre>
+      <p><code>fresh_key.js</code> shows the same difference. In <code>locked.js</code> and <code>nonobject.js</code>, the stack line for the built-in is named <samp>at Function.defineProperty</samp> on Node 22 and <samp>at Object.defineProperty</samp> on Node 26 (same function, new label). The twelve other differences were only inside Node's own stack-trace lines (<code>node:internal/…</code> line numbers) and the version footer.</p>
+      <ul>
+        <li><b>Feature ages</b> (from the ES5.1 and ES2015 specifications and TC39's list of finished proposals, checked on 2026-11-08): property descriptors, <code>defineProperty</code>, <code>freeze</code>, <code>seal</code> and getters/setters are in ES5; symbols, <code>Object.assign</code>, <code>Reflect.ownKeys</code>, tagged templates and <code>String.raw</code> in ES2015; <code>Object.entries</code> and <code>Object.values</code> in ES2017; <code>Object.fromEntries</code> in ES2019, along with <code>catch</code> without <code>(err)</code>; <code>Object.hasOwn</code> in ES2022; <code>Object.groupBy</code> and <code>Map.groupBy</code> in ES2024 (Node 21 and later, by MDN's compatibility data). <code>Symbol.dispose</code> and <code>Symbol.asyncDispose</code> are listed by both Node versions here, though the <code>using</code> keyword that uses them needs Node 26 (Chapter 24).</li>
+        <li><b>Engine wording:</b> the error messages here are V8's (Node, Chrome, Edge). MDN's error reference lists Firefox's wording for the frozen write as <i>"x" is read-only</i> and Safari's as <i>Attempted to assign to readonly property.</i> (not run for this book); the meaning is the same.</li>
+        <li><b>Printing:</b> <samp>[Object: null prototype]</samp>, <samp>Map(2) { … }</samp> and the way symbol keys and getters are shown are Node's <code>util.inspect</code> formatting. Browser consoles draw all of these their own way.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>BigInt: the other new primitive</summary>
+    <div class="page-body">
+      <p><b>BigInt</b> is the other primitive type in the list of words below: a whole number of any size, written with an <code>n</code> on the end, such as <code>10n</code>.</p>
+      <p>Chapter 13 met it when <code>JSON.stringify</code> refused one, and Chapter 23 ("The abacus: BigInt") teaches it in full.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>property descriptor</dt><dd>A small object describing one property: its <code>value</code> (or <code>get</code>/<code>set</code>) and its toggles.</dd>
+        <dt>writable</dt><dd>The toggle that decides whether a property's value can be changed.</dd>
+        <dt>enumerable</dt><dd>The toggle that decides whether a property is listed by <code>Object.keys</code>, <code>for...in</code>, JSON and spreading. To enumerate is to count things off one by one.</dd>
+        <dt>configurable</dt><dd>The toggle that decides whether a property can be deleted or have its toggles changed.</dd>
+        <dt><code>Object.defineProperty</code></dt><dd>Makes or changes a property with chosen toggles; missing toggles start off for new properties.</dd>
+        <dt>accessor property, getter, setter</dt><dd>A property that runs a function when read (getter) or written (setter) instead of holding a value.</dd>
+        <dt>extensible</dt><dd>Able to get new properties. <code>preventExtensions</code> turns it off.</dd>
+        <dt>seal, freeze</dt><dd>Lock a whole object: seal stops adding and deleting; freeze also stops changing values.</dd>
+        <dt>shallow, deep</dt><dd>Shallow affects only the object's own properties; deep also reaches every object inside.</dd>
+        <dt>recursion</dt><dd>A function calling itself to handle a smaller part of the job (Chapter 21).</dd>
+        <dt>entries</dt><dd><code>[key, value]</code> pairs, made by <code>Object.entries</code> and turned back into an object by <code>Object.fromEntries</code>.</dd>
+        <dt>grouping</dt><dd>Sorting items into named piles by a callback's answer: <code>Object.groupBy</code>, <code>Map.groupBy</code>.</dd>
+        <dt>symbol</dt><dd>A primitive value that is unique, made by <code>Symbol()</code>. Used as clash-free property keys.</dd>
+        <dt>description (of a symbol)</dt><dd>The label given to <code>Symbol("…")</code>, for printouts only.</dd>
+        <dt>global symbol registry</dt><dd>A shared cupboard of symbols, used by <code>Symbol.for</code> and <code>Symbol.keyFor</code>.</dd>
+        <dt>well-known symbol</dt><dd>A built-in symbol such as <code>Symbol.iterator</code> or <code>Symbol.toPrimitive</code> that the language looks for to change how it treats your object.</dd>
+        <dt>primitive</dt><dd>A simple value that isn't an object: number, string, boolean, <code>undefined</code>, <code>null</code>, bigint or symbol.</dd>
+        <dt>ToPrimitive, hint</dt><dd>The standard's name for turning an object into a primitive, and the operator's wish ("string", "number" or "default") that goes with it.</dd>
+        <dt><code>valueOf</code>, <code>toString</code></dt><dd>The two methods an object without <code>Symbol.toPrimitive</code> uses to answer, in an order set by the hint.</dd>
+        <dt>tagged template, tag</dt><dd>A template literal with a function in front; the function (the tag) receives the text pieces and the values.</dd>
+        <dt><code>String.raw</code></dt><dd>A built-in tag that keeps backslashes exactly as typed.</dd>
+        <dt>BigInt</dt><dd>A primitive for whole numbers of any size, written with an <code>n</code>.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>MDN reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty">Object.defineProperty()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze">Object.freeze()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/groupBy">Object.groupBy()</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol">Symbol</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toPrimitive">Symbol.toPrimitive</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals">Template literals</a> (the tagged templates section)</li>
+        <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide">MDN JavaScript Guide</a>, "Working with objects" and "Enumerability and ownership of properties"</li>
+        <li><a href="https://tc39.es/ecma262/">The ECMAScript specification</a>: "Property Attributes", "ValidateAndApplyPropertyDescriptor", "SetIntegrityLevel", "ToPrimitive" and "OrdinaryToPrimitive" (dense, but the source of truth)</li>
+        <li><a href="https://nodejs.org/api/util.html">Node.js: util.inspect</a>, which explains how <code>console.log</code> prints objects, symbols and Maps</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://javascript.info/property-descriptors">javascript.info: Property flags and descriptors</a>, then <a href="https://javascript.info/property-accessors">Property getters and setters</a>, <a href="https://javascript.info/symbol">Symbol type</a> and <a href="https://javascript.info/object-toprimitive">Object to primitive conversion</a></li>
+        <li><a href="https://web.dev/learn/javascript">web.dev Learn JavaScript</a>, the articles on symbols and property descriptors</li>
+        <li><a href="https://eloquentjavascript.net/">Eloquent JavaScript, 4th edition</a>, chapter 6, sections on symbols and getters</li>
+        <li><a href="https://roadmap.sh/javascript">roadmap.sh/javascript</a>, the nodes on type conversion and objects</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch19</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are strict ES modules; the four <code>.cjs</code> files are sloppy CommonJS on purpose, to show silent failures), with <code>TZ=UTC</code> and <code>LANG=en_US.UTF-8</code>. All exit codes and error messages were identical on both versions; Node 22 prints symbol keys in square brackets, labels the <code>defineProperty</code> stack line differently, and its internal stack-trace lines differ, as the version notes describe. 75 programs were captured, each run twice on the primary toolchain to confirm the same output; they include three accepted orders of the lock puzzle (<code>parsons_lock_alt1.js</code> to <code>alt3.js</code>) and two lab runs (<code>lab_deep.js</code>, <code>block_plus.js</code>).</p>
+  <p>In the terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines from Node's own code are folded into one line by the page's script; the full, unedited text is one click away under each of those terminals. The memory tracer, the two machines and the map of the conversion road are teaching models; each checks itself against the real runs and says so. The ids in the tracer (S1, A1, O2) are labels for the picture, not real memory addresses. The control panels, ink drawers and keys are pictures of property attributes and symbol keys, not real objects. Printed forms such as <samp>[Object: null prototype]</samp>, <samp>Map(2) { … }</samp> and <samp>Symbol(note): …</samp> are Node's formatting.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): javascript.info "Property flags and descriptors" (the defaults-to-false trap, non-configurable as a one-way road, errors only in strict mode, <code>Math.PI</code>), "Symbol type" (no auto-conversion to string, hidden but not 100% hidden, <code>Object.assign</code> copies symbols, the registry and <code>Symbol.keyFor</code>) and "Object to primitive conversion" (the three hints and who sends them, method order, return types, <code>Date</code> as the exception); MDN reference "Object.freeze()" (shallow freezing, deep freeze and cycles, strict versus sloppy failures, frozen arrays and <code>push</code>, private fields untouched); the MDN JavaScript Guide; web.dev Learn JavaScript "Property descriptors" and "Symbols"; JavaScript: The Definitive Guide, 7th edition, sections 3.6, 6.10.6 and 14.1–14.5; roadmap.sh's type-conversion and object nodes, as listed in this book's research map (<code>research/javascript.md</code>, modules I5 and I22). The research map's error messages for frozen writes, <code>defineProperty</code> on a number and symbol concatenation were confirmed by this chapter's own runs. Fetched on 2026-11-08 to check the version facts: the ES5.1 and ES2015 specifications (262.ecma-international.org), TC39's finished-proposals list (github.com/tc39/proposals), MDN's browser-compatibility data (version 6.0.30) and MDN's "TypeError: "x" is read-only" error page.</p>
+  <p>Kit, the control panels, the ink cabinet and key, the Professor and the sneak are original characters drawn in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>

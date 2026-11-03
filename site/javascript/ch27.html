@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="en" data-book="javascript">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulators and Robot Arms</title>
+<meta name="description" content="Chapter 27 of the Pip &amp; Friends JavaScript book, a comic course: testing in depth with node:test (describe and it, hooks, skip, todo and only, assert/strict, error paths, async tests, mocks, mock timers, coverage and the TDD loop), then Node essentials: process.argv, environment variables and --env-file, exit codes, stdout and stderr, readline, fs/promises, path and the current working directory, streams, Buffer, EventEmitter, a tiny http server with fetch, safety basics and a read-transform-write tool.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Bangers&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@500;600;800&family=Shantell+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/comic.css">
+<link rel="stylesheet" href="../assets/comic-widgets.css">
+<link rel="stylesheet" href="../assets/ext/js-ch27.css">
+<script defer src="../data/js-ch27.js"></script>
+<script defer src="../assets/comic.js"></script>
+<script defer src="../assets/comic-widgets.js"></script>
+<script defer src="../assets/comic-critters.js"></script>
+<script defer src="../assets/comic-cast.js"></script>
+<script defer src="../assets/ext/js-ch27.js"></script>
+</head>
+<body>
+<a class="skip" href="#strip">Skip to the comic</a>
+<header class="topbar">
+  <p class="series"><a href="../index.html" style="color:inherit;text-decoration:none">PIP &amp; FRIENDS</a> <small>JavaScript book</small></p>
+  <nav class="chapters" aria-label="Book">
+    <a href="index.html">Contents</a><a href="ch26.html">&larr; Ch 26</a><span aria-current="page">Ch 27 of 29</span><a href="ch28.html">Ch 28 &rarr;</a>
+  </nav>
+  <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Animations: on</button>
+</header>
+
+<main class="strip" id="strip">
+
+  <section class="panel cover" data-play aria-labelledby="cover-h">
+    <p class="kicker">CHAPTER 27</p>
+    <h1 id="cover-h">SIMULATORS AND ROBOT ARMS</h1>
+    <div class="cover-cast">
+      <svg class="char sim" data-char="sim27" data-state="crash"></svg>
+      <svg class="char" data-char="stagehand" data-mood="happy" data-arms="wave"></svg>
+      <svg class="char robot" data-char="robot27" data-code="0"></svg>
+    </div>
+    <p class="sr-only">Picture: a flight simulator cabin on hydraulic legs, whose windscreen shows a plane nose-down, with a stamp saying CRASH TEST next to a RESET button; Kit the stage manager, waving; and a green workshop robot with a screen face: its badge says process, exit 0; one arm holds a folder marked fs, the other a phone marked http, and a hose marked stream lies at its feet.</p>
+    <p class="caption blurb">Pilots learn in a <b>flight simulator</b>, where crashing costs nothing and the reset button is always there. Tests are your simulator: today you learn to crash your code on purpose, safely, a hundred times a day, with hooks, sharper checks, stopwatches for async code and stunt doubles for things you can't control. Then you meet the <b>workshop robot</b>, Node itself: its name badge (<code>process</code>), its filing arm (<code>fs</code>), its telephone (<code>http</code>) and its hose (streams). About 150 minutes, with 28 hands-on checks.</p>
+  </section>
+
+  <nav class="toc" aria-label="In this chapter">
+    <ol>
+      <li><a href="#part-1">The flight simulator: node:test in depth</a></li>
+      <li><a href="#part-2">Instruments that don't lie: assert/strict</a></li>
+      <li><a href="#part-3">Stopwatches and stunt doubles: async tests, mocks, time, coverage, TDD</a></li>
+      <li><a href="#part-4">The workshop robot's badge: process, argv, env, exit codes, stdin</a></li>
+      <li><a href="#part-5">The filing arm: fs, path, and where "here" is</a></li>
+      <li><a href="#part-6">Hose, bell and phone: streams, events, http, a real tool</a></li>
+      <li><a href="#boss">Boss level and recap</a></li>
+    </ol>
+  </nav>
+  <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+
+  <!-- =================== PART 1 =================== -->
+  <h2 class="part-h" id="part-1">PART 1 · THE FLIGHT SIMULATOR<small>Groups of tests, hooks that run around them, and tests you switch off</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 1: Kit visits the flight school">
+    <span class="panel-no" aria-hidden="true">1</span>
+    <svg class="sfx tr" data-sfx="KRUNCH!" data-seed="27"></svg>
+    <p class="caption">The theatre is putting on a show about pilots, so Kit spends a morning at the flight school. In the corner stands a big box on wobbly legs.</p>
+    <div class="scene">
+      <svg class="char sim" data-char="sim27" data-state="crash"></svg>
+      <div class="talk">
+        <p class="bubble"><span class="sr-only">The instructor's voice says: </span>That's the simulator. Students crash it on purpose: engine fire, ice on the wings, a runway that's too short. Then they press <b>RESET</b> and try again. Nobody gets hurt, and every crash teaches something.</p>
+      </div>
+    </div>
+    <div class="scene flip">
+      <svg class="char sm" data-char="stagehand" data-mood="surprised" data-mouth="o" data-arms="point"></svg>
+      <div class="talk"><p class="bubble right"><span class="sr-only">Kit says: </span>That's what tests are! In Chapter 14 the referee checked one function at a time. Today I want the full simulator: whole flights, with setup before, cleanup after, bad weather on demand and a stopwatch.</p></div>
+    </div>
+    <p class="sr-only">Picture: the flight simulator shows a crash test; Kit, surprised, points at it. A burst says KRUNCH.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 2: the flight computer we will test">
+    <span class="panel-no" aria-hidden="true">2</span>
+    <p class="caption">This is the code under test all through Parts 1 to 3: a small <b>module</b> (Chapter 14) of plane helpers. Skim it now; each test will point back to the line it checks. It lives in <code>lib/plane.js</code>, and no test changes it.</p>
+    <span class="file-tab">lib/plane.js</span>
+    <pre class="code" data-src="lib/plane.js"></pre>
+    <ul class="checklist">
+      <li><code>fuelFor</code> (lines 2 to 8) works out fuel, and <b>throws</b> for bad input: these are its <b>error paths</b>.</li>
+      <li><code>preflight</code> returns an <b>array</b> of problems; <code>askTower</code> is <b>async</b> (a pager, Chapter 16).</li>
+      <li><code>inspectFleet</code> calls a function you give it; <code>weather</code> uses <b>randomness</b>; <code>remindLater</code> and <code>greeting</code> depend on <b>time</b>. Those three are hard to test, until Part 3.</li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 3: describe and it">
+    <span class="panel-no" aria-hidden="true">3</span>
+    <p class="caption">Tests for one thing go in a <b>suite</b>: <code>describe('name', fn)</code>. Each single check is <code>it('does something', fn)</code>. (<code>it</code> is another name for <code>test</code>; it reads like a sentence: "it needs nothing for 0 km".)</p>
+    <span class="file-tab">sim.test.js</span>
+    <pre class="code" data-src="sim.test.js"></pre>
+    <pre class="term wrap" data-run="sim.test.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>The commands.</b> <code>node --test</code> runs test files; <code>--test-reporter=spec</code> asks for this tree-shaped report. Every test prints how long it took, which changes on every run, so the <code>sed</code> after the <code>|</code> swaps the numbers for <samp>…ms</samp>. A pipe normally finishes with its <em>last</em> command's exit code, <code>sed</code>'s, which is 0 even when tests fail. So, as in Chapter 25, the terminal first types <code>set -o pipefail</code>, which makes the pipe finish with the test runner's own exit code. Every test terminal in this chapter does the same. On your computer you can leave off the <code>sed</code> part, and then the <code>set -o pipefail</code> too.</span></li>
+      <li><span><b>▶ and ✔.</b> Each <code>describe</code> becomes a ▶ heading with its tests indented under it. The suite itself gets a ✔ when every test inside passed.</span></li>
+      <li><span><b>The ℹ lines</b> count: 5 tests in 2 suites, 5 passed. <samp>exit 0</samp> means the whole run was green, which is what build servers check.</span></li>
+    </ol>
+  </section>
+
+  <div data-ex="choice" data-model="ex-desc-m" id="ex-desc"></div>
+  <script type="application/json" id="ex-desc-m">{"q": "In <code>sim.test.js</code>, what does <code>describe('fuelFor', …)</code> add?", "options": [
+    {"t": "A named group: its tests share a ▶ heading, and hooks inside it apply only to them", "correct": true, "why": "Yes. <code>describe</code> only groups and labels. The checking happens inside each <code>it</code>."},
+    {"t": "It calls <code>fuelFor</code> once up front, so the tests inside don't have to", "why": "<code>describe</code> never calls your function. Each <code>it</code> calls <code>fuelFor</code> itself."},
+    {"t": "It checks that a function called <code>fuelFor</code> exists before any test runs", "why": "The name is just a label. You could write <code>describe('fuel maths', …)</code> and nothing would change."},
+    {"t": "It is required: without a <code>describe</code> around it, an <code>it</code> doesn't run", "why": "<code>it</code> works fine on its own at the top of a file, as <code>flags.test.js</code> later shows."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 4: four hooks around every flight">
+    <span class="panel-no" aria-hidden="true">4</span>
+    <p class="caption soft">Before every lesson the simulator is reset to a fresh plane; after it, someone tidies up. Test <b>hooks</b> do this for you, so each test starts from the same clean state.</p>
+    <div class="duo hooks27">
+      <div class="duo-card cool"><h3>before<small>before(fn)</small></h3><p>Once, before the first test of the group. Power on the simulator: open a database, start a server.</p></div>
+      <div class="duo-card ok"><h3>beforeEach<small>beforeEach(fn)</small></h3><p>Before <b>every</b> test. A fresh plane: new objects, an empty folder.</p></div>
+      <div class="duo-card hot"><h3>afterEach<small>afterEach(fn)</small></h3><p>After every test, <b>even a failed one</b>. Tidy the cockpit: delete temp files, restore mocks.</p></div>
+      <div class="duo-card"><h3>after<small>after(fn)</small></h3><p>Once, after the last test. Power off: close the database, stop the server.</p></div>
+    </div>
+    <p class="sr-only">Four cards: before, once at the start; beforeEach, before every test; afterEach, after every test even a failed one; after, once at the end.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 5: the hooks, logged">
+    <span class="panel-no" aria-hidden="true">5</span>
+    <p class="caption">Let every hook say when it runs. Two new tricks here: a test file is an ordinary program, so plain <code>node hooks_pass.test.js</code> runs it too; and the notes use <code>console.error</code>, which writes to the <b>error stream</b>, a second output channel (Part 4). The referee's report goes to the normal stream, so our notes stay apart from it.</p>
+    <span class="file-tab">hooks_pass.test.js</span>
+    <pre class="code" data-src="hooks_pass.test.js"></pre>
+    <pre class="term wrap" data-run="hooks_pass.test.js" data-exit></pre>
+    <p>Each test is wrapped: <samp>beforeEach</samp>, the test, <samp>afterEach</samp>. <samp>before</samp> and <samp>after</samp> happen once, around everything. Our notes appear first because they are written straight away, while the report is printed when the whole file is done.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Just like my cue sheet. Stand by: fresh plane. GO: the test. Then reset the stage for the next scene.</p></div>
+    </div>
+    <p class="catch">EVERY TEST GETS A FRESH PLANE</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 6: the map of a test file's run" data-map="map-hooks">
+    <span class="panel-no" aria-hidden="true">6</span>
+    <p class="caption soft">The map of every test file's run. Pick a road: all green, a test that fails, or a <code>before</code> hook that throws. Each road is checked against the hooks' real notes from <code>hooks_pass.test.js</code>, <code>hooks_fail.test.js</code> and <code>hooks_before.test.js</code> (same hooks; the second makes <code>takeoff</code> throw, the third makes <code>before</code> throw).</p>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mh-t mh-d"><title id="mh-t">Map of a test file's run</title><desc id="mh-d">before runs once, then for every test: beforeEach, the test, and afterEach, whether the test passed or failed; when no tests are left, after runs once and the report prints, exit code 0 if all passed or 1 if anything failed. If before throws, every test is cancelled and the run goes straight to after, then to a failed report.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN (the hooks' notes)</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-hooks">{"seed": 6, "size": [690, 720], "start": [[220, 4], [220, 24]], "states": [{"id": "B", "x": 110, "y": 30, "w": 220, "h": 66, "label": "before", "sub": "once, before all tests"}, {"id": "BE", "x": 110, "y": 150, "w": 220, "h": 66, "label": "beforeEach", "sub": "before every test"}, {"id": "TS", "x": 110, "y": 270, "w": 220, "h": 66, "label": "the test runs", "sub": "one `it(...)`"}, {"id": "AE", "x": 110, "y": 390, "w": 220, "h": 66, "label": "afterEach", "sub": "after every test"}, {"id": "AF", "x": 110, "y": 510, "w": 220, "h": 66, "label": "after", "sub": "once, after all tests"}, {"id": "OK", "x": 30, "y": 640, "w": 220, "h": 66, "label": "✔ report", "sub": "exit code 0", "kind": "end"}, {"id": "BAD", "x": 390, "y": 640, "w": 240, "h": 66, "label": "✖ report", "sub": "exit code 1", "kind": "error"}], "transitions": [{"id": "t0", "from": "B", "to": "BE", "pts": [[220, 100], [220, 144]], "label": "start", "lx": 234, "ly": 128}, {"id": "t1", "from": "BE", "to": "TS", "pts": [[220, 220], [220, 264]], "label": "fresh setup", "lx": 234, "ly": 248}, {"id": "t2", "from": "TS", "to": "AE", "pts": [[220, 340], [220, 384]], "label": "passes", "lx": 234, "ly": 368}, {"id": "t3", "from": "TS", "to": "AE", "pts": [[332, 303], [384, 303], [384, 423], [336, 423]], "label": "fails", "lx": 394, "ly": 368, "anchor": "start", "bug": true}, {"id": "t4", "from": "AE", "to": "BE", "pts": [[108, 423], [70, 423], [70, 183], [104, 183]], "label": ["next", "test"], "lx": 62, "ly": 296, "anchor": "end"}, {"id": "t5", "from": "AE", "to": "AF", "pts": [[220, 460], [220, 504]], "label": "no tests left", "lx": 234, "ly": 488}, {"id": "t6", "from": "B", "to": "AF", "pts": [[332, 63], [480, 63], [480, 543], [336, 543]], "label": ["throws: every", "test cancelled"], "lx": 492, "ly": 250, "anchor": "start", "bug": true}, {"id": "t7", "from": "AF", "to": "OK", "pts": [[160, 580], [160, 634]], "label": "all passed", "lx": 150, "ly": 612, "anchor": "end"}, {"id": "t8", "from": "AF", "to": "BAD", "pts": [[290, 580], [290, 612], [510, 612], [510, 634]], "label": "anything failed", "lx": 300, "ly": 602, "anchor": "start", "bug": true}], "paths": [{"id": "green", "label": "All green", "program": "hooks_pass.test.js", "expect": {"exit": 0, "stderrContains": "before: power on the simulator\n  beforeEach: fresh plane\n    test: takeoff\n  afterEach: tidy the cockpit\n  beforeEach: fresh plane\n    test: landing\n  afterEach: tidy the cockpit\nafter: power off\n"}, "steps": [{"on": ["B"], "output": ["before: power on the simulator"], "note": "The file starts. <code>before</code> runs once: power on the simulator."}, {"on": ["BE"], "via": ["t0"], "output": ["before: power on the simulator", "  beforeEach: fresh plane"], "note": "Before the first test, <code>beforeEach</code> builds a fresh plane."}, {"on": ["TS"], "via": ["t1"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff"], "note": "The first test, <code>takeoff</code>, runs."}, {"on": ["AE"], "via": ["t2"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit"], "note": "It passed. <code>afterEach</code> tidies the cockpit."}, {"on": ["BE"], "via": ["t4"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane"], "note": "Another test is waiting, so back to <code>beforeEach</code>: a fresh plane again, not the one <code>takeoff</code> used."}, {"on": ["TS"], "via": ["t1"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing"], "note": "The second test, <code>landing</code>, runs."}, {"on": ["AE"], "via": ["t2"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit"], "note": "Passed. Tidy up again."}, {"on": ["AF"], "via": ["t5"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit", "after: power off"], "note": "No tests left. <code>after</code> runs once: power off."}, {"on": ["OK"], "via": ["t7"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit", "after: power off"], "mood": "happy", "note": "Now the report prints <samp>✔ takeoff</samp>, <samp>✔ landing</samp>, <samp>pass 2</samp>, and the run ends with exit code 0. The screen here shows the hooks' notes, which went to the error stream; they match the real run line for line."}]}, {"id": "red", "label": "A test fails", "bug": true, "program": "hooks_fail.test.js", "expect": {"exit": 1, "stderrContains": "before: power on the simulator\n  beforeEach: fresh plane\n    test: takeoff\n  afterEach: tidy the cockpit\n  beforeEach: fresh plane\n    test: landing\n  afterEach: tidy the cockpit\nafter: power off\n"}, "steps": [{"on": ["B"], "output": ["before: power on the simulator"], "note": "The file starts. <code>before</code> runs once: power on the simulator."}, {"on": ["BE"], "via": ["t0"], "output": ["before: power on the simulator", "  beforeEach: fresh plane"], "note": "Before the first test, <code>beforeEach</code> builds a fresh plane."}, {"on": ["TS"], "via": ["t1"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff"], "note": "<code>takeoff</code> runs and throws <code>Error: wheels stuck</code>."}, {"on": ["AE"], "via": ["t3"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit"], "error": "Error: wheels stuck", "note": "The test failed, but <code>afterEach</code> <b>still runs</b>: clean-up happens on the red road too. That's why clean-up belongs in a hook, not at the end of the test."}, {"on": ["BE"], "via": ["t4"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane"], "note": "One failure doesn't stop the flight school: the next test still gets its fresh plane."}, {"on": ["TS"], "via": ["t1"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing"], "note": "The second test, <code>landing</code>, runs."}, {"on": ["AE"], "via": ["t2"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit"], "note": "<code>landing</code> passed. Tidy up."}, {"on": ["AF"], "via": ["t5"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit", "after: power off"], "note": "No tests left. <code>after</code> runs once: power off."}, {"on": ["BAD"], "via": ["t8"], "output": ["before: power on the simulator", "  beforeEach: fresh plane", "    test: takeoff", "  afterEach: tidy the cockpit", "  beforeEach: fresh plane", "    test: landing", "  afterEach: tidy the cockpit", "after: power off"], "error": "✖ takeoff … Error: wheels stuck", "note": "The report marks <samp>✖ takeoff</samp> and <samp>✔ landing</samp> (<samp>pass 1</samp>, <samp>fail 1</samp>) and prints the error with its footprints. Exit code 1."}]}, {"id": "before", "label": "before throws", "bug": true, "program": "hooks_before.test.js", "expect": {"exit": 1, "stderrContains": "before: power on the simulator\nafter: power off\n"}, "steps": [{"on": ["B"], "output": ["before: power on the simulator"], "note": "<code>before</code> starts powering on…"}, {"on": ["B"], "output": ["before: power on the simulator"], "error": "Error: no power", "note": "…and throws <code>Error: no power</code>. Without power there's no point flying."}, {"on": ["AF"], "via": ["t6"], "output": ["before: power on the simulator", "after: power off"], "note": "Every test in the group is <b>cancelled</b>: no <code>beforeEach</code>, no test, no <code>afterEach</code>. But <code>after</code> still runs, so whatever <code>before</code> managed to open can be closed."}, {"on": ["BAD"], "via": ["t8"], "output": ["before: power on the simulator", "after: power off"], "error": "✖ cockpit … Error: no power", "note": "The report shows both tests as <samp>✖</samp> with <samp>'test did not finish before its parent and was cancelled'</samp>, counts <samp>cancelled 2</samp>, and blames the suite: <samp>Error: no power</samp>. Exit code 1."}]}]}</script>
+  </section>
+
+  <div data-ex="trace" data-model="ex-hooks-m" id="ex-hooks"></div>
+  <script type="application/json" id="ex-hooks-m">{"program": "trace_hooks.test.js", "columns": ["what", "test"], "given": [1], "prompt": "Each hook prints its own name and the test it's for (<code>t.name</code>; <samp>-</samp> when there is none). Fill in the first column: which hook, or <samp>test</samp>, printed each row? (The command sends the short dot report to the error stream, so the screen holds only these rows.)", "explain": "<samp>before</samp> once, then for each test: <samp>beforeEach</samp>, <samp>test</samp>, <samp>afterEach</samp>. Then <samp>after</samp> once. A hook's <code>t</code> is the test it runs around, so <code>t.name</code> is <samp>stall</samp> or <samp>engine-fire</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 7: skip, todo and only">
+    <span class="panel-no" aria-hidden="true">7</span>
+    <p class="caption">Sometimes a test has to sit out: the fog simulator is broken, or the feature isn't written yet. Don't delete or comment out the test; <b>mark</b> it, so the report keeps reminding you.</p>
+    <span class="file-tab">flags.test.js</span>
+    <pre class="code" data-src="flags.test.js"></pre>
+    <pre class="term wrap" data-run="flags.test.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Line 8, <code>it.skip</code>:</b> the test is not run at all (its <code>assert.fail</code> would fail), shown with <samp>﹣</samp> and <samp># SKIP</samp>.</span></li>
+      <li><span><b>Line 11, <code>{ skip: 'reason' }</code>:</b> the same, and the report prints your reason instead of SKIP.</span></li>
+      <li><span><b>Line 12, <code>it.todo</code>:</b> a reminder with no body yet. It's counted as <samp>todo 1</samp>, and a todo never makes the run fail.</span></li>
+    </ol>
+    <p>The opposite is <code>it.only</code>: "run just this one while I fix it". It only works when you ask for it with <code>--test-only</code>:</p>
+    <span class="file-tab">only_flag.test.js</span>
+    <pre class="code" data-src="only_flag.test.js"></pre>
+    <pre class="term wrap" data-run="only_flag.test.js"></pre>
+    <p>The slow test never ran. Without <code>--test-only</code>, Node runs both tests and prints a line reminding you that <code>only</code> needs the flag. Remove <code>.only</code> before you share the file, or the next person runs one test and thinks everything passed.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-flags-m" id="ex-flags"></div>
+  <script type="application/json" id="ex-flags-m">{"q": "You've written tests for a feature your team will build next week. Today they would all fail. What should you do with them?", "options": [
+    {"t": "Mark them <code>it.todo</code>, so every report lists them without failing the run", "correct": true, "why": "Yes (or write <code>{ todo: 'next week' }</code> to give a reason). The report counts them under <samp>todo</samp>, and the reminder never gets lost."},
+    {"t": "Comment them out until next week, so nothing runs and nothing fails", "why": "Commented-out tests are invisible: no report mentions them, and they are easy to forget."},
+    {"t": "Mark them <code>it.only</code>, so they are the only tests left switched on", "why": "<code>only</code> does the opposite: with <code>--test-only</code> it runs <em>just</em> those tests, which would all fail."},
+    {"t": "Leave them failing, so the whole run stays red until the feature is done", "why": "A run that is always red teaches everyone to ignore red. Then a real failure goes unnoticed."}]}</script>
+
+  <!-- =================== PART 2 =================== -->
+  <h2 class="part-h" id="part-2">PART 2 · INSTRUMENTS THAT DON'T LIE<small>deepEqual, throws, match, error paths, arrange-act-assert</small></h2>
+
+  <section class="panel pop" aria-label="Panel 8: equal versus deepEqual">
+    <span class="panel-no" aria-hidden="true">8</span>
+    <svg class="sfx tr" data-sfx="TWEET!" data-seed="8"></svg>
+    <div class="scene">
+      <svg class="char lg" data-char="umpire" data-card="red" data-mood="focus"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Juno the referee says: </span>Remember me from Chapter 14? I'm back, with a stopwatch in my pocket for later. First, a question: are these two arrays <b>equal</b>? They look the same…</p></div>
+    </div>
+    <span class="file-tab">equal_trap.test.js</span>
+    <pre class="code" data-src="equal_trap.test.js"></pre>
+    <pre class="term wrap" data-run="equal_trap.test.js" data-exit data-fold></pre>
+    <p>Read the failure like a detective. <b>Near the end:</b> <samp>operator: 'strictEqual'</samp>, the check that failed. <b>The message:</b> <samp>Values have same structure but are not reference-equal</samp>: the contents match, but they are two different arrays. <b>The footprint:</b> <samp>equal_trap.test.js:6:10</samp>, line 6. <code>equal</code> asks "the very same thing?", like <code>===</code> (Chapter 5); for arrays and objects that's almost never what you mean. <code>deepEqual</code> compares what's <b>inside</b>, piece by piece.</p>
+    <p class="catch">EQUAL FOR VALUES, DEEPEQUAL FOR CONTENTS</p>
+    <p class="sr-only">Picture: Juno, the referee in a striped shirt and blue cap, holds up a red FAIL card with a cross. A burst says TWEET.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-asserts-m" id="ex-asserts"></div>
+  <script type="application/json" id="ex-asserts-m">{"program": "predict_asserts.js", "prompt": "Asserts work outside the test runner too: a failed one simply throws an error. <code>check</code> prints <samp>pass</samp> or <samp>FAIL</samp> for each. Predict all five lines.", "hint": "Strict mode: <code>equal</code> is <code>===</code>. <code>deepEqual</code> also compares types inside (4 is not '4'). And remember Chapter 3's float surprise.", "explain": "A: two separate arrays are never <code>===</code>, so <samp>FAIL</samp>. B: same contents, <samp>pass</samp>. C: strict <code>deepEqual</code> compares types too, and the number 4 isn't the string '4': <samp>FAIL</samp>. D: <code>0.1 + 0.2</code> is <code>0.30000000000000004</code> (Chapter 3), so <samp>FAIL</samp>; for floats, check that the difference is tiny instead. E: the regular expression matches <samp>JET-7</samp>, so <samp>pass</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 9: testing the error paths">
+    <span class="panel-no" aria-hidden="true">9</span>
+    <p class="caption">Good pilots practise engine failures more than sunny days. Good tests check the <b>error paths</b> too: does the code refuse bad input, with the right error?</p>
+    <span class="file-tab">throws.test.js</span>
+    <pre class="code" data-src="throws.test.js"></pre>
+    <pre class="term wrap" data-run="throws.test.js" data-exit data-fold></pre>
+    <ol class="readlist">
+      <li><span><b>Line 7:</b> <code>assert.throws(() =&gt; fuelFor(-5), RangeError)</code>. You hand over a <b>function</b>; <code>throws</code> calls it inside its own <code>try</code> and checks that it threw a <code>RangeError</code>.</span></li>
+      <li><span><b>Lines 10 to 13:</b> instead of a class, give an object describing the error: its <code>name</code>, and a <code>message</code> that matches a pattern.</span></li>
+      <li><span><b>Line 16:</b> <code>assert.match(text, /pattern/)</code> checks a string against a regular expression (Chapter 22), handy when the exact text doesn't matter.</span></li>
+      <li><span><b>Line 19</b> fails on purpose: <code>fuelFor(10)</code> works fine, so nothing is thrown, and the referee says <samp>Missing expected exception (RangeError).</samp></span></li>
+    </ol>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spot-throws-m" id="ex-spot-throws"></div>
+  <script type="application/json" id="ex-spot-throws-m">{"program": "spot_throws.test.js", "bug": 6, "prompt": "This test should pass: <code>fuelFor(-5)</code> really does throw a <code>RangeError</code>. Yet the test fails <em>with</em> that RangeError. Click the line with the bug.", "explain": "Line 6 calls <code>fuelFor(-5)</code> right away, before <code>assert.throws</code> even starts, so the RangeError escapes into the test and fails it (the footprints show <samp>at fuelFor</samp> called from line 6). <code>throws</code> needs a function it can call itself: <code>assert.throws(() =&gt; fuelFor(-5), RangeError)</code>."}</script>
+
+  <section class="panel clean" aria-label="Panel 10: arrange, act, assert, with a fixture">
+    <span class="panel-no" aria-hidden="true">10</span>
+    <p class="caption">A readable test has three short parts: <b>Arrange</b> (set up the plane), <b>Act</b> (do the one thing), <b>Assert</b> (check the result). A helper that builds ready-made test data is a <b>fixture</b>.</p>
+    <span class="file-tab">fixtures.test.js</span>
+    <pre class="code" data-src="fixtures.test.js"></pre>
+    <pre class="term wrap" data-run="fixtures.test.js" data-exit></pre>
+    <p><code>makePlane</code> (lines 6 to 8) returns a plane that passes every check, and <code>...changes</code> (Chapter 11's spread) overrides just the detail one test cares about. Each test now says only what's special about it: "low fuel", "flaps up". If the plane object grows a new field, you fix one helper, not twenty tests.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 11: what makes a good simulator run">
+    <span class="panel-no" aria-hidden="true">11</span>
+    <p class="caption soft">Juno's rulebook for tests worth keeping.</p>
+    <ol class="checklist">
+      <li><b>One reason to fail.</b> A test named "spots low fuel" should fail only when low-fuel spotting breaks.</li>
+      <li><b>Independent.</b> Tests must pass in any order, alone or together. Shared state between them is the most common cause of mystery failures (the boss level has one).</li>
+      <li><b>Repeatable.</b> Same code, same result, every run, on every machine: no real clock, no real randomness, no internet (Part 3 shows how).</li>
+      <li><b>Fast.</b> A whole file should run in well under a second, so you run it all the time.</li>
+      <li><b>Checks behaviour, not insides.</b> Test what the function returns or does, not which helper it happens to call, so you can rewrite the insides freely.</li>
+      <li><b>Sees red at least once.</b> Break the code on purpose and watch the test fail. A test you've never seen fail might not be checking anything (Chapter 14's never-failing test).</li>
+    </ol>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fill-asserts-m" id="ex-fill-asserts"></div>
+  <script type="application/json" id="ex-fill-asserts-m">{"program": "fill_asserts.test.js", "prompt": "One test, four instruments: compare an array's contents, expect a <code>RangeError</code>, match a pattern, and wait for a rejection. Fill the blanks.", "blanks": [{"line": 6, "text": "deepEqual"}, {"line": 7, "text": "throws"}, {"line": 8, "text": "match"}, {"line": 9, "text": "await"}], "explain": "<code>deepEqual</code> compares the array's contents. <code>throws</code> calls the arrow function and expects a <code>RangeError</code>. <code>match</code> checks the call sign against <code>/^KESTREL/</code>. <code>assert.rejects</code> returns a promise, so it must be <code>await</code>ed, which is why the test function is <code>async</code> (Part 3 shows what happens when you forget)."}</script>
+
+  <!-- =================== PART 3 =================== -->
+  <h2 class="part-h" id="part-3">PART 3 · STOPWATCHES AND STUNT DOUBLES<small>Async tests, the lying tick, mocks, fake time, coverage and the TDD loop</small></h2>
+
+  <section class="panel pop" aria-label="Panel 12: Juno's stopwatch for async tests">
+    <span class="panel-no" aria-hidden="true">12</span>
+    <div class="scene">
+      <svg class="char" data-char="juno27" data-mood="normal"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Juno says: </span>For async code I start my stopwatch and wait, but only if you <b>tell</b> me there's something to wait for. Make the test <code>async</code> and <code>await</code>, or <b>return</b> the promise. Otherwise I blow the whistle the moment your function returns.</p></div>
+    </div>
+    <span class="file-tab">async.test.js</span>
+    <pre class="code" data-src="async.test.js"></pre>
+    <pre class="term wrap" data-run="async.test.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 6 to 9:</b> an <code>async</code> test returns a promise (Chapter 25), so the runner waits for it: the 5 ms radio delay in <code>askTower</code> finishes before the test is judged.</span></li>
+      <li><span><b>Lines 10 to 14:</b> the older style. Returning the promise works the same: the runner waits for it.</span></li>
+      <li><span><b>Lines 15 to 19:</b> <code>assert.rejects</code> is the async twin of <code>throws</code>. It returns a promise, so <code>await</code> it, too.</span></li>
+    </ol>
+    <p class="sr-only">Picture: Juno the referee holds up a stopwatch.</p>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 13: a tick that lies">
+    <span class="panel-no" aria-hidden="true">13</span>
+    <svg class="sfx tr" data-sfx="SNEAKY!" data-seed="13"></svg>
+    <p class="caption">Now the classic async-test bug. The tower really says <samp>cleared for takeoff</samp>, but this test expects <samp>go around</samp>. It must fail. Does it?</p>
+    <span class="file-tab">forgot_await.test.js</span>
+    <pre class="code" data-src="forgot_await.test.js"></pre>
+    <pre class="term wrap" data-run="forgot_await.test.js" data-exit></pre>
+    <div class="scene">
+      <svg class="char sm" data-char="sneak"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The sneak says: </span>Hee hee. Look at the first line: <samp>✔ hears from the tower</samp>. The function on line 5 isn't async and returns nothing, so the referee judged it the moment it returned, before the tower answered. The failing assert ran 5 ms <b>later</b>, after the test had already "passed".</p></div>
+    </div>
+    <p>Node catches it this time: the <samp>ℹ Error: … generated asynchronous activity after the test ended</samp> line, and the whole file marked <samp>✖</samp> with exit code 1. Don't count on that: if the late assert happened to pass, or ran after the program ended, nothing would warn you. The fix is one word in two places: <code>async () =&gt; { … await askTower(…) … }</code>.</p>
+    <p class="catch">NO AWAIT, NO REFEREE</p>
+    <p class="sr-only">Picture: the sneak, a grinning bug character, explains the trick. A burst says SNEAKY.</p>
+  </section>
+
+  <div data-ex="parsons" data-model="ex-pasync-m" id="ex-pasync"></div>
+  <script type="application/json" id="ex-pasync-m">{"program": "parsons_async.test.js", "seed": 27, "pin": [1, 2, 3], "prompt": "Build an async test that really waits for the Bristol tower before checking. The imports are fixed. Put the other lines in order.", "explain": "The test function opens with <code>async</code>, so it may use <code>await</code>. The <code>await</code> line must come before the assert that reads <code>answer</code>, and the closing <code>});</code> ends it. Because the function is async, the referee waits for the whole thing."}</script>
+
+  <div data-ex="spot" data-model="ex-spot-await-m" id="ex-spot-await"></div>
+  <script type="application/json" id="ex-spot-await-m">{"program": "spot_await.test.js", "bug": 7, "prompt": "Gatwick answers fine (<code>askTower</code> only fails for <code>'closed'</code>), so this test should be red. The report shows ✔ next to it. Click the line that lets the failure slip past.", "explain": "Line 7: <code>assert.rejects</code> returns a promise, and nobody waits for it. The test reaches its end, prints <samp>checked the tower</samp>, and is judged ✔; the rejection check fails later (<samp>Missing expected rejection.</samp>). The test is <code>async</code>, but that only helps if you <code>await</code>: <code>await assert.rejects(reply, /no answer/);</code>."}</script>
+
+  <section class="panel sketch" aria-label="Panel 14: stunt doubles">
+    <span class="panel-no" aria-hidden="true">14</span>
+    <p class="caption soft">Films use stunt doubles for the dangerous scenes. Tests use <b>test doubles</b>: stand-ins for the parts you can't control or don't want to really run (the radio, the clock, the dice, the network).</p>
+    <div class="duo doubles27">
+      <div class="duo-card cool"><h3>SPY<small><code>mock.fn()</code></small></h3><p>Records every call: how many, with which arguments, what it returned. "Did the radio get called with Puffin?"</p></div>
+      <div class="duo-card ok"><h3>STUB<small><code>mock.fn(() =&gt; 0.1)</code></small></h3><p>Gives a fixed answer. "The dice always roll low."</p></div>
+      <div class="duo-card hot"><h3>MOCKED METHOD<small><code>t.mock.method(obj, 'name', fn)</code></small></h3><p>Swaps a method on a real object for a double, and puts the real one back after the test.</p></div>
+      <div class="duo-card"><h3>FAKE TIME<small><code>t.mock.timers</code></small></h3><p>A pretend clock: one minute passes the moment you say <code>tick(60_000)</code>.</p></div>
+    </div>
+    <p>People say "mock" for all of these. The Node docs call the whole toolbox <code>mock</code>, and so do we.</p>
+    <p class="sr-only">Four cards: spy, records every call; stub, gives a fixed answer; mocked method, swaps a method on a real object and restores it; fake time, a pretend clock you move forward.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 15: a spy records the calls">
+    <span class="panel-no" aria-hidden="true">15</span>
+    <p class="caption"><code>inspectFleet</code> (lines 27 to 31 of <code>lib/plane.js</code>) doesn't return anything: it calls a <code>report</code> function for each problem. To test it, hand it a <b>spy</b> and look at what the spy saw.</p>
+    <span class="file-tab">mock_fn.test.js</span>
+    <pre class="code" data-src="mock_fn.test.js"></pre>
+    <pre class="term wrap" data-run="mock_fn.test.js" data-exit></pre>
+    <p><code>radio.mock.callCount()</code> is how many times it was called. <code>radio.mock.calls</code> is an array with one record per call; each record's <code>arguments</code> is the list of values passed. The Skylark is fine, so the only two calls are Puffin's.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pmock-m" id="ex-pmock"></div>
+  <script type="application/json" id="ex-pmock-m">{"program": "predict_mock.js", "prompt": "A spy that also does real work: <code>mock.fn(fn)</code> runs <code>fn</code> and records each call. Predict the three lines.", "hint": "<code>calls</code> starts at index 0. <code>arguments</code> is an array; <code>result</code> is what that call returned.", "explain": "Two calls, so <samp>2</samp>. The first call's arguments are <samp>[ 4 ]</samp> (Node prints arrays with spaces inside the brackets). The second call was <code>double(10)</code>, which returned <samp>20</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 16: taming randomness with mock.method">
+    <span class="panel-no" aria-hidden="true">16</span>
+    <p class="caption"><code>weather()</code> (lines 33 to 35 of <code>lib/plane.js</code>) is stormy one time in five, at random. A test that sometimes passes and sometimes fails is called <b>flaky</b>, and flaky tests are worse than none. So take the dice away: swap <code>Math.random</code> for a stub that always says the same number.</p>
+    <span class="file-tab">mock_method.test.js</span>
+    <pre class="code" data-src="mock_method.test.js"></pre>
+    <pre class="term wrap" data-run="mock_method.test.js" data-exit></pre>
+    <p>The test function receives a <b>test context</b>, <code>t</code>. <code>t.mock.method(Math, 'random', () =&gt; 0.1)</code> swaps the method for the length of <em>this</em> test. The double is also a spy, so line 8 can check it was rolled exactly once.</p>
+  </section>
+
+  <section class="panel clean tracer" aria-label="Panel 17: what mock.method does to Math.random" data-tracer="tr-swap" id="tr-swap-box">
+    <span class="panel-no" aria-hidden="true">17</span>
+    <p class="caption">What does "swap a method" really mean? Step through a tiny program that uses the shared <code>mock</code> outside any test, and watch the <code>random</code> drawer of the <code>Math</code> object.</p>
+    <div class="tr-split"><ol class="tr-code"></ol><div class="screen"><p class="label">SCREEN</p><pre></pre></div></div>
+    <div class="mem"><svg class="tracer-svg" id="tr-swap-svg" role="img" aria-label="Memory diagram; the text version below lists every step."></svg></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Memory</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="tr-swap">{"program": "swap_trace.js", "steps": [{"line": 3, "note": "Before line 3: the built-in <code>Math</code> object (a cabinet, Chapter 10) has a <code>random</code> drawer holding the real function.", "output": [], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F1"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}}, "changed": []}, {"line": 4, "note": "Line 3 copied the <b>reference</b>: the tag <code>real</code> points at the same built-in function.", "output": [], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}, {"n": "real", "ref": "F1"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F1"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}}, "changed": ["real"]}, {"line": 5, "note": "Line 4: <code>mock.method</code> puts a new function in the drawer. Anyone calling <code>Math.random()</code>, including <code>weather()</code> in another file, now gets the double. (The mock tracker keeps the original too, so it can put it back.)", "output": [], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}, {"n": "real", "ref": "F1"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F2"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}, "F2": {"kind": "function", "value": "() => 0.1 (mock)"}}, "changed": []}, {"line": 6, "note": "Line 5: the double answers <samp>0.1</samp>, and the drawer no longer holds the function <code>real</code> points at: <samp>false</samp>.", "output": ["0.1 false"], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}, {"n": "real", "ref": "F1"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F2"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}, "F2": {"kind": "function", "value": "() => 0.1 (mock)"}}, "changed": []}, {"line": 7, "note": "Line 6: <code>mock.restoreAll()</code> puts the real function back. The double is now unreachable from here, drawn faded. <code>t.mock</code> does this step for you when each test ends; the shared <code>mock</code> waits until you call it.", "output": ["0.1 false"], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}, {"n": "real", "ref": "F1"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F1"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}, "F2": {"kind": "function", "value": "() => 0.1 (mock)"}}, "changed": []}, {"line": null, "note": "Line 7: the drawer and <code>real</code> point at the same function again: <samp>true</samp>.", "output": ["0.1 false", "true"], "frames": [{"name": "global", "vars": [{"n": "Math", "ref": "M"}, {"n": "real", "ref": "F1"}]}], "objects": {"M": {"kind": "object", "label": "Math object", "pairs": [{"k": "PI", "val": "3.141592653589793"}, {"k": "random", "ref": "F1"}]}, "F1": {"kind": "function", "value": "random() (built-in)"}, "F2": {"kind": "function", "value": "() => 0.1 (mock)"}}, "changed": []}]}</script>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 18: a mock that leaks">
+    <span class="panel-no" aria-hidden="true">18</span>
+    <svg class="sfx tr" data-sfx="DRIP" data-seed="18"></svg>
+    <p class="caption">Same storm test, one difference: line 6 uses the shared <code>mock</code> imported on line 1, not the test's own <code>t.mock</code>.</p>
+    <span class="file-tab">mock_leak.test.js</span>
+    <pre class="code" data-src="mock_leak.test.js"></pre>
+    <pre class="term wrap" data-run="mock_leak.test.js" data-exit data-fold></pre>
+    <p>The first test passes. The second test, which never touched a mock, fails: three "random" numbers were all the same, so the set held <samp>1</samp> value, not <samp>3</samp>. The stub <b>leaked</b>: mocks made with the shared <code>mock</code> stay until someone calls <code>mock.restoreAll()</code>. The stunt double stayed on set for the next scene.</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="worried" data-mouth="flat" data-arms="shrug"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Worst kind of bug: test 2 fails because of test 1. Run test 2 alone and it passes! Use <code>t.mock</code>, which cleans up after its own test, or call <code>mock.restoreAll()</code> in an <code>afterEach</code> hook.</p></div>
+    </div>
+    <p class="catch">STUNT DOUBLES GO HOME AFTER THEIR SCENE</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fmock-m" id="ex-fmock"></div>
+  <script type="application/json" id="ex-fmock-m">{"program": "fill_mock.test.js", "prompt": "A ready fleet should never use the radio. Make a spy, and check how often it was called.", "blanks": [{"line": 6, "text": "mock.fn"}, {"line": 8, "text": "callCount"}], "explain": "<code>mock.fn()</code> with no argument makes a spy that does nothing but record. <code>radio.mock.callCount()</code> is 0 because the Wren has 300 litres and its flaps down, so <code>inspectFleet</code> never reported anything."}</script>
+
+  <section class="panel clean" aria-label="Panel 19: fake time">
+    <span class="panel-no" aria-hidden="true">19</span>
+    <p class="caption">Two more troublemakers: <code>remindLater</code> waits a whole minute, and <code>greeting</code> depends on the clock. A test that says "good morning" passes at breakfast and fails at dinner. Fake time fixes both.</p>
+    <span class="file-tab">timers.test.js</span>
+    <pre class="code" data-src="timers.test.js"></pre>
+    <pre class="term wrap" data-run="timers.test.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><b>Line 6:</b> from now on, <code>setTimeout</code> belongs to the fake clock. Nothing fires until you call <code>tick</code>.</span></li>
+      <li><span><b>Lines 9 to 12:</b> 59,999 ms pass instantly and the reminder hasn't fired; one more millisecond and it has. The real test takes about a millisecond, not a minute.</span></li>
+      <li><span><b>Lines 16 and 21:</b> faking <code>Date</code> with a fixed <code>now</code> pins the clock to 09:00 or 21:00 UTC. Both greetings are tested, on every run, at any time of day.</span></li>
+    </ol>
+    <p>The page's captures run with the time zone set to UTC, and <code>greeting</code> uses <code>getUTCHours</code>, so these results don't depend on where you live either (Chapter 23).</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-ttimers-m" id="ex-ttimers"></div>
+  <script type="application/json" id="ex-ttimers-m">{"program": "trace_timers.js", "columns": ["time", "fired"], "given": [0], "prompt": "Three timers on a fake clock, which then moves forward 100, 100, 200 and 200 ms. After each tick the program prints the total time and every timer that has fired so far (<samp>-</samp> for none). Fill in the second column, with commas and no spaces.", "explain": "Timers fire in order of when they're due, not the order they were set. At 100 ms: <samp>flaps</samp> (due at 100). At 200: nothing new. At 400: <samp>gear</samp> (due at 300) joins. At 600: <samp>lights</samp> (due at 500). The real program ran in a blink: no one waited 600 ms."}</script>
+
+  <section class="panel clean" aria-label="Panel 20: coverage">
+    <span class="panel-no" aria-hidden="true">20</span>
+    <p class="caption">Which lines did the simulator never fly through? <b>Coverage</b> marks every line your tests ran, and lists the ones they didn't.</p>
+    <div class="duo">
+      <div><span class="file-tab">lib/fuel.js</span><pre class="code" data-src="lib/fuel.js"></pre></div>
+      <div><span class="file-tab">cover.test.js</span><pre class="code" data-src="cover.test.js"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="cover.test.js" data-exit></pre>
+    <p>One happy test ran 55.56% of the lines. <samp>uncovered lines 3-4 6-7</samp>: both <code>throw</code> branches never ran, so no test checks them. <samp>branch %</samp> counts the paths through each <code>if</code>: here half of them. The flag still says <em>experimental</em>, so its output may change between versions (Node 22 also lists the test file itself in the table).</p>
+    <p>Coverage shows what's <b>not</b> tested. A line that ran isn't necessarily <em>checked</em>: a test with no assert at all still "covers" every line it runs. Use coverage to find blind spots, not as a score to chase.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-cover-m" id="ex-cover"></div>
+  <script type="application/json" id="ex-cover-m">{"q": "A teammate proudly reports 100% line coverage. What does that prove?", "options": [
+    {"t": "Every line ran at least once; not that anything checked the results", "correct": true, "why": "Yes. Coverage counts lines that ran. Whether anything checked their results, and whether the code is right, is up to the asserts."},
+    {"t": "The code has no bugs, because every line has been tested", "why": "A test can run a line and check nothing, or check the wrong thing. Coverage only says what ran."},
+    {"t": "Every possible input has been tried by at least one test", "why": "<code>fuelFor</code> has infinitely many inputs. A couple of tests can run every line without trying -0, NaN or Infinity."},
+    {"t": "The tests are fast enough to run on every single save", "why": "Coverage says nothing about speed. Collecting it even makes the run a little slower."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 21: the TDD loop">
+    <span class="panel-no" aria-hidden="true">21</span>
+    <p class="caption soft"><b>Test-driven development</b> (TDD) flips the order: write the test first, watch it crash, then write just enough code to pass. Round and round in small steps.</p>
+    <div class="tdd27" role="img" aria-label="A loop of three steps: red, write a failing test; green, write just enough code to pass; refactor, tidy up with the tests still green; then back to red.">
+      <div class="tdd-step red"><b>1 · RED ✖</b>Write a test for the next small thing. Run it. It must fail.</div>
+      <div class="tdd-arrow" aria-hidden="true">→</div>
+      <div class="tdd-step green"><b>2 · GREEN ✔</b>Write the simplest code that passes. No more.</div>
+      <div class="tdd-arrow" aria-hidden="true">→</div>
+      <div class="tdd-step tidy"><b>3 · REFACTOR ↻</b>Tidy names and duplication; the tests stay green.</div>
+    </div>
+    <p>Here, version 1 of <code>landingSpeed</code> adds 10 knots to the stall speed. We want crosswinds next, so first the <b>red</b> step: a new test that the old code can't pass.</p>
+    <div class="duo">
+      <div><span class="file-tab">lib/landing_v1.js</span><pre class="code" data-src="lib/landing_v1.js"></pre></div>
+      <div><span class="file-tab">lib/landing.js</span><pre class="code" data-src="lib/landing.js"></pre></div>
+    </div>
+    <span class="file-tab">tdd_red.test.js</span>
+    <pre class="code" data-src="tdd_red.test.js"></pre>
+    <pre class="term wrap" data-run="tdd_red.test.js" data-exit data-fold></pre>
+    <p>Red, for the right reason: <samp>70 !== 75</samp>, the crosswind margin is missing. Then <b>green</b>: <code>lib/landing.js</code> (the second file above) adds an options object with a default (Chapter 11). Same two tests, pointed at the new file:</p>
+    <pre class="term wrap" data-run="tdd_green.test.js" data-exit></pre>
+  </section>
+
+  <div data-ex="choice" data-model="ex-tdd-m" id="ex-tdd"></div>
+  <script type="application/json" id="ex-tdd-m">{"q": "In TDD, why must you watch the new test fail before writing the code?", "options": [
+    {"t": "To prove the test can catch the missing feature at all", "correct": true, "why": "Yes. A test that passes before the code exists isn't testing it. Red first shows the test is wired up and checking the right thing."},
+    {"t": "Because Node refuses to run a test file that has never failed", "why": "Node has no such rule. It's a habit for your benefit."},
+    {"t": "To measure how long the test takes before the code exists", "why": "Speed has nothing to do with it. The point is to see the test detect the problem."},
+    {"t": "So that the coverage percentage goes up for the new file", "why": "A failing test doesn't raise coverage. Red first is about trusting the test."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 22: other referees you will meet">
+    <span class="panel-no" aria-hidden="true">22</span>
+    <p class="caption soft">Node's built-in runner is one referee among several. Most projects you'll read use one of these, with the same ideas and slightly different words.</p>
+    <div class="duo three">
+      <div class="duo-card cool"><h3>Jest<small>npm package</small></h3><p>Long the most common choice. <code>describe</code>, <code>it</code> and <code>beforeEach</code> work like ours; checks read <code>expect(x).toBe(3)</code> and <code>toEqual</code> (deep). Mocks are <code>jest.fn()</code>.</p></div>
+      <div class="duo-card ok"><h3>Vitest<small>npm package</small></h3><p>Very close to Jest's style, built for projects that use the Vite bundler (Chapter 26). Mocks are <code>vi.fn()</code>; fake time is <code>vi.useFakeTimers()</code>.</p></div>
+      <div class="duo-card hot"><h3>jsdom<small>npm package</small></h3><p>A pretend browser page inside Node, so tests for DOM code (Chapter 15) can run without a real browser. Jest and Vitest can switch it on for you.</p></div>
+    </div>
+    <p>These need npm packages and aren't run on this page. What carries over everywhere: arrange-act-assert, hooks, awaiting async checks, doubles for time and randomness, and red before green.</p>
+  </section>
+
+  <!-- =================== PART 4 =================== -->
+  <h2 class="part-h" id="part-4">PART 4 · THE ROBOT'S NAME BADGE<small>process: arguments, environment, exit codes, two output streams and the keyboard</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 23: meet the workshop robot">
+    <span class="panel-no" aria-hidden="true">23</span>
+    <svg class="sfx tr" data-sfx="BZZT!" data-seed="23"></svg>
+    <p class="caption">Back at the theatre, Kit finds the props workshop run by a robot. That robot is <b>Node</b>: the same JavaScript engine as a browser, but in a workshop instead of on a stage.</p>
+    <div class="robot-stage">
+      <svg class="char robot" data-char="robot27" data-code="0" data-arm="badge"></svg>
+    </div>
+    <ul class="checklist">
+      <li><b>Name badge: <code>process</code>.</b> Who started me, with which words (<code>argv</code>), in which room (<code>cwd</code>), with which settings (<code>env</code>), and my mood when I finish (the <b>exit code</b>).</li>
+      <li><b>Filing arm: <code>node:fs</code>.</b> Reads and writes files and folders (Part 5).</li>
+      <li><b>Hose: streams.</b> Moves data a bucket at a time instead of all at once (Part 6).</li>
+      <li><b>Telephone: <code>node:http</code>.</b> Answers and makes web calls (Part 6).</li>
+    </ul>
+    <p class="sr-only">Picture: the workshop robot. A dashed ring circles its name badge, which reads process, exit 0. Its arms hold a folder marked fs and a phone marked http; a hose marked stream lies at its feet.</p>
+    <span class="file-tab">globals.js</span>
+    <pre class="code" data-src="globals.js"></pre>
+    <pre class="term" data-run="globals.js"></pre>
+    <p>No stage, no scenery: there's no <code>window</code> and no <code>document</code> in the workshop (Chapter 1's two kitchens). Both hosts share <code>globalThis</code>, the name for "the global object" everywhere; Node also calls it <code>global</code>. <code>require</code> is missing because this folder's <code>.js</code> files are ES modules (Chapter 26). <code>fetch</code> is built in, like in a browser.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 24: process.argv">
+    <span class="panel-no" aria-hidden="true">24</span>
+    <p class="caption">Words typed after the file name are <b>command-line arguments</b>. Node puts them in <code>process.argv</code>, an array of strings.</p>
+    <span class="file-tab">argv_peek.js</span>
+    <pre class="code" data-src="argv_peek.js"></pre>
+    <pre class="term" data-run="argv_peek.js"></pre>
+    <p>Position 0 is the path to the <code>node</code> program itself (on this capture machine, <samp>/opt/node26/bin/node</samp>; yours will differ), and position 1 is the script's full path. <b>Your</b> words start at index 2, which is why almost every script begins with <code>process.argv.slice(2)</code>. The shell splits words at spaces; quotes keep <code>"Ada Lovelace"</code> together as one argument. And every argument is a <b>string</b>, even <code>12</code>.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-argv-m" id="ex-argv-ex"></div>
+  <script type="application/json" id="ex-argv-m">{"program": "predict_argv.js", "prompt": "The command is <code>node predict_argv.js climb 200 300</code>. Line 1 skips two places with commas, then collects the rest. Predict all four lines.", "hint": "The two skipped places are node's path and the script's path. Arguments arrive as strings; <code>map(Number)</code> converts them.", "explain": "<code>first</code> is <samp>climb</code>; <code>rest</code> is <code>['200', '300']</code>, so its length is <samp>2</samp> and its first item is a <samp>string</samp>. After <code>map(Number)</code> the reduce adds real numbers: <samp>500</samp>. Without the conversion, <code>+</code> would glue strings together (Chapter 4)."}</script>
+
+  <section class="panel clean machine" aria-label="Panel 25: the boarding-pass machine" data-machine="m-cli">
+    <span class="panel-no" aria-hidden="true">25</span>
+    <p class="caption">A real command-line tool reads its arguments, does one job, and complains clearly when the words are wrong. Feed this one different words.</p>
+    <span class="file-tab">bin/boarding.js</span>
+    <pre class="code" data-src="bin/boarding.js"></pre>
+    <div class="chips"></div><div class="machine-stage"></div><p class="narration"></p><span class="parity"></span><p class="sr-only" aria-live="polite"></p>
+    <script type="application/json" id="m-cli">{"label": "bin/boarding.js", "program": "cli_ada.js", "examples": [
+      {"in": "Ada", "out": "Boarding pass: Ada, any seat", "outKind": "standard output", "program": "cli_ada.js", "note": "One word: it becomes <code>name</code>, and <code>seat</code> falls back to its default from line 4 (destructuring with a default, Chapter 11)."},
+      {"in": "Ada 14C", "out": "Boarding pass: Ada, 14C", "outKind": "standard output", "program": "cli_seat.js", "note": "Arguments are positional: the second word is the seat."},
+      {"in": "--shout Ada 14C", "out": "BOARDING PASS: ADA, 14C", "outKind": "standard output", "program": "cli_shout.js", "note": "A word starting with <code>--</code> is a <b>flag</b> by convention. Line 4 filters it out first, so it can sit anywhere."},
+      {"in": "(no words)", "error": "usage: node bin/boarding.js <name> [seat] [--shout]", "program": "cli_none.js", "note": "No name: line 7 prints a usage line to the <b>error stream</b> and line 8 sets exit code 2. Nothing crashed, but anyone running the tool, person or script, can tell it refused."}]}</script>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 26: environment variables and --env-file">
+    <span class="panel-no" aria-hidden="true">26</span>
+    <p class="caption"><b>Environment variables</b> are named settings that a program inherits from whoever started it. They're how you tell a program which server to use, or hand it a password, without writing it in the code.</p>
+    <div class="duo">
+      <div><span class="file-tab">env.js</span><pre class="code" data-src="env.js"></pre></div>
+      <div><span class="file-tab">flight.env</span><pre class="code" data-src="flight.env"></pre></div>
+    </div>
+    <pre class="term wrap" data-run="env.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Run 1:</b> nothing set. <code>process.env.TOWER</code> is <code>undefined</code>, so <code>??</code> (Chapter 11) supplies the fallback.</span></li>
+      <li><span><b>Run 2:</b> <code>TOWER=Gatwick node env.js</code> sets the variable for that one command (this is shell syntax for macOS and Linux; the lab page has the Windows spelling).</span></li>
+      <li><span><b>Run 3:</b> <code>--env-file=flight.env</code> makes Node read <code>NAME=value</code> lines from a file first. Values are always strings.</span></li>
+    </ol>
+    <p><b>Secrets</b> (passwords, API keys) belong in environment variables or an env file, never in your code, and the env file never goes into git (list it in <code>.gitignore</code>). Notice that line 5 never prints the key itself, only whether it's set. A leaked log is a leaked password.</p>
+    <p class="catch">SECRETS LIVE IN THE ENVIRONMENT, NOT IN THE CODE</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 27: exit codes">
+    <span class="panel-no" aria-hidden="true">27</span>
+    <p class="caption">When the robot finishes, its badge shows a mood: the <b>exit code</b>. 0 means "all good"; anything else means "something went wrong". Scripts, build servers and <code>node --test</code> itself all speak this language.</p>
+    <span class="file-tab">exit_codes.js</span>
+    <pre class="code" data-src="exit_codes.js"></pre>
+    <pre class="term wrap" data-run="exit_codes.js"></pre>
+    <div class="scene">
+      <svg class="char robot" data-char="robot27" data-code="1"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The robot says: </span>In the shell, <code>echo $?</code> shows my last mood. Setting <code>process.exitCode = 1</code> doesn't stop me: I still finish my checklist (line 9 ran both times), then leave with code 1.</p></div>
+    </div>
+    <p>There's also <code>process.exit(1)</code>, which stops at once, even with work unfinished, such as output not yet written or a file half-saved. Prefer setting <code>process.exitCode</code> and letting the program end naturally. A crash (an uncaught error) also exits with 1.</p>
+    <p class="sr-only">Picture: the workshop robot frowns; its badge reads exit 1.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 28: two output streams">
+    <span class="panel-no" aria-hidden="true">28</span>
+    <p class="caption">Every program gets two output pipes. <b>Standard output</b> (stdout, <code>console.log</code>) is for the results. <b>Standard error</b> (stderr, <code>console.error</code>) is for warnings and problems. On screen they look alike. The difference shows when you redirect.</p>
+    <span class="file-tab">streams_out.js</span>
+    <pre class="code" data-src="streams_out.js"></pre>
+    <pre class="term wrap" data-run="streams_out.js"></pre>
+    <p>The shell's <code>&gt;</code> sends stdout into a file. The warning still appears on screen, because it travels on the other pipe, and the file holds only the results. That's why a tool's error messages go to <code>console.error</code>: someone saving your output to a file still sees the warnings, and the file stays clean. (This page draws stderr lines in the error style.)</p>
+  </section>
+
+  <div data-ex="fill" data-model="ex-fexit-m" id="ex-fexit"></div>
+  <script type="application/json" id="ex-fexit-m">{"program": "fill_exit.js", "prompt": "A tiny fuel tool, run as <code>node fill_exit.js 40</code>. Read your words from the command line; on missing input, complain on the error stream and finish with exit code 2.", "blanks": [{"line": 1, "text": "process.argv.slice(2)"}, {"line": 4, "text": "console.error", "accept": ["process.stderr.write"]}, {"line": 5, "text": "process.exitCode"}], "explain": "Your words start at index 2, so <code>process.argv.slice(2)</code>. Problems go to stderr with <code>console.error</code>. <code>process.exitCode = 2</code> sets the mood without cutting the program short. With <code>40</code>, the tool prints <samp>fuel for 40 km: 120 litres</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 29: reading the keyboard with readline">
+    <span class="panel-no" aria-hidden="true">29</span>
+    <p class="caption">Some tools ask questions. Typed text arrives on <b>standard input</b> (stdin), one line each time you press Enter. <code>node:readline</code> cuts that stream into lines.</p>
+    <span class="file-tab">ask.js</span>
+    <pre class="code" data-src="ask.js"></pre>
+    <pre class="term" data-run="ask.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 3 and 4:</b> a reader over stdin, and an <b>iterator</b> (Chapter 20) that hands out one line per <code>await lines.next()</code>. Lines typed early, or piped in from a file, wait in the queue.</span></li>
+      <li><span><b>Line 7:</b> <code>process.stdout.write</code> prints the question without a new line, so the answer is typed right after it.</span></li>
+      <li><span><b>Line 18:</b> the answer is a <samp>string</samp>, even <samp>1250</samp>. Line 16 converts it before comparing.</span></li>
+      <li><span><b>Line 14:</b> <code>rl.close()</code> stops listening. Forget it, and the program waits for more typing forever.</span></li>
+    </ol>
+    <p>You may see <code>rl.question()</code> from <code>node:readline/promises</code> in tutorials. It's fine for a person typing, but watch what happens when both answers are piped in at once (<code>printf</code> prints the two lines, and the <code>|</code> feeds them to Node's stdin):</p>
+    <span class="file-tab">ask_question.js</span>
+    <pre class="code" data-src="ask_question.js"></pre>
+    <pre class="term wrap" data-run="ask_question.js" data-exit></pre>
+    <p>Both questions were printed, but the program never reached line 9: Node found the <code>await</code> on line 6 still waiting with nothing left that could wake it, printed <samp>Detected unsettled top-level await</samp>, and ended with exit code 13. The likely reason: both answers arrived together, and the second one came while no question was waiting for it, so it was lost. That's why <code>ask.js</code> reads lines through the iterator, where early lines wait in the queue.</p>
+  </section>
+
+  <div data-ex="trace" data-model="ex-task-m" id="ex-task"></div>
+  <script type="application/json" id="ex-task-m">{"program": "trace_ask.js", "from": "stdout", "columns": ["typed", "type", "total"], "given": [0], "prompt": "The pilot types <code>120</code>, <code>80</code>, <code>45</code> and then <code>done</code>. (The questions go to stderr, so stdout holds only these rows.) Fill in the type and the running total.", "explain": "Every typed line is a <samp>string</samp>. <code>Number(answer)</code> turns it into a number before adding, so the total grows 120, 200, 245. Without <code>Number</code>, <code>total += answer</code> would glue strings: <code>'0120'</code>, then <code>'012080'</code>…. <code>done</code> ends the loop and prints nothing."}</script>
+
+  <!-- =================== PART 5 =================== -->
+  <h2 class="part-h" id="part-5">PART 5 · THE FILING ARM<small>fs/promises, Buffers, paths, and the folder you're standing in</small></h2>
+
+  <section class="panel clean" aria-label="Panel 30: reading a file, and the Buffer surprise">
+    <span class="panel-no" aria-hidden="true">30</span>
+    <p class="caption"><code>node:fs/promises</code> gives the robot's filing arm as async functions: each returns a promise (Chapter 24), so you <code>await</code> it. The file <code>data/hello.txt</code> holds the word <samp>Hi</samp> and a new line.</p>
+    <div class="robot-stage"><svg class="char robot" data-char="robot27" data-code="0" data-arm="fs"></svg></div>
+    <p class="sr-only">Picture: the robot with a dashed ring around its filing arm, which holds a folder marked fs.</p>
+    <span class="file-tab">read_buffer.js</span>
+    <pre class="code" data-src="read_buffer.js"></pre>
+    <pre class="term" data-run="read_buffer.js"></pre>
+    <p>Without an encoding, <code>readFile</code> hands back the raw <b>bytes</b>: a <b>Buffer</b>, printed as hexadecimal numbers. <samp>48</samp> is H, <samp>69</samp> is i, <samp>0a</samp> is the new line. Pass <code>'utf8'</code> to get text. The blank line in the output is the file's own newline, made visible by <code>JSON.stringify</code> as <samp>\n</samp>.</p>
+    <p class="catch">NO 'UTF8', NO TEXT</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pbuf-m" id="ex-pbuf"></div>
+  <script type="application/json" id="ex-pbuf-m">{"program": "predict_buffer.js", "prompt": "Same file (<samp>Hi</samp> plus a newline), read twice. Predict the three lines.", "hint": "A Buffer is an object. Its length counts bytes; a string's length counts characters. Here every character is one byte.", "explain": "<code>a</code> is a Buffer: <samp>object 3</samp> (H, i, newline). <code>b</code> is text: <samp>string 3</samp>. <code>a.toString()</code> decodes the bytes as UTF-8, giving the same text: <samp>true</samp>. With an emoji or ✈ in the file, the two lengths would differ (panel 36)."}</script>
+
+  <section class="panel clean" aria-label="Panel 31: a tour of the filing arm">
+    <span class="panel-no" aria-hidden="true">31</span>
+    <p class="caption">Folders, writing, adding, listing and checking, all in one logbook. Every function here is <code>await</code>ed, so each step finishes before the next begins.</p>
+    <span class="file-tab">fs_tour.js</span>
+    <pre class="code" data-src="fs_tour.js"></pre>
+    <pre class="term" data-run="fs_tour.js"></pre>
+    <ul class="checklist">
+      <li><code>rm(…, { recursive: true, force: true })</code> deletes the old logbook so every run starts the same (careful: this really deletes).</li>
+      <li><code>mkdir</code> with <code>recursive: true</code> also creates missing parent folders, and doesn't complain if the folder exists.</li>
+      <li><code>writeFile</code> replaces the whole file; <code>appendFile</code> adds to the end.</li>
+      <li><code>readdir</code> lists names, in an order the system picks, so line 11 sorts them. <code>stat</code> describes a file: <samp>29 bytes</samp>, and <code>isFile()</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 32: paths">
+    <span class="panel-no" aria-hidden="true">32</span>
+    <p class="caption">Paths are strings, but don't glue them with <code>+ '/' +</code>. <code>node:path</code> knows the rules, including Windows' backslashes.</p>
+    <span class="file-tab">paths.js</span>
+    <pre class="code" data-src="paths.js"></pre>
+    <pre class="term wrap" data-run="paths.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Line 5:</b> <code>join</code> glues pieces with the right separator and tidies <code>..</code> ("go up one folder").</span></li>
+      <li><span><b>Line 6:</b> <code>basename</code>, <code>extname</code> and <code>dirname</code> take a path apart.</span></li>
+      <li><span><b>Lines 7 and 8:</b> <code>process.cwd()</code> is the <b>current working directory</b>: the folder the terminal was in when you typed the command. <code>resolve</code> turns a relative path into a full one <b>starting from the cwd</b>.</span></li>
+      <li><span><b>Lines 9 to 12:</b> where this script file itself lives. <code>import.meta.url</code> is a <b>file URL</b> (<samp>file:///…</samp>); <code>fileURLToPath</code> turns it into a plain path; <code>import.meta.filename</code> and <code>import.meta.dirname</code> give it directly.</span></li>
+    </ol>
+    <p>Here the cwd and the script's folder are the same place, so both answers agree. They don't have to.</p>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 33: the map of where a relative path leads" data-map="map-paths">
+    <span class="panel-no" aria-hidden="true">33</span>
+    <p class="caption soft">Two scripts in <code>bin/</code> read <code>data/flights.json</code>. <code>load_rel.js</code> opens the relative path <code>'data/flights.json'</code>; <code>load_fixed.js</code> builds it from its own folder. Pick a road: same scripts, started from different folders.</p>
+    <div class="duo">
+      <div><span class="file-tab">bin/load_rel.js</span><pre class="code" data-src="bin/load_rel.js"></pre></div>
+      <div><span class="file-tab">bin/load_fixed.js</span><pre class="code" data-src="bin/load_fixed.js"></pre></div>
+    </div>
+    <div class="paths" role="group" aria-label="Choose a road"><span class="label">ROADS:</span></div>
+    <div class="mapwrap"><svg class="map-svg" role="img" aria-labelledby="mp-t mp-d"><title id="mp-t">Map of where a relative path leads</title><desc id="mp-d">You type a command in some folder; Node starts with that folder as its current working directory. A relative path is looked up from the cwd: from the chapter folder the file is found, from the home folder it fails with ENOENT. A path built from import.meta.dirname is found from any cwd.</desc></svg></div>
+    <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next step <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: places, roads and the chosen road</summary><div class="map-text"></div><table class="transcript"><caption>Chosen road</caption><thead><tr><th>Step</th><th>Kit is at</th><th>What happens</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="map-paths">{"seed": 33, "size": [690, 530], "start": [[345, 0], [345, 14]], "states": [{"id": "S0", "x": 235, "y": 20, "w": 220, "h": 66, "label": "you type a command", "sub": "in some folder"}, {"id": "S1", "x": 235, "y": 130, "w": 220, "h": 66, "label": "Node starts", "sub": "cwd = that folder"}, {"id": "S2", "x": 40, "y": 260, "w": 260, "h": 66, "label": "load_rel.js", "sub": "`'data/flights.json'` from cwd"}, {"id": "S3", "x": 390, "y": 260, "w": 260, "h": 66, "label": "load_fixed.js", "sub": "from `import.meta.dirname`"}, {"id": "E", "x": 40, "y": 440, "w": 220, "h": 66, "label": "ENOENT", "sub": "no such file", "kind": "error"}, {"id": "F", "x": 390, "y": 440, "w": 260, "h": 66, "label": "file found", "sub": "prints today's flights", "kind": "end"}], "transitions": [{"id": "p0", "from": "S0", "to": "S1", "pts": [[345, 90], [345, 124]], "label": "node …", "lx": 359, "ly": 112}, {"id": "p1", "from": "S1", "to": "S2", "pts": [[290, 200], [290, 228], [170, 228], [170, 254]], "label": "relative path", "lx": 160, "ly": 222, "anchor": "end"}, {"id": "p2", "from": "S1", "to": "S3", "pts": [[400, 200], [400, 228], [520, 228], [520, 254]], "label": "script's folder", "lx": 530, "ly": 222, "anchor": "start"}, {"id": "p3", "from": "S2", "to": "E", "pts": [[110, 330], [110, 434]], "label": ["cwd", "is ~"], "lx": 100, "ly": 376, "anchor": "end", "bug": true}, {"id": "p4", "from": "S2", "to": "F", "pts": [[240, 330], [240, 400], [440, 400], [440, 434]], "label": "cwd is ~/javascript-ch27", "lx": 250, "ly": 390, "anchor": "start"}, {"id": "p5", "from": "S3", "to": "F", "pts": [[600, 330], [600, 434]], "label": ["any", "cwd"], "lx": 610, "ly": 376, "anchor": "start"}], "paths": [{"id": "here", "label": "Relative, run from the script's folder", "program": "where_here.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["S0"], "output": [], "note": "The terminal is in <code>~/javascript-ch27</code>, the chapter folder. The script lives one level down, in <code>bin/</code>."}, {"on": ["S1"], "via": ["p0"], "output": [], "note": "You type <code>node bin/load_rel.js</code>. Node's cwd is <code>~/javascript-ch27</code>."}, {"on": ["S2"], "via": ["p1"], "output": [], "note": "<code>load_rel.js</code> opens <code>'data/flights.json'</code>, a relative path, so Node looks in <code>~/javascript-ch27/data/flights.json</code>, from the cwd. Not from <code>bin/</code>!"}, {"on": ["F"], "via": ["p4"], "output": ["flights: Skylark to Bristol / Wren to Leeds"], "note": "By luck the file is there: the cwd happens to be the folder that holds <code>data/</code>. It works, so the bug stays hidden."}]}, {"id": "away", "label": "Relative, run from another folder", "bug": true, "program": "where_away.js", "expect": {"exit": 1, "stdoutExact": true, "stderrContains": "Error: ENOENT: no such file or directory, open 'data/flights.json'"}, "steps": [{"on": ["S0"], "output": [], "note": "This time the terminal first does <code>cd ..</code>, so it stands in <code>~</code>, the home folder."}, {"on": ["S1"], "via": ["p0"], "output": [], "note": "<code>node javascript-ch27/bin/load_rel.js</code>: same script, same code. Node's cwd is now <code>~</code>."}, {"on": ["S2"], "via": ["p1"], "output": [], "note": "The same relative path, <code>'data/flights.json'</code>, now means <code>~/data/flights.json</code>."}, {"on": ["E"], "via": ["p3"], "output": [], "error": "Error: ENOENT: no such file or directory, open 'data/flights.json'", "note": "There's no such file, so <code>readFile</code> rejects with <samp>ENOENT</samp>, nobody catches it, and Node exits with code 1. The script didn't change; only where you stood."}]}, {"id": "fixed", "label": "From the script's folder, run from anywhere", "program": "where_fixed.js", "expect": {"exit": 0, "stdoutExact": true}, "steps": [{"on": ["S0"], "output": [], "note": "Again <code>cd ..</code>: the terminal stands in <code>~</code>."}, {"on": ["S1"], "via": ["p0"], "output": [], "note": "<code>node javascript-ch27/bin/load_fixed.js</code>. The cwd is <code>~</code>."}, {"on": ["S3"], "via": ["p2"], "output": [], "note": "<code>load_fixed.js</code> builds the path from <code>import.meta.dirname</code> (the <code>bin/</code> folder), then <code>'..'</code>, <code>'data'</code>, <code>'flights.json'</code>: a full path that doesn't depend on the cwd."}, {"on": ["F"], "via": ["p5"], "output": ["flights: Skylark to Bristol / Wren to Leeds"], "note": "Found, from any folder. This is the version to write."}]}]}</script>
+    <p>The real runs behind the two good roads (the ENOENT road is in the next panel):</p>
+    <pre class="term wrap" data-run="where_here.js" data-exit></pre>
+    <pre class="term wrap" data-run="where_fixed.js" data-exit></pre>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 34: reading ENOENT like a detective">
+    <span class="panel-no" aria-hidden="true">34</span>
+    <svg class="sfx tr" data-sfx="DIG DIG" data-seed="34"></svg>
+    <div class="scene">
+      <svg class="char sm" data-char="digger"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The digger says: </span>I dug where you told me: <code>data/flights.json</code>, starting from the folder you were standing in. Nothing there!</p></div>
+    </div>
+    <pre class="term wrap" data-run="where_away.js" data-exit></pre>
+    <ol class="readlist">
+      <li><span><samp>ENOENT</samp> is the system's code for "Error: NO ENTry", a file or folder that doesn't exist. <samp>code: 'ENOENT'</samp> is what your <code>catch</code> can check.</span></li>
+      <li><span><samp>open 'data/flights.json'</samp>: the operation and the path exactly as written. A <b>relative</b> path like this is looked up from the cwd, here <samp>~</samp>, so Node looked for <samp>~/data/flights.json</samp>.</span></li>
+      <li><span>Node 26 prints only the error object here, with no footprints; Node 22 also printed where it happened, which is a nice clue. Here is the same run on Node 22:</span></li>
+    </ol>
+    <p class="label-alt">Node.js 22.23.4, the same command:</p>
+    <pre class="term wrap" data-run="where_away.js" data-alt data-exit></pre>
+    <p>The fix (panel 33's third road): build the path from the script's own folder, <code>path.join(import.meta.dirname, '..', 'data', 'flights.json')</code>. In CommonJS files the same folder is called <code>__dirname</code> (Chapter 26).</p>
+    <p class="catch">RELATIVE TO WHERE YOU STAND, NOT WHERE THE SCRIPT LIVES</p>
+    <p class="sr-only">Picture: the digger, a little critter with a shovel, stands by an empty hole. A burst says DIG DIG.</p>
+  </section>
+
+  <div data-ex="spot" data-model="ex-spath-m" id="ex-spath"></div>
+  <script type="application/json" id="ex-spath-m">{"program": "spot_path.js", "bug": 6, "prompt": "This script works when you run it from its own folder, but a teammate runs it from the folder above (<code>cd ..</code> first) and it crashes. Click the line with the bug.", "explain": "Line 6 opens <code>'data/fleet.json'</code>, a relative path, which Node resolves from the cwd (the folder above), not from the script's folder. Line 4 even works out the right folder and line 5 prints it, but line 6 doesn't use it. Fix: <code>readFile(path.join(here, 'data', 'fleet.json'), 'utf8')</code>."}</script>
+
+  <div data-ex="fill" data-model="ex-fpath-m" id="ex-fpath"></div>
+  <script type="application/json" id="ex-fpath-m">{"program": "fill_path.js", "prompt": "Read <code>data/checklist.txt</code> next to this script, from wherever it's run, as text, and print just the file's name.", "blanks": [{"line": 4, "text": "import.meta.dirname"}, {"line": 5, "text": "'utf8'", "accept": ["\"utf8\"", "'utf-8'", "\"utf-8\""]}, {"line": 6, "text": "path.basename"}], "explain": "<code>import.meta.dirname</code> is the script's folder, whatever the cwd. <code>'utf8'</code> turns the bytes into text, so <code>trim</code> and <code>split</code> work. <code>path.basename</code> keeps only <samp>checklist.txt</samp>."}</script>
+
+  <section class="panel clean" aria-label="Panel 35: big files, a bucket at a time">
+    <span class="panel-no" aria-hidden="true">35</span>
+    <p class="caption"><code>readFile</code> loads the <b>whole</b> file into memory at once. Fine for a config file; a disaster for a 20 GB log. A <b>stream</b> is the robot's hose: data flows through in <b>chunks</b>, and only one chunk needs to fit in memory at a time.</p>
+    <span class="file-tab">big_count.js</span>
+    <pre class="code" data-src="big_count.js"></pre>
+    <pre class="term" data-run="big_count.js"></pre>
+    <p>The program writes a 1.1 MB log, then reads it two ways. <code>createReadStream</code> delivers it in 17 chunks of at most 64 KiB (65,536 bytes: 16 full ones and a smaller last one), and <code>for await</code> (Chapter 25) takes them one by one. Wrapped in <code>readline</code>, the same stream comes out as lines. Neither loop ever holds the whole file, so the same code would count the lines of a file far bigger than the computer's memory.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-stream-m" id="ex-stream"></div>
+  <script type="application/json" id="ex-stream-m">{"q": "A server log is 12 GB; the computer has 8 GB of memory. You need to count the lines that contain <code>ERROR</code>. Which plan works?", "options": [
+    {"t": "Stream it: <code>readline</code> over <code>createReadStream</code>, counting in <code>for await</code>", "correct": true, "why": "Yes. Only one chunk (64 KiB by default) and one line are in memory at a time, so the file's size doesn't matter."},
+    {"t": "<code>await readFile(path, 'utf8')</code>, then <code>split('\\n')</code> and <code>filter</code>", "why": "That loads all 12 GB into memory first, then makes a giant array on top. It runs out of memory (and Node also caps how long a single string may be)."},
+    {"t": "<code>readFileSync</code>, because a synchronous read uses less memory", "why": "Sync or async, <code>readFile</code> still holds the whole file at once. Sync only adds blocking."},
+    {"t": "Read it as a Buffer instead of text, so it takes less room", "why": "A Buffer of 12 GB is still 12 GB. The answer is reading less at a time, not a different box."}]}</script>
+
+  <section class="panel clean" aria-label="Panel 36: Buffer basics">
+    <span class="panel-no" aria-hidden="true">36</span>
+    <p class="caption">Chunks are Buffers: fixed-size boxes of bytes, each a number from 0 to 255. Text is just one way to read them.</p>
+    <span class="file-tab">buffer_basics.js</span>
+    <pre class="code" data-src="buffer_basics.js"></pre>
+    <pre class="term" data-run="buffer_basics.js"></pre>
+    <p>Four characters, six bytes: in UTF-8 the plane ✈ takes three bytes (<samp>e2 9c 88</samp>), while H, i and the space take one each (Chapter 22's emoji library). Spreading the Buffer shows the bytes as ordinary numbers. <b>Base64</b> spells any bytes using only safe letters, digits, <code>+</code> and <code>/</code>, which is how images and keys travel inside text.</p>
+  </section>
+
+  <!-- =================== PART 6 =================== -->
+  <h2 class="part-h" id="part-6">PART 6 · HOSE, BELL AND PHONE<small>pipeline, EventEmitter, a tiny server, safety, and a real tool</small></h2>
+
+  <section class="panel clean" aria-label="Panel 37: pipeline joins the hoses">
+    <span class="panel-no" aria-hidden="true">37</span>
+    <p class="caption">Streams connect like hoses: a <b>readable</b> stream (data comes out), a <b>transform</b> (data goes in, changed data comes out), a <b>writable</b> stream (data goes in). <code>pipeline</code> joins them and tells you when the water stops.</p>
+    <div class="robot-stage"><svg class="char robot" data-char="robot27" data-code="0" data-arm="stream"></svg></div>
+    <p class="sr-only">Picture: the robot with a dashed ring around the hose marked stream at its feet.</p>
+    <span class="file-tab">pipeline.js</span>
+    <pre class="code" data-src="pipeline.js"></pre>
+    <pre class="term" data-run="pipeline.js"></pre>
+    <p>The <code>Transform</code> gets each chunk, shouts it, and passes it on with <code>done(null, …)</code>. <code>pipeline</code> from <code>node:stream/promises</code> returns a promise that settles when the last byte is written, and if any piece fails, it closes all of them and rejects. That's why it's preferred over chaining <code>.pipe()</code> calls by hand, which can leave files open after an error.</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 38: EventEmitter, the workshop bell">
+    <span class="panel-no" aria-hidden="true">38</span>
+    <p class="caption">Streams, servers and readline all announce things with <b>events</b>, using one shared tool: <code>EventEmitter</code>. It's the browser's <code>addEventListener</code> (Chapter 15) for Node: <code>on</code> listens, <code>emit</code> rings the bell.</p>
+    <span class="file-tab">emitter.js</span>
+    <pre class="code" data-src="emitter.js"></pre>
+    <pre class="term" data-run="emitter.js"></pre>
+    <ul class="checklist">
+      <li>Listeners run in the order they were added, and <b>right away</b>, inside <code>emit</code>: all three lines print before <samp>emit 1 heard? true</samp>. Kit's rule: one cue at a time, now.</li>
+      <li><code>once</code> listens for one ring only, then removes itself, so <samp>listeners: 2</samp>.</li>
+      <li><code>emit</code> returns <code>true</code> if anyone was listening; nobody listens for <code>'takeoff'</code>.</li>
+    </ul>
+    <p>One event name is special: <code>'error'</code>. Ring it with nobody listening, and Node throws the error:</p>
+    <span class="file-tab">emitter_error.js</span>
+    <pre class="code" data-src="emitter_error.js"></pre>
+    <pre class="term wrap" data-run="emitter_error.js" data-exit data-fold></pre>
+    <p>Two sets of footprints: where the Error was <b>made</b> (line 5, column 22) and, under <samp>Emitted 'error' event at:</samp>, where it was <b>rung</b> (line 5, column 8). Always add an <code>'error'</code> listener to streams and servers you create.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-pemit-m" id="ex-pemit"></div>
+  <script type="application/json" id="ex-pemit-m">{"program": "predict_emitter.js", "prompt": "Two listeners on one bell, one of them <code>once</code>. Predict every line.", "hint": "<code>emit</code> runs the listeners immediately, in the order they were added. <code>once</code> removes itself after its first ring.", "explain": "<samp>start</samp>; the first ring runs <samp>A 1</samp> then <samp>B 1</samp> (added second); B is now gone, so the second ring runs only <samp>A 2</samp>; then <samp>end</samp>. Nothing waits: <code>emit</code> is not asynchronous."}</script>
+
+  <section class="panel clean" aria-label="Panel 39: the telephone, a tiny http server">
+    <span class="panel-no" aria-hidden="true">39</span>
+    <p class="caption">The robot's telephone: <code>node:http</code> answers web requests. This program is both ends of the line: it starts a server, then calls it with Node's built-in <code>fetch</code>.</p>
+    <div class="robot-stage"><svg class="char robot" data-char="robot27" data-code="0" data-arm="http"></svg></div>
+    <p class="sr-only">Picture: the robot with a dashed ring around its phone, marked http.</p>
+    <span class="file-tab">server.js</span>
+    <pre class="code" data-src="server.js"></pre>
+    <pre class="term" data-run="server.js"></pre>
+    <ol class="readlist">
+      <li><span><b>Lines 3 to 11:</b> the handler runs once per request: <code>req</code> is what was asked (<code>req.url</code>), <code>res</code> is the reply: a status code, headers, and the body via <code>res.end</code>.</span></li>
+      <li><span><b>Line 13:</b> port 0 means "any free port", chosen by the system, so the program doesn't print it (it changes every run). Line 14 waits for the <code>'listening'</code> event.</span></li>
+      <li><span><b>Lines 17 to 21:</b> <code>fetch</code> returns a promise of a response; <code>.json()</code> and <code>.text()</code> read its body. A 404 is still an answer, not a crash (Chapter 28 makes a lot of this).</span></li>
+      <li><span><b>Line 23:</b> <code>close</code> hangs up. A listening server keeps a program running forever, which is what real servers want.</span></li>
+    </ol>
+    <p>The handler must be quick. The server has one thread (Chapter 25's single stove), so a handler that calls <code>fs.readFileSync</code> on a big file, or loops for a second, makes <b>every</b> other caller wait. Use the async <code>fs/promises</code> functions and streams inside handlers.</p>
+  </section>
+
+  <div data-ex="choice" data-model="ex-block-m" id="ex-block"></div>
+  <script type="application/json" id="ex-block-m">{"q": "A server's handler does <code>const text = fs.readFileSync('big-report.csv', 'utf8')</code> on every request. The file takes 300 ms to read. Ten people ask at once. What happens?", "options": [
+    {"t": "They're served one after another: the last person waits about 3 seconds", "correct": true, "why": "Yes. Nothing else runs while a synchronous read is in progress: sync calls block the single thread. With <code>await readFile(...)</code>, or better a stream, the reads wait in the background while other requests are served."},
+    {"t": "Node starts ten threads, so everyone waits about 300 ms in total", "why": "Your JavaScript runs on one thread. <code>readFileSync</code> holds that thread until the read is done."},
+    {"t": "Node refuses: <code>readFileSync</code> is not allowed inside a server", "why": "It's allowed, and it works. It's just slow for everyone else. Sync calls are fine in short scripts and at startup."},
+    {"t": "Only the first request is answered; the other nine are dropped", "why": "They aren't dropped: they wait in line. The problem is the waiting."}]}</script>
+
+  <section class="panel sketch" aria-label="Panel 40: workshop versus stage">
+    <span class="panel-no" aria-hidden="true">40</span>
+    <p class="caption soft">Same engine, different rooms. What changes between the workshop (Node) and the stage (a browser)?</p>
+    <div class="duo">
+      <div class="duo-card cool"><h3>NODE<small>the workshop</small></h3><p>Files (<code>fs</code>), folders, the cwd, <code>process</code>, environment variables, servers, other programs. No page: no <code>document</code>, no <code>window</code>. You trust the code you run, so it can do almost anything on the machine.</p></div>
+      <div class="duo-card ok"><h3>BROWSER<small>the stage</small></h3><p>The page (<code>document</code>), clicks, <code>localStorage</code>. No files or processes: a web page is a stranger's code, so it lives in a <b>sandbox</b> and may only touch what the user allows.</p></div>
+    </div>
+    <p>Both have <code>globalThis</code>, timers, promises, <code>fetch</code>, <code>URL</code>, <code>console</code> and ES modules. Two more workshop drawers worth knowing by name: <code>node:os</code> (facts about the machine) and <code>node:child_process</code> (start another program and collect what it prints):</p>
+    <span class="file-tab">os_child.js</span>
+    <pre class="code" data-src="os_child.js"></pre>
+    <pre class="term" data-run="os_child.js"></pre>
+    <p><code>process.execPath</code> is the path of the running <code>node</code>, so the child is a second Node that prints 42. On Windows, <code>os.EOL</code> is <code>"\r\n"</code> and <code>os.platform()</code> is <code>'win32'</code> (from the Node docs; not run here).</p>
+  </section>
+
+  <section class="panel pop" aria-label="Panel 41: never trust input">
+    <span class="panel-no" aria-hidden="true">41</span>
+    <svg class="sfx tr" data-sfx="HALT!" data-seed="41"></svg>
+    <p class="caption">The workshop robot can open any file the computer lets it. So when a <b>user</b> chooses the file name (a command-line word, a web request), check it first. A visitor asking for <code>../../secret.txt</code> is trying to climb out of the folder you meant to share. That trick is called <b>path traversal</b>.</p>
+    <span class="file-tab">safe_path.js</span>
+    <pre class="code" data-src="safe_path.js"></pre>
+    <pre class="term" data-run="safe_path.js"></pre>
+    <p><code>path.resolve</code> works out where the request really lands, <code>..</code> and all; then line 7 checks it's still inside the hangar folder. Two safe names pass; climbing up and jumping to <code>/etc/passwd</code> are refused. The general rule: <b>never trust input</b>. Check type, size and shape before you use it, keep secrets in the environment (panel 26), and print errors without printing secrets.</p>
+    <p class="catch">CHECK AT THE DOOR</p>
+  </section>
+
+  <section class="panel clean" aria-label="Panel 42: walk Kit through a read, transform, write tool" data-walk="walk-tool">
+    <span class="panel-no" aria-hidden="true">42</span>
+    <p class="caption">Everything together: a small real tool. It reads a JSON config, reads the data file the config names, picks the planes due for service, and writes a report. Walk Kit through it.</p>
+    <div class="duo">
+      <div><span class="file-tab">data/tool-config.json</span><pre class="code" data-src="data/tool-config.json"></pre></div>
+      <div><span class="file-tab">data/fleet.json</span><pre class="code" data-src="data/fleet.json"></pre></div>
+    </div>
+    <div class="walk">
+      <div class="recipe">
+        <svg class="walker" viewBox="0 0 140 190" aria-hidden="true"></svg>
+        <p class="card-title">fleet_tool.js</p>
+        <ol></ol>
+      </div>
+      <div class="screen"><p class="label">SCREEN</p><pre></pre></div>
+    </div>
+    <p class="narration"></p>
+    <div class="controls">
+      <div class="btns">
+        <button type="button" class="btn" data-act="prev">Back <kbd>←</kbd></button>
+        <button type="button" class="btn btn-go" data-act="next">Next line <kbd>→</kbd></button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false"><span>Play</span> <kbd>Space</kbd></button>
+        <button type="button" class="btn" data-act="reset">Reset <kbd>R</kbd></button>
+      </div>
+      <span class="parity"></span>
+    </div>
+    <p class="sr-only" aria-live="polite"></p>
+    <details><summary>Text version: every step</summary><table class="transcript"><thead><tr><th>Step</th><th>Line</th><th>What happens</th><th>Screen</th></tr></thead><tbody></tbody></table></details>
+    <script type="application/json" id="walk-tool">{"program": "fleet_tool.js", "steps": [{"line": 4, "output": [], "mood": "focus", "arms": "point", "note": "The two imports are loaded before any line runs. First stop: line 4."}, {"line": 5, "output": [], "mood": "focus", "arms": "point", "note": "Line 4: <code>dataDir</code> is built from the script's own folder (panel 34's fix), so the tool works from any cwd."}, {"line": 6, "output": [], "mood": "happy", "arms": "point", "note": "Line 5 <b>reads</b> the config as text (<code>'utf8'</code>) and <code>JSON.parse</code>s it into an object: input file, output file, and a limit of 500 hours."}, {"line": 7, "output": ["config: fleet.json -> service.json over 500"], "mood": "happy", "arms": "point", "note": "Line 6 reports the settings. A good tool says what it's about to do."}, {"line": 8, "output": ["config: fleet.json -> service.json over 500"], "mood": "focus", "arms": "point", "note": "Line 7 reads the file the config names, <code>fleet.json</code>: four planes."}, {"line": 12, "output": ["config: fleet.json -> service.json over 500"], "mood": "focus", "arms": "point", "note": "Lines 8 to 11 <b>transform</b>: keep planes over 500 hours, turn each into <code>{ name, over }</code>, and sort by most hours over (<code>toSorted</code> returns a new array, Chapter 9). The Puffin (180 hours) drops out."}, {"line": 13, "output": ["config: fleet.json -> service.json over 500", "due for service: 3"], "mood": "happy", "arms": "point", "note": "Line 12: three planes are due."}, {"line": 14, "output": ["config: fleet.json -> service.json over 500", "due for service: 3"], "mood": "focus", "arms": "point", "note": "Line 13 picks the output folder, again from the script's own folder."}, {"line": 15, "output": ["config: fleet.json -> service.json over 500", "due for service: 3"], "mood": "focus", "arms": "point", "note": "Line 14 makes sure <code>scratch/</code> exists (<code>recursive</code>: no complaint if it does)."}, {"line": 16, "output": ["config: fleet.json -> service.json over 500", "due for service: 3"], "mood": "happy", "arms": "point", "note": "Line 15 <b>writes</b> the result: <code>JSON.stringify(due, null, 2)</code> indents by two spaces, plus a final newline, as text files should end."}, {"line": null, "output": ["config: fleet.json -> service.json over 500", "due for service: 3", "[", "  {", "    \"name\": \"Kestrel\",", "    \"over\": 440", "  },", "  {", "    \"name\": \"Skylark\",", "    \"over\": 120", "  },", "  {", "    \"name\": \"Wren\",", "    \"over\": 5", "  }", "]", ""], "mood": "happy", "arms": "cheer", "note": "Line 16 reads the written file back to prove it's there. <code>console.log</code> adds its own newline after the file's, hence the blank last line. Read, transform, write: the shape of most small tools."}]}</script>
+  </section>
+
+  <!-- =================== BOSS =================== -->
+  <h2 class="part-h" id="boss">BOSS LEVEL<small>Six harder checks: simulator and robot, all mixed</small></h2>
+
+  <section class="panel pop" data-play aria-label="Panel 43: boss level">
+    <span class="panel-no" aria-hidden="true">43</span>
+    <svg class="sfx tr" data-sfx="BOSS!" data-seed="43"></svg>
+    <p class="boss-h">BOSS LEVEL</p>
+    <div class="scene">
+      <svg class="char sm" data-char="stagehand" data-mood="focus" data-arms="cheer"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">Kit says: </span>Which hook? Awaited or not? Which pipe, which folder, which mood on the badge? Stand by… GO!</p></div>
+    </div>
+    <p class="sr-only">Picture: Kit, focused, raises both arms. A burst says BOSS.</p>
+  </section>
+
+  <div data-ex="predict" data-model="ex-b1-m" id="ex-b1"></div>
+  <script type="application/json" id="ex-b1-m">{"program": "boss_predict.js", "prompt": "Boss 1. The command is <code>PILOT=Ada node boss_predict.js 3 mail parcels</code> (and <code>TOWER</code> is not set). Predict the four lines on standard output.", "hint": "Arguments are strings. <code>PILOT=Ada</code> before the command sets an environment variable for this run only.", "explain": "<code>trips</code> is the string <code>'3'</code> and <code>cargo</code> is <code>['mail', 'parcels']</code>: <samp>Ada flies 3 trips</samp>, <samp>mail+parcels</samp>. <code>'3' + 1</code> glues strings: <samp>31</samp>. <code>TOWER</code> is missing, so the exit code is set to 3, and the program says so; it then really ends with exit code 3."}</script>
+
+  <div data-ex="spot" data-model="ex-b2-m" id="ex-b2"></div>
+  <script type="application/json" id="ex-b2-m">{"program": "boss_spot.test.js", "bug": 6, "prompt": "Boss 2. Each test should start with a full 100-litre tank. The first test passes; the second fails with <samp>20 !== 50</samp>. Click the line with the bug.", "explain": "Line 6 uses <code>before</code>, which runs once for the whole suite, so both tests share one tank: 100 − 30 − 50 = 20. With <code>beforeEach</code>, every test gets a fresh tank and both pass. Shared state between tests is exactly the \"independent\" rule from panel 11."}</script>
+
+  <div data-ex="parsons" data-model="ex-b3-m" id="ex-b3"></div>
+  <script type="application/json" id="ex-b3-m">{"program": "boss_parsons.js", "seed": 43, "pin": [1, 2, 4, 5], "prompt": "Boss 3. A mini tool: read the fleet file next to the script, turn it into a list of names in capitals, write it to <code>scratch/names.txt</code>, then report. The setup lines are fixed. Put the rest in order.", "explain": "Read the text first, then <code>JSON.parse</code> it into an object, then <code>map</code> the planes to names. Only then can <code>writeFile</code> save <code>names</code>, and the report comes last, once the file is really written (each step is awaited)."}</script>
+
+  <div data-ex="fill" data-model="ex-b4-m" id="ex-b4"></div>
+  <script type="application/json" id="ex-b4-m">{"program": "boss_fill.test.js", "prompt": "Boss 4. On a storm day the dice must roll low and the closed tower must reject. Use the test's own mock (so it can't leak), wait for the rejection, and check the dice were rolled once.", "blanks": [{"line": 5, "text": "async"}, {"line": 6, "text": "t.mock.method"}, {"line": 8, "text": "await"}, {"line": 9, "text": "callCount"}], "explain": "The test is <code>async</code> so it may <code>await</code>. <code>t.mock.method</code> swaps <code>Math.random</code> for this test only and restores it afterwards. <code>await assert.rejects</code> makes the referee wait for the tower. The double is a spy, so <code>Math.random.mock.callCount()</code> is 1: <code>weather()</code> rolled once."}</script>
+
+  <div data-ex="trace" data-model="ex-b5-m" id="ex-b5"></div>
+  <script type="application/json" id="ex-b5-m">{"program": "boss_trace.js", "columns": ["round", "before", "heard", "after"], "given": [0], "prompt": "Boss 5. One <code>on</code> listener and one <code>once</code> listener. In round 3 the <code>on</code> listener is removed with <code>off</code>. Each row: the round, the number of listeners before the ring, what <code>emit</code> returned, and the number after.", "explain": "Round 1: 2 listeners, someone heard (<samp>true</samp>), and the <code>once</code> listener removes itself: 1 left. Round 2: 1 before, <samp>true</samp>, still 1. Round 3: <code>off</code> removes the last one first, so 0 before, nobody heard (<samp>false</samp>), 0 after."}</script>
+
+  <div data-ex="choice" data-model="ex-b6-m" id="ex-b6"></div>
+  <script type="application/json" id="ex-b6-m">{"q": "Boss 6. <code>nightRoster()</code> reads <code>data/crew.json</code> (next to the script), picks a random pilot, and only works after 18:00. Which test plan is repeatable, independent and honest?", "options": [
+    {"t": "Path from <code>import.meta.dirname</code>; per test, <code>t.mock</code> pins <code>Math.random</code> and <code>Date</code>; test a day and a night case", "correct": true, "why": "Yes. The file is found from any folder; <code>t.mock.method(Math, 'random', …)</code> and <code>t.mock.timers.enable({ apis: ['Date'], now: … })</code> pin randomness and time for one test and are restored afterwards; awaiting anything async and checking both sides of the 18:00 rule makes it honest."},
+    {"t": "Run the tests only in the evening, with the real clock and real dice, and accept that the pilot differs each time", "why": "That test is flaky by design: it depends on the real clock and real dice, so a pass tells you little."},
+    {"t": "Mock <code>Math.random</code> with the shared <code>mock</code> once at the top of the file, never restore it, and pin <code>Date</code> per test", "why": "That double leaks into every later test in the file, the mock-leak bug from panel 18."},
+    {"t": "Open <code>'data/crew.json'</code> relative to wherever the tests are started, and pin the dice and the clock per test", "why": "Then it only works from one folder. A build server starting in another folder gets ENOENT (panel 34)."}]}</script>
+
+  <section class="panel pop" aria-label="Panel 44: what you learned">
+    <span class="panel-no" aria-hidden="true">44</span>
+    <p class="caption">What you learned in Chapter 27</p>
+    <ul class="recap">
+      <li><b>EVERY TEST GETS A FRESH PLANE</b><code>describe</code> groups, <code>it</code> checks one thing. <code>before</code>/<code>after</code> run once; <code>beforeEach</code>/<code>afterEach</code> wrap every test, and <code>afterEach</code> runs even after a failure. <code>skip</code>, <code>todo</code> and <code>only</code> (with <code>--test-only</code>) mark tests instead of deleting them.</li>
+      <li><b>EQUAL FOR VALUES, DEEPEQUAL FOR CONTENTS</b>Strict <code>equal</code> is <code>===</code>; <code>deepEqual</code> compares insides and types; <code>throws</code> needs a function to call; <code>match</code> checks a pattern; <code>rejects</code> is the async <code>throws</code>. Test the error paths. Arrange, act, assert, with fixtures for the setup.</li>
+      <li><b>NO AWAIT, NO REFEREE</b>Async tests must be <code>async</code> and <code>await</code> every promise (or return it). An un-awaited assert can run after the test is judged ✔.</li>
+      <li><b>STUNT DOUBLES GO HOME AFTER THEIR SCENE</b><code>mock.fn</code> spies and stubs; <code>t.mock.method</code> swaps a method for one test; <code>t.mock.timers</code> fakes timers and <code>Date</code>. The shared <code>mock</code> leaks until <code>restoreAll()</code>. Coverage finds untested lines; TDD goes red, green, refactor.</li>
+      <li><b>SECRETS LIVE IN THE ENVIRONMENT, NOT IN THE CODE</b><code>process.argv.slice(2)</code> holds your words (all strings); <code>process.env</code> and <code>--env-file</code> hold settings; <code>process.exitCode</code> sets the badge's mood; results go to stdout, problems to stderr; <code>readline</code> reads stdin line by line.</li>
+      <li><b>RELATIVE TO WHERE YOU STAND, NOT WHERE THE SCRIPT LIVES</b><code>fs/promises</code> reads and writes (pass <code>'utf8'</code> or get a Buffer); relative paths start at the cwd, so build paths with <code>path.join(import.meta.dirname, …)</code>. Big files flow through streams and <code>pipeline</code>; <code>EventEmitter</code> rings bells; <code>http</code> answers calls; and every input is checked at the door.</li>
+    </ul>
+    <div class="scene">
+      <svg class="char robot" data-char="robot27" data-code="0"></svg>
+      <div class="talk"><p class="bubble"><span class="sr-only">The robot says: </span>Crash in the simulator, not in the sky. Then let me do the heavy lifting: badge on, arms ready, exit 0.</p></div>
+    </div>
+    <div class="score"><span data-score></span><button type="button" class="btn" data-score-reset>Reset my score</button></div>
+  </section>
+
+  <section class="panel sketch" aria-label="Panel 45: next time, theatre and mail">
+    <span class="panel-no" aria-hidden="true">45</span>
+    <p class="caption soft">Coming up in Chapter 28…</p>
+    <div class="teaser">
+      <div class="scene">
+        <svg class="char sm" data-char="stagehand" data-mood="happy" data-arms="point"></svg>
+        <div class="talk"><p class="bubble think"><span class="sr-only">Kit thinks: </span>Today the robot had no stage: no <code>document</code>, no clicks. Next time we go back to <b>my</b> theatre, the browser, in depth: the stage set (the DOM), cues that travel down and back up the scenery (event phases), the props cupboard (<code>localStorage</code>). Then the mail: JSON envelopes, and why a 404 from <code>fetch</code> still arrives as a letter you must open and check.</p></div>
+      </div>
+    </div>
+    <p class="sr-only">Picture: Kit points ahead, thinking about the theatre and the mail.</p>
+  </section>
+
+</main>
+
+<p class="next-chapter">NEXT: CHAPTER 28 · THEATRE AND MAIL<br><small style="font: 700 1rem var(--f-bubble)">The browser in depth (DOM, events, storage) and data on the wire (JSON and fetch).</small></p>
+
+<nav class="ch-nav" aria-label="Chapter navigation"><a href="ch26.html">← Ch 26 · Catalogs and Workbenches</a><a class="next" href="ch28.html">Ch 28 · Theatre and Mail →</a></nav>
+
+<section class="notebook" aria-labelledby="nb-h">
+  <header>
+    <h2 id="nb-h">PROFESSOR'S NOTEBOOK</h2>
+    <p class="intro">Want more? These pages go deeper than the comic. Open any page.</p>
+  </header>
+
+  <details class="page">
+    <summary>Under the hood: how node --test runs, how mocks swap, and what fs really does</summary>
+    <div class="page-body">
+      <h3>One process per file</h3>
+      <p>Given file names, <code>node --test</code> runs exactly those. Given none, it searches the current folder (skipping <code>node_modules</code>) for files whose names match patterns such as <code>*.test.js</code>, <code>*-test.js</code>, <code>*_test.js</code>, <code>test.js</code>, and anything inside a folder called <code>test</code>. Each test file runs in its <b>own child process</b>, so a crash or a leaked global in one file can't break another. The children report back to the parent in a structured format, and the parent's <b>reporter</b> turns that into the spec tree, dots or TAP. That's also why a test's <code>console.log</code> lines appear before the report under <code>--test</code>: the parent collects the child's output as it comes and prints the summary at the end.</p>
+      <h3>When is a test finished?</h3>
+      <p>A test function is finished when it returns, or, if it returns a promise, when that promise settles. That's the whole rule behind panel 13: a non-async function that starts a promise and returns nothing is finished at once. Afterwards, Node watches for errors and unhandled rejections that it can trace back to a test that already ended, and reports them as "asynchronous activity after the test ended". A test function can also accept a second parameter, <code>done</code>, a callback style from older libraries; don't mix it with promises.</p>
+      <h3>What mock.method does</h3>
+      <p><code>t.mock.method(obj, 'name', impl)</code> remembers <code>obj.name</code>, replaces it with a spy that calls <code>impl</code>, and registers a clean-up step. When the test ends, the test's mock tracker restores every method it swapped. The top-level <code>mock</code> object is a tracker too, but it belongs to no test, so nothing restores it until you call <code>mock.restoreAll()</code> (or <code>mock.reset()</code>). The panel 17 tracer is literally this: one property of the <code>Math</code> object pointing at a different function for a while.</p>
+      <h3>Mock timers</h3>
+      <p><code>mock.timers.enable({ apis: [...] })</code> replaces <code>setTimeout</code>, <code>setInterval</code>, <code>setImmediate</code> and/or <code>Date</code> with versions driven by an internal counter. <code>tick(ms)</code> moves the counter forward and runs, in order, every callback that became due. <code>runAll()</code> runs everything pending. Node 22 still printed an <code>ExperimentalWarning</code> for this API; Node 26 doesn't.</p>
+      <h3>fs, libuv and the thread pool</h3>
+      <p>Your JavaScript runs on one thread, but <code>readFile</code> doesn't block it: Node's C library <b>libuv</b> (Chapter 25) hands file operations to a small pool of helper threads (four by default) and queues a callback when each finishes. The <code>fs/promises</code> functions wrap that callback in a promise. The <code>…Sync</code> versions skip all of that and wait on the main thread. Errors from the system come back as codes such as <code>ENOENT</code> (no such entry), <code>EACCES</code> (permission denied), <code>EISDIR</code> (that's a folder) and <code>EEXIST</code> (already exists).</p>
+      <h3>Streams and backpressure, briefly</h3>
+      <p>A readable file stream reads 64 KiB at a time by default (its <code>highWaterMark</code>). If the writable end is slower than the readable end, chunks would pile up in memory; <code>pipeline</code> (and <code>.pipe</code>) handle this <b>backpressure</b> by pausing the reader until the writer catches up. That's beyond this book, but it's why you should connect streams with <code>pipeline</code> rather than copying chunks by hand.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>In real programs: test scripts, CI, CLIs and config</summary>
+    <div class="page-body">
+      <ul>
+        <li><b><code>npm test</code>.</b> Projects put the test command in <code>package.json</code>, for example <code>"scripts": { "test": "node --test" }</code>, so everyone (and every build server) runs the same thing with <code>npm test</code> or <code>node --run test</code> (Chapter 26).</li>
+        <li><b>Continuous integration (CI).</b> Services such as GitHub Actions run the tests on every push and look only at the exit code: 0 lets the change in, anything else blocks it. That's why a test runner must exit non-zero on failure, and why your own tools should too.</li>
+        <li><b>Watch mode.</b> <code>node --test --watch</code> re-runs the tests whenever a file changes; the TDD loop at full speed.</li>
+        <li><b>Argument parsing.</b> Real tools rarely hand-split <code>argv</code>. Node has <code>parseArgs</code> in <code>node:util</code> for flags like <code>--seat 14C</code> and <code>-v</code>; npm packages such as <code>commander</code> and <code>yargs</code> add help screens.</li>
+        <li><b>Config.</b> A common pattern: defaults in code, overridden by a JSON config file, overridden by environment variables, overridden by command-line flags. The fleet tool (panel 42) is the first step of that.</li>
+        <li><b>Logging.</b> Servers write logs to stdout or stderr, one line per event (often as JSON), and let the hosting system collect them. Never log passwords, tokens or full card numbers.</li>
+        <li><b>Shebang.</b> A first line <code>#!/usr/bin/env node</code> lets macOS and Linux run a script as <code>./boarding.js</code> once it's marked executable (<code>chmod +x</code>). npm uses this for the commands packages install.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Common wrong ideas</summary>
+    <div class="page-body">
+      <ul>
+        <li><b>"A green tick means the code works."</b> It means the asserts that ran didn't fail. An un-awaited assert, a test with no assert, or a check of the wrong thing all give ticks.</li>
+        <li><b>"<code>assert.equal</code> compares arrays."</b> In strict mode it's <code>===</code>: two separate arrays are never equal. Use <code>deepEqual</code>.</li>
+        <li><b>"<code>assert.throws(fn(), …)</code> is fine."</b> That calls <code>fn</code> before <code>throws</code> starts. Pass a function: <code>() =&gt; fn()</code>.</li>
+        <li><b>"<code>before</code> and <code>beforeEach</code> are the same."</b> <code>before</code> runs once; state it creates is shared by every test in the group (Boss 2).</li>
+        <li><b>"100% coverage means no bugs."</b> It means every line ran, not that its result was checked.</li>
+        <li><b>"Relative paths are relative to the script."</b> They're relative to the current working directory. Only <code>import</code> specifiers like <code>'./lib/plane.js'</code> are relative to the file.</li>
+        <li><b>"<code>process.argv[0]</code> is my first word."</b> Index 0 is node, index 1 is the script; your words start at 2.</li>
+        <li><b>"Numbers on the command line or in env vars are numbers."</b> They are always strings. Convert with <code>Number()</code> and check for <code>NaN</code>.</li>
+        <li><b>"<code>process.exit()</code> is the normal way to finish."</b> It can cut off output that hasn't been written yet. Set <code>process.exitCode</code> and let the program end.</li>
+        <li><b>"<code>emit</code> is asynchronous, like a browser click."</b> Listeners run right inside <code>emit</code>, before the next line.</li>
+        <li><b>"Putting the API key in the code is fine, the repo is private."</b> Private repos get shared, forked and leaked. Keep secrets in the environment and out of git.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Lab: run it yourself (Windows, macOS, Linux)</summary>
+    <div class="page-body">
+      <ol>
+        <li>Install Node.js LTS from <a href="https://nodejs.org/">nodejs.org</a> (Windows: the <code>.msi</code> installer; macOS: the <code>.pkg</code>, or <code>brew install node</code>; Linux: your distribution's package or a version manager such as <code>nvm</code> or <code>fnm</code>). Check with <code>node --version</code>; this page used v26.13.0, and everything except the noted differences also works on v22.</li>
+        <li>Make a folder <code>sim</code> with a <code>package.json</code> containing <code>{ "type": "module" }</code>, a <code>lib</code> folder with <code>plane.js</code> from panel 2, and <code>sim.test.js</code> from panel 3.</li>
+        <li>Run <code>node --test</code> (it finds <code>*.test.js</code> by itself). Break <code>fuelFor</code> on purpose, say <code>km * 4</code>, and watch the red report. Undo it.</li>
+        <li>Add <code>--experimental-test-coverage</code> and read the uncovered lines. Write tests until the throw lines are covered.</li>
+        <li>Try <code>node --test --watch</code>, edit a file, and watch it re-run. Stop it with Ctrl+C.</li>
+        <li>Environment variables differ by shell:
+          <ul>
+            <li>macOS / Linux (bash, zsh): <code>TOWER=Gatwick node env.js</code></li>
+            <li>Windows PowerShell: <code>$env:TOWER="Gatwick"; node env.js</code> (it stays set for that window)</li>
+            <li>Windows Command Prompt: <code>set TOWER=Gatwick</code>, then <code>node env.js</code></li>
+            <li>Everywhere: <code>node --env-file=flight.env env.js</code></li>
+          </ul>
+        </li>
+        <li>Exit codes: <code>echo $?</code> in bash/zsh, <code>$LASTEXITCODE</code> in PowerShell, <code>echo %ERRORLEVEL%</code> in Command Prompt.</li>
+        <li>Paths: on Windows, <code>path.join</code> uses backslashes (<code>data\fleet.json</code>) and full paths start with a drive letter. Code that uses <code>path</code> and <code>import.meta.dirname</code> works unchanged; code that glues <code>'/'</code> by hand often doesn't. To see the ENOENT trap, run a script from the folder above it.</li>
+        <li>The <code>sed</code> in this page's test commands only hides timings, and <code>set -o pipefail</code> is only there because of that pipe. On Windows, or anywhere, just run <code>node --test</code> without either.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Version notes: Node 26 and Node 22</summary>
+    <div class="page-body">
+      <p>Every program was also run on Node 22.23.4. Differences that show:</p>
+      <ul>
+        <li><b>Reporter.</b> When the output isn't a terminal, Node 22 defaults to the TAP reporter, while Node 26 uses spec; that's why every command here names <code>--test-reporter=spec</code>.</li>
+        <li><b>Mock timers.</b> Node 22 prints <samp>ExperimentalWarning: The MockTimers API is an experimental feature</samp> (for <code>timers.test.js</code> and <code>trace_timers.js</code>); Node 26 doesn't. The results are the same.</li>
+        <li><b>Coverage.</b> Node 22 also lists the test file itself in the coverage table, so its "all files" line reads 75.00% instead of 55.56%.</li>
+        <li><b>ENOENT.</b> Node 22 prints the footprints for a failed <code>readFile</code> (<code>where_away.js</code>, shown in panel 34; <code>spot_path.js</code>), Node 26 only the error object.</li>
+        <li><b>argv.</b> <code>argv_peek.js</code> shows a different path to <code>node</code> (<samp>/opt/node22/bin/node</samp>).</li>
+        <li><b>Error header.</b> Node 26 labels a thrown RangeError as <samp>RangeError [Error]</samp> in the test report (<code>spot_throws.test.js</code>); Node 22 prints just <samp>RangeError</samp>.</li>
+        <li>Otherwise, failing tests and crashes differ only in Node-internal stack lines (<code>node:internal/…</code> line numbers) and the version footer.</li>
+      </ul>
+      <p>History: <code>node:test</code> arrived in Node 18 and became stable in Node 20. Mock timers arrived in Node 20.4 and were still marked experimental in Node 22. <code>--env-file</code> arrived in Node 20.6, <code>import.meta.dirname</code> and <code>import.meta.filename</code> in 20.11, and global <code>fetch</code> became stable in Node 21.</p>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Words from this chapter</summary>
+    <div class="page-body">
+      <dl class="terms">
+        <dt>suite</dt><dd>A named group of tests: <code>describe</code>.</dd>
+        <dt>hook</dt><dd>A function the runner calls around tests: <code>before</code>, <code>beforeEach</code>, <code>afterEach</code>, <code>after</code>.</dd>
+        <dt>reporter</dt><dd>What turns test results into text: spec (a tree), dot, TAP.</dd>
+        <dt><code>skip</code> / <code>todo</code> / <code>only</code></dt><dd>Marks: don't run; not written yet; run only these (with <code>--test-only</code>).</dd>
+        <dt><code>deepEqual</code></dt><dd>Compares contents, piece by piece (strict: types too).</dd>
+        <dt><code>throws</code> / <code>rejects</code></dt><dd>Expect a function to throw / a promise to reject.</dd>
+        <dt><code>match</code></dt><dd>Expect a string to match a regular expression.</dd>
+        <dt>error path</dt><dd>What code does with bad input or a failure.</dd>
+        <dt>arrange, act, assert</dt><dd>The three parts of a readable test.</dd>
+        <dt>fixture</dt><dd>Ready-made test data or setup, often from a helper function.</dd>
+        <dt>flaky test</dt><dd>A test that passes or fails at random, often from real time or randomness.</dd>
+        <dt>test double</dt><dd>A stand-in for a real part: spy, stub, mocked method, fake.</dd>
+        <dt>spy</dt><dd>A double that records its calls.</dd>
+        <dt>stub</dt><dd>A double that returns a fixed answer.</dd>
+        <dt>mock leak</dt><dd>A double that stays in place after its test, changing later tests.</dd>
+        <dt>test context (<code>t</code>)</dt><dd>The object each test receives; <code>t.mock</code> cleans up after the test.</dd>
+        <dt>mock timers</dt><dd>A fake clock for timers and <code>Date</code>, moved with <code>tick</code>.</dd>
+        <dt>coverage</dt><dd>Which lines and branches the tests ran.</dd>
+        <dt>TDD</dt><dd>Test-driven development: red, green, refactor.</dd>
+        <dt>refactor</dt><dd>Improve code's shape without changing what it does.</dd>
+        <dt><code>process</code></dt><dd>Node's object describing the running program.</dd>
+        <dt>command-line argument</dt><dd>A word typed after the script name; in <code>process.argv</code>.</dd>
+        <dt>flag</dt><dd>An argument starting with <code>--</code> that switches an option on.</dd>
+        <dt>environment variable</dt><dd>A named setting inherited from whoever started the program; in <code>process.env</code>.</dd>
+        <dt>env file</dt><dd>A file of <code>NAME=value</code> lines, loaded with <code>--env-file</code>.</dd>
+        <dt>exit code</dt><dd>The number a program leaves with: 0 for success.</dd>
+        <dt>stdout / stderr</dt><dd>The two output streams: results, and problems.</dd>
+        <dt>stdin</dt><dd>The input stream: typed or piped text.</dd>
+        <dt>redirect</dt><dd>Sending a stream to a file with the shell's <code>&gt;</code>.</dd>
+        <dt>Buffer</dt><dd>A fixed-size box of bytes.</dd>
+        <dt>encoding</dt><dd>The rule for turning bytes into text, such as <code>'utf8'</code>.</dd>
+        <dt>base64</dt><dd>A way to write any bytes with safe letters and digits.</dd>
+        <dt>current working directory (cwd)</dt><dd>The folder a program was started from; relative paths begin there.</dd>
+        <dt>relative / absolute path</dt><dd>A path from the cwd / a path from the top of the file system.</dd>
+        <dt>file URL</dt><dd>A path written as <code>file:///…</code>, like <code>import.meta.url</code>.</dd>
+        <dt>ENOENT</dt><dd>"No such entry": the file or folder doesn't exist.</dd>
+        <dt>stream</dt><dd>Data that flows in chunks; readable, writable or transform.</dd>
+        <dt>chunk</dt><dd>One piece of a stream, usually a Buffer.</dd>
+        <dt><code>pipeline</code></dt><dd>Joins streams and reports when they finish or fail.</dd>
+        <dt><code>EventEmitter</code></dt><dd>Node's bell: <code>on</code>, <code>once</code>, <code>off</code>, <code>emit</code>.</dd>
+        <dt>server / handler</dt><dd>A program that answers requests / the function that answers each one.</dd>
+        <dt>port</dt><dd>A numbered door on a computer that a server listens at.</dd>
+        <dt>status code</dt><dd>The number at the top of an HTTP reply: 200 OK, 404 not found.</dd>
+        <dt>blocking</dt><dd>Holding the single thread so nothing else can run.</dd>
+        <dt>sandbox</dt><dd>The browser's walls that keep page code away from your files.</dd>
+        <dt>path traversal</dt><dd>Using <code>..</code> in a requested path to escape the allowed folder.</dd>
+        <dt>child process</dt><dd>Another program started by yours.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="page">
+    <summary>Go deeper</summary>
+    <div class="page-body">
+      <h3>Official documentation</h3>
+      <ul>
+        <li>Node.js API: <a href="https://nodejs.org/api/test.html">Test runner</a> (hooks, <code>skip</code>/<code>todo</code>/<code>only</code>, mocking, mock timers, coverage, reporters) and <a href="https://nodejs.org/api/assert.html">Assert</a></li>
+        <li>Node.js Learn: <a href="https://nodejs.org/en/learn/test-runner/using-test-runner">Using Node.js's test runner</a> and <a href="https://nodejs.org/en/learn/test-runner/mocking">Mocking in tests</a></li>
+        <li>Node.js API: <a href="https://nodejs.org/api/process.html">process</a>, <a href="https://nodejs.org/api/fs.html">File system</a>, <a href="https://nodejs.org/api/path.html">Path</a>, <a href="https://nodejs.org/api/stream.html">Stream</a>, <a href="https://nodejs.org/api/buffer.html">Buffer</a>, <a href="https://nodejs.org/api/events.html">Events</a>, <a href="https://nodejs.org/api/http.html">HTTP</a>, <a href="https://nodejs.org/api/readline.html">Readline</a></li>
+        <li>Node.js Learn: <a href="https://nodejs.org/en/learn/manipulating-files/nodejs-file-paths">Node.js File Paths</a> and the Command Line articles</li>
+      </ul>
+      <h3>Free resources</h3>
+      <ul>
+        <li><a href="https://eloquentjavascript.net/20_node.html">Eloquent JavaScript, chapter 20: Node.js</a> (process, fs, a file server)</li>
+        <li><a href="https://javascript.info/testing-mocha">javascript.info: Automated testing with Mocha</a>, the same ideas with another runner</li>
+        <li><a href="https://fullstackopen.com/en/part3">Full Stack Open, part 3</a> (a real Node server) and part 4 (testing it)</li>
+        <li><a href="https://www.theodinproject.com/paths/full-stack-javascript/courses/javascript">The Odin Project: JavaScript course</a>, whose Testing Basics and More Testing lessons cover Jest and mocking</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="fineprint">
+  <p>Every line of code and every output in this comic comes from a real run: Node.js 26.13.0 LTS (shown) and Node.js 22.23.4 (compared), on 2026-11-08, in <code>/home/you/javascript-ch27</code> (a folder whose <code>package.json</code> says <code>"type": "module"</code>, so <code>.js</code> files are ES modules), with <code>TZ=UTC</code>, <code>LANG=en_US.UTF-8</code> and <code>NO_COLOR=1</code>. 66 programs and command sessions were captured, each run twice on Node 26 to confirm identical output; 15 of them differ on Node 22, as the version notes describe. Helper files in <code>lib/</code>, <code>bin/</code> and <code>data/</code> are shown exactly as captured. The <code>cli_*.js</code> and <code>where_*.js</code> entries are one-line placeholders whose recorded commands run <code>bin/boarding.js</code>, <code>bin/load_rel.js</code> and <code>bin/load_fixed.js</code>; the terminals show those real commands, including <code>cd ..</code> where a run starts in another folder.</p>
+  <p>Test reports print a duration for every test, which changes on every run. Those commands pipe the report through <code>sed</code> to replace the numbers with <samp>…ms</samp>, and the shown command includes the pipe. Each of those terminals first runs <code>set -o pipefail</code>, shown as its own step, so the exit code shown is the test runner's, not <code>sed</code>'s (bash 5.2's <code>help set</code>: with pipefail, "the return value of a pipeline is the status of the last command to exit with a non-zero status"). In terminals marked with a folded note, consecutive <code>at … (node:internal/…)</code> lines are folded into one line by the page's script; the full text is one click away. Files the programs write go to <code>scratch/</code>, overwritten on every run. The server listens on a port the system picks and never prints it. The hooks map, the paths map, the boarding-pass machine, the Math.random tracer and the fleet-tool walk are teaching models; each checks itself against the real runs and says so.</p>
+  <p>Sources consulted for scope, order and common pitfalls (all material here is original): Node.js Learn "Mocking in tests" (what to mock, automatic restore of test-scoped mocks, deterministic time, tests that pass in any order), fetched; Node.js Learn "Node.js File Paths" (<code>join</code>, <code>resolve</code> from the current working directory, <code>resolve</code> doesn't check existence), fetched. From this book's research map (<code>research/javascript.md</code>, modules I18 and I19), not re-fetched: Node.js Learn Test Runner (Discovering, Using, Mocking, Coverage), Command Line, Manipulating Files and HTTP articles; The Odin Project Testing Basics and More Testing; javascript.info 3.5; JavaScript: The Definitive Guide 16 and 17.3; Eloquent JavaScript chapter 20; Full Stack Open part 3; boot.dev's Runtimes chapter; Exercism's test-first exercises. The readline pitfall, the version differences, the error messages and every other output on this page were found by running them.</p>
+  <p>Kit, Juno, the workshop robot, the flight simulator, the sneak, the digger and the Professor are original characters and drawings made in code. Fonts load from Google Fonts; offline copies fall back to system fonts. Turn animations off with the button at the top; they are also off if your system asks for reduced motion.</p>
+</footer>
+</body>
+</html>
