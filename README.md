@@ -69,6 +69,19 @@ All 142 chapters pass `source/tools/check_chapter.js` at 1280 px and 390 px with
 
 The programs from every chapter are in `programs.tgz` on the [Releases](https://github.com/shriyansh24/pip-and-friends/releases) page.
 
+## Plans
+
+Java, C and TypeScript books come next, followed by deeper second books for the current languages and books on frameworks. [SCOPE.md](SCOPE.md) has the full plan.
+
+## Contribute
+
+- Report a problem with [ISSUES.md](ISSUES.md).
+- Fix a chapter or propose a book with [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Credits
 
 Pip, Mabel, Scoot, Wren, Kit, the Professor, the Compiler and the creatures are original characters. The fonts are Bangers, Comic Neue, Shantell Sans, Atkinson Hyperlegible Next and JetBrains Mono, from [Google Fonts](https://fonts.google.com/).
+
+## License
+
+Pip & Friends is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.
